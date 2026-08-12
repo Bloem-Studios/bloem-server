@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -18,6 +19,14 @@ import (
 
 type tenancyProvisioningAdapter struct {
 	store *tenancy.Store
+}
+
+type failingMembershipProvisioner struct {
+	err error
+}
+
+func (p failingMembershipProvisioner) ProvisionDefaultMembership(context.Context, int, string) error {
+	return p.err
 }
 
 func (a tenancyProvisioningAdapter) ActivateInitialOwnership(ctx context.Context, accountID int) error {
@@ -84,21 +93,67 @@ func TestSetupInitialUserOwnership_ProvisionsDefaultMembershipAndActivatesOwners
 	provisioner.SetMembershipProvisioner(adapter)
 	ordinary, err := provisioner.CreateAccount(ctx, CreateAccountInput{
 		User: models.CreateUserInput{
-			Username: "ordinary-user",
-			Email:    "ordinary-user@example.test",
+			Username: "moderator-user",
+			Email:    "moderator-user@example.test",
 			Password: "password",
-			Role:     "user",
+			Role:     "moderator",
 		},
 	})
 	if err != nil {
-		t.Fatalf("CreateAccount ordinary user: %v", err)
+		t.Fatalf("CreateAccount moderator user: %v", err)
+	}
+	if ordinary.Role != "moderator" {
+		t.Fatalf("created user role = %q, want moderator", ordinary.Role)
 	}
 	membership, err = adapter.store.GetMembership(ctx, ordinary.ID, organization.ID)
 	if err != nil {
 		t.Fatalf("GetMembership for ordinary user: %v", err)
 	}
 	if membership.Status != tenancy.MembershipActive || membership.LegacyRole != "user" {
-		t.Fatalf("ordinary user membership = %#v, want active user", membership)
+		t.Fatalf("moderator user membership = %#v, want active user", membership)
+	}
+}
+
+func TestSetupInitialUserOwnership_CleansUpAccountWhenMembershipProvisioningFails(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	pool := newAuthTenancyDisposableDatabase(t, ctx, dsn)
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate database: %v", err)
+	}
+
+	users := NewUserRepository(pool)
+	sessions := NewSessionRepository(pool)
+	service := NewService(
+		NewLocalProvider(users, sessions),
+		NewJWTService("test-secret", time.Hour, 24*time.Hour),
+		sessions,
+		users,
+		NewInviteCodeRepository(pool),
+		nil,
+		nil,
+	)
+	provisionErr := errors.New("default membership unavailable")
+	service.SetMembershipProvisioner(failingMembershipProvisioner{err: provisionErr})
+
+	pair, user, err := service.SetupInitialUser(
+		ctx, "setup-admin", "setup-admin@example.test", "password", false, "", "browser", "127.0.0.1",
+	)
+	if !errors.Is(err, provisionErr) {
+		t.Fatalf("SetupInitialUser error = %v, want membership provisioning error", err)
+	}
+	if pair != nil || user != nil {
+		t.Fatalf("setup result = (%#v, %#v), want no tokens or user", pair, user)
+	}
+	needsSetup, err := service.NeedsSetup(ctx)
+	if err != nil {
+		t.Fatalf("NeedsSetup: %v", err)
+	}
+	if !needsSetup {
+		t.Fatal("failed setup left an account behind")
 	}
 }
 

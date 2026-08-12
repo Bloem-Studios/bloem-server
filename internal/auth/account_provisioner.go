@@ -62,7 +62,7 @@ func (p *AccountProvisioner) CreateAccount(
 	}
 
 	if p.memberships != nil {
-		if err := p.memberships.ProvisionDefaultMembership(ctx, user.ID, input.User.Role); err != nil {
+		if err := p.memberships.ProvisionDefaultMembership(ctx, user.ID, membershipLegacyRole(input.User.Role)); err != nil {
 			if deleteErr := p.users.Delete(ctx, user.ID); deleteErr != nil {
 				return nil, fmt.Errorf(
 					"provision default membership: %w (cleanup user: %v)",
@@ -90,6 +90,15 @@ func (p *AccountProvisioner) CreateAccount(
 	}
 
 	return user, nil
+}
+
+// membershipLegacyRole preserves the legacy migration's two-value membership
+// contract without changing the account's stored role.
+func membershipLegacyRole(role string) string {
+	if role == "admin" {
+		return "admin"
+	}
+	return "user"
 }
 
 func (p *AccountProvisioner) createDefaultProfile(

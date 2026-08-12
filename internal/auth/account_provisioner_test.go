@@ -289,3 +289,64 @@ func TestAccountProvisionerCreateAccount_DeletesUserWhenMembershipProvisioningFa
 		t.Fatalf("deleted account = %d, want 14", deletedUserID)
 	}
 }
+
+func TestAccountProvisionerCreateAccount_MapsCustomRoleToUserMembership(t *testing.T) {
+	var provisionedRole string
+	provisioner := NewAccountProvisioner(
+		stubAccountUsers{
+			createFn: func(_ context.Context, input models.CreateUserInput) (*models.User, error) {
+				return &models.User{ID: 15, Username: input.Username, Role: input.Role}, nil
+			},
+		},
+		nil,
+	)
+	provisioner.SetMembershipProvisioner(recordingMembershipProvisioner{
+		provisionFn: func(_ context.Context, accountID int, legacyRole string) error {
+			if accountID != 15 {
+				t.Fatalf("membership account ID = %d, want 15", accountID)
+			}
+			provisionedRole = legacyRole
+			return nil
+		},
+	})
+
+	user, err := provisioner.CreateAccount(context.Background(), CreateAccountInput{
+		User: models.CreateUserInput{Username: "moderator", Role: "moderator"},
+	})
+	if err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if user.Role != "moderator" {
+		t.Fatalf("created user role = %q, want moderator", user.Role)
+	}
+	if provisionedRole != "user" {
+		t.Fatalf("membership legacy role = %q, want user", provisionedRole)
+	}
+}
+
+func TestAccountProvisionerCreateAccount_MapsBlankRoleToUserMembership(t *testing.T) {
+	var provisionedRole string
+	provisioner := NewAccountProvisioner(
+		stubAccountUsers{
+			createFn: func(_ context.Context, input models.CreateUserInput) (*models.User, error) {
+				return &models.User{ID: 16, Username: input.Username, Role: input.Role}, nil
+			},
+		},
+		nil,
+	)
+	provisioner.SetMembershipProvisioner(recordingMembershipProvisioner{
+		provisionFn: func(_ context.Context, _ int, legacyRole string) error {
+			provisionedRole = legacyRole
+			return nil
+		},
+	})
+
+	if _, err := provisioner.CreateAccount(context.Background(), CreateAccountInput{
+		User: models.CreateUserInput{Username: "default-role"},
+	}); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if provisionedRole != "user" {
+		t.Fatalf("membership legacy role = %q, want user", provisionedRole)
+	}
+}
