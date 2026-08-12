@@ -5,12 +5,14 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Vondel-Media/vondel-server/internal/access"
@@ -147,6 +149,73 @@ WHERE user_id = $1 AND id = 'v1-profile'`, userID).Scan(&profileOrganizationID, 
 		}
 		assertDefaultOrganizationID(t, ctx, pool, organizationID)
 	})
+
+	t.Run("profile insert without organization is rejected", func(t *testing.T) {
+		ctx := context.Background()
+		pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
+		migrateTenantIdentityLatest(t, ctx, pool)
+
+		var userID int
+		if err := pool.QueryRow(ctx, `
+INSERT INTO public.users (username, email, password_hash, role)
+VALUES ('tenant-malformed-profile', 'tenant-malformed-profile@example.com', 'x', 'user')
+RETURNING id`).Scan(&userID); err != nil {
+			t.Fatalf("seed malformed profile owner: %v", err)
+		}
+		_, err := pool.Exec(ctx, `
+INSERT INTO public.user_profiles (user_id, id, name)
+VALUES ($1, 'missing-organization', 'Malformed')`, userID)
+		assertTenantIdentityNotNullViolation(t, err, "profile insert without organization")
+	})
+
+	t.Run("access group insert without organization is rejected", func(t *testing.T) {
+		ctx := context.Background()
+		pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
+		migrateTenantIdentityLatest(t, ctx, pool)
+
+		_, err := pool.Exec(ctx, `
+INSERT INTO public.access_groups (name)
+VALUES ('Malformed access group')`)
+		assertTenantIdentityNotNullViolation(t, err, "access group insert without organization")
+	})
+
+	t.Run("cross organization profile group pairing is rejected", func(t *testing.T) {
+		ctx := context.Background()
+		pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
+		migrateTenantIdentityLatest(t, ctx, pool)
+
+		var userID int
+		if err := pool.QueryRow(ctx, `
+INSERT INTO public.users (username, email, password_hash, role)
+VALUES ('tenant-cross-org-profile', 'tenant-cross-org-profile@example.com', 'x', 'user')
+RETURNING id`).Scan(&userID); err != nil {
+			t.Fatalf("seed cross organization profile owner: %v", err)
+		}
+		var defaultOrganizationID, otherOrganizationID string
+		if err := pool.QueryRow(ctx, `SELECT id::text FROM public.organizations WHERE is_default`).Scan(&defaultOrganizationID); err != nil {
+			t.Fatalf("read default organization: %v", err)
+		}
+		if err := pool.QueryRow(ctx, `
+INSERT INTO public.organizations (slug, name, status)
+VALUES ('other-organization', 'Other Organization', 'active')
+RETURNING id::text`).Scan(&otherOrganizationID); err != nil {
+			t.Fatalf("create second organization: %v", err)
+		}
+		var otherGroupID int64
+		if err := pool.QueryRow(ctx, `
+INSERT INTO public.access_groups (organization_id, name)
+VALUES ($1, 'Other organization group')
+RETURNING id`, otherOrganizationID).Scan(&otherGroupID); err != nil {
+			t.Fatalf("create second organization group: %v", err)
+		}
+		_, err := pool.Exec(ctx, `
+INSERT INTO public.user_profiles (organization_id, access_group_id, user_id, id, name)
+VALUES ($1, $2, $3, 'cross-organization', 'Cross Organization')`,
+			defaultOrganizationID, otherGroupID, userID)
+		if err == nil {
+			t.Fatal("profile accepted an access group from another organization")
+		}
+	})
 }
 
 func migrateTenantIdentityLatest(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
@@ -164,6 +233,17 @@ func assertDefaultOrganizationID(t *testing.T, ctx context.Context, pool *pgxpoo
 	}
 	if got != want {
 		t.Errorf("organization = %q, want default organization %q", got, want)
+	}
+}
+
+func assertTenantIdentityNotNullViolation(t *testing.T, err error, operation string) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("%s succeeded, want not-null violation", operation)
+	}
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "23502" {
+		t.Fatalf("%s error = %v, want SQLSTATE 23502", operation, err)
 	}
 }
 

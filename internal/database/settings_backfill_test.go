@@ -209,9 +209,9 @@ RETURNING id`).Scan(&userID)
 INSERT INTO user_profiles
     (user_id, id, name, quality_preference, language, subtitle_language,
      subtitle_mode, show_forced_subtitles, preferred_metadata_language,
-     auto_skip_intro, auto_skip_credits)
+     auto_skip_intro, auto_skip_credits, organization_id)
 VALUES ($1, 'mp1', 'Migrate Me', '1080p', 'ja', 'en', 'always', false, 'fr',
-        true, false)
+        true, false, (SELECT id FROM organizations WHERE is_default))
 ON CONFLICT (user_id, id) DO NOTHING`, userID); err != nil {
 		t.Fatalf("seeding profile: %v", err)
 	}

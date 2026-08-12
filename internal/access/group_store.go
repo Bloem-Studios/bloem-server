@@ -196,14 +196,19 @@ func (s *GroupStore) Create(ctx context.Context, input CreateGroupInput) (*Group
 		}
 	}
 
+	var organizationID string
+	if err := tx.QueryRow(ctx, `SELECT id::text FROM organizations WHERE is_default`).Scan(&organizationID); err != nil {
+		return nil, fmt.Errorf("loading default organization for access group: %w", err)
+	}
+
 	var id int64
 	err = tx.QueryRow(ctx, `
 		INSERT INTO access_groups (
 			name, description, library_ids, max_playback_quality,
 			download_allowed, download_transcode_allowed, max_streams, max_transcodes,
-			allowed_permissions, requests_allowed, is_default
+			allowed_permissions, requests_allowed, is_default, organization_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id`,
 		name,
 		input.Description,
@@ -216,6 +221,7 @@ func (s *GroupStore) Create(ctx context.Context, input CreateGroupInput) (*Group
 		input.AllowedPermissions,
 		input.RequestsAllowed,
 		input.IsDefault,
+		organizationID,
 	).Scan(&id)
 	if err != nil {
 		if isGroupDuplicate(err) {

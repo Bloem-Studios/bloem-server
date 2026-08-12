@@ -565,8 +565,8 @@ func seedNextUpTestOwner(t *testing.T, ctx context.Context, pool *pgxpool.Pool, 
 
 	profileID := fmt.Sprintf("00000000-0000-4000-8000-%012d", time.Now().UnixNano()%1_000_000_000_000)
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO user_profiles (id, user_id, name)
-		VALUES ($1, $2, 'Next Up Regression')
+		INSERT INTO user_profiles (id, user_id, name, organization_id)
+		VALUES ($1, $2, 'Next Up Regression', (SELECT id FROM organizations WHERE is_default))
 	`, profileID, userID); err != nil {
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
 		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)

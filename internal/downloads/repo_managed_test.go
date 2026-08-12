@@ -90,7 +90,8 @@ func seedManagedFixture(t *testing.T) managedFixture {
 	profileB := fmt.Sprintf("dlp-b-%d", suffix)
 	for _, p := range []struct{ id, name string }{{profileA, "A"}, {profileB, "B"}} {
 		if _, err := pool.Exec(ctx,
-			`INSERT INTO user_profiles (id, user_id, name) VALUES ($1, $2, $3)`,
+			`INSERT INTO user_profiles (id, user_id, name, organization_id)
+			 VALUES ($1, $2, $3, (SELECT id FROM organizations WHERE is_default))`,
 			p.id, userID, p.name,
 		); err != nil {
 			t.Fatalf("seed profile %s: %v", p.id, err)
