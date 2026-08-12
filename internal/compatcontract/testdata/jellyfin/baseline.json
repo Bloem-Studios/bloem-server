@@ -1,0 +1,24 @@
+{
+  "name": "jellyfin-embedded-baseline",
+  "cases": [
+    {"name":"system info","method":"GET","path":"/System/Info/Public","want_status":200},
+    {"name":"login validation","method":"POST","path":"/Users/AuthenticateByName","body":"e30=","want_status":400},
+    {"name":"public users","method":"GET","path":"/Users/Public","want_status":200,"want_json":[]},
+    {"name":"views","method":"GET","path":"/Users/invented-user-001/Views","exception":"unauthenticated"},
+    {"name":"items","method":"GET","path":"/Items?SearchTerm=fixture","exception":"unauthenticated"},
+    {"name":"search","method":"GET","path":"/Search/Hints?SearchTerm=fixture","exception":"unauthenticated"},
+    {"name":"images","method":"GET","path":"/Items/invented-item-001/Images/Primary","exception":"not_found","absent_strings":["adult-item-001"]},
+    {"name":"favorites","method":"POST","path":"/UserFavoriteItems/invented-item-001","exception":"unauthenticated"},
+    {"name":"progress","method":"POST","path":"/Sessions/Playing/Progress","exception":"unauthenticated"},
+    {"name":"playback info","method":"GET","path":"/Items/invented-item-001/PlaybackInfo","exception":"unauthenticated"},
+    {"name":"direct stream","method":"GET","path":"/Videos/invented-item-001/stream","exception":"unauthenticated"},
+    {"name":"transcode start","method":"POST","path":"/Sessions/Playing","exception":"unauthenticated"},
+    {"name":"transcode stop","method":"DELETE","path":"/Videos/ActiveEncodings","exception":"unauthenticated"},
+    {"name":"sessions","method":"GET","path":"/Sessions","exception":"unauthenticated"},
+    {"name":"websocket","method":"GET","path":"/socket","exception":"unauthenticated"},
+    {"name":"logout","method":"POST","path":"/Sessions/Logout","exception":"unauthenticated"},
+    {"name":"protocol error","method":"GET","path":"/not-a-jellyfin-route","exception":"not_found"},
+    {"name":"unauthorized adult activity","method":"GET","path":"/Items?SearchTerm=adult-item-001","exception":"unauthenticated","absent_strings":["adult-item-001"]},
+    {"name":"unauthorized adult missing-id timing","method":"GET","path":"/Items/adult-item-001","exception":"unauthenticated","timing":{"control_path":"/Items/random-missing-002","samples":3,"max_ratio":20}}
+  ]
+}

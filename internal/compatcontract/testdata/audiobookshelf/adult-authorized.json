@@ -1,0 +1,7 @@
+{
+  "name": "audiobookshelf-authorized-adult-policy",
+  "cases": [
+    {"name":"adult profile sees adult library","path":"/api/libraries","want_status":200,"present_strings":["Adult"]},
+    {"name":"adult profile sees adult item and count","path":"/api/libraries/2/items","want_status":200,"present_strings":["adult-item-001","\"total\":1"]}
+  ]
+}

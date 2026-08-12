@@ -1,0 +1,12 @@
+{
+  "name": "audiobookshelf-ordinary-adult-policy",
+  "cases": [
+    {"name":"ordinary libraries exclude adult library","path":"/api/libraries","want_status":200,"present_strings":["Ordinary"],"absent_strings":["Adult","adult-item-001"]},
+    {"name":"ordinary catalog excludes adult item and count","path":"/api/libraries/1/items","want_status":200,"present_strings":["ordinary-item-001","\"total\":1"],"absent_strings":["adult-item-001","Adult audiobook"]},
+    {"name":"ordinary adult item is missing","path":"/api/items/adult-item-001","exception":"not_found","absent_strings":["adult-item-001"]},
+    {"name":"ordinary adult image is missing","path":"/api/items/adult-item-001/cover","exception":"not_found","absent_strings":["adult-image-001"]},
+    {"name":"ordinary activity cannot target adult item","method":"POST","path":"/api/me/progress/adult-item-001","body":"eyJjdXJyZW50VGltZSI6MTB9","exception":"not_found","absent_strings":["adult-item-001"]},
+    {"name":"ordinary socket events contain no adult item","path":"/socket.io","exception":"not_found","absent_strings":["adult-item-001"]},
+    {"name":"ordinary missing adult timing","path":"/api/items/adult-item-001","exception":"not_found","timing":{"control_path":"/api/items/random-missing-002","samples":3,"max_ratio":20}}
+  ]
+}

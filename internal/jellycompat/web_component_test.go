@@ -549,6 +549,18 @@ func TestBeginWebOperationRejectsFreshMalformedLock(t *testing.T) {
 	}
 }
 
+func TestCurrentProcessTokenIdentifiesRunningProcess(t *testing.T) {
+	first := currentProcessToken()
+	second := processToken(os.Getpid())
+
+	if first == "" {
+		t.Fatal("currentProcessToken() = empty, want a portable process identity")
+	}
+	if second != first {
+		t.Fatalf("processToken(current pid) = %q, want %q", second, first)
+	}
+}
+
 func TestBeginWebOperationRecoversDeadProcessLock(t *testing.T) {
 	root := t.TempDir()
 	host, _ := os.Hostname()

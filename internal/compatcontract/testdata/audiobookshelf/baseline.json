@@ -1,0 +1,23 @@
+{
+  "name": "audiobookshelf-embedded-baseline",
+  "cases": [
+    {"name":"ping","method":"GET","path":"/ping","want_status":200},
+    {"name":"login validation","method":"POST","path":"/api/login","body":"e30=","exception":"unauthenticated"},
+    {"name":"current user","method":"GET","path":"/api/me","exception":"unauthenticated"},
+    {"name":"libraries","method":"GET","path":"/api/libraries","exception":"unauthenticated"},
+    {"name":"items","method":"GET","path":"/api/libraries/invented-library-001/items","exception":"unauthenticated"},
+    {"name":"authors","method":"GET","path":"/api/libraries/invented-library-001/authors","exception":"unauthenticated"},
+    {"name":"series","method":"GET","path":"/api/libraries/invented-library-001/series","exception":"unauthenticated"},
+    {"name":"collections","method":"GET","path":"/api/collections","exception":"unauthenticated"},
+    {"name":"playlists","method":"GET","path":"/api/playlists","exception":"unauthenticated"},
+    {"name":"bookmarks","method":"POST","path":"/api/me/item/invented-item-001/bookmark","exception":"unauthenticated"},
+    {"name":"progress","method":"GET","path":"/api/me/progress","exception":"unauthenticated"},
+    {"name":"playback session","method":"POST","path":"/api/items/invented-item-001/play","exception":"unauthenticated"},
+    {"name":"file delivery","method":"GET","path":"/api/items/invented-item-001/file/1","exception":"unauthenticated"},
+    {"name":"socket events","method":"GET","path":"/socket.io","exception":"not_found","absent_strings":["adult-item-001"]},
+    {"name":"logout","method":"POST","path":"/logout","want_status":200},
+    {"name":"protocol error","method":"GET","path":"/missing-audiobookshelf-route","exception":"not_found"},
+    {"name":"unauthorized adult catalog","method":"GET","path":"/api/items/adult-item-001","exception":"unauthenticated","absent_strings":["adult-item-001"]},
+    {"name":"unauthorized adult missing-id timing","method":"GET","path":"/api/items/adult-item-001","exception":"unauthenticated","timing":{"control_path":"/api/items/random-missing-002","samples":3,"max_ratio":20}}
+  ]
+}

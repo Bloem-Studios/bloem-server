@@ -77,10 +77,12 @@ func NewItemsHandler(content ContentService, userData UserDataService, codec *Re
 		personRepo:   personRepo,
 		detailSvc:    detailSvc,
 		durationSrc:  detailSvc,
-		itemRepo:     itemRepo,
 		episodeRepo:  episodeRepo,
 		accessFilter: accessFilter,
 		subtitleRepo: subtitleRepo,
+	}
+	if itemRepo != nil {
+		h.itemRepo = itemRepo
 	}
 	// Assign through the typed pointer only when present so the interface field
 	// stays a true nil (a typed nil would defeat the nil check in

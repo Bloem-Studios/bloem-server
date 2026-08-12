@@ -1,0 +1,7 @@
+{
+  "name": "jellyfin-authorized-adult-policy",
+  "cases": [
+    {"name":"adult profile sees adult library","path":"/Users/fixture/Views","want_status":200,"present_strings":["Adult"]},
+    {"name":"adult profile accesses adult item","path":"/Items/adult-item-001","want_status":200}
+  ]
+}

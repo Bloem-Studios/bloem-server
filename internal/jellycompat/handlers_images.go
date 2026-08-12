@@ -64,23 +64,32 @@ func NewImagesHandler(content ContentService, codec *ResourceIDCodec, sessions *
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	return &ImagesHandler{
+	h := &ImagesHandler{
 		content:      content,
 		codec:        codec,
 		sessions:     sessions,
 		images:       images,
 		personRepo:   personRepo,
 		detailSvc:    detailSvc,
-		itemRepo:     itemRepo,
-		folderRepo:   folderRepo,
-		seasonRepo:   seasonRepo,
-		episodeRepo:  episodeRepo,
 		accessFilter: accessFilter,
 		posterSigner: posterSigner,
 		presignTTL:   presignTTL,
 		imageTags:    newImageTagSigner(imageTagSecret),
 		httpClient:   httpClient,
 	}
+	if itemRepo != nil {
+		h.itemRepo = itemRepo
+	}
+	if folderRepo != nil {
+		h.folderRepo = folderRepo
+	}
+	if seasonRepo != nil {
+		h.seasonRepo = seasonRepo
+	}
+	if episodeRepo != nil {
+		h.episodeRepo = episodeRepo
+	}
+	return h
 }
 
 // HandleItemImage serves item artwork through compat-owned routes.

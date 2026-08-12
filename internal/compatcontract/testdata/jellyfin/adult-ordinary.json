@@ -1,0 +1,12 @@
+{
+  "name": "jellyfin-ordinary-adult-policy",
+  "cases": [
+    {"name":"ordinary views exclude adult library","path":"/Users/fixture/Views","want_status":200,"present_strings":["Ordinary"],"absent_strings":["Adult","adult-item-001"]},
+    {"name":"ordinary catalog excludes adult item and count","path":"/Items","want_status":200,"present_strings":["\"TotalRecordCount\":1"],"absent_strings":["adult-item-001","Adult title"]},
+    {"name":"ordinary adult item is missing","path":"/Items/adult-item-001","exception":"not_found","absent_strings":["adult-item-001"]},
+    {"name":"ordinary adult image is missing","path":"/Items/adult-item-001/Images/Primary","exception":"not_found","absent_strings":["adult-image-001"]},
+    {"name":"ordinary activity excludes adult item","path":"/Sessions","want_status":200,"want_json":[],"absent_strings":["adult-item-001"]},
+    {"name":"ordinary socket events contain no adult item","path":"/socket","want_websocket_no_message":true,"absent_strings":["adult-item-001"]},
+    {"name":"ordinary missing adult timing","path":"/Items/adult-item-001","exception":"not_found","timing":{"control_path":"/Items/random-missing-002","samples":3,"max_ratio":20}}
+  ]
+}

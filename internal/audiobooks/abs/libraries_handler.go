@@ -285,7 +285,16 @@ func (h *Handler) handleItemCover(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "id required", http.StatusBadRequest)
 		return
 	}
-	item, err := h.deps.MediaStore.GetAudiobookByID(r.Context(), contentID, emptyAccessFilter())
+	access, authenticated, err := h.accessFilterFromRequest(r)
+	if err != nil {
+		http.Error(w, "resolve access: "+err.Error(), http.StatusForbidden)
+		return
+	}
+	if !authenticated {
+		http.NotFound(w, r)
+		return
+	}
+	item, err := h.deps.MediaStore.GetAudiobookByID(r.Context(), contentID, access)
 	if err != nil || item == nil {
 		http.NotFound(w, r)
 		return

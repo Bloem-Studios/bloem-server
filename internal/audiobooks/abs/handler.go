@@ -331,6 +331,15 @@ func (h *Handler) Mount(parent chi.Router) {
 	})
 }
 
+// Router returns the complete ABS-compatible listener for a dedicated
+// compatibility endpoint. Mount remains available when a caller owns the
+// parent router.
+func (h *Handler) Router() http.Handler {
+	r := chi.NewRouter()
+	h.Mount(r)
+	return r
+}
+
 func (h *Handler) mountRoutes(r chi.Router) {
 	// Discovery + auth endpoints: real ABS exposes these at server ROOT
 	// (no /api or /abs/api prefix). Mobile clients do `${addr}/ping`,
