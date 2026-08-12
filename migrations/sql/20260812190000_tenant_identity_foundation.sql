@@ -124,12 +124,70 @@ CREATE INDEX user_profiles_organization_access_group_id_idx
     ON public.user_profiles(organization_id, access_group_id);
 CREATE INDEX access_groups_organization_id_idx
     ON public.access_groups(organization_id);
+
+-- v1 stores deliberately remain organization-unaware during this expand
+-- boundary. Preserve their writes while retaining the NOT NULL tenant keys;
+-- v10 callers that provide an organization are left untouched.
+CREATE FUNCTION public.assign_legacy_profile_tenant_identity()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    legacy_v1 boolean := NEW.organization_id IS NULL;
+BEGIN
+    IF legacy_v1 THEN
+        SELECT id
+        INTO NEW.organization_id
+        FROM public.organizations
+        WHERE is_default;
+    END IF;
+
+    IF legacy_v1 AND NEW.access_group_id IS NULL THEN
+        SELECT access_group_id
+        INTO NEW.access_group_id
+        FROM public.users
+        WHERE id = NEW.user_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER user_profiles_legacy_tenant_identity_trigger
+BEFORE INSERT ON public.user_profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.assign_legacy_profile_tenant_identity();
+
+CREATE FUNCTION public.assign_legacy_access_group_organization()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NEW.organization_id IS NULL THEN
+        SELECT id
+        INTO NEW.organization_id
+        FROM public.organizations
+        WHERE is_default;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER access_groups_legacy_tenant_identity_trigger
+BEFORE INSERT ON public.access_groups
+FOR EACH ROW
+EXECUTE FUNCTION public.assign_legacy_access_group_organization();
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 ALTER TABLE public.user_profiles
     DROP CONSTRAINT IF EXISTS user_profiles_organization_access_group_fkey;
+
+DROP TRIGGER IF EXISTS user_profiles_legacy_tenant_identity_trigger ON public.user_profiles;
+DROP TRIGGER IF EXISTS access_groups_legacy_tenant_identity_trigger ON public.access_groups;
+DROP FUNCTION IF EXISTS public.assign_legacy_profile_tenant_identity();
+DROP FUNCTION IF EXISTS public.assign_legacy_access_group_organization();
 
 DROP INDEX IF EXISTS public.user_profiles_organization_access_group_id_idx;
 DROP INDEX IF EXISTS public.user_profiles_organization_id_idx;

@@ -13,6 +13,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Vondel-Media/vondel-server/internal/access"
+	"github.com/Vondel-Media/vondel-server/internal/userstore"
+	"github.com/Vondel-Media/vondel-server/internal/userstore/pgstore"
 	"github.com/Vondel-Media/vondel-server/migrations"
 )
 
@@ -74,6 +77,93 @@ func TestTenantIdentityMigrationBackfill(t *testing.T) {
 			}
 			assertTenantIdentityUpgrade(ctx, t, pool, seed, before, tt.wantOwner, tt.wantResolutionRequired)
 		})
+	}
+}
+
+// TestTenantIdentityMigrationSupportsLegacyWritePaths exercises the v1 stores
+// directly. They intentionally do not carry tenant identity yet, so this
+// schema boundary must provide the default organization without weakening its
+// NOT NULL guarantees.
+func TestTenantIdentityMigrationSupportsLegacyWritePaths(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+
+	t.Run("profile creation", func(t *testing.T) {
+		ctx := context.Background()
+		pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
+		migrateTenantIdentityLatest(t, ctx, pool)
+
+		var userID int
+		var legacyAccessGroupID int64
+		if err := pool.QueryRow(ctx, `
+INSERT INTO public.users (username, email, password_hash, role, access_group_id)
+VALUES ('tenant-write-profile', 'tenant-write-profile@example.com', 'x', 'user',
+        (SELECT id FROM public.access_groups WHERE is_default))
+RETURNING id, access_group_id`).Scan(&userID, &legacyAccessGroupID); err != nil {
+			t.Fatalf("seed profile owner: %v", err)
+		}
+		store, err := pgstore.NewPostgresProvider(pool).ForUser(ctx, userID)
+		if err != nil {
+			t.Fatalf("create postgres user store: %v", err)
+		}
+		if err := store.CreateProfile(ctx, userstore.Profile{ID: "v1-profile", Name: "V1 Profile"}); err != nil {
+			t.Fatalf("legacy profile create: %v", err)
+		}
+
+		var profileOrganizationID string
+		var profileAccessGroupID int64
+		if err := pool.QueryRow(ctx, `
+SELECT organization_id::text, access_group_id
+FROM public.user_profiles
+WHERE user_id = $1 AND id = 'v1-profile'`, userID).Scan(&profileOrganizationID, &profileAccessGroupID); err != nil {
+			t.Fatalf("read profile tenant identity: %v", err)
+		}
+		assertDefaultOrganizationID(t, ctx, pool, profileOrganizationID)
+		if profileAccessGroupID != legacyAccessGroupID {
+			t.Errorf("profile access group = %d, want copy of user legacy access group %d", profileAccessGroupID, legacyAccessGroupID)
+		}
+	})
+
+	t.Run("access group creation", func(t *testing.T) {
+		ctx := context.Background()
+		pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
+		migrateTenantIdentityLatest(t, ctx, pool)
+
+		group, err := access.NewGroupStore(pool).Create(ctx, access.CreateGroupInput{
+			Name:            "V1 access group",
+			Description:     "created by the legacy store",
+			DownloadAllowed: true,
+			RequestsAllowed: true,
+		})
+		if err != nil {
+			t.Fatalf("legacy access group create: %v", err)
+		}
+
+		var organizationID string
+		if err := pool.QueryRow(ctx, `SELECT organization_id::text FROM public.access_groups WHERE id = $1`, group.ID).Scan(&organizationID); err != nil {
+			t.Fatalf("read access group organization: %v", err)
+		}
+		assertDefaultOrganizationID(t, ctx, pool, organizationID)
+	})
+}
+
+func migrateTenantIdentityLatest(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+	t.Helper()
+	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate latest schema: %v", err)
+	}
+}
+
+func assertDefaultOrganizationID(t *testing.T, ctx context.Context, pool *pgxpool.Pool, got string) {
+	t.Helper()
+	var want string
+	if err := pool.QueryRow(ctx, `SELECT id::text FROM public.organizations WHERE is_default`).Scan(&want); err != nil {
+		t.Fatalf("read default organization: %v", err)
+	}
+	if got != want {
+		t.Errorf("organization = %q, want default organization %q", got, want)
 	}
 }
 
