@@ -55,5 +55,9 @@ type OwnershipState struct {
 var (
 	ErrOwnerAlreadyAssigned        = errors.New("owner already assigned")
 	ErrOwnershipResolutionRequired = errors.New("ownership resolution required")
+	ErrOrganizationNotFound        = errors.New("organization not found")
 	ErrMembershipNotFound          = errors.New("membership not found")
+	ErrTenantNotFoundOrHidden      = errors.New("tenant not found or hidden")
+	ErrTenantSuspended             = errors.New("tenant suspended")
+	ErrTenantUnavailable           = errors.New("tenant unavailable")
 )

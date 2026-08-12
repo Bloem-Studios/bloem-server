@@ -101,6 +101,9 @@ func TestStoreActivateInitialOwnership(t *testing.T) {
 func TestStoreMissingRowsReturnTypedErrors(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
 
+	if _, err := store.GetOrganization(fixture.ctx, uuid.New()); !errors.Is(err, ErrOrganizationNotFound) {
+		t.Fatalf("missing organization error = %v, want ErrOrganizationNotFound", err)
+	}
 	if _, err := store.GetMembership(fixture.ctx, fixture.adminID, uuid.New()); !errors.Is(err, ErrMembershipNotFound) {
 		t.Fatalf("missing membership error = %v, want ErrMembershipNotFound", err)
 	}
@@ -109,6 +112,19 @@ func TestStoreMissingRowsReturnTypedErrors(t *testing.T) {
 	}
 	if _, err := store.DefaultOrganization(fixture.ctx); !errors.Is(err, ErrOwnershipResolutionRequired) {
 		t.Fatalf("missing default organization error = %v, want ErrOwnershipResolutionRequired", err)
+	}
+}
+
+func TestStoreGetOrganization(t *testing.T) {
+	store, fixture := newTenancyFixture(t)
+	want := fixture.defaultOrganization(t)
+
+	got, err := store.GetOrganization(fixture.ctx, want.ID)
+	if err != nil {
+		t.Fatalf("GetOrganization: %v", err)
+	}
+	if got != want {
+		t.Fatalf("GetOrganization = %#v, want %#v", got, want)
 	}
 }
 

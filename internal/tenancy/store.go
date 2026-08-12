@@ -69,6 +69,21 @@ func (s *Store) DefaultOrganization(ctx context.Context) (Organization, error) {
 	return organization, nil
 }
 
+// GetOrganization returns one organization regardless of its status.
+func (s *Store) GetOrganization(ctx context.Context, organizationID uuid.UUID) (Organization, error) {
+	organization, err := scanOrganization(s.pool.QueryRow(ctx, `
+		SELECT `+organizationColumns+`
+		FROM organizations
+		WHERE id = $1`, organizationID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Organization{}, ErrOrganizationNotFound
+	}
+	if err != nil {
+		return Organization{}, fmt.Errorf("load organization: %w", err)
+	}
+	return organization, nil
+}
+
 // ListMemberships returns every membership for an account, including suspended
 // and invited memberships so callers can make their own authorization decision.
 func (s *Store) ListMemberships(ctx context.Context, accountID int) ([]Membership, error) {
