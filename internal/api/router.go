@@ -72,6 +72,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/subtitles/subsource"
 	"github.com/Silo-Server/silo-server/internal/taskmanager"
 	"github.com/Silo-Server/silo-server/internal/taskmanager/repository"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/watchstate"
@@ -1732,6 +1733,11 @@ func NewRouter(deps Dependencies) chi.Router {
 	// http.Server (see absCompatSrv in cmd/silo/main.go) so the discovery
 	// probes (/ping, /healthcheck, /status, etc.) don't collide with the
 	// SPA fallback. Same pattern as the Jellyfin compat listener on 8096.
+	var tenantMiddleware *apimw.TenantMiddleware
+	if deps.DB != nil {
+		tenantMiddleware = apimw.NewTenantMiddleware(tenancy.NewResolver(tenancy.NewStore(deps.DB)))
+	}
+	mountV10(r, deps, authMiddleware, tenantMiddleware)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.ServeHTTP)
