@@ -14,6 +14,12 @@ type AccountUserRepository interface {
 	Delete(ctx context.Context, id int) error
 }
 
+// MembershipProvisioner assigns an account to the deployment's default
+// organization immediately after account creation.
+type MembershipProvisioner interface {
+	ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) error
+}
+
 type DefaultProfileOptions struct {
 	Enabled bool
 	Name    string
@@ -27,6 +33,13 @@ type CreateAccountInput struct {
 type AccountProvisioner struct {
 	users         AccountUserRepository
 	storeProvider userstore.UserStoreProvider
+	memberships   MembershipProvisioner
+}
+
+// SetMembershipProvisioner installs the default-membership provisioning seam.
+// Nil remains valid for isolated compatibility fixtures without tenant state.
+func (p *AccountProvisioner) SetMembershipProvisioner(provisioner MembershipProvisioner) {
+	p.memberships = provisioner
 }
 
 func NewAccountProvisioner(
@@ -46,6 +59,19 @@ func (p *AccountProvisioner) CreateAccount(
 	user, err := p.users.Create(ctx, input.User)
 	if err != nil {
 		return nil, err
+	}
+
+	if p.memberships != nil {
+		if err := p.memberships.ProvisionDefaultMembership(ctx, user.ID, input.User.Role); err != nil {
+			if deleteErr := p.users.Delete(ctx, user.ID); deleteErr != nil {
+				return nil, fmt.Errorf(
+					"provision default membership: %w (cleanup user: %v)",
+					err,
+					deleteErr,
+				)
+			}
+			return nil, fmt.Errorf("provision default membership: %w", err)
+		}
 	}
 
 	if !input.DefaultProfile.Enabled {

@@ -157,6 +157,8 @@ type Dependencies struct {
 	PluginHTTPProxy              *plugins.HTTPProxy
 	PluginUserConfig             *plugins.UserConfigStore
 	AuthProviders                []auth.RegisteredProvider
+	OwnershipBootstrapper        auth.OwnershipBootstrapper
+	MembershipProvisioner        auth.MembershipProvisioner
 	// PublicURL is the externally-reachable origin (scheme + host) for this
 	// silo instance. Used to build redirect_uri values handed to OAuth
 	// IdPs. Empty disables the /oauth/{install_id}/{init,callback} routes.
@@ -397,14 +399,18 @@ func NewRouter(deps Dependencies) chi.Router {
 			settingsRepo,
 			deps.UserStoreProvider,
 		)
+		authService.SetOwnershipBootstrapper(deps.OwnershipBootstrapper)
+		authService.SetMembershipProvisioner(deps.MembershipProvisioner)
 		for _, registration := range deps.AuthProviders {
 			authService.RegisterProvider(registration.Info, registration.Provider)
 		}
 		if settingsRepo != nil {
+			invitationAccounts := auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider)
+			invitationAccounts.SetMembershipProvisioner(deps.MembershipProvisioner)
 			invitationService = invitations.NewService(
 				invitations.NewRepository(deps.DB),
 				userRepo,
-				auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider),
+				invitationAccounts,
 				authService,
 				mail.NewSMTPSender(settingsRepo),
 				settingsRepo,
@@ -1100,6 +1106,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	var adminJobsHandler *handlers.AdminJobsHandler
 	if userRepo != nil {
 		adminHandler = handlers.NewAdminHandler(userRepo, deps.DB, deps.UserStoreProvider)
+		adminHandler.SetMembershipProvisioner(deps.MembershipProvisioner)
 		adminHandler.SessionsLoader = playbackSessionsLoader
 		adminHandler.DetailSvc = detailSvc
 		adminHandler.EventBus = deps.EventBus

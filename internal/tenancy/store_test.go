@@ -98,6 +98,48 @@ func TestStoreActivateInitialOwnership(t *testing.T) {
 	}
 }
 
+func TestStoreProvisionDefaultMembership(t *testing.T) {
+	store, fixture := newTenancyFixture(t)
+	accountID := fixture.insertAccount(t, "provisioned", "user")
+	defaultOrganization := fixture.defaultOrganization(t)
+
+	membership, err := store.ProvisionDefaultMembership(fixture.ctx, accountID, "user")
+	if err != nil {
+		t.Fatalf("ProvisionDefaultMembership: %v", err)
+	}
+	if membership.OrganizationID != defaultOrganization.ID || membership.AccountID != accountID || membership.Status != MembershipActive || membership.LegacyRole != "user" {
+		t.Fatalf("membership = %#v, want active user membership in default organization", membership)
+	}
+
+	again, err := store.ProvisionDefaultMembership(fixture.ctx, accountID, "user")
+	if err != nil {
+		t.Fatalf("repeat ProvisionDefaultMembership: %v", err)
+	}
+	if again != membership {
+		t.Fatalf("repeat membership = %#v, want %#v", again, membership)
+	}
+
+	if _, err := store.ProvisionDefaultMembership(fixture.ctx, accountID, "admin"); !errors.Is(err, ErrMembershipConflict) {
+		t.Fatalf("conflicting role error = %v, want ErrMembershipConflict", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE organization_memberships
+		SET status = 'suspended'
+		WHERE organization_id = $1 AND account_id = $2`, defaultOrganization.ID, accountID); err != nil {
+		t.Fatalf("suspend membership: %v", err)
+	}
+	if _, err := store.ProvisionDefaultMembership(fixture.ctx, accountID, "user"); !errors.Is(err, ErrMembershipConflict) {
+		t.Fatalf("conflicting status error = %v, want ErrMembershipConflict", err)
+	}
+
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organizations SET is_default = false WHERE is_default`); err != nil {
+		t.Fatalf("remove default organization marker: %v", err)
+	}
+	if _, err := store.ProvisionDefaultMembership(fixture.ctx, fixture.insertAccount(t, "without-default", "user"), "user"); !errors.Is(err, ErrOwnershipResolutionRequired) {
+		t.Fatalf("missing default organization error = %v, want ErrOwnershipResolutionRequired", err)
+	}
+}
+
 func TestStoreMissingRowsReturnTypedErrors(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
 

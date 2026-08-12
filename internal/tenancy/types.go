@@ -57,6 +57,7 @@ var (
 	ErrOwnershipResolutionRequired = errors.New("ownership resolution required")
 	ErrOrganizationNotFound        = errors.New("organization not found")
 	ErrMembershipNotFound          = errors.New("membership not found")
+	ErrMembershipConflict          = errors.New("membership conflicts with requested state")
 	ErrTenantNotFoundOrHidden      = errors.New("tenant not found or hidden")
 	ErrTenantSuspended             = errors.New("tenant suspended")
 	ErrTenantUnavailable           = errors.New("tenant unavailable")

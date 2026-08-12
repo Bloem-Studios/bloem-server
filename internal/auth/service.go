@@ -35,6 +35,26 @@ type SettingsGetter interface {
 	Get(ctx context.Context, key string) (string, error)
 }
 
+// OwnershipBootstrapper activates the protected platform and organization
+// ownership state for the first account created during setup.
+type OwnershipBootstrapper interface {
+	ActivateInitialOwnership(ctx context.Context, accountID int) error
+}
+
+type serviceUserRepository interface {
+	AccountUserRepository
+	Count(ctx context.Context) (int, error)
+	GetByID(ctx context.Context, id int) (*models.User, error)
+}
+
+type serviceSessionRepository interface {
+	Create(ctx context.Context, session models.AuthSession) error
+	GetByID(ctx context.Context, id string) (*models.AuthSession, error)
+	ListByUser(ctx context.Context, userID int) ([]*models.AuthSession, error)
+	Revoke(ctx context.Context, id string) error
+	ExtendExpiresAt(ctx context.Context, id string, expiresAt time.Time) error
+}
+
 type claimsContextKey struct{}
 
 // WithClaims stores auth claims on the context for auth-owned flows.
@@ -53,14 +73,35 @@ func ClaimsFromContext(ctx context.Context) *Claims {
 type Service struct {
 	provider    AuthProvider
 	jwt         *JWTService
-	sessions    *SessionRepository
-	users       *UserRepository
+	sessions    serviceSessionRepository
+	users       serviceUserRepository
 	inviteCodes *InviteCodeRepository
 	settings    SettingsGetter
 	providers   map[string]AuthProvider
 	metadata    map[string]LoginProviderInfo
 	defaultID   string
 	accounts    *AccountProvisioner
+	ownership   OwnershipBootstrapper
+	memberships MembershipProvisioner
+}
+
+// SetOwnershipBootstrapper installs the protected ownership activation used by
+// initial setup. A nil bootstrapper is retained for isolated compatibility
+// fixtures that do not provide tenant state.
+func (s *Service) SetOwnershipBootstrapper(bootstrapper OwnershipBootstrapper) {
+	s.ownership = bootstrapper
+}
+
+// SetMembershipProvisioner installs default-organization provisioning for all
+// accounts created through this service and its registered plugin providers.
+func (s *Service) SetMembershipProvisioner(provisioner MembershipProvisioner) {
+	s.memberships = provisioner
+	s.accounts.SetMembershipProvisioner(provisioner)
+	for _, provider := range s.providers {
+		if pluginProvider, ok := provider.(*PluginProvider); ok {
+			pluginProvider.SetMembershipProvisioner(provisioner)
+		}
+	}
 }
 
 type LoginProviderInfo struct {
@@ -146,6 +187,9 @@ func (s *Service) RegisterProvider(info LoginProviderInfo, provider AuthProvider
 
 	s.providers[info.ID] = provider
 	s.metadata[info.ID] = info
+	if pluginProvider, ok := provider.(*PluginProvider); ok && s.memberships != nil {
+		pluginProvider.SetMembershipProvisioner(s.memberships)
+	}
 	if s.defaultID == "" || info.Default {
 		s.defaultID = info.ID
 	}
@@ -306,7 +350,7 @@ func (s *Service) SetupInitialUser(
 		return nil, nil, ErrSetupAlreadyComplete
 	}
 
-	if _, err := s.accounts.CreateAccount(ctx, CreateAccountInput{
+	createdUser, err := s.accounts.CreateAccount(ctx, CreateAccountInput{
 		User: models.CreateUserInput{
 			Username: username,
 			Email:    email,
@@ -317,8 +361,18 @@ func (s *Service) SetupInitialUser(
 			Enabled: createDefaultProfile,
 			Name:    defaultProfileName,
 		},
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, nil, fmt.Errorf("creating initial user: %w", err)
+	}
+
+	if s.ownership != nil {
+		if err := s.ownership.ActivateInitialOwnership(ctx, createdUser.ID); err != nil {
+			if deleteErr := s.accounts.users.Delete(ctx, createdUser.ID); deleteErr != nil {
+				return nil, nil, fmt.Errorf("activating initial ownership: %w (cleanup user: %v)", err, deleteErr)
+			}
+			return nil, nil, fmt.Errorf("activating initial ownership: %w", err)
+		}
 	}
 
 	// Reuse the standard login flow so setup creates a normal session pair.

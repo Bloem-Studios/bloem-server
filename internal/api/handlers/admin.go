@@ -155,6 +155,12 @@ func NewAdminHandler(
 	}
 }
 
+// SetMembershipProvisioner configures default-organization provisioning for
+// accounts created by the admin API.
+func (h *AdminHandler) SetMembershipProvisioner(provisioner auth.MembershipProvisioner) {
+	h.accountProvisioner.SetMembershipProvisioner(provisioner)
+}
+
 // --- Request/Response types ---
 
 // createUserRequest represents the JSON body for POST /admin/users.

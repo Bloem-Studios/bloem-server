@@ -103,6 +103,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/taskmanager/tasks"
 	"github.com/Silo-Server/silo-server/internal/taskmanager/triggers"
 	"github.com/Silo-Server/silo-server/internal/telemetry"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/transcodenode"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userdb"
@@ -138,6 +139,22 @@ func resolvePluginCacheDir() string {
 		return v
 	}
 	return filepath.Join(os.TempDir(), "silo-plugins")
+}
+
+// tenancyOwnershipBootstrapper adapts tenancy.Store's ownership state return
+// to the auth setup seam, which only needs to know whether activation worked.
+type tenancyOwnershipBootstrapper struct {
+	store *tenancy.Store
+}
+
+func (b tenancyOwnershipBootstrapper) ActivateInitialOwnership(ctx context.Context, accountID int) error {
+	_, err := b.store.ActivateInitialOwnership(ctx, accountID)
+	return err
+}
+
+func (b tenancyOwnershipBootstrapper) ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) error {
+	_, err := b.store.ProvisionDefaultMembership(ctx, accountID, legacyRole)
+	return err
 }
 
 func buildBaseHandler(format string, level slog.Leveler, otelHandler slog.Handler) slog.Handler {
@@ -854,6 +871,11 @@ func main() {
 			// then, leaving only the 60s poll).
 			configWatcher.RequestReload()
 		},
+	}
+	if deps.DB != nil {
+		bootstrapper := tenancyOwnershipBootstrapper{store: tenancy.NewStore(deps.DB)}
+		deps.OwnershipBootstrapper = bootstrapper
+		deps.MembershipProvisioner = bootstrapper
 	}
 	accessGroupStore := access.NewGroupStore(pool)
 	audiobooksService := audiobooks.New(&audiobooksSettingsAdapter{repo: settingsRepo})

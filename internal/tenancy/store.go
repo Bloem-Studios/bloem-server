@@ -126,6 +126,73 @@ func (s *Store) GetMembership(ctx context.Context, accountID int, organizationID
 	return membership, nil
 }
 
+// ProvisionDefaultMembership creates the active default-organization
+// membership required by every newly created account. Repeating the same
+// request is a no-op; an existing membership with different role or state is
+// rejected so provisioning never overwrites protected state.
+func (s *Store) ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) (membership Membership, err error) {
+	if legacyRole != "admin" && legacyRole != "user" {
+		return Membership{}, fmt.Errorf("provision default membership: invalid legacy role %q", legacyRole)
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Membership{}, fmt.Errorf("begin default membership provisioning: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+
+	organization, err := scanOrganization(tx.QueryRow(ctx, `
+		SELECT `+organizationColumns+`
+		FROM organizations
+		WHERE is_default
+		FOR UPDATE`))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Membership{}, ErrOwnershipResolutionRequired
+	}
+	if err != nil {
+		return Membership{}, fmt.Errorf("lock default organization for membership: %w", err)
+	}
+
+	membership, err = scanMembership(tx.QueryRow(ctx, `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (organization_id, account_id) DO NOTHING
+		RETURNING id, organization_id, account_id, status, legacy_role, security_revision`,
+		organization.ID, accountID, MembershipActive, legacyRole))
+	if err == nil {
+		if err := tx.Commit(ctx); err != nil {
+			return Membership{}, fmt.Errorf("commit default membership provisioning: %w", err)
+		}
+		return membership, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return Membership{}, fmt.Errorf("create default membership: %w", err)
+	}
+
+	membership, err = scanMembership(tx.QueryRow(ctx, `
+		SELECT id, organization_id, account_id, status, legacy_role, security_revision
+		FROM organization_memberships
+		WHERE organization_id = $1 AND account_id = $2
+		FOR UPDATE`, organization.ID, accountID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Membership{}, fmt.Errorf("load conflicting default membership: %w", ErrMembershipNotFound)
+	}
+	if err != nil {
+		return Membership{}, fmt.Errorf("load conflicting default membership: %w", err)
+	}
+	if membership.Status != MembershipActive || membership.LegacyRole != legacyRole {
+		return Membership{}, ErrMembershipConflict
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Membership{}, fmt.Errorf("commit default membership idempotence: %w", err)
+	}
+	return membership, nil
+}
+
 // ActivateInitialOwnership atomically assigns the initial platform and default
 // organization owner. Repeating the operation for that same owner is a no-op.
 func (s *Store) ActivateInitialOwnership(ctx context.Context, accountID int) (state OwnershipState, err error) {
