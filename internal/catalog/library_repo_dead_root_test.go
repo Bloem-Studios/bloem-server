@@ -43,7 +43,7 @@ func TestReconcileFolderMembershipProtectsUnreachableRoots(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM media_files WHERE media_folder_id = $1`, folderID)
 		_, _ = pool.Exec(ctx, `DELETE FROM media_items WHERE content_id = ANY($1)`, []string{goneItem, protectedItem})
-		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)
+		deleteCatalogTestMediaFolders(t, ctx, pool, folderID)
 	})
 
 	for _, contentID := range []string{goneItem, protectedItem} {

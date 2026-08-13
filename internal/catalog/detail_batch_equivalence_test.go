@@ -136,6 +136,7 @@ func TestGetItemDetailsByIDs_MatchesGetItemDetail(t *testing.T) {
 	personDirector := suffix + 2
 	extraA := fmt.Sprintf("batch-equiv-extra-%d", suffix)
 	extraFolderName := fmt.Sprintf("batch-equiv-folder-%d", suffix)
+	var extraFolderID int
 
 	t.Cleanup(func() {
 		ids := []string{movieA, movieB, series, movieR}
@@ -144,7 +145,7 @@ func TestGetItemDetailsByIDs_MatchesGetItemDetail(t *testing.T) {
 		batchEquivExec(t, pool, `DELETE FROM media_item_localizations WHERE content_id = ANY($1)`, ids)
 		// Deleting the folder cascades the extra's media_files row; deleting
 		// the items cascades item_videos and media_extras.
-		batchEquivExec(t, pool, `DELETE FROM media_folders WHERE name = $1`, extraFolderName)
+		deleteCatalogTestMediaFolders(t, ctx, pool, extraFolderID)
 		batchEquivExec(t, pool, `DELETE FROM media_items WHERE content_id = ANY($1)`, ids)
 	})
 
@@ -210,7 +211,6 @@ func TestGetItemDetailsByIDs_MatchesGetItemDetail(t *testing.T) {
 	// A local extra on movieA backed by a live media_files row: exercises the
 	// batched extraRepo.ListWithFilesByParentIDs prefetch against the per-item
 	// ListWithFilesByParentID lookup.
-	var extraFolderID int
 	if err := pool.QueryRow(ctx, `INSERT INTO media_folders (type, name) VALUES ('movies', $1) RETURNING id`,
 		extraFolderName).Scan(&extraFolderID); err != nil {
 		t.Fatalf("seed extra folder: %v", err)

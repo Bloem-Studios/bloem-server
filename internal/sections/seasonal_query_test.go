@@ -66,6 +66,10 @@ func TestSeasonalThemedFiltersItemsAboveProfileRating(t *testing.T) {
 		if _, err := pool.Exec(context.Background(), `DELETE FROM media_items WHERE content_id = ANY($1)`, []string{allowedID, blockedID}); err != nil {
 			t.Errorf("cleanup media items: %v", err)
 		}
+		if _, err := pool.Exec(context.Background(), `DELETE FROM organization_entitlements WHERE media_folder_id = $1`, libraryID); err != nil {
+			t.Errorf("cleanup media folder entitlements: %v", err)
+			return
+		}
 		if _, err := pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id = $1`, libraryID); err != nil {
 			t.Errorf("cleanup media folder: %v", err)
 		}

@@ -49,8 +49,11 @@ func TestResolveHistoryEpisodeScope(t *testing.T) {
 	}
 	profileID := fmt.Sprintf("00000000-0000-4000-8000-%012d", suffix%1_000_000_000_000)
 	if _, err := pool.Exec(ctx,
-		`INSERT INTO user_profiles (id, user_id, name, organization_id)
-		 VALUES ($1, $2, 'HES Profile', (SELECT id FROM organizations WHERE is_default))`,
+		`INSERT INTO user_profiles (id, user_id, name, organization_id, access_group_id)
+		 SELECT $1, $2, 'HES Profile', o.id, ag.id
+		 FROM organizations o
+		 JOIN access_groups ag ON ag.organization_id = o.id AND ag.is_default
+		 WHERE o.is_default`,
 		profileID, userID,
 	); err != nil {
 		t.Fatalf("seed profile: %v", err)
@@ -61,7 +64,7 @@ func TestResolveHistoryEpisodeScope(t *testing.T) {
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
 		// episodes and episode_libraries cascade from the series row.
 		_, _ = pool.Exec(ctx, `DELETE FROM media_items WHERE content_id = $1`, seriesID)
-		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)
+		deleteCatalogTestMediaFolders(t, ctx, pool, folderID)
 	})
 
 	if _, err := pool.Exec(ctx,

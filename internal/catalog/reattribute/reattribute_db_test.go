@@ -81,6 +81,7 @@ func (e *testEnv) seedMediaFile(t *testing.T, contentID, path string) int {
 	}
 	t.Cleanup(func() {
 		_, _ = e.pool.Exec(ctx, `DELETE FROM media_files WHERE id = $1`, fileID)
+		_, _ = e.pool.Exec(ctx, `DELETE FROM organization_entitlements WHERE media_folder_id = $1`, folderID)
 		_, _ = e.pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)
 	})
 	return fileID

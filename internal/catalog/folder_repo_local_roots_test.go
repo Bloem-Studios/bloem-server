@@ -35,7 +35,7 @@ func TestLibraryRootsForContent(t *testing.T) {
 		_, _ = pool.Exec(ctx, `DELETE FROM media_item_libraries WHERE content_id = $1`, contentID)
 		_, _ = pool.Exec(ctx, `DELETE FROM media_items WHERE content_id = $1`, contentID)
 		_, _ = pool.Exec(ctx, `DELETE FROM media_folder_paths WHERE media_folder_id = $1`, folderID)
-		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)
+		deleteCatalogTestMediaFolders(t, ctx, pool, folderID)
 	})
 	if _, err := pool.Exec(ctx,
 		`INSERT INTO media_items (content_id, type, title, status, genres) VALUES ($1, 'movie', 'Roots Test', 'matched', '{}'::text[])`,

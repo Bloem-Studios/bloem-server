@@ -37,7 +37,7 @@ func TestEpisodeSearchPostgresAndDocumentSource(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM media_items WHERE content_id = ANY($1)`, []string{seriesID, podcastID})
-		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)
+		deleteCatalogTestMediaFolders(t, ctx, pool, folderID)
 	})
 
 	if _, err := pool.Exec(ctx, `
@@ -98,8 +98,9 @@ func TestEpisodeSearchPostgresAndDocumentSource(t *testing.T) {
 	if len(docs[0].LibraryIDs) != 1 || int(docs[0].LibraryIDs[0]) != folderID {
 		t.Fatalf("episode library ids = %v, want [%d]", docs[0].LibraryIDs, folderID)
 	}
-	if docs[0].Vectors != nil {
-		t.Fatalf("episode document unexpectedly has vectors: %#v", docs[0].Vectors)
+	vector, ok := docs[0].Vectors[DefaultMeilisearchEmbedder]
+	if !ok || vector != nil {
+		t.Fatalf("episode vector opt-out = %#v, want explicit nil for %q", docs[0].Vectors, DefaultMeilisearchEmbedder)
 	}
 }
 
