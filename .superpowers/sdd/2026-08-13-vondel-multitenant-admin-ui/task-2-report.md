@@ -48,6 +48,37 @@ ok github.com/Silo-Server/silo-server/internal/tenancy
 ok github.com/Silo-Server/silo-server/internal/api/handlers
 ```
 
+## Fix round 2
+
+An organization update whose normalized name and slug already match the locked row is now a true no-op. The store still validates and locks the expected revision first, then returns the current organization without incrementing `policy_revision` or writing an audit event. A stale unchanged request remains `ErrAuthorizationStateChanged`.
+
+### RED/GREEN evidence
+
+```text
+SILO_REQUIRE_TEST_DATABASE=1 SILO_TEST_DATABASE_URL=... GOWORK=off \
+  go test ./internal/tenancy \
+  -run 'TestAdminStoreUnchangedOrganizationUpdateIsNoOpWithoutAudit' -count=1
+--- FAIL: TestAdminStoreUnchangedOrganizationUpdateIsNoOpWithoutAudit
+policy revision = 2, want unchanged 1
+
+SILO_REQUIRE_TEST_DATABASE=1 SILO_TEST_DATABASE_URL=... GOWORK=off \
+  go test ./internal/tenancy \
+  -run 'TestAdminStoreUnchangedOrganizationUpdateIsNoOpWithoutAudit' -count=1
+ok github.com/Silo-Server/silo-server/internal/tenancy
+
+SILO_REQUIRE_TEST_DATABASE=1 SILO_TEST_DATABASE_URL=... GOWORK=off \
+  go test ./internal/tenancy ./internal/api/handlers \
+  -run 'TestAdminStore|TestV2AdminPlatform' -count=1
+ok github.com/Silo-Server/silo-server/internal/tenancy
+ok github.com/Silo-Server/silo-server/internal/api/handlers
+
+GOWORK=off go vet ./internal/tenancy ./internal/api/handlers
+exit 0
+
+git diff --check
+exit 0
+```
+
 ## Self-review
 
 - The added migration is necessary because the current generic request activity table has no fields for typed lifecycle action, target, authority context, revision pairs, outcome, or bounded state.

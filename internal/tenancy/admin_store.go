@@ -291,6 +291,14 @@ func (s *Store) UpdateOrganization(ctx context.Context, organizationID uuid.UUID
 	if before.PolicyRevision != expectedRevision {
 		return Organization{}, ErrAuthorizationStateChanged
 	}
+	nameUnchanged := name == nil || *name == before.Name
+	slugUnchanged := slug == nil || *slug == before.Slug
+	if nameUnchanged && slugUnchanged {
+		if err = tx.Commit(ctx); err != nil {
+			return Organization{}, fmt.Errorf("commit unchanged organization update: %w", err)
+		}
+		return before, nil
+	}
 	organization, err = scanOrganization(tx.QueryRow(ctx, `
 		UPDATE organizations
 		SET name = COALESCE($2, name), slug = COALESCE($3, slug),

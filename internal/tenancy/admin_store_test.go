@@ -236,6 +236,43 @@ func TestAdminStoreAuditCapturesLockedBeforeAfterStateAndStaleAttemptDoesNotAudi
 	}
 }
 
+func TestAdminStoreUnchangedOrganizationUpdateIsNoOpWithoutAudit(t *testing.T) {
+	store, fixture := newTenancyFixture(t)
+	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Unchanged", Slug: "unchanged", OwnerAccountID: fixture.adminID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	name, slug := created.Name, created.Slug
+	returned, err := store.UpdateOrganization(adminMutationContext(fixture), created.ID, created.PolicyRevision, UpdateOrganizationInput{Name: &name, Slug: &slug})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if returned.ID != created.ID || returned.Name != created.Name || returned.Slug != created.Slug || returned.Status != created.Status ||
+		returned.PolicyRevision != created.PolicyRevision || returned.OwnerAccountID == nil || created.OwnerAccountID == nil || *returned.OwnerAccountID != *created.OwnerAccountID {
+		t.Fatalf("unchanged update = %+v, want %+v", returned, created)
+	}
+	current, err := store.GetOrganization(fixture.ctx, created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.PolicyRevision != created.PolicyRevision {
+		t.Fatalf("policy revision = %d, want unchanged %d", current.PolicyRevision, created.PolicyRevision)
+	}
+	var auditCount int
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT count(*) FROM admin_audit_events
+		WHERE organization_id=$1 AND action IN ('organization.renamed', 'organization.slug_changed')`, created.ID).Scan(&auditCount); err != nil {
+		t.Fatal(err)
+	}
+	if auditCount != 0 {
+		t.Fatalf("unchanged update audit count = %d, want 0", auditCount)
+	}
+
+	if _, err := store.UpdateOrganization(adminMutationContext(fixture), created.ID, created.PolicyRevision+1, UpdateOrganizationInput{Name: &name}); !errors.Is(err, ErrAuthorizationStateChanged) {
+		t.Fatalf("stale unchanged update error = %v, want ErrAuthorizationStateChanged", err)
+	}
+}
+
 func TestAdminStoreTransferOwnershipRejectsDisabledTarget(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
 	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Disabled", Slug: "disabled", OwnerAccountID: fixture.adminID})
