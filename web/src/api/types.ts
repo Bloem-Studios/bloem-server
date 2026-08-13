@@ -24,7 +24,7 @@ export interface AdminContextValue {
   active: AdminContextSummary | null;
   switching: boolean;
   failure: AdminContextFailure | null;
-  switchContext(key: AdminContextKey): Promise<void>;
+  switchContext(key: AdminContextKey, beforeNavigate?: () => void): Promise<void>;
   clearContext(reason?: AdminContextFailure): void;
 }
 

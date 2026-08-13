@@ -100,6 +100,7 @@ function renderProvider(queryClient: QueryClient, initialEntry = "/admin/organiz
       <MemoryRouter initialEntries={[initialEntry]}>
         <AdminContextProvider user={platformAdmin}>
           <Routes>
+            <Route path="/admin" element={<ContextHarness />} />
             <Route path="/admin/organization" element={<ContextHarness />} />
             <Route element={<PlatformContextGuard />}>
               <Route path="/admin/platform/organizations" element={<div>Platform protected</div>} />
@@ -190,6 +191,25 @@ describe("AdminContextProvider", () => {
     expect(screen.queryByText("Platform protected")).not.toBeInTheDocument();
   });
 
+  it("redirects an organization route in platform context before mounting it", async () => {
+    window.localStorage.setItem("silo-admin-context", "platform");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(
+          String(input) === "/api/v2/organizations"
+            ? organizationsResponse()
+            : sessionResponse("platform"),
+        ),
+      ),
+    );
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderProvider(queryClient, "/admin/organization/people");
+
+    expect(await screen.findByRole("heading", { name: "Platform" })).toBeInTheDocument();
+    expect(screen.queryByText("Organization protected")).not.toBeInTheDocument();
+  });
+
   it("clears scoped queries and returns to context selection when authority is stale", async () => {
     window.localStorage.setItem("silo-admin-context", "organization:org-a");
     let protectedCalls = 0;
@@ -226,5 +246,116 @@ describe("AdminContextProvider", () => {
     expect(queryClient.getQueryData(["admin-v2", "organization:org-a", "people"])).toBeUndefined();
     expect(window.localStorage.getItem("silo-admin-context")).toBeNull();
     expect(protectedCalls).toBeGreaterThan(0);
+  });
+
+  it("re-mints the same context after tenant_session_required without retaining old data", async () => {
+    window.localStorage.setItem("silo-admin-context", "organization:org-a");
+    let sessionCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === "/api/v2/organizations") return Promise.resolve(organizationsResponse());
+        if (url === "/api/v2/admin/session") {
+          sessionCalls += 1;
+          return Promise.resolve(sessionResponse("organization:org-a"));
+        }
+        return Promise.resolve(
+          jsonResponse(
+            { error: "tenant_session_required", message: "Administrative session required" },
+            401,
+          ),
+        );
+      }),
+    );
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(["admin-v2", "organization:org-a", "people"], ["Org A member"]);
+    renderProvider(queryClient);
+    expect(await screen.findByRole("heading", { name: "Org A" })).toBeInTheDocument();
+
+    const { adminV2Api } = await import("@/api/adminV2Client");
+    await act(async () => {
+      await expect(adminV2Api("/organization/overview")).rejects.toMatchObject({
+        code: "tenant_session_required",
+      });
+    });
+
+    await waitFor(() => expect(sessionCalls).toBe(2));
+    expect(await screen.findByRole("heading", { name: "Org A" })).toBeInTheDocument();
+    expect(queryClient.getQueryData(["admin-v2", "organization:org-a", "people"])).toBeUndefined();
+  });
+
+  it("falls back from lost platform authority to an authorized organization", async () => {
+    window.localStorage.setItem("silo-admin-context", "platform");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === "/api/v2/organizations") return Promise.resolve(organizationsResponse());
+        if (url === "/api/v2/admin/session") {
+          const body = JSON.parse(String(init?.body ?? "{}")) as { scope?: string };
+          return Promise.resolve(
+            sessionResponse(body.scope === "platform" ? "platform" : "organization:org-a"),
+          );
+        }
+        return Promise.resolve(
+          jsonResponse(
+            {
+              error: "insufficient_platform_authority",
+              message: "Platform administrator authority required",
+            },
+            403,
+          ),
+        );
+      }),
+    );
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderProvider(queryClient, "/admin");
+    expect(await screen.findByRole("heading", { name: "Platform" })).toBeInTheDocument();
+
+    const { adminV2Api } = await import("@/api/adminV2Client");
+    await act(async () => {
+      await expect(adminV2Api("/platform/organizations")).rejects.toMatchObject({
+        code: "insufficient_platform_authority",
+      });
+    });
+
+    expect(await screen.findByRole("heading", { name: "Org A" })).toBeInTheDocument();
+  });
+
+  it("removes a suspended organization and falls back without retaining its label", async () => {
+    window.localStorage.setItem("silo-admin-context", "organization:org-a");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === "/api/v2/organizations") return Promise.resolve(organizationsResponse());
+        if (url === "/api/v2/admin/session") {
+          const body = JSON.parse(String(init?.body ?? "{}")) as { scope?: string };
+          return Promise.resolve(
+            sessionResponse(body.scope === "platform" ? "platform" : "organization:org-a"),
+          );
+        }
+        return Promise.resolve(
+          jsonResponse(
+            { error: "organization_suspended", message: "Tenant access is suspended" },
+            403,
+          ),
+        );
+      }),
+    );
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderProvider(queryClient);
+    expect(await screen.findByRole("heading", { name: "Org A" })).toBeInTheDocument();
+
+    const { adminV2Api } = await import("@/api/adminV2Client");
+    await act(async () => {
+      await expect(adminV2Api("/organization/overview")).rejects.toMatchObject({
+        code: "organization_suspended",
+      });
+    });
+
+    expect(await screen.findByRole("heading", { name: "Platform" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Org A" })).not.toBeInTheDocument();
   });
 });

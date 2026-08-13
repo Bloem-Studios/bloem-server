@@ -69,11 +69,12 @@ function invalidatePolicyDocuments(queryClient: QueryClient, id?: number) {
   return Promise.all(invalidations);
 }
 
-export function usePolicyCapability() {
+export function usePolicyCapability(enabled = true) {
   return useQuery({
     queryKey: adminKeys.policyCapability(),
     queryFn: () => api<PolicyCapability>("/policy/capability"),
     staleTime: 30_000,
+    enabled,
   });
 }
 

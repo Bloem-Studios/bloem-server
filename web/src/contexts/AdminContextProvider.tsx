@@ -12,10 +12,11 @@ import { Navigate, Outlet, useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AdminV2ClientError,
+  activateAdminV2Context,
+  clearAdminV2Context,
   fetchAdminOrganizations,
   mintAdminContextSession,
   onAdminV2ContextFailure,
-  setAdminV2Token,
 } from "@/api/adminV2Client";
 import { getAccessToken } from "@/api/client";
 import type {
@@ -100,7 +101,7 @@ export function AdminContextProvider({
       transitionRef.current += 1;
       controllerRef.current?.abort();
       const previous = activeRef.current;
-      setAdminV2Token(null);
+      clearAdminV2Context();
       setActive(null);
       activeRef.current = null;
       setSwitching(false);
@@ -116,7 +117,7 @@ export function AdminContextProvider({
   );
 
   const switchContext = useCallback(
-    async (key: AdminContextKey) => {
+    async (key: AdminContextKey, beforeNavigate?: () => void) => {
       const target = available.find((candidate) => candidate.key === key);
       if (!target) {
         const reason = { code: "context_unavailable", message: "That context is unavailable." };
@@ -135,18 +136,19 @@ export function AdminContextProvider({
         await queryClient.cancelQueries({ queryKey: ["admin-v2", previous.key] });
         queryClient.removeQueries({ queryKey: ["admin-v2", previous.key] });
       }
-      setAdminV2Token(null);
+      clearAdminV2Context();
       setActive(null);
       activeRef.current = null;
 
       try {
         const session = await mintAdminContextSession(key, getAccessToken(), controller.signal);
         if (transition !== transitionRef.current || controller.signal.aborted) return;
-        setAdminV2Token(session.accessToken);
+        activateAdminV2Context(session.accessToken, session.context.key);
         setActive(session.context);
         activeRef.current = session.context;
         persistContextKey(session.context.key);
         setSwitching(false);
+        beforeNavigate?.();
         navigate(overviewFor(session.context), { replace: true });
         focusPageHeading();
       } catch (error) {
@@ -162,13 +164,80 @@ export function AdminContextProvider({
     [available, navigate, queryClient],
   );
 
+  const handleContextFailure = useCallback(
+    (reason: AdminContextFailure) => {
+      const previous = activeRef.current;
+      const transition = ++transitionRef.current;
+      controllerRef.current?.abort();
+      const controller = new AbortController();
+      controllerRef.current = controller;
+      clearAdminV2Context();
+      setActive(null);
+      activeRef.current = null;
+      setFailure(reason);
+      persistContextKey(null);
+      if (previous) {
+        void queryClient.cancelQueries({ queryKey: ["admin-v2", previous.key] });
+        queryClient.removeQueries({ queryKey: ["admin-v2", previous.key] });
+      }
+
+      let nextAvailable = available;
+      if (reason.code === "insufficient_platform_authority") {
+        nextAvailable = available.filter((context) => context.scope !== "platform");
+      } else if (reason.code === "organization_suspended" && previous) {
+        nextAvailable = available.filter((context) => context.key !== previous.key);
+      }
+      setAvailable(nextAvailable);
+
+      const recovery =
+        reason.code === "tenant_session_required"
+          ? nextAvailable.find((context) => context.key === previous?.key)
+          : reason.code === "insufficient_platform_authority"
+            ? nextAvailable.find((context) => context.scope === "organization")
+            : reason.code === "organization_suspended"
+              ? nextAvailable[0]
+              : undefined;
+      if (!recovery) {
+        setSwitching(false);
+        navigate("/admin/context", { replace: true });
+        return;
+      }
+
+      setSwitching(true);
+      void mintAdminContextSession(recovery.key, getAccessToken(), controller.signal)
+        .then((session) => {
+          if (controller.signal.aborted || transition !== transitionRef.current) return;
+          activateAdminV2Context(session.accessToken, session.context.key);
+          setActive(session.context);
+          activeRef.current = session.context;
+          persistContextKey(session.context.key);
+          setFailure(null);
+          setSwitching(false);
+          navigate(overviewFor(session.context), { replace: true });
+          focusPageHeading();
+        })
+        .catch((error: unknown) => {
+          if (controller.signal.aborted || transition !== transitionRef.current) return;
+          setFailure(failureFrom(error));
+          setSwitching(false);
+          navigate("/admin/context", { replace: true });
+        });
+    },
+    [available, navigate, queryClient],
+  );
+
   useEffect(() => {
-    onAdminV2ContextFailure(clearContext);
-    return () => {
-      onAdminV2ContextFailure(null);
-      setAdminV2Token(null);
-    };
-  }, [clearContext]);
+    onAdminV2ContextFailure(handleContextFailure);
+    return () => onAdminV2ContextFailure(null);
+  }, [handleContextFailure]);
+
+  useEffect(
+    () => () => {
+      controllerRef.current?.abort();
+      clearAdminV2Context();
+    },
+    [],
+  );
 
   useEffect(() => {
     const transition = ++transitionRef.current;
@@ -178,7 +247,7 @@ export function AdminContextProvider({
     setSwitching(true);
     setActive(null);
     activeRef.current = null;
-    setAdminV2Token(null);
+    clearAdminV2Context();
 
     void fetchAdminOrganizations(getAccessToken(), controller.signal)
       .then(async (organizations) => {
@@ -221,7 +290,7 @@ export function AdminContextProvider({
           controller.signal,
         );
         if (controller.signal.aborted || transition !== transitionRef.current) return;
-        setAdminV2Token(session.accessToken);
+        activateAdminV2Context(session.accessToken, session.context.key);
         setActive(session.context);
         activeRef.current = session.context;
         persistContextKey(session.context.key);

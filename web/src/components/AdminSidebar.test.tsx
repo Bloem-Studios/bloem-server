@@ -22,14 +22,14 @@ const defaultBuildInfo: BuildInfo = {
   vcs_time: "2026-04-05T22:24:40Z",
   available: true,
 };
-const mockUseBuildInfo = vi.fn<() => MockBuildInfoResult>(() => ({
+const mockUseBuildInfo = vi.fn<(_enabled?: boolean) => MockBuildInfoResult>(() => ({
   data: defaultBuildInfo,
   isPending: false,
   isError: false,
 }));
-const mockUseAdminSessions = vi.fn(() => ({ data: [] }));
-const mockUseAdminPluginInstallations = vi.fn(() => ({ data: [] }));
-const mockUsePolicyCapability = vi.fn(() => ({
+const mockUseAdminSessions = vi.fn((_enabled?: boolean) => ({ data: [] }));
+const mockUseAdminPluginInstallations = vi.fn((_enabled?: boolean) => ({ data: [] }));
+const mockUsePolicyCapability = vi.fn((_enabled?: boolean) => ({
   data: {
     enabled: true,
     editor_available: true,
@@ -54,7 +54,11 @@ vi.mock("@/contexts/AdminContextProvider", () => ({
 }));
 
 vi.mock("@/components/admin/AdminContextSwitcher", () => ({
-  default: () => <div>Administrative context switcher</div>,
+  default: ({ onSwitchSuccess }: { onSwitchSuccess?: () => void }) => (
+    <button type="button" onClick={onSwitchSuccess}>
+      Administrative context switcher
+    </button>
+  ),
 }));
 
 vi.mock("@/hooks/useServerBranding", () => ({
@@ -62,19 +66,19 @@ vi.mock("@/hooks/useServerBranding", () => ({
 }));
 
 vi.mock("@/hooks/queries/admin/system", () => ({
-  useBuildInfo: () => mockUseBuildInfo(),
+  useBuildInfo: (enabled?: boolean) => mockUseBuildInfo(enabled),
 }));
 
 vi.mock("@/hooks/queries/admin/stats", () => ({
-  useAdminSessions: () => mockUseAdminSessions(),
+  useAdminSessions: (enabled?: boolean) => mockUseAdminSessions(enabled),
 }));
 
 vi.mock("@/hooks/queries/admin/plugins", () => ({
-  useAdminPluginInstallations: () => mockUseAdminPluginInstallations(),
+  useAdminPluginInstallations: (enabled?: boolean) => mockUseAdminPluginInstallations(enabled),
 }));
 
 vi.mock("@/hooks/queries/admin/policy", () => ({
-  usePolicyCapability: () => mockUsePolicyCapability(),
+  usePolicyCapability: (enabled?: boolean) => mockUsePolicyCapability(enabled),
 }));
 
 function renderSidebar(embedded = false) {
@@ -103,6 +107,8 @@ describe("AdminSidebar", () => {
     for (const section of ["Overview", "Content", "Automation", "Users", "System"]) {
       expect(markup).toContain(`>${section}<`);
     }
+    expect(markup).toContain('href="/admin/platform/organizations"');
+    expect(markup).not.toContain('href="/admin/organization/people"');
   });
 
   it("places the administrative context switcher above navigation", () => {
@@ -132,6 +138,10 @@ describe("AdminSidebar", () => {
     expect(markup).toContain(">People<");
     expect(markup).not.toContain('href="/admin/plugins"');
     expect(markup).not.toContain(">Global Policy<");
+    expect(mockUseAdminSessions).toHaveBeenLastCalledWith(false);
+    expect(mockUseBuildInfo).toHaveBeenLastCalledWith(false);
+    expect(mockUsePolicyCapability).toHaveBeenLastCalledWith(false);
+    expect(mockUseAdminPluginInstallations).toHaveBeenLastCalledWith(false);
   });
 
   it("renders as an embedded rail inside the mobile drawer", () => {

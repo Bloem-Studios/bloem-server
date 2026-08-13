@@ -80,12 +80,13 @@ describe("AdminContextSwitcher", () => {
   });
 
   it("shows the active scope, status and authority and permits keyboard switching", async () => {
+    const onSwitchSuccess = vi.fn();
     render(
       <QueryClientProvider client={new QueryClient()}>
         <MemoryRouter initialEntries={["/admin/organization"]}>
           <AdminContextProvider user={platformAdmin}>
             <h1 tabIndex={-1}>Page heading</h1>
-            <AdminContextSwitcher />
+            <AdminContextSwitcher onSwitchSuccess={onSwitchSuccess} />
           </AdminContextProvider>
         </MemoryRouter>
       </QueryClientProvider>,
@@ -98,6 +99,7 @@ describe("AdminContextSwitcher", () => {
 
     await userEvent.selectOptions(select, "platform");
     await waitFor(() => expect(select).toHaveValue("platform"));
+    expect(onSwitchSuccess).toHaveBeenCalledOnce();
     expect(screen.getByText("platform · active")).toBeInTheDocument();
   });
 });

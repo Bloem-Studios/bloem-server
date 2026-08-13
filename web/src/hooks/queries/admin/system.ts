@@ -35,12 +35,13 @@ export interface HWAccelInfo {
   nodes?: NodeHWAccel[];
 }
 
-export function useBuildInfo() {
+export function useBuildInfo(enabled = true) {
   return useQuery({
     queryKey: adminKeys.buildInfo(),
     queryFn: () => api<BuildInfo>("/admin/system/build"),
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
+    enabled,
   });
 }
 

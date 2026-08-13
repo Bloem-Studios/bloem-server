@@ -7,7 +7,22 @@ import type {
   ApiError,
 } from "./types";
 
-let adminContextToken: string | null = null;
+interface AdminRequestAuthority {
+  token: string;
+  key: AdminContextKey;
+  generation: number;
+  controller: AbortController;
+}
+
+const INVALIDATING_CONTEXT_ERRORS = new Set([
+  "tenant_session_required",
+  "authorization_state_stale",
+  "insufficient_platform_authority",
+  "organization_suspended",
+]);
+
+let adminRequestAuthority: AdminRequestAuthority | null = null;
+let adminContextGeneration = 0;
 let contextFailureListener: ((failure: AdminContextFailure) => void) | null = null;
 
 interface WireOrganization {
@@ -54,7 +69,32 @@ export class AdminV2ClientError extends Error {
 }
 
 export function setAdminV2Token(token: string | null): void {
-  adminContextToken = token;
+  if (token) activateAdminV2Context(token, "platform");
+  else clearAdminV2Context();
+}
+
+export function activateAdminV2Context(token: string, key: AdminContextKey): void {
+  adminRequestAuthority?.controller.abort();
+  adminContextGeneration += 1;
+  adminRequestAuthority = {
+    token,
+    key,
+    generation: adminContextGeneration,
+    controller: new AbortController(),
+  };
+}
+
+export function clearAdminV2Context(): void {
+  adminRequestAuthority?.controller.abort();
+  adminContextGeneration += 1;
+  adminRequestAuthority = null;
+}
+
+export function adminV2QueryKey(
+  contextKey: AdminContextKey,
+  ...parts: readonly unknown[]
+): readonly unknown[] {
+  return ["admin-v2", contextKey, ...parts] as const;
 }
 
 export function onAdminV2ContextFailure(
@@ -94,26 +134,45 @@ async function readResponse<T>(response: Response): Promise<T> {
 }
 
 export async function adminV2Api<T>(path: string, init: RequestInit = {}): Promise<T> {
-  if (!adminContextToken) {
+  const authority = adminRequestAuthority;
+  if (!authority) {
     throw new AdminV2ClientError(
       401,
       "tenant_session_required",
       "Select an administrative context first.",
     );
   }
+  const signal = init.signal
+    ? AbortSignal.any([authority.controller.signal, init.signal])
+    : authority.controller.signal;
   const response = await fetch(`/api/v2/admin${path.startsWith("/") ? path : `/${path}`}`, {
     ...init,
-    headers: requestHeaders(init, adminContextToken),
+    headers: requestHeaders(init, authority.token),
+    signal,
   });
+  assertCurrentAuthority(authority);
   if (!response.ok) {
     const error = await parseError(response);
-    if (error.code === "authorization_state_stale") {
-      adminContextToken = null;
+    assertCurrentAuthority(authority);
+    if (INVALIDATING_CONTEXT_ERRORS.has(error.code)) {
+      clearAdminV2Context();
       contextFailureListener?.({ code: error.code, message: error.message });
     }
     throw error;
   }
-  return readResponse<T>(response);
+  const result = await readResponse<T>(response);
+  assertCurrentAuthority(authority);
+  return result;
+}
+
+function assertCurrentAuthority(authority: AdminRequestAuthority): void {
+  if (
+    authority.controller.signal.aborted ||
+    adminRequestAuthority?.generation !== authority.generation ||
+    adminRequestAuthority.key !== authority.key
+  ) {
+    throw new DOMException("Administrative context changed during request.", "AbortError");
+  }
 }
 
 async function accountV2Api<T>(path: string, accountToken: string, init: RequestInit = {}) {

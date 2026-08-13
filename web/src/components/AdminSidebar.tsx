@@ -32,17 +32,18 @@ interface AdminSidebarProps {
   embedded?: boolean;
 }
 
-function useSessionCount() {
-  const { data: sessions = [] } = useAdminSessions();
+function useSessionCount(enabled: boolean) {
+  const { data: sessions = [] } = useAdminSessions(enabled);
   return sessions.length;
 }
 
 export default function AdminSidebar({ onNavigate, embedded = false }: AdminSidebarProps) {
   const location = useLocation();
   const { active } = useAdminContext();
-  const sessionCount = useSessionCount();
-  const buildInfo = useBuildInfo();
-  const policyCapability = usePolicyCapability();
+  const platformScope = active?.scope === "platform";
+  const sessionCount = useSessionCount(platformScope);
+  const buildInfo = useBuildInfo(platformScope);
+  const policyCapability = usePolicyCapability(platformScope);
   // Falls back to "dev build" when the binary carries no VCS/ldflags revision
   // (e.g. `go run` or an image built without BUILD_REVISION) rather than a stark
   // "unavailable".
@@ -72,7 +73,7 @@ export default function AdminSidebar({ onNavigate, embedded = false }: AdminSide
   // navigable route, which excludes admin-only plugins like arrproxy and
   // arrouter. The admin sidebar needs the full installation list to render
   // its "Plugin Apps" group.
-  const { data: adminInstallations } = useAdminPluginInstallations();
+  const { data: adminInstallations } = useAdminPluginInstallations(platformScope);
   const adminPluginItems = buildAdminPluginNavItems(adminInstallations);
   if (active?.scope === "platform" && adminPluginItems.length > 0) {
     sections.push({ label: "Plugin Apps", items: adminPluginItems });
@@ -104,7 +105,7 @@ export default function AdminSidebar({ onNavigate, embedded = false }: AdminSide
           <SiloBrand className="h-12 w-[112px]" />
         </Link>
       </div>
-      <AdminContextSwitcher />
+      <AdminContextSwitcher onSwitchSuccess={onNavigate} />
       {/* Nav sections */}
       <nav
         aria-label="Admin navigation"
@@ -146,14 +147,16 @@ export default function AdminSidebar({ onNavigate, embedded = false }: AdminSide
 
       {/* Footer */}
       <div className="space-y-3 px-3 pb-4">
-        <div className="border-sidebar-border/70 bg-sidebar-accent/40 rounded-xl border px-3 py-2">
-          <div className="text-muted-foreground text-[10px] font-semibold tracking-[0.18em] uppercase">
-            Build
+        {platformScope ? (
+          <div className="border-sidebar-border/70 bg-sidebar-accent/40 rounded-xl border px-3 py-2">
+            <div className="text-muted-foreground text-[10px] font-semibold tracking-[0.18em] uppercase">
+              Build
+            </div>
+            <div className="text-sidebar-foreground mt-1 font-mono text-[12px] leading-5">
+              {buildDisplay}
+            </div>
           </div>
-          <div className="text-sidebar-foreground mt-1 font-mono text-[12px] leading-5">
-            {buildDisplay}
-          </div>
-        </div>
+        ) : null}
         {/* Back to app */}
         <Link
           to="/"

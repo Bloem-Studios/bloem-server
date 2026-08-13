@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { adminV2Api } from "@/api/adminV2Client";
+import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
 
 export type OrganizationStatus = "initializing" | "active" | "suspended";
 export type MembershipStatus = "invited" | "active" | "suspended";
@@ -46,7 +46,7 @@ export interface MembershipPage {
   next_cursor?: string;
 }
 
-const platformKey = ["admin-v2", "platform"] as const;
+const platformKey = adminV2QueryKey("platform");
 
 export const organizationKeys = {
   all: platformKey,

@@ -128,6 +128,7 @@ import {
   PlatformContextGuard,
   useAdminContext,
 } from "@/contexts/AdminContextProvider";
+import { canRenderAdminShell } from "@/contexts/adminContextAccess";
 
 /** Scrolls to top on pathname change (custom replacement for ScrollRestoration which requires data router). */
 function useScrollRestoration() {
@@ -221,7 +222,7 @@ function AdminContextRoot({ children }: { children: ReactNode }) {
 }
 
 function RequireAdminContext({ children }: { children: ReactNode }) {
-  const { active, available, switching, failure } = useAdminContext();
+  const { active, available, switching } = useAdminContext();
   if (switching && !active) {
     return (
       <div className="p-8" role="status" aria-live="polite">
@@ -229,7 +230,7 @@ function RequireAdminContext({ children }: { children: ReactNode }) {
       </div>
     );
   }
-  if (!active && available.length === 0 && !failure) return <Navigate to="/" replace />;
+  if (!canRenderAdminShell(active, available, switching)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 

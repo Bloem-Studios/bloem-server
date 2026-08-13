@@ -8,7 +8,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { adminV2Api } from "@/api/adminV2Client";
 import OrganizationsPage from "./OrganizationsPage";
 
-vi.mock("@/api/adminV2Client", () => ({ adminV2Api: vi.fn() }));
+vi.mock("@/api/adminV2Client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/api/adminV2Client")>();
+  return { ...actual, adminV2Api: vi.fn() };
+});
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

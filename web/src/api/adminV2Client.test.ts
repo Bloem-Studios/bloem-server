@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   adminV2Api,
+  adminV2QueryKey,
+  activateAdminV2Context,
   mintAdminContextSession,
   onAdminV2ContextFailure,
   setAdminV2Token,
@@ -70,6 +72,59 @@ describe("adminV2 client", () => {
     });
   });
 
+  it.each([
+    [401, "tenant_session_required"],
+    [401, "authorization_state_stale"],
+    [403, "insufficient_platform_authority"],
+    [403, "organization_suspended"],
+  ])("invalidates the context token on %s %s", async (status, code) => {
+    const failure = vi.fn();
+    onAdminV2ContextFailure(failure);
+    activateAdminV2Context("context-token", "platform");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: code, message: code }), {
+          status,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    await expect(adminV2Api("/platform/organizations")).rejects.toMatchObject({ code });
+    expect(failure).toHaveBeenCalledWith({ code, message: code });
+    await expect(adminV2Api("/platform/organizations")).rejects.toMatchObject({
+      code: "tenant_session_required",
+    });
+  });
+
+  it("aborts and ignores an old context response after switching", async () => {
+    let resolveOld!: (response: Response) => void;
+    const oldResponse = new Promise<Response>((resolve) => {
+      resolveOld = resolve;
+    });
+    const fetchMock = vi.fn().mockReturnValue(oldResponse);
+    vi.stubGlobal("fetch", fetchMock);
+    activateAdminV2Context("org-a-token", "organization:org-a");
+
+    const request = adminV2Api<{ member: string }>("/organization/people", { method: "POST" });
+    const oldSignal = (fetchMock.mock.calls[0]?.[1] as RequestInit).signal;
+    activateAdminV2Context("org-b-token", "organization:org-b");
+
+    expect(oldSignal?.aborted).toBe(true);
+    resolveOld(jsonResponse({ member: "Org A member" }));
+    await expect(request).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("builds every administrative query key under its context identity", () => {
+    expect(adminV2QueryKey("organization:org-a", "people", { status: "active" })).toEqual([
+      "admin-v2",
+      "organization:org-a",
+      "people",
+      { status: "active" },
+    ]);
+  });
+
   it("mints a selected organization session with account authentication", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -105,3 +160,10 @@ describe("adminV2 client", () => {
     expect(result.context.organizationId).toBe("org-a");
   });
 });
+
+function jsonResponse(body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}

@@ -5,7 +5,11 @@ function authorityLabel(authority: "platform_admin" | "organization_admin") {
   return authority === "platform_admin" ? "Platform administrator" : "Organization administrator";
 }
 
-export default function AdminContextSwitcher() {
+export default function AdminContextSwitcher({
+  onSwitchSuccess,
+}: {
+  onSwitchSuccess?: () => void;
+}) {
   const { active, available, switching, switchContext, failure } = useAdminContext();
 
   return (
@@ -41,7 +45,10 @@ export default function AdminContextSwitcher() {
           value={active?.key ?? ""}
           disabled={switching || available.length === 0}
           onChange={(event) =>
-            void switchContext(event.target.value as (typeof available)[number]["key"])
+            void switchContext(
+              event.target.value as (typeof available)[number]["key"],
+              onSwitchSuccess,
+            )
           }
           className="border-sidebar-border bg-sidebar text-sidebar-foreground focus:ring-ring/50 mt-1 h-10 w-full rounded-lg border px-2 text-xs font-medium normal-case focus:ring-2 focus:outline-none"
         >
