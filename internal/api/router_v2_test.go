@@ -135,6 +135,32 @@ func TestV2AdminPlatformOrganizationRoutesAreMountedBehindPlatformContext(t *tes
 	}
 }
 
+func TestV2AdminPeopleRoutesAreMountedBehindOrganizationContext(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	membershipID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
+	tokens := auth.NewAdminContextTokenService("router-admin-people-test-secret")
+	adminMW := apimw.NewAdminContextMiddleware(
+		tokens,
+		v2AdminTenantResolverStub{tenant: tenancy.Context{AccountID: 7, OrganizationID: organizationID, MembershipID: membershipID, MembershipStatus: tenancy.MembershipActive, OrganizationStatus: tenancy.OrganizationActive, PolicyRevision: 7, SecurityRevision: 11}},
+		v2AdminMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}},
+		v2AdminPlatformAuthorizerStub{},
+	)
+	people := handlers.NewV2AdminPeopleHandler(nil)
+	router := chi.NewRouter()
+	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, nil, adminMW, people)
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/v2/admin/organization/people", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), `"error":"tenant_unavailable"`) {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
 type v2AdminTenantResolverStub struct {
 	tenant tenancy.Context
 }
