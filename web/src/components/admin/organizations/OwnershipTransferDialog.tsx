@@ -18,6 +18,7 @@ interface OwnershipTransferDialogProps {
   onOpenChange(open: boolean): void;
   pending?: boolean;
   error?: string | null;
+  ownerError?: string | null;
   onTransfer(input: { ownerAccountId: number; password: string }): void;
 }
 
@@ -27,6 +28,7 @@ export function OwnershipTransferDialog({
   onOpenChange,
   pending = false,
   error,
+  ownerError,
   onTransfer,
 }: OwnershipTransferDialogProps) {
   const [ownerAccountId, setOwnerAccountId] = useState("");
@@ -71,6 +73,7 @@ export function OwnershipTransferDialog({
               onChange={(event) => setOwnerAccountId(event.target.value)}
               placeholder="Account ID"
             />
+            {ownerError ? <p className="text-destructive text-sm">{ownerError}</p> : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="ownership-confirmation">Type {organization.name} to confirm</Label>

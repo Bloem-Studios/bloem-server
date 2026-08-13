@@ -172,6 +172,11 @@ export function OrganizationLifecyclePanel({
         }}
         pending={transfer.isPending}
         error={transfer.error ? messageFrom(transfer.error) : null}
+        ownerError={
+          transfer.error instanceof AdminV2ClientError
+            ? transfer.error.fields.owner_account_id
+            : null
+        }
         onTransfer={({ ownerAccountId, password }) => {
           void transfer
             .mutateAsync({

@@ -120,6 +120,30 @@ describe("OrganizationDetailPage", () => {
     );
   });
 
+  it("renders ownership eligibility validation beside the new owner field", async () => {
+    vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
+      if (String(path).endsWith("/memberships")) return { memberships } as never;
+      if (String(path).endsWith("/transfer-ownership") && init?.method === "POST") {
+        throw new AdminV2ClientError(422, "validation_failed", "Invalid fields", {
+          owner_account_id: "Must identify an enabled organization member.",
+        });
+      }
+      return { organization } as never;
+    });
+    renderPage();
+    await screen.findByRole("heading", { name: "North Sea Media" });
+    fireEvent.click(screen.getByRole("button", { name: "Transfer ownership" }));
+    fireEvent.change(screen.getByLabelText("New owner"), { target: { value: "8" } });
+    fireEvent.change(screen.getByLabelText("Type North Sea Media to confirm"), {
+      target: { value: "North Sea Media" },
+    });
+    fireEvent.change(screen.getByLabelText("Account password"), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm transfer" }));
+    expect(
+      await screen.findByText("Must identify an enabled organization member."),
+    ).toBeInTheDocument();
+  });
+
   it("reloads current revisions after a stale lifecycle mutation", async () => {
     let detailLoads = 0;
     vi.mocked(adminV2Api).mockImplementation(async (path) => {
