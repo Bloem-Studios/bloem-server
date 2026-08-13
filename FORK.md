@@ -58,11 +58,15 @@ public compatibility surface and reapply the smallest Vondel delta.
 - Client contract conformance tests (`internal/clientcontract`) and an install
   and scan acceptance test (`internal/acceptance`).
 - A tenant and identity foundation under `/api/v2`, while `/api/v1` remains
-  the Silo-compatible surface.
+  the Silo-compatible surface. The shipped boundary includes membership
+  discovery, organization-scoped profile groups, and OPA-bounded visibility of
+  organization-owned or explicitly entitled media folders; see
+  [the operator runbook](docs/architecture/opa-tenant-authorization.md).
 - Product identity: Vondel naming in user-facing copy.
 
-Live TV, OTA/DVR and EPG are designed and planned as additive packages ported
-from the AGPL Prairie fork; they are not implemented on `main` yet.
+Administrative roles and mutation routes, direct-profile login, shared-device
+pairing, Live TV, OTA/DVR, EPG, plugin authorization, and adult-scene policy
+are not implemented by this foundation increment.
 
 ## Ongoing merge cost
 

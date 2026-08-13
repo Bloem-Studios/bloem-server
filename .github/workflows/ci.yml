@@ -64,23 +64,14 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Verify migration upgrade, ambiguity, legacy writes, and rollback
-        run: go test ./internal/database -run TestTenantIdentityMigration -count=1 -v -timeout=30m
+      - name: Tenant and access-group migrations
+        run: go test ./internal/database -run 'TestTenantIdentityMigration|TestOrganizationAccessGroupMigration' -count=1 -v -timeout=30m
 
-      - name: Verify tenancy store and resolver invariants
-        run: go test ./internal/tenancy -count=1 -v -timeout=30m
+      - name: Tenant resource and policy stores
+        run: go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m
 
-      - name: Verify resource ownership migration, backfill, and rollback
-        run: go test ./internal/database -run TestResourceTenancyMigration -count=1 -v -timeout=30m
-
-      - name: Verify resource access and bundle materialization invariants
-        run: go test -race ./internal/resourcetenancy -count=1 -v -timeout=30m
-
-      - name: Verify profile organization and access-group persistence
-        run: go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization' -count=1 -v -timeout=30m
-
-      - name: Verify v1 compatibility and read-only v2 foundation
-        run: go test ./internal/api -run 'TestV1TenancyCompatibility|TestV2Foundation' -count=1 -v -timeout=30m
+      - name: OPA tenant compatibility acceptance
+        run: go test ./internal/api -run 'TestV1TenancyCompatibility|TestOPATenantFoundationWithDisposablePostgres' -count=1 -v -timeout=30m
 
   go:
     name: Go

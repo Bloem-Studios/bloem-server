@@ -19,6 +19,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/scanner"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/google/uuid"
 )
 
 type fakeMarkerFiles struct {
@@ -239,7 +241,21 @@ func markerEditGatedHandler(t *testing.T, writer *fakeMarkerWriter, user *models
 		nil,
 		policy.NewPDP(engine),
 	)
-	return gate.RequireMarkerEdit(http.HandlerFunc(h.HandleSetFileMarkers))
+	gated := gate.RequireMarkerEdit(http.HandlerFunc(h.HandleSetFileMarkers))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tenant := tenancy.Context{
+			OrganizationID:      uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+			MembershipID:        uuid.MustParse("20000000-0000-0000-0000-000000000001"),
+			AccountID:           user.ID,
+			OrganizationStatus:  tenancy.OrganizationActive,
+			MembershipStatus:    tenancy.MembershipActive,
+			PolicyRevision:      1,
+			SecurityRevision:    1,
+			Legacy:              true,
+			OrganizationDefault: true,
+		}
+		gated.ServeHTTP(w, r.WithContext(tenancy.WithContext(r.Context(), tenant)))
+	})
 }
 
 func TestSetFileMarkersRejectsUserWithoutMarkerEditPermission(t *testing.T) {

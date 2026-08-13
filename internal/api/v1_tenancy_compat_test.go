@@ -3,8 +3,6 @@ package api
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,7 +21,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/yaml.v3"
@@ -241,10 +238,9 @@ func TestV2FoundationCIRequiresDisposablePostgres(t *testing.T) {
 		t.Fatal("tenant-identity checkout must disable persisted credentials")
 	}
 	for _, required := range []string{
-		"go test ./internal/database -run TestTenantIdentityMigration",
-		"go test ./internal/tenancy",
-		"go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization'",
-		"go test ./internal/api -run 'TestV1TenancyCompatibility|TestV2Foundation'",
+		"go test ./internal/database -run 'TestTenantIdentityMigration|TestOrganizationAccessGroupMigration' -count=1 -v -timeout=30m",
+		"go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m",
+		"go test ./internal/api -run 'TestV1TenancyCompatibility|TestOPATenantFoundationWithDisposablePostgres' -count=1 -v -timeout=30m",
 	} {
 		if !strings.Contains(commands, required) {
 			t.Errorf("tenant-identity CI does not run %q", required)
@@ -395,46 +391,10 @@ func stripDynamicV1Fields(value any) {
 
 func newV1TenancyDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
 	ctx := context.Background()
-	random := make([]byte, 8)
-	if _, err := rand.Read(random); err != nil {
-		t.Fatalf("generate database name: %v", err)
-	}
-	name := "vondel_tenancy_" + hex.EncodeToString(random)
-	admin, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("connect maintenance database: %v", err)
-	}
-	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
-		admin.Close()
-		t.Fatalf("create disposable database: %v", err)
-	}
-	config, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		t.Fatalf("parse database URL: %v", err)
-	}
-	config.ConnConfig.Database = name
-	pool, err := pgxpool.NewWithConfig(ctx, config)
-	if err != nil {
-		t.Fatalf("connect disposable database: %v", err)
-	}
+	pool := newDisposableAPIDatabase(t, "vondel_tenancy_", false)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
-		pool.Close()
 		t.Fatalf("migrate disposable database: %v", err)
 	}
-	t.Cleanup(func() {
-		pool.Close()
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		_, _ = admin.Exec(cleanupCtx, `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, name)
-		if _, err := admin.Exec(cleanupCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
-			t.Errorf("drop disposable database: %v", err)
-		}
-		admin.Close()
-	})
 	return pool
 }

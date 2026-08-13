@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/catalog"
@@ -39,7 +40,7 @@ func parityMetadataLangValues(profile *userstore.Profile) []userstore.SettingVal
 
 func TestResolveViewerScopeParity(t *testing.T) {
 	ctx := resolvedTenantContextForPolicyTest()
-	engine, err := NewEngine(ctx)
+	engine, err := NewEngine(ctx, WithEvalTimeout(time.Second))
 	if err != nil {
 		t.Fatalf("NewEngine() error: %v", err)
 	}

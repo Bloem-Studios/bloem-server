@@ -32,6 +32,7 @@ type v2CapabilitiesResponse struct {
 type v2CapabilityFeatures struct {
 	LegacySiloV1            bool `json:"legacy_silo_v1"`
 	OrganizationMemberships bool `json:"organization_memberships"`
+	TenantBoundedMediaScope bool `json:"tenant_bounded_media_scope"`
 	DirectProfileLogin      bool `json:"direct_profile_login"`
 	SharedDevicePairing     bool `json:"shared_device_pairing"`
 	DelegatedAdminRoles     bool `json:"delegated_admin_roles"`
@@ -44,6 +45,7 @@ func (h *V2SystemHandler) HandleCapabilities(w http.ResponseWriter, _ *http.Requ
 		Features: v2CapabilityFeatures{
 			LegacySiloV1:            true,
 			OrganizationMemberships: true,
+			TenantBoundedMediaScope: true,
 		},
 	})
 }

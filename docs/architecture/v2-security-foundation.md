@@ -7,9 +7,28 @@ PIN unlock, token refresh, and administrative projection. The native
 - public `GET /api/v2/capabilities`; and
 - authenticated `GET /api/v2/organizations`.
 
-The capability response is the source of truth. Direct-profile login, shared
-device pairing, and delegated administrative roles remain `false` until their
-own reviewed phases ship. Clients must not infer features from version strings.
+The capability response is the source of truth. This increment advertises
+legacy v1 compatibility, organization membership discovery, and tenant-bounded
+media scope. Its exact response is:
+
+```json
+{
+  "api": "v2",
+  "identity_schema": 1,
+  "features": {
+    "legacy_silo_v1": true,
+    "organization_memberships": true,
+    "tenant_bounded_media_scope": true,
+    "direct_profile_login": false,
+    "shared_device_pairing": false,
+    "delegated_admin_roles": false
+  }
+}
+```
+
+Direct-profile login, shared-device pairing, delegated administrative roles,
+and v2 mutation routes are not implemented. Clients must not infer features
+from version strings. `/api/v10/*` is not an alias and returns 404.
 
 ## Security invariants
 
@@ -23,8 +42,18 @@ own reviewed phases ship. Clients must not infer features from version strings.
 - Organization listing occurs before selection. It returns only the account's
   active memberships in active organizations and omits owners, member counts,
   and other organizations.
-- Profile organization/access-group columns are an additive shadow. V1 still
-  enforces `users.access_group_id` until a later parity-proven cutover.
+- V1 retains the legacy account ceiling for profile-less default-organization
+  requests. A selected profile resolves its canonical access group from the
+  profile's organization-qualified assignment; a group from another
+  organization never resolves.
+- Media visibility is bounded before catalog SQL runs. An organization may see
+  its own folders and platform-owned folders with an active explicit
+  entitlement. Ownership and entitlement establish availability only; access
+  groups, profile restrictions, disabled-library settings, and custom policy
+  may narrow that set but cannot widen it.
+- Missing tenant facts, stale revisions, unavailable entitlement state, policy
+  errors, malformed or undefined decisions, and evaluation timeouts fail
+  closed. Hidden, foreign, and non-entitled resources are not disclosed.
 
 ## Clean setup
 
@@ -65,7 +94,9 @@ An upgrade with exactly one enabled legacy administrator automatically assigns
 that account as platform and default-organization owner. Disabled admins do not
 create ambiguity. Existing users receive active memberships, profiles retain
 their IDs and policy fields, and existing access groups/profiles attach to the
-default organization.
+default organization. Existing media folders become platform-owned and the
+default platform catalog is materialized as active default-organization
+entitlements so upgraded v1 users retain their prior library visibility.
 
 When multiple enabled legacy administrators exist, migrations deliberately set
 `ownership_resolution_required=true`, leave both owners null, and keep the
@@ -132,10 +163,11 @@ update affects exactly one row. Re-run the verification queries afterward.
 
 ## Rollback
 
-Rollback is allowed only before later phases start writing multi-organization
-or profile-specific group state. Take a tested backup, stop Vondel, and roll
-back the application binary and schema together. Keeping a new binary against
-the old schema is unsupported.
+Rollback is allowed only before operators or later phases start writing
+non-default organizations, organization-specific profile group assignments,
+resource ownership, or entitlements that cannot be represented by v1. Take a
+tested backup, stop Vondel, and roll back the application binary and schema
+together. Keeping a new binary against the old schema is unsupported.
 
 From a matching source checkout with the deployment environment file:
 
@@ -144,13 +176,15 @@ make migrate-status ENV_FILE=/path/to/deployment.env
 make migrate-down-to VERSION=20260812163547 ENV_FILE=/path/to/deployment.env
 ```
 
-The down migration removes `platform_security`, `organizations`,
+The complete rollback crosses the access-group and resource-tenancy migrations
+before removing `platform_security`, `organizations`,
 `organization_memberships`, and the additive organization/profile group
-columns, together with the legacy default-organization insert helper. It
-restores the global access-group name constraint. It does not
+columns. It restores the global access-group name constraint. It does not
 change legacy users, profiles, account-level access-group assignments,
 passwords, sessions, or watch state. Verify those legacy counts and sampled
-rows before starting the previous binary.
+rows before starting the previous binary. Do not use this rollback after the
+representability boundary above has been crossed; restore the tested backup
+instead.
 
 ## Release gate
 
@@ -164,3 +198,6 @@ Before enabling v2 in an environment:
 5. resolve ownership ambiguity, if present; and
 6. retain the pre-migration backup until the rollback window is explicitly
    closed.
+
+The OPA composition, database acceptance, exact local commands, and failure
+response guidance are in [OPA tenant authorization](opa-tenant-authorization.md).

@@ -2,18 +2,49 @@ package access
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"reflect"
 	"slices"
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 )
+
+var accessGroupTestDatabaseConfig *pgxpool.Config
+
+func TestMain(m *testing.M) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	var cleanup func() error
+	if dsn != "" {
+		var err error
+		accessGroupTestDatabaseConfig, cleanup, err = prepareAccessGroupTestDatabase(context.Background(), dsn)
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "prepare access-group test database: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	code := m.Run()
+	if cleanup != nil {
+		if err := cleanup(); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "clean up access-group test database: %v\n", err)
+			code = 1
+		}
+	}
+	os.Exit(code)
+}
 
 func TestGroupStoreCRUDAndMemberCountsDB(t *testing.T) {
 	ctx, pool, store, suffix, organizationID := newGroupStoreDBTest(t)
@@ -377,22 +408,11 @@ func newGroupStoreDBTest(t *testing.T) (context.Context, *pgxpool.Pool, *GroupSt
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
+	pool, err := pgxpool.NewWithConfig(ctx, accessGroupTestDatabaseConfig.Copy())
 	if err != nil {
-		t.Fatalf("connect test database: %v", err)
+		t.Fatalf("connect disposable access-group database: %v", err)
 	}
 	t.Cleanup(pool.Close)
-
-	var tableName *string
-	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.access_groups')::text`).Scan(&tableName); err != nil {
-		t.Fatalf("check access_groups table: %v", err)
-	}
-	if tableName == nil || *tableName == "" {
-		t.Skip("test database has not applied access groups migration")
-	}
-	if !accessGroupDefaultColumnExists(t, ctx, pool) {
-		t.Skip("test database has not applied default access group migration")
-	}
 
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	organizationID := defaultAccessGroupOrganizationID(t, ctx, pool)
@@ -403,20 +423,84 @@ func newGroupStoreDBTest(t *testing.T) (context.Context, *pgxpool.Pool, *GroupSt
 	return ctx, pool, NewGroupStore(pool), suffix, organizationID
 }
 
-func accessGroupDefaultColumnExists(t *testing.T, ctx context.Context, pool *pgxpool.Pool) bool {
-	t.Helper()
-	var exists bool
-	if err := pool.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM information_schema.columns
-			WHERE table_schema = 'public'
-			  AND table_name = 'access_groups'
-			  AND column_name = 'is_default'
-		)`).Scan(&exists); err != nil {
-		t.Fatalf("check access_groups.is_default column: %v", err)
+func prepareAccessGroupTestDatabase(ctx context.Context, dsn string) (*pgxpool.Config, func() error, error) {
+	var random [8]byte
+	if _, err := rand.Read(random[:]); err != nil {
+		return nil, nil, fmt.Errorf("generate disposable database name: %w", err)
 	}
-	return exists
+	name := "vondel_access_groups_" + hex.EncodeToString(random[:])
+	adminConfig, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse maintenance database URL: %w", err)
+	}
+	admin, err := pgxpool.NewWithConfig(ctx, adminConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("connect maintenance database: %w", err)
+	}
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
+		admin.Close()
+		return nil, nil, fmt.Errorf("create disposable database %q: %w", name, err)
+	}
+	testConfig, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
+		admin.Close()
+		return nil, nil, fmt.Errorf("parse disposable database URL: %w", err)
+	}
+	testConfig.ConnConfig.Database = name
+	pool, err := pgxpool.NewWithConfig(ctx, testConfig)
+	if err != nil {
+		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
+		admin.Close()
+		return nil, nil, fmt.Errorf("connect disposable database: %w", err)
+	}
+	if err := migrateAccessGroupDisposableDatabase(ctx, pool); err != nil {
+		pool.Close()
+		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
+		admin.Close()
+		return nil, nil, fmt.Errorf("migrate disposable database: %w", err)
+	}
+	pool.Close()
+	cleanup := func() error {
+		defer admin.Close()
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_, _ = admin.Exec(cleanupCtx, `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()`, name)
+		if _, err := admin.Exec(cleanupCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
+			return fmt.Errorf("drop disposable database %q: %w", name, err)
+		}
+		var exists bool
+		if err := admin.QueryRow(cleanupCtx, `SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname=$1)`, name).Scan(&exists); err != nil {
+			return fmt.Errorf("verify disposable database %q cleanup: %w", name, err)
+		}
+		if exists {
+			return fmt.Errorf("disposable database %q still exists after cleanup", name)
+		}
+		return nil
+	}
+	return testConfig.Copy(), cleanup, nil
+}
+
+func migrateAccessGroupDisposableDatabase(ctx context.Context, pool *pgxpool.Pool) error {
+	migrationFS, err := fs.Sub(migrations.FS, "sql")
+	if err != nil {
+		return fmt.Errorf("open embedded SQL migrations: %w", err)
+	}
+	provider, err := goose.NewProvider(
+		goose.DialectPostgres,
+		stdlib.OpenDBFromPool(pool),
+		migrationFS,
+		goose.WithTableName("public.goose_db_version"),
+		goose.WithAllowOutofOrder(true),
+	)
+	if err != nil {
+		return fmt.Errorf("create Goose provider: %w", err)
+	}
+	defer func() { _ = provider.Close() }()
+	if _, err := provider.Up(ctx); err != nil {
+		return fmt.Errorf("apply embedded SQL migrations: %w", err)
+	}
+	return nil
 }
 
 func defaultAccessGroupOrganizationID(t *testing.T, ctx context.Context, pool *pgxpool.Pool) uuid.UUID {
