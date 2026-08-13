@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,7 +15,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/database"
+	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 )
@@ -124,6 +128,64 @@ func TestStoreRootOwnerDoesNotTrustCallerIdentity(t *testing.T) {
 	}
 	if _, err := store.RootOwner(fixture.ctx, RootRef{Kind: RootPluginInstallation, ID: fixture.organizationFolder.ID}); !errors.Is(err, ErrResourceHidden) {
 		t.Fatalf("cross-kind lookup error = %v, want ErrResourceHidden", err)
+	}
+}
+
+func TestCompatibilityCreateUsesPlatformOwnerAndDefaultEntitlement(t *testing.T) {
+	fixture := newResourceTenancyFixture(t)
+
+	folder, err := catalog.NewFolderRepository(fixture.pool).Create(fixture.ctx, catalog.CreateFolderInput{
+		Paths: []string{"/tmp/resource-tenancy-library"},
+		Type:  "movies",
+		Name:  "Compatibility repository library",
+	})
+	if err != nil {
+		t.Fatalf("FolderRepository.Create: %v", err)
+	}
+	installation, err := plugins.NewInstallationStore(fixture.pool).Create(fixture.ctx, plugins.CreateInstallationInput{
+		PluginID:     "silo.test.repository-compatibility",
+		Version:      "1.0.0",
+		InstallPath:  "/tmp/repository-compatibility",
+		Enabled:      true,
+		UpdatePolicy: "manual",
+	})
+	if err != nil {
+		t.Fatalf("InstallationStore.Create: %v", err)
+	}
+
+	store := NewStore(fixture.pool)
+	for _, root := range []RootRef{
+		{Kind: RootMediaFolder, ID: int64(folder.ID)},
+		{Kind: RootPluginInstallation, ID: int64(installation.ID)},
+	} {
+		grant, err := store.RequireAccess(fixture.ctx, fixture.defaultTenant, root)
+		if err != nil {
+			t.Fatalf("RequireAccess(%#v): %v", root, err)
+		}
+		if grant.Owner.Kind != OwnerPlatform || grant.Entitlement == nil || grant.Entitlement.Status != EntitlementActive {
+			t.Fatalf("compatibility grant = %#v", grant)
+		}
+	}
+
+	for label, value := range map[string]any{"folder": folder, "installation": installation} {
+		payload, err := json.Marshal(value)
+		if err != nil {
+			t.Fatalf("marshal %s compatibility result: %v", label, err)
+		}
+		lower := strings.ToLower(string(payload))
+		for _, forbidden := range []string{"owner_id", "organization_id", "entitlement", "bundle"} {
+			if strings.Contains(lower, forbidden) {
+				t.Errorf("%s compatibility result exposes %q: %s", label, forbidden, payload)
+			}
+		}
+	}
+
+	var memberCount int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM entitlement_bundle_members`).Scan(&memberCount); err != nil {
+		t.Fatalf("count frozen bundle members: %v", err)
+	}
+	if memberCount != 1 {
+		t.Fatalf("compatibility repository creates changed frozen bundle member count to %d, want 1 builtin member", memberCount)
 	}
 }
 

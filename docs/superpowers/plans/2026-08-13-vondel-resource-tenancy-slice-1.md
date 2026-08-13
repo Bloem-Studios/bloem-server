@@ -451,8 +451,7 @@ git commit -m "feat(tenancy): materialize default resource bundles"
 
 **Files:**
 - Modify: `internal/database/resource_tenancy_migration_test.go`
-- Create: `internal/catalog/resource_owner_compat_test.go`
-- Create: `internal/plugins/resource_owner_compat_test.go`
+- Modify: `internal/resourcetenancy/store_test.go`
 
 **Interfaces:**
 - Consumes: unchanged `catalog.FolderRepository.Create` and `plugins.InstallationStore.Create` APIs.
@@ -483,7 +482,7 @@ Add an assertion that migration Down removes every new relation/function/column 
 - [ ] **Step 5: Commit compatibility gates**
 
 ```bash
-git add internal/database/resource_tenancy_migration_test.go internal/catalog/resource_owner_compat_test.go internal/plugins/resource_owner_compat_test.go
+git add internal/database/resource_tenancy_migration_test.go internal/resourcetenancy/store_test.go
 git commit -m "test(tenancy): lock platform root compatibility"
 ```
 
