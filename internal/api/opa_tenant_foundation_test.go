@@ -118,16 +118,23 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 		t.Fatalf("migrated profile tenant/group = %s/%d, want %s/%d", migratedProfileOrganization, migratedProfileGroupID, legacyTenant.OrganizationID, defaultGroupID)
 	}
 
+	var foreignAccountID int
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users (username, email, password_hash, role, enabled, access_group_id)
+		VALUES ('opa-foundation-foreign-owner', 'opa-foundation-foreign@example.test', $1, 'admin', true, $2)
+		RETURNING id`, passwordHash, defaultGroupID).Scan(&foreignAccountID); err != nil {
+		t.Fatalf("create foreign organization account: %v", err)
+	}
 	var foreignOrganizationID uuid.UUID
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO organizations (slug, name, status, owner_account_id)
 		VALUES ('opa-foundation-foreign', 'OPA Foundation Foreign', 'active', $1)
-		RETURNING id`, accountID).Scan(&foreignOrganizationID); err != nil {
+		RETURNING id`, foreignAccountID).Scan(&foreignOrganizationID); err != nil {
 		t.Fatalf("create second organization: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-		VALUES ($1, $2, 'active', 'admin')`, foreignOrganizationID, accountID); err != nil {
+		VALUES ($1, $2, 'active', 'admin')`, foreignOrganizationID, foreignAccountID); err != nil {
 		t.Fatalf("create second organization membership: %v", err)
 	}
 	groups := access.NewGroupStore(pool)
@@ -161,7 +168,11 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("create native default-organization profile: %v", err)
 	}
-	if err := userStore.CreateProfile(ctx, userstore.Profile{
+	foreignUserStore, err := userStores.ForUser(ctx, foreignAccountID)
+	if err != nil {
+		t.Fatalf("open foreign organization user store: %v", err)
+	}
+	if err := foreignUserStore.CreateProfile(ctx, userstore.Profile{
 		ID:             foreignProfile,
 		Name:           "OPA Foreign Profile",
 		OrganizationID: foreignOrganizationID.String(),
@@ -181,6 +192,13 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 			t.Fatalf("seed profile-scoped setting for %q: %v", profileID, err)
 		}
 	}
+	if _, err := foreignUserStore.UpsertSettingValue(ctx, userstore.SettingIdentity{
+		Key:       "ui.time_format",
+		Scope:     settingscontract.ScopeProfile,
+		ProfileID: foreignProfile,
+	}, json.RawMessage(`"foreign-only"`)); err != nil {
+		t.Fatalf("seed foreign profile-scoped setting: %v", err)
+	}
 	defaultPolicy, err := groups.ResolvePolicy(ctx, access.GroupSubject{
 		OrganizationID: legacyTenant.OrganizationID,
 		AccountID:      accountID,
@@ -191,7 +209,7 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	}
 	foreignPolicy, err := groups.ResolvePolicy(ctx, access.GroupSubject{
 		OrganizationID: foreignOrganizationID,
-		AccountID:      accountID,
+		AccountID:      foreignAccountID,
 		ProfileID:      foreignProfile,
 	})
 	if err != nil || foreignPolicy == nil || foreignPolicy.ID != foreignGroup.ID || foreignPolicy.MaxPlaybackQuality != "1080p" {
@@ -199,7 +217,7 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	}
 	if _, err := groups.ResolvePolicy(ctx, access.GroupSubject{
 		OrganizationID: legacyTenant.OrganizationID,
-		AccountID:      accountID,
+		AccountID:      foreignAccountID,
 		ProfileID:      foreignProfile,
 	}); !errors.Is(err, access.ErrGroupNotFound) {
 		t.Fatalf("cross-organization profile policy error = %v, want ErrGroupNotFound", err)
@@ -281,8 +299,7 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	assertOPAAcceptanceV1Profiles(t, profiles, map[string]string{
 		legacyProfileID: "OPA Legacy Profile",
 		v2ProfileID:     "OPA V2 Profile",
-		foreignProfile:  "OPA Foreign Profile",
-	}, legacyProfileID)
+	}, legacyProfileID, foreignProfile)
 	verifyPIN := performJSONRequest(t, router, http.MethodPost, "/api/v1/profiles/"+legacyProfileID+"/verify-pin", `{"pin":"2468"}`, loginTokens.AccessToken, nil)
 	profileToken := decodePIN(t, verifyPIN).ProfileToken
 	profileSelection := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/values/effective?keys=ui.time_format", "", loginTokens.AccessToken, map[string]string{
@@ -292,10 +309,19 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	switchedProfileSettings := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/values/effective?keys=ui.time_format", "", loginTokens.AccessToken, map[string]string{
 		"X-Profile-Id": v2ProfileID,
 	})
+	foreignProfileSettings := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/values/effective?keys=ui.time_format", "", loginTokens.AccessToken, map[string]string{
+		"X-Profile-Id": foreignProfile,
+	})
+	if foreignProfileSettings.Code != http.StatusNotFound ||
+		strings.Contains(foreignProfileSettings.Body.String(), foreignProfile) ||
+		strings.Contains(foreignProfileSettings.Body.String(), "OPA Foreign Profile") ||
+		strings.Contains(foreignProfileSettings.Body.String(), "foreign-only") {
+		t.Fatalf("foreign profile default-organization v1 response = %d %s, want non-disclosing 404", foreignProfileSettings.Code, foreignProfileSettings.Body.String())
+	}
 	assertV1Responses(t, profiles, verifyPIN, profileSelection, switchedProfileSettings)
 	assertOPAAcceptanceV1ProfileSetting(t, profileSelection, legacyProfileID, "24h")
 	assertOPAAcceptanceV1ProfileSetting(t, switchedProfileSettings, v2ProfileID, "12h")
-	assertNoTenantFields(t, login, profiles, verifyPIN, profileSelection, switchedProfileSettings)
+	assertNoTenantFields(t, login, profiles, verifyPIN, profileSelection, switchedProfileSettings, foreignProfileSettings)
 
 	visibleLibraries := performJSONRequest(t, router, http.MethodGet, "/api/v1/user/libraries", "", loginTokens.AccessToken, map[string]string{
 		"X-Profile-Id":    legacyProfileID,
@@ -596,6 +622,7 @@ func assertOPAAcceptanceV1Profiles(
 	response *httptest.ResponseRecorder,
 	wantNames map[string]string,
 	protectedPrimaryID string,
+	forbiddenProfileIDs ...string,
 ) {
 	t.Helper()
 	var rawContract map[string]json.RawMessage
@@ -676,6 +703,11 @@ func assertOPAAcceptanceV1Profiles(
 	for profileID := range wantNames {
 		if !seen[profileID] {
 			t.Fatalf("v1 profile list omitted %q: %#v", profileID, contract.Profiles)
+		}
+	}
+	for _, profileID := range forbiddenProfileIDs {
+		if seen[profileID] {
+			t.Fatalf("v1 profile list disclosed foreign profile %q: %#v", profileID, contract.Profiles)
 		}
 	}
 }

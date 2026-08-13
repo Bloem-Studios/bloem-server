@@ -27,8 +27,8 @@ var (
 func TestMain(m *testing.M) {
 	dsn := strings.TrimSpace(os.Getenv("SILO_TEST_DATABASE_URL"))
 	if dsn == "" {
-		if strings.EqualFold(strings.TrimSpace(os.Getenv("CI")), "true") {
-			_, _ = fmt.Fprintln(os.Stderr, "SILO_TEST_DATABASE_URL is required for policy PostgreSQL tests in CI")
+		if strings.TrimSpace(os.Getenv("SILO_REQUIRE_TEST_DATABASE")) == "1" {
+			_, _ = fmt.Fprintln(os.Stderr, "SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1")
 			os.Exit(1)
 		}
 		os.Exit(m.Run())
@@ -78,20 +78,37 @@ func TestPolicyStoreUsesDisposableMigratedDatabase(t *testing.T) {
 	}
 }
 
-func TestPolicyStoreCIRequiresDatabase(t *testing.T) {
+func TestPolicyOrdinaryCIWithoutDatabaseRunsNonDatabaseTest(t *testing.T) {
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatalf("locate policy test executable: %v", err)
 	}
-	command := exec.Command(executable, "-test.run=^$")
-	command.Env = policyTestEnvironmentWithout("SILO_TEST_DATABASE_URL", "CI")
+	command := exec.Command(executable, "-test.run=^TestLockedCapabilitiesRejectHTTP$", "-test.v")
+	command.Env = policyTestEnvironmentWithout("SILO_TEST_DATABASE_URL", "SILO_REQUIRE_TEST_DATABASE", "CI")
 	command.Env = append(command.Env, "CI=true")
 	output, err := command.CombinedOutput()
-	if err == nil {
-		t.Fatalf("policy test subprocess without database passed in CI; output=%s", output)
+	if err != nil {
+		t.Fatalf("ordinary CI policy subprocess without database = %v, output=%s", err, output)
 	}
-	if !strings.Contains(string(output), "SILO_TEST_DATABASE_URL is required for policy PostgreSQL tests in CI") {
-		t.Fatalf("policy test subprocess failure = %v, output=%s", err, output)
+	if !strings.Contains(string(output), "--- PASS: TestLockedCapabilitiesRejectHTTP") {
+		t.Fatalf("ordinary CI did not execute named non-database policy test; output=%s", output)
+	}
+}
+
+func TestPolicyRequiredDatabaseSignalFailsWithoutURL(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatalf("locate policy test executable: %v", err)
+	}
+	command := exec.Command(executable, "-test.run=^TestPolicyStoreDocumentVersionCRUD$", "-test.v")
+	command.Env = policyTestEnvironmentWithout("SILO_TEST_DATABASE_URL", "SILO_REQUIRE_TEST_DATABASE", "CI")
+	command.Env = append(command.Env, "SILO_REQUIRE_TEST_DATABASE=1")
+	output, err := command.CombinedOutput()
+	if err == nil {
+		t.Fatalf("required policy PostgreSQL subprocess without database passed; output=%s", output)
+	}
+	if !strings.Contains(string(output), "SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1") {
+		t.Fatalf("required policy PostgreSQL subprocess failure = %v, output=%s", err, output)
 	}
 }
 

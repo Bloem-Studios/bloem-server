@@ -65,12 +65,18 @@ jobs:
           cache: true
 
       - name: Tenant and access-group migrations
+        env:
+          SILO_REQUIRE_TEST_DATABASE: "1"
         run: go test ./internal/database -run 'TestTenantIdentityMigration|TestOrganizationAccessGroupMigration' -count=1 -v -timeout=30m
 
       - name: Tenant resource and policy stores
+        env:
+          SILO_REQUIRE_TEST_DATABASE: "1"
         run: go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m
 
       - name: OPA tenant compatibility acceptance
+        env:
+          SILO_REQUIRE_TEST_DATABASE: "1"
         run: go test ./internal/api -run 'TestV1TenancyCompatibility|TestOPATenantFoundationWithDisposablePostgres' -count=1 -v -timeout=30m
 
   go:

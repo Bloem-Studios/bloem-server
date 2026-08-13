@@ -225,13 +225,24 @@ func TestV2FoundationCIRequiresDisposablePostgres(t *testing.T) {
 	if job.Env["SILO_TEST_DATABASE_URL"] == "" {
 		t.Fatal("tenant-identity job does not supply SILO_TEST_DATABASE_URL")
 	}
+	if job.Env["SILO_REQUIRE_TEST_DATABASE"] != "" {
+		t.Fatal("tenant-identity job must not require PostgreSQL job-wide")
+	}
 
 	var commands string
 	checkoutLocked := false
+	postgresSteps := map[string]bool{
+		"Tenant and access-group migrations":  false,
+		"Tenant resource and policy stores":   false,
+		"OPA tenant compatibility acceptance": false,
+	}
 	for _, step := range job.Steps {
 		commands += "\n" + step.Run
 		if strings.HasPrefix(step.Uses, "actions/checkout@") && step.With["persist-credentials"] == false {
 			checkoutLocked = true
+		}
+		if _, required := postgresSteps[step.Name]; required {
+			postgresSteps[step.Name] = step.Env["SILO_REQUIRE_TEST_DATABASE"] == 1 || step.Env["SILO_REQUIRE_TEST_DATABASE"] == "1"
 		}
 	}
 	if !checkoutLocked {
@@ -244,6 +255,11 @@ func TestV2FoundationCIRequiresDisposablePostgres(t *testing.T) {
 	} {
 		if !strings.Contains(commands, required) {
 			t.Errorf("tenant-identity CI does not run %q", required)
+		}
+	}
+	for step, signaled := range postgresSteps {
+		if !signaled {
+			t.Errorf("tenant-identity CI step %q does not set SILO_REQUIRE_TEST_DATABASE=1", step)
 		}
 	}
 }

@@ -278,7 +278,7 @@ func TestPolicyStoreDeleteDocumentGuard(t *testing.T) {
 func newPolicyStoreTest(t *testing.T, ctx context.Context) (*pgxpool.Pool, *PolicyStore) {
 	t.Helper()
 	if policyStoreTestDatabaseConfig == nil {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
+		t.Skip("SILO_TEST_DATABASE_URL is not set; PostgreSQL store tests skip only outside SILO_REQUIRE_TEST_DATABASE=1")
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, policyStoreTestDatabaseConfig.Copy())
 	if err != nil {
