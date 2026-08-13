@@ -1,5 +1,9 @@
 # Vondel Security Program Roadmap
 
+> **Status:** Superseded. The current program sequence begins with
+> `2026-08-13-vondel-opa-tenant-foundation.md` and implements
+> `../specs/2026-08-13-vondel-opa-centered-multitenant-authorization-design.md`.
+
 **Source design:** `docs/superpowers/specs/2026-08-12-vondel-multitenant-security-and-authorization-design.md`
 
 The approved design spans independently reviewable security boundaries. It is
