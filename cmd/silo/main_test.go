@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/api"
@@ -44,6 +45,36 @@ func TestConfigureS3Clients_SetsCORSOnPublicAssetsBucket(t *testing.T) {
 	}
 	if got := publicServer.CORSRequests(); got != 1 {
 		t.Fatalf("public assets bucket CORS requests = %d, want 1", got)
+	}
+}
+
+type lifecycleWorkerStub struct {
+	started chan struct{}
+	stopped chan struct{}
+}
+
+func (w *lifecycleWorkerStub) Run(ctx context.Context) {
+	close(w.started)
+	<-ctx.Done()
+	close(w.stopped)
+}
+
+func TestStartAdminPeopleBackgroundWorkerOwnsLifecycle(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	worker := &lifecycleWorkerStub{started: make(chan struct{}), stopped: make(chan struct{})}
+
+	startAdminPeopleBackgroundWorker(ctx, worker)
+	select {
+	case <-worker.started:
+	case <-time.After(time.Second):
+		t.Fatal("admin people worker did not start")
+	}
+
+	cancel()
+	select {
+	case <-worker.stopped:
+	case <-time.After(time.Second):
+		t.Fatal("admin people worker did not stop with application context")
 	}
 }
 

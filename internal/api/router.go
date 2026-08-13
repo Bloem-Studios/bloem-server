@@ -20,6 +20,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/activitylog"
 	"github.com/Silo-Server/silo-server/internal/adminjob"
+	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/ai/jobrunner"
 	"github.com/Silo-Server/silo-server/internal/ai/llm"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
@@ -200,6 +201,8 @@ type Dependencies struct {
 	// It is separate from normal account-session token validation.
 	AdminContextTokens      auth.AdminContextTokenService
 	PlatformAdminAuthorizer auth.PlatformAdminAuthorizer
+	AdminPeopleService      *adminpeople.Service
+	AdminPeopleWorker       *adminpeople.Worker
 }
 
 // absHandler is the narrow interface the router needs from the ABS handler.

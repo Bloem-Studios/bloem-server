@@ -37,6 +37,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/activitylog"
 	"github.com/Silo-Server/silo-server/internal/adminjob"
+	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/audiobooks"
@@ -828,6 +829,10 @@ func main() {
 	redisBootstrapAvailable := (normalizedBootstrapRedisURL != "" && bootstrapRedisURLErr == nil) ||
 		(strings.TrimSpace(cfg.Redis.SentinelMaster) != "" && len(cfg.Redis.SentinelAddresses) > 0)
 
+	adminPeopleService := adminpeople.NewService(pool, cfg.Auth.JWTSecret)
+	adminPeopleWorker := adminpeople.NewWorker(adminPeopleService, adminpeople.WorkerOptions{})
+	startAdminPeopleBackgroundWorker(appCtx, adminPeopleWorker)
+
 	deps := api.Dependencies{
 		Config:                       cfg,
 		LiveConfig:                   configWatcher.Config,
@@ -837,6 +842,8 @@ func main() {
 		RedisBootstrapAvailable:      redisBootstrapAvailable,
 		AppContext:                   appCtx,
 		DB:                           pool,
+		AdminPeopleService:           adminPeopleService,
+		AdminPeopleWorker:            adminPeopleWorker,
 		SecretCipher:                 dataCipher,
 		EventBus:                     eventBus,
 		RedisClient:                  apiRedisClient,
@@ -3455,6 +3462,14 @@ func mapFolderTypeToMediaType(t string) string {
 
 type scopeResolver interface {
 	Resolve(ctx context.Context, input access.ResolveInput) (access.Scope, error)
+}
+
+type adminPeopleBackgroundWorker interface {
+	Run(context.Context)
+}
+
+func startAdminPeopleBackgroundWorker(ctx context.Context, worker adminPeopleBackgroundWorker) {
+	go worker.Run(ctx)
 }
 
 func newTenantAwareViewerResolver(pool *pgxpool.Pool, viewer policy.AccessScopeResolver) *policy.TenantViewerResolver {

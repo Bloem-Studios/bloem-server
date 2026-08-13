@@ -16,12 +16,21 @@ CREATE TABLE public.admin_people_bulk_jobs (
     action_key text NOT NULL,
     actor_account_id integer NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
     actor_authority text NOT NULL CHECK (actor_authority IN ('platform_admin','organization_admin')),
+    actor_membership_id uuid,
+    actor_security_revision bigint NOT NULL,
+    organization_policy_revision bigint NOT NULL,
     request_id text,
     created_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (selection_id, action_key),
     CHECK ((action_kind = 'assign_group' AND group_id IS NOT NULL) OR
-           (action_kind <> 'assign_group' AND group_id IS NULL))
+           (action_kind <> 'assign_group' AND group_id IS NULL)),
+    CHECK ((actor_authority='organization_admin' AND actor_membership_id IS NOT NULL) OR actor_authority='platform_admin')
 );
+
+ALTER TABLE public.admin_audit_events
+    DROP CONSTRAINT admin_audit_events_outcome_check,
+    ADD CONSTRAINT admin_audit_events_outcome_check
+        CHECK (outcome IN ('success','conflict','failure','partial_failure'));
 
 CREATE INDEX admin_people_bulk_jobs_organization_created_idx
     ON public.admin_people_bulk_jobs(organization_id, created_at DESC);
@@ -74,6 +83,16 @@ FOR EACH ROW EXECUTE FUNCTION public.protect_admin_people_bulk_target_snapshot()
 
 -- +goose Down
 -- +goose StatementBegin
+DROP TRIGGER IF EXISTS admin_audit_events_immutable ON public.admin_audit_events;
+DELETE FROM public.admin_audit_events WHERE outcome='partial_failure';
+ALTER TABLE public.admin_audit_events
+    DROP CONSTRAINT admin_audit_events_outcome_check,
+    ADD CONSTRAINT admin_audit_events_outcome_check
+        CHECK (outcome IN ('success','conflict','failure'));
+CREATE TRIGGER admin_audit_events_immutable
+BEFORE UPDATE OR DELETE ON public.admin_audit_events
+FOR EACH ROW EXECUTE FUNCTION public.reject_admin_audit_event_mutation();
+
 DELETE FROM public.admin_jobs
 WHERE id IN (SELECT job_id FROM public.admin_people_bulk_jobs);
 

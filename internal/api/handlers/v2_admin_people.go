@@ -26,10 +26,17 @@ type V2AdminPeopleService interface {
 	UpdateProfileGroup(context.Context, uuid.UUID, int, int, string, int64, int) (adminpeople.PersonSummary, error)
 }
 
-type V2AdminPeopleHandler struct{ service V2AdminPeopleService }
+type AdminPeopleWorkerWake interface{ Wake() }
+type V2AdminPeopleHandler struct {
+	service V2AdminPeopleService
+	worker  AdminPeopleWorkerWake
+}
 
 func NewV2AdminPeopleHandler(service V2AdminPeopleService) *V2AdminPeopleHandler {
 	return &V2AdminPeopleHandler{service: service}
+}
+func NewV2AdminPeopleHandlerWithWake(service V2AdminPeopleService, worker AdminPeopleWorkerWake) *V2AdminPeopleHandler {
+	return &V2AdminPeopleHandler{service: service, worker: worker}
 }
 
 func (h *V2AdminPeopleHandler) HandleListPeople(w http.ResponseWriter, r *http.Request) {
@@ -109,6 +116,9 @@ func (h *V2AdminPeopleHandler) HandleCreateBulkJob(w http.ResponseWriter, r *htt
 	if err != nil {
 		h.writeError(w, r, err, 0)
 		return
+	}
+	if h.worker != nil {
+		h.worker.Wake()
 	}
 	writeJSON(w, http.StatusCreated, struct {
 		Job adminpeople.BulkResult `json:"job"`
@@ -264,7 +274,7 @@ func adminPeopleMutationContext(r *http.Request) context.Context {
 	if authority == "" {
 		authority = adminpeople.AuthorityOrganizationAdmin
 	}
-	return adminpeople.WithMutationActor(r.Context(), adminpeople.MutationActor{AccountID: claims.AccountID, Authority: authority, RequestID: adminRequestID(r)})
+	return adminpeople.WithMutationActor(r.Context(), adminpeople.MutationActor{AccountID: claims.AccountID, Authority: authority, MembershipID: claims.MembershipID, SecurityRevision: claims.SecurityRevision, PolicyRevision: claims.PolicyRevision, RequestID: adminRequestID(r)})
 }
 
 func adminPeopleFilterFromQuery(w http.ResponseWriter, r *http.Request) (adminpeople.Filter, bool) {

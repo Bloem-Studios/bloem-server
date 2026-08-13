@@ -47,8 +47,12 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 		verifier := auth.NewAccountCredentialVerifier(auth.NewUserRepository(deps.DB))
 		platformHandler = handlers.NewV2AdminPlatformHandler(tenants, verifier)
 	}
-	if deps.DB != nil && deps.Config != nil {
-		peopleHandler = handlers.NewV2AdminPeopleHandler(adminpeople.NewService(deps.DB, deps.Config.Auth.JWTSecret))
+	peopleService := deps.AdminPeopleService
+	if peopleService == nil && deps.DB != nil && deps.Config != nil {
+		peopleService = adminpeople.NewService(deps.DB, deps.Config.Auth.JWTSecret)
+	}
+	if peopleService != nil {
+		peopleHandler = handlers.NewV2AdminPeopleHandlerWithWake(peopleService, deps.AdminPeopleWorker)
 	}
 	mountV2Routes(r, handlers.NewV2SystemHandler(store), session, authMW, adminMW, platformHandler, peopleHandler)
 }

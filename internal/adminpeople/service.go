@@ -124,9 +124,12 @@ type BulkResult struct {
 }
 
 type MutationActor struct {
-	AccountID int
-	Authority string
-	RequestID string
+	AccountID        int
+	Authority        string
+	MembershipID     uuid.UUID
+	SecurityRevision int64
+	PolicyRevision   int64
+	RequestID        string
 }
 type mutationMetadataKey struct{}
 
@@ -158,10 +161,16 @@ func mutationActor(ctx context.Context, accountID int) (MutationActor, error) {
 	return actor, nil
 }
 
+type DurableJob struct {
+	JobID          string
+	OrganizationID uuid.UUID
+}
+
 type Service struct {
-	pool *pgxpool.Pool
-	key  [32]byte
-	now  func() time.Time
+	pool                  *pgxpool.Pool
+	key                   [32]byte
+	now                   func() time.Time
+	selectionSnapshotHook func()
 }
 
 func NewService(pool *pgxpool.Pool, secret string) *Service {
@@ -464,7 +473,7 @@ func (s *Service) decodePeopleCursor(value string) (peopleCursor, error) {
 		return cursor, ErrInvalidCursor
 	}
 	signature, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
+	if err != nil || base64.RawURLEncoding.EncodeToString(signature) != parts[1] {
 		return cursor, ErrInvalidCursor
 	}
 	mac := hmac.New(sha256.New, s.key[:])
@@ -473,7 +482,7 @@ func (s *Service) decodePeopleCursor(value string) (peopleCursor, error) {
 		return cursor, ErrInvalidCursor
 	}
 	raw, err := base64.RawURLEncoding.DecodeString(parts[0])
-	if err != nil || json.Unmarshal(raw, &cursor) != nil {
+	if err != nil || base64.RawURLEncoding.EncodeToString(raw) != parts[0] || json.Unmarshal(raw, &cursor) != nil {
 		return peopleCursor{}, ErrInvalidCursor
 	}
 	return cursor, nil
@@ -502,11 +511,16 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 	}
 	canonical := canonicalizeSelectionFilter(filter)
 	snapshot := s.now().UTC()
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+	if err != nil {
+		return Selection{}, fmt.Errorf("begin people selection snapshot: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
 	// The materialized account IDs are the immutable snapshot. snapshot_at is
 	// retained for confirmation/audit; adding an application-clock cutoff here
 	// would incorrectly exclude rows when database and application clocks skew.
 	conditions, args := buildPeopleConditions(organizationID, canonical.toFilter(), nil)
-	rows, err := s.pool.Query(ctx, `
+	rows, err := tx.Query(ctx, `
 		SELECT m.account_id,m.id,m.status,m.security_revision,u.access_policy_revision,
 		       COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'group_id',p.access_group_id,'updated_at',p.updated_at) ORDER BY p.id) FROM user_profiles p WHERE p.organization_id=m.organization_id AND p.user_id=m.account_id),'[]'::jsonb)
 		FROM organization_memberships m JOIN users u ON u.id=m.account_id
@@ -537,8 +551,11 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 		return Selection{}, fmt.Errorf("iterate people selection: %w", err)
 	}
 	rows.Close()
+	if s.selectionSnapshotHook != nil {
+		s.selectionSnapshotHook()
+	}
 	var total int64
-	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE `+strings.Join(conditions, " AND "), args...).Scan(&total); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE `+strings.Join(conditions, " AND "), args...).Scan(&total); err != nil {
 		return Selection{}, fmt.Errorf("count people selection: %w", err)
 	}
 	reference := uuid.New()
@@ -552,12 +569,15 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 		return Selection{}, err
 	}
 	excluded := total - int64(len(targets))
-	if _, err = s.pool.Exec(ctx, `INSERT INTO admin_people_selections (id,organization_id,canonical_filter,snapshot_at,account_ids,matched_count,excluded_count,expires_at,targets) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, reference, organizationID, filterJSON, snapshot, ids, len(ids), excluded, expires, targetsJSON); err != nil {
+	if _, err = tx.Exec(ctx, `INSERT INTO admin_people_selections (id,organization_id,canonical_filter,snapshot_at,account_ids,matched_count,excluded_count,expires_at,targets) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, reference, organizationID, filterJSON, snapshot, ids, len(ids), excluded, expires, targetsJSON); err != nil {
 		return Selection{}, fmt.Errorf("persist immutable people selection: %w", err)
 	}
 	token, err := s.signSelectionReference(reference)
 	if err != nil {
 		return Selection{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Selection{}, fmt.Errorf("commit people selection snapshot: %w", err)
 	}
 	return Selection{Token: token, Matched: int64(len(ids)), Excluded: excluded, ExpiresAt: expires}, nil
 }
@@ -581,11 +601,11 @@ func (s *Service) parseSelectionReference(token string) (uuid.UUID, error) {
 	mac := hmac.New(sha256.New, s.key[:])
 	_, _ = mac.Write([]byte(parts[0]))
 	signature, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil || !hmac.Equal(signature, mac.Sum(nil)) {
+	if err != nil || base64.RawURLEncoding.EncodeToString(signature) != parts[1] || !hmac.Equal(signature, mac.Sum(nil)) {
 		return uuid.Nil, ErrInvalidSelection
 	}
 	payload, err := base64.RawURLEncoding.DecodeString(parts[0])
-	if err != nil || len(payload) != 16 {
+	if err != nil || base64.RawURLEncoding.EncodeToString(payload) != parts[0] || len(payload) != 16 {
 		return uuid.Nil, ErrInvalidSelection
 	}
 	reference, err := uuid.FromBytes(payload)
@@ -635,6 +655,29 @@ func (s *Service) CleanupExpiredSelections(ctx context.Context, limit int) (int6
 	return tag.RowsAffected(), nil
 }
 
+func (s *Service) ListRunnableBulkJobs(ctx context.Context, limit int) ([]DurableJob, error) {
+	if s == nil || s.pool == nil {
+		return nil, fmt.Errorf("people store unavailable")
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+	rows, err := s.pool.Query(ctx, `SELECT b.job_id,b.organization_id FROM admin_people_bulk_jobs b JOIN admin_jobs j ON j.id=b.job_id WHERE j.status IN ('queued','running') ORDER BY j.requested_at,b.job_id LIMIT $1`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list runnable people jobs: %w", err)
+	}
+	defer rows.Close()
+	jobs := []DurableJob{}
+	for rows.Next() {
+		var job DurableJob
+		if err := rows.Scan(&job.JobID, &job.OrganizationID); err != nil {
+			return nil, err
+		}
+		jobs = append(jobs, job)
+	}
+	return jobs, rows.Err()
+}
+
 func validateBulkAction(action BulkAction) error {
 	switch action.Kind {
 	case BulkAssignGroup:
@@ -682,6 +725,10 @@ func (s *Service) EnqueueBulk(ctx context.Context, organizationID uuid.UUID, act
 	if !s.now().UTC().Before(record.expires) {
 		return BulkResult{}, ErrSelectionExpired
 	}
+	actor, err = s.resolveBulkActorSnapshot(ctx, tx, organizationID, actor)
+	if err != nil {
+		return BulkResult{}, err
+	}
 	if action.Kind == BulkAssignGroup {
 		var exists bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM access_groups WHERE organization_id=$1 AND id=$2)`, organizationID, *action.GroupID).Scan(&exists); err != nil {
@@ -718,7 +765,7 @@ func (s *Service) EnqueueBulk(ctx context.Context, organizationID uuid.UUID, act
 	if _, err = tx.Exec(ctx, `INSERT INTO admin_jobs (id,job_type,status,created_by_user_id,request_payload,result_payload,message,progress_current,progress_total,requested_at,updated_at) VALUES ($1,'organization_people_bulk','queued',$2,$3,$4,'People bulk operation queued',0,$5,$6,$6)`, jobID, actorID, requestJSON, resultJSON, len(record.targets), now); err != nil {
 		return BulkResult{}, fmt.Errorf("persist queued people bulk job: %w", err)
 	}
-	if _, err = tx.Exec(ctx, `INSERT INTO admin_people_bulk_jobs (job_id,organization_id,selection_id,action_kind,group_id,action_key,actor_account_id,actor_authority,request_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULLIF($9,''))`, jobID, organizationID, reference, action.Kind, action.GroupID, actionKey, actorID, actor.Authority, actor.RequestID); err != nil {
+	if _, err = tx.Exec(ctx, `INSERT INTO admin_people_bulk_jobs (job_id,organization_id,selection_id,action_kind,group_id,action_key,actor_account_id,actor_authority,actor_membership_id,actor_security_revision,organization_policy_revision,request_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULLIF($12,''))`, jobID, organizationID, reference, action.Kind, action.GroupID, actionKey, actorID, actor.Authority, actor.MembershipID, actor.SecurityRevision, actor.PolicyRevision, actor.RequestID); err != nil {
 		return BulkResult{}, err
 	}
 	rows := make([][]any, 0, len(record.targets))
@@ -774,7 +821,7 @@ func (s *Service) ProcessBulkBatch(ctx context.Context, organizationID uuid.UUID
 	var action BulkAction
 	var actor MutationActor
 	var status string
-	err = tx.QueryRow(ctx, `SELECT j.status,b.action_kind,b.group_id,b.actor_account_id,b.actor_authority,COALESCE(b.request_id,'') FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1 AND b.organization_id=$2 FOR UPDATE OF j`, jobID, organizationID).Scan(&status, &action.Kind, &action.GroupID, &actor.AccountID, &actor.Authority, &actor.RequestID)
+	err = tx.QueryRow(ctx, `SELECT j.status,b.action_kind,b.group_id,b.actor_account_id,b.actor_authority,b.actor_membership_id,b.actor_security_revision,b.organization_policy_revision,COALESCE(b.request_id,'') FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1 AND b.organization_id=$2 FOR UPDATE OF j`, jobID, organizationID).Scan(&status, &action.Kind, &action.GroupID, &actor.AccountID, &actor.Authority, &actor.MembershipID, &actor.SecurityRevision, &actor.PolicyRevision, &actor.RequestID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return BulkResult{}, ErrNotFound
 	}
@@ -785,6 +832,11 @@ func (s *Service) ProcessBulkBatch(ctx context.Context, organizationID uuid.UUID
 	if status == "completed" || status == "failed" {
 		_ = tx.Commit(ctx)
 		return s.GetBulkJob(ctx, organizationID, jobID)
+	}
+	if err := s.revalidateBulkActor(ctx, tx, organizationID, actor); err != nil {
+		_ = tx.Rollback(ctx)
+		_ = s.failBulkJob(context.WithoutCancel(ctx), organizationID, jobID, err)
+		return BulkResult{}, err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE admin_jobs SET status='running',started_at=COALESCE(started_at,now()),heartbeat_at=now(),updated_at=now() WHERE id=$1`, jobID); err != nil {
 		return BulkResult{}, err
@@ -854,7 +906,11 @@ func (s *Service) ProcessBulkBatch(ctx context.Context, organizationID uuid.UUID
 			return BulkResult{}, err
 		}
 		if previous != "completed" {
-			if err = recordPeopleAudit(ctx, tx, actor.AccountID, "people.bulk_job_completed", "bulk_job", jobID, organizationID, 0, 0, 0, "success", nil, map[string]any{"succeeded": result.Succeeded, "skipped": len(result.Skipped), "failed": len(result.Failed)}); err != nil {
+			outcome := "success"
+			if len(result.Skipped) > 0 || len(result.Failed) > 0 {
+				outcome = "partial_failure"
+			}
+			if err = recordPeopleAudit(ctx, tx, actor.AccountID, "people.bulk_job_completed", "bulk_job", jobID, organizationID, 0, 0, 0, outcome, nil, map[string]any{"succeeded": result.Succeeded, "skipped": len(result.Skipped), "failed": len(result.Failed)}); err != nil {
 				return BulkResult{}, err
 			}
 		}
@@ -871,6 +927,76 @@ func (s *Service) ProcessBulkBatch(ctx context.Context, organizationID uuid.UUID
 	return result, nil
 }
 
+func (s *Service) resolveBulkActorSnapshot(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actor MutationActor) (MutationActor, error) {
+	var policyRevision int64
+	if err := tx.QueryRow(ctx, `SELECT policy_revision FROM organizations WHERE id=$1 AND status='active'`, organizationID).Scan(&policyRevision); err != nil {
+		return MutationActor{}, ErrAuthorizationStateChanged
+	}
+	if actor.PolicyRevision <= 0 {
+		actor.PolicyRevision = policyRevision
+	} else if actor.PolicyRevision != policyRevision {
+		return MutationActor{}, ErrAuthorizationStateChanged
+	}
+
+	if actor.Authority == AuthorityPlatformAdmin {
+		var enabled bool
+		var role string
+		if err := tx.QueryRow(ctx, `SELECT enabled,role FROM users WHERE id=$1`, actor.AccountID).Scan(&enabled, &role); err != nil || !enabled || role != "admin" {
+			return MutationActor{}, ErrAuthorizationStateChanged
+		}
+		return actor, nil
+	}
+
+	var membershipID uuid.UUID
+	var status tenancy.MembershipStatus
+	var role string
+	var securityRevision int64
+	if err := tx.QueryRow(ctx, `SELECT id,status,legacy_role,security_revision FROM organization_memberships WHERE organization_id=$1 AND account_id=$2`, organizationID, actor.AccountID).Scan(&membershipID, &status, &role, &securityRevision); err != nil {
+		return MutationActor{}, ErrAuthorizationStateChanged
+	}
+	if status != tenancy.MembershipActive || role != "admin" {
+		return MutationActor{}, ErrAuthorizationStateChanged
+	}
+	if actor.MembershipID == uuid.Nil && actor.SecurityRevision <= 0 {
+		actor.MembershipID = membershipID
+		actor.SecurityRevision = securityRevision
+	} else if actor.MembershipID != membershipID || actor.SecurityRevision != securityRevision {
+		return MutationActor{}, ErrAuthorizationStateChanged
+	}
+	return actor, nil
+}
+
+func (s *Service) revalidateBulkActor(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actor MutationActor) error {
+	var policyRevision int64
+	err := tx.QueryRow(ctx, `SELECT policy_revision FROM organizations WHERE id=$1 AND status='active'`, organizationID).Scan(&policyRevision)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrAuthorizationStateChanged
+	}
+	if err != nil {
+		return err
+	}
+	if policyRevision != actor.PolicyRevision {
+		return ErrAuthorizationStateChanged
+	}
+	if actor.Authority == AuthorityOrganizationAdmin {
+		var status tenancy.MembershipStatus
+		var role string
+		var revision int64
+		err = tx.QueryRow(ctx, `SELECT status,legacy_role,security_revision FROM organization_memberships WHERE id=$1 AND organization_id=$2 AND account_id=$3`, actor.MembershipID, organizationID, actor.AccountID).Scan(&status, &role, &revision)
+		if err != nil || status != tenancy.MembershipActive || role != "admin" || revision != actor.SecurityRevision {
+			return ErrAuthorizationStateChanged
+		}
+		return nil
+	}
+	var enabled bool
+	var role string
+	err = tx.QueryRow(ctx, `SELECT enabled,role FROM users WHERE id=$1`, actor.AccountID).Scan(&enabled, &role)
+	if err != nil || !enabled || role != "admin" {
+		return ErrAuthorizationStateChanged
+	}
+	return nil
+}
+
 func (s *Service) failBulkJob(ctx context.Context, organizationID uuid.UUID, jobID string, cause error) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -879,7 +1005,7 @@ func (s *Service) failBulkJob(ctx context.Context, organizationID uuid.UUID, job
 	defer func() { _ = tx.Rollback(ctx) }()
 	var actor MutationActor
 	var status string
-	err = tx.QueryRow(ctx, `SELECT j.status,b.actor_account_id,b.actor_authority,COALESCE(b.request_id,'') FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1 AND b.organization_id=$2 FOR UPDATE OF j`, jobID, organizationID).Scan(&status, &actor.AccountID, &actor.Authority, &actor.RequestID)
+	err = tx.QueryRow(ctx, `SELECT j.status,b.actor_account_id,b.actor_authority,b.actor_membership_id,b.actor_security_revision,b.organization_policy_revision,COALESCE(b.request_id,'') FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1 AND b.organization_id=$2 FOR UPDATE OF j`, jobID, organizationID).Scan(&status, &actor.AccountID, &actor.Authority, &actor.MembershipID, &actor.SecurityRevision, &actor.PolicyRevision, &actor.RequestID)
 	if err != nil {
 		return err
 	}
@@ -900,6 +1026,10 @@ func (s *Service) failBulkJob(ctx context.Context, organizationID uuid.UUID, job
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func (s *Service) FailBulkJob(ctx context.Context, organizationID uuid.UUID, jobID string, cause error) error {
+	return s.failBulkJob(ctx, organizationID, jobID, cause)
 }
 
 func bulkResultInTx(ctx context.Context, tx pgx.Tx, jobID string) (BulkResult, int, error) {

@@ -28,6 +28,9 @@ type adminPeopleServiceStub struct {
 	err            error
 	authority      string
 }
+type adminPeopleWakeStub struct{ calls int }
+
+func (s *adminPeopleWakeStub) Wake() { s.calls++ }
 
 func (s *adminPeopleServiceStub) List(_ context.Context, org uuid.UUID, _ adminpeople.Filter) (adminpeople.Page, error) {
 	s.calls++
@@ -116,6 +119,19 @@ func TestV2AdminPeopleUsesOnlyMiddlewareOrganizationAndActor(t *testing.T) {
 	handler.HandleCreateBulkJob(maliciousRec, malicious)
 	if maliciousRec.Code != http.StatusBadRequest {
 		t.Fatalf("organization selector response = %d %s", maliciousRec.Code, maliciousRec.Body.String())
+	}
+}
+
+func TestV2AdminPeopleSignalsSharedWorkerAfterDurableEnqueue(t *testing.T) {
+	organizationID := uuid.New()
+	store := &adminPeopleServiceStub{result: adminpeople.BulkResult{JobID: "job-1", Status: "queued"}}
+	wake := &adminPeopleWakeStub{}
+	handler := NewV2AdminPeopleHandlerWithWake(store, wake)
+	req := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/bulk-jobs", `{"selection_token":"signed","kind":"suspend_memberships"}`, organizationID, 7, nil)
+	rec := httptest.NewRecorder()
+	handler.HandleCreateBulkJob(rec, req)
+	if rec.Code != http.StatusCreated || wake.calls != 1 {
+		t.Fatalf("response=%d %s wakes=%d", rec.Code, rec.Body.String(), wake.calls)
 	}
 }
 
