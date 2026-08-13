@@ -442,15 +442,36 @@ func TestDownloadPolicyRejectsMissingTenantFactsBeforeEvaluation(t *testing.T) {
 	}
 }
 
+func TestDownloadPolicyRejectsTenantForDifferentAccount(t *testing.T) {
+	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true}}
+	resolver := DownloadQualityResolver{actionDecider: decider}
+	user := &models.User{ID: 9, DownloadAllowed: true}
+	cfg := config.DownloadConfig{Enabled: true}
+	file := &models.MediaFile{ID: 3, Resolution: "1080p"}
+
+	_, err := resolver.Resolve(downloadResolvedTenantContextForAccount(8), QualityOriginal, user, cfg, file, playback.ClientCapabilities{}, true, "")
+	if !errors.Is(err, ErrDownloadNotAllowed) {
+		t.Fatalf("Resolve() error = %v, want ErrDownloadNotAllowed", err)
+	}
+	if len(decider.inputs) != 0 {
+		t.Fatalf("decider calls = %d, want 0", len(decider.inputs))
+	}
+}
+
 func downloadResolvedTenantContext() context.Context {
+	return downloadResolvedTenantContextForAccount(9)
+}
+
+func downloadResolvedTenantContextForAccount(accountID int) context.Context {
 	return tenancy.WithContext(context.Background(), tenancy.Context{
-		OrganizationID:     uuid.MustParse("10000000-0000-0000-0000-000000000001"),
-		MembershipID:       uuid.MustParse("20000000-0000-0000-0000-000000000001"),
-		AccountID:          9,
-		OrganizationStatus: tenancy.OrganizationInitializing,
-		MembershipStatus:   tenancy.MembershipActive,
-		PolicyRevision:     7,
-		SecurityRevision:   11,
-		Legacy:             true,
+		OrganizationID:      uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+		MembershipID:        uuid.MustParse("20000000-0000-0000-0000-000000000001"),
+		AccountID:           accountID,
+		OrganizationStatus:  tenancy.OrganizationInitializing,
+		MembershipStatus:    tenancy.MembershipActive,
+		PolicyRevision:      7,
+		SecurityRevision:    11,
+		Legacy:              true,
+		OrganizationDefault: true,
 	})
 }

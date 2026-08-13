@@ -8,14 +8,15 @@ import (
 
 // Context is the resolved tenant identity attached to an authenticated request.
 type Context struct {
-	OrganizationID     uuid.UUID
-	MembershipID       uuid.UUID
-	AccountID          int
-	OrganizationStatus OrganizationStatus
-	MembershipStatus   MembershipStatus
-	PolicyRevision     int64
-	SecurityRevision   int64
-	Legacy             bool
+	OrganizationID      uuid.UUID
+	MembershipID        uuid.UUID
+	AccountID           int
+	OrganizationStatus  OrganizationStatus
+	OrganizationDefault bool
+	MembershipStatus    MembershipStatus
+	PolicyRevision      int64
+	SecurityRevision    int64
+	Legacy              bool
 }
 
 type contextKey struct{}

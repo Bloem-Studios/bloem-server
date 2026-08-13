@@ -433,7 +433,11 @@ func downloadActionInput(
 	artifactsAvailable bool,
 	deviceID string,
 ) (policyengine.ActionInput, error) {
-	tenantFacts, err := policyengine.TenantFactsFromContext(ctx)
+	policyUserID := userID
+	if user != nil {
+		policyUserID = user.ID
+	}
+	tenantFacts, err := policyengine.TenantFactsFromContext(ctx, policyUserID)
 	if err != nil {
 		return policyengine.ActionInput{}, err
 	}
@@ -441,7 +445,7 @@ func downloadActionInput(
 		SchemaVersion:      1,
 		Tenant:             tenantFacts,
 		Action:             action,
-		UserID:             userID,
+		UserID:             policyUserID,
 		DownloadsEnabled:   cfg.Enabled,
 		TranscodeEnabled:   cfg.TranscodeEnabled,
 		ArtifactsAvailable: artifactsAvailable,
@@ -449,7 +453,6 @@ func downloadActionInput(
 		DeviceID:           deviceID,
 	}
 	if user != nil {
-		input.UserID = user.ID
 		input.DownloadAllowed = user.DownloadAllowed
 		input.DownloadTranscodeAllowed = user.DownloadTranscodeAllowed
 		input.MaxPlaybackQuality = user.MaxPlaybackQuality

@@ -45,19 +45,20 @@ type TenantFacts struct {
 	MembershipSecurityRevision int64  `json:"membership_security_revision"`
 }
 
-// TenantFactsFromContext converts the server-resolved tenant context into the
-// policy input contract. Missing, incomplete, or inactive tenant state is
-// rejected before policy evaluation.
-func TenantFactsFromContext(ctx context.Context) (TenantFacts, error) {
+// TenantFactsFromContext converts the server-resolved tenant context for the
+// expected policy subject into the policy input contract. Missing, incomplete,
+// inactive, or subject-mismatched tenant state is rejected before evaluation.
+func TenantFactsFromContext(ctx context.Context, expectedAccountID int) (TenantFacts, error) {
 	if ctx == nil {
 		return TenantFacts{}, ErrTenantFactsUnavailable
 	}
 	tenant, ok := tenancy.FromContext(ctx)
-	if !ok || tenant.OrganizationID == uuid.Nil || tenant.MembershipID == uuid.Nil ||
+	if !ok || expectedAccountID <= 0 || tenant.AccountID != expectedAccountID ||
+		tenant.OrganizationID == uuid.Nil || tenant.MembershipID == uuid.Nil ||
 		tenant.PolicyRevision <= 0 || tenant.SecurityRevision <= 0 ||
 		tenant.MembershipStatus != tenancy.MembershipActive ||
 		(tenant.OrganizationStatus != tenancy.OrganizationActive &&
-			!(tenant.Legacy && tenant.OrganizationStatus == tenancy.OrganizationInitializing)) {
+			!(tenant.Legacy && tenant.OrganizationDefault && tenant.OrganizationStatus == tenancy.OrganizationInitializing)) {
 		return TenantFacts{}, fmt.Errorf("%w: resolved tenant context is incomplete or inactive", ErrTenantFactsUnavailable)
 	}
 	return TenantFacts{

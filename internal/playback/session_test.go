@@ -538,14 +538,15 @@ func newPlaybackPolicyPDP(t *testing.T) *policy.PDP {
 
 func playbackResolvedTenantContext() context.Context {
 	return tenancy.WithContext(context.Background(), tenancy.Context{
-		OrganizationID:     uuid.MustParse("10000000-0000-0000-0000-000000000001"),
-		MembershipID:       uuid.MustParse("20000000-0000-0000-0000-000000000001"),
-		AccountID:          1,
-		OrganizationStatus: tenancy.OrganizationInitializing,
-		MembershipStatus:   tenancy.MembershipActive,
-		PolicyRevision:     7,
-		SecurityRevision:   11,
-		Legacy:             true,
+		OrganizationID:      uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+		MembershipID:        uuid.MustParse("20000000-0000-0000-0000-000000000001"),
+		AccountID:           1,
+		OrganizationStatus:  tenancy.OrganizationInitializing,
+		MembershipStatus:    tenancy.MembershipActive,
+		PolicyRevision:      7,
+		SecurityRevision:    11,
+		Legacy:              true,
+		OrganizationDefault: true,
 	})
 }
 

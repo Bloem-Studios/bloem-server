@@ -42,13 +42,13 @@ func NewViewerResolver(
 
 // Resolve computes the effective viewer scope for the request.
 func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput) (access.Scope, error) {
-	tenantFacts, err := TenantFactsFromContext(ctx)
-	if err != nil {
-		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant facts: %w", err)
-	}
 	user, err := r.users.GetByID(ctx, input.UserID)
 	if err != nil {
 		return access.Scope{}, fmt.Errorf("loading user %d: %w", input.UserID, err)
+	}
+	tenantFacts, err := TenantFactsFromContext(ctx, user.ID)
+	if err != nil {
+		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant facts: %w", err)
 	}
 
 	store, err := r.storeFactory.ForUser(ctx, input.UserID)

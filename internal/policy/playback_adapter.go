@@ -17,7 +17,7 @@ type ActionChecker interface {
 // admission hook. Session counts and limit loading remain owned by playback.
 func NewPlaybackAdmissionDecider(checker ActionChecker) playback.AdmissionDecider {
 	return func(ctx context.Context, req playback.AdmissionRequest) (playback.AdmissionDecision, error) {
-		tenantFacts, err := TenantFactsFromContext(ctx)
+		tenantFacts, err := TenantFactsFromContext(ctx, req.UserID)
 		if err != nil {
 			return playback.AdmissionDecision{}, fmt.Errorf("playback admission tenant facts: %w", err)
 		}

@@ -60,14 +60,15 @@ func (r *Resolver) Resolve(ctx context.Context, accountID int, requestedOrganiza
 	}
 
 	return Context{
-		OrganizationID:     organization.ID,
-		MembershipID:       membership.ID,
-		AccountID:          accountID,
-		OrganizationStatus: organization.Status,
-		MembershipStatus:   membership.Status,
-		PolicyRevision:     organization.PolicyRevision,
-		SecurityRevision:   membership.SecurityRevision,
-		Legacy:             legacy,
+		OrganizationID:      organization.ID,
+		MembershipID:        membership.ID,
+		AccountID:           accountID,
+		OrganizationStatus:  organization.Status,
+		OrganizationDefault: organization.Default,
+		MembershipStatus:    membership.Status,
+		PolicyRevision:      organization.PolicyRevision,
+		SecurityRevision:    membership.SecurityRevision,
+		Legacy:              legacy,
 	}, nil
 }
 

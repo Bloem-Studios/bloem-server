@@ -265,7 +265,7 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 }
 
 func TestTenantFactsFromContextRequiresCompleteResolvedContext(t *testing.T) {
-	_, err := TenantFactsFromContext(context.Background())
+	_, err := TenantFactsFromContext(context.Background(), 1)
 	if !errors.Is(err, ErrTenantFactsUnavailable) {
 		t.Fatalf("error = %v, want ErrTenantFactsUnavailable", err)
 	}
@@ -284,12 +284,15 @@ func TestTenantFactsFromContextRequiresCompleteResolvedContext(t *testing.T) {
 			tenant.Legacy = false
 			tenant.OrganizationStatus = tenancy.OrganizationInitializing
 		}},
+		{name: "non-default legacy initializing organization", mutate: func(tenant *tenancy.Context) {
+			tenant.OrganizationDefault = false
+		}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			tenant := resolvedTenantForPolicyTest()
 			test.mutate(&tenant)
-			_, err := TenantFactsFromContext(tenancy.WithContext(context.Background(), tenant))
+			_, err := TenantFactsFromContext(tenancy.WithContext(context.Background(), tenant), tenant.AccountID)
 			if !errors.Is(err, ErrTenantFactsUnavailable) {
 				t.Fatalf("error = %v, want ErrTenantFactsUnavailable", err)
 			}
@@ -297,8 +300,33 @@ func TestTenantFactsFromContextRequiresCompleteResolvedContext(t *testing.T) {
 	}
 }
 
+func TestTenantFactsFromContextRequiresMatchingPositiveAccount(t *testing.T) {
+	ctx := resolvedTenantContextForPolicyTest()
+	for _, expectedAccountID := range []int{0, 2} {
+		_, err := TenantFactsFromContext(ctx, expectedAccountID)
+		if !errors.Is(err, ErrTenantFactsUnavailable) {
+			t.Fatalf("TenantFactsFromContext(expected account %d) error = %v, want ErrTenantFactsUnavailable", expectedAccountID, err)
+		}
+	}
+}
+
+func TestTenantFactsFromContextAcceptsActiveNonDefaultOrganization(t *testing.T) {
+	tenant := resolvedTenantForPolicyTest()
+	tenant.Legacy = false
+	tenant.OrganizationDefault = false
+	tenant.OrganizationStatus = tenancy.OrganizationActive
+
+	facts, err := TenantFactsFromContext(tenancy.WithContext(context.Background(), tenant), tenant.AccountID)
+	if err != nil {
+		t.Fatalf("TenantFactsFromContext() error: %v", err)
+	}
+	if facts.Legacy || facts.OrganizationStatus != "active" {
+		t.Fatalf("facts = %+v, want active non-legacy tenant", facts)
+	}
+}
+
 func TestTenantFactsFromContextMarshalsExactFacts(t *testing.T) {
-	facts, err := TenantFactsFromContext(resolvedTenantContextForPolicyTest())
+	facts, err := TenantFactsFromContext(resolvedTenantContextForPolicyTest(), 1)
 	if err != nil {
 		t.Fatalf("TenantFactsFromContext() error: %v", err)
 	}
@@ -318,6 +346,20 @@ func TestViewerResolverRejectsMissingTenantFacts(t *testing.T) {
 	resolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, context.Background()))
 
 	_, err := resolver.Resolve(context.Background(), access.ResolveInput{UserID: 1, SessionID: "sess-1"})
+	if !errors.Is(err, ErrTenantFactsUnavailable) {
+		t.Fatalf("Resolve() error = %v, want ErrTenantFactsUnavailable", err)
+	}
+}
+
+func TestViewerResolverRejectsTenantForDifferentAccount(t *testing.T) {
+	tenant := resolvedTenantForPolicyTest()
+	tenant.AccountID = 2
+	ctx := tenancy.WithContext(context.Background(), tenant)
+	users := viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}}
+	stores := viewerResolverStoreProvider{store: viewerResolverTestStore{}}
+	resolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, context.Background()))
+
+	_, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
 	if !errors.Is(err, ErrTenantFactsUnavailable) {
 		t.Fatalf("Resolve() error = %v, want ErrTenantFactsUnavailable", err)
 	}
@@ -367,6 +409,12 @@ func TestPlaybackAdmissionAdapterRequiresAndPopulatesTenantFacts(t *testing.T) {
 	if len(checker.inputs) != 0 {
 		t.Fatalf("checker calls after missing tenant = %d, want 0", len(checker.inputs))
 	}
+	if _, err := decider(resolvedTenantContextForPolicyTest(), playback.AdmissionRequest{UserID: 2}); !errors.Is(err, ErrTenantFactsUnavailable) {
+		t.Fatalf("mismatched account error = %v, want ErrTenantFactsUnavailable", err)
+	}
+	if len(checker.inputs) != 0 {
+		t.Fatalf("checker calls after mismatched account = %d, want 0", len(checker.inputs))
+	}
 
 	if _, err := decider(resolvedTenantContextForPolicyTest(), req); err != nil {
 		t.Fatalf("resolved tenant decision error: %v", err)
@@ -395,14 +443,15 @@ func resolvedTenantContextForPolicyTest() context.Context {
 
 func resolvedTenantForPolicyTest() tenancy.Context {
 	return tenancy.Context{
-		OrganizationID:     uuid.MustParse("10000000-0000-0000-0000-000000000001"),
-		MembershipID:       uuid.MustParse("20000000-0000-0000-0000-000000000001"),
-		AccountID:          1,
-		OrganizationStatus: tenancy.OrganizationInitializing,
-		MembershipStatus:   tenancy.MembershipActive,
-		PolicyRevision:     7,
-		SecurityRevision:   11,
-		Legacy:             true,
+		OrganizationID:      uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+		MembershipID:        uuid.MustParse("20000000-0000-0000-0000-000000000001"),
+		AccountID:           1,
+		OrganizationStatus:  tenancy.OrganizationInitializing,
+		MembershipStatus:    tenancy.MembershipActive,
+		PolicyRevision:      7,
+		SecurityRevision:    11,
+		Legacy:              true,
+		OrganizationDefault: true,
 	}
 }
 

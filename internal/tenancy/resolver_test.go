@@ -10,14 +10,15 @@ import (
 
 func TestContextRoundTrip(t *testing.T) {
 	want := Context{
-		OrganizationID:     uuid.New(),
-		MembershipID:       uuid.New(),
-		AccountID:          41,
-		OrganizationStatus: OrganizationActive,
-		MembershipStatus:   MembershipActive,
-		PolicyRevision:     7,
-		SecurityRevision:   11,
-		Legacy:             true,
+		OrganizationID:      uuid.New(),
+		MembershipID:        uuid.New(),
+		AccountID:           41,
+		OrganizationStatus:  OrganizationActive,
+		MembershipStatus:    MembershipActive,
+		PolicyRevision:      7,
+		SecurityRevision:    11,
+		Legacy:              true,
+		OrganizationDefault: true,
 	}
 
 	got, ok := FromContext(WithContext(context.Background(), want))
@@ -62,6 +63,7 @@ func TestResolverUsesDefaultOrganizationOnlyForLegacy(t *testing.T) {
 	membershipID := uuid.New()
 	organization := activeOrganizationWithID(organizationID)
 	organization.Status = OrganizationInitializing
+	organization.Default = true
 	resolver := NewResolver(resolverTestStore{
 		defaultOrganization: organization,
 		organizations:       map[uuid.UUID]Organization{organizationID: organization},
@@ -74,8 +76,28 @@ func TestResolverUsesDefaultOrganizationOnlyForLegacy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if got.OrganizationID != organizationID || got.MembershipID != membershipID || !got.Legacy || got.OrganizationStatus != OrganizationInitializing {
+	if got.OrganizationID != organizationID || got.MembershipID != membershipID || !got.Legacy || !got.OrganizationDefault || got.OrganizationStatus != OrganizationInitializing {
 		t.Fatalf("Resolve = %#v, want legacy default organization context", got)
+	}
+}
+
+func TestResolverDoesNotMarkNonDefaultOrganizationAsDefault(t *testing.T) {
+	organizationID := uuid.New()
+	membershipID := uuid.New()
+	organization := activeOrganizationWithID(organizationID)
+	resolver := NewResolver(resolverTestStore{
+		organizations: map[uuid.UUID]Organization{organizationID: organization},
+		memberships: map[resolverMembershipKey]Membership{
+			{accountID: 17, organizationID: organizationID}: activeMembership(membershipID, organizationID, 17),
+		},
+	})
+
+	got, err := resolver.Resolve(context.Background(), 17, &organizationID, false)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if got.OrganizationDefault {
+		t.Fatalf("OrganizationDefault = true for non-default organization: %#v", got)
 	}
 }
 

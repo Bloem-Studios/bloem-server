@@ -51,7 +51,7 @@ func NewPolicyActingAdminMiddleware(pdp PermissionDecider, primaryChecker Primar
 				writeInternalError(w, activeProfileVerificationFailedMsg)
 				return
 			}
-			tenantFacts, err := policy.TenantFactsFromContext(r.Context())
+			tenantFacts, err := policy.TenantFactsFromContext(r.Context(), claims.UserID)
 			if err != nil {
 				writeInternalError(w, activeProfileVerificationFailedMsg)
 				return
@@ -311,7 +311,7 @@ func (m *PolicyPermissionMiddleware) checkPermission(r *http.Request, input poli
 	if m == nil || m.pdp == nil {
 		return policy.PermissionDecision{}, errMissingPolicyDecider{}
 	}
-	tenantFacts, err := policy.TenantFactsFromContext(r.Context())
+	tenantFacts, err := policy.TenantFactsFromContext(r.Context(), input.UserID)
 	if err != nil {
 		return policy.PermissionDecision{}, err
 	}
