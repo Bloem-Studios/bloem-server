@@ -38,13 +38,16 @@ func (m *ViewerAccessMiddleware) RequireViewerAccess(next http.Handler) http.Han
 			return
 		}
 
-		profileID := r.Header.Get("X-Profile-Id")
+		profileID, ok := bindDirectProfile(w, r, r.Header.Get("X-Profile-Id"))
+		if !ok {
+			return
+		}
 		input := access.ResolveInput{
 			UserID:              claims.UserID,
 			SessionID:           claims.SessionID,
 			ProfileID:           profileID,
 			ProfileToken:        r.Header.Get("X-Profile-Token"),
-			SkipPINVerification: claims.TokenType == auth.TokenTypeAPIKey,
+			SkipPINVerification: claims.TokenType == auth.TokenTypeAPIKey || claims.AuthMethod == auth.AuthMethodDirectProfile,
 		}
 
 		scope, err := m.resolver.Resolve(r.Context(), input)

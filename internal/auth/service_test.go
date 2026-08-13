@@ -81,6 +81,14 @@ func (s *setupSessions) Create(_ context.Context, session models.AuthSession) er
 	return nil
 }
 
+func (s *setupSessions) CreateProfileSessionIfCurrent(
+	ctx context.Context,
+	session models.AuthSession,
+	_ SessionSubject,
+) error {
+	return s.Create(ctx, session)
+}
+
 func (*setupSessions) GetByID(context.Context, string) (*models.AuthSession, error) {
 	return nil, ErrSessionNotFound
 }

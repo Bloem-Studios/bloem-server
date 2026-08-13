@@ -475,10 +475,7 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 	if !canManage {
 		// Non-managers may only update their own active profile and only a
 		// narrow set of playback preferences.
-		activeProfileID := apimw.GetProfileID(r.Context())
-		if activeProfileID == "" {
-			activeProfileID = r.Header.Get("X-Profile-Id")
-		}
+		activeProfileID := apimw.ActiveProfileID(r)
 		if activeProfileID == "" || activeProfileID != profileID {
 			writeError(
 				w,

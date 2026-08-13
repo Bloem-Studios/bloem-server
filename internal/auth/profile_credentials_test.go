@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -220,6 +221,55 @@ func TestProfileCredentialsConcurrentDuplicateEmailWritesAllowOneOwner(t *testin
 	}
 	if successes != 1 || collisions != 1 {
 		t.Fatalf("concurrent result successes=%d collisions=%d, want 1 each", successes, collisions)
+	}
+}
+
+func TestProfileCredentialWriteErrorDoesNotExposeEmail(t *testing.T) {
+	ctx := context.Background()
+	service := newProfileCredentialService(t)
+	accountID, profileID := newProfileCredentialFixture(t, service.pool, "redaction-a")
+	otherID, otherProfileID := newProfileCredentialFixture(t, service.pool, "redaction-b")
+	const email = "private-login@example.test"
+	if err := service.Set(ctx, accountID, profileID, email, "profile-password"); err != nil {
+		t.Fatal(err)
+	}
+	err := service.Set(ctx, otherID, otherProfileID, email, "profile-password")
+	if !errors.Is(err, ErrCredentialEmailInUse) {
+		t.Fatalf("Set error = %v", err)
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "private-login@example.test") {
+		t.Fatalf("error leaks login email: %v", err)
+	}
+}
+
+func TestProfileCredentialRegistryTracksDirectProfileSQLWrites(t *testing.T) {
+	ctx := context.Background()
+	service := newProfileCredentialService(t)
+	accountID, profileID := newProfileCredentialFixture(t, service.pool, "sql-a")
+	otherAccountID, otherProfileID := newProfileCredentialFixture(t, service.pool, "sql-b")
+	hash, err := bcrypt.GenerateFromPassword([]byte("profile-password"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.pool.Exec(ctx, `UPDATE user_profiles SET login_email = 'SQL@Example.test', password_hash = $3 WHERE user_id = $1 AND id = $2`, accountID, profileID, string(hash)); err != nil {
+		t.Fatalf("direct credential write: %v", err)
+	}
+	var owner string
+	if err := service.pool.QueryRow(ctx, `SELECT profile_id FROM login_email_registry WHERE normalized_email = 'sql@example.test'`).Scan(&owner); err != nil || owner != profileID {
+		t.Fatalf("registry owner = %q, err = %v", owner, err)
+	}
+	// The colliding write must target a row that exists, or "no rows updated"
+	// would masquerade as an enforced collision.
+	collision, err := service.pool.Exec(ctx, `UPDATE user_profiles SET login_email = 'sql@example.test', password_hash = $3 WHERE user_id = $1 AND id = $2`, otherAccountID, otherProfileID, string(hash))
+	if err == nil {
+		t.Fatalf("direct SQL collision succeeded, rows affected = %d", collision.RowsAffected())
+	}
+	if _, err := service.pool.Exec(ctx, `UPDATE user_profiles SET login_email = NULL, password_hash = NULL WHERE user_id = $1 AND id = $2`, accountID, profileID); err != nil {
+		t.Fatal(err)
+	}
+	var exists bool
+	if err := service.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM login_email_registry WHERE normalized_email = 'sql@example.test')`).Scan(&exists); err != nil || exists {
+		t.Fatalf("registry clear exists=%v err=%v", exists, err)
 	}
 }
 

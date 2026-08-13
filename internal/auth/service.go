@@ -49,6 +49,10 @@ type serviceUserRepository interface {
 
 type serviceSessionRepository interface {
 	Create(ctx context.Context, session models.AuthSession) error
+	// CreateProfileSessionIfCurrent inserts a direct-profile session only if
+	// the subject verified at authentication is still the current one,
+	// serialized against credential rotation.
+	CreateProfileSessionIfCurrent(ctx context.Context, session models.AuthSession, subject SessionSubject) error
 	GetByID(ctx context.Context, id string) (*models.AuthSession, error)
 	ListByUser(ctx context.Context, userID int) ([]*models.AuthSession, error)
 	Revoke(ctx context.Context, id string) error
@@ -116,12 +120,12 @@ func (s *Service) LoginProfile(ctx context.Context, email, password string, devi
 		ProfileCredentialRevision: &credentialRevision,
 		AuthMethod:                AuthMethodDirectProfile,
 	}
-	if err := s.sessions.Create(ctx, session); err != nil {
+	if err := s.sessions.CreateProfileSessionIfCurrent(ctx, session, subject); err != nil {
 		return nil, SessionSubject{}, fmt.Errorf("creating direct profile session: %w", err)
 	}
 	pair, err := s.generateTokenPair(Claims{
 		UserID:             subject.AccountID,
-		Role:               "user",
+		Role:               legacyRoleUser,
 		SessionID:          sessionID,
 		ProfileID:          subject.ProfileID,
 		OrganizationID:     subject.OrganizationID,
@@ -601,6 +605,9 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 	if session.RevokedAt != nil || !session.ExpiresAt.After(time.Now()) {
 		return nil, ErrSessionRevoked
 	}
+	if session.AuthMethod == AuthMethodDirectProfile {
+		return s.refreshDirectProfile(ctx, claims, session)
+	}
 
 	user, err := s.users.GetByID(ctx, session.UserID)
 	if err != nil {
@@ -637,6 +644,68 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		AuthMethod:         claims.AuthMethod,
 		DeviceID:           claims.DeviceID,
 		CredentialRevision: claims.CredentialRevision,
+	})
+}
+
+// refreshDirectProfile re-issues a direct-profile token pair. A direct token
+// carries its own tenancy and credential facts, so refresh trusts none of
+// them: the presented claims must match the persisted session binding, and the
+// new pair is minted from the subject as the database currently has it. A
+// session whose binding no longer holds is revoked rather than refreshed.
+func (s *Service) refreshDirectProfile(
+	ctx context.Context,
+	claims *Claims,
+	session *models.AuthSession,
+) (*TokenPair, error) {
+	if s.profileCredentials == nil {
+		// A server that lost its credential service cannot revalidate the
+		// subject, but that is a wiring fault rather than grounds to destroy
+		// the session.
+		return nil, fmt.Errorf("direct profile sessions are unavailable")
+	}
+	bindingHolds := claims.UserID == session.UserID &&
+		claims.AuthMethod == AuthMethodDirectProfile &&
+		session.ProfileID != nil &&
+		session.ProfileCredentialRevision != nil &&
+		claims.ProfileID == *session.ProfileID &&
+		claims.DeviceID == session.DeviceID &&
+		claims.CredentialRevision == *session.ProfileCredentialRevision
+	if !bindingHolds {
+		_ = s.sessions.Revoke(ctx, session.ID)
+		return nil, ErrSessionRevoked
+	}
+
+	subject, err := s.profileCredentials.CurrentSessionSubject(
+		ctx,
+		session.UserID,
+		*session.ProfileID,
+		*session.ProfileCredentialRevision,
+		DeviceClaim{ID: session.DeviceID, Name: session.DeviceName, IPAddress: session.IPAddress},
+	)
+	if err != nil {
+		_ = s.sessions.Revoke(ctx, session.ID)
+		return nil, ErrSessionRevoked
+	}
+
+	// Slide the session window forward exactly as account refresh does, so an
+	// active direct-profile client never hits the hard expiry set at login.
+	newExpiry := time.Now().Add(s.jwt.RefreshExpiry())
+	if err := s.sessions.ExtendExpiresAt(ctx, session.ID, newExpiry); err != nil && !IsSessionNotFound(err) {
+		return nil, fmt.Errorf("extending session: %w", err)
+	}
+
+	return s.generateTokenPair(Claims{
+		UserID:             subject.AccountID,
+		Role:               legacyRoleUser,
+		SessionID:          session.ID,
+		ProfileID:          subject.ProfileID,
+		DeviceID:           subject.Device.ID,
+		OrganizationID:     subject.OrganizationID,
+		MembershipID:       subject.MembershipID,
+		PolicyRevision:     subject.PolicyRevision,
+		SecurityRevision:   subject.SecurityRevision,
+		AuthMethod:         AuthMethodDirectProfile,
+		CredentialRevision: subject.CredentialRevision,
 	})
 }
 

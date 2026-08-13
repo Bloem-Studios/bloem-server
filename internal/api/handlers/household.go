@@ -46,10 +46,7 @@ func canManageHousehold(
 	if apimw.IsAdmin(ctx) {
 		return true, nil
 	}
-	activeProfileID := apimw.GetProfileID(ctx)
-	if activeProfileID == "" {
-		activeProfileID = r.Header.Get("X-Profile-Id")
-	}
+	activeProfileID := apimw.ActiveProfileID(r)
 	if activeProfileID == "" {
 		return false, nil
 	}

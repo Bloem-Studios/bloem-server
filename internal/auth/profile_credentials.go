@@ -20,6 +20,10 @@ var (
 
 const AuthMethodDirectProfile = "direct_profile"
 
+// statusActive is the organization and membership status a direct-profile
+// subject must hold for its session to be valid.
+const statusActive = "active"
+
 // DeviceClaim identifies the device receiving a profile-bound session. The
 // profile credential service preserves it on the subject; device authorization
 // remains enforced by the existing request and policy layers.
@@ -86,14 +90,6 @@ func (s *ProfileCredentialService) Set(ctx context.Context, accountID int, profi
 	if err := lockProfileCredentialSubject(ctx, tx, accountID, profileID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `DELETE FROM login_email_registry WHERE profile_user_id = $1 AND profile_id = $2`, accountID, profileID); err != nil {
-		return fmt.Errorf("remove prior profile login email: %w", err)
-	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO login_email_registry (normalized_email, profile_user_id, profile_id)
-		VALUES ($1, $2, $3)`, normalizedLoginEmail(email), accountID, profileID); err != nil {
-		return mapProfileCredentialWriteError(err)
-	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE user_profiles
 		SET login_email = $3,
@@ -101,7 +97,7 @@ func (s *ProfileCredentialService) Set(ctx context.Context, accountID int, profi
 			credential_revision = credential_revision + 1,
 			updated_at = now()
 		WHERE user_id = $1 AND id = $2`, accountID, profileID, email, string(hash)); err != nil {
-		return fmt.Errorf("store profile credential: %w", err)
+		return mapProfileCredentialWriteError(err)
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE auth_sessions
@@ -128,9 +124,6 @@ func (s *ProfileCredentialService) Clear(ctx context.Context, accountID int, pro
 	if err := lockProfileCredentialSubject(ctx, tx, accountID, profileID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `DELETE FROM login_email_registry WHERE profile_user_id = $1 AND profile_id = $2`, accountID, profileID); err != nil {
-		return fmt.Errorf("remove profile login email: %w", err)
-	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE user_profiles
 		SET login_email = NULL,
@@ -138,7 +131,7 @@ func (s *ProfileCredentialService) Clear(ctx context.Context, accountID int, pro
 			credential_revision = credential_revision + 1,
 			updated_at = now()
 		WHERE user_id = $1 AND id = $2`, accountID, profileID); err != nil {
-		return fmt.Errorf("clear profile credential: %w", err)
+		return mapProfileCredentialWriteError(err)
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE auth_sessions
@@ -207,8 +200,71 @@ func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, pass
 		return SessionSubject{}, fmt.Errorf("load profile login subject: %w", err)
 	}
 	if bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)) != nil ||
-		!enabled || orgStatus != "active" || memberStatus != "active" {
+		!enabled || orgStatus != statusActive || memberStatus != statusActive {
 		return SessionSubject{}, ErrInvalidCredentials
+	}
+	subject.Device = device
+	subject.AuthMethod = AuthMethodDirectProfile
+	return subject, nil
+}
+
+// CurrentSessionSubject re-resolves a direct-profile subject from the
+// database, refusing it unless the credential revision the session was bound
+// to is still current and the account, organization, and membership are all
+// still active. Refresh uses this instead of trusting the presented token.
+func (s *ProfileCredentialService) CurrentSessionSubject(
+	ctx context.Context,
+	accountID int,
+	profileID string,
+	revision int64,
+	device DeviceClaim,
+) (SessionSubject, error) {
+	if s == nil || s.pool == nil {
+		return SessionSubject{}, fmt.Errorf("profile credential service is unavailable")
+	}
+	var (
+		subject      SessionSubject
+		enabled      bool
+		orgStatus    string
+		memberStatus string
+	)
+	err := s.pool.QueryRow(ctx, `
+		SELECT profiles.user_id,
+		       profiles.id,
+		       profiles.organization_id::text,
+		       memberships.id::text,
+		       organizations.policy_revision,
+		       memberships.security_revision,
+		       profiles.credential_revision,
+		       users.enabled,
+		       organizations.status,
+		       memberships.status
+		FROM user_profiles profiles
+		JOIN users ON users.id = profiles.user_id
+		JOIN organizations ON organizations.id = profiles.organization_id
+		JOIN organization_memberships memberships
+		  ON memberships.organization_id = profiles.organization_id
+		 AND memberships.account_id = profiles.user_id
+		WHERE profiles.user_id = $1 AND profiles.id = $2`, accountID, profileID).Scan(
+		&subject.AccountID,
+		&subject.ProfileID,
+		&subject.OrganizationID,
+		&subject.MembershipID,
+		&subject.PolicyRevision,
+		&subject.SecurityRevision,
+		&subject.CredentialRevision,
+		&enabled,
+		&orgStatus,
+		&memberStatus,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return SessionSubject{}, ErrSessionRevoked
+		}
+		return SessionSubject{}, fmt.Errorf("load current profile subject: %w", err)
+	}
+	if subject.CredentialRevision != revision || !enabled || orgStatus != statusActive || memberStatus != statusActive {
+		return SessionSubject{}, ErrSessionRevoked
 	}
 	subject.Device = device
 	subject.AuthMethod = AuthMethodDirectProfile
@@ -234,10 +290,18 @@ func normalizedLoginEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
+// mapProfileCredentialWriteError sanitizes credential write failures. The
+// login email arrives in the request and must not travel back out through an
+// error: a unique violation becomes a stable sentinel, and any other database
+// error is reduced to its code and message so a driver detail carrying the
+// submitted row cannot reach a caller or a log.
 func mapProfileCredentialWriteError(err error) error {
 	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return fmt.Errorf("%w: %v", ErrCredentialEmailInUse, err)
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return ErrCredentialEmailInUse
+		}
+		return fmt.Errorf("profile credential write failed: %s (SQLSTATE %s)", pgErr.Message, pgErr.Code)
 	}
-	return fmt.Errorf("reserve profile login email: %w", err)
+	return fmt.Errorf("profile credential write failed: %w", err)
 }

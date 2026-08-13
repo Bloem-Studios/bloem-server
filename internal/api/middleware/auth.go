@@ -236,13 +236,11 @@ func actingAdminAllowed(r *http.Request, userID int, checkPrimary PrimaryProfile
 }
 
 // declaredProfileID returns the active profile the request declares: the
-// profile context when RequireProfile ran earlier in the chain, otherwise
-// the raw X-Profile-Id header.
+// token-bound profile for a direct-profile session, the profile context when
+// RequireProfile ran earlier in the chain, otherwise the raw X-Profile-Id
+// header.
 func declaredProfileID(r *http.Request) string {
-	if id := GetProfileID(r.Context()); id != "" {
-		return id
-	}
-	return r.Header.Get("X-Profile-Id")
+	return ActiveProfileID(r)
 }
 
 // SetClaims stores JWT claims in the context. This is useful for testing

@@ -1914,10 +1914,16 @@ func NewRouter(deps Dependencies) chi.Router {
 					r.Group(func(r chi.Router) {
 						r.Use(authMiddleware.RequireAuth)
 						r.Post("/logout", authHandler.HandleLogout)
-						r.Post("/impersonation/end", authHandler.HandleEndImpersonation)
-						r.Get("/me", authHandler.HandleMe)
-						r.Get("/sessions", authHandler.HandleListSessions)
-						r.Delete("/sessions/{id}", authHandler.HandleDeleteSession)
+						// Account-scoped surfaces. A direct-profile session
+						// authenticates one profile, not the account behind
+						// it, so it may end its own session but never read or
+						// administer the account.
+						r.With(apimw.RejectDirectProfileSession).
+							Post("/impersonation/end", authHandler.HandleEndImpersonation)
+						r.With(apimw.RejectDirectProfileSession).Get("/me", authHandler.HandleMe)
+						r.With(apimw.RejectDirectProfileSession).Get("/sessions", authHandler.HandleListSessions)
+						r.With(apimw.RejectDirectProfileSession).
+							Delete("/sessions/{id}", authHandler.HandleDeleteSession)
 						r.Post("/device/approve", authHandler.HandleDeviceApprove)
 						r.Post("/device/deny", authHandler.HandleDeviceDeny)
 					})
@@ -2233,14 +2239,22 @@ func NewRouter(deps Dependencies) chi.Router {
 				// Profile routes.
 				if profileHandler != nil {
 					r.Route("/profiles", func(r chi.Router) {
-						r.Get("/household/sessions", profileHandler.HandleListHouseholdSessions)
-						r.Get("/", profileHandler.HandleListProfiles)
-						r.Post("/", profileHandler.HandleCreateProfile)
-						r.Put("/{id}", profileHandler.HandleUpdateProfile)
-						r.Delete("/{id}", profileHandler.HandleDeleteProfile)
-						r.Put("/{id}/avatar", profileHandler.HandleUploadAvatar)
-						r.Delete("/{id}/avatar", profileHandler.HandleDeleteAvatar)
-						r.Post("/{id}/verify-pin", profileHandler.HandleVerifyPIN)
+						// Household-wide surfaces stay with account sessions;
+						// per-profile surfaces additionally hold a
+						// direct-profile session to its own profile. Legacy
+						// account sessions pass through both and keep the
+						// existing household-parent permission checks.
+						household := r.With(apimw.RejectDirectProfileSession)
+						household.Get("/household/sessions", profileHandler.HandleListHouseholdSessions)
+						household.Get("/", profileHandler.HandleListProfiles)
+						household.Post("/", profileHandler.HandleCreateProfile)
+						household.Delete("/{id}", profileHandler.HandleDeleteProfile)
+
+						own := r.With(apimw.RequireOwnDirectProfile("id"))
+						own.Put("/{id}", profileHandler.HandleUpdateProfile)
+						own.Put("/{id}/avatar", profileHandler.HandleUploadAvatar)
+						own.Delete("/{id}/avatar", profileHandler.HandleDeleteAvatar)
+						own.Post("/{id}/verify-pin", profileHandler.HandleVerifyPIN)
 					})
 				}
 

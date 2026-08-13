@@ -34,6 +34,78 @@ type SessionRepository struct {
 	pool *pgxpool.Pool
 }
 
+// CreateProfileSessionIfCurrent serializes direct-profile session creation with
+// credential rotation by locking the profile row and checking the exact subject
+// facts authenticated before the session was minted.
+func (r *SessionRepository) CreateProfileSessionIfCurrent(
+	ctx context.Context,
+	session models.AuthSession,
+	subject SessionSubject,
+) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin direct profile session: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Locking the profile row is what closes the window between verifying a
+	// credential and inserting the session: a concurrent credential reset
+	// takes the same lock, so one of the two waits and then observes the
+	// other's committed revision.
+	var current SessionSubject
+	var enabled bool
+	var organizationStatus, membershipStatus string
+	err = tx.QueryRow(ctx, `
+		SELECT profiles.user_id,
+		       profiles.id,
+		       profiles.organization_id::text,
+		       memberships.id::text,
+		       organizations.policy_revision,
+		       memberships.security_revision,
+		       profiles.credential_revision,
+		       users.enabled,
+		       organizations.status,
+		       memberships.status
+		FROM user_profiles profiles
+		JOIN users ON users.id = profiles.user_id
+		JOIN organizations ON organizations.id = profiles.organization_id
+		JOIN organization_memberships memberships
+		  ON memberships.organization_id = profiles.organization_id
+		 AND memberships.account_id = profiles.user_id
+		WHERE profiles.user_id = $1 AND profiles.id = $2
+		FOR UPDATE OF profiles`, subject.AccountID, subject.ProfileID).Scan(
+		&current.AccountID,
+		&current.ProfileID,
+		&current.OrganizationID,
+		&current.MembershipID,
+		&current.PolicyRevision,
+		&current.SecurityRevision,
+		&current.CredentialRevision,
+		&enabled,
+		&organizationStatus,
+		&membershipStatus,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSessionRevoked
+		}
+		return fmt.Errorf("load current direct profile subject: %w", err)
+	}
+	current.Device = subject.Device
+	current.AuthMethod = subject.AuthMethod
+	if current != subject || !enabled || organizationStatus != statusActive || membershipStatus != statusActive {
+		return ErrSessionRevoked
+	}
+
+	if err := r.createWithQuerier(ctx, tx, session); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit direct profile session: %w", err)
+	}
+	return nil
+}
+
 // NewSessionRepository creates a new SessionRepository backed by the given pool.
 func NewSessionRepository(pool *pgxpool.Pool) *SessionRepository {
 	return &SessionRepository{pool: pool}

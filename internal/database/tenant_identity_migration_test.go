@@ -540,7 +540,11 @@ SELECT EXISTS (
 
 func snapshotTenantIdentityLegacyState(ctx context.Context, t *testing.T, pool *pgxpool.Pool, removeTenantColumns bool) string {
 	t.Helper()
-	profiles := "to_jsonb(p)"
+	// Columns that later migrations add to user_profiles are not part of the
+	// legacy identity state this snapshot pins. Subtracting a key that does
+	// not exist yet is a no-op, so the same projection works on both sides of
+	// the boundary.
+	profiles := "to_jsonb(p) - 'login_email' - 'password_hash' - 'credential_revision'"
 	groups := "to_jsonb(g)"
 	if removeTenantColumns {
 		profiles += " - 'organization_id' - 'access_group_id'"
