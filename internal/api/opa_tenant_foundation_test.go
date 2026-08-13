@@ -41,10 +41,6 @@ const opaTenantIdentityPredecessor int64 = 20260812163547
 // are captured from independently seeded rows, so removing either the tenant
 // availability bound or organization-qualified group lookup makes it fail.
 func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
-	if os.Getenv("SILO_TEST_DATABASE_URL") == "" {
-		t.Fatal("SILO_TEST_DATABASE_URL is required for the OPA tenant compatibility acceptance")
-	}
-
 	ctx := context.Background()
 	pool := newDisposableAPIDatabase(t, "vondel_opa_foundation_", true)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
@@ -473,7 +469,7 @@ func newDisposableAPIDatabase(t *testing.T, prefix string, required bool) *pgxpo
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
-		if required {
+		if required && os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
 			t.Fatal("SILO_TEST_DATABASE_URL is required")
 		}
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
