@@ -26,13 +26,14 @@ const (
 // one exact organization membership. They are intentionally independent of
 // the account-session JWT claims used by legacy routes.
 type AdminContextClaims struct {
-	AccountID        int
-	Scope            AdminScope
-	OrganizationID   uuid.UUID
-	MembershipID     uuid.UUID
-	PolicyRevision   int64
-	SecurityRevision int64
-	ExpiresAt        time.Time
+	AccountID          int
+	Scope              AdminScope
+	OrganizationID     uuid.UUID
+	MembershipID       uuid.UUID
+	PolicyRevision     int64
+	SecurityRevision   int64
+	EffectiveAuthority string
+	ExpiresAt          time.Time
 }
 
 type AdminContextTokenService interface {
@@ -45,13 +46,14 @@ type adminContextTokenService struct {
 }
 
 type adminContextJWTClaims struct {
-	AccountID        int        `json:"account_id"`
-	Scope            AdminScope `json:"scope"`
-	OrganizationID   string     `json:"organization_id,omitempty"`
-	MembershipID     string     `json:"membership_id,omitempty"`
-	PolicyRevision   int64      `json:"policy_revision,omitempty"`
-	SecurityRevision int64      `json:"security_revision,omitempty"`
-	TokenType        string     `json:"token_type"`
+	AccountID          int        `json:"account_id"`
+	Scope              AdminScope `json:"scope"`
+	OrganizationID     string     `json:"organization_id,omitempty"`
+	MembershipID       string     `json:"membership_id,omitempty"`
+	PolicyRevision     int64      `json:"policy_revision,omitempty"`
+	SecurityRevision   int64      `json:"security_revision,omitempty"`
+	EffectiveAuthority string     `json:"effective_authority,omitempty"`
+	TokenType          string     `json:"token_type"`
 	jwt.RegisteredClaims
 }
 
@@ -63,6 +65,9 @@ func NewAdminContextTokenService(secret string) AdminContextTokenService {
 }
 
 func (s *adminContextTokenService) Mint(claims AdminContextClaims) (string, error) {
+	if claims.Scope == AdminScopeOrganization && claims.EffectiveAuthority == "" {
+		claims.EffectiveAuthority = "organization_admin"
+	}
 	if err := validateAdminContextClaims(claims); err != nil {
 		return "", err
 	}
@@ -77,11 +82,12 @@ func (s *adminContextTokenService) Mint(claims AdminContextClaims) (string, erro
 	}
 
 	jwtClaims := adminContextJWTClaims{
-		AccountID:        claims.AccountID,
-		Scope:            claims.Scope,
-		PolicyRevision:   claims.PolicyRevision,
-		SecurityRevision: claims.SecurityRevision,
-		TokenType:        "admin_context",
+		AccountID:          claims.AccountID,
+		Scope:              claims.Scope,
+		PolicyRevision:     claims.PolicyRevision,
+		SecurityRevision:   claims.SecurityRevision,
+		EffectiveAuthority: claims.EffectiveAuthority,
+		TokenType:          "admin_context",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -119,11 +125,12 @@ func (s *adminContextTokenService) Parse(tokenStr string) (AdminContextClaims, e
 	}
 
 	claims := AdminContextClaims{
-		AccountID:        jwtClaims.AccountID,
-		Scope:            jwtClaims.Scope,
-		PolicyRevision:   jwtClaims.PolicyRevision,
-		SecurityRevision: jwtClaims.SecurityRevision,
-		ExpiresAt:        expiresAt,
+		AccountID:          jwtClaims.AccountID,
+		Scope:              jwtClaims.Scope,
+		PolicyRevision:     jwtClaims.PolicyRevision,
+		SecurityRevision:   jwtClaims.SecurityRevision,
+		EffectiveAuthority: jwtClaims.EffectiveAuthority,
+		ExpiresAt:          expiresAt,
 	}
 	if claims.Scope == AdminScopeOrganization {
 		var parseErr error
@@ -148,11 +155,11 @@ func validateAdminContextClaims(claims AdminContextClaims) error {
 	}
 	switch claims.Scope {
 	case AdminScopePlatform:
-		if claims.OrganizationID != uuid.Nil || claims.MembershipID != uuid.Nil || claims.PolicyRevision != 0 || claims.SecurityRevision != 0 {
+		if claims.OrganizationID != uuid.Nil || claims.MembershipID != uuid.Nil || claims.PolicyRevision != 0 || claims.SecurityRevision != 0 || claims.EffectiveAuthority != "" {
 			return fmt.Errorf("%w: platform scope cannot carry organization authority", ErrInvalidAdminContext)
 		}
 	case AdminScopeOrganization:
-		if claims.OrganizationID == uuid.Nil || claims.MembershipID == uuid.Nil || claims.PolicyRevision <= 0 || claims.SecurityRevision <= 0 {
+		if claims.OrganizationID == uuid.Nil || claims.MembershipID == uuid.Nil || claims.PolicyRevision <= 0 || claims.SecurityRevision <= 0 || (claims.EffectiveAuthority != "organization_admin" && claims.EffectiveAuthority != "platform_admin") {
 			return fmt.Errorf("%w: incomplete organization authority", ErrInvalidAdminContext)
 		}
 	default:

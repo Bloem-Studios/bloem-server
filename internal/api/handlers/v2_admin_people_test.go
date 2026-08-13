@@ -26,6 +26,7 @@ type adminPeopleServiceStub struct {
 	selection      adminpeople.Selection
 	result         adminpeople.BulkResult
 	err            error
+	authority      string
 }
 
 func (s *adminPeopleServiceStub) List(_ context.Context, org uuid.UUID, _ adminpeople.Filter) (adminpeople.Page, error) {
@@ -44,10 +45,13 @@ func (s *adminPeopleServiceStub) CreateSelection(_ context.Context, org uuid.UUI
 	s.organizationID = org
 	return s.selection, s.err
 }
-func (s *adminPeopleServiceStub) ExecuteBulk(_ context.Context, org uuid.UUID, actorID int, _ adminpeople.BulkAction) (adminpeople.BulkResult, error) {
+func (s *adminPeopleServiceStub) ExecuteBulk(ctx context.Context, org uuid.UUID, actorID int, _ adminpeople.BulkAction) (adminpeople.BulkResult, error) {
 	s.calls++
 	s.organizationID = org
 	s.actorID = actorID
+	if actor, ok := adminpeople.MutationActorFromContext(ctx); ok {
+		s.authority = actor.Authority
+	}
 	return s.result, s.err
 }
 func (s *adminPeopleServiceStub) GetBulkJob(_ context.Context, org uuid.UUID, _ string) (adminpeople.BulkResult, error) {
@@ -55,18 +59,24 @@ func (s *adminPeopleServiceStub) GetBulkJob(_ context.Context, org uuid.UUID, _ 
 	s.organizationID = org
 	return s.result, s.err
 }
-func (s *adminPeopleServiceStub) UpdateMembership(_ context.Context, org uuid.UUID, actorID, accountID int, _ int64, _ tenancy.MembershipStatus) (adminpeople.PersonSummary, error) {
+func (s *adminPeopleServiceStub) UpdateMembership(ctx context.Context, org uuid.UUID, actorID, accountID int, _ int64, _ tenancy.MembershipStatus) (adminpeople.PersonSummary, error) {
 	s.calls++
 	s.organizationID = org
 	s.actorID = actorID
 	s.accountID = accountID
+	if actor, ok := adminpeople.MutationActorFromContext(ctx); ok {
+		s.authority = actor.Authority
+	}
 	return s.person, s.err
 }
-func (s *adminPeopleServiceStub) UpdateProfileGroup(_ context.Context, org uuid.UUID, actorID, accountID int, _ string, _ int64, _ int) (adminpeople.PersonSummary, error) {
+func (s *adminPeopleServiceStub) UpdateProfileGroup(ctx context.Context, org uuid.UUID, actorID, accountID int, _ string, _ int64, _ int) (adminpeople.PersonSummary, error) {
 	s.calls++
 	s.organizationID = org
 	s.actorID = actorID
 	s.accountID = accountID
+	if actor, ok := adminpeople.MutationActorFromContext(ctx); ok {
+		s.authority = actor.Authority
+	}
 	return s.person, s.err
 }
 
@@ -106,6 +116,21 @@ func TestV2AdminPeopleUsesOnlyMiddlewareOrganizationAndActor(t *testing.T) {
 	handler.HandleCreateBulkJob(maliciousRec, malicious)
 	if maliciousRec.Code != http.StatusBadRequest {
 		t.Fatalf("organization selector response = %d %s", maliciousRec.Code, maliciousRec.Body.String())
+	}
+}
+
+func TestV2AdminPeoplePropagatesEffectivePlatformAuthorityInOrganizationContext(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	store := &adminPeopleServiceStub{result: adminpeople.BulkResult{JobID: "job-1"}}
+	handler := NewV2AdminPeopleHandler(store)
+	req := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/bulk-jobs", `{"selection_token":"signed","kind":"suspend_memberships"}`, organizationID, 7, nil)
+	claims, _ := apimw.GetAdminContextClaims(req.Context())
+	claims.EffectiveAuthority = adminpeople.AuthorityPlatformAdmin
+	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), claims))
+	rec := httptest.NewRecorder()
+	handler.HandleCreateBulkJob(rec, req)
+	if rec.Code != http.StatusCreated || store.authority != adminpeople.AuthorityPlatformAdmin {
+		t.Fatalf("response=%d %s authority=%q", rec.Code, rec.Body.String(), store.authority)
 	}
 }
 

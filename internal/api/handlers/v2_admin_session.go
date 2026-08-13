@@ -130,22 +130,22 @@ func (h *AdminContextSessionHandler) HandleSession(w http.ResponseWriter, r *htt
 			return
 		}
 		authority := "organization_admin"
-		if membership.LegacyRole != "admin" {
-			platformAdmin, err := h.platformAdmin(r.Context(), claims.UserID)
-			if err != nil {
-				writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
-				return
-			}
-			if !platformAdmin {
-				writeError(w, http.StatusForbidden, "insufficient_organization_authority", "Organization administrator authority required")
-				return
-			}
+		platformAdmin, err := h.platformAdmin(r.Context(), claims.UserID)
+		if err != nil {
+			writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+			return
+		}
+		if platformAdmin {
 			authority = "platform_admin"
+		} else if membership.LegacyRole != "admin" {
+			writeError(w, http.StatusForbidden, "insufficient_organization_authority", "Organization administrator authority required")
+			return
 		}
 		h.mint(w, auth.AdminContextClaims{
 			AccountID: claims.UserID, Scope: auth.AdminScopeOrganization,
 			OrganizationID: organizationID, MembershipID: membership.ID,
 			PolicyRevision: resolved.PolicyRevision, SecurityRevision: resolved.SecurityRevision,
+			EffectiveAuthority: authority,
 		}, adminContextSummary{
 			Key: "organization:" + organizationID.String(), Scope: auth.AdminScopeOrganization,
 			OrganizationID: organizationID.String(), MembershipID: membership.ID.String(), Name: organization.Name, Status: string(organization.Status), Authority: authority,

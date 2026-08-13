@@ -104,7 +104,7 @@ func (h *V2AdminPeopleHandler) HandleCreateBulkJob(w http.ResponseWriter, r *htt
 	if !decodeAdminPlatformJSON(w, r, &action) {
 		return
 	}
-	ctx := adminpeople.WithMutationRequestID(r.Context(), adminRequestID(r))
+	ctx := adminPeopleMutationContext(r)
 	result, err := h.service.ExecuteBulk(ctx, tenant.OrganizationID, tenant.AccountID, action)
 	if err != nil {
 		h.writeError(w, r, err, 0)
@@ -155,7 +155,7 @@ func (h *V2AdminPeopleHandler) HandleUpdateMembership(w http.ResponseWriter, r *
 		writeAdminValidation(w, map[string]string{"request": "must include a current expected_revision and active or suspended status"})
 		return
 	}
-	ctx := adminpeople.WithMutationRequestID(r.Context(), adminRequestID(r))
+	ctx := adminPeopleMutationContext(r)
 	person, err := h.service.UpdateMembership(ctx, tenant.OrganizationID, tenant.AccountID, accountID, request.ExpectedRevision, request.Status)
 	if err != nil {
 		h.writeError(w, r, err, accountID)
@@ -191,7 +191,7 @@ func (h *V2AdminPeopleHandler) HandleUpdateProfile(w http.ResponseWriter, r *htt
 		writeAdminValidation(w, map[string]string{"request": "must include a current expected_revision and group_id"})
 		return
 	}
-	ctx := adminpeople.WithMutationRequestID(r.Context(), adminRequestID(r))
+	ctx := adminPeopleMutationContext(r)
 	person, err := h.service.UpdateProfileGroup(ctx, tenant.OrganizationID, tenant.AccountID, accountID, profileID, request.ExpectedRevision, request.GroupID)
 	if err != nil {
 		h.writeError(w, r, err, accountID)
@@ -256,6 +256,15 @@ func adminPeoplePathAccount(w http.ResponseWriter, r *http.Request) (int, bool) 
 		return 0, false
 	}
 	return value, true
+}
+
+func adminPeopleMutationContext(r *http.Request) context.Context {
+	claims, _ := middleware.GetAdminContextClaims(r.Context())
+	authority := claims.EffectiveAuthority
+	if authority == "" {
+		authority = adminpeople.AuthorityOrganizationAdmin
+	}
+	return adminpeople.WithMutationActor(r.Context(), adminpeople.MutationActor{AccountID: claims.AccountID, Authority: authority, RequestID: adminRequestID(r)})
 }
 
 func adminPeopleFilterFromQuery(w http.ResponseWriter, r *http.Request) (adminpeople.Filter, bool) {

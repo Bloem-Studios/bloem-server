@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -72,6 +73,31 @@ func TestServiceListUsesStableOrganizationBoundCursor(t *testing.T) {
 	}
 }
 
+func TestServiceCursorRejectsTamperingAndDifferentCanonicalFilters(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	fixture.addAccount(t, fixture.orgA, "able@example.test", "Able", "Able Profile", fixture.groupA, false)
+	first, err := fixture.service.List(fixture.ctx, fixture.orgA, Filter{Query: "example.test", Limit: 1, Sort: SortName})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.NextCursor == "" {
+		t.Fatal("missing next cursor")
+	}
+	tampered := first.NextCursor[:len(first.NextCursor)-1] + "A"
+	if _, err := fixture.service.List(fixture.ctx, fixture.orgA, Filter{Query: "example.test", Limit: 1, Sort: SortName, Cursor: tampered}); !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("tampered cursor error = %v", err)
+	}
+	for _, filter := range []Filter{
+		{Query: "different", Limit: 1, Sort: SortName, Cursor: first.NextCursor},
+		{Query: "example.test", Status: []tenancy.MembershipStatus{tenancy.MembershipSuspended}, Limit: 1, Sort: SortName, Cursor: first.NextCursor},
+		{Query: "example.test", GroupIDs: []int{fixture.groupA}, Limit: 1, Sort: SortName, Cursor: first.NextCursor},
+	} {
+		if _, err := fixture.service.List(fixture.ctx, fixture.orgA, filter); !errors.Is(err, ErrInvalidCursor) {
+			t.Fatalf("changed filter %+v error = %v", filter, err)
+		}
+	}
+}
+
 func TestServiceSelectionPersistsCanonicalSnapshotServerSideAndIsImmutable(t *testing.T) {
 	fixture := newPeopleFixture(t)
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{
@@ -112,6 +138,226 @@ func TestServiceSelectionPersistsCanonicalSnapshotServerSideAndIsImmutable(t *te
 	}
 }
 
+func TestServiceCleanupRemovesOnlyExpiredSelections(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	active, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	activeID, _ := fixture.service.parseSelectionReference(active.Token)
+	if _, err := fixture.pool.Exec(fixture.ctx, `DELETE FROM admin_people_selections WHERE id=$1`, activeID); err == nil || !strings.Contains(err.Error(), "immutable") {
+		t.Fatalf("unexpired delete error = %v", err)
+	}
+	fixture.service.now = func() time.Time { return time.Now().UTC().Add(-selectionTTL - time.Minute) }
+	expired, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expiredID, _ := fixture.service.parseSelectionReference(expired.Token)
+	removed, err := fixture.service.CleanupExpiredSelections(fixture.ctx, 10)
+	if err != nil || removed != 1 {
+		t.Fatalf("cleanup = %d, %v", removed, err)
+	}
+	var activeExists, expiredExists bool
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT EXISTS(SELECT 1 FROM admin_people_selections WHERE id=$1),EXISTS(SELECT 1 FROM admin_people_selections WHERE id=$2)`, activeID, expiredID).Scan(&activeExists, &expiredExists); err != nil {
+		t.Fatal(err)
+	}
+	if !activeExists || expiredExists {
+		t.Fatalf("selection existence active=%t expired=%t", activeExists, expiredExists)
+	}
+}
+
+func TestServiceBulkJobIsDurableResumableAndIdempotent(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	regularID, _ := fixture.addAccount(t, fixture.orgA, "regular@example.test", "Regular", "Regular Profile", fixture.groupA, false)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, RequestID: "durable-job"})
+	queued, err := fixture.service.EnqueueBulk(ctx, fixture.orgA, fixture.ownerID, BulkAction{SelectionToken: selection.Token, Kind: BulkSuspendMemberships})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if queued.Status != "queued" || queued.ProgressCurrent != 0 || queued.ProgressTotal < 2 {
+		t.Fatalf("queued job = %+v", queued)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE admin_people_bulk_jobs SET action_kind='reactivate_memberships' WHERE job_id=$1`, queued.JobID); err == nil || !strings.Contains(err.Error(), "immutable") {
+		t.Fatalf("immutable action update error=%v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE admin_people_bulk_targets SET snapshot='{}'::jsonb WHERE job_id=$1`, queued.JobID); err == nil || !strings.Contains(err.Error(), "immutable") {
+		t.Fatalf("immutable target snapshot update error=%v", err)
+	}
+	again, err := fixture.service.EnqueueBulk(ctx, fixture.orgA, fixture.ownerID, BulkAction{SelectionToken: selection.Token, Kind: BulkSuspendMemberships})
+	if err != nil || again.JobID != queued.JobID {
+		t.Fatalf("idempotent enqueue = %+v, %v", again, err)
+	}
+	one, err := fixture.service.ProcessBulkBatch(ctx, fixture.orgA, queued.JobID, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if one.Status != "running" || one.ProgressCurrent != 1 {
+		t.Fatalf("first batch = %+v", one)
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := fixture.service.ProcessBulkJob(cancelled, fixture.orgA, queued.JobID); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled process error = %v", err)
+	}
+	observed, err := fixture.service.GetBulkJob(fixture.ctx, fixture.orgA, queued.JobID)
+	if err != nil || observed.Status != "running" || observed.ProgressCurrent != 1 {
+		t.Fatalf("observed after cancellation = %+v, %v", observed, err)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if completed.Status != "completed" || completed.ProgressCurrent != completed.ProgressTotal {
+		t.Fatalf("completed = %+v", completed)
+	}
+	fixture.assertMembershipStatusAndRevision(t, fixture.orgA, regularID, "suspended", 2)
+	replayed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || replayed.Succeeded != completed.Succeeded {
+		t.Fatalf("replayed = %+v, %v", replayed, err)
+	}
+	fixture.assertMembershipStatusAndRevision(t, fixture.orgA, regularID, "suspended", 2)
+}
+
+func TestServiceConcurrentBulkEnqueueCreatesOneDurableJob(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, RequestID: "concurrent-enqueue"})
+	action := BulkAction{SelectionToken: selection.Token, Kind: BulkSuspendMemberships}
+	type outcome struct {
+		result BulkResult
+		err    error
+	}
+	start := make(chan struct{})
+	results := make(chan outcome, 2)
+	for range 2 {
+		go func() {
+			<-start
+			result, err := fixture.service.EnqueueBulk(ctx, fixture.orgA, fixture.ownerID, action)
+			results <- outcome{result, err}
+		}()
+	}
+	close(start)
+	first, second := <-results, <-results
+	if first.err != nil || second.err != nil {
+		t.Fatalf("enqueue errors = %v / %v", first.err, second.err)
+	}
+	if first.result.JobID != second.result.JobID {
+		t.Fatalf("job IDs = %q / %q", first.result.JobID, second.result.JobID)
+	}
+	var jobs int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM admin_people_bulk_jobs WHERE selection_id=(SELECT id FROM admin_people_selections LIMIT 1)`).Scan(&jobs); err != nil {
+		t.Fatal(err)
+	}
+	if jobs != 1 {
+		t.Fatalf("durable jobs=%d", jobs)
+	}
+}
+
+func TestServiceBulkSkipsAuthorizationStateChangedAfterSelection(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityPlatformAdmin, RequestID: "concurrent-change"})
+	queued, err := fixture.service.EnqueueBulk(ctx, fixture.orgA, fixture.ownerID, BulkAction{SelectionToken: selection.Token, Kind: BulkSuspendMemberships})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET security_revision=security_revision+1 WHERE organization_id=$1 AND account_id=$2`, fixture.orgA, fixture.sharedAccountID); err != nil {
+		t.Fatal(err)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(completed.Skipped) != 1 || completed.Skipped[0].AccountID != fixture.sharedAccountID || completed.Skipped[0].Reason != ReasonAuthorizationChanged {
+		t.Fatalf("result = %+v", completed)
+	}
+	fixture.assertMembershipStatusAndRevision(t, fixture.orgA, fixture.sharedAccountID, "active", 2)
+	var authority string
+	var skipped, created, finished int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT max(actor_platform_role),count(*) FILTER (WHERE action='people.bulk_record_skipped'),count(*) FILTER (WHERE action='people.bulk_job_created'),count(*) FILTER (WHERE action='people.bulk_job_completed') FROM admin_audit_events WHERE request_id='concurrent-change'`).Scan(&authority, &skipped, &created, &finished); err != nil {
+		t.Fatal(err)
+	}
+	if authority != AuthorityPlatformAdmin || skipped != 1 || created != 1 || finished != 1 {
+		t.Fatalf("audits authority=%q skipped=%d created=%d completed=%d", authority, skipped, created, finished)
+	}
+}
+
+func TestServiceBulkGroupAssignmentSkipsProfileChangedAfterSelection(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	targetGroup := fixture.addGroup(t, fixture.orgA, "Target", false)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, RequestID: "profile-change"})
+	queued, err := fixture.service.EnqueueBulk(ctx, fixture.orgA, fixture.ownerID, BulkAction{SelectionToken: selection.Token, Kind: BulkAssignGroup, GroupID: &targetGroup})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET updated_at=updated_at+interval '1 second' WHERE organization_id=$1 AND user_id=$2 AND id=$3`, fixture.orgA, fixture.sharedAccountID, fixture.profileA); err != nil {
+		t.Fatal(err)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(completed.Skipped) != 1 || completed.Skipped[0].Reason != ReasonAuthorizationChanged {
+		t.Fatalf("result = %+v", completed)
+	}
+	fixture.assertProfileGroup(t, fixture.sharedAccountID, fixture.profileA, fixture.groupA)
+}
+
+func TestServiceBulkJobRecordsFatalExecutorFailure(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, RequestID: "fatal-job"})
+	queued, err := fixture.service.EnqueueBulk(ctx, fixture.orgA, fixture.ownerID, BulkAction{SelectionToken: selection.Token, Kind: BulkSuspendMemberships})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `ALTER TABLE admin_people_bulk_targets DISABLE TRIGGER admin_people_bulk_target_snapshot_immutable`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE admin_people_bulk_targets SET snapshot='{}'::jsonb WHERE job_id=$1`, queued.JobID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `ALTER TABLE admin_people_bulk_targets ENABLE TRIGGER admin_people_bulk_target_snapshot_immutable`); err != nil {
+		t.Fatal(err)
+	}
+	failed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err == nil {
+		t.Fatal("ProcessBulkJob() error=nil, want malformed durable target failure")
+	}
+	observed, getErr := fixture.service.GetBulkJob(fixture.ctx, fixture.orgA, queued.JobID)
+	if getErr != nil {
+		t.Fatal(getErr)
+	}
+	if failed.JobID != "" || observed.Status != "failed" {
+		t.Fatalf("returned=%+v observed=%+v processErr=%v", failed, observed, err)
+	}
+	var audits int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM admin_audit_events WHERE request_id='fatal-job' AND action='people.bulk_job_failed' AND outcome='failure'`).Scan(&audits); err != nil {
+		t.Fatal(err)
+	}
+	if audits != 1 {
+		t.Fatalf("failure audits=%d", audits)
+	}
+}
+
 func TestServiceBulkGroupAssignmentIsOrganizationBoundAndRevisionGuarded(t *testing.T) {
 	fixture := newPeopleFixture(t)
 	groupA2 := fixture.addGroup(t, fixture.orgA, "A Restricted", false)
@@ -120,6 +366,10 @@ func TestServiceBulkGroupAssignmentIsOrganizationBoundAndRevisionGuarded(t *test
 		t.Fatal(err)
 	}
 	result, err := fixture.service.ExecuteBulk(fixture.ctx, fixture.orgA, fixture.ownerID, BulkAction{SelectionToken: selection.Token, Kind: BulkAssignGroup, GroupID: &groupA2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err = fixture.service.ProcessBulkJob(fixture.ctx, fixture.orgA, result.JobID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,6 +398,13 @@ func TestServiceBulkGroupAssignmentIsOrganizationBoundAndRevisionGuarded(t *test
 	if audits != 1 {
 		t.Fatalf("audit rows = %d, want 1", audits)
 	}
+	var authority string
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT actor_platform_role FROM admin_audit_events WHERE organization_id=$1 AND action='people.bulk_job_completed' ORDER BY id DESC LIMIT 1`, fixture.orgA).Scan(&authority); err != nil {
+		t.Fatal(err)
+	}
+	if authority != AuthorityOrganizationAdmin {
+		t.Fatalf("organization audit authority=%q", authority)
+	}
 }
 
 func TestServiceBulkSuspensionReturnsExactPartialResultAndRevokesContext(t *testing.T) {
@@ -166,6 +423,10 @@ func TestServiceBulkSuspensionReturnsExactPartialResultAndRevokesContext(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
+	result, err = fixture.service.ProcessBulkJob(fixture.ctx, fixture.orgA, result.JobID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if result.Succeeded != 2 { // shared and regular; the owner is protected.
 		t.Fatalf("succeeded = %d, result=%+v", result.Succeeded, result)
 	}
@@ -174,6 +435,13 @@ func TestServiceBulkSuspensionReturnsExactPartialResultAndRevokesContext(t *test
 	}
 	if len(result.Failed) != 1 || result.Failed[0].AccountID != vanishedID || result.Failed[0].Reason != ReasonNotFound {
 		t.Fatalf("failed = %+v", result.Failed)
+	}
+	var failedAudits int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM admin_audit_events WHERE organization_id=$1 AND action='people.bulk_record_failed' AND subject_id=$2 AND outcome='failure'`, fixture.orgA, strconv.Itoa(vanishedID)).Scan(&failedAudits); err != nil {
+		t.Fatal(err)
+	}
+	if failedAudits != 1 {
+		t.Fatalf("failed record audits=%d", failedAudits)
 	}
 	fixture.assertMembershipStatusAndRevision(t, fixture.orgA, regularID, "suspended", 2)
 	fixture.assertMembershipStatusAndRevision(t, fixture.orgA, fixture.ownerID, "active", 1)

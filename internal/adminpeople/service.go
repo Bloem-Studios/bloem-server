@@ -35,11 +35,17 @@ const (
 	BulkSuspendMemberships    = "suspend_memberships"
 	BulkReactivateMemberships = "reactivate_memberships"
 
-	ReasonAlreadyApplied = "already_applied"
-	ReasonNoProfiles     = "no_profiles"
-	ReasonNotFound       = "not_found"
-	ReasonProtectedOwner = "protected_owner"
-	ReasonMutationFailed = "mutation_failed"
+	ReasonAlreadyApplied       = "already_applied"
+	ReasonNoProfiles           = "no_profiles"
+	ReasonNotFound             = "not_found"
+	ReasonProtectedOwner       = "protected_owner"
+	ReasonMutationFailed       = "mutation_failed"
+	ReasonAuthorizationChanged = "authorization_state_changed"
+
+	AuthorityPlatformAdmin     = "platform_admin"
+	AuthorityOrganizationAdmin = "organization_admin"
+	maximumSelectionTargets    = 10000
+	defaultBulkBatchSize       = 100
 )
 
 var (
@@ -108,17 +114,48 @@ type RecordResult struct {
 }
 
 type BulkResult struct {
-	JobID     string         `json:"job_id"`
-	Succeeded int            `json:"succeeded"`
-	Skipped   []RecordResult `json:"skipped"`
-	Failed    []RecordResult `json:"failed"`
+	JobID           string         `json:"job_id"`
+	Status          string         `json:"status"`
+	ProgressCurrent int            `json:"progress_current"`
+	ProgressTotal   int            `json:"progress_total"`
+	Succeeded       int            `json:"succeeded"`
+	Skipped         []RecordResult `json:"skipped"`
+	Failed          []RecordResult `json:"failed"`
 }
 
-type mutationMetadata struct{ requestID string }
+type MutationActor struct {
+	AccountID int
+	Authority string
+	RequestID string
+}
 type mutationMetadataKey struct{}
 
 func WithMutationRequestID(ctx context.Context, requestID string) context.Context {
-	return context.WithValue(ctx, mutationMetadataKey{}, mutationMetadata{requestID: strings.TrimSpace(requestID)})
+	actor, _ := MutationActorFromContext(ctx)
+	actor.RequestID = strings.TrimSpace(requestID)
+	return WithMutationActor(ctx, actor)
+}
+
+func WithMutationActor(ctx context.Context, actor MutationActor) context.Context {
+	return context.WithValue(ctx, mutationMetadataKey{}, actor)
+}
+func MutationActorFromContext(ctx context.Context) (MutationActor, bool) {
+	actor, ok := ctx.Value(mutationMetadataKey{}).(MutationActor)
+	return actor, ok
+}
+
+func mutationActor(ctx context.Context, accountID int) (MutationActor, error) {
+	actor, ok := MutationActorFromContext(ctx)
+	if !ok {
+		actor = MutationActor{AccountID: accountID, Authority: AuthorityOrganizationAdmin}
+	}
+	if actor.AccountID == 0 {
+		actor.AccountID = accountID
+	}
+	if actor.AccountID != accountID || (actor.Authority != AuthorityOrganizationAdmin && actor.Authority != AuthorityPlatformAdmin) {
+		return MutationActor{}, ErrInvalidBulkAction
+	}
+	return actor, nil
 }
 
 type Service struct {
@@ -204,11 +241,12 @@ func validateFilter(filter Filter) error {
 }
 
 type peopleCursor struct {
-	OrganizationID uuid.UUID `json:"organization_id"`
-	Sort           string    `json:"sort"`
-	Key            string    `json:"key,omitempty"`
-	Activity       time.Time `json:"activity,omitempty"`
-	AccountID      int       `json:"account_id"`
+	OrganizationID uuid.UUID       `json:"organization_id"`
+	Sort           string          `json:"sort"`
+	Filter         canonicalFilter `json:"filter"`
+	Key            string          `json:"key,omitempty"`
+	Activity       time.Time       `json:"activity,omitempty"`
+	AccountID      int             `json:"account_id"`
 }
 
 func (s *Service) List(ctx context.Context, organizationID uuid.UUID, filter Filter) (Page, error) {
@@ -237,6 +275,7 @@ func (s *Service) list(ctx context.Context, organizationID uuid.UUID, filter Fil
 		return Page{}, ErrInvalidFilter
 	}
 	filter.Sort = canonicalSort(filter.Sort)
+	canonical := canonicalizeSelectionFilter(filter)
 	limit := filter.Limit
 	if limit == 0 {
 		limit = defaultLimit
@@ -250,8 +289,10 @@ func (s *Service) list(ctx context.Context, organizationID uuid.UUID, filter Fil
 	nameExpr := `lower(COALESCE(NULLIF(u.username,''),u.email,''))`
 	emailExpr := `lower(COALESCE(u.email,''))`
 	if filter.Cursor != "" {
-		cursor, err := decodePeopleCursor(filter.Cursor)
-		if err != nil || cursor.OrganizationID != organizationID || cursor.Sort != filter.Sort || cursor.AccountID <= 0 {
+		cursor, err := s.decodePeopleCursor(filter.Cursor)
+		cursorFilter, _ := json.Marshal(cursor.Filter)
+		expectedFilter, _ := json.Marshal(canonical)
+		if err != nil || cursor.OrganizationID != organizationID || cursor.Sort != filter.Sort || cursor.AccountID <= 0 || !hmac.Equal(cursorFilter, expectedFilter) {
 			return Page{}, ErrInvalidCursor
 		}
 		switch filter.Sort {
@@ -323,7 +364,7 @@ func (s *Service) list(ctx context.Context, organizationID uuid.UUID, filter Fil
 	}
 	if len(values) > limit {
 		last := values[limit-1]
-		cursor := peopleCursor{OrganizationID: organizationID, Sort: filter.Sort, AccountID: last.person.AccountID}
+		cursor := peopleCursor{OrganizationID: organizationID, Sort: filter.Sort, Filter: canonical, AccountID: last.person.AccountID}
 		switch filter.Sort {
 		case SortName:
 			cursor.Key = last.nameKey
@@ -332,7 +373,7 @@ func (s *Service) list(ctx context.Context, organizationID uuid.UUID, filter Fil
 		case SortRecentActivity:
 			cursor.Activity = last.person.LastActivity
 		}
-		page.NextCursor = encodePeopleCursor(cursor)
+		page.NextCursor = s.encodePeopleCursor(cursor)
 	}
 	return page, nil
 }
@@ -409,17 +450,47 @@ func (s *Service) loadProfiles(ctx context.Context, organizationID uuid.UUID, pe
 	return nil
 }
 
-func encodePeopleCursor(cursor peopleCursor) string {
+func (s *Service) encodePeopleCursor(cursor peopleCursor) string {
 	raw, _ := json.Marshal(cursor)
-	return base64.RawURLEncoding.EncodeToString(raw)
+	payload := base64.RawURLEncoding.EncodeToString(raw)
+	mac := hmac.New(sha256.New, s.key[:])
+	_, _ = mac.Write([]byte("cursor." + payload))
+	return payload + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
-func decodePeopleCursor(value string) (peopleCursor, error) {
+func (s *Service) decodePeopleCursor(value string) (peopleCursor, error) {
 	var cursor peopleCursor
-	raw, err := base64.RawURLEncoding.DecodeString(value)
+	parts := strings.Split(value, ".")
+	if len(parts) != 2 {
+		return cursor, ErrInvalidCursor
+	}
+	signature, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return cursor, ErrInvalidCursor
+	}
+	mac := hmac.New(sha256.New, s.key[:])
+	_, _ = mac.Write([]byte("cursor." + parts[0]))
+	if !hmac.Equal(signature, mac.Sum(nil)) {
+		return cursor, ErrInvalidCursor
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil || json.Unmarshal(raw, &cursor) != nil {
 		return peopleCursor{}, ErrInvalidCursor
 	}
 	return cursor, nil
+}
+
+type profileSnapshot struct {
+	ID        string    `json:"id"`
+	GroupID   int       `json:"group_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+type targetSnapshot struct {
+	AccountID             int                      `json:"account_id"`
+	MembershipID          uuid.UUID                `json:"membership_id"`
+	MembershipStatus      tenancy.MembershipStatus `json:"membership_status"`
+	MembershipRevision    int64                    `json:"membership_revision"`
+	AccountPolicyRevision int64                    `json:"account_policy_revision"`
+	Profiles              []profileSnapshot        `json:"profiles"`
 }
 
 func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID, filter Filter) (Selection, error) {
@@ -435,38 +506,60 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 	// retained for confirmation/audit; adding an application-clock cutoff here
 	// would incorrectly exclude rows when database and application clocks skew.
 	conditions, args := buildPeopleConditions(organizationID, canonical.toFilter(), nil)
-	rows, err := s.pool.Query(ctx, `SELECT m.account_id FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE `+strings.Join(conditions, " AND ")+` ORDER BY m.account_id`, args...)
+	rows, err := s.pool.Query(ctx, `
+		SELECT m.account_id,m.id,m.status,m.security_revision,u.access_policy_revision,
+		       COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'group_id',p.access_group_id,'updated_at',p.updated_at) ORDER BY p.id) FROM user_profiles p WHERE p.organization_id=m.organization_id AND p.user_id=m.account_id),'[]'::jsonb)
+		FROM organization_memberships m JOIN users u ON u.id=m.account_id
+		WHERE `+strings.Join(conditions, " AND ")+` ORDER BY m.account_id LIMIT `+strconv.Itoa(maximumSelectionTargets+1), args...)
 	if err != nil {
 		return Selection{}, fmt.Errorf("snapshot people selection: %w", err)
 	}
 	ids := []int{}
+	targets := []targetSnapshot{}
 	for rows.Next() {
-		var id int
-		if err := rows.Scan(&id); err != nil {
+		var target targetSnapshot
+		var profilesJSON []byte
+		if err := rows.Scan(&target.AccountID, &target.MembershipID, &target.MembershipStatus, &target.MembershipRevision, &target.AccountPolicyRevision, &profilesJSON); err != nil {
 			rows.Close()
 			return Selection{}, fmt.Errorf("scan people selection: %w", err)
 		}
-		ids = append(ids, id)
+		if err := json.Unmarshal(profilesJSON, &target.Profiles); err != nil {
+			rows.Close()
+			return Selection{}, fmt.Errorf("decode people selection profiles: %w", err)
+		}
+		if len(targets) < maximumSelectionTargets {
+			ids = append(ids, target.AccountID)
+			targets = append(targets, target)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		rows.Close()
 		return Selection{}, fmt.Errorf("iterate people selection: %w", err)
 	}
 	rows.Close()
+	var total int64
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE `+strings.Join(conditions, " AND "), args...).Scan(&total); err != nil {
+		return Selection{}, fmt.Errorf("count people selection: %w", err)
+	}
 	reference := uuid.New()
 	expires := snapshot.Add(selectionTTL)
 	filterJSON, err := json.Marshal(canonical)
 	if err != nil {
 		return Selection{}, err
 	}
-	if _, err = s.pool.Exec(ctx, `INSERT INTO admin_people_selections (id,organization_id,canonical_filter,snapshot_at,account_ids,matched_count,excluded_count,expires_at) VALUES ($1,$2,$3,$4,$5,$6,0,$7)`, reference, organizationID, filterJSON, snapshot, ids, len(ids), expires); err != nil {
+	targetsJSON, err := json.Marshal(targets)
+	if err != nil {
+		return Selection{}, err
+	}
+	excluded := total - int64(len(targets))
+	if _, err = s.pool.Exec(ctx, `INSERT INTO admin_people_selections (id,organization_id,canonical_filter,snapshot_at,account_ids,matched_count,excluded_count,expires_at,targets) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, reference, organizationID, filterJSON, snapshot, ids, len(ids), excluded, expires, targetsJSON); err != nil {
 		return Selection{}, fmt.Errorf("persist immutable people selection: %w", err)
 	}
 	token, err := s.signSelectionReference(reference)
 	if err != nil {
 		return Selection{}, err
 	}
-	return Selection{Token: token, Matched: int64(len(ids)), ExpiresAt: expires}, nil
+	return Selection{Token: token, Matched: int64(len(ids)), Excluded: excluded, ExpiresAt: expires}, nil
 }
 
 func (s *Service) signSelectionReference(reference uuid.UUID) (string, error) {
@@ -508,23 +601,38 @@ type selectionRecord struct {
 	filter            canonicalFilter
 	snapshot, expires time.Time
 	accountIDs        []int
+	targets           []targetSnapshot
 	matched, excluded int64
 }
 
 func loadSelection(ctx context.Context, row pgx.Row, organizationID uuid.UUID) (selectionRecord, error) {
 	var record selectionRecord
-	var filterJSON []byte
-	err := row.Scan(&record.id, &record.organizationID, &filterJSON, &record.snapshot, &record.expires, &record.accountIDs, &record.matched, &record.excluded)
+	var filterJSON, targetsJSON []byte
+	err := row.Scan(&record.id, &record.organizationID, &filterJSON, &record.snapshot, &record.expires, &record.accountIDs, &record.matched, &record.excluded, &targetsJSON)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return selectionRecord{}, ErrInvalidSelection
 	}
 	if err != nil {
 		return selectionRecord{}, fmt.Errorf("load immutable people selection: %w", err)
 	}
-	if record.organizationID != organizationID || json.Unmarshal(filterJSON, &record.filter) != nil {
+	if record.organizationID != organizationID || json.Unmarshal(filterJSON, &record.filter) != nil || json.Unmarshal(targetsJSON, &record.targets) != nil {
 		return selectionRecord{}, ErrInvalidSelection
 	}
 	return record, nil
+}
+
+func (s *Service) CleanupExpiredSelections(ctx context.Context, limit int) (int64, error) {
+	if s == nil || s.pool == nil {
+		return 0, fmt.Errorf("people store unavailable")
+	}
+	if limit <= 0 || limit > 1000 {
+		limit = 100
+	}
+	tag, err := s.pool.Exec(ctx, `DELETE FROM admin_people_selections WHERE id IN (SELECT id FROM admin_people_selections WHERE expires_at<=now() AND NOT EXISTS (SELECT 1 FROM admin_people_bulk_jobs j WHERE j.selection_id=admin_people_selections.id) ORDER BY expires_at LIMIT $1)`, limit)
+	if err != nil {
+		return 0, fmt.Errorf("cleanup expired people selections: %w", err)
+	}
+	return tag.RowsAffected(), nil
 }
 
 func validateBulkAction(action BulkAction) error {
@@ -547,14 +655,16 @@ func validateBulkAction(action BulkAction) error {
 }
 
 func (s *Service) ExecuteBulk(ctx context.Context, organizationID uuid.UUID, actorID int, action BulkAction) (result BulkResult, err error) {
-	if validateBulkAction(action) != nil {
+	return s.EnqueueBulk(ctx, organizationID, actorID, action)
+}
+
+func (s *Service) EnqueueBulk(ctx context.Context, organizationID uuid.UUID, actorID int, action BulkAction) (BulkResult, error) {
+	if validateBulkAction(action) != nil || s == nil || s.pool == nil || organizationID == uuid.Nil || actorID <= 0 {
 		return BulkResult{}, ErrInvalidBulkAction
 	}
-	if s == nil || s.pool == nil {
-		return BulkResult{}, fmt.Errorf("people store unavailable")
-	}
-	if organizationID == uuid.Nil || actorID <= 0 {
-		return BulkResult{}, ErrInvalidBulkAction
+	actor, err := mutationActor(ctx, actorID)
+	if err != nil {
+		return BulkResult{}, err
 	}
 	reference, err := s.parseSelectionReference(action.SelectionToken)
 	if err != nil {
@@ -562,10 +672,10 @@ func (s *Service) ExecuteBulk(ctx context.Context, organizationID uuid.UUID, act
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return BulkResult{}, fmt.Errorf("begin people bulk job: %w", err)
+		return BulkResult{}, fmt.Errorf("begin people bulk enqueue: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	record, err := loadSelection(ctx, tx.QueryRow(ctx, `SELECT id,organization_id,canonical_filter,snapshot_at,expires_at,account_ids,matched_count,excluded_count FROM admin_people_selections WHERE id=$1 AND organization_id=$2`, reference, organizationID), organizationID)
+	record, err := loadSelection(ctx, tx.QueryRow(ctx, `SELECT id,organization_id,canonical_filter,snapshot_at,expires_at,account_ids,matched_count,excluded_count,targets FROM admin_people_selections WHERE id=$1 AND organization_id=$2`, reference, organizationID), organizationID)
 	if err != nil {
 		return BulkResult{}, err
 	}
@@ -575,70 +685,296 @@ func (s *Service) ExecuteBulk(ctx context.Context, organizationID uuid.UUID, act
 	if action.Kind == BulkAssignGroup {
 		var exists bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM access_groups WHERE organization_id=$1 AND id=$2)`, organizationID, *action.GroupID).Scan(&exists); err != nil {
-			return BulkResult{}, fmt.Errorf("validate bulk access group: %w", err)
+			return BulkResult{}, err
 		}
 		if !exists {
 			return BulkResult{}, ErrNotFound
 		}
 	}
+	actionKey := action.Kind + ":"
+	if action.GroupID != nil {
+		actionKey += strconv.Itoa(*action.GroupID)
+	}
+	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, reference.String()+":"+actionKey); err != nil {
+		return BulkResult{}, fmt.Errorf("lock people bulk idempotency key: %w", err)
+	}
+	var existing string
+	err = tx.QueryRow(ctx, `SELECT job_id FROM admin_people_bulk_jobs WHERE selection_id=$1 AND action_key=$2`, reference, actionKey).Scan(&existing)
+	if err == nil {
+		_ = tx.Commit(ctx)
+		return s.GetBulkJob(ctx, organizationID, existing)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return BulkResult{}, err
+	}
 	jobID, err := idgen.NextID()
 	if err != nil {
 		return BulkResult{}, err
 	}
-	result = BulkResult{JobID: jobID, Skipped: []RecordResult{}, Failed: []RecordResult{}}
-	for index, accountID := range record.accountIDs {
-		savepoint := fmt.Sprintf("people_record_%d", index)
-		if _, err = tx.Exec(ctx, "SAVEPOINT "+savepoint); err != nil {
-			return BulkResult{}, fmt.Errorf("create bulk record savepoint: %w", err)
-		}
-		outcome, reason, mutationErr := s.executeBulkRecord(ctx, tx, organizationID, actorID, accountID, action)
-		if mutationErr != nil {
-			_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT "+savepoint)
-			result.Failed = append(result.Failed, RecordResult{AccountID: accountID, Reason: ReasonMutationFailed})
-		} else {
-			switch outcome {
-			case "succeeded":
-				result.Succeeded++
-			case "skipped":
-				result.Skipped = append(result.Skipped, RecordResult{AccountID: accountID, Reason: reason})
-			case "failed":
-				result.Failed = append(result.Failed, RecordResult{AccountID: accountID, Reason: reason})
-			}
-		}
-		if _, err = tx.Exec(ctx, "RELEASE SAVEPOINT "+savepoint); err != nil {
-			return BulkResult{}, fmt.Errorf("release bulk record savepoint: %w", err)
+	now := s.now().UTC()
+	initial := BulkResult{JobID: jobID, Status: "queued", ProgressTotal: len(record.targets), Skipped: []RecordResult{}, Failed: []RecordResult{}}
+	requestJSON, _ := json.Marshal(map[string]any{"organization_id": organizationID, "selection_id": reference, "kind": action.Kind, "group_id": action.GroupID})
+	resultJSON, _ := json.Marshal(initial)
+	if _, err = tx.Exec(ctx, `INSERT INTO admin_jobs (id,job_type,status,created_by_user_id,request_payload,result_payload,message,progress_current,progress_total,requested_at,updated_at) VALUES ($1,'organization_people_bulk','queued',$2,$3,$4,'People bulk operation queued',0,$5,$6,$6)`, jobID, actorID, requestJSON, resultJSON, len(record.targets), now); err != nil {
+		return BulkResult{}, fmt.Errorf("persist queued people bulk job: %w", err)
+	}
+	if _, err = tx.Exec(ctx, `INSERT INTO admin_people_bulk_jobs (job_id,organization_id,selection_id,action_kind,group_id,action_key,actor_account_id,actor_authority,request_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULLIF($9,''))`, jobID, organizationID, reference, action.Kind, action.GroupID, actionKey, actorID, actor.Authority, actor.RequestID); err != nil {
+		return BulkResult{}, err
+	}
+	rows := make([][]any, 0, len(record.targets))
+	for ordinal, target := range record.targets {
+		raw, _ := json.Marshal(target)
+		rows = append(rows, []any{jobID, target.AccountID, ordinal, raw})
+	}
+	if len(rows) > 0 {
+		if _, err = tx.CopyFrom(ctx, pgx.Identifier{"admin_people_bulk_targets"}, []string{"job_id", "account_id", "ordinal", "snapshot"}, pgx.CopyFromRows(rows)); err != nil {
+			return BulkResult{}, fmt.Errorf("persist people bulk targets: %w", err)
 		}
 	}
-	requestJSON, _ := json.Marshal(map[string]any{"organization_id": organizationID, "selection_id": reference, "kind": action.Kind, "group_id": action.GroupID})
-	resultJSON, _ := json.Marshal(result)
-	now := s.now().UTC()
-	_, err = tx.Exec(ctx, `INSERT INTO admin_jobs (id,job_type,status,created_by_user_id,request_payload,result_payload,message,progress_current,progress_total,requested_at,started_at,completed_at,updated_at) VALUES ($1,'organization_people_bulk','completed',$2,$3,$4,'People bulk operation completed',$5,$6,$7,$7,$7,$7)`, jobID, actorID, requestJSON, resultJSON, len(record.accountIDs), len(record.accountIDs), now)
-	if err != nil {
-		return BulkResult{}, fmt.Errorf("persist people bulk job: %w", err)
+	ctx = WithMutationActor(ctx, actor)
+	if err = recordPeopleAudit(ctx, tx, actorID, "people.bulk_job_created", "bulk_job", jobID, organizationID, 0, 0, 0, "success", nil, map[string]any{"kind": action.Kind, "matched": len(record.targets), "excluded": record.excluded}); err != nil {
+		return BulkResult{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {
-		return BulkResult{}, fmt.Errorf("commit people bulk job: %w", err)
+		return BulkResult{}, err
+	}
+	return initial, nil
+}
+
+func (s *Service) ProcessBulkJob(ctx context.Context, organizationID uuid.UUID, jobID string) (BulkResult, error) {
+	for {
+		if err := ctx.Err(); err != nil {
+			return BulkResult{}, err
+		}
+		result, err := s.ProcessBulkBatch(ctx, organizationID, jobID, defaultBulkBatchSize)
+		if err != nil {
+			if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+				_ = s.failBulkJob(context.WithoutCancel(ctx), organizationID, jobID, err)
+			}
+			return BulkResult{}, err
+		}
+		if result.Status == "completed" || result.Status == "failed" {
+			return result, nil
+		}
+	}
+}
+
+func (s *Service) ProcessBulkBatch(ctx context.Context, organizationID uuid.UUID, jobID string, batchSize int) (BulkResult, error) {
+	if s == nil || s.pool == nil || organizationID == uuid.Nil || jobID == "" {
+		return BulkResult{}, ErrNotFound
+	}
+	if batchSize <= 0 || batchSize > 500 {
+		batchSize = defaultBulkBatchSize
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var action BulkAction
+	var actor MutationActor
+	var status string
+	err = tx.QueryRow(ctx, `SELECT j.status,b.action_kind,b.group_id,b.actor_account_id,b.actor_authority,COALESCE(b.request_id,'') FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1 AND b.organization_id=$2 FOR UPDATE OF j`, jobID, organizationID).Scan(&status, &action.Kind, &action.GroupID, &actor.AccountID, &actor.Authority, &actor.RequestID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return BulkResult{}, ErrNotFound
+	}
+	if err != nil {
+		return BulkResult{}, err
+	}
+	ctx = WithMutationActor(ctx, actor)
+	if status == "completed" || status == "failed" {
+		_ = tx.Commit(ctx)
+		return s.GetBulkJob(ctx, organizationID, jobID)
+	}
+	if _, err = tx.Exec(ctx, `UPDATE admin_jobs SET status='running',started_at=COALESCE(started_at,now()),heartbeat_at=now(),updated_at=now() WHERE id=$1`, jobID); err != nil {
+		return BulkResult{}, err
+	}
+	rows, err := tx.Query(ctx, `SELECT account_id,snapshot FROM admin_people_bulk_targets WHERE job_id=$1 AND status='pending' ORDER BY ordinal FOR UPDATE SKIP LOCKED LIMIT $2`, jobID, batchSize)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	type pendingTarget struct {
+		accountID int
+		snapshot  targetSnapshot
+	}
+	pending := []pendingTarget{}
+	for rows.Next() {
+		var item pendingTarget
+		var raw []byte
+		if err := rows.Scan(&item.accountID, &raw); err != nil {
+			rows.Close()
+			return BulkResult{}, err
+		}
+		if json.Unmarshal(raw, &item.snapshot) != nil || item.snapshot.AccountID != item.accountID || item.snapshot.AccountID <= 0 || item.snapshot.MembershipID == uuid.Nil || item.snapshot.MembershipRevision <= 0 || item.snapshot.AccountPolicyRevision <= 0 {
+			rows.Close()
+			return BulkResult{}, fmt.Errorf("decode bulk target snapshot")
+		}
+		pending = append(pending, item)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return BulkResult{}, err
+	}
+	rows.Close()
+	for index, item := range pending {
+		savepoint := fmt.Sprintf("bulk_target_%d", index)
+		_, _ = tx.Exec(ctx, "SAVEPOINT "+savepoint)
+		outcome, reason, mutationErr := s.executeBulkRecord(ctx, tx, organizationID, actor.AccountID, item.snapshot, action)
+		if mutationErr != nil {
+			_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT "+savepoint)
+			outcome = "failed"
+			reason = ReasonMutationFailed
+		}
+		if outcome != "succeeded" {
+			auditOutcome := "conflict"
+			actionName := "people.bulk_record_skipped"
+			if outcome == "failed" {
+				auditOutcome = "failure"
+				actionName = "people.bulk_record_failed"
+			}
+			if err := recordPeopleAudit(ctx, tx, actor.AccountID, actionName, "membership", item.snapshot.MembershipID.String(), organizationID, item.accountID, item.snapshot.MembershipRevision, item.snapshot.MembershipRevision, auditOutcome, map[string]any{"snapshot": item.snapshot}, map[string]any{"reason": reason}); err != nil {
+				return BulkResult{}, err
+			}
+		}
+		if _, err := tx.Exec(ctx, `UPDATE admin_people_bulk_targets SET status=$3,reason=$4,attempts=attempts+1,updated_at=now() WHERE job_id=$1 AND account_id=$2`, jobID, item.accountID, outcome, reason); err != nil {
+			return BulkResult{}, err
+		}
+		_, _ = tx.Exec(ctx, "RELEASE SAVEPOINT "+savepoint)
+	}
+	result, remaining, err := bulkResultInTx(ctx, tx, jobID)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	previous := status
+	if remaining == 0 {
+		result.Status = "completed"
+		result.ProgressCurrent = result.ProgressTotal
+		resultJSON, _ := json.Marshal(result)
+		if _, err = tx.Exec(ctx, `UPDATE admin_jobs SET status='completed',result_payload=$2,message='People bulk operation completed',progress_current=progress_total,completed_at=now(),heartbeat_at=now(),updated_at=now() WHERE id=$1`, jobID, resultJSON); err != nil {
+			return BulkResult{}, err
+		}
+		if previous != "completed" {
+			if err = recordPeopleAudit(ctx, tx, actor.AccountID, "people.bulk_job_completed", "bulk_job", jobID, organizationID, 0, 0, 0, "success", nil, map[string]any{"succeeded": result.Succeeded, "skipped": len(result.Skipped), "failed": len(result.Failed)}); err != nil {
+				return BulkResult{}, err
+			}
+		}
+	} else {
+		result.Status = "running"
+		resultJSON, _ := json.Marshal(result)
+		if _, err = tx.Exec(ctx, `UPDATE admin_jobs SET result_payload=$2,progress_current=$3,heartbeat_at=now(),updated_at=now() WHERE id=$1`, jobID, resultJSON, result.ProgressCurrent); err != nil {
+			return BulkResult{}, err
+		}
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return BulkResult{}, err
 	}
 	return result, nil
 }
 
-func (s *Service) executeBulkRecord(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID, accountID int, action BulkAction) (string, string, error) {
+func (s *Service) failBulkJob(ctx context.Context, organizationID uuid.UUID, jobID string, cause error) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var actor MutationActor
+	var status string
+	err = tx.QueryRow(ctx, `SELECT j.status,b.actor_account_id,b.actor_authority,COALESCE(b.request_id,'') FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1 AND b.organization_id=$2 FOR UPDATE OF j`, jobID, organizationID).Scan(&status, &actor.AccountID, &actor.Authority, &actor.RequestID)
+	if err != nil {
+		return err
+	}
+	if status == "completed" || status == "failed" {
+		return tx.Commit(ctx)
+	}
+	ctx = WithMutationActor(ctx, actor)
+	result, _, loadErr := bulkResultInTx(ctx, tx, jobID)
+	if loadErr != nil {
+		return loadErr
+	}
+	result.Status = "failed"
+	raw, _ := json.Marshal(result)
+	if _, err = tx.Exec(ctx, `UPDATE admin_jobs SET status='failed',result_payload=$2,message='People bulk operation failed',error_message=$3,completed_at=now(),heartbeat_at=now(),updated_at=now() WHERE id=$1`, jobID, raw, cause.Error()); err != nil {
+		return err
+	}
+	if err = recordPeopleAudit(ctx, tx, actor.AccountID, "people.bulk_job_failed", "bulk_job", jobID, organizationID, 0, 0, 0, "failure", nil, map[string]any{"error": "executor_failure"}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func bulkResultInTx(ctx context.Context, tx pgx.Tx, jobID string) (BulkResult, int, error) {
+	var result BulkResult
+	result.JobID = jobID
+	result.Skipped = []RecordResult{}
+	result.Failed = []RecordResult{}
+	var remaining int
+	if err := tx.QueryRow(ctx, `SELECT count(*),count(*) FILTER (WHERE status<>'pending'),count(*) FILTER (WHERE status='succeeded'),count(*) FILTER (WHERE status='pending') FROM admin_people_bulk_targets WHERE job_id=$1`, jobID).Scan(&result.ProgressTotal, &result.ProgressCurrent, &result.Succeeded, &remaining); err != nil {
+		return result, 0, err
+	}
+	rows, err := tx.Query(ctx, `SELECT account_id,status,reason FROM admin_people_bulk_targets WHERE job_id=$1 AND status IN ('skipped','failed') ORDER BY ordinal`, jobID)
+	if err != nil {
+		return result, 0, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var record RecordResult
+		var status string
+		if err := rows.Scan(&record.AccountID, &status, &record.Reason); err != nil {
+			return result, 0, err
+		}
+		if status == "skipped" {
+			result.Skipped = append(result.Skipped, record)
+		} else {
+			result.Failed = append(result.Failed, record)
+		}
+	}
+	return result, remaining, rows.Err()
+}
+
+func (s *Service) executeBulkRecord(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID int, snapshot targetSnapshot, action BulkAction) (string, string, error) {
 	var membershipID uuid.UUID
 	var status tenancy.MembershipStatus
-	var revision int64
+	var revision, accountRevision int64
 	var protected bool
-	err := tx.QueryRow(ctx, `SELECT m.id,m.status,m.security_revision,(o.owner_account_id=m.account_id) FROM organization_memberships m JOIN organizations o ON o.id=m.organization_id WHERE m.organization_id=$1 AND m.account_id=$2 FOR UPDATE OF m`, organizationID, accountID).Scan(&membershipID, &status, &revision, &protected)
+	err := tx.QueryRow(ctx, `SELECT m.id,m.status,m.security_revision,u.access_policy_revision,(o.owner_account_id=m.account_id) FROM organization_memberships m JOIN organizations o ON o.id=m.organization_id JOIN users u ON u.id=m.account_id WHERE m.organization_id=$1 AND m.account_id=$2 FOR UPDATE OF m,u`, organizationID, snapshot.AccountID).Scan(&membershipID, &status, &revision, &accountRevision, &protected)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "failed", ReasonNotFound, nil
 	}
 	if err != nil {
 		return "", "", err
 	}
+	if membershipID != snapshot.MembershipID || revision != snapshot.MembershipRevision || accountRevision != snapshot.AccountPolicyRevision || status != snapshot.MembershipStatus {
+		return "skipped", ReasonAuthorizationChanged, nil
+	}
 	switch action.Kind {
 	case BulkAssignGroup:
-		var total, changed int
-		if err := tx.QueryRow(ctx, `SELECT count(*),count(*) FILTER (WHERE access_group_id<>$3) FROM user_profiles WHERE organization_id=$1 AND user_id=$2`, organizationID, accountID, *action.GroupID).Scan(&total, &changed); err != nil {
+		rows, err := tx.Query(ctx, `SELECT id,access_group_id,updated_at FROM user_profiles WHERE organization_id=$1 AND user_id=$2 ORDER BY id FOR UPDATE`, organizationID, snapshot.AccountID)
+		if err != nil {
 			return "", "", err
+		}
+		profiles := []profileSnapshot{}
+		for rows.Next() {
+			var profile profileSnapshot
+			if err := rows.Scan(&profile.ID, &profile.GroupID, &profile.UpdatedAt); err != nil {
+				rows.Close()
+				return "", "", err
+			}
+			profiles = append(profiles, profile)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return "", "", err
+		}
+		rows.Close()
+		if !sameProfileSnapshots(profiles, snapshot.Profiles) {
+			return "skipped", ReasonAuthorizationChanged, nil
+		}
+		total := len(profiles)
+		changed := 0
+		for _, profile := range profiles {
+			if profile.GroupID != *action.GroupID {
+				changed++
+			}
 		}
 		if total == 0 {
 			return "skipped", ReasonNoProfiles, nil
@@ -646,13 +982,13 @@ func (s *Service) executeBulkRecord(ctx context.Context, tx pgx.Tx, organization
 		if changed == 0 {
 			return "skipped", ReasonAlreadyApplied, nil
 		}
-		if _, err := tx.Exec(ctx, `UPDATE user_profiles SET access_group_id=$3,updated_at=now() WHERE organization_id=$1 AND user_id=$2 AND access_group_id<>$3`, organizationID, accountID, *action.GroupID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE user_profiles SET access_group_id=$3,updated_at=now() WHERE organization_id=$1 AND user_id=$2 AND access_group_id<>$3`, organizationID, snapshot.AccountID, *action.GroupID); err != nil {
 			return "", "", err
 		}
-		if err := bumpPersonRevisions(ctx, tx, membershipID, accountID); err != nil {
+		if err := bumpPersonRevisions(ctx, tx, membershipID, snapshot.AccountID); err != nil {
 			return "", "", err
 		}
-		if err := recordPeopleAudit(ctx, tx, actorID, "people.bulk_group_assigned", "membership", membershipID.String(), organizationID, accountID, revision, revision+1, map[string]any{"changed_profiles": changed}, map[string]any{"group_id": *action.GroupID, "changed_profiles": changed}); err != nil {
+		if err := recordPeopleAudit(ctx, tx, actorID, "people.bulk_group_assigned", "membership", membershipID.String(), organizationID, snapshot.AccountID, revision, revision+1, "success", map[string]any{"changed_profiles": changed}, map[string]any{"group_id": *action.GroupID, "changed_profiles": changed}); err != nil {
 			return "", "", err
 		}
 		return "succeeded", "", nil
@@ -672,15 +1008,27 @@ func (s *Service) executeBulkRecord(ctx context.Context, tx pgx.Tx, organization
 		if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET status=$2,security_revision=security_revision+1,updated_at=now() WHERE id=$1`, membershipID, target); err != nil {
 			return "", "", err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, accountID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, snapshot.AccountID); err != nil {
 			return "", "", err
 		}
-		if err := recordPeopleAudit(ctx, tx, actorID, actionName, "membership", membershipID.String(), organizationID, accountID, revision, revision+1, map[string]any{"status": status}, map[string]any{"status": target}); err != nil {
+		if err := recordPeopleAudit(ctx, tx, actorID, actionName, "membership", membershipID.String(), organizationID, snapshot.AccountID, revision, revision+1, "success", map[string]any{"status": status}, map[string]any{"status": target}); err != nil {
 			return "", "", err
 		}
 		return "succeeded", "", nil
 	}
 	return "", "", ErrInvalidBulkAction
+}
+
+func sameProfileSnapshots(current, want []profileSnapshot) bool {
+	if len(current) != len(want) {
+		return false
+	}
+	for i := range current {
+		if current[i].ID != want[i].ID || current[i].GroupID != want[i].GroupID || !current[i].UpdatedAt.Equal(want[i].UpdatedAt) {
+			return false
+		}
+	}
+	return true
 }
 
 func bumpPersonRevisions(ctx context.Context, tx pgx.Tx, membershipID uuid.UUID, accountID int) error {
@@ -693,11 +1041,18 @@ func bumpPersonRevisions(ctx context.Context, tx pgx.Tx, membershipID uuid.UUID,
 	return nil
 }
 
-func recordPeopleAudit(ctx context.Context, tx pgx.Tx, actorID int, action, targetType, targetID string, organizationID uuid.UUID, accountID int, beforeRevision, afterRevision int64, before, after map[string]any) error {
+func recordPeopleAudit(ctx context.Context, tx pgx.Tx, actorID int, action, targetType, targetID string, organizationID uuid.UUID, accountID int, beforeRevision, afterRevision int64, outcome string, before, after map[string]any) error {
 	beforeJSON, _ := json.Marshal(before)
 	afterJSON, _ := json.Marshal(after)
-	metadata, _ := ctx.Value(mutationMetadataKey{}).(mutationMetadata)
-	_, err := tx.Exec(ctx, `INSERT INTO admin_audit_events (actor_account_id,actor_platform_role,authority_context,action,target_type,target_id,organization_id,subject_id,before_revision,after_revision,outcome,request_id,before_state,after_state) VALUES ($1,'organization_admin','organization',$2,$3,$4,$5,$6,$7,$8,'success',NULLIF($9,''),$10,$11)`, actorID, action, targetType, targetID, organizationID, strconv.Itoa(accountID), beforeRevision, afterRevision, metadata.requestID, beforeJSON, afterJSON)
+	actor, err := mutationActor(ctx, actorID)
+	if err != nil {
+		return err
+	}
+	subject := ""
+	if accountID > 0 {
+		subject = strconv.Itoa(accountID)
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO admin_audit_events (actor_account_id,actor_platform_role,authority_context,action,target_type,target_id,organization_id,subject_id,before_revision,after_revision,outcome,request_id,before_state,after_state) VALUES ($1,$2,'organization',$3,$4,$5,$6,NULLIF($7,''),$8,$9,$10,NULLIF($11,''),$12,$13)`, actorID, actor.Authority, action, targetType, targetID, organizationID, subject, beforeRevision, afterRevision, outcome, actor.RequestID, beforeJSON, afterJSON)
 	if err != nil {
 		return fmt.Errorf("record people admin audit: %w", err)
 	}
@@ -711,17 +1066,26 @@ func (s *Service) GetBulkJob(ctx context.Context, organizationID uuid.UUID, jobI
 	if organizationID == uuid.Nil || strings.TrimSpace(jobID) == "" {
 		return BulkResult{}, ErrNotFound
 	}
-	var raw []byte
-	err := s.pool.QueryRow(ctx, `SELECT result_payload FROM admin_jobs WHERE id=$1 AND job_type='organization_people_bulk' AND request_payload->>'organization_id'=$2`, jobID, organizationID.String()).Scan(&raw)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var status string
+	err = tx.QueryRow(ctx, `SELECT j.status FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1 AND b.organization_id=$2`, jobID, organizationID).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return BulkResult{}, ErrNotFound
 	}
 	if err != nil {
 		return BulkResult{}, fmt.Errorf("load people bulk job: %w", err)
 	}
-	var result BulkResult
-	if json.Unmarshal(raw, &result) != nil {
-		return BulkResult{}, fmt.Errorf("decode people bulk job result")
+	result, _, err := bulkResultInTx(ctx, tx, jobID)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	result.Status = status
+	if err = tx.Commit(ctx); err != nil {
+		return BulkResult{}, err
 	}
 	return result, nil
 }
@@ -759,7 +1123,7 @@ func (s *Service) UpdateMembership(ctx context.Context, organizationID uuid.UUID
 		if _, err = tx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, accountID); err != nil {
 			return PersonSummary{}, err
 		}
-		if err = recordPeopleAudit(ctx, tx, actorID, "people.membership_updated", "membership", id.String(), organizationID, accountID, revision, revision+1, map[string]any{"status": current}, map[string]any{"status": status}); err != nil {
+		if err = recordPeopleAudit(ctx, tx, actorID, "people.membership_updated", "membership", id.String(), organizationID, accountID, revision, revision+1, "success", map[string]any{"status": current}, map[string]any{"status": status}); err != nil {
 			return PersonSummary{}, err
 		}
 	}
@@ -810,7 +1174,7 @@ func (s *Service) UpdateProfileGroup(ctx context.Context, organizationID uuid.UU
 		if err = bumpPersonRevisions(ctx, tx, membershipID, accountID); err != nil {
 			return PersonSummary{}, err
 		}
-		if err = recordPeopleAudit(ctx, tx, actorID, "people.profile_group_updated", "profile", profileID, organizationID, accountID, revision, revision+1, map[string]any{"group_id": beforeGroup}, map[string]any{"group_id": groupID}); err != nil {
+		if err = recordPeopleAudit(ctx, tx, actorID, "people.profile_group_updated", "profile", profileID, organizationID, accountID, revision, revision+1, "success", map[string]any{"group_id": beforeGroup}, map[string]any{"group_id": groupID}); err != nil {
 			return PersonSummary{}, err
 		}
 	}

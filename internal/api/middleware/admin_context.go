@@ -88,7 +88,7 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 				writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 				return
 			}
-			if membership.LegacyRole != "admin" {
+			if claims.EffectiveAuthority == "platform_admin" {
 				allowed, err := m.platformAdmin(r.Context(), claims.AccountID)
 				if err != nil {
 					writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
@@ -98,6 +98,9 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 					writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 					return
 				}
+			} else if claims.EffectiveAuthority != "organization_admin" || membership.LegacyRole != "admin" {
+				writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+				return
 			}
 			ctx := SetAdminContextClaims(r.Context(), claims)
 			next.ServeHTTP(w, r.WithContext(tenancy.WithContext(ctx, resolved)))

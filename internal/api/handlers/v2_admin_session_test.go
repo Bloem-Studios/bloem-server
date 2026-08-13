@@ -93,6 +93,36 @@ func TestV2AdminSessionMintsOrganizationContextForOrganizationAdmin(t *testing.T
 	}
 }
 
+func TestV2AdminSessionRecordsPlatformAuthorityInsideOrganizationContext(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	membershipID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
+	tokens := auth.NewAdminContextTokenService("admin-session-test-secret")
+	handler := NewAdminContextSessionHandler(tokens, adminSessionResolverStub{tenant: tenancy.Context{AccountID: 41, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11}}, adminSessionMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 41, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}, organization: tenancy.Organization{ID: organizationID, Name: "Vondel", Status: tenancy.OrganizationActive}}, adminSessionPlatformAuthorizerStub{allowed: true})
+	req := httptest.NewRequest(http.MethodPost, "/api/v2/admin/session", strings.NewReader(`{"scope":"organization","organization_id":"`+organizationID.String()+`"}`))
+	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41}))
+	rec := httptest.NewRecorder()
+	handler.HandleSession(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("response=%d %s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		AccessToken string `json:"access_token"`
+		Context     struct {
+			Authority string `json:"authority"`
+		} `json:"context"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	claims, err := tokens.Parse(body.AccessToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if claims.EffectiveAuthority != "platform_admin" || body.Context.Authority != "platform_admin" {
+		t.Fatalf("claims=%+v context=%+v", claims, body.Context)
+	}
+}
+
 func TestV2AdminSessionRequiresPlatformAuthorityForPlatformScope(t *testing.T) {
 	handler := NewAdminContextSessionHandler(auth.NewAdminContextTokenService("admin-session-test-secret"), adminSessionResolverStub{}, adminSessionMembershipStoreStub{}, adminSessionPlatformAuthorizerStub{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v2/admin/session", strings.NewReader(`{"scope":"platform"}`))
