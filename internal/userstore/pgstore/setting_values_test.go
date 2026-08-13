@@ -62,7 +62,10 @@ func (c *countingQueryTracer) snapshot() []string {
 func TestPostgresResolutionIssuesOneQuery(t *testing.T) {
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
+		if os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
+			t.Fatal("SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1")
+		}
+		t.Skip("SILO_TEST_DATABASE_URL is not set; skipping local PostgreSQL test")
 	}
 	ctx := context.Background()
 
@@ -505,7 +508,10 @@ func newProfileIdentityTestUser(t *testing.T) (*pgxpool.Pool, int) {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
+		if os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
+			t.Fatal("SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1")
+		}
+		t.Skip("SILO_TEST_DATABASE_URL is not set; skipping local PostgreSQL test")
 	}
 	ctx := context.Background()
 	random := make([]byte, 8)

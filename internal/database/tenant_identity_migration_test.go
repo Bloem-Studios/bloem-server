@@ -67,10 +67,7 @@ func TestTenantIdentityMigrationRunbookUsesImmediateRollbackTarget(t *testing.T)
 }
 
 func TestTenantIdentityMigrationBackfill(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
+	dsn := requiredPostgresTestDatabaseURL(t)
 
 	tests := []struct {
 		name                   string
@@ -130,10 +127,7 @@ func TestTenantIdentityMigrationBackfill(t *testing.T) {
 // schema boundary must provide the default organization without weakening its
 // NOT NULL guarantees.
 func TestTenantIdentityMigrationSupportsLegacyWritePaths(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
+	dsn := requiredPostgresTestDatabaseURL(t)
 
 	t.Run("profile creation", func(t *testing.T) {
 		ctx := context.Background()
@@ -613,12 +607,17 @@ func newTenantIdentityDisposableDatabase(t *testing.T, ctx context.Context, dsn 
 
 func newDisposableMigrationDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
+	return newTenantIdentityDisposableDatabase(t, context.Background(), requiredPostgresTestDatabaseURL(t))
+}
+
+func requiredPostgresTestDatabaseURL(t *testing.T) string {
+	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
-		if os.Getenv("CI") != "" {
-			t.Fatal("SILO_TEST_DATABASE_URL is required in CI for PostgreSQL migration tests")
+		if os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
+			t.Fatal("SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1")
 		}
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
+		t.Skip("SILO_TEST_DATABASE_URL is not set; skipping local PostgreSQL test")
 	}
-	return newTenantIdentityDisposableDatabase(t, context.Background(), dsn)
+	return dsn
 }

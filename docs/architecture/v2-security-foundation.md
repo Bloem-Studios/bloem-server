@@ -44,8 +44,9 @@ from version strings. `/api/v10/*` is not an alias and returns 404.
   and other organizations.
 - V1 retains the legacy account ceiling for profile-less default-organization
   requests. A selected profile resolves its canonical access group from the
-  profile's organization-qualified assignment; a group from another
-  organization never resolves.
+  profile's required organization-qualified assignment; a group from another
+  organization never resolves. Deleting a non-default group reassigns its
+  profiles to that organization's default group in the deletion transaction.
 - Media visibility is bounded before catalog SQL runs. An organization may see
   its own folders and platform-owned folders with an active explicit
   entitlement. Ownership and entitlement establish availability only; access
@@ -94,7 +95,9 @@ An upgrade with exactly one enabled legacy administrator automatically assigns
 that account as platform and default-organization owner. Disabled admins do not
 create ambiguity. Existing users receive active memberships, profiles retain
 their IDs and policy fields, and existing access groups/profiles attach to the
-default organization. Existing media folders become platform-owned and the
+default organization. Unassigned profiles are backfilled to their
+organization's default group, after which every profile has exactly one
+canonical group. Existing media folders become platform-owned and the
 default platform catalog is materialized as active default-organization
 entitlements so upgraded v1 users retain their prior library visibility.
 

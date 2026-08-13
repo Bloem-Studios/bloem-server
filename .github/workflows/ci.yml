@@ -67,7 +67,12 @@ jobs:
       - name: Tenant and access-group migrations
         env:
           SILO_REQUIRE_TEST_DATABASE: "1"
-        run: go test ./internal/database -run 'TestTenantIdentityMigration|TestOrganizationAccessGroupMigration' -count=1 -v -timeout=30m
+        run: go test ./internal/database -run 'TestTenantIdentityMigration|TestResourceTenancyMigration|TestOrganizationAccessGroupMigration|TestProfileAccessGroupRequired' -count=1 -v -timeout=30m
+
+      - name: Profile tenant persistence
+        env:
+          SILO_REQUIRE_TEST_DATABASE: "1"
+        run: go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization' -count=1 -v -timeout=30m
 
       - name: Tenant resource and policy stores
         env:

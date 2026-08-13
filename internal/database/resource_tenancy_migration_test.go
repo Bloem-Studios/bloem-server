@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -43,10 +42,7 @@ func TestResourceTenancyMigrationPreviousVersionIsImmediatePredecessor(t *testin
 }
 
 func TestResourceTenancyMigrationBackfillAndRollback(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
+	dsn := requiredPostgresTestDatabaseURL(t)
 	ctx := context.Background()
 	pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
@@ -92,10 +88,7 @@ func TestResourceTenancyMigrationBackfillAndRollback(t *testing.T) {
 }
 
 func TestResourceTenancyMigrationCleanInstallAndCompatibilityWrites(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
+	dsn := requiredPostgresTestDatabaseURL(t)
 	ctx := context.Background()
 	pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
@@ -136,10 +129,7 @@ func TestResourceTenancyMigrationCleanInstallAndCompatibilityWrites(t *testing.T
 }
 
 func TestResourceTenancyMigrationRejectsInvalidOwnershipAndEntitlements(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
+	dsn := requiredPostgresTestDatabaseURL(t)
 	ctx := context.Background()
 	pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {

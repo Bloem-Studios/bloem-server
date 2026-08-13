@@ -4,6 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"os/exec"
+	"path"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -13,6 +19,129 @@ import (
 )
 
 const organizationAccessGroupMigrationPreviousVersion int64 = 20260813090000
+
+const (
+	profileAccessGroupRequiredVersion int64 = 20260813130000
+	profileAccessGroupPreviousVersion int64 = 20260813110000
+)
+
+func TestProfileAccessGroupRequiredPreviousVersionIsImmediatePredecessor(t *testing.T) {
+	files, err := fs.Glob(migrations.FS, "sql/*.sql")
+	if err != nil {
+		t.Fatalf("list migrations: %v", err)
+	}
+	var predecessor int64
+	for _, file := range files {
+		version, err := strconv.ParseInt(strings.SplitN(path.Base(file), "_", 2)[0], 10, 64)
+		if err == nil && version < profileAccessGroupRequiredVersion && version > predecessor {
+			predecessor = version
+		}
+	}
+	if predecessor != profileAccessGroupPreviousVersion {
+		t.Fatalf("profile-group predecessor = %d, want %d", predecessor, profileAccessGroupPreviousVersion)
+	}
+}
+
+func TestProfileAccessGroupRequiredSignalFailsWithoutURL(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatalf("locate database test executable: %v", err)
+	}
+	command := exec.Command(executable, "-test.run=^TestProfileAccessGroupRequiredMigrationUpDownUp$", "-test.v")
+	command.Env = environmentWithout("SILO_TEST_DATABASE_URL", "SILO_REQUIRE_TEST_DATABASE")
+	command.Env = append(command.Env, "SILO_REQUIRE_TEST_DATABASE=1")
+	output, err := command.CombinedOutput()
+	if err == nil {
+		t.Fatalf("required PostgreSQL subprocess without database passed; output=%s", output)
+	}
+	if !strings.Contains(string(output), "SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1") {
+		t.Fatalf("required PostgreSQL subprocess failure = %v, output=%s", err, output)
+	}
+}
+
+func environmentWithout(names ...string) []string {
+	blocked := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		blocked[name] = struct{}{}
+	}
+	filtered := make([]string, 0, len(os.Environ()))
+	for _, entry := range os.Environ() {
+		name, _, _ := strings.Cut(entry, "=")
+		if _, skip := blocked[name]; !skip {
+			filtered = append(filtered, entry)
+		}
+	}
+	return filtered
+}
+
+func TestProfileAccessGroupRequiredMigrationUpDownUp(t *testing.T) {
+	db := newDisposableMigrationDatabase(t)
+	runAllMigrations(t, db)
+	if err := MigrateDownTo(context.Background(), db, migrations.FS, "sql", profileAccessGroupPreviousVersion); err != nil {
+		t.Fatalf("migrate to profile-group predecessor: %v", err)
+	}
+
+	organizationID := insertOrganization(t, db, "profile-group-required")
+	var groupID int64
+	if err := db.QueryRow(context.Background(), `
+		INSERT INTO access_groups (organization_id, name, is_default)
+		VALUES ($1, 'Existing non-default policy', false)
+		RETURNING id`, organizationID).Scan(&groupID); err != nil {
+		t.Fatalf("seed organization policy group: %v", err)
+	}
+	var userID int
+	if err := db.QueryRow(context.Background(), `
+		INSERT INTO users (username, email, password_hash, role)
+		VALUES ('profile-group-required-user', 'profile-group-required@example.test', 'x', 'user')
+		RETURNING id`).Scan(&userID); err != nil {
+		t.Fatalf("create profile owner: %v", err)
+	}
+	if _, err := db.Exec(context.Background(), `
+		INSERT INTO user_profiles (organization_id, access_group_id, user_id, id, name)
+		VALUES ($1, NULL, $2, 'profile-group-required', 'Required')`, organizationID, userID); err != nil {
+		t.Fatalf("seed nullable profile group: %v", err)
+	}
+
+	runAllMigrations(t, db)
+	assertProfileGroupRequired(t, db, userID, groupID)
+	_, err := db.Exec(context.Background(), `
+		INSERT INTO user_profiles (organization_id, access_group_id, user_id, id, name)
+		VALUES ($1, NULL, $2, 'profile-group-null-rejected', 'Rejected')`, organizationID, userID)
+	assertSQLState(t, err, "23502")
+
+	if err := MigrateDownTo(context.Background(), db, migrations.FS, "sql", profileAccessGroupPreviousVersion); err != nil {
+		t.Fatalf("migrate profile-group requirement down: %v", err)
+	}
+	if _, err := db.Exec(context.Background(), `UPDATE user_profiles SET access_group_id=NULL WHERE user_id=$1`, userID); err != nil {
+		t.Fatalf("rollback did not restore nullable profile group: %v", err)
+	}
+	runAllMigrations(t, db)
+	assertProfileGroupRequired(t, db, userID, groupID)
+}
+
+func assertProfileGroupRequired(t *testing.T, db *pgxpool.Pool, userID int, wantGroupID int64) {
+	t.Helper()
+	var (
+		groupID    int64
+		isDefault  bool
+		isNullable string
+	)
+	if err := db.QueryRow(context.Background(), `SELECT access_group_id FROM user_profiles WHERE user_id=$1`, userID).Scan(&groupID); err != nil {
+		t.Fatalf("load migrated profile group: %v", err)
+	}
+	if err := db.QueryRow(context.Background(), `
+		SELECT is_default FROM access_groups WHERE id=$1`, wantGroupID).Scan(&isDefault); err != nil {
+		t.Fatalf("load migrated default group: %v", err)
+	}
+	if err := db.QueryRow(context.Background(), `
+		SELECT is_nullable FROM information_schema.columns
+		WHERE table_schema='public' AND table_name='user_profiles' AND column_name='access_group_id'`).Scan(&isNullable); err != nil {
+		t.Fatalf("load profile-group nullability: %v", err)
+	}
+	if groupID != wantGroupID || !isDefault || isNullable != "NO" {
+		t.Fatalf("profile group/default/nullability = %d/%t/%s, want %d/true/NO", groupID, isDefault, isNullable, wantGroupID)
+	}
+}
 
 func TestOrganizationAccessGroupMigrationUpDownUp(t *testing.T) {
 	db := newDisposableMigrationDatabase(t)
@@ -32,13 +161,7 @@ func TestOrganizationAccessGroupMigrationUpDownUp(t *testing.T) {
 	assertCrossOrganizationProfileGroupRejected(t, db, orgA, orgB)
 	runMigrationDownUp(t, db, "20260813110000_organization_access_group_invariants.sql")
 	assertDefaultGroupState(t, db, orgA, "Default A", true)
-	assertDefaultGroupState(t, db, orgB, "Default B", false)
-	if _, err := db.Exec(context.Background(), `
-UPDATE access_groups
-SET is_default = true
-WHERE organization_id = $1 AND name = 'Default B'`, orgB); err != nil {
-		t.Fatalf("restore organization B default group after re-up: %v", err)
-	}
+	assertDefaultGroupState(t, db, orgB, "Default B", true)
 	_, err = db.Exec(context.Background(), `
 		INSERT INTO access_groups (organization_id, name, is_default)
 		VALUES ($1, 'Second B', true)`, orgB)

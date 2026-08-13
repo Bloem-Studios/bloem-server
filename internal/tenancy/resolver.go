@@ -35,6 +35,24 @@ func (r *Resolver) Resolve(ctx context.Context, accountID int, requestedOrganiza
 	if err != nil {
 		return Context{}, err
 	}
+	return r.resolveTenant(ctx, accountID, organization, legacy)
+}
+
+// ResolveProfile validates a profile's authoritative organization. Profiles
+// in the deployment default organization retain the v1 initializing-tenant
+// compatibility exception; a non-default organization never inherits it.
+func (r *Resolver) ResolveProfile(ctx context.Context, accountID int, organizationID uuid.UUID) (Context, error) {
+	if r == nil || r.store == nil || organizationID == uuid.Nil {
+		return Context{}, ErrTenantUnavailable
+	}
+	organization, err := r.resolveOrganization(ctx, &organizationID, false)
+	if err != nil {
+		return Context{}, err
+	}
+	return r.resolveTenant(ctx, accountID, organization, organization.Default)
+}
+
+func (r *Resolver) resolveTenant(ctx context.Context, accountID int, organization Organization, legacy bool) (Context, error) {
 	if organization.Status == OrganizationSuspended {
 		return Context{}, ErrTenantSuspended
 	}

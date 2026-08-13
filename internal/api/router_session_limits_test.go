@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -12,10 +13,7 @@ import (
 
 func TestPlaybackSessionLimitProviderResolvesCanonicalProfileGroup(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
-	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
-		OrganizationID: organizationID,
-		AccountID:      7,
-	})
+	ctx := tenancy.WithContext(context.Background(), tenancy.Context{OrganizationID: uuid.New(), AccountID: 999})
 	groups := &profileSessionLimitGroupProvider{
 		want: access.GroupSubject{
 			OrganizationID: organizationID,
@@ -37,6 +35,7 @@ func TestPlaybackSessionLimitProviderResolvesCanonicalProfileGroup(t *testing.T)
 			AudioTranscodeAllowed: true,
 		}},
 		groups,
+		sessionLimitTenantResolverStub{tenant: tenancy.Context{OrganizationID: organizationID, AccountID: 7}},
 	)
 
 	limits, err := provider(ctx, 7, "profile-v2")
@@ -46,6 +45,26 @@ func TestPlaybackSessionLimitProviderResolvesCanonicalProfileGroup(t *testing.T)
 	if limits.MaxStreams != 1 || limits.MaxTranscodes != 1 {
 		t.Fatalf("session limits = %+v, want profile group stream/transcode limits of 1", limits)
 	}
+}
+
+func TestPlaybackSessionLimitProviderFailsClosedWithoutTenantResolver(t *testing.T) {
+	provider := playbackSessionLimitProvider(
+		sessionLimitUserRepositoryStub{user: &models.User{ID: 7}},
+		&profileSessionLimitGroupProvider{},
+		nil,
+	)
+	if _, err := provider(context.Background(), 7, "profile-v2"); !errors.Is(err, tenancy.ErrTenantUnavailable) {
+		t.Fatalf("session limit provider error = %v, want tenant unavailable", err)
+	}
+}
+
+type sessionLimitTenantResolverStub struct {
+	tenant tenancy.Context
+	err    error
+}
+
+func (s sessionLimitTenantResolverStub) ResolveSubjectTenant(context.Context, int, string) (tenancy.Context, error) {
+	return s.tenant, s.err
 }
 
 type sessionLimitUserRepositoryStub struct {

@@ -1684,7 +1684,8 @@ func main() {
 		profileTokens := access.NewProfileTokenService(cfg.Auth.JWTSecret, 0)
 		var notificationScopes notifications.ScopeResolver
 		if policySystem != nil {
-			notificationScopes = policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore)
+			notificationScopes = newTenantAwareViewerResolver(deps.DB,
+				policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore))
 		} else {
 			// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 			notificationScopes = access.NewResolver(userRepo, userStoreProvider, profileTokens, accessGroupStore)
@@ -2209,7 +2210,8 @@ func main() {
 			profileTokens := access.NewProfileTokenService(cfg.Auth.JWTSecret, 0)
 			var reconcileResolver scopeResolver
 			if policySystem != nil {
-				reconcileResolver = policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore)
+				reconcileResolver = newTenantAwareViewerResolver(deps.DB,
+					policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore))
 			} else {
 				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 				reconcileResolver = access.NewResolver(userRepo, userStoreProvider, profileTokens, accessGroupStore)
@@ -2318,7 +2320,8 @@ func main() {
 		}
 		var absScopeResolver scopeResolver
 		if policySystem != nil {
-			absScopeResolver = policy.NewViewerResolver(absUserRepo, userStoreProvider, nil, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore)
+			absScopeResolver = newTenantAwareViewerResolver(deps.DB,
+				policy.NewViewerResolver(absUserRepo, userStoreProvider, nil, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore))
 		} else {
 			absScopeResolver = access.NewResolver(absUserRepo, userStoreProvider, nil, accessGroupStore)
 		}
@@ -2686,14 +2689,14 @@ func main() {
 			if userStoreProvider != nil {
 				var compatScopeResolver jellycompat.ScopeResolver
 				if policySystem != nil {
-					compatScopeResolver = policy.NewViewerResolver(
+					compatScopeResolver = newTenantAwareViewerResolver(deps.DB, policy.NewViewerResolver(
 						userRepo,
 						userStoreProvider,
 						nil, // profile tokens unused: compat login already verifies PINs
 						policySystem.PDP(),
 						resourcetenancy.NewStore(deps.DB),
 						accessGroupStore,
-					)
+					))
 				} else {
 					// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 					compatScopeResolver = access.NewResolver(
@@ -3448,6 +3451,14 @@ func mapFolderTypeToMediaType(t string) string {
 
 type scopeResolver interface {
 	Resolve(ctx context.Context, input access.ResolveInput) (access.Scope, error)
+}
+
+func newTenantAwareViewerResolver(pool *pgxpool.Pool, viewer policy.AccessScopeResolver) *policy.TenantViewerResolver {
+	tenantStore := tenancy.NewStore(pool)
+	return policy.NewTenantViewerResolver(
+		viewer,
+		tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore),
+	)
 }
 
 type scopeEntitlementResolver struct {

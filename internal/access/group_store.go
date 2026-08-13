@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -229,7 +230,7 @@ func (s *GroupStore) Create(ctx context.Context, organizationID uuid.UUID, input
 }
 
 // Update modifies an access group. Setting IsDefault true clears the previous
-// default, and changing max_playback_quality bumps member access-policy
+// default, and every authorization-affecting change bumps member access-policy
 // revisions in the same transaction. The current default cannot be demoted
 // directly (which would leave no default) — promote another group instead.
 func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id int64, input UpdateGroupInput) (*Group, error) {
@@ -303,22 +304,31 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	qualityChanged := false
-	if input.MaxPlaybackQuality != nil {
-		var current string
-		if err := tx.QueryRow(ctx, `
-			SELECT max_playback_quality
+	var current Group
+	if err := tx.QueryRow(ctx, `
+			SELECT library_ids, max_playback_quality, download_allowed,
+				download_transcode_allowed, max_streams, max_transcodes,
+				allowed_permissions, requests_allowed, is_default
 			FROM access_groups
 			WHERE organization_id = $1
 			  AND id = $2
-			FOR UPDATE`, organizationID, id).Scan(&current); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, ErrGroupNotFound
-			}
-			return nil, fmt.Errorf("loading access group for update: %w", err)
+			FOR UPDATE`, organizationID, id).Scan(
+		&current.LibraryIDs,
+		&current.MaxPlaybackQuality,
+		&current.DownloadAllowed,
+		&current.DownloadTranscodeAllowed,
+		&current.MaxStreams,
+		&current.MaxTranscodes,
+		&current.AllowedPermissions,
+		&current.RequestsAllowed,
+		&current.IsDefault,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrGroupNotFound
 		}
-		qualityChanged = NormalizePlaybackQuality(current) != NormalizePlaybackQuality(*input.MaxPlaybackQuality)
+		return nil, fmt.Errorf("loading access group for update: %w", err)
 	}
+	authorizationChanged := groupAuthorizationChanged(current, input)
 	if input.IsDefault != nil && *input.IsDefault {
 		if _, err := tx.Exec(ctx, `
 			UPDATE access_groups
@@ -330,19 +340,7 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 		}
 	}
 	if input.IsDefault != nil && !*input.IsDefault {
-		var isDefault bool
-		if err := tx.QueryRow(ctx, `
-			SELECT is_default
-			FROM access_groups
-			WHERE organization_id = $1
-			  AND id = $2
-			FOR UPDATE`, organizationID, id).Scan(&isDefault); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, ErrGroupNotFound
-			}
-			return nil, fmt.Errorf("loading access group for update: %w", err)
-		}
-		if isDefault {
+		if current.IsDefault {
 			return nil, ErrDefaultGroupRequired
 		}
 	}
@@ -360,7 +358,7 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 	if tag.RowsAffected() == 0 {
 		return nil, ErrGroupNotFound
 	}
-	if qualityChanged {
+	if authorizationChanged {
 		if _, err := tx.Exec(ctx, `
 			UPDATE users
 			SET access_policy_revision = access_policy_revision + 1
@@ -379,9 +377,9 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 	return s.Get(ctx, organizationID, id)
 }
 
-// Delete removes an access group. Canonical profile assignments are cleared
-// explicitly; the legacy account assignment is cleared by its FK. The default
-// group cannot be deleted — promote another group first.
+// Delete removes an access group. Canonical profile assignments are moved to
+// the organization's default group; the legacy account assignment is cleared
+// by its FK. The default group cannot be deleted — promote another group first.
 func (s *GroupStore) Delete(ctx context.Context, organizationID uuid.UUID, id int64) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -404,6 +402,18 @@ func (s *GroupStore) Delete(ctx context.Context, organizationID uuid.UUID, id in
 	case isDefault:
 		return ErrDefaultGroupRequired
 	}
+	var defaultGroupID int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id
+		FROM access_groups
+		WHERE organization_id = $1
+		  AND is_default
+		FOR UPDATE`, organizationID).Scan(&defaultGroupID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrDefaultGroupRequired
+		}
+		return fmt.Errorf("loading replacement default access group: %w", err)
+	}
 
 	if _, err := tx.Exec(ctx, `
 		UPDATE users
@@ -418,10 +428,11 @@ func (s *GroupStore) Delete(ctx context.Context, organizationID uuid.UUID, id in
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE user_profiles
-		SET access_group_id = NULL
+		SET access_group_id = $3,
+			updated_at = NOW()
 		WHERE organization_id = $1
-		  AND access_group_id = $2`, organizationID, id); err != nil {
-		return fmt.Errorf("clearing deleted access group profile assignments: %w", err)
+		  AND access_group_id = $2`, organizationID, id, defaultGroupID); err != nil {
+		return fmt.Errorf("reassigning deleted access group profiles: %w", err)
 	}
 	tag, err := tx.Exec(ctx, `
 		DELETE FROM access_groups
@@ -437,6 +448,17 @@ func (s *GroupStore) Delete(ctx context.Context, organizationID uuid.UUID, id in
 		return fmt.Errorf("committing access group delete: %w", err)
 	}
 	return nil
+}
+
+func groupAuthorizationChanged(current Group, input UpdateGroupInput) bool {
+	return input.LibraryIDs != nil && !reflect.DeepEqual(current.LibraryIDs, *input.LibraryIDs) ||
+		input.MaxPlaybackQuality != nil && NormalizePlaybackQuality(current.MaxPlaybackQuality) != NormalizePlaybackQuality(*input.MaxPlaybackQuality) ||
+		input.DownloadAllowed != nil && current.DownloadAllowed != *input.DownloadAllowed ||
+		input.DownloadTranscodeAllowed != nil && current.DownloadTranscodeAllowed != *input.DownloadTranscodeAllowed ||
+		input.MaxStreams != nil && current.MaxStreams != *input.MaxStreams ||
+		input.MaxTranscodes != nil && current.MaxTranscodes != *input.MaxTranscodes ||
+		input.AllowedPermissions != nil && !reflect.DeepEqual(current.AllowedPermissions, *input.AllowedPermissions) ||
+		input.RequestsAllowed != nil && current.RequestsAllowed != *input.RequestsAllowed
 }
 
 // ResolvePolicy returns the profile's organization-owned group policy. The

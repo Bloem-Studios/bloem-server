@@ -100,6 +100,20 @@ func createProfile(
 			return fmt.Errorf("validating organization for profile %s: %w", p.ID, tenancy.ErrTenantNotFoundOrHidden)
 		}
 	}
+	if p.AccessGroupID == nil {
+		var defaultGroupID int64
+		if err := exec.QueryRow(ctx, `
+			SELECT id
+			FROM access_groups
+			WHERE organization_id = $1
+			  AND is_default`, p.OrganizationID).Scan(&defaultGroupID); err != nil {
+			if err == pgx.ErrNoRows {
+				return fmt.Errorf("resolving default access group for profile %s: %w", p.ID, tenancy.ErrTenantNotFoundOrHidden)
+			}
+			return fmt.Errorf("resolving default access group for profile %s: %w", p.ID, err)
+		}
+		p.AccessGroupID = &defaultGroupID
+	}
 
 	_, err := exec.Exec(ctx, `
 		INSERT INTO user_profiles (

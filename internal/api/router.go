@@ -476,7 +476,12 @@ func NewRouter(deps Dependencies) chi.Router {
 		}
 	}
 	if deps.SessionMgr != nil && userRepo != nil {
-		deps.SessionMgr.SetLimitProvider(playbackSessionLimitProvider(userRepo, accessGroupStore))
+		var sessionTenants policy.SubjectTenantResolver
+		if deps.DB != nil {
+			tenantStore := tenancy.NewStore(deps.DB)
+			sessionTenants = tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore)
+		}
+		deps.SessionMgr.SetLimitProvider(playbackSessionLimitProvider(userRepo, accessGroupStore, sessionTenants))
 		if deps.PolicySystem != nil {
 			deps.SessionMgr.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(deps.PolicySystem.PDP()))
 		}
@@ -3268,8 +3273,22 @@ func NewRouter(deps Dependencies) chi.Router {
 	return r
 }
 
-func playbackSessionLimitProvider(users access.UserRepository, groups access.GroupPolicyProvider) playback.SessionLimitProvider {
+func playbackSessionLimitProvider(
+	users access.UserRepository,
+	groups access.GroupPolicyProvider,
+	tenants policy.SubjectTenantResolver,
+) playback.SessionLimitProvider {
 	return func(ctx context.Context, userID int, profileID string) (playback.SessionLimits, error) {
+		if groups != nil {
+			if tenants == nil {
+				return playback.SessionLimits{}, tenancy.ErrTenantUnavailable
+			}
+			tenant, err := tenants.ResolveSubjectTenant(ctx, userID, profileID)
+			if err != nil {
+				return playback.SessionLimits{}, err
+			}
+			ctx = tenancy.WithContext(ctx, tenant)
+		}
 		user, err := users.GetByID(ctx, userID)
 		if err != nil {
 			return playback.SessionLimits{}, err

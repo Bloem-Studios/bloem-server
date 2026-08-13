@@ -26,9 +26,14 @@ generation in policy decision evidence.
 
 An access-group name, including a default-group name, is unique only within its
 organization. A selected profile's `organization_id` and `access_group_id` are
-the canonical assignment. Resolution qualifies the profile, account, and group
-by the server-resolved organization; the legacy `users.access_group_id` is only
-the temporary profile-less default-organization ceiling.
+the canonical assignment, and `user_profiles.access_group_id` is required.
+Deleting a non-default group transactionally reassigns its profiles to that
+organization's default group; it never creates an ungrouped, account-only
+profile. Authorization-affecting group changes bump every assigned account's
+policy revision in the same transaction. Resolution qualifies the profile,
+account, and group by the server-resolved organization; the legacy
+`users.access_group_id` is only the temporary profile-less
+default-organization ceiling.
 
 An organization has media availability for:
 
@@ -77,8 +82,8 @@ that variable is absent. Every acceptance run creates a unique database,
 terminates its test connections, drops it, and verifies absence after cleanup.
 
 ```sh
-SILO_TEST_DATABASE_URL="$SILO_TEST_DATABASE_URL" GOWORK=off go test ./internal/database ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy ./internal/api ./internal/api/handlers ./internal/api/middleware -count=1 -v -timeout=45m
-SILO_TEST_DATABASE_URL="$SILO_TEST_DATABASE_URL" GOWORK=off go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=45m
+SILO_REQUIRE_TEST_DATABASE=1 SILO_TEST_DATABASE_URL="$SILO_TEST_DATABASE_URL" GOWORK=off go test ./internal/database ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy ./internal/api ./internal/api/handlers ./internal/api/middleware -count=1 -v -timeout=45m
+SILO_REQUIRE_TEST_DATABASE=1 SILO_TEST_DATABASE_URL="$SILO_TEST_DATABASE_URL" GOWORK=off go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=45m
 GOWORK=off go vet ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy ./internal/api/...
 GOWORK=off go build ./cmd/silo
 git diff --check
@@ -88,7 +93,8 @@ git status --short
 CI executes these PostgreSQL-specific gates with the job-level database URL:
 
 ```sh
-go test ./internal/database -run 'TestTenantIdentityMigration|TestOrganizationAccessGroupMigration' -count=1 -v -timeout=30m
-go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m
-go test ./internal/api -run 'TestV1TenancyCompatibility|TestOPATenantFoundationWithDisposablePostgres' -count=1 -v -timeout=30m
+SILO_REQUIRE_TEST_DATABASE=1 go test ./internal/database -run 'TestTenantIdentityMigration|TestResourceTenancyMigration|TestOrganizationAccessGroupMigration|TestProfileAccessGroupRequired' -count=1 -v -timeout=30m
+SILO_REQUIRE_TEST_DATABASE=1 go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization' -count=1 -v -timeout=30m
+SILO_REQUIRE_TEST_DATABASE=1 go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m
+SILO_REQUIRE_TEST_DATABASE=1 go test ./internal/api -run 'TestV1TenancyCompatibility|TestOPATenantFoundationWithDisposablePostgres' -count=1 -v -timeout=30m
 ```

@@ -233,6 +233,7 @@ func TestV2FoundationCIRequiresDisposablePostgres(t *testing.T) {
 	checkoutLocked := false
 	postgresSteps := map[string]bool{
 		"Tenant and access-group migrations":  false,
+		"Profile tenant persistence":          false,
 		"Tenant resource and policy stores":   false,
 		"OPA tenant compatibility acceptance": false,
 	}
@@ -249,7 +250,8 @@ func TestV2FoundationCIRequiresDisposablePostgres(t *testing.T) {
 		t.Fatal("tenant-identity checkout must disable persisted credentials")
 	}
 	for _, required := range []string{
-		"go test ./internal/database -run 'TestTenantIdentityMigration|TestOrganizationAccessGroupMigration' -count=1 -v -timeout=30m",
+		"go test ./internal/database -run 'TestTenantIdentityMigration|TestResourceTenancyMigration|TestOrganizationAccessGroupMigration|TestProfileAccessGroupRequired' -count=1 -v -timeout=30m",
+		"go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization' -count=1 -v -timeout=30m",
 		"go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m",
 		"go test ./internal/api -run 'TestV1TenancyCompatibility|TestOPATenantFoundationWithDisposablePostgres' -count=1 -v -timeout=30m",
 	} {
