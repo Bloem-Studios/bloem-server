@@ -46,7 +46,7 @@
 **Interfaces:**
 - Produces `resource_owners`, `entitlement_bundles`, `entitlement_bundle_versions`, `entitlement_bundle_members`, `organization_entitlements`, and `resource_tenancy_migration_ledger`.
 - Produces non-null `media_folders.owner_id` and `plugin_installations.owner_id`.
-- Produces `vondel_platform_resource_owner_id()` as the temporary compatibility default for platform-only root creation.
+- Produces `vondel_platform_resource_owner_id()` plus typed compatibility-entitlement triggers for platform-only legacy root creation.
 - Consumes the default organization created by migration `20260812190000`.
 
 - [ ] **Step 1: Write the populated-upgrade RED test**
@@ -84,8 +84,8 @@ Also compare the recorded folder/plugin legacy columns after migration so the te
 
 In the same test file, add cases that prove:
 
-1. A clean install contains exactly one protected platform owner and one active default bundle at revision 1, with zero members and zero entitlements.
-2. A legacy insert into `media_folders` or `plugin_installations` that omits `owner_id` receives the platform owner through the compatibility default.
+1. A clean install contains exactly one protected platform owner and one active default bundle at revision 1; its member and entitlement counts exactly equal the roots created by earlier migrations (currently the reserved builtin plugin installation and no media folders).
+2. A legacy insert into `media_folders` or `plugin_installations` that omits `owner_id` receives the platform owner and one active default-organization entitlement through the compatibility boundary.
 3. A second platform owner is rejected.
 4. An organization owner without `organization_id`, or a platform owner with one, is rejected.
 5. An entitlement to an organization-owned root is rejected by a database constraint.
@@ -227,9 +227,18 @@ Insert one bundle member for every existing root, then materialize one active en
 
 Before ending the Up migration, raise an exception if any root lacks an owner, any existing root is absent from revision 1, or any revision-1 member lacks an active default-organization entitlement.
 
+Add separate, typed `AFTER INSERT` trigger functions for `media_folders` and
+`plugin_installations`. When—and only when—the inserted root resolves to the
+platform owner, each function inserts one active entitlement for the default
+organization with `granted_by_service='resource-root-compatibility'`. Use the
+matching typed root column and the live-entitlement uniqueness contract. These
+triggers preserve v1 create behavior while organization-private creation is
+disabled. They do not alter bundle revision 1: adding a root to a future
+organization-creation default is an explicit bundle-revision operation.
+
 - [ ] **Step 8: Implement the pre-contract Down migration**
 
-Down must drop entitlements, members, versions, bundles, ledger, root composite constraints, root `owner_id` columns, the compatibility function, and owners—in that dependency order. It must not change any pre-existing folder/plugin columns or rows. The documented rollback boundary is valid only before organization-private resource creation exists.
+Down must drop the compatibility triggers/functions, entitlements, members, versions, bundles, ledger, root composite constraints, root `owner_id` columns, the owner-default function, and owners—in that dependency order. It must not change any pre-existing folder/plugin columns or rows. The documented rollback boundary is valid only before organization-private resource creation exists.
 
 - [ ] **Step 9: Run migration, down/up, and diff verification**
 
@@ -445,9 +454,9 @@ git commit -m "feat(tenancy): materialize default resource bundles"
 
 - [ ] **Step 1: Write repository-level RED tests**
 
-Against a migrated disposable database, call the real existing repository `Create` methods without an owner argument. Query the inserted row and assert its owner is the singleton platform owner. Marshal the returned model through the existing handler response path and assert no `owner_id`, organization, bundle, or entitlement field appears.
+Against a migrated disposable database, call the real existing repository `Create` methods without an owner argument. Query the inserted row and assert its owner is the singleton platform owner and that the default organization has exactly one active entitlement to it. Marshal the returned model through the existing handler response path and assert no `owner_id`, organization, bundle, or entitlement field appears.
 
-The mutation caught is removal of the platform compatibility default or accidental exposure of ownership metadata on v1.
+The mutations caught are removal of the platform compatibility default, omission of the compatibility entitlement, accidental mutation of the frozen bundle revision, or exposure of ownership metadata on v1.
 
 - [ ] **Step 2: Prove RED against the pre-slice migration**
 
@@ -488,7 +497,8 @@ Document:
 - the platform-owner and organization-owner invariants;
 - exact SQL queries for root coverage and default-organization entitlements;
 - default bundle revision behavior;
-- the temporary platform-only create default;
+- the temporary platform-only create default and typed default-organization entitlement triggers;
+- why compatibility-created roots receive direct entitlements but do not silently rewrite the frozen bundle revision;
 - why organization-private resource creation remains unavailable;
 - safe Down rollback before private roots exist; and
 - snapshot restore requirement after that future boundary.
@@ -522,7 +532,7 @@ git commit -m "docs(tenancy): describe resource ownership foundation"
 Slice 1 is complete only when:
 
 - clean install and populated upgrade pass on disposable PostgreSQL;
-- every existing and compatibility-created media folder/plugin installation is platform-owned;
+- every existing and compatibility-created media folder/plugin installation is platform-owned and explicitly entitled to the default organization;
 - revision 1 of the active default bundle contains every migrated root exactly once;
 - the default organization has one explicit active entitlement per migrated root;
 - wrong-owner, wrong-root-kind, organization-owned target, and duplicate-live relationships fail in PostgreSQL;
