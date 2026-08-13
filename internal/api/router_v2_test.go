@@ -115,6 +115,26 @@ func TestV2AdminGroupRequiresAdministrativeContextToken(t *testing.T) {
 	}
 }
 
+func TestV2AdminPlatformOrganizationRoutesAreMountedBehindPlatformContext(t *testing.T) {
+	tokens := auth.NewAdminContextTokenService("router-admin-platform-test-secret")
+	adminMW := apimw.NewAdminContextMiddleware(tokens, v2AdminTenantResolverStub{}, v2AdminMembershipStoreStub{}, v2AdminPlatformAuthorizerAllowedStub{})
+	platform := handlers.NewV2AdminPlatformHandler(nil, nil)
+	router := chi.NewRouter()
+	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, nil, adminMW, platform)
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopePlatform})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/v2/admin/platform/organizations", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), `"error":"tenant_unavailable"`) {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
 type v2AdminTenantResolverStub struct {
 	tenant tenancy.Context
 }
@@ -135,6 +155,12 @@ type v2AdminPlatformAuthorizerStub struct{}
 
 func (v2AdminPlatformAuthorizerStub) IsPlatformAdmin(context.Context, int) (bool, error) {
 	return false, nil
+}
+
+type v2AdminPlatformAuthorizerAllowedStub struct{}
+
+func (v2AdminPlatformAuthorizerAllowedStub) IsPlatformAdmin(context.Context, int) (bool, error) {
+	return true, nil
 }
 
 type v2OrganizationStoreStubForRouter struct{}

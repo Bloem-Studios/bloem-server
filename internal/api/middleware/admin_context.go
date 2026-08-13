@@ -18,6 +18,21 @@ type AdminContextMembershipStore interface {
 	GetMembership(context.Context, int, uuid.UUID) (tenancy.Membership, error)
 }
 
+type adminContextClaimsKey struct{}
+
+// SetAdminContextClaims stores claims only after administrative context token
+// validation. It is exported so handlers can consume the validated actor and
+// scope without reparsing the bearer token.
+func SetAdminContextClaims(ctx context.Context, claims auth.AdminContextClaims) context.Context {
+	return context.WithValue(ctx, adminContextClaimsKey{}, claims)
+}
+
+// GetAdminContextClaims returns the server-validated administrative context.
+func GetAdminContextClaims(ctx context.Context) (auth.AdminContextClaims, bool) {
+	claims, ok := ctx.Value(adminContextClaimsKey{}).(auth.AdminContextClaims)
+	return claims, ok
+}
+
 // AdminContextMiddleware validates an administrative context token and then
 // revalidates the authority it encodes on every /api/v2/admin request.
 type AdminContextMiddleware struct {
@@ -50,7 +65,7 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 				writeTenantError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
 				return
 			}
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(w, r.WithContext(SetAdminContextClaims(r.Context(), claims)))
 		case auth.AdminScopeOrganization:
 			resolved, err := m.resolve(r.Context(), claims.AccountID, &claims.OrganizationID, false)
 			if err != nil {
@@ -84,7 +99,8 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 					return
 				}
 			}
-			next.ServeHTTP(w, r.WithContext(tenancy.WithContext(r.Context(), resolved)))
+			ctx := SetAdminContextClaims(r.Context(), claims)
+			next.ServeHTTP(w, r.WithContext(tenancy.WithContext(ctx, resolved)))
 		default:
 			writeTenantError(w, http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
 		}

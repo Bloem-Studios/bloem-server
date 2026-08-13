@@ -27,23 +27,23 @@ const (
 
 // Organization is one tenancy boundary.
 type Organization struct {
-	ID             uuid.UUID
-	Slug           string
-	Name           string
-	Status         OrganizationStatus
-	OwnerAccountID *int
-	PolicyRevision int64
-	Default        bool
+	ID             uuid.UUID          `json:"id"`
+	Slug           string             `json:"slug"`
+	Name           string             `json:"name"`
+	Status         OrganizationStatus `json:"status"`
+	OwnerAccountID *int               `json:"owner_account_id,omitempty"`
+	PolicyRevision int64              `json:"policy_revision"`
+	Default        bool               `json:"is_default"`
 }
 
 // Membership associates an account with an organization.
 type Membership struct {
-	ID               uuid.UUID
-	OrganizationID   uuid.UUID
-	AccountID        int
-	Status           MembershipStatus
-	LegacyRole       string
-	SecurityRevision int64
+	ID               uuid.UUID        `json:"id"`
+	OrganizationID   uuid.UUID        `json:"organization_id"`
+	AccountID        int              `json:"account_id"`
+	Status           MembershipStatus `json:"status"`
+	LegacyRole       string           `json:"legacy_role"`
+	SecurityRevision int64            `json:"security_revision"`
 }
 
 // OwnershipState is the protected ownership state after initial activation.
