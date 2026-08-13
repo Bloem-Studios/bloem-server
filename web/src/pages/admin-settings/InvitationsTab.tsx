@@ -430,7 +430,12 @@ function CreateInvitationForm({
         </div>
       </div>
 
-      <LibraryAccessSelector libraries={libraries} value={libraryIDs} onChange={setLibraryIDs} />
+      <LibraryAccessSelector
+        libraries={libraries}
+        value={libraryIDs}
+        onChange={setLibraryIDs}
+        scopeLabel={organization ? context?.name : "available"}
+      />
 
       <div className="space-y-2">
         <Label htmlFor="invitation-note">Personal note (optional)</Label>

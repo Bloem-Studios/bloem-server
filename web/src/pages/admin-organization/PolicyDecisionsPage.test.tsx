@@ -65,4 +65,40 @@ describe("PolicyDecisionsPage", () => {
     expect(screen.getByText(/vendor.*13/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /activate|save policy|new document/i })).toBeNull();
   });
+
+  it("loads the next cursor page without dropping earlier decisions", async () => {
+    const decision = (id: number, action: string) => ({
+      id,
+      timestamp: "2026-08-13T08:00:00Z",
+      organization: { id: "org-1" },
+      subject: {},
+      group: {},
+      library_ceiling: [],
+      action,
+      resource: {},
+      allowed: true,
+      reason_code: "allowed",
+      policy_versions: [],
+    });
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (path === "/organization/policy-decisions?limit=50") {
+        return { decisions: [decision(1, "play")], next_cursor: "next page" } as never;
+      }
+      if (path === "/organization/policy-decisions?limit=50&cursor=next%20page") {
+        return { decisions: [decision(2, "download")] } as never;
+      }
+      throw new Error(`unexpected ${path}`);
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <PolicyDecisionsPage />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("button", { name: /play.*allowed/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load more decisions" }));
+    expect(await screen.findByRole("button", { name: /download.*allowed/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /play.*allowed/i })).toBeInTheDocument();
+  });
 });

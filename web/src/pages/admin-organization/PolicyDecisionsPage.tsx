@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronRight, ShieldCheck, ShieldX } from "lucide-react";
 import { useState } from "react";
 
@@ -25,12 +25,16 @@ export default function PolicyDecisionsPage() {
   const { active } = useAdminContext();
   const contextKey = active?.key ?? "organization:unavailable";
   const [selectedID, setSelectedID] = useState<number>();
-  const decisions = useQuery({
+  const decisions = useInfiniteQuery({
     queryKey: adminV2QueryKey(contextKey, "organization", "policy-decisions", "list"),
-    queryFn: () =>
+    queryFn: ({ pageParam }) =>
       adminV2Api<{ decisions: DecisionExplanation[]; next_cursor?: string }>(
-        "/organization/policy-decisions?limit=50",
+        `/organization/policy-decisions?limit=50${
+          pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""
+        }`,
       ),
+    initialPageParam: "",
+    getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
   });
   const selected = useQuery({
     queryKey: adminV2QueryKey(contextKey, "organization", "policy-decisions", selectedID ?? "none"),
@@ -59,28 +63,40 @@ export default function PolicyDecisionsPage() {
       {decisions.isError && <p role="alert">{decisions.error.message}</p>}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-2">
-          {decisions.data?.decisions.map((decision) => (
-            <button
-              key={decision.id}
-              type="button"
-              onClick={() => setSelectedID(decision.id)}
-              className="surface-panel focus-visible:ring-ring flex w-full items-center gap-3 rounded-xl p-4 text-left outline-none focus-visible:ring-2"
-            >
-              {decision.allowed ? (
-                <ShieldCheck className="size-5 text-emerald-500" aria-hidden />
-              ) : (
-                <ShieldX className="text-destructive size-5" aria-hidden />
-              )}
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">{decision.action}</span>
-                <span className="text-muted-foreground block text-xs">
-                  {decision.allowed ? "Allowed" : "Denied"} ·{" "}
-                  {decision.reason_code || "No reason code"}
+          {decisions.data?.pages
+            .flatMap((page) => page.decisions)
+            .map((decision) => (
+              <button
+                key={decision.id}
+                type="button"
+                onClick={() => setSelectedID(decision.id)}
+                className="surface-panel focus-visible:ring-ring flex w-full items-center gap-3 rounded-xl p-4 text-left outline-none focus-visible:ring-2"
+              >
+                {decision.allowed ? (
+                  <ShieldCheck className="size-5 text-emerald-500" aria-hidden />
+                ) : (
+                  <ShieldX className="text-destructive size-5" aria-hidden />
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{decision.action}</span>
+                  <span className="text-muted-foreground block text-xs">
+                    {decision.allowed ? "Allowed" : "Denied"} ·{" "}
+                    {decision.reason_code || "No reason code"}
+                  </span>
                 </span>
-              </span>
-              <ChevronRight className="text-muted-foreground size-4" aria-hidden />
+                <ChevronRight className="text-muted-foreground size-4" aria-hidden />
+              </button>
+            ))}
+          {decisions.hasNextPage && (
+            <button
+              type="button"
+              className="border-border hover:bg-muted w-full rounded-lg border px-3 py-2 text-sm font-medium"
+              onClick={() => void decisions.fetchNextPage()}
+              disabled={decisions.isFetchingNextPage}
+            >
+              {decisions.isFetchingNextPage ? "Loading more…" : "Load more decisions"}
             </button>
-          ))}
+          )}
         </div>
         <div className="surface-panel min-h-48 rounded-2xl p-5">
           {!selectedID && (

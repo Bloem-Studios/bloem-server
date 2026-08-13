@@ -25,3 +25,10 @@ Implemented organization-scoped security administration and committed it as the 
 
 - Organization invitation v2 currently supports list/create only, matching the backend contract; resend/revoke stay on the legacy Platform surface and are deliberately absent in Organization context.
 - Entitlement mutations are not exposed from the Organization page. The view communicates the tenant ceiling without implying an unconditional grant.
+
+## Review fix wave
+
+- Organization invitation creation now strips the legacy `role` property and sends the exact additive v2 request body; a submit-level wire test protects the contract.
+- Policy Decisions now follows `next_cursor` with an encoded cursor and appends later pages without dropping the visible history.
+- Every library access switch now has an explicit accessible name, including an organization-qualified name for the all-libraries ceiling control.
+- Review verification: 6 focused files / 9 tests passed; touched ESLint and Prettier passed; `git diff --check` passed. Full TypeScript remains blocked only by the unrelated pre-existing unused `path` in `OrganizationsPage.test.tsx`.

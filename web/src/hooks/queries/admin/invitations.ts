@@ -32,12 +32,16 @@ export function useCreateInvitation(context?: AdminContextSummary | null) {
   return useMutation({
     mutationFn: async (body: CreateInvitationRequest) => {
       if (context?.scope === "organization") {
+        const { role: _legacyRole, ...organizationBody } = body;
         const data = await adminV2Api<{
           invitation: Invitation;
           claim_token?: string;
         }>("/organization/invitations", {
           method: "POST",
-          body: JSON.stringify({ ...body, expected_revision: context.policyRevision }),
+          body: JSON.stringify({
+            ...organizationBody,
+            expected_revision: context.policyRevision,
+          }),
         });
         return {
           invitation: data.invitation,

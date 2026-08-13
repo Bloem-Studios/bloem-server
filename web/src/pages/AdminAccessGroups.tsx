@@ -340,7 +340,12 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
 
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
         <h2 className="text-sm font-semibold">Libraries &amp; playback</h2>
-        <LibraryAccessSelector libraries={libraries} value={libraryIds} onChange={setLibraryIds} />
+        <LibraryAccessSelector
+          libraries={libraries}
+          value={libraryIds}
+          onChange={setLibraryIds}
+          scopeLabel={organization ? active?.name : "available"}
+        />
         <div className="space-y-2">
           <Label htmlFor="group-quality">Maximum playback quality</Label>
           <Select

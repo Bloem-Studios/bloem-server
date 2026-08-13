@@ -7,6 +7,7 @@ interface LibraryAccessSelectorProps {
   libraries: Pick<Library, "id" | "name" | "type" | "enabled">[];
   value: number[] | null;
   onChange: (value: number[] | null) => void;
+  scopeLabel?: string;
 }
 
 function sortByLibraryOrder(
@@ -17,7 +18,12 @@ function sortByLibraryOrder(
   return libraries.filter((library) => selected.has(library.id)).map((library) => library.id);
 }
 
-export function LibraryAccessSelector({ libraries, value, onChange }: LibraryAccessSelectorProps) {
+export function LibraryAccessSelector({
+  libraries,
+  value,
+  onChange,
+  scopeLabel = "available",
+}: LibraryAccessSelectorProps) {
   const allLibraries = value === null;
 
   function handleAllLibrariesChange(checked: boolean) {
@@ -38,7 +44,11 @@ export function LibraryAccessSelector({ libraries, value, onChange }: LibraryAcc
         <Label>Library Access</Label>
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground text-xs">All libraries</span>
-          <Switch checked={allLibraries} onCheckedChange={handleAllLibrariesChange} />
+          <Switch
+            checked={allLibraries}
+            onCheckedChange={handleAllLibrariesChange}
+            aria-label={`Allow all ${scopeLabel} libraries`}
+          />
         </div>
       </div>
 
@@ -66,6 +76,7 @@ export function LibraryAccessSelector({ libraries, value, onChange }: LibraryAcc
                   <Switch
                     checked={checked}
                     onCheckedChange={(nextChecked) => handleLibraryToggle(library.id, nextChecked)}
+                    aria-label={`Allow ${library.name}`}
                   />
                 </div>
               );
