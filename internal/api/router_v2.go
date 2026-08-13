@@ -3,10 +3,14 @@ package api
 import (
 	"net/http"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/invitations"
+	"github.com/Silo-Server/silo-server/internal/policy"
+	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 )
@@ -19,8 +23,9 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	var store handlers.V2OrganizationStore
 	var membershipStore handlers.AdminContextSessionStore
 	var resolver handlers.AdminContextSessionResolver
+	var tenants *tenancy.Store
 	if deps.DB != nil {
-		tenants := tenancy.NewStore(deps.DB)
+		tenants = tenancy.NewStore(deps.DB)
 		store = tenants
 		membershipStore = tenants
 		resolver = tenancy.NewResolver(tenants)
@@ -39,13 +44,22 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	var adminMW *apimw.AdminContextMiddleware
 	var platformHandler *handlers.V2AdminPlatformHandler
 	var peopleHandler *handlers.V2AdminPeopleHandler
+	var organizationHandler *handlers.V2AdminOrganizationHandler
+	var explainHandler *handlers.V2PolicyExplainHandler
 	if tokens != nil && resolver != nil && membershipStore != nil && platform != nil {
 		session = handlers.NewAdminContextSessionHandler(tokens, resolver, membershipStore, platform)
 		adminMW = apimw.NewAdminContextMiddleware(tokens, resolver, membershipStore, platform)
 	}
-	if tenants, ok := store.(*tenancy.Store); ok {
+	if tenants != nil {
 		verifier := auth.NewAccountCredentialVerifier(auth.NewUserRepository(deps.DB))
 		platformHandler = handlers.NewV2AdminPlatformHandler(tenants, verifier)
+		organizationHandler = handlers.NewV2AdminOrganizationHandler(
+			tenants,
+			access.NewGroupStore(deps.DB),
+			resourcetenancy.NewStore(deps.DB),
+			invitations.NewRepository(deps.DB),
+		)
+		explainHandler = handlers.NewV2PolicyExplainHandler(policy.NewDecisionRepository(deps.DB))
 	}
 	peopleService := deps.AdminPeopleService
 	if peopleService == nil && deps.DB != nil && deps.Config != nil {
@@ -54,18 +68,24 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	if peopleService != nil {
 		peopleHandler = handlers.NewV2AdminPeopleHandlerWithWake(peopleService, deps.AdminPeopleWorker)
 	}
-	mountV2Routes(r, handlers.NewV2SystemHandler(store), session, authMW, adminMW, platformHandler, peopleHandler)
+	mountV2Routes(r, handlers.NewV2SystemHandler(store), session, authMW, adminMW, platformHandler, peopleHandler, organizationHandler, explainHandler)
 }
 
 func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *handlers.AdminContextSessionHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware, adminHandlers ...any) {
 	var platformHandler *handlers.V2AdminPlatformHandler
 	var peopleHandler *handlers.V2AdminPeopleHandler
+	var organizationHandler *handlers.V2AdminOrganizationHandler
+	var explainHandler *handlers.V2PolicyExplainHandler
 	for _, candidate := range adminHandlers {
 		switch handler := candidate.(type) {
 		case *handlers.V2AdminPlatformHandler:
 			platformHandler = handler
 		case *handlers.V2AdminPeopleHandler:
 			peopleHandler = handler
+		case *handlers.V2AdminOrganizationHandler:
+			organizationHandler = handler
+		case *handlers.V2PolicyExplainHandler:
+			explainHandler = handler
 		}
 	}
 	r.Route("/api/v2", func(r chi.Router) {
@@ -92,6 +112,29 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 		}
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(adminMW.Require)
+			if organizationHandler != nil {
+				organization := organizationHandler
+				r.Route("/organization", func(r chi.Router) {
+					r.Get("/overview", organization.HandleOverview)
+					r.Route("/groups", func(r chi.Router) {
+						r.Get("/", organization.HandleListGroups)
+						r.Post("/", organization.HandleCreateGroup)
+						r.Get("/{id}", organization.HandleGetGroup)
+						r.Put("/{id}", organization.HandleUpdateGroup)
+						r.Delete("/{id}", organization.HandleDeleteGroup)
+					})
+					r.Get("/libraries", organization.HandleListLibraries)
+					r.Put("/entitlements/{folder_id}", organization.HandleUpdateEntitlement)
+					r.Delete("/entitlements/{folder_id}", organization.HandleDeleteEntitlement)
+					r.Get("/invitations", organization.HandleListInvitations)
+					r.Post("/invitations", organization.HandleCreateInvitation)
+				})
+			}
+			if explainHandler != nil {
+				explain := explainHandler
+				r.Get("/organization/policy-decisions", explain.HandleListDecisions)
+				r.Get("/organization/policy-decisions/{id}", explain.HandleGetDecision)
+			}
 			if platformHandler != nil {
 				platform := platformHandler
 				r.Route("/platform/organizations", func(r chi.Router) {

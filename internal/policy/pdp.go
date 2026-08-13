@@ -4,6 +4,7 @@ import (
 	"context"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/google/uuid"
 )
 
 // PDP exposes typed policy decisions over the generic Rego engine.
@@ -81,6 +82,7 @@ func (p *PDP) logScopeDecision(ctx context.Context, input ScopeInput, result any
 		RequestID:        chimiddleware.GetReqID(ctx),
 		EvalTimeNS:       meta.EvalTimeNS,
 	}
+	entry.OrganizationID, entry.MembershipID = policyTenantIDs(input.Tenant)
 	if evalErr != nil {
 		entry.Error = evalErr.Error()
 	}
@@ -100,6 +102,7 @@ func (p *PDP) logPermissionDecision(ctx context.Context, input PermissionInput, 
 		RequestID:        chimiddleware.GetReqID(ctx),
 		EvalTimeNS:       meta.EvalTimeNS,
 	}
+	entry.OrganizationID, entry.MembershipID = policyTenantIDs(input.Tenant)
 	if decision, ok := result.(PermissionDecision); ok {
 		entry.Allowed = boolPtr(decision.Allowed)
 	}
@@ -121,6 +124,7 @@ func (p *PDP) logActionDecision(ctx context.Context, input ActionInput, result a
 		RequestID:        chimiddleware.GetReqID(ctx),
 		EvalTimeNS:       meta.EvalTimeNS,
 	}
+	entry.OrganizationID, entry.MembershipID = policyTenantIDs(input.Tenant)
 	if decision, ok := result.(ActionDecision); ok {
 		entry.Allowed = boolPtr(decision.Allowed)
 	}
@@ -136,4 +140,10 @@ func intPtr(v int) *int {
 
 func boolPtr(v bool) *bool {
 	return &v
+}
+
+func policyTenantIDs(facts TenantFacts) (uuid.UUID, uuid.UUID) {
+	organizationID, _ := uuid.Parse(facts.OrganizationID)
+	membershipID, _ := uuid.Parse(facts.MembershipID)
+	return organizationID, membershipID
 }

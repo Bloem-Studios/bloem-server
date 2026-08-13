@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // Invitation statuses, derived from lifecycle timestamps at read time.
 const (
@@ -13,16 +17,17 @@ const (
 // Invitation is a single-use, email-bound claim token carrying the access
 // the admin chose at send time. No users row exists until it is accepted.
 type Invitation struct {
-	ID            int64
-	Email         string
-	TokenHash     string
-	Role          string
-	AccessGroupID *int64
-	LibraryIDs    []int // nil = all libraries
-	CreateProfile bool
-	ShowTour      bool
-	Note          string
-	InvitedBy     int64
+	ID             int64
+	OrganizationID uuid.UUID
+	Email          string
+	TokenHash      string
+	Role           string
+	AccessGroupID  *int64
+	LibraryIDs     []int // nil = all libraries
+	CreateProfile  bool
+	ShowTour       bool
+	Note           string
+	InvitedBy      int64
 	// InvitedByName is the inviter's display name, joined at read time for
 	// list views and the claim screen. Not a column.
 	InvitedByName  string

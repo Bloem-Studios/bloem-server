@@ -20,6 +20,111 @@ func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
 }
 
+// ListLibraries returns organization-owned libraries and platform libraries
+// with a live entitlement. Foreign organization roots and unentitled platform
+// roots never enter the result set.
+func (s *Store) ListLibraries(ctx context.Context, organizationID uuid.UUID) ([]LibraryProjection, error) {
+	if s == nil || s.pool == nil {
+		return nil, ErrResourceUnavailable
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT f.id, f.name, f.type, ro.kind,
+		       e.id, e.organization_id, e.status, e.security_revision
+		FROM media_folders f
+		JOIN resource_owners ro ON ro.id=f.owner_id
+		LEFT JOIN organization_entitlements e
+		  ON e.organization_id=$1 AND e.media_folder_id=f.id
+		 AND e.root_owner_id=ro.id AND e.status IN ('active','suspended')
+		WHERE (ro.kind='organization' AND ro.organization_id=$1)
+		   OR (ro.kind='platform' AND e.id IS NOT NULL)
+		ORDER BY lower(f.name),f.id`, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: list organization libraries: %v", ErrResourceUnavailable, err)
+	}
+	defer rows.Close()
+	items := make([]LibraryProjection, 0)
+	for rows.Next() {
+		var item LibraryProjection
+		var ownerKind OwnerKind
+		var entitlementID, entitlementOrganizationID *uuid.UUID
+		var status *EntitlementStatus
+		var revision *int64
+		if err := rows.Scan(&item.FolderID, &item.Name, &item.Type, &ownerKind, &entitlementID, &entitlementOrganizationID, &status, &revision); err != nil {
+			return nil, fmt.Errorf("%w: scan organization library: %v", ErrResourceUnavailable, err)
+		}
+		if ownerKind == OwnerOrganization {
+			item.AccessKind = LibraryOwned
+		} else if entitlementID != nil && entitlementOrganizationID != nil && status != nil && revision != nil {
+			item.AccessKind = LibraryEntitled
+			item.Entitlement = &LibraryEntitlement{ID: *entitlementID, OrganizationID: *entitlementOrganizationID, Status: *status, SecurityRevision: *revision}
+		} else {
+			continue
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: iterate organization libraries: %v", ErrResourceUnavailable, err)
+	}
+	return items, nil
+}
+
+func (s *Store) SetLibraryEntitlementStatus(ctx context.Context, organizationID uuid.UUID, folderID, expectedRevision int64, status EntitlementStatus) (LibraryEntitlement, error) {
+	if s == nil || s.pool == nil {
+		return LibraryEntitlement{}, ErrResourceUnavailable
+	}
+	if organizationID == uuid.Nil || folderID <= 0 || expectedRevision <= 0 || (status != EntitlementActive && status != EntitlementSuspended) {
+		return LibraryEntitlement{}, ErrInvalidRoot
+	}
+	var result LibraryEntitlement
+	err := s.pool.QueryRow(ctx, `
+		UPDATE organization_entitlements
+		SET status=$4,security_revision=security_revision+1,updated_at=now()
+		WHERE organization_id=$1 AND media_folder_id=$2
+		  AND security_revision=$3 AND status IN ('active','suspended')
+		RETURNING id,organization_id,status,security_revision`, organizationID, folderID, expectedRevision, status).Scan(&result.ID, &result.OrganizationID, &result.Status, &result.SecurityRevision)
+	if err == nil {
+		return result, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return LibraryEntitlement{}, fmt.Errorf("%w: update library entitlement: %v", ErrResourceUnavailable, err)
+	}
+	var current int64
+	err = s.pool.QueryRow(ctx, `SELECT security_revision FROM organization_entitlements WHERE organization_id=$1 AND media_folder_id=$2 AND status IN ('active','suspended')`, organizationID, folderID).Scan(&current)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return LibraryEntitlement{}, ErrResourceHidden
+	}
+	if err != nil {
+		return LibraryEntitlement{}, fmt.Errorf("%w: load library entitlement revision: %v", ErrResourceUnavailable, err)
+	}
+	return LibraryEntitlement{}, ErrAuthorizationStateChanged
+}
+
+func (s *Store) DeleteLibraryEntitlement(ctx context.Context, organizationID uuid.UUID, folderID, expectedRevision int64) error {
+	if s == nil || s.pool == nil {
+		return ErrResourceUnavailable
+	}
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE organization_entitlements
+		SET status='revoked',revoked_at=now(),security_revision=security_revision+1,updated_at=now()
+		WHERE organization_id=$1 AND media_folder_id=$2 AND security_revision=$3
+		  AND status IN ('active','suspended')`, organizationID, folderID, expectedRevision)
+	if err != nil {
+		return fmt.Errorf("%w: revoke library entitlement: %v", ErrResourceUnavailable, err)
+	}
+	if tag.RowsAffected() > 0 {
+		return nil
+	}
+	var current int64
+	err = s.pool.QueryRow(ctx, `SELECT security_revision FROM organization_entitlements WHERE organization_id=$1 AND media_folder_id=$2 AND status IN ('active','suspended')`, organizationID, folderID).Scan(&current)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrResourceHidden
+	}
+	if err != nil {
+		return fmt.Errorf("%w: load library entitlement revision: %v", ErrResourceUnavailable, err)
+	}
+	return ErrAuthorizationStateChanged
+}
+
 // AvailableMediaFolderIDs returns the media folders visible to the resolved
 // tenant: organization-owned folders and platform folders with an active
 // entitlement for that organization.

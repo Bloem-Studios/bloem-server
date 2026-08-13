@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -59,7 +60,7 @@ func HashToken(token string) string {
 
 // invitationColumns are the table columns plus the joined inviter name.
 const invitationColumns = `
-	i.id, i.email, i.token_hash, i.role, i.access_group_id, i.library_ids,
+	i.id, i.organization_id, i.email, i.token_hash, i.role, i.access_group_id, i.library_ids,
 	i.create_profile, i.show_tour, i.note, i.invited_by,
 	COALESCE(u.username, ''),
 	i.expires_at, i.accepted_at, i.accepted_user_id, i.revoked_at,
@@ -70,7 +71,7 @@ const invitationFrom = ` FROM invitations i LEFT JOIN users u ON u.id = i.invite
 func scanInvitation(row pgx.Row) (*models.Invitation, error) {
 	var inv models.Invitation
 	err := row.Scan(
-		&inv.ID, &inv.Email, &inv.TokenHash, &inv.Role, &inv.AccessGroupID,
+		&inv.ID, &inv.OrganizationID, &inv.Email, &inv.TokenHash, &inv.Role, &inv.AccessGroupID,
 		&inv.LibraryIDs, &inv.CreateProfile, &inv.ShowTour, &inv.Note,
 		&inv.InvitedBy, &inv.InvitedByName,
 		&inv.ExpiresAt, &inv.AcceptedAt, &inv.AcceptedUserID, &inv.RevokedAt,
@@ -90,6 +91,18 @@ func scanInvitation(row pgx.Row) (*models.Invitation, error) {
 // invitations_one_pending_idx partial unique index). Returns the stored row;
 // the raw token is the caller's to deliver and is not retrievable later.
 func (r *Repository) Create(ctx context.Context, input models.CreateInvitationInput, tokenHash string) (*models.Invitation, error) {
+	return r.create(ctx, uuid.Nil, input, tokenHash)
+}
+
+// CreateForOrganization inserts an invitation bound to one organization.
+func (r *Repository) CreateForOrganization(ctx context.Context, organizationID uuid.UUID, input models.CreateInvitationInput, tokenHash string) (*models.Invitation, error) {
+	if organizationID == uuid.Nil {
+		return nil, ErrNotFound
+	}
+	return r.create(ctx, organizationID, input, tokenHash)
+}
+
+func (r *Repository) create(ctx context.Context, organizationID uuid.UUID, input models.CreateInvitationInput, tokenHash string) (*models.Invitation, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin create invitation: %w", err)
@@ -98,8 +111,9 @@ func (r *Repository) Create(ctx context.Context, input models.CreateInvitationIn
 
 	_, err = tx.Exec(ctx, `
 		UPDATE invitations SET revoked_at = now(), updated_at = now()
-		WHERE email = $1 AND accepted_at IS NULL AND revoked_at IS NULL`,
-		input.Email)
+		WHERE organization_id = COALESCE($1, public.vondel_default_organization_id())
+		  AND email = $2 AND accepted_at IS NULL AND revoked_at IS NULL`,
+		nullableOrganizationID(organizationID), input.Email)
 	if err != nil {
 		return nil, fmt.Errorf("superseding prior invitation: %w", err)
 	}
@@ -107,13 +121,13 @@ func (r *Repository) Create(ctx context.Context, input models.CreateInvitationIn
 	row := tx.QueryRow(ctx, `
 		WITH inserted AS (
 			INSERT INTO invitations (
-				email, token_hash, role, access_group_id, library_ids,
+				organization_id, email, token_hash, role, access_group_id, library_ids,
 				create_profile, show_tour, note, invited_by, expires_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			) VALUES (COALESCE($1, public.vondel_default_organization_id()), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			RETURNING *
 		)
 		SELECT `+invitationColumns+` FROM inserted i LEFT JOIN users u ON u.id = i.invited_by`,
-		input.Email, tokenHash, input.Role, input.AccessGroupID, input.LibraryIDs,
+		nullableOrganizationID(organizationID), input.Email, tokenHash, input.Role, input.AccessGroupID, input.LibraryIDs,
 		input.CreateProfile, input.ShowTour, input.Note, input.InvitedBy, input.ExpiresAt,
 	)
 	inv, err := scanInvitation(row)
@@ -128,7 +142,7 @@ func (r *Repository) Create(ctx context.Context, input models.CreateInvitationIn
 
 // GetByID retrieves an invitation by its numeric ID.
 func (r *Repository) GetByID(ctx context.Context, id int64) (*models.Invitation, error) {
-	row := r.pool.QueryRow(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.id = $1`, id)
+	row := r.pool.QueryRow(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.id = $1 AND i.organization_id=public.vondel_default_organization_id()`, id)
 	return scanInvitation(row)
 }
 
@@ -140,7 +154,13 @@ func (r *Repository) GetByTokenHash(ctx context.Context, tokenHash string) (*mod
 
 // List returns all invitations, newest first.
 func (r *Repository) List(ctx context.Context) ([]*models.Invitation, error) {
-	rows, err := r.pool.Query(ctx, `SELECT `+invitationColumns+invitationFrom+`ORDER BY i.created_at DESC`)
+	return r.ListForOrganization(ctx, uuid.Nil)
+}
+
+// ListForOrganization returns only invitations in one organization. A nil
+// identifier is the legacy default-organization projection.
+func (r *Repository) ListForOrganization(ctx context.Context, organizationID uuid.UUID) ([]*models.Invitation, error) {
+	rows, err := r.pool.Query(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.organization_id=COALESCE($1,public.vondel_default_organization_id()) ORDER BY i.created_at DESC`, nullableOrganizationID(organizationID))
 	if err != nil {
 		return nil, fmt.Errorf("listing invitations: %w", err)
 	}
@@ -188,7 +208,7 @@ func (r *Repository) Accept(ctx context.Context, tokenHash string, userID int) e
 func (r *Repository) Revoke(ctx context.Context, id int64) error {
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE invitations SET revoked_at = now(), updated_at = now()
-		WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL`, id)
+		WHERE id = $1 AND organization_id=public.vondel_default_organization_id() AND accepted_at IS NULL AND revoked_at IS NULL`, id)
 	if err != nil {
 		return fmt.Errorf("revoking invitation: %w", err)
 	}
@@ -203,7 +223,7 @@ func (r *Repository) Revoke(ctx context.Context, id int64) error {
 // Delete removes an invitation row entirely. Used by admins to clear
 // history; revocation is the normal path.
 func (r *Repository) Delete(ctx context.Context, id int64) error {
-	tag, err := r.pool.Exec(ctx, `DELETE FROM invitations WHERE id = $1`, id)
+	tag, err := r.pool.Exec(ctx, `DELETE FROM invitations WHERE id = $1 AND organization_id=public.vondel_default_organization_id()`, id)
 	if err != nil {
 		return fmt.Errorf("deleting invitation: %w", err)
 	}
@@ -211,4 +231,11 @@ func (r *Repository) Delete(ctx context.Context, id int64) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+func nullableOrganizationID(id uuid.UUID) any {
+	if id == uuid.Nil {
+		return nil
+	}
+	return id
 }

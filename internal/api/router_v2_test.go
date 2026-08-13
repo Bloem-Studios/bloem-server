@@ -161,6 +161,42 @@ func TestV2AdminPeopleRoutesAreMountedBehindOrganizationContext(t *testing.T) {
 	}
 }
 
+func TestV2AdminOrganizationProjectionRoutesAreMountedWithoutPolicyMutationRoutes(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	membershipID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
+	tokens := auth.NewAdminContextTokenService("router-admin-organization-test-secret")
+	adminMW := apimw.NewAdminContextMiddleware(tokens,
+		v2AdminTenantResolverStub{tenant: tenancy.Context{AccountID: 7, OrganizationID: organizationID, MembershipID: membershipID, MembershipStatus: tenancy.MembershipActive, OrganizationStatus: tenancy.OrganizationActive, PolicyRevision: 7, SecurityRevision: 11}},
+		v2AdminMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}}, v2AdminPlatformAuthorizerStub{})
+	organization := handlers.NewV2AdminOrganizationHandler(nil, nil, nil, nil)
+	explain := handlers.NewV2PolicyExplainHandler(nil)
+	authMW := apimw.NewAuthMiddleware(v2TokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}}, v2SessionValidator{}, nil, nil)
+	router := chi.NewRouter()
+	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, authMW, adminMW, organization, explain)
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11, EffectiveAuthority: "organization_admin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range []string{"/api/v2/admin/organization/overview", "/api/v2/admin/organization/groups", "/api/v2/admin/organization/libraries", "/api/v2/admin/organization/invitations", "/api/v2/admin/organization/policy-decisions"} {
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Fatalf("%s = %d %s", target, rec.Code, rec.Body.String())
+		}
+	}
+	for _, target := range []string{"/api/v2/admin/organization/policy-documents", "/api/v2/admin/organization/policy-validate", "/api/v2/admin/organization/policy-activate"} {
+		req := httptest.NewRequest(http.MethodPost, target, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("forbidden mutation route %s = %d %s", target, rec.Code, rec.Body.String())
+		}
+	}
+}
+
 type v2AdminTenantResolverStub struct {
 	tenant tenancy.Context
 }

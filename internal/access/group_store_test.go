@@ -99,7 +99,8 @@ func TestGroupStoreCRUDAndMemberCountsDB(t *testing.T) {
 		t.Fatalf("updated group = %#v, want description/max_streams update", updated)
 	}
 
-	if err := store.Delete(ctx, organizationID, group.ID); err != nil {
+	impact, err := store.DeleteWithImpact(ctx, organizationID, group.ID)
+	if err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 	var assigned int
@@ -126,6 +127,9 @@ func TestGroupStoreCRUDAndMemberCountsDB(t *testing.T) {
 	}
 	if reassigned != 2 {
 		t.Fatalf("profiles reassigned to default after delete = %d, want 2", reassigned)
+	}
+	if impact.ProfilesReassigned != 2 || impact.DefaultGroupID != defaultGroupID {
+		t.Fatalf("deletion impact = %+v, want two profiles and default group %d", impact, defaultGroupID)
 	}
 }
 

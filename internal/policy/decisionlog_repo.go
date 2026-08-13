@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -45,6 +46,18 @@ func NewDecisionRepository(pool *pgxpool.Pool) *DecisionRepository {
 
 // List returns a cursor-paginated page ordered newest-first.
 func (r *DecisionRepository) List(ctx context.Context, opts ListOptions) (ListResult, error) {
+	return r.list(ctx, nil, opts)
+}
+
+// ListForOrganization lists decisions from one authoritative tenant boundary.
+func (r *DecisionRepository) ListForOrganization(ctx context.Context, organizationID uuid.UUID, opts ListOptions) (ListResult, error) {
+	if organizationID == uuid.Nil {
+		return ListResult{}, ErrDecisionNotFound
+	}
+	return r.list(ctx, &organizationID, opts)
+}
+
+func (r *DecisionRepository) list(ctx context.Context, organizationID *uuid.UUID, opts ListOptions) (ListResult, error) {
 	limit := opts.Limit
 	if limit <= 0 || limit > 200 {
 		limit = 100
@@ -53,6 +66,11 @@ func (r *DecisionRepository) List(ctx context.Context, opts ListOptions) (ListRe
 	conditions := []string{"1=1"}
 	args := make([]any, 0, 8)
 	argIdx := 1
+	if organizationID != nil {
+		conditions = append(conditions, fmt.Sprintf("organization_id = $%d", argIdx))
+		args = append(args, *organizationID)
+		argIdx++
+	}
 
 	if opts.From != nil {
 		conditions = append(conditions, fmt.Sprintf(`"timestamp" >= $%d`, argIdx))
@@ -90,7 +108,7 @@ func (r *DecisionRepository) List(ctx context.Context, opts ListOptions) (ListRe
 	}
 
 	query := fmt.Sprintf(`
-		SELECT id, "timestamp", decision_name, policy_generation, user_id,
+		SELECT id, "timestamp", organization_id, membership_id, decision_name, policy_generation, user_id,
 		       COALESCE(profile_id, ''), COALESCE(session_id, ''), COALESCE(request_id, ''),
 		       COALESCE(node_id, ''), allowed, eval_time_ns, input_digest,
 		       input_sample, result_sample, COALESCE(error, '')
@@ -133,8 +151,21 @@ func (r *DecisionRepository) List(ctx context.Context, opts ListOptions) (ListRe
 // with the id is returned; callers that need the partition primary key can pass
 // both id and timestamp.
 func (r *DecisionRepository) Get(ctx context.Context, id int64, timestamp *time.Time) (Entry, error) {
+	return r.get(ctx, nil, id, timestamp)
+}
+
+// GetForOrganization returns a decision only when it belongs to the selected
+// organization. A foreign identifier is indistinguishable from a missing one.
+func (r *DecisionRepository) GetForOrganization(ctx context.Context, organizationID uuid.UUID, id int64, timestamp *time.Time) (Entry, error) {
+	if organizationID == uuid.Nil {
+		return Entry{}, ErrDecisionNotFound
+	}
+	return r.get(ctx, &organizationID, id, timestamp)
+}
+
+func (r *DecisionRepository) get(ctx context.Context, organizationID *uuid.UUID, id int64, timestamp *time.Time) (Entry, error) {
 	query := `
-		SELECT id, "timestamp", decision_name, policy_generation, user_id,
+		SELECT id, "timestamp", organization_id, membership_id, decision_name, policy_generation, user_id,
 		       COALESCE(profile_id, ''), COALESCE(session_id, ''), COALESCE(request_id, ''),
 		       COALESCE(node_id, ''), allowed, eval_time_ns, input_digest,
 		       input_sample, result_sample, COALESCE(error, '')
@@ -144,16 +175,29 @@ func (r *DecisionRepository) Get(ctx context.Context, id int64, timestamp *time.
 		LIMIT 1
 	`
 	args := []any{id}
+	conditions := "id = $1"
+	if organizationID != nil {
+		args = append(args, *organizationID)
+		conditions += " AND organization_id = $2"
+	}
 	if timestamp != nil {
+		args = append(args, *timestamp)
+		conditions += fmt.Sprintf(` AND "timestamp" = $%d`, len(args))
 		query = `
-			SELECT id, "timestamp", decision_name, policy_generation, user_id,
+			SELECT id, "timestamp", organization_id, membership_id, decision_name, policy_generation, user_id,
 			       COALESCE(profile_id, ''), COALESCE(session_id, ''), COALESCE(request_id, ''),
 			       COALESCE(node_id, ''), allowed, eval_time_ns, input_digest,
 			       input_sample, result_sample, COALESCE(error, '')
 			FROM policy_decisions
-			WHERE id = $1 AND "timestamp" = $2
+			WHERE ` + conditions + `
 		`
-		args = append(args, *timestamp)
+	} else if organizationID != nil {
+		query = `
+			SELECT id, "timestamp", organization_id, membership_id, decision_name, policy_generation, user_id,
+			       COALESCE(profile_id, ''), COALESCE(session_id, ''), COALESCE(request_id, ''),
+			       COALESCE(node_id, ''), allowed, eval_time_ns, input_digest,
+			       input_sample, result_sample, COALESCE(error, '')
+			FROM policy_decisions WHERE ` + conditions + ` ORDER BY "timestamp" DESC LIMIT 1`
 	}
 
 	entry, err := scanDecisionEntry(r.pool.QueryRow(ctx, query, args...))
@@ -175,9 +219,12 @@ func scanDecisionEntry(scanner decisionEntryScanner) (Entry, error) {
 	var decisionName string
 	var inputSample []byte
 	var resultSample []byte
+	var membershipID *uuid.UUID
 	if err := scanner.Scan(
 		&entry.ID,
 		&entry.Timestamp,
+		&entry.OrganizationID,
+		&membershipID,
 		&decisionName,
 		&entry.PolicyGeneration,
 		&entry.UserID,
@@ -198,6 +245,9 @@ func scanDecisionEntry(scanner decisionEntryScanner) (Entry, error) {
 		return Entry{}, fmt.Errorf("scan policy decision row: %w", err)
 	}
 	entry.DecisionName = DecisionName(decisionName)
+	if membershipID != nil {
+		entry.MembershipID = *membershipID
+	}
 	if len(inputSample) > 0 {
 		entry.InputSample = append(json.RawMessage(nil), inputSample...)
 	}

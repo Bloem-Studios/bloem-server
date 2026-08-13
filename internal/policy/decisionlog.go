@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -52,6 +53,8 @@ type decisionLogDB interface {
 type Entry struct {
 	ID               int64           `json:"id,omitempty"`
 	Timestamp        time.Time       `json:"timestamp,omitempty"`
+	OrganizationID   uuid.UUID       `json:"organization_id"`
+	MembershipID     uuid.UUID       `json:"membership_id,omitempty"`
 	DecisionName     DecisionName    `json:"decision_name"`
 	PolicyGeneration int64           `json:"policy_generation"`
 	UserID           *int            `json:"user_id,omitempty"`
@@ -377,18 +380,20 @@ func (l *DecisionLogger) insertBatch(ctx context.Context, entries []Entry) error
 	}
 
 	var b strings.Builder
-	b.WriteString(`INSERT INTO policy_decisions ("timestamp", decision_name, policy_generation, user_id, profile_id, session_id, request_id, node_id, allowed, eval_time_ns, input_digest, input_sample, result_sample, error) VALUES `)
+	b.WriteString(`INSERT INTO policy_decisions ("timestamp", organization_id, membership_id, decision_name, policy_generation, user_id, profile_id, session_id, request_id, node_id, allowed, eval_time_ns, input_digest, input_sample, result_sample, error) VALUES `)
 
-	args := make([]any, 0, len(entries)*14)
+	args := make([]any, 0, len(entries)*16)
 	for i, e := range entries {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		base := i * 14
-		fmt.Fprintf(&b, "($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d::jsonb, $%d::jsonb, $%d)",
-			base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9, base+10, base+11, base+12, base+13, base+14)
+		base := i * 16
+		fmt.Fprintf(&b, "($%d, COALESCE($%d, public.vondel_default_organization_id()), $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d::jsonb, $%d::jsonb, $%d)",
+			base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9, base+10, base+11, base+12, base+13, base+14, base+15, base+16)
 		args = append(args,
 			e.Timestamp,
+			nullableUUID(e.OrganizationID),
+			nullableUUID(e.MembershipID),
 			string(e.DecisionName),
 			e.PolicyGeneration,
 			e.UserID,
@@ -409,6 +414,13 @@ func (l *DecisionLogger) insertBatch(ctx context.Context, entries []Entry) error
 		return fmt.Errorf("insert policy decisions: %w", err)
 	}
 	return nil
+}
+
+func nullableUUID(value uuid.UUID) any {
+	if value == uuid.Nil {
+		return nil
+	}
+	return value
 }
 
 func marshalForDigest(v any) ([]byte, string, error) {

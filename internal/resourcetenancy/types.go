@@ -58,13 +58,36 @@ type Grant struct {
 	Entitlement *Entitlement
 }
 
+type LibraryAccessKind string
+
+const (
+	LibraryOwned    LibraryAccessKind = "owned"
+	LibraryEntitled LibraryAccessKind = "entitled"
+)
+
+type LibraryEntitlement struct {
+	ID               uuid.UUID         `json:"id"`
+	OrganizationID   uuid.UUID         `json:"organization_id"`
+	Status           EntitlementStatus `json:"status"`
+	SecurityRevision int64             `json:"security_revision"`
+}
+
+type LibraryProjection struct {
+	FolderID    int64               `json:"folder_id"`
+	Name        string              `json:"name"`
+	Type        string              `json:"type"`
+	AccessKind  LibraryAccessKind   `json:"access_kind"`
+	Entitlement *LibraryEntitlement `json:"entitlement,omitempty"`
+}
+
 var (
-	ErrResourceHidden           = errors.New("resource not found")
-	ErrResourceUnavailable      = errors.New("resource scope unavailable")
-	ErrInvalidRoot              = errors.New("invalid resource root")
-	ErrOrganizationUnavailable  = errors.New("organization unavailable")
-	ErrDefaultBundleUnavailable = errors.New("default entitlement bundle unavailable")
-	ErrInvalidActor             = errors.New("invalid entitlement actor")
+	ErrResourceHidden            = errors.New("resource not found")
+	ErrResourceUnavailable       = errors.New("resource scope unavailable")
+	ErrInvalidRoot               = errors.New("invalid resource root")
+	ErrOrganizationUnavailable   = errors.New("organization unavailable")
+	ErrDefaultBundleUnavailable  = errors.New("default entitlement bundle unavailable")
+	ErrInvalidActor              = errors.New("invalid entitlement actor")
+	ErrAuthorizationStateChanged = errors.New("authorization state changed")
 )
 
 func tenantCanAccessResources(tenant tenancy.Context) bool {

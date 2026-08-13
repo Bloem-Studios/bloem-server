@@ -64,6 +64,13 @@ type UpdateGroupInput struct {
 	IsDefault                *bool
 }
 
+// GroupDeletionImpact reports the canonical reassignment performed while a
+// non-default group is deleted.
+type GroupDeletionImpact struct {
+	ProfilesReassigned int   `json:"profiles_reassigned"`
+	DefaultGroupID     int64 `json:"default_group_id"`
+}
+
 var (
 	// ErrGroupNotFound reports that an access group does not exist.
 	ErrGroupNotFound = errors.New("access group not found")
@@ -381,9 +388,16 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 // the organization's default group; the legacy account assignment is cleared
 // by its FK. The default group cannot be deleted — promote another group first.
 func (s *GroupStore) Delete(ctx context.Context, organizationID uuid.UUID, id int64) error {
+	_, err := s.DeleteWithImpact(ctx, organizationID, id)
+	return err
+}
+
+// DeleteWithImpact removes an access group and returns the exact number of
+// profiles moved to the organization's default group.
+func (s *GroupStore) DeleteWithImpact(ctx context.Context, organizationID uuid.UUID, id int64) (GroupDeletionImpact, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("beginning access group delete: %w", err)
+		return GroupDeletionImpact{}, fmt.Errorf("beginning access group delete: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
@@ -396,11 +410,11 @@ func (s *GroupStore) Delete(ctx context.Context, organizationID uuid.UUID, id in
 		FOR UPDATE`, organizationID, id).Scan(&isDefault)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		return ErrGroupNotFound
+		return GroupDeletionImpact{}, ErrGroupNotFound
 	case err != nil:
-		return fmt.Errorf("checking access group default flag: %w", err)
+		return GroupDeletionImpact{}, fmt.Errorf("checking access group default flag: %w", err)
 	case isDefault:
-		return ErrDefaultGroupRequired
+		return GroupDeletionImpact{}, ErrDefaultGroupRequired
 	}
 	var defaultGroupID int64
 	if err := tx.QueryRow(ctx, `
@@ -410,9 +424,9 @@ func (s *GroupStore) Delete(ctx context.Context, organizationID uuid.UUID, id in
 		  AND is_default
 		FOR UPDATE`, organizationID).Scan(&defaultGroupID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrDefaultGroupRequired
+			return GroupDeletionImpact{}, ErrDefaultGroupRequired
 		}
-		return fmt.Errorf("loading replacement default access group: %w", err)
+		return GroupDeletionImpact{}, fmt.Errorf("loading replacement default access group: %w", err)
 	}
 
 	if _, err := tx.Exec(ctx, `
@@ -424,30 +438,31 @@ func (s *GroupStore) Delete(ctx context.Context, organizationID uuid.UUID, id in
 			WHERE organization_id = $1
 			  AND access_group_id = $2
 		)`, organizationID, id); err != nil {
-		return fmt.Errorf("bumping deleted access group member revisions: %w", err)
+		return GroupDeletionImpact{}, fmt.Errorf("bumping deleted access group member revisions: %w", err)
 	}
-	if _, err := tx.Exec(ctx, `
+	profileTag, err := tx.Exec(ctx, `
 		UPDATE user_profiles
 		SET access_group_id = $3,
 			updated_at = NOW()
 		WHERE organization_id = $1
-		  AND access_group_id = $2`, organizationID, id, defaultGroupID); err != nil {
-		return fmt.Errorf("reassigning deleted access group profiles: %w", err)
+		  AND access_group_id = $2`, organizationID, id, defaultGroupID)
+	if err != nil {
+		return GroupDeletionImpact{}, fmt.Errorf("reassigning deleted access group profiles: %w", err)
 	}
 	tag, err := tx.Exec(ctx, `
 		DELETE FROM access_groups
 		WHERE organization_id = $1
 		  AND id = $2`, organizationID, id)
 	if err != nil {
-		return fmt.Errorf("deleting access group: %w", err)
+		return GroupDeletionImpact{}, fmt.Errorf("deleting access group: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrGroupNotFound
+		return GroupDeletionImpact{}, ErrGroupNotFound
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("committing access group delete: %w", err)
+		return GroupDeletionImpact{}, fmt.Errorf("committing access group delete: %w", err)
 	}
-	return nil
+	return GroupDeletionImpact{ProfilesReassigned: int(profileTag.RowsAffected()), DefaultGroupID: defaultGroupID}, nil
 }
 
 func groupAuthorizationChanged(current Group, input UpdateGroupInput) bool {

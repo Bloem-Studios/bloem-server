@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -142,6 +143,30 @@ func TestDecisionRepositoryGet(t *testing.T) {
 	}
 }
 
+func TestDecisionRepositoryOrganizationMethodsNeverReturnForeignRows(t *testing.T) {
+	ctx := context.Background()
+	pool, _ := newPolicyStoreTest(t, ctx)
+	repo := NewDecisionRepository(pool)
+	var localOrganizationID uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT id FROM organizations WHERE is_default`).Scan(&localOrganizationID); err != nil {
+		t.Fatal(err)
+	}
+	foreignOrganizationID := uuid.New()
+	if _, err := pool.Exec(ctx, `INSERT INTO organizations (id,slug,name,status,is_default) VALUES ($1,$2,$3,'initializing',false)`, foreignOrganizationID, "decision-foreign-"+foreignOrganizationID.String(), "Decision foreign"); err != nil {
+		t.Fatal(err)
+	}
+	local := insertDecisionLogRow(t, ctx, pool, Entry{OrganizationID: localOrganizationID, DecisionName: DecisionAction, PolicyGeneration: 1, EvalTimeNS: 1, InputDigest: "local"})
+	foreign := insertDecisionLogRow(t, ctx, pool, Entry{OrganizationID: foreignOrganizationID, DecisionName: DecisionAction, PolicyGeneration: 1, EvalTimeNS: 1, InputDigest: "foreign"})
+
+	page, err := repo.ListForOrganization(ctx, localOrganizationID, ListOptions{})
+	if err != nil || len(page.Entries) != 1 || page.Entries[0].ID != local.ID {
+		t.Fatalf("ListForOrganization = %+v, %v", page, err)
+	}
+	if _, err := repo.GetForOrganization(ctx, localOrganizationID, foreign.ID, nil); !errors.Is(err, ErrDecisionNotFound) {
+		t.Fatalf("foreign GetForOrganization error = %v, want ErrDecisionNotFound", err)
+	}
+}
+
 func insertDecisionLogRow(t *testing.T, ctx context.Context, pool *pgxpool.Pool, entry Entry) Entry {
 	t.Helper()
 	if entry.Timestamp.IsZero() {
@@ -150,16 +175,23 @@ func insertDecisionLogRow(t *testing.T, ctx context.Context, pool *pgxpool.Pool,
 	if entry.InputDigest == "" {
 		entry.InputDigest = "digest"
 	}
+	if entry.OrganizationID == uuid.Nil {
+		if err := pool.QueryRow(ctx, `SELECT id FROM organizations WHERE is_default`).Scan(&entry.OrganizationID); err != nil {
+			t.Fatalf("load default organization: %v", err)
+		}
+	}
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO policy_decisions (
-			"timestamp", decision_name, policy_generation, user_id, profile_id,
+			"timestamp", organization_id, membership_id, decision_name, policy_generation, user_id, profile_id,
 			session_id, request_id, node_id, allowed, eval_time_ns, input_digest,
 			input_sample, result_sample, error
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13::jsonb, $14)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15::jsonb, $16)
 		RETURNING id, "timestamp"
 	`,
 		entry.Timestamp,
+		entry.OrganizationID,
+		nullableUUID(entry.MembershipID),
 		string(entry.DecisionName),
 		entry.PolicyGeneration,
 		entry.UserID,

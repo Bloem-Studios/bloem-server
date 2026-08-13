@@ -152,6 +152,53 @@ func TestStoreAvailableMediaFolderIDsReturnsOnlyTenantVisibleFolders(t *testing.
 	}
 }
 
+func TestStoreListLibrariesProjectsOwnedAndEntitledWithoutForeignRows(t *testing.T) {
+	fixture := newResourceTenancyFixture(t)
+	store := NewStore(fixture.pool)
+
+	libraries, err := store.ListLibraries(fixture.ctx, fixture.defaultTenant.OrganizationID)
+	if err != nil {
+		t.Fatalf("ListLibraries: %v", err)
+	}
+	byID := make(map[int64]LibraryProjection, len(libraries))
+	for _, library := range libraries {
+		byID[library.FolderID] = library
+		if library.FolderID == fixture.organizationFolder.ID || library.FolderID == fixture.unentitledFolder.ID {
+			t.Fatalf("foreign or unentitled library leaked: %+v", library)
+		}
+	}
+	owned := byID[fixture.ownedFolder.ID]
+	if owned.AccessKind != LibraryOwned || owned.Entitlement != nil {
+		t.Fatalf("owned projection = %+v", owned)
+	}
+	entitled := byID[fixture.platformFolder.ID]
+	if entitled.AccessKind != LibraryEntitled || entitled.Entitlement == nil || entitled.Entitlement.OrganizationID != fixture.defaultTenant.OrganizationID {
+		t.Fatalf("entitled projection = %+v", entitled)
+	}
+}
+
+func TestStoreLibraryEntitlementMutationsAreOrganizationBoundAndRevisionGuarded(t *testing.T) {
+	fixture := newResourceTenancyFixture(t)
+	store := NewStore(fixture.pool)
+
+	updated, err := store.SetLibraryEntitlementStatus(fixture.ctx, fixture.defaultTenant.OrganizationID, fixture.platformFolder.ID, 1, EntitlementSuspended)
+	if err != nil || updated.Status != EntitlementSuspended || updated.SecurityRevision != 2 {
+		t.Fatalf("SetLibraryEntitlementStatus = %+v, %v", updated, err)
+	}
+	if _, err := store.SetLibraryEntitlementStatus(fixture.ctx, fixture.defaultTenant.OrganizationID, fixture.platformFolder.ID, 1, EntitlementActive); !errors.Is(err, ErrAuthorizationStateChanged) {
+		t.Fatalf("stale update error = %v, want ErrAuthorizationStateChanged", err)
+	}
+	if _, err := store.SetLibraryEntitlementStatus(fixture.ctx, fixture.otherTenant.OrganizationID, fixture.platformFolder.ID, 2, EntitlementActive); !errors.Is(err, ErrResourceHidden) {
+		t.Fatalf("foreign update error = %v, want ErrResourceHidden", err)
+	}
+	if err := store.DeleteLibraryEntitlement(fixture.ctx, fixture.defaultTenant.OrganizationID, fixture.platformFolder.ID, 2); err != nil {
+		t.Fatalf("DeleteLibraryEntitlement: %v", err)
+	}
+	if _, err := store.RequireAccess(fixture.ctx, fixture.defaultTenant, fixture.platformFolder); !errors.Is(err, ErrResourceHidden) {
+		t.Fatalf("revoked entitlement access error = %v", err)
+	}
+}
+
 func TestStoreAvailableMediaFolderIDsFailsClosedForInvalidTenantOrStore(t *testing.T) {
 	fixture := newResourceTenancyFixture(t)
 	store := NewStore(fixture.pool)
