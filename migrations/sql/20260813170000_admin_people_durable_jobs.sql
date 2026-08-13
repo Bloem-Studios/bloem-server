@@ -10,7 +10,7 @@ ALTER TABLE public.admin_people_selections
 CREATE TABLE public.admin_people_bulk_jobs (
     job_id text PRIMARY KEY REFERENCES public.admin_jobs(id) ON DELETE CASCADE,
     organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE RESTRICT,
-    selection_id uuid NOT NULL REFERENCES public.admin_people_selections(id) ON DELETE RESTRICT,
+    selection_reference uuid NOT NULL,
     action_kind text NOT NULL CHECK (action_kind IN ('assign_group','suspend_memberships','reactivate_memberships')),
     group_id bigint,
     action_key text NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE public.admin_people_bulk_jobs (
     organization_policy_revision bigint NOT NULL,
     request_id text,
     created_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (selection_id, action_key),
+    UNIQUE (selection_reference, action_key),
     CHECK ((action_kind = 'assign_group' AND group_id IS NOT NULL) OR
            (action_kind <> 'assign_group' AND group_id IS NULL)),
     CHECK ((actor_authority='organization_admin' AND actor_membership_id IS NOT NULL) OR actor_authority='platform_admin')

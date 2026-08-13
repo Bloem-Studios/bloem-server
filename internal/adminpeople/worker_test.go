@@ -14,6 +14,7 @@ type workerStoreStub struct {
 	jobs           []DurableJob
 	processed      []string
 	cleanups       int
+	jobCleanups    int
 	processStarted chan struct{}
 	releaseProcess chan struct{}
 }
@@ -52,6 +53,12 @@ func (s *workerStoreStub) CleanupExpiredSelections(context.Context, int) (int64,
 	s.mu.Unlock()
 	return 0, nil
 }
+func (s *workerStoreStub) CleanupTerminalBulkJobs(context.Context, time.Time, int) (int64, error) {
+	s.mu.Lock()
+	s.jobCleanups++
+	s.mu.Unlock()
+	return 0, nil
+}
 func (s *workerStoreStub) FailBulkJob(context.Context, uuid.UUID, string, error) error { return nil }
 
 func TestWorkerWakeProcessesQueuedJobWithoutPerRequestGoroutine(t *testing.T) {
@@ -79,7 +86,7 @@ func TestWorkerPeriodicRecoveryProcessesJobsAndCleansExpiredSelections(t *testin
 	eventually(t, func() bool {
 		store.mu.Lock()
 		defer store.mu.Unlock()
-		return len(store.processed) > 0 && store.cleanups > 0
+		return len(store.processed) > 0 && store.cleanups > 0 && store.jobCleanups > 0
 	})
 	cancel()
 	<-done

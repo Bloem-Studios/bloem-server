@@ -11,6 +11,7 @@ type WorkerStore interface {
 	ListRunnableBulkJobs(context.Context, int) ([]DurableJob, error)
 	ProcessBulkBatch(context.Context, uuid.UUID, string, int) (BulkResult, error)
 	FailBulkJob(context.Context, uuid.UUID, string, error) error
+	CleanupTerminalBulkJobs(context.Context, time.Time, int) (int64, error)
 	CleanupExpiredSelections(context.Context, int) (int64, error)
 }
 
@@ -20,6 +21,7 @@ type WorkerOptions struct {
 	BatchSize        int
 	ScanLimit        int
 	CleanupLimit     int
+	JobRetention     time.Duration
 }
 
 type Worker struct {
@@ -43,6 +45,9 @@ func NewWorker(store WorkerStore, options WorkerOptions) *Worker {
 	}
 	if options.CleanupLimit <= 0 {
 		options.CleanupLimit = 100
+	}
+	if options.JobRetention <= 0 {
+		options.JobRetention = 24 * time.Hour
 	}
 	return &Worker{store: store, wake: make(chan struct{}, 1), options: options}
 }
@@ -75,6 +80,7 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-recovery.C:
 			w.process(ctx)
 		case <-cleanup.C:
+			_, _ = w.store.CleanupTerminalBulkJobs(ctx, time.Now().UTC().Add(-w.options.JobRetention), w.options.CleanupLimit)
 			_, _ = w.store.CleanupExpiredSelections(ctx, w.options.CleanupLimit)
 		}
 	}

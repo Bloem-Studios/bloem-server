@@ -41,6 +41,7 @@ const (
 	ReasonProtectedOwner       = "protected_owner"
 	ReasonMutationFailed       = "mutation_failed"
 	ReasonAuthorizationChanged = "authorization_state_changed"
+	ReasonActorAuthorityTarget = "actor_authority_target"
 
 	AuthorityPlatformAdmin     = "platform_admin"
 	AuthorityOrganizationAdmin = "organization_admin"
@@ -648,9 +649,35 @@ func (s *Service) CleanupExpiredSelections(ctx context.Context, limit int) (int6
 	if limit <= 0 || limit > 1000 {
 		limit = 100
 	}
-	tag, err := s.pool.Exec(ctx, `DELETE FROM admin_people_selections WHERE id IN (SELECT id FROM admin_people_selections WHERE expires_at<=now() AND NOT EXISTS (SELECT 1 FROM admin_people_bulk_jobs j WHERE j.selection_id=admin_people_selections.id) ORDER BY expires_at LIMIT $1)`, limit)
+	tag, err := s.pool.Exec(ctx, `DELETE FROM admin_people_selections WHERE id IN (SELECT id FROM admin_people_selections WHERE expires_at<=now() ORDER BY expires_at LIMIT $1)`, limit)
 	if err != nil {
 		return 0, fmt.Errorf("cleanup expired people selections: %w", err)
+	}
+	return tag.RowsAffected(), nil
+}
+
+func (s *Service) CleanupTerminalBulkJobs(ctx context.Context, completedBefore time.Time, limit int) (int64, error) {
+	if s == nil || s.pool == nil {
+		return 0, fmt.Errorf("people store unavailable")
+	}
+	if completedBefore.IsZero() {
+		return 0, ErrInvalidFilter
+	}
+	if limit <= 0 || limit > 1000 {
+		limit = 100
+	}
+	tag, err := s.pool.Exec(ctx, `
+		WITH doomed AS (
+			SELECT j.id
+			FROM admin_jobs j
+			JOIN admin_people_bulk_jobs b ON b.job_id=j.id
+			WHERE j.status IN ('completed','failed') AND j.completed_at <= $1
+			ORDER BY j.completed_at,j.id
+			LIMIT $2
+		)
+		DELETE FROM admin_jobs j USING doomed WHERE j.id=doomed.id`, completedBefore.UTC(), limit)
+	if err != nil {
+		return 0, fmt.Errorf("cleanup terminal people bulk jobs: %w", err)
 	}
 	return tag.RowsAffected(), nil
 }
@@ -718,6 +745,22 @@ func (s *Service) EnqueueBulk(ctx context.Context, organizationID uuid.UUID, act
 		return BulkResult{}, fmt.Errorf("begin people bulk enqueue: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	actionKey := action.Kind + ":"
+	if action.GroupID != nil {
+		actionKey += strconv.Itoa(*action.GroupID)
+	}
+	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, reference.String()+":"+actionKey); err != nil {
+		return BulkResult{}, fmt.Errorf("lock people bulk idempotency key: %w", err)
+	}
+	var existing string
+	err = tx.QueryRow(ctx, `SELECT job_id FROM admin_people_bulk_jobs WHERE organization_id=$1 AND selection_reference=$2 AND action_key=$3`, organizationID, reference, actionKey).Scan(&existing)
+	if err == nil {
+		_ = tx.Commit(ctx)
+		return s.GetBulkJob(ctx, organizationID, existing)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return BulkResult{}, err
+	}
 	record, err := loadSelection(ctx, tx.QueryRow(ctx, `SELECT id,organization_id,canonical_filter,snapshot_at,expires_at,account_ids,matched_count,excluded_count,targets FROM admin_people_selections WHERE id=$1 AND organization_id=$2`, reference, organizationID), organizationID)
 	if err != nil {
 		return BulkResult{}, err
@@ -738,22 +781,6 @@ func (s *Service) EnqueueBulk(ctx context.Context, organizationID uuid.UUID, act
 			return BulkResult{}, ErrNotFound
 		}
 	}
-	actionKey := action.Kind + ":"
-	if action.GroupID != nil {
-		actionKey += strconv.Itoa(*action.GroupID)
-	}
-	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, reference.String()+":"+actionKey); err != nil {
-		return BulkResult{}, fmt.Errorf("lock people bulk idempotency key: %w", err)
-	}
-	var existing string
-	err = tx.QueryRow(ctx, `SELECT job_id FROM admin_people_bulk_jobs WHERE selection_id=$1 AND action_key=$2`, reference, actionKey).Scan(&existing)
-	if err == nil {
-		_ = tx.Commit(ctx)
-		return s.GetBulkJob(ctx, organizationID, existing)
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return BulkResult{}, err
-	}
 	jobID, err := idgen.NextID()
 	if err != nil {
 		return BulkResult{}, err
@@ -765,7 +792,7 @@ func (s *Service) EnqueueBulk(ctx context.Context, organizationID uuid.UUID, act
 	if _, err = tx.Exec(ctx, `INSERT INTO admin_jobs (id,job_type,status,created_by_user_id,request_payload,result_payload,message,progress_current,progress_total,requested_at,updated_at) VALUES ($1,'organization_people_bulk','queued',$2,$3,$4,'People bulk operation queued',0,$5,$6,$6)`, jobID, actorID, requestJSON, resultJSON, len(record.targets), now); err != nil {
 		return BulkResult{}, fmt.Errorf("persist queued people bulk job: %w", err)
 	}
-	if _, err = tx.Exec(ctx, `INSERT INTO admin_people_bulk_jobs (job_id,organization_id,selection_id,action_kind,group_id,action_key,actor_account_id,actor_authority,actor_membership_id,actor_security_revision,organization_policy_revision,request_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULLIF($12,''))`, jobID, organizationID, reference, action.Kind, action.GroupID, actionKey, actorID, actor.Authority, actor.MembershipID, actor.SecurityRevision, actor.PolicyRevision, actor.RequestID); err != nil {
+	if _, err = tx.Exec(ctx, `INSERT INTO admin_people_bulk_jobs (job_id,organization_id,selection_reference,action_kind,group_id,action_key,actor_account_id,actor_authority,actor_membership_id,actor_security_revision,organization_policy_revision,request_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULLIF($12,''))`, jobID, organizationID, reference, action.Kind, action.GroupID, actionKey, actorID, actor.Authority, actor.MembershipID, actor.SecurityRevision, actor.PolicyRevision, actor.RequestID); err != nil {
 		return BulkResult{}, err
 	}
 	rows := make([][]any, 0, len(record.targets))
@@ -871,7 +898,10 @@ func (s *Service) ProcessBulkBatch(ctx context.Context, organizationID uuid.UUID
 	for index, item := range pending {
 		savepoint := fmt.Sprintf("bulk_target_%d", index)
 		_, _ = tx.Exec(ctx, "SAVEPOINT "+savepoint)
-		outcome, reason, mutationErr := s.executeBulkRecord(ctx, tx, organizationID, actor.AccountID, item.snapshot, action)
+		outcome, reason, mutationErr := "skipped", ReasonActorAuthorityTarget, error(nil)
+		if item.accountID != actor.AccountID {
+			outcome, reason, mutationErr = s.executeBulkRecord(ctx, tx, organizationID, actor.AccountID, item.snapshot, action)
+		}
 		if mutationErr != nil {
 			_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT "+savepoint)
 			outcome = "failed"
@@ -968,7 +998,7 @@ func (s *Service) resolveBulkActorSnapshot(ctx context.Context, tx pgx.Tx, organ
 
 func (s *Service) revalidateBulkActor(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actor MutationActor) error {
 	var policyRevision int64
-	err := tx.QueryRow(ctx, `SELECT policy_revision FROM organizations WHERE id=$1 AND status='active'`, organizationID).Scan(&policyRevision)
+	err := tx.QueryRow(ctx, `SELECT policy_revision FROM organizations WHERE id=$1 AND status='active' FOR UPDATE`, organizationID).Scan(&policyRevision)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrAuthorizationStateChanged
 	}
@@ -982,7 +1012,7 @@ func (s *Service) revalidateBulkActor(ctx context.Context, tx pgx.Tx, organizati
 		var status tenancy.MembershipStatus
 		var role string
 		var revision int64
-		err = tx.QueryRow(ctx, `SELECT status,legacy_role,security_revision FROM organization_memberships WHERE id=$1 AND organization_id=$2 AND account_id=$3`, actor.MembershipID, organizationID, actor.AccountID).Scan(&status, &role, &revision)
+		err = tx.QueryRow(ctx, `SELECT status,legacy_role,security_revision FROM organization_memberships WHERE id=$1 AND organization_id=$2 AND account_id=$3 FOR UPDATE`, actor.MembershipID, organizationID, actor.AccountID).Scan(&status, &role, &revision)
 		if err != nil || status != tenancy.MembershipActive || role != "admin" || revision != actor.SecurityRevision {
 			return ErrAuthorizationStateChanged
 		}
@@ -990,7 +1020,7 @@ func (s *Service) revalidateBulkActor(ctx context.Context, tx pgx.Tx, organizati
 	}
 	var enabled bool
 	var role string
-	err = tx.QueryRow(ctx, `SELECT enabled,role FROM users WHERE id=$1`, actor.AccountID).Scan(&enabled, &role)
+	err = tx.QueryRow(ctx, `SELECT enabled,role FROM users WHERE id=$1 FOR UPDATE`, actor.AccountID).Scan(&enabled, &role)
 	if err != nil || !enabled || role != "admin" {
 		return ErrAuthorizationStateChanged
 	}
