@@ -74,6 +74,8 @@ import AdminPlugins from "@/pages/AdminPlugins";
 import AdminHistoryImport from "@/pages/AdminHistoryImport";
 import AdminRecommendations from "@/pages/AdminRecommendations";
 import AdminPolicyLayout from "@/pages/admin-policy/AdminPolicyLayout";
+import OrganizationsPage from "@/pages/admin-platform/OrganizationsPage";
+import OrganizationDetailPage from "@/pages/admin-platform/OrganizationDetailPage";
 import Recommendations from "@/pages/Recommendations";
 import RecommendationsSection from "@/pages/RecommendationsSection";
 import Calendar from "@/pages/Calendar";
@@ -501,10 +503,8 @@ function AppRoutes() {
                 >
                   <Route element={<PlatformContextGuard />}>
                     <Route index element={<AdminDashboard />} />
-                    <Route
-                      path="platform/organizations"
-                      element={<AdminScopePlaceholder title="Organizations" />}
-                    />
+                    <Route path="platform/organizations" element={<OrganizationsPage />} />
+                    <Route path="platform/organizations/:id" element={<OrganizationDetailPage />} />
                     <Route path="activity" element={<AdminActivity />} />
                     <Route path="logs" element={<AdminLogs />} />
                     <Route path="diagnostics" element={<AdminDiagnostics />} />

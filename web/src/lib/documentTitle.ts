@@ -108,5 +108,9 @@ export function resolveAdminDocumentTitle(pathname: string): string {
     return "Admin User";
   }
 
+  if (adminSegment === "platform" && nestedSegment === "organizations") {
+    return segments[3] ? "Organization" : "Organizations";
+  }
+
   return ADMIN_TITLES[adminSegment] ?? "Admin";
 }
