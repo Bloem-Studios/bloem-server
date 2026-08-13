@@ -31,6 +31,11 @@ func newArtifactTestRepo(t *testing.T) (*ArtifactRepository, *pgxpool.Pool, int)
 	if present == nil {
 		t.Skip("download_artifact_orphans migration has not been applied")
 	}
+	// ClaimNext is intentionally a global worker queue operation. Keep the
+	// package fixture independent from rows left by earlier interrupted runs.
+	if _, err := pool.Exec(ctx, `DELETE FROM download_artifacts`); err != nil {
+		t.Fatalf("reset download artifact queue: %v", err)
+	}
 
 	suffix := time.Now().UnixNano()
 	var folderID int

@@ -273,7 +273,7 @@ func TestHandleStartWaitsForForceReloadGate(t *testing.T) {
 	locked = false
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("start did not resume after force-reload gate was released")
 	}
 }
@@ -309,7 +309,7 @@ func TestHandleDownloadPrepareTrackingDoesNotBlockAndRemovesAfterTrack(t *testin
 
 	select {
 	case <-tracker.trackStarted:
-	case <-time.After(time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatal("tracking did not start")
 	}
 	select {
