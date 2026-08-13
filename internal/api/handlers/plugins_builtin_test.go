@@ -25,11 +25,25 @@ func pluginBuiltinTestPool(t *testing.T) *pgxpool.Pool {
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
-	pool, err := pgxpool.New(context.Background(), dsn)
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatalf("parse test database config: %v", err)
+	}
+	// Keep this fixture session-local. Repository-wide tests may have enabled
+	// plugin rows with intentionally invalid install paths; this test is about
+	// the builtin sentinel and must not attempt to load those manifests.
+	config.MaxConns = 1
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		t.Fatalf("connect test database: %v", err)
 	}
 	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(context.Background(), `
+		CREATE TEMP TABLE plugin_installations
+		(LIKE public.plugin_installations INCLUDING DEFAULTS INCLUDING GENERATED)
+		ON COMMIT PRESERVE ROWS`); err != nil {
+		t.Fatalf("create temp plugin_installations table: %v", err)
+	}
 	return pool
 }
 

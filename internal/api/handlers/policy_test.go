@@ -461,6 +461,10 @@ func newStartedPolicyHandlerSystem(t *testing.T, ctx context.Context, store *pol
 		bus,
 		slog.New(slog.DiscardHandler),
 		policy.WithSystemPollInterval(time.Hour),
+		// Handler integration tests validate lifecycle and error mapping, not the
+		// production latency budget. Leave enough headroom for a loaded Go test
+		// runner so scheduler pauses do not become policy timeout failures.
+		policy.WithSystemEvalTimeout(time.Second),
 	)
 	if err := system.Start(ctx); err != nil {
 		t.Fatalf("Start() error: %v", err)
