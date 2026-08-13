@@ -219,8 +219,8 @@ func newResourceTenancyFixture(t *testing.T) resourceTenancyFixture {
 	}
 
 	var otherOwnerID uuid.UUID
-	if err := pool.QueryRow(ctx, `INSERT INTO resource_owners (kind, organization_id) VALUES ('organization', $1) RETURNING id`, otherTenant.OrganizationID).Scan(&otherOwnerID); err != nil {
-		t.Fatalf("create other organization owner: %v", err)
+	if err := pool.QueryRow(ctx, `SELECT id FROM resource_owners WHERE kind='organization' AND organization_id=$1`, otherTenant.OrganizationID).Scan(&otherOwnerID); err != nil {
+		t.Fatalf("load other organization owner: %v", err)
 	}
 	var organizationFolderID int64
 	if err := pool.QueryRow(ctx, `INSERT INTO media_folders (type, name, owner_id) VALUES ('movies', 'Organization root', $1) RETURNING id`, otherOwnerID).Scan(&organizationFolderID); err != nil {

@@ -127,7 +127,7 @@ CREATE UNIQUE INDEX resource_owners_one_platform_idx
     ON public.resource_owners(kind) WHERE kind = 'platform';
 ```
 
-Insert the singleton platform owner and one organization owner for every existing organization. Add `vondel_platform_resource_owner_id()` as a stable SQL function that selects the singleton platform owner.
+Insert the singleton platform owner and one organization owner for every existing organization. Add a typed `AFTER INSERT` organization trigger that creates exactly one organization owner for every later organization. Add `vondel_platform_resource_owner_id()` as a stable SQL function that selects the singleton platform owner.
 
 Create a versioned bundle core:
 
@@ -165,6 +165,10 @@ CREATE TABLE public.entitlement_bundle_versions (
 ```
 
 Insert `default-platform-catalog`, revision 1, created by service `resource-tenancy-migration`.
+After inserting revision 1, add a deferrable composite foreign key from
+`entitlement_bundles(id, active_revision)` to
+`entitlement_bundle_versions(bundle_id, revision)` so an active bundle can
+never point at a nonexistent revision.
 
 - [ ] **Step 5: Add typed roots and backfill them**
 

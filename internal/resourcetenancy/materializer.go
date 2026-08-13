@@ -198,9 +198,9 @@ func (m *Materializer) MaterializeDefaultBundle(
 
 func normalizeActor(actor Actor) (accountID *int, service *string, err error) {
 	serviceName := strings.TrimSpace(actor.Service)
-	hasAccount := actor.AccountID != nil && *actor.AccountID > 0
+	hasAccount := actor.AccountID != nil
 	hasService := serviceName != ""
-	if hasAccount == hasService {
+	if hasAccount == hasService || (hasAccount && *actor.AccountID <= 0) {
 		return nil, nil, ErrInvalidActor
 	}
 	if hasAccount {

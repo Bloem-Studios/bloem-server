@@ -177,10 +177,13 @@ func TestMaterializeDefaultBundleRejectsInvalidOrganizationAndActor(t *testing.T
 	}
 
 	accountID := fixture.defaultTenant.AccountID
+	zeroAccountID := 0
 	for name, actor := range map[string]Actor{
-		"missing": {},
-		"both":    {AccountID: &accountID, Service: "also-service"},
-		"blank":   {Service: "   "},
+		"missing":           {},
+		"both":              {AccountID: &accountID, Service: "also-service"},
+		"blank":             {Service: "   "},
+		"zero account":      {AccountID: &zeroAccountID},
+		"zero plus service": {AccountID: &zeroAccountID, Service: "also-service"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := materializer.MaterializeDefaultBundle(fixture.ctx, fixture.defaultTenant.OrganizationID, actor); !errors.Is(err, ErrInvalidActor) {

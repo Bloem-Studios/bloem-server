@@ -157,9 +157,11 @@ func TestResourceTenancyMigrationRejectsInvalidOwnershipAndEntitlements(t *testi
 		t.Fatalf("create other organization: %v", err)
 	}
 	var organizationOwnerID uuid.UUID
-	if err := pool.QueryRow(ctx, `INSERT INTO resource_owners (kind, organization_id) VALUES ('organization', $1) RETURNING id`, otherOrganizationID).Scan(&organizationOwnerID); err != nil {
-		t.Fatalf("create organization owner: %v", err)
+	if err := pool.QueryRow(ctx, `SELECT id FROM resource_owners WHERE kind='organization' AND organization_id=$1`, otherOrganizationID).Scan(&organizationOwnerID); err != nil {
+		t.Fatalf("new organization did not receive its resource owner: %v", err)
 	}
+	requireStatementRejected(t, pool, ctx, `INSERT INTO resource_owners (kind, organization_id) VALUES ('organization', $1)`, "duplicate organization owner", otherOrganizationID)
+	requireStatementRejected(t, pool, ctx, `UPDATE entitlement_bundles SET active_revision=999 WHERE is_organization_creation_default`, "missing active bundle revision")
 	var organizationFolderID int
 	if err := pool.QueryRow(ctx, `INSERT INTO media_folders (type, name, owner_id) VALUES ('movies', 'Private root', $1) RETURNING id`, organizationOwnerID).Scan(&organizationFolderID); err != nil {
 		t.Fatalf("create organization-owned folder: %v", err)

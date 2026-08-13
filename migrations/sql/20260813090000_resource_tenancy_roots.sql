@@ -28,6 +28,21 @@ SELECT 'organization', id
 FROM public.organizations
 ORDER BY id;
 
+CREATE FUNCTION public.vondel_create_organization_resource_owner()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO public.resource_owners (kind, organization_id)
+    VALUES ('organization', NEW.id);
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER organizations_create_resource_owner
+AFTER INSERT ON public.organizations
+FOR EACH ROW EXECUTE FUNCTION public.vondel_create_organization_resource_owner();
+
 CREATE FUNCTION public.vondel_platform_resource_owner_id()
 RETURNS uuid
 LANGUAGE sql
@@ -146,6 +161,13 @@ INSERT INTO public.entitlement_bundle_versions (
 )
 SELECT id, active_revision, 'resource-tenancy-migration'
 FROM default_bundle;
+
+ALTER TABLE public.entitlement_bundles
+    ADD CONSTRAINT entitlement_bundles_active_version_fkey
+    FOREIGN KEY (id, active_revision)
+    REFERENCES public.entitlement_bundle_versions(bundle_id, revision)
+    ON DELETE RESTRICT
+    DEFERRABLE INITIALLY DEFERRED;
 
 CREATE TABLE public.entitlement_bundle_members (
     bundle_id uuid NOT NULL,
@@ -452,6 +474,8 @@ DROP FUNCTION IF EXISTS public.vondel_entitle_default_organization_media_folder(
 DROP TABLE IF EXISTS public.resource_tenancy_migration_ledger;
 DROP TABLE IF EXISTS public.organization_entitlements;
 DROP TABLE IF EXISTS public.entitlement_bundle_members;
+ALTER TABLE public.entitlement_bundles
+    DROP CONSTRAINT IF EXISTS entitlement_bundles_active_version_fkey;
 DROP TABLE IF EXISTS public.entitlement_bundle_versions;
 DROP TABLE IF EXISTS public.entitlement_bundles;
 
@@ -469,5 +493,7 @@ ALTER TABLE public.media_folders
     DROP COLUMN IF EXISTS owner_id;
 
 DROP FUNCTION IF EXISTS public.vondel_platform_resource_owner_id();
+DROP TRIGGER IF EXISTS organizations_create_resource_owner ON public.organizations;
+DROP FUNCTION IF EXISTS public.vondel_create_organization_resource_owner();
 DROP TABLE IF EXISTS public.resource_owners;
 -- +goose StatementEnd
