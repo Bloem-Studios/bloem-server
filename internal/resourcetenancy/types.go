@@ -58,7 +58,10 @@ type Grant struct {
 }
 
 var (
-	ErrResourceHidden      = errors.New("resource not found")
-	ErrResourceUnavailable = errors.New("resource scope unavailable")
-	ErrInvalidRoot         = errors.New("invalid resource root")
+	ErrResourceHidden           = errors.New("resource not found")
+	ErrResourceUnavailable      = errors.New("resource scope unavailable")
+	ErrInvalidRoot              = errors.New("invalid resource root")
+	ErrOrganizationUnavailable  = errors.New("organization unavailable")
+	ErrDefaultBundleUnavailable = errors.New("default entitlement bundle unavailable")
+	ErrInvalidActor             = errors.New("invalid entitlement actor")
 )
