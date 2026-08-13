@@ -52,10 +52,18 @@ const person = {
   display_name: "Alex",
   membership_id: "membership-11",
   membership_status: "active" as const,
-  legacy_role: "user",
+  legacy_role: "user" as const,
   security_revision: 3,
   last_activity: "2026-08-13T12:00:00Z",
-  profiles: [{ id: "profile-11", name: "Alex", group_id: 1, group_name: "Default", revision: 2 }],
+  profiles: [
+    {
+      id: "profile-11",
+      name: "Alex",
+      group_id: 1,
+      group_name: "Default",
+      updated_at: "2026-08-13T12:00:00Z",
+    },
+  ],
 };
 
 vi.mock("@/contexts/AdminContextProvider", () => ({
@@ -174,14 +182,19 @@ describe("multitenant administration accessibility", () => {
       <>
         <PeopleTable
           people={[person]}
-          groups={[{ id: 1, name: "Default", member_count: 8 }]}
+          groups={[{ id: 1, name: "Default" }]}
           groupDrafts={{}}
           onInspect={vi.fn()}
           onChangeGroup={vi.fn()}
         />
         <BulkPeopleActionBar
-          selection={{ token: "opaque", matched: 1234, expires_at: "2026-08-13T12:15:00Z" }}
-          groups={[{ id: 1, name: "Default", member_count: 8 }]}
+          selection={{
+            token: "opaque",
+            matched: 1234,
+            excluded: 0,
+            expires_at: "2026-08-13T12:15:00Z",
+          }}
+          groups={[{ id: 1, name: "Default" }]}
           onAction={vi.fn()}
         />
       </>,
@@ -240,14 +253,19 @@ describe("multitenant administration responsive release snapshots", () => {
           <h1 tabIndex={-1}>People</h1>
           <PeopleTable
             people={[person]}
-            groups={[{ id: 1, name: "Default", member_count: 8 }]}
+            groups={[{ id: 1, name: "Default" }]}
             groupDrafts={{}}
             onInspect={vi.fn()}
             onChangeGroup={vi.fn()}
           />
           <BulkPeopleActionBar
-            selection={{ token: "opaque", matched: 1234, expires_at: "2026-08-13T12:15:00Z" }}
-            groups={[{ id: 1, name: "Default", member_count: 8 }]}
+            selection={{
+              token: "opaque",
+              matched: 1234,
+              excluded: 0,
+              expires_at: "2026-08-13T12:15:00Z",
+            }}
+            groups={[{ id: 1, name: "Default" }]}
             onAction={vi.fn()}
           />
         </>,

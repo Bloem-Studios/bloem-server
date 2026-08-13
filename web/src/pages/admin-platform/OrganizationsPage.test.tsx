@@ -109,7 +109,7 @@ describe("OrganizationsPage", () => {
   });
 
   it("renders server validation beside the matching creation field", async () => {
-    vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
+    vi.mocked(adminV2Api).mockImplementation(async (_path, init) => {
       if (init?.method === "POST") {
         throw new AdminV2ClientError(422, "validation_failed", "Invalid fields", {
           slug: "Slug is already in use.",
