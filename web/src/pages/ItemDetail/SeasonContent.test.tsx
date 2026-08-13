@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -152,6 +153,17 @@ function makeSeasonItem(
   };
 }
 
+function renderSeasonContent(item: ItemDetail & { type: "season" }) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return renderToStaticMarkup(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[`/item/${item.content_id}`]}>
+        <SeasonContent item={item} />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
 describe("SeasonContent", () => {
   beforeEach(() => {
     mocks.capturedActionBarProps.value = null;
@@ -182,11 +194,7 @@ describe("SeasonContent", () => {
   });
 
   it("does not pass rating props to ActionBar", () => {
-    renderToStaticMarkup(
-      <MemoryRouter initialEntries={["/item/season-1"]}>
-        <SeasonContent item={makeSeasonItem()} />
-      </MemoryRouter>,
-    );
+    renderSeasonContent(makeSeasonItem());
 
     expect(mocks.capturedActionBarProps.value).not.toHaveProperty("rating");
     expect(mocks.capturedActionBarProps.value).not.toHaveProperty("onRatingChange");
@@ -216,11 +224,7 @@ describe("SeasonContent", () => {
       error: null,
     });
 
-    renderToStaticMarkup(
-      <MemoryRouter initialEntries={["/item/season-1"]}>
-        <SeasonContent item={makeSeasonItem()} />
-      </MemoryRouter>,
-    );
+    renderSeasonContent(makeSeasonItem());
 
     expect(mocks.capturedMediaMenuProps[0]).toMatchObject({
       contentId: "episode-1",
@@ -236,11 +240,7 @@ describe("SeasonContent", () => {
       onTranslate,
     });
 
-    renderToStaticMarkup(
-      <MemoryRouter initialEntries={["/item/season-1"]}>
-        <SeasonContent item={makeSeasonItem({ pending_translation_language: "fr" })} />
-      </MemoryRouter>,
-    );
+    renderSeasonContent(makeSeasonItem({ pending_translation_language: "fr" }));
 
     expect(mocks.useOnViewTranslation).toHaveBeenCalledWith(
       expect.objectContaining({ content_id: "season-1", type: "season" }),
