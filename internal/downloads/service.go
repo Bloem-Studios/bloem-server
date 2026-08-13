@@ -268,13 +268,13 @@ func (s *Service) enabledConfig(ctx context.Context) (config.DownloadConfig, err
 }
 
 // Capability reports the download capability for a user (feature detection).
-func (s *Service) Capability(ctx context.Context, userID int) (Capability, error) {
+func (s *Service) Capability(ctx context.Context, userID int, profileID string) (Capability, error) {
 	cfg := s.loadConfig(ctx)
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return Capability{}, fmt.Errorf("loading user: %w", err)
 	}
-	user, err = s.effectiveDownloadUser(ctx, user)
+	user, err = s.effectiveDownloadUser(ctx, user, profileID)
 	if err != nil {
 		return Capability{}, fmt.Errorf("loading access group policy: %w", err)
 	}
@@ -302,14 +302,14 @@ func (s *Service) Capability(ctx context.Context, userID int) (Capability, error
 	return c, nil
 }
 
-func (s *Service) effectiveDownloadUser(ctx context.Context, user *models.User) (*models.User, error) {
+func (s *Service) effectiveDownloadUser(ctx context.Context, user *models.User, profileID string) (*models.User, error) {
 	if user == nil {
 		return nil, nil
 	}
-	subject := access.GroupSubject{AccountID: user.ID}
+	subject := access.GroupSubject{AccountID: user.ID, ProfileID: profileID}
 	if s.groupProvider != nil {
 		var err error
-		subject, err = access.GroupSubjectFromContext(ctx, user.ID, "")
+		subject, err = access.GroupSubjectFromContext(ctx, user.ID, profileID)
 		if err != nil {
 			return nil, err
 		}
@@ -350,7 +350,7 @@ type CreateRequest struct {
 // ephemeral row unless compatibility requires a prepared artifact. Bitrate
 // qualities always prepare a transcode artifact before the row becomes ready.
 func (s *Service) Create(ctx context.Context, userID int, req CreateRequest, filter catalog.AccessFilter) (*Download, error) {
-	cfg, user, err := s.downloadConfigForUser(ctx, userID, req.DeviceID)
+	cfg, user, err := s.downloadConfigForUser(ctx, userID, req.ProfileID, req.DeviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +549,7 @@ func (s *Service) CreateSeason(ctx context.Context, userID int, req CreateReques
 // queues ephemeral rows under one shared batch ID. Series/season downloads are
 // original-only.
 func (s *Service) createSeriesScoped(ctx context.Context, userID int, req CreateRequest, filter catalog.AccessFilter, listEpisodes func(context.Context) ([]*models.Episode, error)) ([]*Download, string, []SkippedDownload, error) {
-	cfg, user, err := s.downloadConfigForUser(ctx, userID, req.DeviceID)
+	cfg, user, err := s.downloadConfigForUser(ctx, userID, req.ProfileID, req.DeviceID)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -873,8 +873,8 @@ func (s *Service) List(ctx context.Context, userID int, profileID, deviceID stri
 
 // ServeDirect validates permissions and serves a file directly for browser
 // download. No persistent download record is created.
-func (s *Service) ServeDirect(ctx context.Context, w http.ResponseWriter, r *http.Request, userID, fileID int, format string, filter catalog.AccessFilter) error {
-	target, err := s.ResolveDirectFile(ctx, userID, fileID, format, filter)
+func (s *Service) ServeDirect(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int, profileID string, fileID int, format string, filter catalog.AccessFilter) error {
+	target, err := s.ResolveDirectFile(ctx, userID, profileID, fileID, format, filter)
 	if err != nil {
 		return err
 	}
@@ -883,8 +883,8 @@ func (s *Service) ServeDirect(ctx context.Context, w http.ResponseWriter, r *htt
 
 // ResolveDirectFile authorizes a browser-style original download without
 // writing response bytes. It is used by the API before minting a proxy token.
-func (s *Service) ResolveDirectFile(ctx context.Context, userID, fileID int, format string, filter catalog.AccessFilter) (*FileTarget, error) {
-	cfg, _, err := s.downloadConfigForUser(ctx, userID, "")
+func (s *Service) ResolveDirectFile(ctx context.Context, userID int, profileID string, fileID int, format string, filter catalog.AccessFilter) (*FileTarget, error) {
+	cfg, _, err := s.downloadConfigForUser(ctx, userID, profileID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -921,7 +921,7 @@ func (s *Service) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 
 	// Re-check policy — admin may have disabled downloads or revoked permission.
-	if _, _, err := s.downloadConfigForUser(ctx, userID, deviceID); err != nil {
+	if _, _, err := s.downloadConfigForUser(ctx, userID, profileID, deviceID); err != nil {
 		return err
 	}
 
@@ -971,7 +971,7 @@ func (s *Service) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.
 // re-checks current policy and content access, and returns the source/artifact
 // path for trusted proxy delegation.
 func (s *Service) ResolveManagedFile(ctx context.Context, userID int, profileID, deviceID, downloadID string, filter catalog.AccessFilter) (*FileTarget, error) {
-	cfg, _, err := s.downloadConfigForUser(ctx, userID, deviceID)
+	cfg, _, err := s.downloadConfigForUser(ctx, userID, profileID, deviceID)
 	if err != nil {
 		return nil, err
 	}

@@ -267,7 +267,7 @@ func TestSessionManager_TranscodeLimitEnforcement(t *testing.T) {
 
 func TestSessionManager_UserLimitProviderOverridesDefaults(t *testing.T) {
 	sm := playback.NewSessionManager(6, 2)
-	sm.SetLimitProvider(func(_ context.Context, userID int) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(_ context.Context, userID int, _ string) (playback.SessionLimits, error) {
 		switch userID {
 		case 1:
 			return playback.SessionLimits{MaxStreams: 1, MaxTranscodes: 1}, nil
@@ -291,11 +291,42 @@ func TestSessionManager_UserLimitProviderOverridesDefaults(t *testing.T) {
 	}
 }
 
+func TestSessionManagerLimitProviderReceivesPlaybackProfile(t *testing.T) {
+	profileLimits := func(limits playback.SessionLimits) playback.SessionLimitProvider {
+		return func(_ context.Context, userID int, profileID string) (playback.SessionLimits, error) {
+			if userID != 1 || profileID != "profile-strict" {
+				return playback.SessionLimits{}, nil
+			}
+			return limits, nil
+		}
+	}
+	limitsForStreams := profileLimits(playback.SessionLimits{MaxStreams: 1})
+	limitsForTranscodes := profileLimits(playback.SessionLimits{MaxTranscodes: 1})
+
+	streams := playback.NewSessionManager(0, 0)
+	streams.SetLimitProvider(limitsForStreams)
+	if _, err := streams.StartSession(1, "profile-strict", 100, playback.PlayDirect, false); err != nil {
+		t.Fatalf("StartSession(first stream) error: %v", err)
+	}
+	if _, err := streams.StartSession(1, "profile-strict", 101, playback.PlayDirect, false); !errors.Is(err, playback.ErrTooManyStreams) {
+		t.Fatalf("StartSession(second stream) error = %v, want ErrTooManyStreams", err)
+	}
+
+	transcodes := playback.NewSessionManager(0, 0)
+	transcodes.SetLimitProvider(limitsForTranscodes)
+	if _, err := transcodes.StartSession(1, "profile-strict", 200, playback.PlayTranscode, false); err != nil {
+		t.Fatalf("StartSession(first transcode) error: %v", err)
+	}
+	if _, err := transcodes.StartSession(1, "profile-strict", 201, playback.PlayTranscode, false); !errors.Is(err, playback.ErrTooManyTranscodes) {
+		t.Fatalf("StartSession(second transcode) error = %v, want ErrTooManyTranscodes", err)
+	}
+}
+
 func TestSessionManager_GroupPolicyLimitUsesStricterValue(t *testing.T) {
 	user := &models.User{ID: 1, MaxStreams: 6, MaxTranscodes: 2}
 	group := &access.GroupPolicy{MaxStreams: 1, MaxTranscodes: 1, RequestsAllowed: true}
 	sm := playback.NewSessionManager(6, 2)
-	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
 		effective := access.ApplyGroupPolicy(user, group)
 		return playback.SessionLimits{
 			MaxStreams:    effective.MaxStreams,
@@ -313,7 +344,7 @@ func TestSessionManager_GroupPolicyLimitUsesStricterValue(t *testing.T) {
 
 func TestSessionManager_UserLimitProviderAppliesTranscodeLimitOnlyToTranscodes(t *testing.T) {
 	sm := playback.NewSessionManager(6, 2)
-	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
 		return playback.SessionLimits{MaxStreams: 3, MaxTranscodes: 1}, nil
 	})
 
@@ -330,7 +361,7 @@ func TestSessionManager_UserLimitProviderAppliesTranscodeLimitOnlyToTranscodes(t
 
 func TestSessionManager_DisabledVideoTranscodingAllowsAudioByDefault(t *testing.T) {
 	sm := playback.NewSessionManager(0, 0)
-	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
 		return playback.SessionLimits{TranscodingDisabled: true}, nil
 	})
 
@@ -356,7 +387,7 @@ func TestSessionManager_DisabledVideoTranscodingAllowsAudioByDefault(t *testing.
 
 func TestSessionManager_DisabledAudioTranscodingRejectsAudioTranscode(t *testing.T) {
 	sm := playback.NewSessionManager(0, 0)
-	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
 		return playback.SessionLimits{
 			TranscodingDisabled:      true,
 			AudioTranscodingDisabled: true,
@@ -371,24 +402,24 @@ func TestSessionManager_DisabledAudioTranscodingRejectsAudioTranscode(t *testing
 
 func TestSessionManager_CheckTranscodingAllowed(t *testing.T) {
 	sm := playback.NewSessionManager(0, 0)
-	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
 		return playback.SessionLimits{
 			TranscodingDisabled:      true,
 			AudioTranscodingDisabled: true,
 		}, nil
 	})
 
-	if err := sm.CheckTranscodingAllowed(context.Background(), 1, true); !errors.Is(err, playback.ErrTranscodingDisabled) {
+	if err := sm.CheckTranscodingAllowed(context.Background(), 1, "profile-1", true); !errors.Is(err, playback.ErrTranscodingDisabled) {
 		t.Fatalf("CheckTranscodingAllowed() error = %v, want ErrTranscodingDisabled", err)
 	}
-	if err := sm.CheckTranscodingAllowed(context.Background(), 1, false); !errors.Is(err, playback.ErrAudioTranscodingDisabled) {
+	if err := sm.CheckTranscodingAllowed(context.Background(), 1, "profile-1", false); !errors.Is(err, playback.ErrAudioTranscodingDisabled) {
 		t.Fatalf("CheckTranscodingAllowed(audio) error = %v, want ErrAudioTranscodingDisabled", err)
 	}
 }
 
 func TestSessionManager_PolicyAllowsAudioOnlyTranscodeWhenVideoTranscodingDisabled(t *testing.T) {
 	sm := playback.NewSessionManager(0, 0)
-	sm.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
+	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
 		return playback.SessionLimits{TranscodingDisabled: true}, nil
 	})
 	sm.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(newPlaybackPolicyPDP(t)))
@@ -415,11 +446,11 @@ func TestSessionManager_PolicyAdmissionDeciderMatchesLegacy(t *testing.T) {
 						t.Run(name, func(t *testing.T) {
 							limits := playback.SessionLimits{MaxStreams: maxStreams, MaxTranscodes: maxTranscodes}
 							legacy := seededSessionManager(t, activeStreams, activeTranscodes)
-							legacy.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
+							legacy.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
 								return limits, nil
 							})
 							withPolicy := seededSessionManager(t, activeStreams, activeTranscodes)
-							withPolicy.SetLimitProvider(func(context.Context, int) (playback.SessionLimits, error) {
+							withPolicy.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
 								return limits, nil
 							})
 							withPolicy.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(pdp))

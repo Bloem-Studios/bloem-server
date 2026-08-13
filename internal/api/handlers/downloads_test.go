@@ -59,6 +59,8 @@ type fakeDownloadService struct {
 	gotSubtitleRef   string
 	gotDirectFormat  string
 	gotDirectFileID  int
+	gotDirectProfile string
+	gotCapProfile    string
 
 	// Season download + series-monitoring (subscription) fakes.
 	season       []*downloads.Download
@@ -93,7 +95,8 @@ type proxyDownloadService struct {
 	resolveErr    error
 }
 
-func (s *proxyDownloadService) ResolveDirectFile(context.Context, int, int, string, catalog.AccessFilter) (*downloads.FileTarget, error) {
+func (s *proxyDownloadService) ResolveDirectFile(_ context.Context, _ int, profileID string, _ int, _ string, _ catalog.AccessFilter) (*downloads.FileTarget, error) {
+	s.gotDirectProfile = profileID
 	return s.directTarget, s.resolveErr
 }
 
@@ -101,7 +104,8 @@ func (s *proxyDownloadService) ResolveManagedFile(context.Context, int, string, 
 	return s.managedTarget, s.resolveErr
 }
 
-func (f *fakeDownloadService) Capability(context.Context, int) (downloads.Capability, error) {
+func (f *fakeDownloadService) Capability(_ context.Context, _ int, profileID string) (downloads.Capability, error) {
+	f.gotCapProfile = profileID
 	return f.capability, nil
 }
 
@@ -174,7 +178,8 @@ func (f *fakeDownloadService) SyncSubscriptions(_ context.Context, userID int, p
 	return f.syncRegistered, nil
 }
 
-func (f *fakeDownloadService) ServeDirect(_ context.Context, w http.ResponseWriter, _ *http.Request, _, fileID int, format string, _ catalog.AccessFilter) error {
+func (f *fakeDownloadService) ServeDirect(_ context.Context, w http.ResponseWriter, _ *http.Request, _ int, profileID string, fileID int, format string, _ catalog.AccessFilter) error {
+	f.gotDirectProfile = profileID
 	f.gotDirectFileID = fileID
 	f.gotDirectFormat = format
 	if f.directErr != nil {
@@ -291,7 +296,7 @@ func TestHandleCapability(t *testing.T) {
 	h := NewDownloadHandler(svc)
 
 	rec := httptest.NewRecorder()
-	h.HandleCapability(rec, downloadTestRequest(http.MethodGet, "/downloads/capability", nil, 7, "", ""))
+	h.HandleCapability(rec, downloadTestRequest(http.MethodGet, "/downloads/capability", nil, 7, "pA", ""))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
@@ -308,6 +313,9 @@ func TestHandleCapability(t *testing.T) {
 	}
 	if resp.ProxyDelivery {
 		t.Fatal("proxy delivery advertised without a configured planner")
+	}
+	if svc.gotCapProfile != "pA" {
+		t.Fatalf("capability profile = %q, want validated profile pA", svc.gotCapProfile)
 	}
 }
 
@@ -676,7 +684,7 @@ func TestHandleDirectDownloadThreadsOriginalFormat(t *testing.T) {
 	svc := &fakeDownloadService{}
 	h := NewDownloadHandler(svc)
 	rec := httptest.NewRecorder()
-	h.HandleDirectDownload(rec, downloadTestRequest(http.MethodGet, "/direct-download?file_id=42&format=original", nil, 7, "", ""))
+	h.HandleDirectDownload(rec, downloadTestRequest(http.MethodGet, "/direct-download?file_id=42&format=original", nil, 7, "pA", ""))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
@@ -686,6 +694,9 @@ func TestHandleDirectDownloadThreadsOriginalFormat(t *testing.T) {
 	}
 	if svc.gotDirectFormat != downloads.FormatOriginal {
 		t.Fatalf("direct format = %q, want original", svc.gotDirectFormat)
+	}
+	if svc.gotDirectProfile != "pA" {
+		t.Fatalf("direct profile = %q, want validated profile pA", svc.gotDirectProfile)
 	}
 }
 

@@ -178,13 +178,14 @@ func (s *Service) policyPresetsFor(
 func (s *Service) downloadConfigForUser(
 	ctx context.Context,
 	userID int,
+	profileID string,
 	deviceID string,
 ) (config.DownloadConfig, *models.User, error) {
 	cfg, err := s.downloadConfigForFeature(ctx, userID, deviceID)
 	if err != nil {
 		return cfg, nil, err
 	}
-	user, err := s.downloadUserForConfig(ctx, userID, cfg, deviceID)
+	user, err := s.downloadUserForConfig(ctx, userID, profileID, cfg, deviceID)
 	return cfg, user, err
 }
 
@@ -202,6 +203,7 @@ func (s *Service) downloadConfigForFeature(ctx context.Context, userID int, devi
 func (s *Service) downloadUserForConfig(
 	ctx context.Context,
 	userID int,
+	profileID string,
 	cfg config.DownloadConfig,
 	deviceID string,
 ) (*models.User, error) {
@@ -209,7 +211,7 @@ func (s *Service) downloadUserForConfig(
 	if err != nil {
 		return nil, fmt.Errorf("loading user: %w", err)
 	}
-	user, err = s.effectiveDownloadUser(ctx, user)
+	user, err = s.effectiveDownloadUser(ctx, user, profileID)
 	if err != nil {
 		return nil, ErrDownloadNotAllowed
 	}

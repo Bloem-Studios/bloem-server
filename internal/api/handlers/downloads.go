@@ -29,7 +29,7 @@ import (
 // non-empty deviceID (from the X-Silo-Device-Id header) selects the managed
 // device-library lifecycle; empty is the ephemeral/account-level path.
 type DownloadService interface {
-	Capability(ctx context.Context, userID int) (downloads.Capability, error)
+	Capability(ctx context.Context, userID int, profileID string) (downloads.Capability, error)
 	Create(ctx context.Context, userID int, req downloads.CreateRequest, filter catalog.AccessFilter) (*downloads.Download, error)
 	CreateSeries(ctx context.Context, userID int, req downloads.CreateRequest, filter catalog.AccessFilter) ([]*downloads.Download, string, []downloads.SkippedDownload, error)
 	CreateSeason(ctx context.Context, userID int, req downloads.CreateRequest, seasonNumber int, filter catalog.AccessFilter) ([]*downloads.Download, string, []downloads.SkippedDownload, error)
@@ -39,7 +39,7 @@ type DownloadService interface {
 	UpdateSubscription(ctx context.Context, userID int, profileID, deviceID, id string, patch downloads.SubscriptionPatch, filter catalog.AccessFilter) (*downloads.SubscriptionResult, error)
 	DeleteSubscription(ctx context.Context, userID int, profileID, deviceID, id string) error
 	SyncSubscriptions(ctx context.Context, userID int, profileID, deviceID string, filter catalog.AccessFilter) (int, error)
-	ServeDirect(ctx context.Context, w http.ResponseWriter, r *http.Request, userID, fileID int, format string, filter catalog.AccessFilter) error
+	ServeDirect(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int, profileID string, fileID int, format string, filter catalog.AccessFilter) error
 	ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int, profileID, deviceID, downloadID string, filter catalog.AccessFilter) error
 	List(ctx context.Context, userID int, profileID, deviceID string) ([]*downloads.Download, error)
 	Delete(ctx context.Context, userID int, profileID, deviceID, downloadID string) error
@@ -88,7 +88,7 @@ func (h *DownloadHandler) SetProxyDelivery(planner nodepool.DownloadPlanner, jwt
 }
 
 type downloadFileResolver interface {
-	ResolveDirectFile(ctx context.Context, userID, fileID int, format string, filter catalog.AccessFilter) (*downloads.FileTarget, error)
+	ResolveDirectFile(ctx context.Context, userID int, profileID string, fileID int, format string, filter catalog.AccessFilter) (*downloads.FileTarget, error)
 	ResolveManagedFile(ctx context.Context, userID int, profileID, deviceID, downloadID string, filter catalog.AccessFilter) (*downloads.FileTarget, error)
 }
 
@@ -218,7 +218,7 @@ func (h *DownloadHandler) HandleCapability(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	capInfo, err := h.svc.Capability(r.Context(), userID)
+	capInfo, err := h.svc.Capability(r.Context(), userID, apimw.GetProfileID(r.Context()))
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to load download capability", "component", "api", "user_id", userID, "error", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load download capability")
@@ -526,30 +526,31 @@ func (h *DownloadHandler) handleDirectDownload(w http.ResponseWriter, r *http.Re
 	}
 
 	filter := requestAccessFilter(r)
+	profileID := apimw.GetProfileID(r.Context())
 	if delegate {
-		if handled, redirectErr := h.redirectDirectDownload(r.Context(), w, r, userID, fileID, r.URL.Query().Get("format"), filter); redirectErr != nil {
+		if handled, redirectErr := h.redirectDirectDownload(r.Context(), w, r, userID, profileID, fileID, r.URL.Query().Get("format"), filter); redirectErr != nil {
 			h.writeDownloadError(w, redirectErr)
 			return
 		} else if handled {
 			return
 		}
 	}
-	if err := h.svc.ServeDirect(r.Context(), w, r, userID, fileID, r.URL.Query().Get("format"), filter); err != nil {
+	if err := h.svc.ServeDirect(r.Context(), w, r, userID, profileID, fileID, r.URL.Query().Get("format"), filter); err != nil {
 		h.writeDownloadError(w, err)
 		return
 	}
 }
 
-func (h *DownloadHandler) redirectDirectDownload(ctx context.Context, w http.ResponseWriter, r *http.Request, userID, fileID int, format string, filter catalog.AccessFilter) (bool, error) {
+func (h *DownloadHandler) redirectDirectDownload(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int, profileID string, fileID int, format string, filter catalog.AccessFilter) (bool, error) {
 	resolver, secret, ok := h.proxyTarget()
 	if !ok {
 		return false, nil
 	}
-	target, err := resolver.ResolveDirectFile(ctx, userID, fileID, format, filter)
+	target, err := resolver.ResolveDirectFile(ctx, userID, profileID, fileID, format, filter)
 	if err != nil {
 		return false, err
 	}
-	return h.redirectToProxy(w, r, secret, target, userID, "")
+	return h.redirectToProxy(w, r, secret, target, userID, profileID)
 }
 
 func (h *DownloadHandler) redirectManagedDownload(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int, profileID, deviceID, downloadID string, filter catalog.AccessFilter) (bool, error) {

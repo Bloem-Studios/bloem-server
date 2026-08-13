@@ -537,7 +537,7 @@ func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr
 		return playback.DecisionResponseV3{}, &transportErrorV3{reason: "internal_error", message: "The server produced no playback plan."}
 	}
 	if checker, ok := h.sessionMgr.(transcodePermissionChecker); ok && (result.PlayMethod == playback.PlayTranscode || result.TranscodeAudio) {
-		if err := checker.CheckTranscodingAllowed(r.Context(), userID, result.PlayMethod == playback.PlayTranscode); err != nil {
+		if err := checker.CheckTranscodingAllowed(r.Context(), userID, profileID, result.PlayMethod == playback.PlayTranscode); err != nil {
 			reason := "transcoding_disabled"
 			if errors.Is(err, playback.ErrAudioTranscodingDisabled) {
 				reason = "audio_transcoding_disabled"
@@ -1797,7 +1797,7 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		_, reservationHeld = h.sessionMgr.(replacementReservationCancellerV3)
 	}
 	if checker, ok := h.sessionMgr.(transcodePermissionChecker); ok && (result.PlayMethod == playback.PlayTranscode || result.TranscodeAudio) {
-		if err := checker.CheckTranscodingAllowed(r.Context(), session.UserID, result.PlayMethod == playback.PlayTranscode); err != nil {
+		if err := checker.CheckTranscodingAllowed(r.Context(), session.UserID, session.ProfileID, result.PlayMethod == playback.PlayTranscode); err != nil {
 			mapped := sessionStartErrorV3(err)
 			return playback.DecisionResponseV3{}, *record, nil, mapped
 		}

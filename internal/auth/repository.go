@@ -206,7 +206,11 @@ func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInpu
 	// exclusion in the assign_default_group_to_existing_users migration).
 	if input.AccessGroupID == nil && input.Role != "admin" {
 		cols = append(cols, "access_group_id")
-		placeholders = append(placeholders, "(SELECT id FROM access_groups WHERE is_default)")
+		placeholders = append(placeholders, `(SELECT g.id
+			FROM access_groups g
+			JOIN organizations o ON o.id = g.organization_id
+			WHERE o.is_default
+			  AND g.is_default)`)
 	}
 
 	query := fmt.Sprintf("INSERT INTO users (%s) VALUES (%s) RETURNING %s",

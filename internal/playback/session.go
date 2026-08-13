@@ -187,8 +187,9 @@ type SessionLimits struct {
 	AudioTranscodingDisabled bool
 }
 
-// SessionLimitProvider returns the current admission limits for a user.
-type SessionLimitProvider func(ctx context.Context, userID int) (SessionLimits, error)
+// SessionLimitProvider returns the current admission limits for a playback
+// subject. profileID is the validated active profile carried by the session.
+type SessionLimitProvider func(ctx context.Context, userID int, profileID string) (SessionLimits, error)
 
 // AdmissionRequest is the fact set passed to an optional policy admission
 // decider. Counts are computed by SessionManager from live in-memory sessions.
@@ -350,7 +351,7 @@ func (m *SessionManager) StartSessionWithFilesContext(
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	limits, err := m.limitsForUser(ctx, userID)
+	limits, err := m.limitsForUser(ctx, userID, profileID)
 	if err != nil {
 		return nil, err
 	}
@@ -520,7 +521,7 @@ func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s 
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	limits, err := m.limitsForUser(ctx, s.UserID)
+	limits, err := m.limitsForUser(ctx, s.UserID, s.ProfileID)
 	if err != nil {
 		return nil, err
 	}
@@ -555,7 +556,7 @@ func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s 
 	return s, nil
 }
 
-func (m *SessionManager) limitsForUser(ctx context.Context, userID int) (SessionLimits, error) {
+func (m *SessionManager) limitsForUser(ctx context.Context, userID int, profileID string) (SessionLimits, error) {
 	m.mu.RLock()
 	provider := m.limitProvider
 	limits := SessionLimits{
@@ -567,7 +568,7 @@ func (m *SessionManager) limitsForUser(ctx context.Context, userID int) (Session
 	if provider == nil {
 		return limits, nil
 	}
-	limits, err := provider(ctx, userID)
+	limits, err := provider(ctx, userID, profileID)
 	if err != nil {
 		// Tag provider failures with ErrLimitProviderUnavailable so the
 		// reconstruct admission path can distinguish a transient limit-lookup
@@ -578,10 +579,10 @@ func (m *SessionManager) limitsForUser(ctx context.Context, userID int) (Session
 	return limits, nil
 }
 
-// CheckTranscodingAllowed verifies account-level restrictions before an
-// existing session switches to video or audio transcoding.
-func (m *SessionManager) CheckTranscodingAllowed(ctx context.Context, userID int, requiresVideoTranscode bool) error {
-	limits, err := m.limitsForUser(ctx, userID)
+// CheckTranscodingAllowed verifies account and active-profile restrictions
+// before an existing session switches to video or audio transcoding.
+func (m *SessionManager) CheckTranscodingAllowed(ctx context.Context, userID int, profileID string, requiresVideoTranscode bool) error {
+	limits, err := m.limitsForUser(ctx, userID, profileID)
 	if err != nil {
 		return err
 	}
@@ -608,6 +609,7 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 			return ErrSessionNotFound
 		}
 		userID := current.UserID
+		profileID := current.ProfileID
 		currentMethod := current.PlayMethod
 		// Exclude the replaced session from both counts instead of decrementing
 		// the totals: a failed session idle past the liveness grace is already
@@ -618,7 +620,7 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 		decider := m.admissionDecider
 		m.mu.Unlock()
 
-		limits, err := m.limitsForUser(ctx, userID)
+		limits, err := m.limitsForUser(ctx, userID, profileID)
 		if err != nil {
 			return err
 		}

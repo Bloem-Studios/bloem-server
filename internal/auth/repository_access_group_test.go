@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -118,6 +119,46 @@ func TestUserRepositoryCreateAssignsDefaultAccessGroupDB(t *testing.T) {
 	}
 	if created.AccessGroupID != nil {
 		t.Fatalf("AccessGroupID = %#v, want nil without a default group", created.AccessGroupID)
+	}
+}
+
+func TestUserRepositoryCreateUsesDeploymentDefaultOrganizationGroupDB(t *testing.T) {
+	ctx, pool, suffix := newAccessGroupUserRepoDBTest(t)
+	var deploymentDefaultGroupID int64
+	if err := pool.QueryRow(ctx, `
+		SELECT g.id
+		FROM access_groups g
+		JOIN organizations o ON o.id = g.organization_id
+		WHERE o.is_default
+		  AND g.is_default`).Scan(&deploymentDefaultGroupID); err != nil {
+		t.Fatalf("load deployment default organization group: %v", err)
+	}
+
+	foreignOrganizationID := uuid.New()
+	foreignSlug := "auth-access-group-test-" + suffix
+	foreignGroupName := "Auth Access Group Test " + suffix + " foreign default"
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO organizations (id, slug, name, status)
+		VALUES ($1, $2, $3, 'initializing')`,
+		foreignOrganizationID, foreignSlug, "Auth Access Group Test "+suffix); err != nil {
+		t.Fatalf("insert foreign organization: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO access_groups (organization_id, name, is_default)
+		VALUES ($1, $2, true)`, foreignOrganizationID, foreignGroupName); err != nil {
+		t.Fatalf("insert foreign organization default group: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(ctx, `DELETE FROM access_groups WHERE organization_id = $1`, foreignOrganizationID)
+		_, _ = pool.Exec(ctx, `DELETE FROM organizations WHERE id = $1`, foreignOrganizationID)
+	})
+
+	created, err := NewUserRepository(pool).Create(ctx, createAuthAccessGroupUserInput(suffix, "two-org-defaults", nil))
+	if err != nil {
+		t.Fatalf("Create(two organization defaults) error: %v", err)
+	}
+	if created.AccessGroupID == nil || *created.AccessGroupID != deploymentDefaultGroupID {
+		t.Fatalf("AccessGroupID = %#v, want deployment default organization group %d", created.AccessGroupID, deploymentDefaultGroupID)
 	}
 }
 
@@ -249,9 +290,10 @@ func insertAuthAccessGroupTestUser(t *testing.T, ctx context.Context, pool *pgxp
 	t.Helper()
 	var id int
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users (username, role, enabled)
-		VALUES ($1, 'user', true)
+		INSERT INTO users (email, username, password_hash, role, enabled)
+		VALUES ($1, $2, 'test-password-hash', 'user', true)
 		RETURNING id`,
+		"auth-access-group-test-"+suffix+"@example.invalid",
 		"auth-access-group-test-"+suffix,
 	).Scan(&id); err != nil {
 		t.Fatalf("insert user: %v", err)

@@ -475,29 +475,7 @@ func NewRouter(deps Dependencies) chi.Router {
 		}
 	}
 	if deps.SessionMgr != nil && userRepo != nil {
-		deps.SessionMgr.SetLimitProvider(func(ctx context.Context, userID int) (playback.SessionLimits, error) {
-			user, err := userRepo.GetByID(ctx, userID)
-			if err != nil {
-				return playback.SessionLimits{}, err
-			}
-			subject := access.GroupSubject{AccountID: user.ID}
-			if accessGroupStore != nil {
-				subject, err = access.GroupSubjectFromContext(ctx, user.ID, "")
-				if err != nil {
-					return playback.SessionLimits{}, err
-				}
-			}
-			effective, err := access.EffectivePolicyForSubject(ctx, user, subject, accessGroupStore)
-			if err != nil {
-				return playback.SessionLimits{}, err
-			}
-			return playback.SessionLimits{
-				MaxStreams:               effective.MaxStreams,
-				MaxTranscodes:            effective.MaxTranscodes,
-				TranscodingDisabled:      !effective.TranscodeAllowed,
-				AudioTranscodingDisabled: !effective.AudioTranscodeAllowed,
-			}, nil
-		})
+		deps.SessionMgr.SetLimitProvider(playbackSessionLimitProvider(userRepo, accessGroupStore))
 		if deps.PolicySystem != nil {
 			deps.SessionMgr.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(deps.PolicySystem.PDP()))
 		}
@@ -3287,6 +3265,32 @@ func NewRouter(deps Dependencies) chi.Router {
 	})
 
 	return r
+}
+
+func playbackSessionLimitProvider(users access.UserRepository, groups access.GroupPolicyProvider) playback.SessionLimitProvider {
+	return func(ctx context.Context, userID int, profileID string) (playback.SessionLimits, error) {
+		user, err := users.GetByID(ctx, userID)
+		if err != nil {
+			return playback.SessionLimits{}, err
+		}
+		subject := access.GroupSubject{AccountID: user.ID, ProfileID: profileID}
+		if groups != nil {
+			subject, err = access.GroupSubjectFromContext(ctx, user.ID, profileID)
+			if err != nil {
+				return playback.SessionLimits{}, err
+			}
+		}
+		effective, err := access.EffectivePolicyForSubject(ctx, user, subject, groups)
+		if err != nil {
+			return playback.SessionLimits{}, err
+		}
+		return playback.SessionLimits{
+			MaxStreams:               effective.MaxStreams,
+			MaxTranscodes:            effective.MaxTranscodes,
+			TranscodingDisabled:      !effective.TranscodeAllowed,
+			AudioTranscodingDisabled: !effective.AudioTranscodeAllowed,
+		}, nil
+	}
 }
 
 // optionalProfileViewerAccess preserves the established profile-less plugin

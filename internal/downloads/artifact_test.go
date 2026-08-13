@@ -164,7 +164,7 @@ func TestCapabilityQualityPresetsGating(t *testing.T) {
 
 	// No artifact pipeline wired → only original is fulfillable.
 	svc := newSvc(allowAll, true)
-	capInfo, err := svc.Capability(context.Background(), 1)
+	capInfo, err := svc.Capability(context.Background(), 1, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestCapabilityQualityPresetsGating(t *testing.T) {
 	// Pipeline wired + transcode server/user gates open → full bitrate ladder.
 	svc = newSvc(allowAll, true)
 	svc.SetArtifactManager(&ArtifactManager{})
-	capInfo, _ = svc.Capability(context.Background(), 1)
+	capInfo, _ = svc.Capability(context.Background(), 1, "")
 	if got := strings.Join(capInfo.QualityPresets, ","); got != "original,20mbps,10mbps,5mbps,2mbps,1mbps" {
 		t.Fatalf("quality presets with pipeline = %q, want full ladder", got)
 	}
@@ -183,7 +183,7 @@ func TestCapabilityQualityPresetsGating(t *testing.T) {
 	// Transcode gated off (user flag) → original only.
 	svc = newSvc(&models.User{DownloadAllowed: true, DownloadTranscodeAllowed: false}, true)
 	svc.SetArtifactManager(&ArtifactManager{})
-	capInfo, _ = svc.Capability(context.Background(), 1)
+	capInfo, _ = svc.Capability(context.Background(), 1, "")
 	if got := strings.Join(capInfo.QualityPresets, ","); got != "original" {
 		t.Fatalf("quality presets with transcode gated = %q, want original", got)
 	}
@@ -192,7 +192,7 @@ func TestCapabilityQualityPresetsGating(t *testing.T) {
 	// contract documents quality_presets as an array, and a nil slice would
 	// serialize as JSON null and break typed clients.
 	svc = newSvc(&models.User{DownloadAllowed: false}, true)
-	capInfo, _ = svc.Capability(context.Background(), 1)
+	capInfo, _ = svc.Capability(context.Background(), 1, "")
 	if capInfo.QualityPresets == nil {
 		t.Fatal("quality presets for a denied user must be an empty array, not nil")
 	}

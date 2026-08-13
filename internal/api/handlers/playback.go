@@ -67,15 +67,15 @@ type sessionStarterWithFilesContext interface {
 }
 
 type transcodePermissionChecker interface {
-	CheckTranscodingAllowed(ctx context.Context, userID int, requiresVideoTranscode bool) error
+	CheckTranscodingAllowed(ctx context.Context, userID int, profileID string, requiresVideoTranscode bool) error
 }
 
-func (h *PlaybackHandler) ensureUserTranscodingAllowed(w http.ResponseWriter, r *http.Request, userID int, requiresVideoTranscode bool) bool {
+func (h *PlaybackHandler) ensureUserTranscodingAllowed(w http.ResponseWriter, r *http.Request, userID int, profileID string, requiresVideoTranscode bool) bool {
 	checker, ok := h.sessionMgr.(transcodePermissionChecker)
 	if !ok {
 		return true
 	}
-	if err := checker.CheckTranscodingAllowed(r.Context(), userID, requiresVideoTranscode); err != nil {
+	if err := checker.CheckTranscodingAllowed(r.Context(), userID, profileID, requiresVideoTranscode); err != nil {
 		if errors.Is(err, playback.ErrTranscodingDisabled) {
 			writeError(w, http.StatusForbidden, "transcoding_disabled", "Transcoding is disabled for your user")
 			return false

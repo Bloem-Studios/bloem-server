@@ -27,7 +27,7 @@ func (s *Service) CreateSubscription(ctx context.Context, userID int, req Subscr
 	if s.subRepo == nil {
 		return nil, ErrSubscriptionsUnavailable
 	}
-	if _, _, err := s.downloadConfigForUser(ctx, userID, req.DeviceID); err != nil {
+	if _, _, err := s.downloadConfigForUser(ctx, userID, req.ProfileID, req.DeviceID); err != nil {
 		return nil, err
 	}
 	if req.ProfileID == "" || req.DeviceID == "" {
@@ -132,7 +132,7 @@ func (s *Service) UpdateSubscription(ctx context.Context, userID int, profileID,
 	// Same feature/permission gate as CreateSubscription and SyncSubscriptions:
 	// a patch can re-activate or widen a monitor and backfill managed rows, so
 	// it must not bypass an admin disabling downloads or revoking the user.
-	if _, _, err := s.downloadConfigForUser(ctx, userID, deviceID); err != nil {
+	if _, _, err := s.downloadConfigForUser(ctx, userID, profileID, deviceID); err != nil {
 		return nil, err
 	}
 	sub, err := s.subRepo.GetByID(ctx, id, userID, profileID, deviceID)
@@ -233,7 +233,7 @@ func (s *Service) SyncSubscriptions(ctx context.Context, userID int, profileID, 
 	if profileID == "" || deviceID == "" {
 		return 0, ErrProfileRequired
 	}
-	if _, err := s.downloadUserForConfig(ctx, userID, cfg, deviceID); err != nil {
+	if _, err := s.downloadUserForConfig(ctx, userID, profileID, cfg, deviceID); err != nil {
 		return 0, err
 	}
 	subs, err := s.subRepo.ListByDevice(ctx, userID, profileID, deviceID)

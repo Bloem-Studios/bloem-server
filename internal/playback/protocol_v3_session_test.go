@@ -36,7 +36,7 @@ func TestCheckReplacementAllowedRechecksDynamicTranscodePolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	manager.SetLimitProvider(func(context.Context, int) (SessionLimits, error) {
+	manager.SetLimitProvider(func(context.Context, int, string) (SessionLimits, error) {
 		return SessionLimits{TranscodingDisabled: true}, nil
 	})
 	if err := manager.CheckReplacementAllowed(context.Background(), session.ID, PlayTranscode, true); !errors.Is(err, ErrTranscodingDisabled) {
