@@ -15,12 +15,15 @@ import { resolveAdminDocumentTitle } from "@/lib/documentTitle";
 import { Menu, X } from "lucide-react";
 import { useWatchPlaybackController } from "@/playback/watchPlaybackContext";
 import { useAudiobookPlaybackController } from "@/pages/audiobooks/player/audiobookPlaybackContext";
+import { useAdminContext } from "@/contexts/AdminContextProvider";
 
 const ADMIN_DESKTOP_MEDIA_QUERY = "(min-width: 64rem)";
 
 export default function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const { active } = useAdminContext();
+  const platformScope = active?.scope === "platform";
   const { isBackgroundBarVisible } = useWatchPlaybackController();
   const audiobookPlayback = useAudiobookPlaybackController();
   const hasBackgroundBar = isBackgroundBarVisible || audiobookPlayback?.isBackgroundBarVisible;
@@ -82,7 +85,7 @@ export default function AdminLayout() {
               </div>
             </div>
           </div>
-          <ServerActivity className="h-11 w-11" />
+          {platformScope ? <ServerActivity className="h-11 w-11" /> : null}
         </div>
 
         {/* Mobile sidebar drawer */}
@@ -114,9 +117,11 @@ export default function AdminLayout() {
       </Sheet>
 
       {/* Desktop activity indicator */}
-      <div className="fixed top-5 right-5 z-40 hidden lg:block">
-        <ServerActivity />
-      </div>
+      {platformScope ? (
+        <div className="fixed top-5 right-5 z-40 hidden lg:block">
+          <ServerActivity />
+        </div>
+      ) : null}
 
       <main
         id="main-content"

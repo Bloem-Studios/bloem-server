@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminLayout from "./AdminLayout";
 
+const mockFetch = vi.fn();
+
 vi.mock("@/components/AdminSidebar", () => ({
   default: ({ embedded, onNavigate }: { embedded?: boolean; onNavigate?: () => void }) =>
     embedded ? (
@@ -13,7 +15,9 @@ vi.mock("@/components/AdminSidebar", () => ({
     ) : null,
 }));
 
-vi.mock("@/components/ServerActivity", () => ({ default: () => null }));
+vi.mock("@/contexts/AdminContextProvider", () => ({
+  useAdminContext: () => ({ active: { scope: "organization" } }),
+}));
 vi.mock("@/hooks/useDocumentTitle", () => ({ useDocumentTitle: vi.fn() }));
 vi.mock("@/lib/documentTitle", () => ({ resolveAdminDocumentTitle: () => "Admin" }));
 vi.mock("@/playback/watchPlaybackContext", () => ({
@@ -25,6 +29,8 @@ vi.mock("@/pages/audiobooks/player/audiobookPlaybackContext", () => ({
 
 describe("AdminLayout mobile navigation", () => {
   beforeEach(() => {
+    mockFetch.mockReset();
+    vi.stubGlobal("fetch", mockFetch);
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: vi.fn().mockReturnValue({
@@ -33,6 +39,17 @@ describe("AdminLayout mobile navigation", () => {
         removeEventListener: vi.fn(),
       }),
     });
+  });
+
+  it("does not mount server activity or execute its legacy hooks in organization scope", () => {
+    render(
+      <MemoryRouter initialEntries={["/admin/organization"]}>
+        <AdminLayout />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole("button", { name: /^Server activity/ })).not.toBeInTheDocument();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("closes the mobile sheet when a context switch succeeds", async () => {
