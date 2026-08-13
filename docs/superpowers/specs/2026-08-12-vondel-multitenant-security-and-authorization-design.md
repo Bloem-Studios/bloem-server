@@ -1,8 +1,8 @@
 # Vondel Multi-Tenant Security and Authorization Design
 
 **Date:** 2026-08-12
-**Status:** Approved
-**API boundary:** Silo-compatible `/api/v1`; native Vondel `/api/v10`
+**Status:** Superseded by `2026-08-13-vondel-opa-centered-multitenant-authorization-design.md`
+**API boundary:** Historical proposal; do not implement the `/api/v10` boundary
 **Related prior work:** [Silo Server PR #251 — Add ACL access management](https://github.com/Silo-Server/silo-server/pull/251)
 
 ## Goal

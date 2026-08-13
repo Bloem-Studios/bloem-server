@@ -1,7 +1,7 @@
 # Vondel Tenancy Administration Design
 
 Date: 2026-08-13
-Status: Approved in conversation; awaiting written-spec review
+Status: Superseded by `2026-08-13-vondel-opa-centered-multitenant-authorization-design.md`
 
 ## Purpose
 

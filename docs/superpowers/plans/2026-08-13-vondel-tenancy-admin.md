@@ -1,5 +1,9 @@
 # Vondel Tenancy Administration Implementation Plan
 
+> **Status:** Superseded. Do not execute this plan. Its `/api/v10` and parallel
+> administration-enforcement assumptions were replaced by
+> `docs/superpowers/specs/2026-08-13-vondel-opa-centered-multitenant-authorization-design.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deliver a complete v10 tenancy administration API and unified web workspace for organizations, immutable resource ownership, direct entitlements, versioned default bundles, durable bulk application, and audit history.
