@@ -70,11 +70,11 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 			r.Use(adminMW.Require)
 			// Task 1 establishes the enforcement boundary. Later tasks mount the
 			// Platform and Organization resources inside this group.
-			r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
+			r.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusNotFound)
 				_, _ = w.Write([]byte("{\"error\":\"not_found\",\"message\":\"Administrative resource not found\"}\n"))
-			})
+			}))
 		})
 	})
 }

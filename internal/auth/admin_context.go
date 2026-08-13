@@ -108,9 +108,14 @@ func (s *adminContextTokenService) Parse(tokenStr string) (AdminContextClaims, e
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return s.secret, nil
-	})
-	if err != nil || !token.Valid || jwtClaims.TokenType != "admin_context" || jwtClaims.ExpiresAt == nil {
+	}, jwt.WithIssuedAt())
+	if err != nil || !token.Valid || jwtClaims.TokenType != "admin_context" || jwtClaims.ExpiresAt == nil || jwtClaims.IssuedAt == nil {
 		return AdminContextClaims{}, fmt.Errorf("%w: token validation failed", ErrInvalidAdminContext)
+	}
+	issuedAt := jwtClaims.IssuedAt.Time.UTC()
+	expiresAt := jwtClaims.ExpiresAt.Time.UTC()
+	if !issuedAt.Before(expiresAt) || expiresAt.Sub(issuedAt) > AdminContextTokenLifetime {
+		return AdminContextClaims{}, fmt.Errorf("%w: invalid token lifetime", ErrInvalidAdminContext)
 	}
 
 	claims := AdminContextClaims{
@@ -118,7 +123,7 @@ func (s *adminContextTokenService) Parse(tokenStr string) (AdminContextClaims, e
 		Scope:            jwtClaims.Scope,
 		PolicyRevision:   jwtClaims.PolicyRevision,
 		SecurityRevision: jwtClaims.SecurityRevision,
-		ExpiresAt:        jwtClaims.ExpiresAt.Time.UTC(),
+		ExpiresAt:        expiresAt,
 	}
 	if claims.Scope == AdminScopeOrganization {
 		var parseErr error

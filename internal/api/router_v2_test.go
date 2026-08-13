@@ -101,8 +101,12 @@ func TestV2AdminGroupRequiresAdministrativeContextToken(t *testing.T) {
 		v2AdminMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}},
 		v2AdminPlatformAuthorizerStub{},
 	)
+	authMW := apimw.NewAuthMiddleware(
+		v2TokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}},
+		v2SessionValidator{}, nil, nil,
+	)
 	router := chi.NewRouter()
-	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, nil, adminMW)
+	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, authMW, adminMW)
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v2/admin/organization/future-route", nil))
