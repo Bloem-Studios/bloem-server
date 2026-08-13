@@ -196,6 +196,10 @@ type Dependencies struct {
 	// clients hitting /login, /api/*, /abs/api/*, and /abs/socket.io/* all
 	// resolve correctly. May be nil; no ABS routes are registered in that case.
 	ABSHandler absHandler
+	// AdminContextTokens signs the short-lived administrative context JWTs.
+	// It is separate from normal account-session token validation.
+	AdminContextTokens      auth.AdminContextTokenService
+	PlatformAdminAuthorizer auth.PlatformAdminAuthorizer
 }
 
 // absHandler is the narrow interface the router needs from the ABS handler.

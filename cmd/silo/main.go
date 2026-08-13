@@ -873,6 +873,10 @@ func main() {
 			configWatcher.RequestReload()
 		},
 	}
+	deps.AdminContextTokens = auth.NewAdminContextTokenService(cfg.Auth.JWTSecret)
+	if pool != nil {
+		deps.PlatformAdminAuthorizer = auth.NewPlatformAdminAuthorizer(auth.NewUserRepository(pool))
+	}
 	if deps.DB != nil {
 		bootstrapper := tenancyOwnershipBootstrapper{store: tenancy.NewStore(deps.DB)}
 		deps.OwnershipBootstrapper = bootstrapper

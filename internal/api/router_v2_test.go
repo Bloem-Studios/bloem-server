@@ -34,7 +34,7 @@ func TestV2CapabilitiesMountedOutsideV1(t *testing.T) {
 
 func TestV2MountedAndV10Absent(t *testing.T) {
 	router := chi.NewRouter()
-	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, nil)
+	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, nil, nil)
 
 	v2 := httptest.NewRecorder()
 	router.ServeHTTP(v2, httptest.NewRequest(http.MethodGet, "/api/v2/capabilities", nil))
@@ -57,7 +57,7 @@ func TestV2OrganizationsRouteUsesAccountAuthentication(t *testing.T) {
 		v2SessionValidator{}, nil, nil,
 	)
 	router := chi.NewRouter()
-	mountV2Routes(router, system, authMW, nil)
+	mountV2Routes(router, system, nil, authMW, nil)
 
 	unauthenticated := httptest.NewRecorder()
 	router.ServeHTTP(unauthenticated, httptest.NewRequest(http.MethodGet, "/api/v2/organizations", nil))
@@ -72,6 +72,65 @@ func TestV2OrganizationsRouteUsesAccountAuthentication(t *testing.T) {
 	if authenticated.Code != http.StatusOK || strings.TrimSpace(authenticated.Body.String()) != `{"organizations":[]}` {
 		t.Fatalf("authenticated response = %d %s", authenticated.Code, authenticated.Body.String())
 	}
+}
+
+func TestV2AdminSessionRouteUsesAccountAuthentication(t *testing.T) {
+	store := v2OrganizationStoreStubForRouter{}
+	system := handlers.NewV2SystemHandler(store)
+	authMW := apimw.NewAuthMiddleware(
+		v2TokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}},
+		v2SessionValidator{}, nil, nil,
+	)
+	router := chi.NewRouter()
+	mountV2Routes(router, system, nil, authMW, nil)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v2/admin/session", nil))
+	if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), `"error":"unauthorized"`) {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestV2AdminGroupRequiresAdministrativeContextToken(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	membershipID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
+	tokens := auth.NewAdminContextTokenService("router-admin-context-test-secret")
+	adminMW := apimw.NewAdminContextMiddleware(
+		tokens,
+		v2AdminTenantResolverStub{tenant: tenancy.Context{AccountID: 7, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11}},
+		v2AdminMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}},
+		v2AdminPlatformAuthorizerStub{},
+	)
+	router := chi.NewRouter()
+	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, nil, adminMW)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v2/admin/organization/future-route", nil))
+	if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), `"error":"tenant_session_required"`) {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+type v2AdminTenantResolverStub struct {
+	tenant tenancy.Context
+}
+
+func (s v2AdminTenantResolverStub) Resolve(context.Context, int, *uuid.UUID, bool) (tenancy.Context, error) {
+	return s.tenant, nil
+}
+
+type v2AdminMembershipStoreStub struct {
+	membership tenancy.Membership
+}
+
+func (s v2AdminMembershipStoreStub) GetMembership(context.Context, int, uuid.UUID) (tenancy.Membership, error) {
+	return s.membership, nil
+}
+
+type v2AdminPlatformAuthorizerStub struct{}
+
+func (v2AdminPlatformAuthorizerStub) IsPlatformAdmin(context.Context, int) (bool, error) {
+	return false, nil
 }
 
 type v2OrganizationStoreStubForRouter struct{}
