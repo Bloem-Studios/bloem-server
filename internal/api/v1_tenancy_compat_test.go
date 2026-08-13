@@ -218,8 +218,12 @@ func TestV10FoundationCIRequiresDisposablePostgres(t *testing.T) {
 	if !ok {
 		t.Fatal("CI has no tenant-identity acceptance job")
 	}
-	if postgres, ok := job.Services["postgres"]; !ok || postgres.Image == "" {
+	postgres, ok := job.Services["postgres"]
+	if !ok || postgres.Image == "" {
 		t.Fatalf("tenant-identity postgres service = %#v", job.Services)
+	}
+	if !strings.Contains(postgres.Image, "pgvector") {
+		t.Fatalf("tenant-identity postgres image = %q, want a pgvector-capable image", postgres.Image)
 	}
 	if job.Env["SILO_TEST_DATABASE_URL"] == "" {
 		t.Fatal("tenant-identity job does not supply SILO_TEST_DATABASE_URL")
