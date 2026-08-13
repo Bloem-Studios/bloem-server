@@ -46,6 +46,10 @@ type PendingAction = {
 };
 
 type ProfileConflict = {
+  accountId: number;
+  profileId: string;
+  intendedGroupId: number;
+  currentRevision: number;
   intendedGroup: string;
   currentGroup: string;
   message: string;
@@ -178,6 +182,10 @@ export default function PeoplePage() {
           const current = await refreshPerson(person.account_id);
           const currentProfile = current.profiles.find((profile) => profile.id === profileId);
           setProfileConflict({
+            accountId: current.account_id,
+            profileId,
+            intendedGroupId: groupId,
+            currentRevision: current.security_revision,
             intendedGroup,
             currentGroup: currentProfile?.group_name ?? "unknown",
             message:
@@ -185,6 +193,10 @@ export default function PeoplePage() {
           });
         } catch {
           setProfileConflict({
+            accountId: person.account_id,
+            profileId,
+            intendedGroupId: groupId,
+            currentRevision: person.security_revision,
             intendedGroup,
             currentGroup: "could not be reloaded",
             message:
@@ -193,6 +205,10 @@ export default function PeoplePage() {
         }
       } else {
         setProfileConflict({
+          accountId: person.account_id,
+          profileId,
+          intendedGroupId: groupId,
+          currentRevision: person.security_revision,
           intendedGroup,
           currentGroup:
             person.profiles.find((profile) => profile.id === profileId)?.group_name ?? "unknown",
@@ -316,6 +332,41 @@ export default function PeoplePage() {
         >
           {profileConflict.message} Intended: {profileConflict.intendedGroup}. Current:{" "}
           {profileConflict.currentGroup}.
+          <Button
+            className="ml-3"
+            size="sm"
+            variant="outline"
+            disabled={changingProfileId === profileConflict.profileId}
+            onClick={() => {
+              const conflict = profileConflict;
+              setProfileConflict(null);
+              setChangingProfileId(conflict.profileId);
+              void updateProfile
+                .mutateAsync({
+                  accountId: conflict.accountId,
+                  profileId: conflict.profileId,
+                  expectedRevision: conflict.currentRevision,
+                  groupId: conflict.intendedGroupId,
+                })
+                .then(() =>
+                  setGroupDrafts((drafts) => {
+                    const next = { ...drafts };
+                    delete next[conflict.profileId];
+                    return next;
+                  }),
+                )
+                .catch((error: unknown) =>
+                  setProfileConflict({
+                    ...conflict,
+                    message:
+                      error instanceof Error ? error.message : "The retry could not be completed.",
+                  }),
+                )
+                .finally(() => setChangingProfileId(undefined));
+            }}
+          >
+            Retry group change
+          </Button>
         </div>
       ) : null}
 
@@ -398,8 +449,8 @@ export default function PeoplePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm bulk people action</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingAction ? actionLabel(pendingAction.kind) : "Apply this action"} in{" "}
-              {active?.name ?? "this organization"}. The immutable selection contains{" "}
+              {pendingAction ? actionLabel(pendingAction, groups.data ?? []) : "Apply this action"}{" "}
+              in {active?.name ?? "this organization"}. The immutable selection contains{" "}
               {selection?.matched.toLocaleString() ?? 0} matched and{" "}
               {selection?.excluded.toLocaleString() ?? 0} excluded. Filters:{" "}
               {filterSummary(filters, groups.data ?? [])}.
@@ -417,9 +468,12 @@ export default function PeoplePage() {
   );
 }
 
-function actionLabel(kind: PendingAction["kind"]): string {
-  if (kind === "assign_group") return "Assign the selected profiles to a group";
-  if (kind === "reactivate_memberships") return "Reactivate selected memberships";
+function actionLabel(action: PendingAction, groups: { id: number; name: string }[]): string {
+  if (action.kind === "assign_group") {
+    const group = groups.find((candidate) => candidate.id === action.groupId);
+    return `Assign the selected profiles to ${group?.name ?? `group #${action.groupId}`}`;
+  }
+  if (action.kind === "reactivate_memberships") return "Reactivate selected memberships";
   return "Suspend selected memberships";
 }
 

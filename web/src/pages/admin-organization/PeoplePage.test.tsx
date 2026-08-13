@@ -204,6 +204,7 @@ describe("PeoplePage", () => {
 
   it("surfaces a stale profile mutation, reloads the person, and preserves the intended group", async () => {
     const refreshed = { ...person(1, "Ada"), security_revision: 5 };
+    let patchCount = 0;
     vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
       if (path === "/organization/groups") {
         return {
@@ -214,11 +215,15 @@ describe("PeoplePage", () => {
         } as never;
       }
       if (String(path).endsWith("/profiles/profile-1") && init?.method === "PATCH") {
-        throw new AdminV2ClientError(
-          409,
-          "authorization_state_changed",
-          "Authorization state changed; reload and retry",
-        );
+        patchCount += 1;
+        if (patchCount === 1) {
+          throw new AdminV2ClientError(
+            409,
+            "authorization_state_changed",
+            "Authorization state changed; reload and retry",
+          );
+        }
+        return { person: refreshed } as never;
       }
       if (path === "/organization/people/1") return { person: refreshed } as never;
       return { items: [person(1, "Ada")], approximate_total: 1 } as never;
@@ -235,6 +240,65 @@ describe("PeoplePage", () => {
     expect(
       vi.mocked(adminV2Api).mock.calls.some(([path]) => path === "/organization/people/1"),
     ).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry group change" }));
+    await waitFor(() => expect(patchCount).toBe(2));
+    const patches = vi
+      .mocked(adminV2Api)
+      .mock.calls.filter(([path]) => String(path).endsWith("/profiles/profile-1"));
+    expect(JSON.parse(String(patches[1]?.[1]?.body))).toEqual({
+      expected_revision: 5,
+      group_id: 3,
+    });
+  });
+
+  it("keeps the selected destination group in confirmation and submission", async () => {
+    vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
+      if (path === "/organization/groups") {
+        return { groups: [{ id: 3, name: "Kids" }] } as never;
+      }
+      if (path === "/organization/people/selections") {
+        return {
+          selection: { token: "opaque", matched: 2, excluded: 0, expires_at: "later" },
+        } as never;
+      }
+      if (path === "/organization/people/bulk-jobs" && init?.method === "POST") {
+        return {
+          job: {
+            job_id: "job",
+            status: "queued",
+            progress_current: 0,
+            progress_total: 2,
+            succeeded: 0,
+            skipped: [],
+            failed: [],
+          },
+        } as never;
+      }
+      return { items: [person(1, "Ada")], approximate_total: 2 } as never;
+    });
+
+    renderPage();
+    await screen.findAllByText("Ada");
+    fireEvent.click(screen.getByRole("button", { name: "Select all 2 results" }));
+    await screen.findByText("2 people selected");
+    fireEvent.change(screen.getByRole("combobox", { name: "Assign selected people to group" }), {
+      target: { value: "3" },
+    });
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(/Assign.*Kids/i)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start bulk job" }));
+    await waitFor(() => {
+      const call = vi
+        .mocked(adminV2Api)
+        .mock.calls.find(([path]) => path === "/organization/people/bulk-jobs");
+      expect(JSON.parse(String(call?.[1]?.body))).toEqual({
+        selection_token: "opaque",
+        kind: "assign_group",
+        group_id: 3,
+      });
+    });
   });
 
   it("keeps real cursor history across three pages and resets it for browser filter navigation", async () => {
