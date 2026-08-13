@@ -481,6 +481,9 @@ func NewRouter(deps Dependencies) chi.Router {
 			tenantStore := tenancy.NewStore(deps.DB)
 			sessionTenants = tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore)
 		}
+		if sessionTenants != nil {
+			deps.SessionMgr.SetContextProvider(playbackSessionContextProvider(sessionTenants))
+		}
 		deps.SessionMgr.SetLimitProvider(playbackSessionLimitProvider(userRepo, accessGroupStore, sessionTenants))
 		if deps.PolicySystem != nil {
 			deps.SessionMgr.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(deps.PolicySystem.PDP()))
@@ -3271,6 +3274,19 @@ func NewRouter(deps Dependencies) chi.Router {
 	})
 
 	return r
+}
+
+func playbackSessionContextProvider(tenants policy.SubjectTenantResolver) playback.SessionContextProvider {
+	return func(ctx context.Context, userID int, profileID string) (context.Context, error) {
+		if tenants == nil {
+			return nil, tenancy.ErrTenantUnavailable
+		}
+		tenant, err := tenants.ResolveSubjectTenant(ctx, userID, profileID)
+		if err != nil {
+			return nil, err
+		}
+		return tenancy.WithContext(ctx, tenant), nil
+	}
 }
 
 func playbackSessionLimitProvider(

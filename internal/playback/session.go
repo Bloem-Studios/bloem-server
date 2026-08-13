@@ -172,6 +172,7 @@ type SessionManager struct {
 	mu               sync.RWMutex
 	maxStreams       int
 	maxTranscodes    int
+	contextProvider  SessionContextProvider
 	limitProvider    SessionLimitProvider
 	admissionDecider AdmissionDecider
 	activeGrace      time.Duration
@@ -190,6 +191,10 @@ type SessionLimits struct {
 // SessionLimitProvider returns the current admission limits for a playback
 // subject. profileID is the validated active profile carried by the session.
 type SessionLimitProvider func(ctx context.Context, userID int, profileID string) (SessionLimits, error)
+
+// SessionContextProvider validates a playback subject and enriches the
+// request context for every downstream admission check.
+type SessionContextProvider func(ctx context.Context, userID int, profileID string) (context.Context, error)
 
 // AdmissionRequest is the fact set passed to an optional policy admission
 // decider. Counts are computed by SessionManager from live in-memory sessions.
@@ -260,6 +265,14 @@ func (m *SessionManager) SetLimitProvider(provider SessionLimitProvider) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.limitProvider = provider
+}
+
+// SetContextProvider installs subject validation shared by limit lookup and
+// policy admission. The returned context is used for both operations.
+func (m *SessionManager) SetContextProvider(provider SessionContextProvider) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.contextProvider = provider
 }
 
 // SetAdmissionDecider installs an optional policy admission hook. A nil decider
@@ -350,6 +363,19 @@ func (m *SessionManager) StartSessionWithFilesContext(
 ) (*Session, error) {
 	if ctx == nil {
 		ctx = context.Background()
+	}
+	m.mu.RLock()
+	contextProvider := m.contextProvider
+	m.mu.RUnlock()
+	if contextProvider != nil {
+		var err error
+		ctx, err = contextProvider(ctx, userID, profileID)
+		if err != nil {
+			return nil, err
+		}
+		if ctx == nil {
+			return nil, errors.New("playback context provider returned nil context")
+		}
 	}
 	limits, err := m.limitsForUser(ctx, userID, profileID)
 	if err != nil {

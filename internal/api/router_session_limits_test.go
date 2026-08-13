@@ -58,6 +58,23 @@ func TestPlaybackSessionLimitProviderFailsClosedWithoutTenantResolver(t *testing
 	}
 }
 
+func TestPlaybackSessionContextProviderCarriesAuthoritativeTenant(t *testing.T) {
+	want := tenancy.Context{
+		OrganizationID: uuid.MustParse("10000000-0000-0000-0000-000000000002"),
+		AccountID:      7,
+	}
+	provider := playbackSessionContextProvider(sessionLimitTenantResolverStub{tenant: want})
+
+	ctx, err := provider(context.Background(), 7, "profile-v2")
+	if err != nil {
+		t.Fatalf("context provider error: %v", err)
+	}
+	got, ok := tenancy.FromContext(ctx)
+	if !ok || got != want {
+		t.Fatalf("tenant context = (%+v, %t), want %+v", got, ok, want)
+	}
+}
+
 type sessionLimitTenantResolverStub struct {
 	tenant tenancy.Context
 	err    error
