@@ -67,3 +67,8 @@ Final whole-branch fix wave: complete (starting at ba4a3c76; final commit record
 - Profiles have exactly one canonical group after a safe NOT NULL backfill; non-default deletion reassigns within the organization; all authorization-affecting group mutations bump member revisions with tested no-op behavior.
 - Resource-tenancy migration and pgstore profile/FK CI gates are restored with per-step explicit database requirements; ordinary non-database CI remains usable.
 - Evidence: disposable migration and store tests, named ten-item acceptance, exact four-package PostgreSQL race, focused v1/admin compatibility, vet, server build, and diff checks passed. See `final-fix-report.md` for the one interrupted redundant selector and complete evidence.
+
+Final scoped review residual: resolved locally after `fed275c7`.
+- Review proved that tenancy attached inside `SessionLimitProvider` could not reach the later admission decider because Go contexts are immutable values.
+- Added a `SessionContextProvider` boundary to `playback.SessionManager`; its validated context now feeds both the dynamic limit lookup and OPA admission for native, Jellyfin, and Audiobookshelf session starts.
+- RED: the regression failed to compile because the provider did not exist. GREEN: full playback tests, focused API context/limit tests, compatibility session/stream tests, server build, and diff check passed.

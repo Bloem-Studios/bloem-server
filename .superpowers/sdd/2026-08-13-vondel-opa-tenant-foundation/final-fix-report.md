@@ -115,3 +115,14 @@ reported as a clean second full-selector run.
 Concern: the redundant final full migration selector was interrupted as noted;
 the corrected failing case, named acceptance, exact race gate, pgstore selector,
 vet, build, and diff checks are green.
+
+## Scoped review residual
+
+The single scoped rereview identified one remaining compatibility defect: the
+limit provider attached tenant facts only to its local context value, so the
+session manager passed the original context to OPA admission. The final local
+correction adds a subject-validating `SessionContextProvider` whose returned
+context is used by both limit calculation and admission. A regression proves
+both callbacks receive the same validated context. Full playback tests,
+focused API context/limit tests, compatibility session/stream tests, the server
+build, and `git diff --check` pass.
