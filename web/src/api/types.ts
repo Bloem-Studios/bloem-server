@@ -1,6 +1,39 @@
 import { getDefaultQuerySortOrder, normalizeQuerySortField } from "@/lib/querySortOptions";
 import type { SchemaOption } from "@/components/admin/plugins/schemaFormUtils";
 
+export type AdminContextKey = "platform" | `organization:${string}`;
+
+export interface AdminContextSummary {
+  key: AdminContextKey;
+  scope: "platform" | "organization";
+  organizationId?: string;
+  name: string;
+  status: "active" | "suspended";
+  authority: "platform_admin" | "organization_admin";
+  policyRevision: number;
+  securityRevision: number;
+}
+
+export interface AdminContextFailure {
+  code: string;
+  message: string;
+}
+
+export interface AdminContextValue {
+  available: AdminContextSummary[];
+  active: AdminContextSummary | null;
+  switching: boolean;
+  failure: AdminContextFailure | null;
+  switchContext(key: AdminContextKey): Promise<void>;
+  clearContext(reason?: AdminContextFailure): void;
+}
+
+export interface AdminContextSessionResponse {
+  accessToken: string;
+  expiresAt: string;
+  context: AdminContextSummary;
+}
+
 // Auth
 export interface LoginRequest {
   username: string;

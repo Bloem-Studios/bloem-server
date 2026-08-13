@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminSidebar from "./AdminSidebar";
 import type { BuildInfo } from "@/hooks/queries/admin/system";
+import type { AdminContextSummary } from "@/api/types";
 
 interface MockBuildInfoResult {
   data?: BuildInfo;
@@ -35,6 +36,25 @@ const mockUsePolicyCapability = vi.fn(() => ({
     decision_types: [],
     generation: 1,
   },
+}));
+const mockAdminContext = vi.fn<() => { active: AdminContextSummary | null }>(() => ({
+  active: {
+    key: "platform" as const,
+    scope: "platform" as const,
+    name: "Platform",
+    status: "active" as const,
+    authority: "platform_admin" as const,
+    policyRevision: 0,
+    securityRevision: 0,
+  },
+}));
+
+vi.mock("@/contexts/AdminContextProvider", () => ({
+  useAdminContext: () => mockAdminContext(),
+}));
+
+vi.mock("@/components/admin/AdminContextSwitcher", () => ({
+  default: () => <div>Administrative context switcher</div>,
 }));
 
 vi.mock("@/hooks/useServerBranding", () => ({
@@ -83,6 +103,35 @@ describe("AdminSidebar", () => {
     for (const section of ["Overview", "Content", "Automation", "Users", "System"]) {
       expect(markup).toContain(`>${section}<`);
     }
+  });
+
+  it("places the administrative context switcher above navigation", () => {
+    const markup = renderSidebar();
+
+    expect(markup.indexOf("Administrative context switcher")).toBeLessThan(
+      markup.indexOf('aria-label="Admin navigation"'),
+    );
+  });
+
+  it("shows organization navigation without platform links in organization context", () => {
+    mockAdminContext.mockReturnValueOnce({
+      active: {
+        key: "organization:org-a",
+        scope: "organization",
+        name: "Org A",
+        status: "active",
+        authority: "organization_admin",
+        policyRevision: 7,
+        securityRevision: 11,
+      },
+    });
+
+    const markup = renderSidebar();
+
+    expect(markup).toContain('href="/admin/organization"');
+    expect(markup).toContain(">People<");
+    expect(markup).not.toContain('href="/admin/plugins"');
+    expect(markup).not.toContain(">Global Policy<");
   });
 
   it("renders as an embedded rail inside the mobile drawer", () => {

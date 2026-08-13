@@ -120,6 +120,12 @@ import {
 } from "@/pages/catalogSearchParams";
 import { buildLegacyWebhookSyncRedirectTarget } from "@/lib/webhookSync";
 import { toast } from "sonner";
+import {
+  AdminContextProvider,
+  OrganizationContextGuard,
+  PlatformContextGuard,
+  useAdminContext,
+} from "@/contexts/AdminContextProvider";
 
 /** Scrolls to top on pathname change (custom replacement for ScrollRestoration which requires data router). */
 function useScrollRestoration() {
@@ -202,10 +208,67 @@ function RequireProfile({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function RequireAdmin({ children }: { children: ReactNode }) {
+function AdminContextRoot({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const actingAdmin = useIsActingAdmin();
-  if (!actingAdmin) return <Navigate to="/" replace />;
+  return (
+    <AdminContextProvider user={user} platformAuthority={actingAdmin}>
+      {children}
+    </AdminContextProvider>
+  );
+}
+
+function RequireAdminContext({ children }: { children: ReactNode }) {
+  const { active, available, switching, failure } = useAdminContext();
+  if (switching && !active) {
+    return (
+      <div className="p-8" role="status" aria-live="polite">
+        Loading administrative context…
+      </div>
+    );
+  }
+  if (!active && available.length === 0 && !failure) return <Navigate to="/" replace />;
   return <>{children}</>;
+}
+
+function AdminContextSelection() {
+  const { failure } = useAdminContext();
+  return (
+    <section className="admin-page max-w-2xl">
+      <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
+        Choose administrative context
+      </h1>
+      <p className="text-muted-foreground mt-3">
+        Select Platform or an organization from the context control in the navigation.
+      </p>
+      {failure ? (
+        <p
+          className="border-destructive/30 bg-destructive/10 text-destructive mt-6 rounded-xl border p-4 text-sm"
+          role="alert"
+        >
+          {failure.message}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function AdminScopePlaceholder({ title }: { title: string }) {
+  return (
+    <section className="admin-page">
+      <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
+        {title}
+      </h1>
+    </section>
+  );
+}
+
+function AdminContextRedirect() {
+  const { active, switching } = useAdminContext();
+  if (switching) return null;
+  return (
+    <Navigate to={active?.scope === "organization" ? "/admin/organization" : "/admin"} replace />
+  );
 }
 
 function RequirePrimaryOrAdmin({ children }: { children: ReactNode }) {
@@ -429,42 +492,61 @@ function AppRoutes() {
                 <Route
                   path="/admin/*"
                   element={
-                    <RequireAdmin>
-                      <AdminLayout />
-                    </RequireAdmin>
+                    <AdminContextRoot>
+                      <RequireAdminContext>
+                        <AdminLayout />
+                      </RequireAdminContext>
+                    </AdminContextRoot>
                   }
                 >
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="activity" element={<AdminActivity />} />
-                  <Route path="logs" element={<AdminLogs />} />
-                  <Route path="diagnostics" element={<AdminDiagnostics />} />
-                  <Route path="libraries" element={<AdminLibraries />} />
-                  <Route path="maintenance" element={<AdminMaintenance />} />
-                  <Route path="collections" element={<AdminCollections />} />
-                  <Route path="collections/new" element={<AdminCollectionEditor />} />
-                  <Route path="collections/:id/edit" element={<AdminCollectionEditor />} />
-                  <Route path="requests" element={<AdminRequests />} />
-                  <Route path="autoscan" element={<AdminAutoscan />} />
-                  <Route path="history" element={<AdminPlaybackHistory />} />
-                  <Route path="marker-history" element={<AdminMarkerHistory />} />
-                  <Route path="history-import" element={<AdminHistoryImport />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="users/:id" element={<AdminUserDetail />} />
-                  <Route path="access-groups" element={<AdminAccessGroups />} />
-                  <Route path="devices" element={<AdminDevices />} />
-                  <Route path="devices/:userId/:deviceId" element={<AdminDevices />} />
-                  <Route path="nodes" element={<AdminNodes />} />
-                  <Route path="sections" element={<AdminSections />} />
-                  <Route path="plugins" element={<AdminPlugins />} />
-                  <Route path="settings" element={<AdminSettingsLayout />} />
-                  <Route path="policy" element={<AdminPolicyLayout />} />
-                  <Route path="recommendations" element={<AdminRecommendations />} />
-                  <Route path="api-keys" element={<AdminApiKeys />} />
-                  <Route path="subtitles" element={<AdminSubtitles />} />
-                  <Route path="tasks" element={<AdminTasks />} />
-                  <Route path="tasks/:key" element={<AdminTaskDetail />} />
-                  <Route path="stats" element={<Navigate to="/admin" replace />} />
-                  <Route path="*" element={<Navigate to="/admin" replace />} />
+                  <Route element={<PlatformContextGuard />}>
+                    <Route index element={<AdminDashboard />} />
+                    <Route
+                      path="platform/organizations"
+                      element={<AdminScopePlaceholder title="Organizations" />}
+                    />
+                    <Route path="activity" element={<AdminActivity />} />
+                    <Route path="logs" element={<AdminLogs />} />
+                    <Route path="diagnostics" element={<AdminDiagnostics />} />
+                    <Route path="libraries" element={<AdminLibraries />} />
+                    <Route path="maintenance" element={<AdminMaintenance />} />
+                    <Route path="collections" element={<AdminCollections />} />
+                    <Route path="collections/new" element={<AdminCollectionEditor />} />
+                    <Route path="collections/:id/edit" element={<AdminCollectionEditor />} />
+                    <Route path="requests" element={<AdminRequests />} />
+                    <Route path="autoscan" element={<AdminAutoscan />} />
+                    <Route path="history" element={<AdminPlaybackHistory />} />
+                    <Route path="marker-history" element={<AdminMarkerHistory />} />
+                    <Route path="history-import" element={<AdminHistoryImport />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="users/:id" element={<AdminUserDetail />} />
+                    <Route path="access-groups" element={<AdminAccessGroups />} />
+                    <Route path="devices" element={<AdminDevices />} />
+                    <Route path="devices/:userId/:deviceId" element={<AdminDevices />} />
+                    <Route path="nodes" element={<AdminNodes />} />
+                    <Route path="sections" element={<AdminSections />} />
+                    <Route path="plugins" element={<AdminPlugins />} />
+                    <Route path="settings" element={<AdminSettingsLayout />} />
+                    <Route path="policy" element={<AdminPolicyLayout />} />
+                    <Route path="recommendations" element={<AdminRecommendations />} />
+                    <Route path="api-keys" element={<AdminApiKeys />} />
+                    <Route path="subtitles" element={<AdminSubtitles />} />
+                    <Route path="tasks" element={<AdminTasks />} />
+                    <Route path="tasks/:key" element={<AdminTaskDetail />} />
+                    <Route path="stats" element={<Navigate to="/admin" replace />} />
+                  </Route>
+                  <Route element={<OrganizationContextGuard />}>
+                    <Route
+                      path="organization"
+                      element={<AdminScopePlaceholder title="Organization overview" />}
+                    />
+                    <Route
+                      path="organization/*"
+                      element={<Navigate to="/admin/organization" replace />}
+                    />
+                  </Route>
+                  <Route path="context" element={<AdminContextSelection />} />
+                  <Route path="*" element={<AdminContextRedirect />} />
                 </Route>
                 {/* Settings area — own layout, requires profile */}
                 <Route

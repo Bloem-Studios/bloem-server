@@ -15,6 +15,8 @@ import { usePolicyCapability } from "@/hooks/queries/admin/policy";
 import { useAdminSessions } from "@/hooks/queries/admin/stats";
 import { useBuildInfo } from "@/hooks/queries/admin/system";
 import { cn } from "@/lib/utils";
+import AdminContextSwitcher from "@/components/admin/AdminContextSwitcher";
+import { useAdminContext } from "@/contexts/AdminContextProvider";
 
 interface SidebarItem extends AdminNavItem {
   badge?: ReactNode;
@@ -37,6 +39,7 @@ function useSessionCount() {
 
 export default function AdminSidebar({ onNavigate, embedded = false }: AdminSidebarProps) {
   const location = useLocation();
+  const { active } = useAdminContext();
   const sessionCount = useSessionCount();
   const buildInfo = useBuildInfo();
   const policyCapability = usePolicyCapability();
@@ -56,6 +59,7 @@ export default function AdminSidebar({ onNavigate, embedded = false }: AdminSide
     sessionCount > 0 ? <span className="live-badge">{sessionCount} live</span> : undefined;
   const sections: SidebarSection[] = buildAdminNavSections({
     policyEditorAvailable: policyCapability.data?.editor_available === true,
+    scope: active?.scope,
   }).map((section) => ({
     ...section,
     items: section.items.map((item) =>
@@ -70,7 +74,7 @@ export default function AdminSidebar({ onNavigate, embedded = false }: AdminSide
   // its "Plugin Apps" group.
   const { data: adminInstallations } = useAdminPluginInstallations();
   const adminPluginItems = buildAdminPluginNavItems(adminInstallations);
-  if (adminPluginItems.length > 0) {
+  if (active?.scope === "platform" && adminPluginItems.length > 0) {
     sections.push({ label: "Plugin Apps", items: adminPluginItems });
   }
 
@@ -100,6 +104,7 @@ export default function AdminSidebar({ onNavigate, embedded = false }: AdminSide
           <SiloBrand className="h-12 w-[112px]" />
         </Link>
       </div>
+      <AdminContextSwitcher />
       {/* Nav sections */}
       <nav
         aria-label="Admin navigation"

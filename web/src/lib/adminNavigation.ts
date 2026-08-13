@@ -1,6 +1,7 @@
 import {
   Blocks,
   Bot,
+  Building2,
   CalendarClock,
   Captions,
   Download,
@@ -44,12 +45,78 @@ export type AdminNavGroup = SettingsSearchGroup<AdminNavItem>;
 
 export interface AdminNavVisibility {
   policyEditorAvailable?: boolean;
+  scope?: "platform" | "organization";
 }
+
+export const ORGANIZATION_ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
+  {
+    label: "Organization",
+    items: [
+      {
+        label: "Overview",
+        description: "Organization health, membership and policy revisions.",
+        keywords: ["organization", "tenant", "health"],
+        icon: LayoutDashboard,
+        href: "/admin/organization",
+        exact: true,
+      },
+      {
+        label: "People",
+        description: "Organization memberships and profiles.",
+        keywords: ["people", "memberships", "profiles"],
+        icon: Users,
+        href: "/admin/organization/people",
+      },
+      {
+        label: "Access Groups",
+        description: "Organization access groups and profile assignments.",
+        keywords: ["groups", "roles", "permissions"],
+        icon: UsersRound,
+        href: "/admin/organization/access-groups",
+      },
+      {
+        label: "Libraries & Entitlements",
+        description: "Organization libraries and platform-granted media ceilings.",
+        keywords: ["libraries", "entitlements", "media ceiling"],
+        icon: Library,
+        href: "/admin/organization/libraries",
+      },
+      {
+        label: "Invitations",
+        description: "Invite administrators and members to this organization.",
+        keywords: ["invitations", "invite", "members"],
+        icon: Send,
+        href: "/admin/organization/invitations",
+      },
+      {
+        label: "Policy Decisions",
+        description: "Inspect authorization decisions for this organization.",
+        keywords: ["policy", "decisions", "authorization"],
+        icon: ShieldCheck,
+        href: "/admin/organization/policy-decisions",
+      },
+      {
+        label: "Activity & Audit",
+        description: "Organization activity and administrative audit history.",
+        keywords: ["activity", "audit", "events"],
+        icon: ScrollText,
+        href: "/admin/organization/activity",
+      },
+    ],
+  },
+];
 
 export const ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
   {
     label: "Overview",
     items: [
+      {
+        label: "Organizations",
+        description: "Organization directory, lifecycle and memberships.",
+        keywords: ["organizations", "tenants", "memberships"],
+        icon: Building2,
+        href: "/admin/platform/organizations",
+      },
       {
         label: "Dashboard",
         description: "Live sessions, content health, and server activity.",
@@ -244,6 +311,12 @@ export const ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
 ];
 
 export function buildAdminNavSections(visibility: AdminNavVisibility = {}): AdminNavGroup[] {
+  if (visibility.scope === "organization") {
+    return ORGANIZATION_ADMIN_NAV_SECTIONS.map((section) => ({
+      ...section,
+      items: [...section.items],
+    }));
+  }
   return ADMIN_NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter(
