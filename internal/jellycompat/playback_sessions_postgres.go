@@ -168,7 +168,7 @@ func (d *DurableCompatPlaybackStore) PutNegotiated(session PlaybackSession) {
 		return
 	}
 
-	scope := "negotiated\x00" + session.CompatToken + "\x00" + session.ClientDeviceID + "\x00" + session.RouteItemID
+	scope := "negotiated:" + negotiationScope(session)
 	unlockSession := d.lockSessionMutation(scope)
 	defer unlockSession()
 	d.cacheMutationMu.RLock()
@@ -218,7 +218,7 @@ func (d *DurableCompatPlaybackStore) replaceUnstartedNegotiation(
 
 	var removed []string
 	if session.CompatToken != "" && session.ClientDeviceID != "" && session.RouteItemID != "" {
-		scope := session.CompatToken + "\x00" + session.ClientDeviceID + "\x00" + session.RouteItemID
+		scope := negotiationScope(session)
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, scope); err != nil {
 			return nil, err
 		}
@@ -269,6 +269,19 @@ func (d *DurableCompatPlaybackStore) replaceUnstartedNegotiation(
 		return nil, err
 	}
 	return removed, nil
+}
+
+// negotiationScope is safe to pass as PostgreSQL text and remains unambiguous
+// even when individual identifiers contain separators. PostgreSQL rejects NUL
+// bytes in text values, so the former NUL-delimited key could never acquire its
+// cross-process advisory lock.
+func negotiationScope(session PlaybackSession) string {
+	return fmt.Sprintf(
+		"%d:%s%d:%s%d:%s",
+		len(session.CompatToken), session.CompatToken,
+		len(session.ClientDeviceID), session.ClientDeviceID,
+		len(session.RouteItemID), session.RouteItemID,
+	)
 }
 
 // Get periodically revalidates the durable row before returning an active
