@@ -4,7 +4,7 @@
 
 **Revised:** 2026-08-13
 
-**Status:** Draft for final review
+**Status:** Approved
 
 **Scope:** Extract the embedded Jellyfin and Audiobookshelf compatibility surfaces from Vondel Server into independently deployed, removable applications.
 
@@ -65,7 +65,7 @@ Client
   +-- /audiobookshelf/** -------> vondel-audiobookshelf --> private Vondel API
 ```
 
-Native routes include `/api/v1/**`, `/api/v2/**`, and the Vondel application at `/`. Jellyfin owns `/web` while enabled plus its explicit protocol route set such as `/System/**`, `/Users/**`, `/Items/**`, `/Sessions/**`, and `/LiveTv/**`. Audiobookshelf owns only `/audiobookshelf/**`; the gateway strips the fixed prefix when required by its protocol adapter.
+Native routes include `/api/v1/**`, `/api/v2/**`, and the Vondel application at `/`. Jellyfin owns `/web` while enabled plus its explicit protocol route families for system, users, items, sessions, and Live TV. Audiobookshelf owns only `/audiobookshelf/**`; the gateway strips the fixed prefix when required by its protocol adapter.
 
 The route table is data-driven, reviewed, and tested for overlap. Unknown paths never fall from one authentication surface into another. The gateway strips hop-by-hop headers, applies request-size and timeout limits, propagates a trace identifier, and supplies a signed internal request identity. A companion cannot add a route at runtime.
 
