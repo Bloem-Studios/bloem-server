@@ -268,14 +268,14 @@ git commit -m "feat(tenancy): add resource ownership and entitlements"
 
 **Interfaces:**
 - Consumes: schema from Task 1 and `tenancy.Context` from the identity foundation.
-- Produces: `RootRef`, `Owner`, `Entitlement`, `Store.RootOwner`, and `Store.RequireOrganizationAccess`.
+- Produces: `RootRef`, `Owner`, `Entitlement`, `Grant`, `Store.RootOwner`, and `Store.RequireAccess`.
 
 - [ ] **Step 1: Write RED access-matrix tests**
 
 Use real PostgreSQL and table-driven literal expectations for an entitled active organization, an unentitled organization, the wrong organization owner, suspended/revoked entitlement, missing root, and malformed `RootRef`. Every hidden case must return `ErrResourceHidden`; only infrastructure failure returns `ErrResourceUnavailable`.
 
 ```go
-func TestStoreRequireOrganizationAccess(t *testing.T) {
+func TestStoreRequireAccess(t *testing.T) {
 	tests := []struct {
 		name    string
 		root    RootRef
@@ -337,6 +337,12 @@ type Entitlement struct {
 	SecurityRevision      int64
 }
 
+type Grant struct {
+	Root        RootRef
+	Owner       Owner
+	Entitlement *Entitlement
+}
+
 var ErrResourceHidden = errors.New("resource not found")
 var ErrResourceUnavailable = errors.New("resource scope unavailable")
 var ErrInvalidRoot = errors.New("invalid resource root")
@@ -344,14 +350,14 @@ var ErrInvalidRoot = errors.New("invalid resource root")
 
 - [ ] **Step 4: Implement typed lookups**
 
-Use a switch over the two known root kinds to select from the concrete root table; never interpolate caller text. `RequireOrganizationAccess` loads the root owner itself. For organization ownership it requires exact organization equality. For platform ownership it requires an `active` entitlement matching the concrete typed root and the loaded `root_owner_id`. It does not accept owner identity from the caller.
+Use a switch over the two known root kinds to select from the concrete root table; never interpolate caller text. `RequireAccess` loads the root owner itself. It accepts the already resolved `tenancy.Context`, rejects inactive membership state, accepts an active organization (or the legacy default organization's initializing state for preserved v1 ambiguity behavior), and never selects a tenant itself. For organization ownership it requires exact organization equality and returns a grant with no entitlement. For platform ownership it requires an `active` entitlement matching the concrete typed root and the loaded `root_owner_id`. It does not accept owner identity from the caller.
 
 Use these signatures:
 
 ```go
 func NewStore(pool *pgxpool.Pool) *Store
 func (s *Store) RootOwner(ctx context.Context, root RootRef) (Owner, error)
-func (s *Store) RequireOrganizationAccess(ctx context.Context, organizationID uuid.UUID, root RootRef) (Entitlement, error)
+func (s *Store) RequireAccess(ctx context.Context, tenant tenancy.Context, root RootRef) (Grant, error)
 ```
 
 - [ ] **Step 5: Verify normal and race tests**
