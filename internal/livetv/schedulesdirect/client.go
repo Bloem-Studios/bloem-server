@@ -352,7 +352,7 @@ func (c *Client) doJSON(ctx context.Context, method, path, token string, body an
 	if err != nil {
 		return fmt.Errorf("schedules direct request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response-body close cannot affect the completed request
 	limited := io.LimitReader(resp.Body, 64<<20)
 	raw, err := io.ReadAll(limited)
 	if err != nil {

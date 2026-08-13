@@ -366,7 +366,7 @@ func (c *Client) doJSON(ctx context.Context, method, path string, body any, out 
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response-body close cannot affect the completed request
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
 	if err != nil {
 		return err

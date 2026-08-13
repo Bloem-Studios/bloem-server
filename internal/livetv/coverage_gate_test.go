@@ -330,7 +330,7 @@ func TestMediaHTTPClientDialBlocksMetadata(t *testing.T) {
 	}
 	resp, err := client.Do(req)
 	if err == nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		t.Fatal("expected metadata dial block")
 	}
 	if !strings.Contains(err.Error(), "metadata") && !strings.Contains(err.Error(), "not allowed") {
@@ -361,7 +361,7 @@ func TestMediaHTTPClientDialBlocksMetadata(t *testing.T) {
 	req, _ = http.NewRequest(http.MethodGet, srv.URL+"/", nil)
 	resp, err = client.Do(req)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck // read-only test response cleanup
 	}
 	if err == nil {
 		t.Fatal("expected too many redirects")
@@ -422,7 +422,7 @@ func TestMediaTransportDialControlBlocksMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loopback get: %v", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // read-only test response cleanup
 }
 
 func TestPublicSessionHelpers(t *testing.T) {

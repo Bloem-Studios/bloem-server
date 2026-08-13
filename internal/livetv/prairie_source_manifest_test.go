@@ -22,7 +22,7 @@ func TestPrairieSourceManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // read-only test fixture cleanup
 
 	scanner := bufio.NewScanner(f)
 	if !scanner.Scan() || scanner.Text() != "target_path\tsource_path\tsource_blob\tclassification\trationale" {

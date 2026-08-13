@@ -477,7 +477,7 @@ func (h *LiveTVHandler) HandleSessionStream(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusBadGateway, "upstream_error", "upstream fetch failed")
 		return
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response-body close cannot affect the completed request
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		writeError(w, http.StatusBadGateway, "upstream_error", fmt.Sprintf("upstream status %d", resp.StatusCode))
 		return

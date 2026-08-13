@@ -80,3 +80,29 @@ linters:
         text: "Error return value is not checked"
         linters:
           - errcheck
+
+      # Prairie's pinned Live TV implementation intentionally retains its
+      # protocol vocabulary and repeated codec/status literals. Keep that
+      # imported surface reviewable against its recorded source blobs instead
+      # of mechanically rewriting it only to satisfy style linters.
+      - path: ^internal/livetv/
+        linters:
+          - goconst
+          - misspell
+
+      - path: ^internal/playback/(audio_channels|live_.*)\.go$
+        linters:
+          - goconst
+
+      - path: ^internal/playback/live_.*_test\.go$
+        linters:
+          - misspell
+
+      - path: ^internal/jellycompat/handlers_livetv(_test)?\.go$
+        linters:
+          - goconst
+          - misspell
+
+      - path: ^internal/api/handlers/livetv\.go$
+        linters:
+          - goconst

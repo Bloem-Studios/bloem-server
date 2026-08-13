@@ -211,7 +211,7 @@ func (c *Client) get(ctx context.Context, endpoint string) ([]byte, string, erro
 	if err != nil {
 		return nil, "", fmt.Errorf("hdhomerun get %s: %w", endpoint, err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response-body close cannot affect the completed request
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, "", fmt.Errorf("hdhomerun get %s: status %d", endpoint, resp.StatusCode)
 	}

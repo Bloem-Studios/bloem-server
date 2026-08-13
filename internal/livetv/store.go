@@ -169,7 +169,7 @@ func (s *PgStore) ReplaceChannelsForTuner(ctx context.Context, tunerID string, c
 	if err != nil {
 		return fmt.Errorf("replace channels: begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback is best-effort after commit or returned error
 
 	existingRows, err := tx.Query(ctx, `SELECT id, number, callsign, stream_url, number_override, enabled, guide_station_id, name, logo_url, hd FROM livetv_channels WHERE tuner_id = $1`, tunerID)
 	if err != nil {
@@ -430,7 +430,7 @@ func (s *PgStore) UpsertPrograms(ctx context.Context, sourceID string, programs 
 	if err != nil {
 		return fmt.Errorf("upsert programs: begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback is best-effort after commit or returned error
 	if _, err := tx.Exec(ctx, `DELETE FROM livetv_programs WHERE source_id = $1 AND channel_id = ANY($2) AND start_at < $3 AND stop_at > $4`, sourceID, channelIDs, end, start); err != nil {
 		return fmt.Errorf("upsert programs: clear window: %w", err)
 	}
