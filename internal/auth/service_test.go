@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Vondel-Media/vondel-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/models"
 )
 
 var errOwnershipActivation = errors.New("ownership activation failed")

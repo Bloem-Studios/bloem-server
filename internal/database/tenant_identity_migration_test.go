@@ -15,11 +15,11 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Vondel-Media/vondel-server/internal/access"
-	"github.com/Vondel-Media/vondel-server/internal/tenancy"
-	"github.com/Vondel-Media/vondel-server/internal/userstore"
-	"github.com/Vondel-Media/vondel-server/internal/userstore/pgstore"
-	"github.com/Vondel-Media/vondel-server/migrations"
+	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
+	"github.com/Silo-Server/silo-server/migrations"
 )
 
 const tenantIdentityPreviousMigration = 20260811145848

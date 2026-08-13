@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Vondel-Media/vondel-server/internal/api/middleware"
-	"github.com/Vondel-Media/vondel-server/internal/auth"
-	"github.com/Vondel-Media/vondel-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 )
 

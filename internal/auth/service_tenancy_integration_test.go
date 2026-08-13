@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Vondel-Media/vondel-server/internal/database"
-	"github.com/Vondel-Media/vondel-server/internal/models"
-	"github.com/Vondel-Media/vondel-server/internal/tenancy"
-	"github.com/Vondel-Media/vondel-server/migrations"
+	"github.com/Silo-Server/silo-server/internal/database"
+	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

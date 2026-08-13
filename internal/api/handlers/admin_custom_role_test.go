@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Vondel-Media/vondel-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/models"
 )
 
 type customRoleAdminUserRepo struct {
