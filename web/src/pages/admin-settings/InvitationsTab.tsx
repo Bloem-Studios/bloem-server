@@ -42,6 +42,9 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Copy, MailPlus, RotateCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/datetime";
+import { useAdminContext } from "@/contexts/AdminContextProvider";
+import { useOrganizationLibraries } from "@/hooks/queries/admin/libraries";
+import type { AdminContextSummary } from "@/api/types";
 
 // The claim-link box shown after create/resend. min-w-0 + overflow-hidden on
 // every level matters: the URL is one unbreakable token, and without them it
@@ -81,7 +84,9 @@ const STATUS_BADGES: Record<InvitationStatus, { label: string; variant: "default
 };
 
 export default function InvitationsTab() {
-  const { data: invitations = [], isLoading } = useAdminInvitations();
+  const { active } = useAdminContext();
+  const organization = active?.scope === "organization";
+  const { data: invitations = [], isLoading } = useAdminInvitations(active);
   const resend = useResendInvitation();
   const revoke = useRevokeInvitation();
   const [createOpen, setCreateOpen] = useState(false);
@@ -107,6 +112,14 @@ export default function InvitationsTab() {
 
   return (
     <div className="space-y-6">
+      {organization && (
+        <div className="space-y-2">
+          <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
+            Invitations
+          </h1>
+          <p className="page-subtitle">Invitations shown here belong only to {active.name}.</p>
+        </div>
+      )}
       <ConfirmDialog
         open={confirmRevoke !== null}
         onOpenChange={(open) => {
@@ -167,7 +180,11 @@ export default function InvitationsTab() {
                 pick is a password.
               </DialogDescription>
             </DialogHeader>
-            <CreateInvitationForm onClose={() => setCreateOpen(false)} onCopy={handleCopy} />
+            <CreateInvitationForm
+              context={active}
+              onClose={() => setCreateOpen(false)}
+              onCopy={handleCopy}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -195,6 +212,7 @@ export default function InvitationsTab() {
                 onResend={() => handleResend(inv.id)}
                 onRevoke={() => setConfirmRevoke(inv)}
                 resending={resend.isPending}
+                allowLegacyActions={!organization}
               />
             ))}
           </TableBody>
@@ -209,15 +227,18 @@ function InvitationRow({
   onResend,
   onRevoke,
   resending,
+  allowLegacyActions,
 }: {
   invitation: Invitation;
   onResend: () => void;
   onRevoke: () => void;
   resending: boolean;
+  allowLegacyActions: boolean;
 }) {
   const badge = STATUS_BADGES[invitation.status];
-  const showResend = invitation.status === "pending" || invitation.status === "expired";
-  const showRevoke = invitation.status === "pending";
+  const showResend =
+    allowLegacyActions && (invitation.status === "pending" || invitation.status === "expired");
+  const showRevoke = allowLegacyActions && invitation.status === "pending";
 
   return (
     <TableRow>
@@ -266,15 +287,30 @@ function InvitationRow({
 }
 
 function CreateInvitationForm({
+  context,
   onClose,
   onCopy,
 }: {
+  context: AdminContextSummary | null;
   onClose: () => void;
   onCopy: (text: string) => void;
 }) {
-  const create = useCreateInvitation();
-  const { data: accessGroups = [] } = useAccessGroups();
-  const { data: libraries = [] } = useAdminLibraries();
+  const organization = context?.scope === "organization";
+  const create = useCreateInvitation(context);
+  const { data: accessGroups = [] } = useAccessGroups(context);
+  const { data: legacyLibraries = [] } = useAdminLibraries(!organization);
+  const { data: organizationLibraries = [] } = useOrganizationLibraries(
+    context?.key ?? "organization:unavailable",
+    organization,
+  );
+  const libraries = organization
+    ? organizationLibraries.map((library) => ({
+        id: library.folder_id,
+        name: library.name,
+        type: library.type,
+        enabled: library.access_kind === "owned" || library.entitlement?.status === "active",
+      }))
+    : legacyLibraries;
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("user");
   const [accessGroupID, setAccessGroupID] = useState<number | null>(null);
@@ -378,15 +414,19 @@ function CreateInvitationForm({
         </div>
         <div className="space-y-2">
           <Label>Role</Label>
-          <Select value={role} onValueChange={setRole}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="user">User</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-            </SelectContent>
-          </Select>
+          {organization ? (
+            <p className="border-border bg-muted/30 rounded-md border px-3 py-2 text-sm">User</p>
+          ) : (
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">User</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 

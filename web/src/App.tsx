@@ -78,6 +78,9 @@ import OrganizationsPage from "@/pages/admin-platform/OrganizationsPage";
 import OrganizationDetailPage from "@/pages/admin-platform/OrganizationDetailPage";
 import OrganizationOverviewPage from "@/pages/admin-organization/OrganizationOverviewPage";
 import PeoplePage from "@/pages/admin-organization/PeoplePage";
+import LibrariesEntitlementsPage from "@/pages/admin-organization/LibrariesEntitlementsPage";
+import PolicyDecisionsPage from "@/pages/admin-organization/PolicyDecisionsPage";
+import InvitationsTab from "@/pages/admin-settings/InvitationsTab";
 import Recommendations from "@/pages/Recommendations";
 import RecommendationsSection from "@/pages/RecommendationsSection";
 import Calendar from "@/pages/Calendar";
@@ -531,6 +534,17 @@ function AppRoutes() {
                   <Route element={<OrganizationContextGuard />}>
                     <Route path="organization" element={<OrganizationOverviewPage />} />
                     <Route path="organization/people" element={<PeoplePage />} />
+                    <Route path="organization/access-groups" element={<AdminAccessGroups />} />
+                    <Route path="organization/libraries" element={<LibrariesEntitlementsPage />} />
+                    <Route
+                      path="organization/invitations"
+                      element={
+                        <div className="page-shell py-4 sm:py-6">
+                          <InvitationsTab />
+                        </div>
+                      }
+                    />
+                    <Route path="organization/policy-decisions" element={<PolicyDecisionsPage />} />
                     <Route
                       path="organization/*"
                       element={<Navigate to="/admin/organization" replace />}

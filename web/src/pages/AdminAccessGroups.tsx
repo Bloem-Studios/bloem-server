@@ -32,6 +32,8 @@ import {
 } from "@/hooks/queries/admin/accessGroups";
 import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useAdminContext } from "@/contexts/AdminContextProvider";
+import { useOrganizationLibraries } from "@/hooks/queries/admin/libraries";
 import { PERMISSION_MARKER_EDIT, PERMISSION_METADATA_CURATION } from "@/lib/permissions";
 import {
   PLAYBACK_QUALITY_OPTIONS,
@@ -61,11 +63,12 @@ function limitLabel(value: number) {
 
 export default function AdminAccessGroups() {
   useDocumentTitle("Access Groups");
-  const groups = useAccessGroups();
+  const { active } = useAdminContext();
+  const groups = useAccessGroups(active);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
-  const createGroup = useCreateAccessGroup();
+  const createGroup = useCreateAccessGroup(active);
 
   const selected = useMemo(
     () => groups.data?.find((group) => group.id === selectedId),
@@ -97,6 +100,9 @@ export default function AdminAccessGroups() {
         <AccessGroupEditor
           key={selected.id}
           group={selected}
+          defaultGroupName={
+            groups.data?.find((group) => group.is_default)?.name ?? "the default group"
+          }
           onDeleted={() => setSelectedId(null)}
         />
       </div>
@@ -109,8 +115,9 @@ export default function AdminAccessGroups() {
         <div className="space-y-3">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Access Groups</h1>
           <p className="page-subtitle text-sm sm:text-base">
-            Shared access defaults for a set of users. A member's own restrictions still apply on
-            top — a group grants the most a member can do, never more.
+            {active?.scope === "organization" && <>{active.name}: </>}Shared access defaults for a
+            set of users. A member's own restrictions still apply on top — a group grants the most a
+            member can do, never more.
           </p>
         </div>
         {!creating && (
@@ -225,13 +232,28 @@ function AccessGroupCard({ group, onClick }: { group: AccessGroup; onClick: () =
 
 interface AccessGroupEditorProps {
   group: AccessGroup;
+  defaultGroupName: string;
   onDeleted: () => void;
 }
 
-function AccessGroupEditor({ group, onDeleted }: AccessGroupEditorProps) {
-  const libraries = useAdminLibraries();
-  const updateGroup = useUpdateAccessGroup();
-  const deleteGroup = useDeleteAccessGroup();
+function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEditorProps) {
+  const { active } = useAdminContext();
+  const organization = active?.scope === "organization";
+  const legacyLibraries = useAdminLibraries(!organization);
+  const organizationLibraries = useOrganizationLibraries(
+    active?.key ?? "organization:unavailable",
+    organization,
+  );
+  const libraries = organization
+    ? (organizationLibraries.data ?? []).map((library) => ({
+        id: library.folder_id,
+        name: library.name,
+        type: library.type,
+        enabled: library.access_kind === "owned" || library.entitlement?.status === "active",
+      }))
+    : (legacyLibraries.data ?? []);
+  const updateGroup = useUpdateAccessGroup(active);
+  const deleteGroup = useDeleteAccessGroup(active);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Draft state, keyed by group id via the parent's selection so switching
@@ -318,11 +340,7 @@ function AccessGroupEditor({ group, onDeleted }: AccessGroupEditorProps) {
 
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
         <h2 className="text-sm font-semibold">Libraries &amp; playback</h2>
-        <LibraryAccessSelector
-          libraries={libraries.data ?? []}
-          value={libraryIds}
-          onChange={setLibraryIds}
-        />
+        <LibraryAccessSelector libraries={libraries} value={libraryIds} onChange={setLibraryIds} />
         <div className="space-y-2">
           <Label htmlFor="group-quality">Maximum playback quality</Label>
           <Select
@@ -448,11 +466,17 @@ function AccessGroupEditor({ group, onDeleted }: AccessGroupEditorProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete “{group.name}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              {group.member_count > 0
-                ? `${group.member_count} ${
-                    group.member_count === 1 ? "member" : "members"
-                  } will move to no group and fall back to the built-in defaults. Their own restrictions are unchanged.`
-                : "This group has no members. This can't be undone."}
+              {organization
+                ? group.member_count > 0
+                  ? `${group.member_count} profiles in ${active?.name ?? "this organization"} will be reassigned to ${
+                      defaultGroupName
+                    }, this organization's default group. Their own restrictions are unchanged.`
+                  : `This group has no profiles in ${active?.name ?? "this organization"}. This can't be undone.`
+                : group.member_count > 0
+                  ? `${group.member_count} ${
+                      group.member_count === 1 ? "member" : "members"
+                    } will move to no group and fall back to the built-in defaults. Their own restrictions are unchanged.`
+                  : "This group has no members. This can't be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -3,27 +3,57 @@ import { api } from "@/api/client";
 import type { Invitation, CreateInvitationRequest, SendInvitationResponse } from "@/api/types";
 import { adminKeys } from "../keys";
 import { toast } from "sonner";
+import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
+import type { AdminContextSummary } from "@/api/types";
 
 const ADMIN_STALE_TIME = 30_000;
 
-export function useAdminInvitations() {
+function invitationsKey(context?: AdminContextSummary | null) {
+  return context?.scope === "organization"
+    ? adminV2QueryKey(context.key, "organization", "invitations")
+    : adminKeys.invitations();
+}
+
+export function useAdminInvitations(context?: AdminContextSummary | null) {
   return useQuery({
-    queryKey: adminKeys.invitations(),
-    queryFn: () => api<Invitation[]>("/admin/invitations").then((d) => d ?? []),
+    queryKey: invitationsKey(context),
+    queryFn: () =>
+      context?.scope === "organization"
+        ? adminV2Api<{ invitations: Invitation[] }>("/organization/invitations").then(
+            (data) => data.invitations ?? [],
+          )
+        : api<Invitation[]>("/admin/invitations").then((d) => d ?? []),
     staleTime: ADMIN_STALE_TIME,
   });
 }
 
-export function useCreateInvitation() {
+export function useCreateInvitation(context?: AdminContextSummary | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: CreateInvitationRequest) =>
-      api<SendInvitationResponse>("/admin/invitations", {
+    mutationFn: async (body: CreateInvitationRequest) => {
+      if (context?.scope === "organization") {
+        const data = await adminV2Api<{
+          invitation: Invitation;
+          claim_token?: string;
+        }>("/organization/invitations", {
+          method: "POST",
+          body: JSON.stringify({ ...body, expected_revision: context.policyRevision }),
+        });
+        return {
+          invitation: data.invitation,
+          email_sent: false,
+          claim_url: data.claim_token
+            ? `${window.location.origin}/invite/${encodeURIComponent(data.claim_token)}`
+            : undefined,
+        } satisfies SendInvitationResponse;
+      }
+      return api<SendInvitationResponse>("/admin/invitations", {
         method: "POST",
         body: JSON.stringify(body),
-      }),
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.invitations() });
+      queryClient.invalidateQueries({ queryKey: invitationsKey(context) });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to send invitation");

@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePolicyCapability } from "@/hooks/queries/admin/policy";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useAdminContext } from "@/contexts/AdminContextProvider";
 
 import { PolicyDecisionLogTable } from "./PolicyDecisionLogTable";
 import { PolicyDocumentList } from "./PolicyDocumentList";
@@ -60,9 +61,10 @@ function PolicyPipelineStrip() {
 
 export default function AdminPolicyLayout() {
   useDocumentTitle("Policy");
+  const { active } = useAdminContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = resolveTab(searchParams.get("tab"));
-  const capability = usePolicyCapability();
+  const capability = usePolicyCapability(active?.scope === "platform");
 
   function setTab(value: string) {
     const next = new URLSearchParams(searchParams);
@@ -80,13 +82,21 @@ export default function AdminPolicyLayout() {
     capability.data?.enabled === false ||
     capability.data?.editor_available === false;
 
+  if (active?.scope !== "platform") {
+    return (
+      <div className="page-shell py-6" role="alert">
+        Global policy management is available only in Platform context.
+      </div>
+    );
+  }
+
   return (
     <div className="page-shell space-y-6 py-4 sm:py-6">
       <div className="page-header gap-5">
         <div className="space-y-3">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Policy</h1>
           <p className="page-subtitle text-sm sm:text-base">
-            Household access rules: what Silo allows by default, and where you tighten it.
+            Platform access rules: the Vondel baseline and the global restrictions layered over it.
           </p>
         </div>
       </div>

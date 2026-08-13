@@ -4,12 +4,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 interface LibraryAccessSelectorProps {
-  libraries: Library[];
+  libraries: Pick<Library, "id" | "name" | "type" | "enabled">[];
   value: number[] | null;
   onChange: (value: number[] | null) => void;
 }
 
-function sortByLibraryOrder(libraries: Library[], ids: number[]) {
+function sortByLibraryOrder(
+  libraries: Pick<Library, "id" | "name" | "type" | "enabled">[],
+  ids: number[],
+) {
   const selected = new Set(ids);
   return libraries.filter((library) => selected.has(library.id)).map((library) => library.id);
 }
