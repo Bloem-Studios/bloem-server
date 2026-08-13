@@ -90,20 +90,16 @@ func (s *ProfileCredentialService) Set(ctx context.Context, accountID int, profi
 	if err := lockProfileCredentialSubject(ctx, tx, accountID, profileID); err != nil {
 		return err
 	}
+	// credential_revision is bumped and the profile's direct sessions are
+	// revoked by database triggers, so a write that never reaches this service
+	// rotates the credential exactly the same way.
 	if _, err := tx.Exec(ctx, `
 		UPDATE user_profiles
 		SET login_email = $3,
 			password_hash = $4,
-			credential_revision = credential_revision + 1,
 			updated_at = now()
 		WHERE user_id = $1 AND id = $2`, accountID, profileID, email, string(hash)); err != nil {
 		return mapProfileCredentialWriteError(err)
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE auth_sessions
-		SET revoked_at = now()
-		WHERE user_id = $1 AND profile_id = $2 AND auth_method = $3 AND revoked_at IS NULL`, accountID, profileID, AuthMethodDirectProfile); err != nil {
-		return fmt.Errorf("revoke direct profile sessions: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit profile credential update: %w", err)
@@ -128,16 +124,9 @@ func (s *ProfileCredentialService) Clear(ctx context.Context, accountID int, pro
 		UPDATE user_profiles
 		SET login_email = NULL,
 			password_hash = NULL,
-			credential_revision = credential_revision + 1,
 			updated_at = now()
 		WHERE user_id = $1 AND id = $2`, accountID, profileID); err != nil {
 		return mapProfileCredentialWriteError(err)
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE auth_sessions
-		SET revoked_at = now()
-		WHERE user_id = $1 AND profile_id = $2 AND auth_method = $3 AND revoked_at IS NULL`, accountID, profileID, AuthMethodDirectProfile); err != nil {
-		return fmt.Errorf("revoke direct profile sessions: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit profile credential clear: %w", err)

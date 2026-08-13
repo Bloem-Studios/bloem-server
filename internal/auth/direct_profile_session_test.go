@@ -279,3 +279,149 @@ func TestDirectProfileRefreshMintsCurrentSubjectAndExtendsSession(t *testing.T) 
 		t.Fatalf("session expiry = %s, want it slid past %s", session.ExpiresAt, shortened)
 	}
 }
+
+// Credential rotation is enforced by the database, not by the service, so a
+// write that never goes through ProfileCredentialService still rotates the
+// revision and ends the sessions that credential authenticated.
+func TestRawCredentialWriteRotatesRevisionAndRevokesSessions(t *testing.T) {
+	ctx := context.Background()
+	credentials := newProfileCredentialService(t)
+	accountID, profileID := newProfileCredentialFixture(t, credentials.pool, "raw-rotation")
+	if err := credentials.Set(ctx, accountID, profileID, "raw@example.test", "first-password"); err != nil {
+		t.Fatalf("Set credential: %v", err)
+	}
+	service, jwt, sessions := newDirectProfileService(t, credentials.pool, credentials.ProfileCredentialService)
+	pair, subject, err := service.LoginProfile(ctx, "raw@example.test", "first-password", DeviceClaim{ID: "raw-device"})
+	if err != nil {
+		t.Fatalf("LoginProfile: %v", err)
+	}
+	claims, err := jwt.ValidateToken(pair.RefreshToken)
+	if err != nil {
+		t.Fatalf("validate refresh token: %v", err)
+	}
+
+	// A raw password change that does not touch credential_revision at all.
+	rotated, err := bcrypt.GenerateFromPassword([]byte("second-password"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := credentials.pool.Exec(ctx, `
+		UPDATE user_profiles SET password_hash = $3 WHERE user_id = $1 AND id = $2`,
+		accountID, profileID, string(rotated)); err != nil {
+		t.Fatalf("raw credential write: %v", err)
+	}
+
+	var revision int64
+	if err := credentials.pool.QueryRow(ctx, `
+		SELECT credential_revision FROM user_profiles WHERE user_id = $1 AND id = $2`,
+		accountID, profileID).Scan(&revision); err != nil {
+		t.Fatalf("reload revision: %v", err)
+	}
+	if revision != subject.CredentialRevision+1 {
+		t.Fatalf("credential revision = %d, want %d", revision, subject.CredentialRevision+1)
+	}
+	session, err := sessions.GetByID(ctx, claims.SessionID)
+	if err != nil {
+		t.Fatalf("load session: %v", err)
+	}
+	if session.RevokedAt == nil {
+		t.Fatal("a raw credential write left the direct profile session active")
+	}
+	if _, err := service.Refresh(ctx, pair.RefreshToken); !errors.Is(err, ErrSessionRevoked) {
+		t.Fatalf("Refresh after raw rotation = %v, want ErrSessionRevoked", err)
+	}
+
+	// A writer that supplies its own revision cannot hold it still either.
+	if _, err := credentials.pool.Exec(ctx, `
+		UPDATE user_profiles SET password_hash = $3, credential_revision = $4
+		WHERE user_id = $1 AND id = $2`,
+		accountID, profileID, string(rotated)+"x", revision); err != nil {
+		t.Fatalf("raw credential write with pinned revision: %v", err)
+	}
+	var pinned int64
+	if err := credentials.pool.QueryRow(ctx, `
+		SELECT credential_revision FROM user_profiles WHERE user_id = $1 AND id = $2`,
+		accountID, profileID).Scan(&pinned); err != nil {
+		t.Fatalf("reload pinned revision: %v", err)
+	}
+	if pinned != revision+1 {
+		t.Fatalf("pinned revision = %d, want the forced %d", pinned, revision+1)
+	}
+}
+
+// The stored credential pair must be a real pair: the database refuses a blank
+// email or hash rather than registering an empty login key.
+func TestProfileCredentialPairRejectsBlankValues(t *testing.T) {
+	ctx := context.Background()
+	credentials := newProfileCredentialService(t)
+	accountID, profileID := newProfileCredentialFixture(t, credentials.pool, "blank-pair")
+
+	for name, statement := range map[string]string{
+		"blank email":      `UPDATE user_profiles SET login_email = '', password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
+		"whitespace email": `UPDATE user_profiles SET login_email = '   ', password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
+		"blank hash":       `UPDATE user_profiles SET login_email = 'blank@example.test', password_hash = '' WHERE user_id = $1 AND id = $2`,
+		"email only":       `UPDATE user_profiles SET login_email = 'blank@example.test' WHERE user_id = $1 AND id = $2`,
+		"hash only":        `UPDATE user_profiles SET password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := credentials.pool.Exec(ctx, statement, accountID, profileID); err == nil {
+				t.Fatal("database accepted an incomplete credential pair")
+			}
+		})
+	}
+}
+
+type failingSubjectResolver struct {
+	err   error
+	inner directProfileCredentials
+}
+
+func (r failingSubjectResolver) Authenticate(
+	ctx context.Context, email, password string, device DeviceClaim,
+) (SessionSubject, error) {
+	return r.inner.Authenticate(ctx, email, password, device)
+}
+
+func (r failingSubjectResolver) CurrentSessionSubject(
+	context.Context, int, string, int64, DeviceClaim,
+) (SessionSubject, error) {
+	return SessionSubject{}, r.err
+}
+
+// A database that is briefly unreachable says nothing about whether a binding
+// is still valid, so refresh must fail without destroying the session.
+func TestDirectProfileRefreshKeepsSessionWhenRevalidationFails(t *testing.T) {
+	ctx := context.Background()
+	credentials := newProfileCredentialService(t)
+	accountID, profileID := newProfileCredentialFixture(t, credentials.pool, "refresh-transient")
+	if err := credentials.Set(ctx, accountID, profileID, "transient@example.test", "profile-password"); err != nil {
+		t.Fatalf("Set credential: %v", err)
+	}
+	service, jwt, sessions := newDirectProfileService(t, credentials.pool, credentials.ProfileCredentialService)
+	pair, _, err := service.LoginProfile(ctx, "transient@example.test", "profile-password", DeviceClaim{ID: "transient-device"})
+	if err != nil {
+		t.Fatalf("LoginProfile: %v", err)
+	}
+	claims, err := jwt.ValidateToken(pair.RefreshToken)
+	if err != nil {
+		t.Fatalf("validate refresh token: %v", err)
+	}
+
+	transient := errors.New("connection reset by peer")
+	service.profileCredentials = failingSubjectResolver{err: transient, inner: credentials.ProfileCredentialService}
+
+	_, err = service.Refresh(ctx, pair.RefreshToken)
+	if err == nil || errors.Is(err, ErrSessionRevoked) {
+		t.Fatalf("Refresh error = %v, want an operational failure rather than revocation", err)
+	}
+	if !errors.Is(err, transient) {
+		t.Fatalf("Refresh error = %v, want it to wrap the underlying failure", err)
+	}
+	session, err := sessions.GetByID(ctx, claims.SessionID)
+	if err != nil {
+		t.Fatalf("load session: %v", err)
+	}
+	if session.RevokedAt != nil {
+		t.Fatal("a transient revalidation failure revoked a valid session")
+	}
+}

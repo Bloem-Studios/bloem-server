@@ -1803,8 +1803,13 @@ func NewRouter(deps Dependencies) chi.Router {
 					http.Error(w, "invalid installation id", http.StatusBadRequest)
 					return
 				}
-				authenticated, admin, userID, profileID := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, apiKeyRepo, userRepo)
-				ctx := plugins.WithPluginAccessUser(r.Context(), authenticated, admin, userID, profileID)
+				authenticated, admin, userID, profileID, profileBound := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, apiKeyRepo, userRepo)
+				var ctx context.Context
+				if profileBound {
+					ctx = plugins.WithProfileBoundPluginAccessUser(r.Context(), admin, userID, profileID)
+				} else {
+					ctx = plugins.WithPluginAccessUser(r.Context(), authenticated, admin, userID, profileID)
+				}
 				deps.PluginHTTPProxy.ServeRoute(w, r.WithContext(ctx), installationID, authenticated, admin)
 			})
 			r.Get("/plugin-assets/{installation_id}/*", func(w http.ResponseWriter, r *http.Request) {
@@ -1924,8 +1929,13 @@ func NewRouter(deps Dependencies) chi.Router {
 						r.With(apimw.RejectDirectProfileSession).Get("/sessions", authHandler.HandleListSessions)
 						r.With(apimw.RejectDirectProfileSession).
 							Delete("/sessions/{id}", authHandler.HandleDeleteSession)
-						r.Post("/device/approve", authHandler.HandleDeviceApprove)
-						r.Post("/device/deny", authHandler.HandleDeviceDeny)
+						// Approving a pairing hands the paired device a full
+						// account session, so it is account administration
+						// even though it reads like a device action.
+						r.With(apimw.RejectDirectProfileSession).
+							Post("/device/approve", authHandler.HandleDeviceApprove)
+						r.With(apimw.RejectDirectProfileSession).
+							Post("/device/deny", authHandler.HandleDeviceDeny)
 					})
 					if viewerAccessMiddleware != nil {
 						r.With(
@@ -1983,6 +1993,11 @@ func NewRouter(deps Dependencies) chi.Router {
 
 				apiKeyHandler := handlers.NewAPIKeyHandler(apiKeyRepo)
 				r.Route("/api-keys", func(r chi.Router) {
+					// An account API key is not profile-bound and skips PIN
+					// verification, so minting one from a direct-profile
+					// session would hand back the account it was scoped away
+					// from.
+					r.Use(apimw.RejectDirectProfileSession)
 					r.Post("/", apiKeyHandler.HandleCreateAPIKey)
 					r.Get("/", apiKeyHandler.HandleListAPIKeys)
 					r.Delete("/{id}", apiKeyHandler.HandleDeleteAPIKey)
@@ -2006,6 +2021,10 @@ func NewRouter(deps Dependencies) chi.Router {
 					r.Use(deps.RateLimitMW.Handler)
 				}
 				r.Route("/diagnostics", func(r chi.Router) {
+					// Account-scoped by design (see the comment above this
+					// group), and the upload attributes a caller-named
+					// profile, so it is not a direct-profile surface.
+					r.Use(apimw.RejectDirectProfileSession)
 					r.Get("/status", diagnosticsHandler.HandleStatus)
 					r.Post("/reports", diagnosticsHandler.HandleUpload)
 					// Chunked fallback for bundles a fronting proxy's
@@ -2097,10 +2116,11 @@ func NewRouter(deps Dependencies) chi.Router {
 					// the RequireProfile subrouter below (static paths coexist
 					// with it, same as the public email-link routes above).
 					if discordNotificationsHandler != nil {
-						r.Get("/notifications/discord-preferences", discordNotificationsHandler.HandleGetPreferences)
-						r.Put("/notifications/discord-preferences", discordNotificationsHandler.HandleUpdatePreferences)
-						r.Delete("/notifications/discord-link", discordNotificationsHandler.HandleUnlink)
-						r.Post("/notifications/discord/link/init", discordNotificationsHandler.HandleLinkInit)
+						discord := r.With(apimw.RejectDirectProfileSession)
+						discord.Get("/notifications/discord-preferences", discordNotificationsHandler.HandleGetPreferences)
+						discord.Put("/notifications/discord-preferences", discordNotificationsHandler.HandleUpdatePreferences)
+						discord.Delete("/notifications/discord-link", discordNotificationsHandler.HandleUnlink)
+						discord.Post("/notifications/discord/link/init", discordNotificationsHandler.HandleLinkInit)
 					}
 					r.Route("/notifications", func(r chi.Router) {
 						r.Use(apimw.RequireProfile)
@@ -3425,7 +3445,11 @@ func optionalProfileViewerAccess(viewer *apimw.ViewerAccessMiddleware) func(http
 		}
 		validated := viewer.RequireViewerAccess(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.TrimSpace(r.Header.Get("X-Profile-Id")) == "" {
+			// A direct-profile session always resolves: its profile comes
+			// from the token, so "sent no header" must not become "launched
+			// with no profile" the way it legitimately does for a legacy
+			// account caller that has not selected one yet.
+			if !apimw.IsDirectProfileSession(r) && strings.TrimSpace(r.Header.Get("X-Profile-Id")) == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -3499,12 +3523,15 @@ func (r *pgSubtitleMediaResolver) GetMediaFileWithMetadata(ctx context.Context, 
 	return &meta, nil
 }
 
+// adminRole is the legacy account role that grants server administration.
+const adminRole = "admin"
+
 func resolveOptionalPluginAccess(
 	r *http.Request,
 	jwtService *auth.JWTService,
 	sessionRepo *auth.SessionRepository,
 ) (bool, bool) {
-	authenticated, admin, _, _ := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, nil, nil)
+	authenticated, admin, _, _, _ := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, nil, nil)
 	return authenticated, admin
 }
 
@@ -3517,9 +3544,9 @@ func resolveOptionalPluginAccessUser(
 	sessionRepo *auth.SessionRepository,
 	apiKeyRepo *auth.APIKeyRepository,
 	userRepo *auth.UserRepository,
-) (bool, bool, int, string) {
+) (authenticated bool, admin bool, userID int, profileID string, profileBound bool) {
 	if jwtService == nil || sessionRepo == nil {
-		return false, false, 0, ""
+		return false, false, 0, "", false
 	}
 
 	token := ""
@@ -3538,33 +3565,40 @@ func resolveOptionalPluginAccessUser(
 		}
 	}
 	if token == "" {
-		return false, false, 0, ""
+		return false, false, 0, "", false
 	}
 
 	if strings.HasPrefix(token, "sa_") {
 		if apiKeyRepo == nil || userRepo == nil {
-			return false, false, 0, ""
+			return false, false, 0, "", false
 		}
 		apiKey, err := apiKeyRepo.GetByKey(r.Context(), token)
 		if err != nil {
-			return false, false, 0, ""
+			return false, false, 0, "", false
 		}
 		user, err := userRepo.GetByID(r.Context(), apiKey.UserID)
 		if err != nil || !user.Enabled {
-			return false, false, 0, ""
+			return false, false, 0, "", false
 		}
-		return true, user.Role == "admin", user.ID, ""
+		return true, user.Role == adminRole, user.ID, "", false
 	}
 
 	claims, err := jwtService.ValidateToken(token)
 	if err != nil || (claims.TokenType != auth.TokenTypeAccess && claims.TokenType != auth.TokenTypePluginAccess) {
-		return false, false, 0, ""
+		return false, false, 0, "", false
 	}
 	valid, err := sessionRepo.IsValid(r.Context(), claims.SessionID)
 	if err != nil || !valid {
-		return false, false, 0, ""
+		return false, false, 0, "", false
 	}
-	return true, claims.Role == "admin", claims.UserID, claims.ProfileID
+	profileBound = claims.AuthMethod == auth.AuthMethodDirectProfile
+	if profileBound && strings.TrimSpace(claims.ProfileID) == "" {
+		// A direct-profile token without its profile is not a usable
+		// identity; treating it as anonymous is safer than letting the
+		// request name its own profile downstream.
+		return false, false, 0, "", false
+	}
+	return true, claims.Role == adminRole, claims.UserID, claims.ProfileID, profileBound
 }
 
 // NewTMDBCollectionFetcher creates a TMDBCollectionFetcher from an API key.

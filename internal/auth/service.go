@@ -59,6 +59,17 @@ type serviceSessionRepository interface {
 	ExtendExpiresAt(ctx context.Context, id string, expiresAt time.Time) error
 }
 
+// directProfileCredentials is the direct-profile half of the auth service's
+// dependencies. It is an interface so refresh's failure handling — which must
+// tell "this binding is gone" apart from "the database was briefly
+// unreachable" — can be exercised without a database.
+type directProfileCredentials interface {
+	Authenticate(ctx context.Context, email, password string, device DeviceClaim) (SessionSubject, error)
+	CurrentSessionSubject(
+		ctx context.Context, accountID int, profileID string, revision int64, device DeviceClaim,
+	) (SessionSubject, error)
+}
+
 type claimsContextKey struct{}
 
 // WithClaims stores auth claims on the context for auth-owned flows.
@@ -87,12 +98,18 @@ type Service struct {
 	accounts           *AccountProvisioner
 	ownership          OwnershipBootstrapper
 	memberships        MembershipProvisioner
-	profileCredentials *ProfileCredentialService
+	profileCredentials directProfileCredentials
 }
 
 // SetProfileCredentialService installs the optional direct-profile credential
 // service. Leaving it nil preserves legacy account authentication unchanged.
 func (s *Service) SetProfileCredentialService(credentials *ProfileCredentialService) {
+	if credentials == nil {
+		// Guard the typed-nil trap: assigning a nil *ProfileCredentialService
+		// straight into the interface would leave every nil check false.
+		s.profileCredentials = nil
+		return
+	}
 	s.profileCredentials = credentials
 }
 
@@ -683,6 +700,12 @@ func (s *Service) refreshDirectProfile(
 		DeviceClaim{ID: session.DeviceID, Name: session.DeviceName, IPAddress: session.IPAddress},
 	)
 	if err != nil {
+		// Only a subject that is genuinely no longer valid ends the session.
+		// A connection failure, cancellation, or timeout says nothing about
+		// the binding and must not destroy a working session.
+		if !errors.Is(err, ErrSessionRevoked) {
+			return nil, fmt.Errorf("revalidating direct profile subject: %w", err)
+		}
 		_ = s.sessions.Revoke(ctx, session.ID)
 		return nil, ErrSessionRevoked
 	}

@@ -4,8 +4,20 @@ ALTER TABLE public.user_profiles
     ADD COLUMN login_email text,
     ADD COLUMN password_hash text,
     ADD COLUMN credential_revision bigint NOT NULL DEFAULT 1 CHECK (credential_revision > 0),
+    -- A profile is shared-only, or it carries a real email and a real hash.
+    -- Testing nullness alone would let a direct SQL write store an empty
+    -- login_email beside a valid password and register an empty login key.
+    -- Both branches state nullness explicitly. Comparing only the trimmed
+    -- values would leave a half-set pair evaluating to NULL, which a CHECK
+    -- accepts.
     ADD CONSTRAINT user_profiles_direct_credential_pair_check
-        CHECK ((login_email IS NULL) = (password_hash IS NULL));
+        CHECK (
+            (login_email IS NULL AND password_hash IS NULL)
+            OR (
+                login_email IS NOT NULL AND password_hash IS NOT NULL
+                AND btrim(login_email) <> '' AND btrim(password_hash) <> ''
+            )
+        );
 
 ALTER TABLE public.auth_sessions
     ADD COLUMN profile_id text,
@@ -89,6 +101,52 @@ $$;
 CREATE TRIGGER user_profiles_login_email_registry_sync
 AFTER INSERT OR UPDATE OF login_email, password_hash OR DELETE ON public.user_profiles
 FOR EACH ROW EXECUTE FUNCTION public.vondel_sync_profile_login_email_registry();
+
+-- credential_revision is what revokes a direct profile session: a session
+-- carries the revision it authenticated against, and login and refresh both
+-- refuse a revision that is no longer current. Leaving the increment to the
+-- application would mean any write that bypasses the service silently keeps
+-- every old session valid, so the rotation is enforced here instead. The
+-- increment is forced rather than trusted, so a writer that supplies its own
+-- credential_revision cannot hold the revision still.
+CREATE FUNCTION public.vondel_rotate_profile_credential_revision()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF (OLD.login_email, OLD.password_hash) IS DISTINCT FROM (NEW.login_email, NEW.password_hash) THEN
+        NEW.credential_revision := OLD.credential_revision + 1;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER user_profiles_rotate_credential_revision
+BEFORE UPDATE OF login_email, password_hash ON public.user_profiles
+FOR EACH ROW EXECUTE FUNCTION public.vondel_rotate_profile_credential_revision();
+
+-- Rotating a credential also ends the sessions it authenticated, in the same
+-- transaction as the write that rotated it.
+CREATE FUNCTION public.vondel_revoke_rotated_profile_sessions()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF (OLD.login_email, OLD.password_hash) IS DISTINCT FROM (NEW.login_email, NEW.password_hash) THEN
+        UPDATE public.auth_sessions
+        SET revoked_at = now()
+        WHERE user_id = NEW.user_id
+          AND profile_id = NEW.id
+          AND auth_method = 'direct_profile'
+          AND revoked_at IS NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER user_profiles_revoke_rotated_sessions
+AFTER UPDATE OF login_email, password_hash ON public.user_profiles
+FOR EACH ROW EXECUTE FUNCTION public.vondel_revoke_rotated_profile_sessions();
 -- +goose StatementEnd
 
 -- +goose Down
@@ -97,6 +155,10 @@ DROP TRIGGER IF EXISTS users_login_email_registry_sync ON public.users;
 DROP FUNCTION IF EXISTS public.vondel_sync_account_login_email_registry();
 DROP TRIGGER IF EXISTS user_profiles_login_email_registry_sync ON public.user_profiles;
 DROP FUNCTION IF EXISTS public.vondel_sync_profile_login_email_registry();
+DROP TRIGGER IF EXISTS user_profiles_rotate_credential_revision ON public.user_profiles;
+DROP FUNCTION IF EXISTS public.vondel_rotate_profile_credential_revision();
+DROP TRIGGER IF EXISTS user_profiles_revoke_rotated_sessions ON public.user_profiles;
+DROP FUNCTION IF EXISTS public.vondel_revoke_rotated_profile_sessions();
 DROP TABLE IF EXISTS public.login_email_registry;
 
 DROP INDEX IF EXISTS public.auth_sessions_direct_profile_idx;
