@@ -1,0 +1,2113 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`multitenant administration responsive release snapshots > captures Access Groups at 390px 1`] = `
+<DocumentFragment>
+  <div
+    data-release-viewport="390x900"
+  >
+    <div
+      class="page-shell space-y-6 py-4 sm:py-6"
+    >
+      <div
+        class="page-header gap-5"
+      >
+        <div
+          class="space-y-3"
+        >
+          <h1
+            class="page-title text-[clamp(2rem,4vw,3rem)]"
+          >
+            Access Groups
+          </h1>
+          <p
+            class="page-subtitle text-sm sm:text-base"
+          >
+            North Sea Media: Shared access defaults for a set of users. A member's own restrictions still apply on top — a group grants the most a member can do, never more.
+          </p>
+        </div>
+        <button
+          class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-9 px-4 py-2 has-[>svg]:px-3"
+          data-size="default"
+          data-slot="button"
+          data-variant="default"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-plus size-4"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M5 12h14"
+            />
+            <path
+              d="M12 5v14"
+            />
+          </svg>
+          New group
+        </button>
+      </div>
+      <div
+        class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+      >
+        <button
+          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-left transition-colors outline-none focus-visible:ring-2"
+          type="button"
+        >
+          <div
+            class="flex items-start justify-between gap-3"
+          >
+            <div
+              class="min-w-0"
+            >
+              <div
+                class="flex items-center gap-2"
+              >
+                <h2
+                  class="truncate text-base font-semibold tracking-tight"
+                >
+                  Default
+                </h2>
+                <span
+                  class="border-border text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase"
+                >
+                  Default
+                </span>
+              </div>
+            </div>
+            <span
+              class="bg-secondary text-secondary-foreground shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
+            >
+              8 members
+            </span>
+          </div>
+          <div
+            class="flex flex-wrap gap-1.5"
+          >
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              All libraries
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Downloads on
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Unlimited streams
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Requests on
+            </span>
+          </div>
+        </button>
+        <button
+          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-left transition-colors outline-none focus-visible:ring-2"
+          type="button"
+        >
+          <div
+            class="flex items-start justify-between gap-3"
+          >
+            <div
+              class="min-w-0"
+            >
+              <div
+                class="flex items-center gap-2"
+              >
+                <h2
+                  class="truncate text-base font-semibold tracking-tight"
+                >
+                  Kids
+                </h2>
+              </div>
+            </div>
+            <span
+              class="bg-secondary text-secondary-foreground shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
+            >
+              4 members
+            </span>
+          </div>
+          <div
+            class="flex flex-wrap gap-1.5"
+          >
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              All libraries
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Downloads on
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Unlimited streams
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Requests on
+            </span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`multitenant administration responsive release snapshots > captures Access Groups at 1440px 1`] = `
+<DocumentFragment>
+  <div
+    data-release-viewport="1440x900"
+  >
+    <div
+      class="page-shell space-y-6 py-4 sm:py-6"
+    >
+      <div
+        class="page-header gap-5"
+      >
+        <div
+          class="space-y-3"
+        >
+          <h1
+            class="page-title text-[clamp(2rem,4vw,3rem)]"
+          >
+            Access Groups
+          </h1>
+          <p
+            class="page-subtitle text-sm sm:text-base"
+          >
+            North Sea Media: Shared access defaults for a set of users. A member's own restrictions still apply on top — a group grants the most a member can do, never more.
+          </p>
+        </div>
+        <button
+          class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-9 px-4 py-2 has-[>svg]:px-3"
+          data-size="default"
+          data-slot="button"
+          data-variant="default"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-plus size-4"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M5 12h14"
+            />
+            <path
+              d="M12 5v14"
+            />
+          </svg>
+          New group
+        </button>
+      </div>
+      <div
+        class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+      >
+        <button
+          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-left transition-colors outline-none focus-visible:ring-2"
+          type="button"
+        >
+          <div
+            class="flex items-start justify-between gap-3"
+          >
+            <div
+              class="min-w-0"
+            >
+              <div
+                class="flex items-center gap-2"
+              >
+                <h2
+                  class="truncate text-base font-semibold tracking-tight"
+                >
+                  Default
+                </h2>
+                <span
+                  class="border-border text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase"
+                >
+                  Default
+                </span>
+              </div>
+            </div>
+            <span
+              class="bg-secondary text-secondary-foreground shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
+            >
+              8 members
+            </span>
+          </div>
+          <div
+            class="flex flex-wrap gap-1.5"
+          >
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              All libraries
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Downloads on
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Unlimited streams
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Requests on
+            </span>
+          </div>
+        </button>
+        <button
+          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-left transition-colors outline-none focus-visible:ring-2"
+          type="button"
+        >
+          <div
+            class="flex items-start justify-between gap-3"
+          >
+            <div
+              class="min-w-0"
+            >
+              <div
+                class="flex items-center gap-2"
+              >
+                <h2
+                  class="truncate text-base font-semibold tracking-tight"
+                >
+                  Kids
+                </h2>
+              </div>
+            </div>
+            <span
+              class="bg-secondary text-secondary-foreground shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
+            >
+              4 members
+            </span>
+          </div>
+          <div
+            class="flex flex-wrap gap-1.5"
+          >
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              All libraries
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Downloads on
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Unlimited streams
+            </span>
+            <span
+              class="border-border text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
+            >
+              Requests on
+            </span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`multitenant administration responsive release snapshots > captures Organization Overview at 390px 1`] = `
+<DocumentFragment>
+  <div
+    data-release-viewport="390x900"
+  >
+    <section
+      class="admin-page space-y-6"
+    >
+      <div
+        class="page-header"
+      >
+        <div
+          class="space-y-2"
+        >
+          <div
+            class="flex items-center gap-3"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-building2 lucide-building-2 text-muted-foreground h-6 w-6"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M10 12h4"
+              />
+              <path
+                d="M10 8h4"
+              />
+              <path
+                d="M14 21v-3a2 2 0 0 0-4 0v3"
+              />
+              <path
+                d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"
+              />
+              <path
+                d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"
+              />
+            </svg>
+            <h1
+              class="page-title text-[clamp(2rem,4vw,3rem)]"
+              tabindex="-1"
+            >
+              North Sea Media
+            </h1>
+          </div>
+          <p
+            class="page-subtitle"
+          >
+            Organization health, media scope, and authorization state.
+          </p>
+        </div>
+        <span
+          class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90"
+          data-slot="badge"
+          data-variant="secondary"
+        >
+          active
+        </span>
+      </div>
+      <div
+        class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <article
+          class="surface-panel rounded-2xl p-5"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-users text-muted-foreground h-5 w-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+            />
+            <path
+              d="M16 3.128a4 4 0 0 1 0 7.744"
+            />
+            <path
+              d="M22 21v-2a4 4 0 0 0-3-3.87"
+            />
+            <circle
+              cx="9"
+              cy="7"
+              r="4"
+            />
+          </svg>
+          <p
+            class="mt-5 text-3xl font-semibold tabular-nums"
+          >
+            12
+          </p>
+          <p
+            class="text-muted-foreground mt-1 text-sm"
+          >
+            People
+          </p>
+        </article>
+        <article
+          class="surface-panel rounded-2xl p-5"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-user-round text-muted-foreground h-5 w-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="12"
+              cy="8"
+              r="5"
+            />
+            <path
+              d="M20 21a8 8 0 0 0-16 0"
+            />
+          </svg>
+          <p
+            class="mt-5 text-3xl font-semibold tabular-nums"
+          >
+            18
+          </p>
+          <p
+            class="text-muted-foreground mt-1 text-sm"
+          >
+            Profiles
+          </p>
+        </article>
+        <article
+          class="surface-panel rounded-2xl p-5"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-library text-muted-foreground h-5 w-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m16 6 4 14"
+            />
+            <path
+              d="M12 6v14"
+            />
+            <path
+              d="M8 8v12"
+            />
+            <path
+              d="M4 4v16"
+            />
+          </svg>
+          <p
+            class="mt-5 text-3xl font-semibold tabular-nums"
+          >
+            3
+          </p>
+          <p
+            class="text-muted-foreground mt-1 text-sm"
+          >
+            Owned libraries
+          </p>
+        </article>
+        <article
+          class="surface-panel rounded-2xl p-5"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-shield-check text-muted-foreground h-5 w-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+            />
+            <path
+              d="m9 12 2 2 4-4"
+            />
+          </svg>
+          <p
+            class="mt-5 text-3xl font-semibold tabular-nums"
+          >
+            2
+          </p>
+          <p
+            class="text-muted-foreground mt-1 text-sm"
+          >
+            Entitlements
+          </p>
+        </article>
+      </div>
+      <div
+        class="surface-panel rounded-2xl p-5"
+      >
+        <h2
+          class="font-semibold"
+        >
+          Authorization state
+        </h2>
+        <dl
+          class="mt-4 grid gap-4 text-sm sm:grid-cols-3"
+        >
+          <div>
+            <dt
+              class="text-muted-foreground"
+            >
+              Policy
+            </dt>
+            <dd
+              class="mt-1 font-medium"
+            >
+              Revision 7
+            </dd>
+          </div>
+          <div>
+            <dt
+              class="text-muted-foreground"
+            >
+              Organization slug
+            </dt>
+            <dd
+              class="mt-1 font-medium"
+            >
+              north-sea-media
+            </dd>
+          </div>
+          <div>
+            <dt
+              class="text-muted-foreground"
+            >
+              Owner account
+            </dt>
+            <dd
+              class="mt-1 font-medium"
+            >
+              7
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`multitenant administration responsive release snapshots > captures Organization Overview at 1440px 1`] = `
+<DocumentFragment>
+  <div
+    data-release-viewport="1440x900"
+  >
+    <section
+      class="admin-page space-y-6"
+    >
+      <div
+        class="page-header"
+      >
+        <div
+          class="space-y-2"
+        >
+          <div
+            class="flex items-center gap-3"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-building2 lucide-building-2 text-muted-foreground h-6 w-6"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M10 12h4"
+              />
+              <path
+                d="M10 8h4"
+              />
+              <path
+                d="M14 21v-3a2 2 0 0 0-4 0v3"
+              />
+              <path
+                d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"
+              />
+              <path
+                d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"
+              />
+            </svg>
+            <h1
+              class="page-title text-[clamp(2rem,4vw,3rem)]"
+              tabindex="-1"
+            >
+              North Sea Media
+            </h1>
+          </div>
+          <p
+            class="page-subtitle"
+          >
+            Organization health, media scope, and authorization state.
+          </p>
+        </div>
+        <span
+          class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90"
+          data-slot="badge"
+          data-variant="secondary"
+        >
+          active
+        </span>
+      </div>
+      <div
+        class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <article
+          class="surface-panel rounded-2xl p-5"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-users text-muted-foreground h-5 w-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+            />
+            <path
+              d="M16 3.128a4 4 0 0 1 0 7.744"
+            />
+            <path
+              d="M22 21v-2a4 4 0 0 0-3-3.87"
+            />
+            <circle
+              cx="9"
+              cy="7"
+              r="4"
+            />
+          </svg>
+          <p
+            class="mt-5 text-3xl font-semibold tabular-nums"
+          >
+            12
+          </p>
+          <p
+            class="text-muted-foreground mt-1 text-sm"
+          >
+            People
+          </p>
+        </article>
+        <article
+          class="surface-panel rounded-2xl p-5"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-user-round text-muted-foreground h-5 w-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="12"
+              cy="8"
+              r="5"
+            />
+            <path
+              d="M20 21a8 8 0 0 0-16 0"
+            />
+          </svg>
+          <p
+            class="mt-5 text-3xl font-semibold tabular-nums"
+          >
+            18
+          </p>
+          <p
+            class="text-muted-foreground mt-1 text-sm"
+          >
+            Profiles
+          </p>
+        </article>
+        <article
+          class="surface-panel rounded-2xl p-5"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-library text-muted-foreground h-5 w-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m16 6 4 14"
+            />
+            <path
+              d="M12 6v14"
+            />
+            <path
+              d="M8 8v12"
+            />
+            <path
+              d="M4 4v16"
+            />
+          </svg>
+          <p
+            class="mt-5 text-3xl font-semibold tabular-nums"
+          >
+            3
+          </p>
+          <p
+            class="text-muted-foreground mt-1 text-sm"
+          >
+            Owned libraries
+          </p>
+        </article>
+        <article
+          class="surface-panel rounded-2xl p-5"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-shield-check text-muted-foreground h-5 w-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+            />
+            <path
+              d="m9 12 2 2 4-4"
+            />
+          </svg>
+          <p
+            class="mt-5 text-3xl font-semibold tabular-nums"
+          >
+            2
+          </p>
+          <p
+            class="text-muted-foreground mt-1 text-sm"
+          >
+            Entitlements
+          </p>
+        </article>
+      </div>
+      <div
+        class="surface-panel rounded-2xl p-5"
+      >
+        <h2
+          class="font-semibold"
+        >
+          Authorization state
+        </h2>
+        <dl
+          class="mt-4 grid gap-4 text-sm sm:grid-cols-3"
+        >
+          <div>
+            <dt
+              class="text-muted-foreground"
+            >
+              Policy
+            </dt>
+            <dd
+              class="mt-1 font-medium"
+            >
+              Revision 7
+            </dd>
+          </div>
+          <div>
+            <dt
+              class="text-muted-foreground"
+            >
+              Organization slug
+            </dt>
+            <dd
+              class="mt-1 font-medium"
+            >
+              north-sea-media
+            </dd>
+          </div>
+          <div>
+            <dt
+              class="text-muted-foreground"
+            >
+              Owner account
+            </dt>
+            <dd
+              class="mt-1 font-medium"
+            >
+              7
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`multitenant administration responsive release snapshots > captures People at 390px 1`] = `
+<DocumentFragment>
+  <div
+    data-release-viewport="390x900"
+  >
+    <h1
+      tabindex="-1"
+    >
+      People
+    </h1>
+    <div
+      class="surface-panel hidden overflow-x-auto rounded-2xl md:block"
+    >
+      <div
+        class="relative w-full overflow-x-auto rounded-[inherit] [scrollbar-width:thin]"
+        data-slot="table-container"
+      >
+        <table
+          class="min-w-full caption-bottom text-sm"
+          data-slot="table"
+        >
+          <thead
+            class="[&_tr]:border-b"
+            data-slot="table-header"
+          >
+            <tr
+              class="hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors"
+              data-slot="table-row"
+            >
+              <th
+                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-head"
+                scope="col"
+              >
+                Account
+              </th>
+              <th
+                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-head"
+                scope="col"
+              >
+                Status
+              </th>
+              <th
+                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-head"
+                scope="col"
+              >
+                Profiles and groups
+              </th>
+              <th
+                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-head"
+                scope="col"
+              >
+                Last activity
+              </th>
+              <th
+                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-head"
+                scope="col"
+              >
+                Security revision
+              </th>
+              <th
+                class="text-foreground h-10 px-2 py-3 align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
+                data-slot="table-head"
+                scope="col"
+              >
+                Details
+              </th>
+            </tr>
+          </thead>
+          <tbody
+            class="[&_tr:last-child]:border-0"
+            data-slot="table-body"
+          >
+            <tr
+              class="hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors"
+              data-slot="table-row"
+            >
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-cell"
+              >
+                <div
+                  class="font-medium"
+                >
+                  Alex
+                </div>
+                <div
+                  class="text-muted-foreground text-xs"
+                >
+                  alex@example.test
+                </div>
+              </td>
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-cell"
+              >
+                <span
+                  class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+                  data-slot="badge"
+                  data-variant="outline"
+                >
+                  active
+                </span>
+              </td>
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-cell"
+              >
+                <div
+                  class="space-y-2"
+                >
+                  <label
+                    class="flex items-center gap-2 text-xs"
+                  >
+                    <span
+                      class="min-w-20 truncate"
+                    >
+                      Alex
+                    </span>
+                    <span
+                      class="sr-only"
+                    >
+                      Group for Alex profile
+                    </span>
+                    <select
+                      aria-label="Group for Alex profile"
+                      class="border-input bg-background h-8 min-w-28 rounded-md border px-2"
+                    >
+                      <option
+                        value="1"
+                      >
+                        Default
+                      </option>
+                    </select>
+                  </label>
+                </div>
+              </td>
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-muted-foreground text-sm"
+                data-slot="table-cell"
+              >
+                8/13/2026
+              </td>
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] font-mono text-xs"
+                data-slot="table-cell"
+              >
+                3
+              </td>
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
+                data-slot="table-cell"
+              >
+                <button
+                  class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
+                  data-size="sm"
+                  data-slot="button"
+                  data-variant="ghost"
+                >
+                  Inspect Alex
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <ul
+      aria-label="People"
+      class="space-y-3 md:hidden"
+    >
+      <li
+        class="surface-panel rounded-2xl p-4"
+      >
+        <div
+          class="flex items-start justify-between gap-3"
+        >
+          <div>
+            <div
+              class="font-medium"
+            >
+              Alex
+            </div>
+            <div
+              class="text-muted-foreground text-xs"
+            >
+              alex@example.test
+            </div>
+          </div>
+          <span
+            class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+            data-slot="badge"
+            data-variant="outline"
+          >
+            active
+          </span>
+        </div>
+        <div
+          class="mt-4"
+        >
+          <div
+            class="space-y-2"
+          >
+            <label
+              class="flex items-center gap-2 text-xs"
+            >
+              <span
+                class="min-w-20 truncate"
+              >
+                Alex
+              </span>
+              <span
+                class="sr-only"
+              >
+                Group for Alex profile
+              </span>
+              <select
+                aria-label="Group for Alex profile"
+                class="border-input bg-background h-8 min-w-28 rounded-md border px-2"
+              >
+                <option
+                  value="1"
+                >
+                  Default
+                </option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <button
+          class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5 mt-3"
+          data-size="sm"
+          data-slot="button"
+          data-variant="outline"
+        >
+          Inspect Alex
+        </button>
+        <p
+          class="text-muted-foreground mt-2 text-xs"
+        >
+          Security revision 3
+        </p>
+      </li>
+    </ul>
+    <aside
+      aria-label="Bulk people actions"
+      class="border-primary/20 bg-primary/5 sticky bottom-4 z-20 flex flex-wrap items-center gap-2 rounded-2xl border p-3 shadow-lg backdrop-blur"
+    >
+      <strong
+        class="mr-auto text-sm"
+      >
+        1,234 people selected
+      </strong>
+      <select
+        aria-label="Assign selected people to group"
+        class="border-input bg-background h-9 rounded-md border px-3 text-sm"
+      >
+        <option
+          selected=""
+          value=""
+        >
+          Assign group…
+        </option>
+        <option
+          value="1"
+        >
+          Default
+        </option>
+      </select>
+      <button
+        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
+        data-size="sm"
+        data-slot="button"
+        data-variant="outline"
+      >
+        Reactivate memberships
+      </button>
+      <button
+        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-destructive text-white shadow-sm hover:bg-destructive/90 focus-visible:ring-destructive/20 h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
+        data-size="sm"
+        data-slot="button"
+        data-variant="destructive"
+      >
+        Suspend memberships
+      </button>
+    </aside>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`multitenant administration responsive release snapshots > captures People at 1440px 1`] = `
+<DocumentFragment>
+  <div
+    data-release-viewport="1440x900"
+  >
+    <h1
+      tabindex="-1"
+    >
+      People
+    </h1>
+    <div
+      class="surface-panel hidden overflow-x-auto rounded-2xl md:block"
+    >
+      <div
+        class="relative w-full overflow-x-auto rounded-[inherit] [scrollbar-width:thin]"
+        data-slot="table-container"
+      >
+        <table
+          class="min-w-full caption-bottom text-sm"
+          data-slot="table"
+        >
+          <thead
+            class="[&_tr]:border-b"
+            data-slot="table-header"
+          >
+            <tr
+              class="hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors"
+              data-slot="table-row"
+            >
+              <th
+                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-head"
+                scope="col"
+              >
+                Account
+              </th>
+              <th
+                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-head"
+                scope="col"
+              >
+                Status
+              </th>
+              <th
+                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-head"
+                scope="col"
+              >
+                Profiles and groups
+              </th>
+              <th
+                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-head"
+                scope="col"
+              >
+                Last activity
+              </th>
+              <th
+                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-head"
+                scope="col"
+              >
+                Security revision
+              </th>
+              <th
+                class="text-foreground h-10 px-2 py-3 align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
+                data-slot="table-head"
+                scope="col"
+              >
+                Details
+              </th>
+            </tr>
+          </thead>
+          <tbody
+            class="[&_tr:last-child]:border-0"
+            data-slot="table-body"
+          >
+            <tr
+              class="hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors"
+              data-slot="table-row"
+            >
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-cell"
+              >
+                <div
+                  class="font-medium"
+                >
+                  Alex
+                </div>
+                <div
+                  class="text-muted-foreground text-xs"
+                >
+                  alex@example.test
+                </div>
+              </td>
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-cell"
+              >
+                <span
+                  class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+                  data-slot="badge"
+                  data-variant="outline"
+                >
+                  active
+                </span>
+              </td>
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                data-slot="table-cell"
+              >
+                <div
+                  class="space-y-2"
+                >
+                  <label
+                    class="flex items-center gap-2 text-xs"
+                  >
+                    <span
+                      class="min-w-20 truncate"
+                    >
+                      Alex
+                    </span>
+                    <span
+                      class="sr-only"
+                    >
+                      Group for Alex profile
+                    </span>
+                    <select
+                      aria-label="Group for Alex profile"
+                      class="border-input bg-background h-8 min-w-28 rounded-md border px-2"
+                    >
+                      <option
+                        value="1"
+                      >
+                        Default
+                      </option>
+                    </select>
+                  </label>
+                </div>
+              </td>
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-muted-foreground text-sm"
+                data-slot="table-cell"
+              >
+                8/13/2026
+              </td>
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] font-mono text-xs"
+                data-slot="table-cell"
+              >
+                3
+              </td>
+              <td
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
+                data-slot="table-cell"
+              >
+                <button
+                  class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
+                  data-size="sm"
+                  data-slot="button"
+                  data-variant="ghost"
+                >
+                  Inspect Alex
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <ul
+      aria-label="People"
+      class="space-y-3 md:hidden"
+    >
+      <li
+        class="surface-panel rounded-2xl p-4"
+      >
+        <div
+          class="flex items-start justify-between gap-3"
+        >
+          <div>
+            <div
+              class="font-medium"
+            >
+              Alex
+            </div>
+            <div
+              class="text-muted-foreground text-xs"
+            >
+              alex@example.test
+            </div>
+          </div>
+          <span
+            class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+            data-slot="badge"
+            data-variant="outline"
+          >
+            active
+          </span>
+        </div>
+        <div
+          class="mt-4"
+        >
+          <div
+            class="space-y-2"
+          >
+            <label
+              class="flex items-center gap-2 text-xs"
+            >
+              <span
+                class="min-w-20 truncate"
+              >
+                Alex
+              </span>
+              <span
+                class="sr-only"
+              >
+                Group for Alex profile
+              </span>
+              <select
+                aria-label="Group for Alex profile"
+                class="border-input bg-background h-8 min-w-28 rounded-md border px-2"
+              >
+                <option
+                  value="1"
+                >
+                  Default
+                </option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <button
+          class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5 mt-3"
+          data-size="sm"
+          data-slot="button"
+          data-variant="outline"
+        >
+          Inspect Alex
+        </button>
+        <p
+          class="text-muted-foreground mt-2 text-xs"
+        >
+          Security revision 3
+        </p>
+      </li>
+    </ul>
+    <aside
+      aria-label="Bulk people actions"
+      class="border-primary/20 bg-primary/5 sticky bottom-4 z-20 flex flex-wrap items-center gap-2 rounded-2xl border p-3 shadow-lg backdrop-blur"
+    >
+      <strong
+        class="mr-auto text-sm"
+      >
+        1,234 people selected
+      </strong>
+      <select
+        aria-label="Assign selected people to group"
+        class="border-input bg-background h-9 rounded-md border px-3 text-sm"
+      >
+        <option
+          selected=""
+          value=""
+        >
+          Assign group…
+        </option>
+        <option
+          value="1"
+        >
+          Default
+        </option>
+      </select>
+      <button
+        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
+        data-size="sm"
+        data-slot="button"
+        data-variant="outline"
+      >
+        Reactivate memberships
+      </button>
+      <button
+        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-destructive text-white shadow-sm hover:bg-destructive/90 focus-visible:ring-destructive/20 h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
+        data-size="sm"
+        data-slot="button"
+        data-variant="destructive"
+      >
+        Suspend memberships
+      </button>
+    </aside>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`multitenant administration responsive release snapshots > captures Platform Organizations at 390px 1`] = `
+<DocumentFragment>
+  <div
+    data-release-viewport="390x900"
+  >
+    <section
+      class="admin-page space-y-6"
+    >
+      <div
+        class="page-header"
+      >
+        <div
+          class="space-y-2"
+        >
+          <h1
+            class="page-title text-[clamp(2rem,4vw,3rem)]"
+            tabindex="-1"
+          >
+            Organizations
+          </h1>
+          <p
+            class="page-subtitle text-sm sm:text-base"
+          >
+            Create, inspect, and safely suspend tenant boundaries across the platform.
+          </p>
+        </div>
+        <button
+          class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-9 px-4 py-2 has-[>svg]:px-3"
+          data-size="default"
+          data-slot="button"
+          data-variant="default"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-plus mr-2 h-4 w-4"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M5 12h14"
+            />
+            <path
+              d="M12 5v14"
+            />
+          </svg>
+          Create organization
+        </button>
+      </div>
+      <div
+        class="surface-panel grid gap-3 rounded-2xl p-4 sm:grid-cols-[minmax(0,1fr)_12rem]"
+      >
+        <div
+          class="relative"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-search text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m21 21-4.34-4.34"
+            />
+            <circle
+              cx="11"
+              cy="11"
+              r="8"
+            />
+          </svg>
+          <input
+            aria-label="Search organizations"
+            class="border-border bg-background selection:bg-primary selection:text-primary-foreground file:text-foreground placeholder:text-muted-foreground h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:border-destructive aria-invalid:ring-destructive/20 pl-9"
+            data-slot="input"
+            placeholder="Search name or slug"
+            type="search"
+            value=""
+          />
+        </div>
+        <select
+          aria-label="Organization status"
+          class="border-input bg-background h-9 rounded-md border px-3 text-sm"
+        >
+          <option
+            value="all"
+          >
+            All statuses
+          </option>
+          <option
+            value="active"
+          >
+            Active
+          </option>
+          <option
+            value="suspended"
+          >
+            Suspended
+          </option>
+          <option
+            value="initializing"
+          >
+            Initializing
+          </option>
+        </select>
+      </div>
+      <div
+        class="surface-panel overflow-x-auto rounded-2xl"
+      >
+        <div
+          class="relative w-full overflow-x-auto rounded-[inherit] [scrollbar-width:thin]"
+          data-slot="table-container"
+        >
+          <table
+            class="min-w-full caption-bottom text-sm"
+            data-slot="table"
+          >
+            <thead
+              class="[&_tr]:border-b"
+              data-slot="table-header"
+            >
+              <tr
+                class="hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors"
+                data-slot="table-row"
+              >
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  Organization
+                </th>
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  Status
+                </th>
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  People
+                </th>
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  Profiles
+                </th>
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  Libraries
+                </th>
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  Policy
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              class="[&_tr:last-child]:border-0"
+              data-slot="table-body"
+            >
+              <tr
+                class="hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors"
+                data-slot="table-row"
+              >
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  <a
+                    class="font-medium hover:underline"
+                    data-discover="true"
+                    href="/admin/platform/organizations/org-north"
+                  >
+                    North Sea Media
+                    <span
+                      class="text-muted-foreground block text-xs"
+                    >
+                      north-sea-media
+                    </span>
+                  </a>
+                </td>
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  <span
+                    class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-primary text-primary-foreground [a&]:hover:bg-primary/90"
+                    data-slot="badge"
+                    data-variant="default"
+                  >
+                    active
+                  </span>
+                </td>
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  12
+                </td>
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  18
+                </td>
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  3
+                </td>
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  r7
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div
+        class="flex items-center justify-between"
+      >
+        <button
+          class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 has-[>svg]:px-3"
+          data-size="default"
+          data-slot="button"
+          data-variant="outline"
+          disabled=""
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-chevron-left mr-1 h-4 w-4"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m15 18-6-6 6-6"
+            />
+          </svg>
+          Previous page
+        </button>
+        <span
+          class="text-muted-foreground text-sm"
+        >
+          Page 1
+        </span>
+        <button
+          aria-label="Next page"
+          class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 has-[>svg]:px-3"
+          data-size="default"
+          data-slot="button"
+          data-variant="outline"
+          disabled=""
+        >
+          Next page
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-chevron-right ml-1 h-4 w-4"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m9 18 6-6-6-6"
+            />
+          </svg>
+        </button>
+      </div>
+    </section>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`multitenant administration responsive release snapshots > captures Platform Organizations at 1440px 1`] = `
+<DocumentFragment>
+  <div
+    data-release-viewport="1440x900"
+  >
+    <section
+      class="admin-page space-y-6"
+    >
+      <div
+        class="page-header"
+      >
+        <div
+          class="space-y-2"
+        >
+          <h1
+            class="page-title text-[clamp(2rem,4vw,3rem)]"
+            tabindex="-1"
+          >
+            Organizations
+          </h1>
+          <p
+            class="page-subtitle text-sm sm:text-base"
+          >
+            Create, inspect, and safely suspend tenant boundaries across the platform.
+          </p>
+        </div>
+        <button
+          class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-9 px-4 py-2 has-[>svg]:px-3"
+          data-size="default"
+          data-slot="button"
+          data-variant="default"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-plus mr-2 h-4 w-4"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M5 12h14"
+            />
+            <path
+              d="M12 5v14"
+            />
+          </svg>
+          Create organization
+        </button>
+      </div>
+      <div
+        class="surface-panel grid gap-3 rounded-2xl p-4 sm:grid-cols-[minmax(0,1fr)_12rem]"
+      >
+        <div
+          class="relative"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-search text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m21 21-4.34-4.34"
+            />
+            <circle
+              cx="11"
+              cy="11"
+              r="8"
+            />
+          </svg>
+          <input
+            aria-label="Search organizations"
+            class="border-border bg-background selection:bg-primary selection:text-primary-foreground file:text-foreground placeholder:text-muted-foreground h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:border-destructive aria-invalid:ring-destructive/20 pl-9"
+            data-slot="input"
+            placeholder="Search name or slug"
+            type="search"
+            value=""
+          />
+        </div>
+        <select
+          aria-label="Organization status"
+          class="border-input bg-background h-9 rounded-md border px-3 text-sm"
+        >
+          <option
+            value="all"
+          >
+            All statuses
+          </option>
+          <option
+            value="active"
+          >
+            Active
+          </option>
+          <option
+            value="suspended"
+          >
+            Suspended
+          </option>
+          <option
+            value="initializing"
+          >
+            Initializing
+          </option>
+        </select>
+      </div>
+      <div
+        class="surface-panel overflow-x-auto rounded-2xl"
+      >
+        <div
+          class="relative w-full overflow-x-auto rounded-[inherit] [scrollbar-width:thin]"
+          data-slot="table-container"
+        >
+          <table
+            class="min-w-full caption-bottom text-sm"
+            data-slot="table"
+          >
+            <thead
+              class="[&_tr]:border-b"
+              data-slot="table-header"
+            >
+              <tr
+                class="hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors"
+                data-slot="table-row"
+              >
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  Organization
+                </th>
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  Status
+                </th>
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  People
+                </th>
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  Profiles
+                </th>
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  Libraries
+                </th>
+                <th
+                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-head"
+                  scope="col"
+                >
+                  Policy
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              class="[&_tr:last-child]:border-0"
+              data-slot="table-body"
+            >
+              <tr
+                class="hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors"
+                data-slot="table-row"
+              >
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  <a
+                    class="font-medium hover:underline"
+                    data-discover="true"
+                    href="/admin/platform/organizations/org-north"
+                  >
+                    North Sea Media
+                    <span
+                      class="text-muted-foreground block text-xs"
+                    >
+                      north-sea-media
+                    </span>
+                  </a>
+                </td>
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  <span
+                    class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-primary text-primary-foreground [a&]:hover:bg-primary/90"
+                    data-slot="badge"
+                    data-variant="default"
+                  >
+                    active
+                  </span>
+                </td>
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  12
+                </td>
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  18
+                </td>
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  3
+                </td>
+                <td
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  data-slot="table-cell"
+                >
+                  r7
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div
+        class="flex items-center justify-between"
+      >
+        <button
+          class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 has-[>svg]:px-3"
+          data-size="default"
+          data-slot="button"
+          data-variant="outline"
+          disabled=""
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-chevron-left mr-1 h-4 w-4"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m15 18-6-6 6-6"
+            />
+          </svg>
+          Previous page
+        </button>
+        <span
+          class="text-muted-foreground text-sm"
+        >
+          Page 1
+        </span>
+        <button
+          aria-label="Next page"
+          class="inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 has-[>svg]:px-3"
+          data-size="default"
+          data-slot="button"
+          data-variant="outline"
+          disabled=""
+        >
+          Next page
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-chevron-right ml-1 h-4 w-4"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m9 18 6-6-6-6"
+            />
+          </svg>
+        </button>
+      </div>
+    </section>
+  </div>
+</DocumentFragment>
+`;

@@ -11,9 +11,12 @@ OPA. SQL then applies the returned scope to catalog and playback reads.
 `GET /api/v2/capabilities` advertises `legacy_silo_v1`,
 `organization_memberships`, and `tenant_bounded_media_scope` as `true`. It
 advertises direct-profile login, shared-device pairing, and delegated
-administrative roles as `false`. The only native v2 routes are the public
-capability read and authenticated membership-scoped organization listing.
-There are no v2 administrative roles or mutation routes in this increment.
+administrative roles as `false`. Native administration is additive under
+`/api/v2/admin`: an authenticated account exchanges its session for one
+short-lived Platform or Organization context token. Platform routes operate on
+the organization directory; Organization routes take their organization only
+from that token and expose people, profiles, groups, libraries, entitlements,
+invitations, and redacted policy-decision explanations.
 
 `/api/v1` remains the Silo-compatible surface. Existing users and profiles are
 backfilled into the default organization without changing profile IDs, PINs,
@@ -97,4 +100,5 @@ SILO_REQUIRE_TEST_DATABASE=1 go test ./internal/database -run 'TestTenantIdentit
 SILO_REQUIRE_TEST_DATABASE=1 go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization' -count=1 -v -timeout=30m
 SILO_REQUIRE_TEST_DATABASE=1 go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m
 SILO_REQUIRE_TEST_DATABASE=1 go test ./internal/api -run 'TestV1TenancyCompatibility|TestOPATenantFoundationWithDisposablePostgres' -count=1 -v -timeout=30m
+SILO_REQUIRE_TEST_DATABASE=1 go test ./internal/api ./internal/tenancy ./internal/adminpeople ./internal/database -run 'TestMultitenantAdmin|TestAdminStore|TestService|TestAdminPeopleMigrations|TestOrganizationAdminProjectionMigration' -count=1 -v -timeout=30m
 ```

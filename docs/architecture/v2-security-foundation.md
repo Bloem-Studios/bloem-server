@@ -2,10 +2,13 @@
 
 Vondel retains the Silo-compatible `/api/v1` account login, profile picker,
 PIN unlock, token refresh, and administrative projection. The native
-`/api/v2` namespace is a separate additive boundary. This phase exposes only:
+`/api/v2` namespace is a separate additive boundary. Its discovery and
+administration surface exposes:
 
 - public `GET /api/v2/capabilities`; and
-- authenticated `GET /api/v2/organizations`.
+- authenticated `GET /api/v2/organizations`; and
+- administrative context exchange and management routes under
+  `/api/v2/admin`.
 
 The capability response is the source of truth. This increment advertises
 legacy v1 compatibility, organization membership discovery, and tenant-bounded
@@ -26,14 +29,20 @@ media scope. Its exact response is:
 }
 ```
 
-Direct-profile login, shared-device pairing, delegated administrative roles,
-and v2 mutation routes are not implemented. Clients must not infer features
-from version strings. `/api/v10/*` is not an alias and returns 404.
+Direct-profile login, shared-device pairing, and delegated administrative roles
+are not implemented. The initial organization authority is the broad,
+structured `organization_admin` role; organization administrators cannot
+upload, edit, or activate Rego. Clients must not infer features from version
+strings. `/api/v10/*` is not an alias and returns 404.
 
 ## Security invariants
 
 - Existing v1 JWTs remain valid and carry no organization authority.
 - V1 ignores organization headers and resolves only the default organization.
+- Administrative context JWTs live separately from account sessions, expire
+  within 15 minutes, and bind exactly one Platform or Organization authority.
+  Browsers retain the token in memory only; persistent storage contains at most
+  the selected non-secret context key.
 - V2 organization-bound middleware takes selection only from validated
   session claims, then rechecks the current organization, membership, policy
   revision, and security revision before attaching tenant context.
@@ -197,7 +206,8 @@ Before enabling v2 in an environment:
 2. run the v1 compatibility suite for setup, login, profile list, PIN unlock,
    admin projection, and refresh;
 3. confirm v1 tokens and payloads contain no tenant identity;
-4. confirm v2 has no write routes and advertises only implemented features;
+4. confirm every v2 administrative route requires the matching short-lived
+   context and advertises only implemented features;
 5. resolve ownership ambiguity, if present; and
 6. retain the pre-migration backup until the rollback window is explicitly
    closed.

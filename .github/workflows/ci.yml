@@ -84,6 +84,15 @@ jobs:
           SILO_REQUIRE_TEST_DATABASE: "1"
         run: go test ./internal/api -run 'TestV1TenancyCompatibility|TestOPATenantFoundationWithDisposablePostgres' -count=1 -v -timeout=30m
 
+      - name: Multitenant administration release gate
+        env:
+          SILO_REQUIRE_TEST_DATABASE: "1"
+          SILO_TEST_DATABASE_URL: postgres://vondel_tenant:invented-ci-password@127.0.0.1:5432/postgres?sslmode=disable
+        run: |
+          go test ./internal/api ./internal/tenancy ./internal/adminpeople ./internal/database \
+            -run 'TestMultitenantAdmin|TestAdminStore|TestService|TestAdminPeopleMigrations|TestOrganizationAdminProjectionMigration' \
+            -count=1 -v -timeout=30m
+
   go:
     name: Go
     runs-on: ubuntu-latest
