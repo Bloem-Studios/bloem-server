@@ -2,14 +2,12 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/Silo-Server/silo-server/internal/activitylog"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -25,6 +23,8 @@ type adminPlatformStoreStub struct {
 	listErr      error
 	getErr       error
 	mutationErr  error
+	getErrors    []error
+	actor        tenancy.AdminMutationActor
 	calls        int
 }
 
@@ -35,6 +35,11 @@ func (s *adminPlatformStoreStub) ListOrganizations(context.Context, tenancy.Orga
 
 func (s *adminPlatformStoreStub) GetOrganization(context.Context, uuid.UUID) (tenancy.Organization, error) {
 	s.calls++
+	if len(s.getErrors) > 0 {
+		err := s.getErrors[0]
+		s.getErrors = s.getErrors[1:]
+		return s.organization, err
+	}
 	return s.organization, s.getErr
 }
 
@@ -43,23 +48,27 @@ func (s *adminPlatformStoreStub) GetOrganizationSummary(context.Context, uuid.UU
 	return tenancy.OrganizationSummary{Organization: s.organization}, s.getErr
 }
 
-func (s *adminPlatformStoreStub) CreateOrganization(context.Context, tenancy.CreateOrganizationInput) (tenancy.Organization, error) {
+func (s *adminPlatformStoreStub) CreateOrganization(ctx context.Context, _ tenancy.CreateOrganizationInput) (tenancy.Organization, error) {
 	s.calls++
+	s.actor, _ = tenancy.AdminMutationActorFromContext(ctx)
 	return s.organization, s.mutationErr
 }
 
-func (s *adminPlatformStoreStub) UpdateOrganization(context.Context, uuid.UUID, int64, tenancy.UpdateOrganizationInput) (tenancy.Organization, error) {
+func (s *adminPlatformStoreStub) UpdateOrganization(ctx context.Context, _ uuid.UUID, _ int64, _ tenancy.UpdateOrganizationInput) (tenancy.Organization, error) {
 	s.calls++
+	s.actor, _ = tenancy.AdminMutationActorFromContext(ctx)
 	return s.organization, s.mutationErr
 }
 
-func (s *adminPlatformStoreStub) SetOrganizationStatus(context.Context, uuid.UUID, int64, tenancy.OrganizationStatus) (tenancy.Organization, error) {
+func (s *adminPlatformStoreStub) SetOrganizationStatus(ctx context.Context, _ uuid.UUID, _ int64, _ tenancy.OrganizationStatus) (tenancy.Organization, error) {
 	s.calls++
+	s.actor, _ = tenancy.AdminMutationActorFromContext(ctx)
 	return s.organization, s.mutationErr
 }
 
-func (s *adminPlatformStoreStub) TransferOwnership(context.Context, uuid.UUID, int64, int) (tenancy.Organization, error) {
+func (s *adminPlatformStoreStub) TransferOwnership(ctx context.Context, _ uuid.UUID, _ int64, _ int) (tenancy.Organization, error) {
 	s.calls++
+	s.actor, _ = tenancy.AdminMutationActorFromContext(ctx)
 	return s.organization, s.mutationErr
 }
 
@@ -73,29 +82,34 @@ func (s *adminPlatformStoreStub) GetOrganizationMembership(context.Context, uuid
 	return s.membership, s.getErr
 }
 
-func (s *adminPlatformStoreStub) CreateMembership(context.Context, uuid.UUID, int64, tenancy.CreateMembershipInput) (tenancy.Membership, tenancy.Organization, error) {
+func (s *adminPlatformStoreStub) CreateMembership(ctx context.Context, _ uuid.UUID, _ int64, _ tenancy.CreateMembershipInput) (tenancy.Membership, tenancy.Organization, error) {
 	s.calls++
+	s.actor, _ = tenancy.AdminMutationActorFromContext(ctx)
 	return s.membership, s.organization, s.mutationErr
 }
 
-func (s *adminPlatformStoreStub) UpdateMembership(context.Context, uuid.UUID, uuid.UUID, int64, tenancy.UpdateMembershipInput) (tenancy.Membership, tenancy.Organization, error) {
+func (s *adminPlatformStoreStub) UpdateMembership(ctx context.Context, _ uuid.UUID, _ uuid.UUID, _ int64, _ tenancy.UpdateMembershipInput) (tenancy.Membership, tenancy.Organization, error) {
 	s.calls++
+	s.actor, _ = tenancy.AdminMutationActorFromContext(ctx)
 	return s.membership, s.organization, s.mutationErr
 }
 
-type adminAuditRecorderStub struct {
-	events []activitylog.AdminEvent
-	err    error
+type adminReauthVerifierStub struct {
+	allowed    bool
+	err        error
+	calls      int
+	credential string
 }
 
-func (s *adminAuditRecorderStub) RecordAdminEvent(_ context.Context, event activitylog.AdminEvent) error {
-	s.events = append(s.events, event)
-	return s.err
+func (s *adminReauthVerifierStub) VerifyPassword(_ context.Context, _ int, credential string) (bool, error) {
+	s.calls++
+	s.credential = credential
+	return s.allowed, s.err
 }
 
 func TestV2AdminPlatformRejectsOrganizationContextBeforeStoreAccess(t *testing.T) {
 	store := &adminPlatformStoreStub{}
-	handler := NewV2AdminPlatformHandler(store, &adminAuditRecorderStub{})
+	handler := NewV2AdminPlatformHandler(store, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/v2/admin/platform/organizations", nil)
 	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), auth.AdminContextClaims{
 		AccountID: 7, Scope: auth.AdminScopeOrganization, OrganizationID: uuid.New(), MembershipID: uuid.New(), PolicyRevision: 1, SecurityRevision: 1,
@@ -111,15 +125,14 @@ func TestV2AdminPlatformRejectsOrganizationContextBeforeStoreAccess(t *testing.T
 	}
 }
 
-func TestV2AdminPlatformCreateValidatesFieldsAndAuditsWithoutSecrets(t *testing.T) {
+func TestV2AdminPlatformCreateValidatesFieldsAndProvidesAtomicAuditContext(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	ownerID := 42
 	store := &adminPlatformStoreStub{organization: tenancy.Organization{
 		ID: organizationID, Name: "North Sea Media", Slug: "north-sea-media", Status: tenancy.OrganizationActive,
 		OwnerAccountID: &ownerID, PolicyRevision: 1,
 	}}
-	audit := &adminAuditRecorderStub{}
-	handler := NewV2AdminPlatformHandler(store, audit)
+	handler := NewV2AdminPlatformHandler(store, nil)
 
 	invalid := adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations", `{"name":"","slug":"Bad Slug","owner_account_id":0}`, nil)
 	invalidRec := httptest.NewRecorder()
@@ -144,14 +157,8 @@ func TestV2AdminPlatformCreateValidatesFieldsAndAuditsWithoutSecrets(t *testing.
 	if !strings.Contains(rec.Body.String(), `"policy_revision":1`) || strings.Contains(rec.Body.String(), `"PolicyRevision"`) {
 		t.Fatalf("response does not use v2 snake_case fields: %s", rec.Body.String())
 	}
-	if len(audit.events) != 1 {
-		t.Fatalf("audit events = %+v", audit.events)
-	}
-	event := audit.events[0]
-	encoded, _ := json.Marshal(event)
-	if event.ActorAccountID != 7 || event.AuthorityContext != "platform" || event.OrganizationID != organizationID || event.RequestID != "request-123" ||
-		event.BeforeRevision != 0 || event.AfterRevision != 1 || event.Outcome != "success" || strings.Contains(string(encoded), "secret") || strings.Contains(string(encoded), "token") {
-		t.Fatalf("audit event = %s", encoded)
+	if store.actor.AccountID != 7 || store.actor.PlatformRole != "platform_admin" || store.actor.AuthorityContext != "platform" || store.actor.RequestID != "request-123" {
+		t.Fatalf("atomic audit actor = %+v", store.actor)
 	}
 }
 
@@ -161,7 +168,7 @@ func TestV2AdminPlatformMapsStaleRevisionWithCurrentRevision(t *testing.T) {
 		organization: tenancy.Organization{ID: organizationID, PolicyRevision: 9},
 		mutationErr:  tenancy.ErrAuthorizationStateChanged,
 	}
-	handler := NewV2AdminPlatformHandler(store, &adminAuditRecorderStub{})
+	handler := NewV2AdminPlatformHandler(store, nil)
 	req := adminPlatformRequest(http.MethodPatch, "/api/v2/admin/platform/organizations/"+organizationID.String(), `{"expected_revision":8,"name":"Changed"}`, map[string]string{"id": organizationID.String()})
 	rec := httptest.NewRecorder()
 
@@ -174,8 +181,8 @@ func TestV2AdminPlatformMapsStaleRevisionWithCurrentRevision(t *testing.T) {
 func TestV2AdminPlatformMembershipIdentifierIsNonDisclosing(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	membershipID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
-	store := &adminPlatformStoreStub{getErr: tenancy.ErrMembershipNotFound}
-	handler := NewV2AdminPlatformHandler(store, &adminAuditRecorderStub{})
+	store := &adminPlatformStoreStub{mutationErr: tenancy.ErrMembershipNotFound}
+	handler := NewV2AdminPlatformHandler(store, nil)
 	req := adminPlatformRequest(http.MethodPatch, "/api/v2/admin/platform/organizations/"+organizationID.String()+"/memberships/"+membershipID.String(), `{"expected_revision":3,"status":"suspended"}`, map[string]string{
 		"id": organizationID.String(), "membership_id": membershipID.String(),
 	})
@@ -188,12 +195,89 @@ func TestV2AdminPlatformMembershipIdentifierIsNonDisclosing(t *testing.T) {
 }
 
 func TestV2AdminPlatformMapsUnavailableStore(t *testing.T) {
-	handler := NewV2AdminPlatformHandler(&adminPlatformStoreStub{listErr: errors.New("database offline")}, &adminAuditRecorderStub{})
+	handler := NewV2AdminPlatformHandler(&adminPlatformStoreStub{listErr: errors.New("database offline")}, nil)
 	req := adminPlatformRequest(http.MethodGet, "/api/v2/admin/platform/organizations", "", nil)
 	rec := httptest.NewRecorder()
 
 	handler.HandleListOrganizations(rec, req)
 	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), `"error":"tenant_unavailable"`) {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestV2AdminPlatformAtomicAuditFailureReturnsUnavailable(t *testing.T) {
+	store := &adminPlatformStoreStub{mutationErr: errors.New("record admin audit event: forced failure")}
+	handler := NewV2AdminPlatformHandler(store, nil)
+	req := adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations", `{"name":"Atomic","slug":"atomic","owner_account_id":42}`, nil)
+	rec := httptest.NewRecorder()
+
+	handler.HandleCreateOrganization(rec, req)
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), `"error":"tenant_unavailable"`) {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestV2AdminPlatformTransferRequiresValidReauthentication(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	ownerID := 42
+	for _, test := range []struct {
+		name       string
+		password   string
+		verifier   *adminReauthVerifierStub
+		wantStatus int
+		wantCalls  int
+	}{
+		{name: "absent credential", verifier: &adminReauthVerifierStub{allowed: true}, wantStatus: http.StatusUnauthorized},
+		{name: "wrong credential", password: "wrong", verifier: &adminReauthVerifierStub{}, wantStatus: http.StatusUnauthorized},
+		{name: "correct credential", password: "correct horse battery staple", verifier: &adminReauthVerifierStub{allowed: true}, wantStatus: http.StatusOK, wantCalls: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store := &adminPlatformStoreStub{organization: tenancy.Organization{ID: organizationID, OwnerAccountID: &ownerID, PolicyRevision: 5}}
+			handler := NewV2AdminPlatformHandler(store, test.verifier)
+			body := `{"expected_revision":4,"owner_account_id":42,"confirmed":true,"password":"` + test.password + `"}`
+			req := adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations/"+organizationID.String()+"/transfer-ownership", body, map[string]string{"id": organizationID.String()})
+			rec := httptest.NewRecorder()
+
+			handler.HandleTransferOwnership(rec, req)
+			if rec.Code != test.wantStatus {
+				t.Fatalf("response = %d %s, want %d", rec.Code, rec.Body.String(), test.wantStatus)
+			}
+			if store.calls != test.wantCalls {
+				t.Fatalf("store calls = %d, want %d", store.calls, test.wantCalls)
+			}
+			if strings.Contains(rec.Body.String(), test.password) && test.password != "" {
+				t.Fatalf("response disclosed credential: %s", rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestV2AdminPlatformStaleRevisionLookupFailureReturnsUnavailable(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	store := &adminPlatformStoreStub{
+		organization: tenancy.Organization{ID: organizationID, PolicyRevision: 9},
+		mutationErr:  tenancy.ErrAuthorizationStateChanged,
+		getErrors:    []error{errors.New("revision lookup failed")},
+	}
+	handler := NewV2AdminPlatformHandler(store, nil)
+	req := adminPlatformRequest(http.MethodPatch, "/api/v2/admin/platform/organizations/"+organizationID.String(), `{"expected_revision":8,"name":"Changed"}`, map[string]string{"id": organizationID.String()})
+	rec := httptest.NewRecorder()
+
+	handler.HandleUpdateOrganization(rec, req)
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), `"error":"tenant_unavailable"`) || strings.Contains(rec.Body.String(), `"current_revision":0`) {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestV2AdminPlatformMissingMembershipAccountIsFieldAddressable(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	store := &adminPlatformStoreStub{mutationErr: tenancy.ErrAccountNotFound}
+	handler := NewV2AdminPlatformHandler(store, nil)
+	req := adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations/"+organizationID.String()+"/memberships", `{"expected_revision":3,"account_id":999,"legacy_role":"user"}`, map[string]string{"id": organizationID.String()})
+	rec := httptest.NewRecorder()
+
+	handler.HandleCreateMembership(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), `"account_id"`) || strings.Contains(rec.Body.String(), `"owner_account_id"`) {
 		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
 	}
 }

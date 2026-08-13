@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 
-	"github.com/Silo-Server/silo-server/internal/activitylog"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -43,11 +42,8 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 		adminMW = apimw.NewAdminContextMiddleware(tokens, resolver, membershipStore, platform)
 	}
 	if tenants, ok := store.(*tenancy.Store); ok {
-		audit := deps.ActivityLogRepo
-		if audit == nil && deps.DB != nil {
-			audit = activitylog.NewRepo(deps.DB)
-		}
-		platformHandler = handlers.NewV2AdminPlatformHandler(tenants, audit)
+		verifier := auth.NewAccountCredentialVerifier(auth.NewUserRepository(deps.DB))
+		platformHandler = handlers.NewV2AdminPlatformHandler(tenants, verifier)
 	}
 	mountV2Routes(r, handlers.NewV2SystemHandler(store), session, authMW, adminMW, platformHandler)
 }

@@ -40,10 +40,63 @@ ok github.com/Silo-Server/silo-server/internal/activitylog
 
 git diff --check
 exit 0
+
+SILO_REQUIRE_TEST_DATABASE=1 SILO_TEST_DATABASE_URL=... GOWORK=off \
+  go test -race ./internal/tenancy ./internal/api/handlers \
+  -run 'TestAdminStore|TestV2AdminPlatform' -count=1
+ok github.com/Silo-Server/silo-server/internal/tenancy
+ok github.com/Silo-Server/silo-server/internal/api/handlers
 ```
 
-## Self-review and concerns
+## Self-review
 
-- Auditing is fail-closed at the HTTP mutation boundary: if persistence is unavailable the response is `503`. The lifecycle mutation and audit insertion are not one PostgreSQL transaction because the existing store API returns the completed mutation before the handler records its typed event. This meets the requested record content and prevents a success response without audit, but a database failure between those operations can leave a committed mutation whose handler returns `503`. A future store API can accept audit metadata to make this fully atomic.
-- Ownership transfer enforces explicit confirmation and an active organization membership. The approved design also calls for account re-authentication; Task 1 exposes validated Platform context but no recent-auth proof, so the endpoint cannot honestly enforce re-authentication yet. This should be added when that proof is available rather than accepting a caller-supplied assertion.
 - The added migration is necessary because the current generic request activity table has no fields for typed lifecycle action, target, authority context, revision pairs, outcome, or bounded state.
+
+## Fix round 1
+
+Resolved all review findings rather than retaining the earlier concerns:
+
+- Every authority-changing organization and membership store method now requires validated Platform actor metadata in context, locks the accurate before-state, performs the mutation, inserts its typed audit event through the same `pgx.Tx`, and commits once. A forced audit trigger failure rolls the lifecycle change back.
+- Stale mutations are rejected after locking and produce no audit event; successful audit records contain the locked before/after revisions and bounded state.
+- Ownership transfer requires explicit confirmation and actual password re-authentication. A narrow verifier loads the authenticated account through the existing user repository and uses the existing bcrypt password check. The password is not passed to tenancy storage or audit state.
+- Ownership transfer locks the target account and rejects disabled targets.
+- Failed current-revision lookup after a stale mutation returns `503 tenant_unavailable`, never a `409` with revision zero.
+- Missing membership accounts use the distinct `ErrAccountNotFound` and map to a field-addressable `account_id` validation error.
+
+### RED evidence
+
+```text
+SILO_REQUIRE_TEST_DATABASE=1 SILO_TEST_DATABASE_URL=... GOWORK=off \
+  go test ./internal/tenancy -run 'TestAdminStore' -count=1
+# failed to compile: undefined ErrAccountNotFound, WithAdminMutationActor, AdminMutationActor
+
+GOWORK=off go test ./internal/auth -run 'TestAccountCredentialVerifier' -count=1
+# failed to compile: undefined NewAccountCredentialVerifier
+
+GOWORK=off go test ./internal/api/handlers -run 'TestV2AdminPlatform' -count=1
+# failed to compile: re-auth verifier did not match the old audit-recorder constructor
+```
+
+The first store implementation also exposed and reproduced an import cycle when tenancy attempted to import the broad activity-log package. The final implementation keeps the typed audit insert in the tenancy-owned transaction and avoids that dependency inversion.
+
+### GREEN evidence
+
+```text
+SILO_REQUIRE_TEST_DATABASE=1 SILO_TEST_DATABASE_URL=... GOWORK=off \
+  go test ./internal/tenancy ./internal/api/handlers \
+  -run 'TestAdminStore|TestV2AdminPlatform' -count=1
+ok github.com/Silo-Server/silo-server/internal/tenancy
+ok github.com/Silo-Server/silo-server/internal/api/handlers
+
+GOWORK=off go test ./internal/auth -run 'TestAccountCredentialVerifier' -count=1
+ok github.com/Silo-Server/silo-server/internal/auth
+
+SILO_TEST_DATABASE_URL=... GOWORK=off go test ./internal/api -run 'TestV2Admin' -count=1
+ok github.com/Silo-Server/silo-server/internal/api
+
+GOWORK=off go vet ./internal/tenancy ./internal/api/handlers ./internal/auth
+exit 0
+
+git diff --check
+exit 0
+```

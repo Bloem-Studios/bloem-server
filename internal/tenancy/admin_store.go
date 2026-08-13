@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -23,7 +24,35 @@ var (
 	ErrOrganizationSlugConflict  = errors.New("organization slug conflicts with an existing organization")
 	ErrInvalidCursor             = errors.New("invalid cursor")
 	ErrInvalidAdminMutation      = errors.New("invalid administrative mutation")
+	ErrAdminAuditRequired        = errors.New("administrative audit context required")
+	ErrAccountNotFound           = errors.New("account not found")
 )
+
+type AdminMutationActor struct {
+	AccountID        int
+	PlatformRole     string
+	AuthorityContext string
+	RequestID        string
+}
+
+type adminMutationActorKey struct{}
+
+func WithAdminMutationActor(ctx context.Context, actor AdminMutationActor) context.Context {
+	return context.WithValue(ctx, adminMutationActorKey{}, actor)
+}
+
+func AdminMutationActorFromContext(ctx context.Context) (AdminMutationActor, bool) {
+	actor, ok := ctx.Value(adminMutationActorKey{}).(AdminMutationActor)
+	return actor, ok
+}
+
+func adminMutationActor(ctx context.Context) (AdminMutationActor, error) {
+	actor, ok := AdminMutationActorFromContext(ctx)
+	if !ok || actor.AccountID <= 0 || actor.PlatformRole != "platform_admin" || actor.AuthorityContext != "platform" {
+		return AdminMutationActor{}, ErrAdminAuditRequired
+	}
+	return actor, nil
+}
 
 type OrganizationCursor struct {
 	Name string    `json:"name"`
@@ -183,6 +212,10 @@ func (s *Store) CreateOrganization(ctx context.Context, input CreateOrganization
 	if name == "" || slug == "" || input.OwnerAccountID <= 0 {
 		return Organization{}, ErrInvalidAdminMutation
 	}
+	actor, err := adminMutationActor(ctx)
+	if err != nil {
+		return Organization{}, err
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Organization{}, fmt.Errorf("begin organization creation: %w", err)
@@ -211,13 +244,16 @@ func (s *Store) CreateOrganization(ctx context.Context, input CreateOrganization
 		VALUES ($1, $2, $3, $4)`, organization.ID, input.OwnerAccountID, MembershipActive, legacyRoleAdmin); err != nil {
 		return Organization{}, mapAdminWriteError("create owner membership", err)
 	}
+	if err = recordOrganizationAudit(ctx, tx, actor, "organization.created", organization, 0, organization.PolicyRevision, nil, organizationAdminAuditState(organization)); err != nil {
+		return Organization{}, err
+	}
 	if err = tx.Commit(ctx); err != nil {
 		return Organization{}, fmt.Errorf("commit organization creation: %w", err)
 	}
 	return organization, nil
 }
 
-func (s *Store) UpdateOrganization(ctx context.Context, organizationID uuid.UUID, expectedRevision int64, input UpdateOrganizationInput) (Organization, error) {
+func (s *Store) UpdateOrganization(ctx context.Context, organizationID uuid.UUID, expectedRevision int64, input UpdateOrganizationInput) (organization Organization, err error) {
 	if organizationID == uuid.Nil || expectedRevision <= 0 || (input.Name == nil && input.Slug == nil) {
 		return Organization{}, ErrInvalidAdminMutation
 	}
@@ -236,35 +272,90 @@ func (s *Store) UpdateOrganization(ctx context.Context, organizationID uuid.UUID
 		}
 		slug = &trimmed
 	}
-	organization, err := scanOrganization(s.pool.QueryRow(ctx, `
-		UPDATE organizations
-		SET name = COALESCE($3, name), slug = COALESCE($4, slug),
-		    policy_revision = policy_revision + 1, updated_at = now()
-		WHERE id = $1 AND policy_revision = $2
-		RETURNING `+organizationColumns, organizationID, expectedRevision, name, slug))
+	actor, err := adminMutationActor(ctx)
+	if err != nil {
+		return Organization{}, err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Organization{}, fmt.Errorf("begin organization update: %w", err)
+	}
+	defer rollbackOnError(ctx, tx, &err)
+	before, err := scanOrganization(tx.QueryRow(ctx, `SELECT `+organizationColumns+` FROM organizations WHERE id=$1 FOR UPDATE`, organizationID))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Organization{}, s.organizationMutationMiss(ctx, organizationID)
+		return Organization{}, ErrOrganizationNotFound
 	}
 	if err != nil {
+		return Organization{}, fmt.Errorf("lock organization for update: %w", err)
+	}
+	if before.PolicyRevision != expectedRevision {
+		return Organization{}, ErrAuthorizationStateChanged
+	}
+	organization, err = scanOrganization(tx.QueryRow(ctx, `
+		UPDATE organizations
+		SET name = COALESCE($2, name), slug = COALESCE($3, slug),
+		    policy_revision = policy_revision + 1, updated_at = now()
+		WHERE id = $1
+		RETURNING `+organizationColumns, organizationID, name, slug))
+	if err != nil {
 		return Organization{}, mapAdminWriteError("update organization", err)
+	}
+	if before.Name != organization.Name {
+		if err = recordOrganizationAudit(ctx, tx, actor, "organization.renamed", organization, before.PolicyRevision, organization.PolicyRevision, organizationAdminAuditState(before), organizationAdminAuditState(organization)); err != nil {
+			return Organization{}, err
+		}
+	}
+	if before.Slug != organization.Slug {
+		if err = recordOrganizationAudit(ctx, tx, actor, "organization.slug_changed", organization, before.PolicyRevision, organization.PolicyRevision, organizationAdminAuditState(before), organizationAdminAuditState(organization)); err != nil {
+			return Organization{}, err
+		}
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Organization{}, fmt.Errorf("commit organization update: %w", err)
 	}
 	return organization, nil
 }
 
-func (s *Store) SetOrganizationStatus(ctx context.Context, organizationID uuid.UUID, expectedRevision int64, status OrganizationStatus) (Organization, error) {
+func (s *Store) SetOrganizationStatus(ctx context.Context, organizationID uuid.UUID, expectedRevision int64, status OrganizationStatus) (organization Organization, err error) {
 	if organizationID == uuid.Nil || expectedRevision <= 0 || (status != OrganizationActive && status != OrganizationSuspended) {
 		return Organization{}, ErrInvalidAdminMutation
 	}
-	organization, err := scanOrganization(s.pool.QueryRow(ctx, `
-		UPDATE organizations
-		SET status = $3, policy_revision = policy_revision + 1, updated_at = now()
-		WHERE id = $1 AND policy_revision = $2
-		RETURNING `+organizationColumns, organizationID, expectedRevision, status))
+	actor, err := adminMutationActor(ctx)
+	if err != nil {
+		return Organization{}, err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Organization{}, fmt.Errorf("begin organization status update: %w", err)
+	}
+	defer rollbackOnError(ctx, tx, &err)
+	before, err := scanOrganization(tx.QueryRow(ctx, `SELECT `+organizationColumns+` FROM organizations WHERE id=$1 FOR UPDATE`, organizationID))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Organization{}, s.organizationMutationMiss(ctx, organizationID)
+		return Organization{}, ErrOrganizationNotFound
 	}
 	if err != nil {
+		return Organization{}, fmt.Errorf("lock organization for status update: %w", err)
+	}
+	if before.PolicyRevision != expectedRevision {
+		return Organization{}, ErrAuthorizationStateChanged
+	}
+	organization, err = scanOrganization(tx.QueryRow(ctx, `
+		UPDATE organizations
+		SET status = $2, policy_revision = policy_revision + 1, updated_at = now()
+		WHERE id = $1
+		RETURNING `+organizationColumns, organizationID, status))
+	if err != nil {
 		return Organization{}, mapAdminWriteError("set organization status", err)
+	}
+	action := "organization.reactivated"
+	if status == OrganizationSuspended {
+		action = "organization.suspended"
+	}
+	if err = recordOrganizationAudit(ctx, tx, actor, action, organization, before.PolicyRevision, organization.PolicyRevision, organizationAdminAuditState(before), organizationAdminAuditState(organization)); err != nil {
+		return Organization{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Organization{}, fmt.Errorf("commit organization status update: %w", err)
 	}
 	return organization, nil
 }
@@ -272,6 +363,10 @@ func (s *Store) SetOrganizationStatus(ctx context.Context, organizationID uuid.U
 func (s *Store) TransferOwnership(ctx context.Context, organizationID uuid.UUID, expectedRevision int64, accountID int) (organization Organization, err error) {
 	if organizationID == uuid.Nil || expectedRevision <= 0 || accountID <= 0 {
 		return Organization{}, ErrInvalidAdminMutation
+	}
+	actor, err := adminMutationActor(ctx)
+	if err != nil {
+		return Organization{}, err
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -288,6 +383,16 @@ func (s *Store) TransferOwnership(ctx context.Context, organizationID uuid.UUID,
 	}
 	if organization.PolicyRevision != expectedRevision {
 		return Organization{}, ErrAuthorizationStateChanged
+	}
+	before := organization
+	var enabled bool
+	if err = tx.QueryRow(ctx, `SELECT enabled FROM users WHERE id=$1 FOR UPDATE`, accountID).Scan(&enabled); errors.Is(err, pgx.ErrNoRows) {
+		return Organization{}, ErrOwnerNotEligible
+	} else if err != nil {
+		return Organization{}, fmt.Errorf("lock new owner account: %w", err)
+	}
+	if !enabled {
+		return Organization{}, ErrOwnerNotEligible
 	}
 	membership, err := scanMembership(tx.QueryRow(ctx, `
 		SELECT id, organization_id, account_id, status, legacy_role, security_revision
@@ -316,6 +421,9 @@ func (s *Store) TransferOwnership(ctx context.Context, organizationID uuid.UUID,
 		RETURNING `+organizationColumns, organizationID, accountID))
 	if err != nil {
 		return Organization{}, mapAdminWriteError("transfer organization ownership", err)
+	}
+	if err = recordOrganizationAudit(ctx, tx, actor, "organization.ownership_transferred", organization, before.PolicyRevision, organization.PolicyRevision, organizationAdminAuditState(before), organizationAdminAuditState(organization)); err != nil {
+		return Organization{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return Organization{}, fmt.Errorf("commit ownership transfer: %w", err)
@@ -402,6 +510,10 @@ func (s *Store) CreateMembership(ctx context.Context, organizationID uuid.UUID, 
 	if !validMembershipStatus(input.Status) {
 		return Membership{}, Organization{}, ErrInvalidAdminMutation
 	}
+	actor, err := adminMutationActor(ctx)
+	if err != nil {
+		return Membership{}, Organization{}, err
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Membership{}, Organization{}, fmt.Errorf("begin membership creation: %w", err)
@@ -417,6 +529,12 @@ func (s *Store) CreateMembership(ctx context.Context, organizationID uuid.UUID, 
 	if organization.PolicyRevision != expectedRevision {
 		return Membership{}, Organization{}, ErrAuthorizationStateChanged
 	}
+	var accountExists bool
+	if err = tx.QueryRow(ctx, `SELECT true FROM users WHERE id=$1 FOR UPDATE`, input.AccountID).Scan(&accountExists); errors.Is(err, pgx.ErrNoRows) {
+		return Membership{}, Organization{}, ErrAccountNotFound
+	} else if err != nil {
+		return Membership{}, Organization{}, fmt.Errorf("lock membership account: %w", err)
+	}
 	membership, err = scanMembership(tx.QueryRow(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		VALUES ($1, $2, $3, $4)
@@ -429,6 +547,9 @@ func (s *Store) CreateMembership(ctx context.Context, organizationID uuid.UUID, 
 		WHERE id = $1 RETURNING `+organizationColumns, organizationID))
 	if err != nil {
 		return Membership{}, Organization{}, mapAdminWriteError("advance organization membership revision", err)
+	}
+	if err = recordMembershipAudit(ctx, tx, actor, "membership.created", organization, membership, 0, membership.SecurityRevision, nil, membershipAdminAuditState(membership)); err != nil {
+		return Membership{}, Organization{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return Membership{}, Organization{}, fmt.Errorf("commit membership creation: %w", err)
@@ -445,6 +566,10 @@ func (s *Store) UpdateMembership(ctx context.Context, organizationID, membership
 	}
 	if input.Status != nil && !validMembershipStatus(*input.Status) {
 		return Membership{}, Organization{}, ErrInvalidAdminMutation
+	}
+	actor, err := adminMutationActor(ctx)
+	if err != nil {
+		return Membership{}, Organization{}, err
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -470,6 +595,7 @@ func (s *Store) UpdateMembership(ctx context.Context, organizationID, membership
 	if membership.SecurityRevision != expectedRevision {
 		return Membership{}, Organization{}, ErrAuthorizationStateChanged
 	}
+	before := membership
 	if organization.OwnerAccountID != nil && *organization.OwnerAccountID == membership.AccountID {
 		if (input.Status != nil && *input.Status != MembershipActive) || (input.LegacyRole != nil && *input.LegacyRole != legacyRoleAdmin) {
 			return Membership{}, Organization{}, ErrMembershipConflict
@@ -489,6 +615,13 @@ func (s *Store) UpdateMembership(ctx context.Context, organizationID, membership
 		WHERE id = $1 RETURNING `+organizationColumns, organizationID))
 	if err != nil {
 		return Membership{}, Organization{}, mapAdminWriteError("advance organization membership revision", err)
+	}
+	action := "membership.role_changed"
+	if before.Status != membership.Status {
+		action = "membership.status_changed"
+	}
+	if err = recordMembershipAudit(ctx, tx, actor, action, organization, membership, before.SecurityRevision, membership.SecurityRevision, membershipAdminAuditState(before), membershipAdminAuditState(membership)); err != nil {
+		return Membership{}, Organization{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return Membership{}, Organization{}, fmt.Errorf("commit membership update: %w", err)
@@ -515,6 +648,51 @@ func validMembershipStatus(status MembershipStatus) bool {
 }
 
 func validLegacyRole(role string) bool { return role == legacyRoleAdmin || role == legacyRoleUser }
+
+func recordOrganizationAudit(ctx context.Context, tx pgx.Tx, actor AdminMutationActor, action string, organization Organization, beforeRevision, afterRevision int64, beforeState, afterState map[string]any) error {
+	return insertAdminAudit(ctx, tx, actor, action, "organization", organization.ID.String(), organization.ID, "", beforeRevision, afterRevision, beforeState, afterState)
+}
+
+func recordMembershipAudit(ctx context.Context, tx pgx.Tx, actor AdminMutationActor, action string, organization Organization, membership Membership, beforeRevision, afterRevision int64, beforeState, afterState map[string]any) error {
+	return insertAdminAudit(ctx, tx, actor, action, "membership", membership.ID.String(), organization.ID, strconv.Itoa(membership.AccountID), beforeRevision, afterRevision, beforeState, afterState)
+}
+
+func insertAdminAudit(ctx context.Context, tx pgx.Tx, actor AdminMutationActor, action, targetType, targetID string, organizationID uuid.UUID, subjectID string, beforeRevision, afterRevision int64, beforeState, afterState map[string]any) error {
+	beforeJSON, err := json.Marshal(beforeState)
+	if err != nil {
+		return fmt.Errorf("marshal admin audit before state: %w", err)
+	}
+	afterJSON, err := json.Marshal(afterState)
+	if err != nil {
+		return fmt.Errorf("marshal admin audit after state: %w", err)
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO admin_audit_events (
+			actor_account_id, actor_platform_role, authority_context, action,
+			target_type, target_id, organization_id, subject_id,
+			before_revision, after_revision, outcome, request_id,
+			before_state, after_state
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9, $10, 'success', NULLIF($11, ''), $12, $13)`,
+		actor.AccountID, actor.PlatformRole, actor.AuthorityContext, action,
+		targetType, targetID, organizationID, subjectID, beforeRevision, afterRevision,
+		actor.RequestID, beforeJSON, afterJSON)
+	if err != nil {
+		return fmt.Errorf("record admin audit event: %w", err)
+	}
+	return nil
+}
+
+func organizationAdminAuditState(organization Organization) map[string]any {
+	state := map[string]any{"name": organization.Name, "slug": organization.Slug, "status": organization.Status}
+	if organization.OwnerAccountID != nil {
+		state["owner_account_id"] = *organization.OwnerAccountID
+	}
+	return state
+}
+
+func membershipAdminAuditState(membership Membership) map[string]any {
+	return map[string]any{"account_id": membership.AccountID, "status": membership.Status, "legacy_role": membership.LegacyRole}
+}
 
 func encodeAdminCursor(value any) string {
 	raw, _ := json.Marshal(value)

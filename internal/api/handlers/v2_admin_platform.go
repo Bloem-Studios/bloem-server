@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Silo-Server/silo-server/internal/activitylog"
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -37,17 +36,17 @@ type V2AdminPlatformStore interface {
 	UpdateMembership(context.Context, uuid.UUID, uuid.UUID, int64, tenancy.UpdateMembershipInput) (tenancy.Membership, tenancy.Organization, error)
 }
 
-type AdminEventRecorder interface {
-	RecordAdminEvent(context.Context, activitylog.AdminEvent) error
+type AdminReauthenticationVerifier interface {
+	VerifyPassword(context.Context, int, string) (bool, error)
 }
 
 type V2AdminPlatformHandler struct {
-	store V2AdminPlatformStore
-	audit AdminEventRecorder
+	store  V2AdminPlatformStore
+	reauth AdminReauthenticationVerifier
 }
 
-func NewV2AdminPlatformHandler(store V2AdminPlatformStore, audit AdminEventRecorder) *V2AdminPlatformHandler {
-	return &V2AdminPlatformHandler{store: store, audit: audit}
+func NewV2AdminPlatformHandler(store V2AdminPlatformStore, reauth AdminReauthenticationVerifier) *V2AdminPlatformHandler {
+	return &V2AdminPlatformHandler{store: store, reauth: reauth}
 }
 
 func (h *V2AdminPlatformHandler) HandleListOrganizations(w http.ResponseWriter, r *http.Request) {
@@ -103,15 +102,11 @@ func (h *V2AdminPlatformHandler) HandleCreateOrganization(w http.ResponseWriter,
 		writeAdminValidation(w, fields)
 		return
 	}
-	created, err := h.store.CreateOrganization(r.Context(), tenancy.CreateOrganizationInput{
+	created, err := h.store.CreateOrganization(adminMutationRequestContext(r, claims), tenancy.CreateOrganizationInput{
 		Name: request.Name, Slug: request.Slug, OwnerAccountID: request.OwnerAccountID,
 	})
 	if err != nil {
 		h.writeStoreError(w, r, err, uuid.Nil, uuid.Nil)
-		return
-	}
-	event := h.organizationEvent(r, claims, "organization.created", created, 0, created.PolicyRevision, nil, organizationAuditState(created))
-	if !h.recordAudit(w, r, event) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, struct {
@@ -171,20 +166,9 @@ func (h *V2AdminPlatformHandler) HandleUpdateOrganization(w http.ResponseWriter,
 		writeAdminValidation(w, fields)
 		return
 	}
-	before, err := h.store.GetOrganization(r.Context(), organizationID)
+	after, err := h.store.UpdateOrganization(adminMutationRequestContext(r, claims), organizationID, request.ExpectedRevision, tenancy.UpdateOrganizationInput{Name: request.Name, Slug: request.Slug})
 	if err != nil {
 		h.writeStoreError(w, r, err, organizationID, uuid.Nil)
-		return
-	}
-	after, err := h.store.UpdateOrganization(r.Context(), organizationID, request.ExpectedRevision, tenancy.UpdateOrganizationInput{Name: request.Name, Slug: request.Slug})
-	if err != nil {
-		h.writeStoreError(w, r, err, organizationID, uuid.Nil)
-		return
-	}
-	if before.Name != after.Name && !h.recordAudit(w, r, h.organizationEvent(r, claims, "organization.renamed", after, before.PolicyRevision, after.PolicyRevision, organizationAuditState(before), organizationAuditState(after))) {
-		return
-	}
-	if before.Slug != after.Slug && !h.recordAudit(w, r, h.organizationEvent(r, claims, "organization.slug_changed", after, before.PolicyRevision, after.PolicyRevision, organizationAuditState(before), organizationAuditState(after))) {
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -193,14 +177,14 @@ func (h *V2AdminPlatformHandler) HandleUpdateOrganization(w http.ResponseWriter,
 }
 
 func (h *V2AdminPlatformHandler) HandleSuspendOrganization(w http.ResponseWriter, r *http.Request) {
-	h.handleOrganizationStatus(w, r, tenancy.OrganizationSuspended, "organization.suspended")
+	h.handleOrganizationStatus(w, r, tenancy.OrganizationSuspended)
 }
 
 func (h *V2AdminPlatformHandler) HandleReactivateOrganization(w http.ResponseWriter, r *http.Request) {
-	h.handleOrganizationStatus(w, r, tenancy.OrganizationActive, "organization.reactivated")
+	h.handleOrganizationStatus(w, r, tenancy.OrganizationActive)
 }
 
-func (h *V2AdminPlatformHandler) handleOrganizationStatus(w http.ResponseWriter, r *http.Request, status tenancy.OrganizationStatus, action string) {
+func (h *V2AdminPlatformHandler) handleOrganizationStatus(w http.ResponseWriter, r *http.Request, status tenancy.OrganizationStatus) {
 	claims, ok := h.requirePlatformMutation(w, r)
 	if !ok {
 		return
@@ -219,17 +203,9 @@ func (h *V2AdminPlatformHandler) handleOrganizationStatus(w http.ResponseWriter,
 		writeAdminValidation(w, map[string]string{"expected_revision": "must be a positive revision"})
 		return
 	}
-	before, err := h.store.GetOrganization(r.Context(), organizationID)
+	after, err := h.store.SetOrganizationStatus(adminMutationRequestContext(r, claims), organizationID, request.ExpectedRevision, status)
 	if err != nil {
 		h.writeStoreError(w, r, err, organizationID, uuid.Nil)
-		return
-	}
-	after, err := h.store.SetOrganizationStatus(r.Context(), organizationID, request.ExpectedRevision, status)
-	if err != nil {
-		h.writeStoreError(w, r, err, organizationID, uuid.Nil)
-		return
-	}
-	if !h.recordAudit(w, r, h.organizationEvent(r, claims, action, after, before.PolicyRevision, after.PolicyRevision, organizationAuditState(before), organizationAuditState(after))) {
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -247,9 +223,10 @@ func (h *V2AdminPlatformHandler) HandleTransferOwnership(w http.ResponseWriter, 
 		return
 	}
 	var request struct {
-		ExpectedRevision int64 `json:"expected_revision"`
-		OwnerAccountID   int   `json:"owner_account_id"`
-		Confirmed        bool  `json:"confirmed"`
+		ExpectedRevision int64  `json:"expected_revision"`
+		OwnerAccountID   int    `json:"owner_account_id"`
+		Confirmed        bool   `json:"confirmed"`
+		Password         string `json:"password"`
 	}
 	if !decodeAdminPlatformJSON(w, r, &request) {
 		return
@@ -268,17 +245,22 @@ func (h *V2AdminPlatformHandler) HandleTransferOwnership(w http.ResponseWriter, 
 		writeAdminValidation(w, fields)
 		return
 	}
-	before, err := h.store.GetOrganization(r.Context(), organizationID)
-	if err != nil {
-		h.writeStoreError(w, r, err, organizationID, uuid.Nil)
+	if strings.TrimSpace(request.Password) == "" || h.reauth == nil {
+		writeError(w, http.StatusUnauthorized, "reauthentication_required", "Account re-authentication is required")
 		return
 	}
-	after, err := h.store.TransferOwnership(r.Context(), organizationID, request.ExpectedRevision, request.OwnerAccountID)
+	verified, err := h.reauth.VerifyPassword(r.Context(), claims.AccountID, request.Password)
 	if err != nil {
-		h.writeStoreError(w, r, err, organizationID, uuid.Nil)
+		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Account re-authentication is unavailable")
 		return
 	}
-	if !h.recordAudit(w, r, h.organizationEvent(r, claims, "organization.ownership_transferred", after, before.PolicyRevision, after.PolicyRevision, organizationAuditState(before), organizationAuditState(after))) {
+	if !verified {
+		writeError(w, http.StatusUnauthorized, "reauthentication_required", "Account re-authentication is required")
+		return
+	}
+	after, err := h.store.TransferOwnership(adminMutationRequestContext(r, claims), organizationID, request.ExpectedRevision, request.OwnerAccountID)
+	if err != nil {
+		h.writeStoreError(w, r, err, organizationID, uuid.Nil)
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -349,13 +331,9 @@ func (h *V2AdminPlatformHandler) HandleCreateMembership(w http.ResponseWriter, r
 		writeAdminValidation(w, fields)
 		return
 	}
-	membership, organization, err := h.store.CreateMembership(r.Context(), organizationID, request.ExpectedRevision, tenancy.CreateMembershipInput{AccountID: request.AccountID, LegacyRole: request.LegacyRole, Status: request.Status})
+	membership, organization, err := h.store.CreateMembership(adminMutationRequestContext(r, claims), organizationID, request.ExpectedRevision, tenancy.CreateMembershipInput{AccountID: request.AccountID, LegacyRole: request.LegacyRole, Status: request.Status})
 	if err != nil {
 		h.writeStoreError(w, r, err, organizationID, uuid.Nil)
-		return
-	}
-	event := h.membershipEvent(r, claims, "membership.created", organization, membership, 0, membership.SecurityRevision, nil, membershipAuditState(membership))
-	if !h.recordAudit(w, r, event) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, struct {
@@ -402,22 +380,9 @@ func (h *V2AdminPlatformHandler) HandleUpdateMembership(w http.ResponseWriter, r
 		writeAdminValidation(w, fields)
 		return
 	}
-	before, err := h.store.GetOrganizationMembership(r.Context(), organizationID, membershipID)
+	after, organization, err := h.store.UpdateMembership(adminMutationRequestContext(r, claims), organizationID, membershipID, request.ExpectedRevision, tenancy.UpdateMembershipInput{LegacyRole: request.LegacyRole, Status: request.Status})
 	if err != nil {
 		h.writeStoreError(w, r, err, organizationID, membershipID)
-		return
-	}
-	after, organization, err := h.store.UpdateMembership(r.Context(), organizationID, membershipID, request.ExpectedRevision, tenancy.UpdateMembershipInput{LegacyRole: request.LegacyRole, Status: request.Status})
-	if err != nil {
-		h.writeStoreError(w, r, err, organizationID, membershipID)
-		return
-	}
-	action := "membership.role_changed"
-	if before.Status != after.Status {
-		action = "membership.status_changed"
-	}
-	event := h.membershipEvent(r, claims, action, organization, after, before.SecurityRevision, after.SecurityRevision, membershipAuditState(before), membershipAuditState(after))
-	if !h.recordAudit(w, r, event) {
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -444,19 +409,7 @@ func (h *V2AdminPlatformHandler) requirePlatformMutation(w http.ResponseWriter, 
 		return auth.AdminContextClaims{}, false
 	}
 	claims, _ := middleware.GetAdminContextClaims(r.Context())
-	if h.audit == nil {
-		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Administrative audit is unavailable")
-		return auth.AdminContextClaims{}, false
-	}
 	return claims, true
-}
-
-func (h *V2AdminPlatformHandler) recordAudit(w http.ResponseWriter, r *http.Request, event activitylog.AdminEvent) bool {
-	if err := h.audit.RecordAdminEvent(r.Context(), event); err != nil {
-		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Administrative audit is unavailable")
-		return false
-	}
-	return true
 }
 
 func (h *V2AdminPlatformHandler) writeStoreError(w http.ResponseWriter, r *http.Request, err error, organizationID, membershipID uuid.UUID) {
@@ -466,13 +419,19 @@ func (h *V2AdminPlatformHandler) writeStoreError(w http.ResponseWriter, r *http.
 	case errors.Is(err, tenancy.ErrAuthorizationStateChanged):
 		var revision int64
 		if membershipID != uuid.Nil {
-			if current, loadErr := h.store.GetOrganizationMembership(r.Context(), organizationID, membershipID); loadErr == nil || current.SecurityRevision > 0 {
-				revision = current.SecurityRevision
+			current, loadErr := h.store.GetOrganizationMembership(r.Context(), organizationID, membershipID)
+			if loadErr != nil {
+				writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
+				return
 			}
+			revision = current.SecurityRevision
 		} else if organizationID != uuid.Nil {
-			if current, loadErr := h.store.GetOrganization(r.Context(), organizationID); loadErr == nil || current.PolicyRevision > 0 {
-				revision = current.PolicyRevision
+			current, loadErr := h.store.GetOrganization(r.Context(), organizationID)
+			if loadErr != nil {
+				writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
+				return
 			}
+			revision = current.PolicyRevision
 		}
 		writeJSON(w, http.StatusConflict, struct {
 			Error           string `json:"error"`
@@ -485,6 +444,8 @@ func (h *V2AdminPlatformHandler) writeStoreError(w http.ResponseWriter, r *http.
 		writeError(w, http.StatusConflict, "membership_conflict", "Membership conflicts with protected organization state")
 	case errors.Is(err, tenancy.ErrOwnerNotEligible):
 		writeAdminValidation(w, map[string]string{"owner_account_id": "must identify an enabled organization member"})
+	case errors.Is(err, tenancy.ErrAccountNotFound):
+		writeAdminValidation(w, map[string]string{"account_id": "must identify an existing account"})
 	case errors.Is(err, tenancy.ErrInvalidCursor):
 		writeAdminValidation(w, map[string]string{"cursor": "is invalid"})
 	case errors.Is(err, tenancy.ErrInvalidAdminMutation):
@@ -536,34 +497,10 @@ func writeAdminValidation(w http.ResponseWriter, fields map[string]string) {
 	}{"validation_failed", "Administrative request validation failed", fields})
 }
 
-func (h *V2AdminPlatformHandler) organizationEvent(r *http.Request, claims auth.AdminContextClaims, action string, organization tenancy.Organization, beforeRevision, afterRevision int64, beforeState, afterState map[string]any) activitylog.AdminEvent {
-	return activitylog.AdminEvent{
-		ActorAccountID: claims.AccountID, ActorPlatformRole: "platform_admin", AuthorityContext: "platform",
-		Action: action, TargetType: "organization", TargetID: organization.ID.String(), OrganizationID: organization.ID,
-		BeforeRevision: beforeRevision, AfterRevision: afterRevision, Outcome: "success", RequestID: adminRequestID(r),
-		BeforeState: beforeState, AfterState: afterState,
-	}
-}
-
-func (h *V2AdminPlatformHandler) membershipEvent(r *http.Request, claims auth.AdminContextClaims, action string, organization tenancy.Organization, membership tenancy.Membership, beforeRevision, afterRevision int64, beforeState, afterState map[string]any) activitylog.AdminEvent {
-	return activitylog.AdminEvent{
-		ActorAccountID: claims.AccountID, ActorPlatformRole: "platform_admin", AuthorityContext: "platform",
-		Action: action, TargetType: "membership", TargetID: membership.ID.String(), OrganizationID: organization.ID,
-		SubjectID: strconv.Itoa(membership.AccountID), BeforeRevision: beforeRevision, AfterRevision: afterRevision,
-		Outcome: "success", RequestID: adminRequestID(r), BeforeState: beforeState, AfterState: afterState,
-	}
-}
-
-func organizationAuditState(organization tenancy.Organization) map[string]any {
-	state := map[string]any{"name": organization.Name, "slug": organization.Slug, "status": organization.Status}
-	if organization.OwnerAccountID != nil {
-		state["owner_account_id"] = *organization.OwnerAccountID
-	}
-	return state
-}
-
-func membershipAuditState(membership tenancy.Membership) map[string]any {
-	return map[string]any{"account_id": membership.AccountID, "status": membership.Status, "legacy_role": membership.LegacyRole}
+func adminMutationRequestContext(r *http.Request, claims auth.AdminContextClaims) context.Context {
+	return tenancy.WithAdminMutationActor(r.Context(), tenancy.AdminMutationActor{
+		AccountID: claims.AccountID, PlatformRole: "platform_admin", AuthorityContext: "platform", RequestID: adminRequestID(r),
+	})
 }
 
 func adminRequestID(r *http.Request) string {
