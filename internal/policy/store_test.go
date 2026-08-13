@@ -3,7 +3,6 @@ package policy
 import (
 	"context"
 	"errors"
-	"os"
 	"sort"
 	"sync"
 	"testing"
@@ -278,23 +277,14 @@ func TestPolicyStoreDeleteDocumentGuard(t *testing.T) {
 
 func newPolicyStoreTest(t *testing.T, ctx context.Context) (*pgxpool.Pool, *PolicyStore) {
 	t.Helper()
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
+	if policyStoreTestDatabaseConfig == nil {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
-	pool, err := pgxpool.New(ctx, dsn)
+	pool, err := pgxpool.NewWithConfig(ctx, policyStoreTestDatabaseConfig.Copy())
 	if err != nil {
-		t.Fatalf("connect test database: %v", err)
+		t.Fatalf("connect disposable policy-store database: %v", err)
 	}
 	t.Cleanup(pool.Close)
-
-	var tableName *string
-	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.policy_documents')::text`).Scan(&tableName); err != nil {
-		t.Fatalf("check policy_documents table: %v", err)
-	}
-	if tableName == nil || *tableName == "" {
-		t.Skip("test database has not applied policy foundation migration")
-	}
 
 	resetPolicyTables(t, ctx, pool)
 	return pool, NewPolicyStore(pool)
