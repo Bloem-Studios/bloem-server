@@ -57,7 +57,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 1 in progress.
+Status: fix round 1 committed; scoped re-review pending.
 
 Initial implementation commit:
 
@@ -97,6 +97,24 @@ Fix-round requirements:
 6. Add the disposable-system foundation acceptance and required CI gate.
 
 The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending until the foundation is accepted.
+
+### 2026-08-14 — Foundation Task 1, fix round 1
+
+- Base/head commits: `af681894` → `cabaeafc fix(auth): bind direct profile sessions and close credential race`.
+- Decision or ruling: the partially written fix round was audited before being continued. Three of the five review findings were substantively addressed but unproven, one was only partially addressed, and one shipped a regression that could not fail. Two further defects in the reviewed commit surfaced during the audit and are fixed in the same round, because the branch cannot reach a green gate without them.
+- Audit result on the five original findings:
+  1. Session-creation race: the row-lock guard was sound but carried no regression and was wired through a runtime type assertion instead of the session repository interface.
+  2. Profile binding: enforced only in viewer access. `RequireProfile` and the household-manager check still trusted the self-asserted profile header, and six of eight profile routes were ungated, so a direct-profile session could manage a household whose primary profile carries no PIN.
+  3. Database registry synchronization: the trigger was correct, but its regression addressed a nonexistent profile row, so "no rows updated" was reported as an enforced collision. The test failed as written.
+  4. Refresh revalidation: correct in substance, untested, and it returned before the session window slid, so direct-profile sessions could never extend their expiry. A missing credential service revoked the session.
+  5. Collision error sanitization: the fix is sound, but the accompanying test passed against the reviewed commit unchanged, because the driver's error string never carried the submitted email.
+- Additional defects found in the reviewed commit: the new `user_profiles` columns broke the tenant-identity migration snapshot invariant, and three files were not `gofmt` clean.
+- RED evidence: every regression was confirmed failing against the reviewed behavior by temporarily restoring it. Refresh accepted a token naming a sibling profile; `RequireProfile` honored a sibling header; unserialized session creation survived a committed credential rotation; the tenant-identity backfill failed on four subtests at `af681894`.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint` with `--new-from-merge-base` reports nothing in the changed files. `make verify-local-paths` passes. The frontend gates were not run: no frontend file changed.
+- Independent review verdict: not yet requested. The fix round is scoped to the five original findings plus the two defects named above.
+- Fix commits/findings, if any: `cabaeafc`.
+- External side effects: none. No push, no deployment, no repository or issue activity.
+- Next continuation point: send `af681894..cabaeafc` to a fresh independent reviewer for a scoped re-review of the original five findings plus the fix diff. Task 1 is complete only on approval; foundation tasks 2 through 7 remain pending.
 
 ## Update template
 
