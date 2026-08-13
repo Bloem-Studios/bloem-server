@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Search, Users } from "lucide-react";
 import { useSearchParams } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 
+import { AdminV2ClientError } from "@/api/adminV2Client";
 import BulkJobResult from "@/components/admin/people/BulkJobResult";
 import BulkPeopleActionBar from "@/components/admin/people/BulkPeopleActionBar";
 import PeopleTable from "@/components/admin/people/PeopleTable";
@@ -23,11 +25,13 @@ import { useAdminContext } from "@/contexts/AdminContextProvider";
 import {
   peopleFiltersFromSearch,
   peopleFiltersToSearch,
+  organizationPeopleKeys,
   useCreatePeopleBulkJob,
   useCreatePeopleSelection,
   useOrganizationGroups,
   useOrganizationPeople,
   usePeopleBulkJob,
+  useRefreshOrganizationPerson,
   useUpdateProfileGroup,
   type OrganizationPerson,
   type PeopleBulkJob,
@@ -39,6 +43,12 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 type PendingAction = {
   kind: "assign_group" | "suspend_memberships" | "reactivate_memberships";
   groupId?: number;
+};
+
+type ProfileConflict = {
+  intendedGroup: string;
+  currentGroup: string;
+  message: string;
 };
 
 export default function PeoplePage() {
@@ -54,8 +64,15 @@ export default function PeoplePage() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [submittedJob, setSubmittedJob] = useState<PeopleBulkJob | null>(null);
   const [changingProfileId, setChangingProfileId] = useState<string>();
+  const [groupDrafts, setGroupDrafts] = useState<Record<string, number>>({});
+  const [profileConflict, setProfileConflict] = useState<ProfileConflict | null>(null);
+  const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>(() =>
+    filters.cursor ? [undefined, filters.cursor] : [undefined],
+  );
   const previousFilter = useRef(filterSignature);
   const previousContext = useRef(contextKey);
+  const refreshedTerminalJob = useRef<string | undefined>(undefined);
+  const queryClient = useQueryClient();
 
   const people = useOrganizationPeople(contextKey, filters);
   const groups = useOrganizationGroups(contextKey);
@@ -63,6 +80,7 @@ export default function PeoplePage() {
   const createJob = useCreatePeopleBulkJob(contextKey);
   const polledJob = usePeopleBulkJob(contextKey, submittedJob?.job_id);
   const updateProfile = useUpdateProfileGroup(contextKey);
+  const refreshPerson = useRefreshOrganizationPerson(contextKey);
   const visibleJob =
     previousContext.current === contextKey ? (polledJob.data ?? submittedJob) : null;
 
@@ -72,8 +90,11 @@ export default function PeoplePage() {
       setSelection(null);
       setPendingAction(null);
       setSubmittedJob(null);
+      setCursorHistory(filters.cursor ? [undefined, filters.cursor] : [undefined]);
+      setProfileConflict(null);
+      setGroupDrafts({});
     }
-  }, [filterSignature]);
+  }, [filterSignature, filters.cursor]);
 
   useEffect(() => {
     if (previousContext.current !== contextKey) {
@@ -82,8 +103,36 @@ export default function PeoplePage() {
       setPendingAction(null);
       setSubmittedJob(null);
       setInspected(null);
+      setCursorHistory([undefined]);
+      setProfileConflict(null);
+      setGroupDrafts({});
+      refreshedTerminalJob.current = undefined;
     }
   }, [contextKey]);
+
+  useEffect(() => {
+    setSearchInput(filters.query);
+  }, [filters.query]);
+
+  useEffect(() => {
+    if (!filters.cursor) return;
+    setCursorHistory((history) =>
+      history.includes(filters.cursor) ? history : [...history, filters.cursor],
+    );
+  }, [filters.cursor]);
+
+  useEffect(() => {
+    if (
+      visibleJob &&
+      (visibleJob.status === "completed" || visibleJob.status === "failed") &&
+      refreshedTerminalJob.current !== visibleJob.job_id
+    ) {
+      refreshedTerminalJob.current = visibleJob.job_id;
+      void queryClient.invalidateQueries({
+        queryKey: organizationPeopleKeys.peopleRoot(contextKey),
+      });
+    }
+  }, [contextKey, queryClient, visibleJob]);
 
   function updateFilters(change: Partial<PeopleFilters>) {
     setSearchParams(peopleFiltersToSearch({ ...filters, ...change, cursor: undefined }));
@@ -100,11 +149,16 @@ export default function PeoplePage() {
       selectionToken: selection.token,
       ...pendingAction,
     });
+    refreshedTerminalJob.current = undefined;
     setSubmittedJob(job);
     setPendingAction(null);
   }
 
   async function changeGroup(person: OrganizationPerson, profileId: string, groupId: number) {
+    const intendedGroup =
+      groups.data?.find((group) => group.id === groupId)?.name ?? `Group ${groupId}`;
+    setGroupDrafts((drafts) => ({ ...drafts, [profileId]: groupId }));
+    setProfileConflict(null);
     setChangingProfileId(profileId);
     try {
       await updateProfile.mutateAsync({
@@ -113,6 +167,39 @@ export default function PeoplePage() {
         expectedRevision: person.security_revision,
         groupId,
       });
+      setGroupDrafts((drafts) => {
+        const next = { ...drafts };
+        delete next[profileId];
+        return next;
+      });
+    } catch (error) {
+      if (error instanceof AdminV2ClientError && error.status === 409) {
+        try {
+          const current = await refreshPerson(person.account_id);
+          const currentProfile = current.profiles.find((profile) => profile.id === profileId);
+          setProfileConflict({
+            intendedGroup,
+            currentGroup: currentProfile?.group_name ?? "unknown",
+            message:
+              "This profile changed on the server. Review the current group before retrying.",
+          });
+        } catch {
+          setProfileConflict({
+            intendedGroup,
+            currentGroup: "could not be reloaded",
+            message:
+              "This profile changed on the server, but its current state could not be loaded.",
+          });
+        }
+      } else {
+        setProfileConflict({
+          intendedGroup,
+          currentGroup:
+            person.profiles.find((profile) => profile.id === profileId)?.group_name ?? "unknown",
+          message:
+            error instanceof Error ? error.message : "The profile group could not be changed.",
+        });
+      }
     } finally {
       setChangingProfileId(undefined);
     }
@@ -145,7 +232,7 @@ export default function PeoplePage() {
 
       <form
         role="search"
-        className="surface-panel grid gap-3 rounded-2xl p-4 md:grid-cols-[minmax(0,1fr)_12rem_12rem_auto]"
+        className="surface-panel grid gap-3 rounded-2xl p-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_10rem_11rem_11rem_12rem_auto]"
         onSubmit={(event) => {
           event.preventDefault();
           updateFilters({ query: searchInput.trim() });
@@ -181,6 +268,35 @@ export default function PeoplePage() {
           <option value="invited">Invited</option>
         </select>
         <select
+          aria-label="Access group"
+          className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+          value={filters.groupIds[0] ?? "all"}
+          onChange={(event) =>
+            updateFilters({
+              groupIds: event.target.value === "all" ? [] : [Number(event.target.value)],
+            })
+          }
+        >
+          <option value="all">All access groups</option>
+          {(groups.data ?? []).map((group) => (
+            <option key={group.id} value={group.id}>
+              {group.name}
+            </option>
+          ))}
+        </select>
+        <Input
+          type="date"
+          aria-label="Recent activity since"
+          value={filters.activeSince?.slice(0, 10) ?? ""}
+          onChange={(event) =>
+            updateFilters({
+              activeSince: event.target.value
+                ? new Date(`${event.target.value}T00:00:00.000Z`).toISOString()
+                : undefined,
+            })
+          }
+        />
+        <select
           aria-label="Sort people"
           className="border-input bg-background h-9 rounded-md border px-3 text-sm"
           value={filters.sort}
@@ -192,6 +308,16 @@ export default function PeoplePage() {
         </select>
         <Button type="submit">Search</Button>
       </form>
+
+      {profileConflict ? (
+        <div
+          className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-4 text-sm"
+          role="alert"
+        >
+          {profileConflict.message} Intended: {profileConflict.intendedGroup}. Current:{" "}
+          {profileConflict.currentGroup}.
+        </div>
+      ) : null}
 
       {people.isLoading ? (
         <div className="space-y-3" role="status" aria-label="Loading people">
@@ -216,6 +342,7 @@ export default function PeoplePage() {
           people={people.data?.items ?? []}
           groups={groups.data ?? []}
           changingProfileId={changingProfileId}
+          groupDrafts={groupDrafts}
           onInspect={setInspected}
           onChangeGroup={(person, profileId, groupId) =>
             void changeGroup(person, profileId, groupId)
@@ -226,8 +353,13 @@ export default function PeoplePage() {
       <nav className="flex items-center justify-between" aria-label="People pages">
         <Button
           variant="outline"
-          disabled={!filters.cursor}
-          onClick={() => setSearchParams(peopleFiltersToSearch({ ...filters, cursor: undefined }))}
+          disabled={!filters.cursor || cursorHistory.length <= 1}
+          onClick={() => {
+            const currentIndex = cursorHistory.lastIndexOf(filters.cursor);
+            const previousCursor = cursorHistory[Math.max(0, currentIndex - 1)];
+            setCursorHistory((history) => history.slice(0, Math.max(1, currentIndex)));
+            setSearchParams(peopleFiltersToSearch({ ...filters, cursor: previousCursor }));
+          }}
         >
           <ChevronLeft className="mr-2 h-4 w-4" /> Previous page
         </Button>
@@ -237,9 +369,12 @@ export default function PeoplePage() {
         <Button
           variant="outline"
           disabled={!people.data?.next_cursor}
-          onClick={() =>
-            setSearchParams(peopleFiltersToSearch({ ...filters, cursor: people.data?.next_cursor }))
-          }
+          onClick={() => {
+            const nextCursor = people.data?.next_cursor;
+            if (!nextCursor) return;
+            setCursorHistory((history) => [...history, nextCursor]);
+            setSearchParams(peopleFiltersToSearch({ ...filters, cursor: nextCursor }));
+          }}
         >
           Next page <ChevronRight className="ml-2 h-4 w-4" />
         </Button>
@@ -267,7 +402,7 @@ export default function PeoplePage() {
               {active?.name ?? "this organization"}. The immutable selection contains{" "}
               {selection?.matched.toLocaleString() ?? 0} matched and{" "}
               {selection?.excluded.toLocaleString() ?? 0} excluded. Filters:{" "}
-              {filterSummary(filters)}.
+              {filterSummary(filters, groups.data ?? [])}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -288,11 +423,15 @@ function actionLabel(kind: PendingAction["kind"]): string {
   return "Suspend selected memberships";
 }
 
-function filterSummary(filters: PeopleFilters): string {
+function filterSummary(filters: PeopleFilters, groups: { id: number; name: string }[]): string {
+  const selectedGroups = filters.groupIds.map(
+    (id) => groups.find((group) => group.id === id)?.name ?? `#${id}`,
+  );
   const parts = [
     filters.query ? `search “${filters.query}”` : "all people",
     filters.status.length ? `status ${filters.status.join(", ")}` : "all statuses",
-    filters.groupIds.length ? `groups ${filters.groupIds.join(", ")}` : "all groups",
+    selectedGroups.length ? `group ${selectedGroups.join(", ")}` : "all groups",
+    filters.activeSince ? `active since ${filters.activeSince.slice(0, 10)}` : "any activity date",
     `sort ${filters.sort.replace(/_/g, " ")}`,
   ];
   return parts.join("; ");

@@ -17,12 +17,14 @@ export default function PeopleTable({
   people,
   groups,
   changingProfileId,
+  groupDrafts,
   onInspect,
   onChangeGroup,
 }: {
   people: OrganizationPerson[];
   groups: OrganizationGroup[];
   changingProfileId?: string;
+  groupDrafts: Record<string, number>;
   onInspect(person: OrganizationPerson): void;
   onChangeGroup(person: OrganizationPerson, profileId: string, groupId: number): void;
 }) {
@@ -36,6 +38,7 @@ export default function PeopleTable({
               <TableHead>Status</TableHead>
               <TableHead>Profiles and groups</TableHead>
               <TableHead>Last activity</TableHead>
+              <TableHead>Security revision</TableHead>
               <TableHead className="text-right">Details</TableHead>
             </TableRow>
           </TableHeader>
@@ -54,12 +57,14 @@ export default function PeopleTable({
                     person={person}
                     groups={groups}
                     changingProfileId={changingProfileId}
+                    groupDrafts={groupDrafts}
                     onChangeGroup={onChangeGroup}
                   />
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {new Date(person.last_activity).toLocaleDateString()}
                 </TableCell>
+                <TableCell className="font-mono text-xs">{person.security_revision}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="sm" onClick={() => onInspect(person)}>
                     Inspect {person.display_name || person.email}
@@ -85,12 +90,16 @@ export default function PeopleTable({
                 person={person}
                 groups={groups}
                 changingProfileId={changingProfileId}
+                groupDrafts={groupDrafts}
                 onChangeGroup={onChangeGroup}
               />
             </div>
             <Button className="mt-3" variant="outline" size="sm" onClick={() => onInspect(person)}>
               Inspect {person.display_name || person.email}
             </Button>
+            <p className="text-muted-foreground mt-2 text-xs">
+              Security revision {person.security_revision}
+            </p>
           </li>
         ))}
       </ul>
@@ -102,11 +111,13 @@ function ProfileGroups({
   person,
   groups,
   changingProfileId,
+  groupDrafts,
   onChangeGroup,
 }: {
   person: OrganizationPerson;
   groups: OrganizationGroup[];
   changingProfileId?: string;
+  groupDrafts: Record<string, number>;
   onChangeGroup(person: OrganizationPerson, profileId: string, groupId: number): void;
 }) {
   return (
@@ -118,7 +129,7 @@ function ProfileGroups({
           <select
             aria-label={`Group for ${profile.name} profile`}
             className="border-input bg-background h-8 min-w-28 rounded-md border px-2"
-            value={profile.group_id}
+            value={groupDrafts[profile.id] ?? profile.group_id}
             disabled={changingProfileId === profile.id || groups.length === 0}
             onChange={(event) => onChangeGroup(person, profile.id, Number(event.target.value))}
           >

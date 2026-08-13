@@ -149,8 +149,10 @@ export const organizationPeopleKeys = {
   root: (contextKey: AdminContextKey) => adminV2QueryKey(contextKey, "organization"),
   overview: (contextKey: AdminContextKey) =>
     adminV2QueryKey(contextKey, "organization", "overview"),
+  peopleRoot: (contextKey: AdminContextKey) =>
+    adminV2QueryKey(contextKey, "organization", "people", "list"),
   people: (contextKey: AdminContextKey, filters: PeopleFilters) =>
-    adminV2QueryKey(contextKey, "organization", "people", filters),
+    [...adminV2QueryKey(contextKey, "organization", "people", "list"), filters] as const,
   groups: (contextKey: AdminContextKey) => adminV2QueryKey(contextKey, "organization", "groups"),
   job: (contextKey: AdminContextKey, jobId: string) =>
     adminV2QueryKey(contextKey, "organization", "people", "bulk-job", jobId),
@@ -221,10 +223,30 @@ export function useUpdateProfileGroup(contextKey: AdminContextKey) {
       ),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: adminV2QueryKey(contextKey, "organization", "people"),
+        queryKey: organizationPeopleKeys.peopleRoot(contextKey),
       });
     },
   });
+}
+
+export function useRefreshOrganizationPerson(contextKey: AdminContextKey) {
+  const queryClient = useQueryClient();
+  return async (accountId: number): Promise<OrganizationPerson> => {
+    const person = await adminV2Api<{ person: OrganizationPerson }>(
+      `/organization/people/${accountId}`,
+    ).then((result) => result.person);
+    queryClient.setQueriesData<PeoplePageData>(
+      { queryKey: organizationPeopleKeys.peopleRoot(contextKey) },
+      (page) =>
+        page
+          ? {
+              ...page,
+              items: page.items.map((item) => (item.account_id === accountId ? person : item)),
+            }
+          : page,
+    );
+    return person;
+  };
 }
 
 export function useCreatePeopleBulkJob(contextKey: AdminContextKey) {

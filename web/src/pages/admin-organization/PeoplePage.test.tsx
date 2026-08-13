@@ -2,10 +2,10 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { adminV2Api } from "@/api/adminV2Client";
+import { AdminV2ClientError, adminV2Api } from "@/api/adminV2Client";
 import PeoplePage from "./PeoplePage";
 
 vi.mock("@/api/adminV2Client", async (importOriginal) => {
@@ -50,12 +50,20 @@ const person = (accountId: number, name: string) => ({
 });
 
 function LocationProbe() {
-  return <output aria-label="current location">{useLocation().search}</output>;
+  const navigate = useNavigate();
+  return (
+    <>
+      <output aria-label="current location">{useLocation().search}</output>
+      <button type="button" onClick={() => navigate(-1)}>
+        Browser back
+      </button>
+    </>
+  );
 }
 
 function renderPage(initial = "/admin/organization/people") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const rendered = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[initial]}>
         <Routes>
@@ -72,6 +80,7 @@ function renderPage(initial = "/admin/organization/people") {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return { ...rendered, queryClient };
 }
 
 describe("PeoplePage", () => {
@@ -176,6 +185,9 @@ describe("PeoplePage", () => {
     });
 
     renderPage();
+    expect(
+      await screen.findByRole("columnheader", { name: "Security revision" }),
+    ).toBeInTheDocument();
     const [group] = await screen.findAllByRole("combobox", { name: "Group for Ada profile" });
     fireEvent.change(group!, { target: { value: "3" } });
 
@@ -188,6 +200,179 @@ describe("PeoplePage", () => {
         group_id: 3,
       });
     });
+  });
+
+  it("surfaces a stale profile mutation, reloads the person, and preserves the intended group", async () => {
+    const refreshed = { ...person(1, "Ada"), security_revision: 5 };
+    vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
+      if (path === "/organization/groups") {
+        return {
+          groups: [
+            { id: 2, name: "Adults" },
+            { id: 3, name: "Kids" },
+          ],
+        } as never;
+      }
+      if (String(path).endsWith("/profiles/profile-1") && init?.method === "PATCH") {
+        throw new AdminV2ClientError(
+          409,
+          "authorization_state_changed",
+          "Authorization state changed; reload and retry",
+        );
+      }
+      if (path === "/organization/people/1") return { person: refreshed } as never;
+      return { items: [person(1, "Ada")], approximate_total: 1 } as never;
+    });
+
+    renderPage();
+    const [group] = await screen.findAllByRole("combobox", { name: "Group for Ada profile" });
+    fireEvent.change(group!, { target: { value: "3" } });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/changed on the server/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/Kids/);
+    expect(screen.getByRole("alert")).toHaveTextContent(/Adults/);
+    expect(group).toHaveValue("3");
+    expect(
+      vi.mocked(adminV2Api).mock.calls.some(([path]) => path === "/organization/people/1"),
+    ).toBe(true);
+  });
+
+  it("keeps real cursor history across three pages and resets it for browser filter navigation", async () => {
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      const url = String(path);
+      if (url === "/organization/groups") return { groups: [] } as never;
+      if (url.includes("cursor=page-two")) {
+        return {
+          items: [person(2, "Bea")],
+          next_cursor: "page-three",
+          approximate_total: 3,
+        } as never;
+      }
+      if (url.includes("cursor=page-three")) {
+        return { items: [person(3, "Cara")], approximate_total: 3 } as never;
+      }
+      return {
+        items: [person(1, "Ada")],
+        next_cursor: "page-two",
+        approximate_total: 3,
+      } as never;
+    });
+
+    renderPage();
+    await screen.findAllByText("Ada");
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    await screen.findAllByText("Bea");
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    await screen.findAllByText("Cara");
+    fireEvent.click(screen.getByRole("button", { name: "Previous page" }));
+    expect((await screen.findAllByText("Bea")).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("current location")).toHaveTextContent("cursor=page-two");
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search people" }), {
+      target: { value: "new" },
+    });
+    fireEvent.submit(screen.getByRole("search"));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
+    await waitFor(() =>
+      expect(screen.getByRole("searchbox", { name: "Search people" })).toHaveValue(""),
+    );
+  });
+
+  it("includes group identity and recent activity in selection and confirmation", async () => {
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (path === "/organization/groups") {
+        return { groups: [{ id: 3, name: "Kids" }] } as never;
+      }
+      if (path === "/organization/people/selections") {
+        return {
+          selection: { token: "opaque", matched: 2, excluded: 0, expires_at: "later" },
+        } as never;
+      }
+      return { items: [person(1, "Ada")], approximate_total: 2 } as never;
+    });
+
+    renderPage();
+    await screen.findAllByText("Ada");
+    fireEvent.change(screen.getByRole("combobox", { name: "Access group" }), {
+      target: { value: "3" },
+    });
+    fireEvent.change(screen.getByLabelText("Recent activity since"), {
+      target: { value: "2026-08-01" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Select all 2 results" }));
+    await screen.findByText("2 people selected");
+    fireEvent.click(screen.getByRole("button", { name: "Suspend memberships" }));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(/group Kids/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/active since 2026-08-01/i)).toBeInTheDocument();
+    const selectionCall = vi
+      .mocked(adminV2Api)
+      .mock.calls.find(([path]) => path === "/organization/people/selections");
+    expect(JSON.parse(String(selectionCall?.[1]?.body))).toMatchObject({
+      group_ids: [3],
+      active_since: "2026-08-01T00:00:00.000Z",
+    });
+  });
+
+  it("refreshes people after a bulk job reaches a terminal state", async () => {
+    let peopleLoads = 0;
+    vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
+      if (path === "/organization/groups") return { groups: [] } as never;
+      if (String(path).startsWith("/organization/people?") && !init?.method) {
+        peopleLoads += 1;
+        return { items: [person(1, "Ada")], approximate_total: 1 } as never;
+      }
+      if (path === "/organization/people/selections") {
+        return {
+          selection: { token: "opaque", matched: 1, excluded: 0, expires_at: "later" },
+        } as never;
+      }
+      if (path === "/organization/people/bulk-jobs") {
+        return {
+          job: {
+            job_id: "job-1",
+            status: "queued",
+            progress_current: 0,
+            progress_total: 1,
+            succeeded: 0,
+            skipped: [],
+            failed: [],
+          },
+        } as never;
+      }
+      if (path === "/organization/people/bulk-jobs/job-1") {
+        return {
+          job: {
+            job_id: "job-1",
+            status: "completed",
+            progress_current: 1,
+            progress_total: 1,
+            succeeded: 1,
+            skipped: [],
+            failed: [],
+          },
+        } as never;
+      }
+      throw new Error(`unexpected ${path}`);
+    });
+
+    renderPage();
+    await screen.findAllByText("Ada");
+    fireEvent.click(screen.getByRole("button", { name: "Select all 1 results" }));
+    await screen.findByText("1 people selected");
+    fireEvent.click(screen.getByRole("button", { name: "Suspend memberships" }));
+    fireEvent.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Start bulk job",
+      }),
+    );
+
+    await screen.findByText("Bulk job completed");
+    await waitFor(() => expect(peopleLoads).toBeGreaterThan(1));
   });
 
   it("shows exact partial bulk results without a generic success message", async () => {
