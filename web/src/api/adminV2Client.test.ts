@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   adminV2Api,
@@ -10,6 +12,27 @@ import {
 
 describe("adminV2 client", () => {
   beforeEach(() => {
+    if (!window.localStorage) {
+      const values = new Map<string, string>();
+      Object.defineProperty(window, "localStorage", {
+        configurable: true,
+        value: {
+          clear: () => values.clear(),
+          getItem: (key: string) => values.get(key) ?? null,
+          removeItem: (key: string) => values.delete(key),
+          setItem: (key: string, value: string) => values.set(key, value),
+        },
+      });
+      Object.defineProperty(window, "sessionStorage", {
+        configurable: true,
+        value: {
+          clear: () => values.clear(),
+          getItem: (key: string) => values.get(key) ?? null,
+          removeItem: (key: string) => values.delete(key),
+          setItem: (key: string, value: string) => values.set(key, value),
+        },
+      });
+    }
     window.localStorage.clear();
     window.sessionStorage.clear();
     setAdminV2Token(null);
@@ -18,6 +41,27 @@ describe("adminV2 client", () => {
   afterEach(() => {
     onAdminV2ContextFailure(null);
     vi.unstubAllGlobals();
+  });
+
+  it("preserves field-addressable validation errors", async () => {
+    activateAdminV2Context("admin-token", "platform");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: "validation_failed",
+            message: "Invalid fields",
+            fields: { slug: "is already used" },
+          }),
+          { status: 422, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    await expect(adminV2Api("/platform/organizations")).rejects.toMatchObject({
+      code: "validation_failed",
+      fields: { slug: "is already used" },
+    });
   });
 
   it("keeps the administrative token in memory while attaching it to v2 requests", async () => {

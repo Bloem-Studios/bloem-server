@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AdminV2ClientError } from "@/api/adminV2Client";
 import { Building2, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -74,8 +75,14 @@ function CreateOrganizationDialog({
       });
       close(false);
       navigate(`/admin/platform/organizations/${result.organization.id}`);
-    } catch {
-      // The typed API error remains visible in the dialog.
+    } catch (error) {
+      if (error instanceof AdminV2ClientError) {
+        setErrors({
+          name: error.fields.name ?? "",
+          slug: error.fields.slug ?? "",
+          owner: error.fields.owner_account_id ?? "",
+        });
+      }
     }
   }
 

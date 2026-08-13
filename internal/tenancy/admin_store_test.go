@@ -25,7 +25,7 @@ func TestAdminStoreCreateOrganizationCreatesOwnerMembership(t *testing.T) {
 		t.Fatalf("membership = %+v, err = %v", membership, err)
 	}
 	summary, err := store.GetOrganizationSummary(fixture.ctx, created.ID)
-	if err != nil || summary.MembershipCount != 1 || summary.ProfileCount != 0 || summary.LibraryCount != 0 || summary.EntitlementCount != 0 {
+	if err != nil || summary.MembershipCount != 1 || summary.ActiveMembershipCount != 1 || summary.ProfileCount != 0 || summary.LibraryCount != 0 || summary.EntitlementCount != 0 {
 		t.Fatalf("organization summary = %+v, err = %v", summary, err)
 	}
 
@@ -64,7 +64,7 @@ func TestAdminStoreListOrganizationsUsesStableCursorAndExactCounts(t *testing.T)
 		t.Fatalf("second page = %+v after %+v", second, first)
 	}
 	for _, item := range append(first.Items, second.Items...) {
-		if item.MembershipCount != 1 || item.ProfileCount != 0 || item.LibraryCount != 0 || item.EntitlementCount != 0 {
+		if item.MembershipCount != 1 || item.ActiveMembershipCount != 1 || item.ProfileCount != 0 || item.LibraryCount != 0 || item.EntitlementCount != 0 {
 			t.Fatalf("counts for %s = memberships %d profiles %d libraries %d entitlements %d", item.ID, item.MembershipCount, item.ProfileCount, item.LibraryCount, item.EntitlementCount)
 		}
 	}

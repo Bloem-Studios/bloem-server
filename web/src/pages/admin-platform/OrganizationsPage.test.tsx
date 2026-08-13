@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { adminV2Api } from "@/api/adminV2Client";
+import { adminV2Api, AdminV2ClientError } from "@/api/adminV2Client";
 import OrganizationsPage from "./OrganizationsPage";
 
 vi.mock("@/api/adminV2Client", async (importOriginal) => {
@@ -106,5 +106,24 @@ describe("OrganizationsPage", () => {
 
     expect(await screen.findByText(/lowercase letters, numbers, and hyphens/)).toBeInTheDocument();
     expect(vi.mocked(adminV2Api)).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders server validation beside the matching creation field", async () => {
+    vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
+      if (init?.method === "POST") {
+        throw new AdminV2ClientError(422, "validation_failed", "Invalid fields", {
+          slug: "Slug is already in use.",
+        });
+      }
+      return { organizations: [] } as never;
+    });
+    renderPage();
+    await screen.findByText("No organizations match these filters.");
+    fireEvent.click(screen.getByRole("button", { name: "Create organization" }));
+    fireEvent.change(screen.getByLabelText("Organization name"), { target: { value: "North" } });
+    fireEvent.change(screen.getByLabelText("Slug"), { target: { value: "north" } });
+    fireEvent.change(screen.getByLabelText("Owner account ID"), { target: { value: "7" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Create$/ }));
+    expect(await screen.findByText("Slug is already in use.")).toBeInTheDocument();
   });
 });

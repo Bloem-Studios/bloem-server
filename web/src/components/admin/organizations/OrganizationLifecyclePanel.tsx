@@ -34,6 +34,7 @@ export function OrganizationLifecyclePanel({
   const [confirmStatus, setConfirmStatus] = useState<"active" | "suspended" | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const update = useUpdateOrganization(organization.id);
   const setStatus = useSetOrganizationStatus(organization.id);
   const transfer = useTransferOrganizationOwnership(organization.id);
@@ -45,11 +46,15 @@ export function OrganizationLifecyclePanel({
       await onRevisionChanged(message);
       return;
     }
+    if (error instanceof AdminV2ClientError && Object.keys(error.fields).length > 0) {
+      setFieldErrors(error.fields);
+    }
     setNotice(messageFrom(error));
   }
 
   async function saveIdentity() {
     setNotice(null);
+    setFieldErrors({});
     try {
       await update.mutateAsync({
         expected_revision: organization.policy_revision,
@@ -100,10 +105,16 @@ export function OrganizationLifecyclePanel({
           <div className="space-y-2">
             <Label htmlFor="organization-name">Name</Label>
             <Input id="organization-name" value={name} onChange={(e) => setName(e.target.value)} />
+            {fieldErrors.name ? (
+              <p className="text-destructive text-sm">{fieldErrors.name}</p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="organization-slug">Slug</Label>
             <Input id="organization-slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
+            {fieldErrors.slug ? (
+              <p className="text-destructive text-sm">{fieldErrors.slug}</p>
+            ) : null}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">

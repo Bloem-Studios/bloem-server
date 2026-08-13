@@ -4368,6 +4368,7 @@ export interface IPUserEntry {
 export interface ApiError {
   error: string;
   message: string;
+  fields?: Record<string, string>;
   retry_after_seconds?: number;
   unmatched_roots?: string[];
   active_job_id?: string;

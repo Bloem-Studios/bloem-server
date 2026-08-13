@@ -61,10 +61,11 @@ type OrganizationCursor struct {
 
 type OrganizationSummary struct {
 	Organization
-	MembershipCount  int64 `json:"membership_count"`
-	ProfileCount     int64 `json:"profile_count"`
-	LibraryCount     int64 `json:"library_count"`
-	EntitlementCount int64 `json:"entitlement_count"`
+	MembershipCount       int64 `json:"membership_count"`
+	ActiveMembershipCount int64 `json:"active_membership_count"`
+	ProfileCount          int64 `json:"profile_count"`
+	LibraryCount          int64 `json:"library_count"`
+	EntitlementCount      int64 `json:"entitlement_count"`
 }
 
 type OrganizationPage struct {
@@ -129,13 +130,14 @@ func (s *Store) GetOrganizationSummary(ctx context.Context, organizationID uuid.
 	err := s.pool.QueryRow(ctx, `
 		SELECT o.id, o.slug, o.name, o.status, o.owner_account_id, o.policy_revision, o.is_default,
 		       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id),
+		       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active'),
 		       (SELECT count(*) FROM user_profiles p WHERE p.organization_id = o.id),
 		       (SELECT count(*) FROM media_folders f JOIN resource_owners ro ON ro.id = f.owner_id WHERE ro.organization_id = o.id),
 		       (SELECT count(*) FROM organization_entitlements e WHERE e.organization_id = o.id AND e.status <> 'revoked')
 		FROM organizations o
 		WHERE o.id = $1`, organizationID).Scan(
 		&item.ID, &item.Slug, &item.Name, &item.Status, &item.OwnerAccountID, &item.PolicyRevision, &item.Default,
-		&item.MembershipCount, &item.ProfileCount, &item.LibraryCount, &item.EntitlementCount,
+		&item.MembershipCount, &item.ActiveMembershipCount, &item.ProfileCount, &item.LibraryCount, &item.EntitlementCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return OrganizationSummary{}, ErrOrganizationNotFound
@@ -174,6 +176,7 @@ func (s *Store) ListOrganizations(ctx context.Context, filter OrganizationFilter
 	rows, err := s.pool.Query(ctx, `
 		SELECT o.id, o.slug, o.name, o.status, o.owner_account_id, o.policy_revision, o.is_default,
 		       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id),
+		       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active'),
 		       (SELECT count(*) FROM user_profiles p WHERE p.organization_id = o.id),
 		       (SELECT count(*) FROM media_folders f JOIN resource_owners ro ON ro.id = f.owner_id WHERE ro.organization_id = o.id),
 		       (SELECT count(*) FROM organization_entitlements e WHERE e.organization_id = o.id AND e.status <> 'revoked')
@@ -190,7 +193,7 @@ func (s *Store) ListOrganizations(ctx context.Context, filter OrganizationFilter
 	for rows.Next() {
 		var item OrganizationSummary
 		if err := rows.Scan(&item.ID, &item.Slug, &item.Name, &item.Status, &item.OwnerAccountID, &item.PolicyRevision, &item.Default,
-			&item.MembershipCount, &item.ProfileCount, &item.LibraryCount, &item.EntitlementCount); err != nil {
+			&item.MembershipCount, &item.ActiveMembershipCount, &item.ProfileCount, &item.LibraryCount, &item.EntitlementCount); err != nil {
 			return OrganizationPage{}, fmt.Errorf("scan organization summary: %w", err)
 		}
 		items = append(items, item)

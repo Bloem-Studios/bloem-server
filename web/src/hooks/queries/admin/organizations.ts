@@ -13,6 +13,7 @@ export interface PlatformOrganization {
   policy_revision: number;
   is_default?: boolean;
   membership_count?: number;
+  active_membership_count?: number;
   profile_count?: number;
   library_count?: number;
   entitlement_count?: number;
@@ -55,6 +56,7 @@ export const organizationKeys = {
   detail: (id: string) => [...platformKey, "organizations", id] as const,
   memberships: (id: string, cursor = "") =>
     [...platformKey, "organizations", id, "memberships", cursor] as const,
+  membershipPages: (id: string) => [...platformKey, "organizations", id, "memberships"] as const,
 };
 
 function organizationPath(id: string, suffix = ""): string {
@@ -102,12 +104,16 @@ export function useOrganizationMemberships(id: string, cursor = "") {
 function usePlatformMutation<TInput, TResult>(
   mutationFn: (input: TInput) => Promise<TResult>,
   invalidation: (input: TInput) => readonly unknown[],
+  additionalInvalidation?: (input: TInput) => readonly unknown[],
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
     onSuccess: async (_result, input) => {
       await queryClient.invalidateQueries({ queryKey: invalidation(input) });
+      if (additionalInvalidation) {
+        await queryClient.invalidateQueries({ queryKey: additionalInvalidation(input) });
+      }
       await queryClient.invalidateQueries({ queryKey: organizationKeys.lists() });
     },
   });
@@ -173,6 +179,7 @@ export function useCreateOrganizationMembership(id: string) {
         { method: "POST", body: JSON.stringify(input) },
       ),
     () => organizationKeys.detail(id),
+    () => organizationKeys.membershipPages(id),
   );
 }
 
@@ -194,5 +201,6 @@ export function useUpdateOrganizationMembership(id: string) {
       });
     },
     () => organizationKeys.detail(id),
+    () => organizationKeys.membershipPages(id),
   );
 }

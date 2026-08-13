@@ -62,6 +62,7 @@ export class AdminV2ClientError extends Error {
     public status: number,
     public code: string,
     message: string,
+    public fields: Record<string, string> = {},
   ) {
     super(message);
     this.name = "AdminV2ClientError";
@@ -123,6 +124,7 @@ async function parseError(response: Response): Promise<AdminV2ClientError> {
     response.status,
     body.error || "unknown",
     body.message || response.statusText || `Request failed (${response.status})`,
+    body.fields ?? {},
   );
 }
 

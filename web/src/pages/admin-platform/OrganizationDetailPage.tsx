@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ArrowLeft, Plus, ShieldCheck, Users } from "lucide-react";
+import { AdminV2ClientError } from "@/api/adminV2Client";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, ShieldCheck, Users } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { OrganizationLifecyclePanel } from "@/components/admin/organizations/OrganizationLifecyclePanel";
 import { Badge } from "@/components/ui/badge";
@@ -50,14 +51,18 @@ function AddMembershipDialog({
   organization,
   open,
   onOpenChange,
+  onStale,
 }: {
   organization: PlatformOrganization;
   open: boolean;
   onOpenChange(open: boolean): void;
+  onStale(): Promise<void>;
 }) {
   const mutation = useCreateOrganizationMembership(organization.id);
   const [accountId, setAccountId] = useState("");
   const [role, setRole] = useState<"admin" | "user">("user");
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const parsed = Number(accountId);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -78,6 +83,9 @@ function AddMembershipDialog({
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
             />
+            {fieldErrors.account_id ? (
+              <p className="text-destructive text-sm">{fieldErrors.account_id}</p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="membership-role">Role</Label>
@@ -91,9 +99,9 @@ function AddMembershipDialog({
               <option value="admin">Organization admin</option>
             </select>
           </div>
-          {mutation.error ? (
+          {error || mutation.error ? (
             <p className="text-destructive text-sm" role="alert">
-              {mutation.error.message}
+              {error ?? mutation.error?.message}
             </p>
           ) : null}
         </div>
@@ -112,6 +120,19 @@ function AddMembershipDialog({
                   status: "active",
                 })
                 .then(() => onOpenChange(false))
+                .catch(async (cause: unknown) => {
+                  if (cause instanceof AdminV2ClientError) {
+                    setFieldErrors(cause.fields);
+                    if (cause.code === "authorization_state_changed") {
+                      setError("Organization membership state changed. This page was reloaded.");
+                      await onStale();
+                      return;
+                    }
+                  }
+                  setError(
+                    cause instanceof Error ? cause.message : "Membership could not be added.",
+                  );
+                })
             }
           >
             {mutation.isPending ? "Adding…" : "Add membership"}
@@ -125,18 +146,31 @@ function AddMembershipDialog({
 function MembershipRow({
   organization,
   membership,
+  onStale,
 }: {
   organization: PlatformOrganization;
   membership: OrganizationMembership;
+  onStale(): Promise<void>;
 }) {
   const update = useUpdateOrganizationMembership(organization.id);
+  const [error, setError] = useState<string | null>(null);
   const isOwner = membership.account_id === organization.owner_account_id;
   function updateStatus(status: MembershipStatus) {
-    void update.mutate({
-      membership_id: membership.id,
-      expected_revision: membership.security_revision,
-      status,
-    });
+    setError(null);
+    void update
+      .mutateAsync({
+        membership_id: membership.id,
+        expected_revision: membership.security_revision,
+        status,
+      })
+      .catch(async (cause: unknown) => {
+        if (cause instanceof AdminV2ClientError && cause.code === "authorization_state_changed") {
+          setError("Membership changed. This page was reloaded.");
+          await onStale();
+          return;
+        }
+        setError(cause instanceof Error ? cause.message : "Membership update failed.");
+      });
   }
   return (
     <TableRow>
@@ -159,11 +193,17 @@ function MembershipRow({
         </Badge>
       </TableCell>
       <TableCell className="text-right">
+        {error ? (
+          <p className="text-destructive mb-2 text-xs" role="alert">
+            {error}
+          </p>
+        ) : null}
         {membership.status === "active" ? (
           <Button
             size="sm"
             variant="outline"
             disabled={isOwner || update.isPending}
+            aria-label={`Suspend ${membership.username || `account ${membership.account_id}`}`}
             onClick={() => updateStatus("suspended")}
           >
             Suspend
@@ -173,6 +213,7 @@ function MembershipRow({
             size="sm"
             variant="outline"
             disabled={update.isPending}
+            aria-label={`Reactivate ${membership.username || `account ${membership.account_id}`}`}
             onClick={() => updateStatus("active")}
           >
             Reactivate
@@ -186,7 +227,9 @@ function MembershipRow({
 export default function OrganizationDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
   const organization = usePlatformOrganization(id);
-  const memberships = useOrganizationMemberships(id);
+  const [membershipCursors, setMembershipCursors] = useState<string[]>([""]);
+  const membershipCursor = membershipCursors[membershipCursors.length - 1] ?? "";
+  const memberships = useOrganizationMemberships(id, membershipCursor);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   useDocumentTitle(organization.data?.name ?? "Organization");
 
@@ -209,7 +252,7 @@ export default function OrganizationDetailPage() {
 
   const current = organization.data;
   const items = memberships.data?.memberships ?? [];
-  const activeMemberships = items.filter((membership) => membership.status === "active").length;
+  const activeMemberships = current.active_membership_count ?? 0;
   return (
     <section className="admin-page space-y-6">
       <div>
@@ -289,12 +332,44 @@ export default function OrganizationDetailPage() {
                         key={membership.id}
                         organization={current}
                         membership={membership}
+                        onStale={async () => {
+                          await Promise.all([organization.refetch(), memberships.refetch()]);
+                        }}
                       />
                     ))}
                   </TableBody>
                 </Table>
               </div>
             )}
+            <div className="border-border flex items-center justify-between border-t px-4 py-3">
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label="Previous membership page"
+                disabled={membershipCursors.length === 1 || memberships.isFetching}
+                onClick={() =>
+                  setMembershipCursors((currentCursors) => currentCursors.slice(0, -1))
+                }
+              >
+                <ChevronLeft className="h-4 w-4" /> Previous
+              </Button>
+              <span className="text-muted-foreground text-xs">Page {membershipCursors.length}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label="Next membership page"
+                disabled={!memberships.data?.next_cursor || memberships.isFetching}
+                onClick={() =>
+                  memberships.data?.next_cursor &&
+                  setMembershipCursors((currentCursors) => [
+                    ...currentCursors,
+                    memberships.data!.next_cursor!,
+                  ])
+                }
+              >
+                Next <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
         <Card className="h-fit">
@@ -315,7 +390,6 @@ export default function OrganizationDetailPage() {
       </div>
 
       <OrganizationLifecyclePanel
-        key={`${current.id}:${current.policy_revision}`}
         organization={current}
         activeMemberships={activeMemberships}
         onRevisionChanged={async () => {
@@ -326,6 +400,9 @@ export default function OrganizationDetailPage() {
         organization={current}
         open={addMemberOpen}
         onOpenChange={setAddMemberOpen}
+        onStale={async () => {
+          await Promise.all([organization.refetch(), memberships.refetch()]);
+        }}
       />
     </section>
   );

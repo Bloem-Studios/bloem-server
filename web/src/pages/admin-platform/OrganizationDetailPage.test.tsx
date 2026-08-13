@@ -21,6 +21,7 @@ const organization = {
   owner_account_id: 7,
   policy_revision: 4,
   membership_count: 2,
+  active_membership_count: 2,
   profile_count: 5,
   library_count: 3,
   entitlement_count: 1,
@@ -141,5 +142,48 @@ describe("OrganizationDetailPage", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/changed.*reloaded/i);
     await waitFor(() => expect(detailLoads).toBeGreaterThan(1));
+  });
+
+  it("preserves unsaved identity edits while reloading a stale revision", async () => {
+    let detailLoads = 0;
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (String(path).endsWith("/memberships")) return { memberships } as never;
+      if (String(path).endsWith("/suspend"))
+        throw new AdminV2ClientError(409, "authorization_state_changed", "stale");
+      detailLoads += 1;
+      return {
+        organization: { ...organization, policy_revision: detailLoads === 1 ? 4 : 5 },
+      } as never;
+    });
+    renderPage();
+    await screen.findByRole("heading", { name: "North Sea Media" });
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Unsaved draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Suspend organization" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Suspend$/ }));
+    await waitFor(() => expect(detailLoads).toBe(2));
+    expect(screen.getByLabelText("Name")).toHaveValue("Unsaved draft");
+    expect(screen.getByRole("button", { name: "Save details" })).toBeEnabled();
+  });
+
+  it("paginates memberships and uses the exact active count for suspension impact", async () => {
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (String(path).includes("/memberships?cursor=page-2")) {
+        return {
+          memberships: [{ ...memberships[1], id: "m3", username: "Next page" }],
+        } as never;
+      }
+      if (String(path).endsWith("/memberships")) {
+        return { memberships: [memberships[0]], next_cursor: "page-2" } as never;
+      }
+      return {
+        organization: { ...organization, membership_count: 80, active_membership_count: 73 },
+      } as never;
+    });
+    renderPage();
+    expect((await screen.findAllByText("Owner")).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Next membership page" }));
+    expect(await screen.findByText("Next page")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Suspend organization" }));
+    expect(screen.getByText(/73 active memberships/)).toBeInTheDocument();
   });
 });
