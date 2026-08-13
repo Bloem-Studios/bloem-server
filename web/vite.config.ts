@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import os from "os";
+import { vondelBrand } from "./vondel-brand-plugin";
 
 /// <reference types="vitest" />
 
@@ -31,7 +32,7 @@ export default defineConfig(({ mode }) => {
   );
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), vondelBrand()],
     worker: {
       format: "es",
     },
