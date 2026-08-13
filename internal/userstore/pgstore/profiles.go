@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -23,7 +24,7 @@ func scanProfile(scanner interface {
 		&p.QualityPreference, &p.Language, &p.PreferredMetadataLanguage, &p.SubtitleLanguage, &p.SubtitleMode,
 		&p.AutoSkipIntro, &p.AutoSkipCredits, &p.AutoSkipRecap, &p.AutoPlayNextPreview,
 		&p.LibraryRestrictionsEnabled,
-		&p.ShowForcedSubtitles, &p.MaxPlaybackQuality, &createdAt, &updatedAt,
+		&p.ShowForcedSubtitles, &p.MaxPlaybackQuality, &p.OrganizationID, &p.AccessGroupID, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -72,9 +73,32 @@ func createProfile(
 		p.IsPrimary = false
 	}
 
-	var organizationID string
-	if err := exec.QueryRow(ctx, `SELECT id::text FROM organizations WHERE is_default`).Scan(&organizationID); err != nil {
-		return fmt.Errorf("loading default organization for profile %s: %w", p.ID, err)
+	if p.OrganizationID == "" {
+		organizationID, legacyGroupID, err := tenancy.NewProfileIdentityResolver(exec).ResolveLegacyProfileIdentity(ctx, userID)
+		if err != nil {
+			return fmt.Errorf("resolving legacy identity for profile %s: %w", p.ID, err)
+		}
+		p.OrganizationID = organizationID.String()
+		if p.AccessGroupID == nil {
+			p.AccessGroupID = legacyGroupID
+		}
+	} else {
+		var activeMembership bool
+		if err := exec.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM organization_memberships memberships
+				JOIN organizations ON organizations.id = memberships.organization_id
+				WHERE memberships.account_id = $1
+				  AND memberships.organization_id = $2
+				  AND memberships.status = 'active'
+				  AND organizations.status <> 'suspended'
+			)`, userID, p.OrganizationID).Scan(&activeMembership); err != nil {
+			return fmt.Errorf("validating organization for profile %s: %w", p.ID, err)
+		}
+		if !activeMembership {
+			return fmt.Errorf("validating organization for profile %s: %w", p.ID, tenancy.ErrTenantNotFoundOrHidden)
+		}
 	}
 
 	_, err := exec.Exec(ctx, `
@@ -85,12 +109,12 @@ func createProfile(
 			library_restrictions_enabled,
 			show_forced_subtitles, max_playback_quality, organization_id, access_group_id, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-			(SELECT access_group_id FROM users WHERE id = $2), $22, $23)`,
+			$22, $23, $24)`,
 		p.ID, userID, p.Name, p.Avatar, p.PINHash, p.IsChild, p.IsPrimary, p.MaxContentRating,
 		p.QualityPreference, p.Language, p.PreferredMetadataLanguage, p.SubtitleLanguage, p.SubtitleMode,
 		p.AutoSkipIntro, p.AutoSkipCredits, p.AutoSkipRecap, p.AutoPlayNextPreview,
 		p.LibraryRestrictionsEnabled,
-		p.ShowForcedSubtitles, p.MaxPlaybackQuality, organizationID, p.CreatedAt, p.UpdatedAt,
+		p.ShowForcedSubtitles, p.MaxPlaybackQuality, p.OrganizationID, p.AccessGroupID, p.CreatedAt, p.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("inserting profile %s: %w", p.ID, err)
@@ -106,7 +130,7 @@ func (s *PostgresUserStore) GetProfile(ctx context.Context, id string) (*usersto
 		SELECT id, name, avatar, pin_hash, is_child, is_primary, max_content_rating,
 		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
-		       show_forced_subtitles, max_playback_quality, created_at, updated_at
+		       show_forced_subtitles, max_playback_quality, organization_id::text, access_group_id, created_at, updated_at
 		FROM user_profiles WHERE user_id = $1 AND id = $2`, s.userID, id)
 
 	p, err := scanProfile(row)
@@ -128,7 +152,7 @@ func (s *PostgresUserStore) ListProfiles(ctx context.Context) ([]userstore.Profi
 		SELECT id, name, avatar, pin_hash, is_child, is_primary, max_content_rating,
 		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
-		       show_forced_subtitles, max_playback_quality, created_at, updated_at
+		       show_forced_subtitles, max_playback_quality, organization_id::text, access_group_id, created_at, updated_at
 		FROM user_profiles WHERE user_id = $1 ORDER BY created_at ASC`, s.userID)
 	if err != nil {
 		return nil, fmt.Errorf("listing profiles: %w", err)

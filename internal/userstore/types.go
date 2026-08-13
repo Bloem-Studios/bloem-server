@@ -5,6 +5,8 @@ import "time"
 // Profile represents a user profile.
 type Profile struct {
 	ID                         string
+	OrganizationID             string
+	AccessGroupID              *int64
 	Name                       string
 	Avatar                     string
 	PINHash                    string

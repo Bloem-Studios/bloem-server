@@ -49,6 +49,7 @@ func TestPostgresProgressSince(t *testing.T) {
 		).Scan(&userID); err != nil {
 			t.Fatalf("seed user: %v", err)
 		}
+		provisionTestMembership(t, pool, userID)
 		t.Cleanup(func() {
 			_, _ = pool.Exec(ctx, `DELETE FROM user_watch_progress WHERE user_id = $1`, userID)
 			_, _ = pool.Exec(ctx, `DELETE FROM user_profiles WHERE user_id = $1`, userID)
@@ -93,6 +94,7 @@ func TestPostgresSettingValues(t *testing.T) {
 		).Scan(&userID); err != nil {
 			t.Fatalf("seed user: %v", err)
 		}
+		provisionTestMembership(t, pool, userID)
 		// user_setting_values and user_setting_mutations cascade from users.
 		// The cleanup asserts the cascade actually fired: silently discarding
 		// this error would let a dropped FK leak seeded rows into the shared
@@ -164,6 +166,7 @@ func TestPostgresJellycompatDisplayPrefs(t *testing.T) {
 		).Scan(&userID); err != nil {
 			t.Fatalf("seed user: %v", err)
 		}
+		provisionTestMembership(t, pool, userID)
 		// jellycompat_displayprefs cascades from users; assert it, as above.
 		t.Cleanup(func() {
 			deleteUserAssertingCascade(t, pool, userID, "jellycompat_displayprefs")
