@@ -134,14 +134,15 @@ jobs:
 
       - name: Lint changed lines
         env:
-          # A PR carries its target branch; a push to main compares against
-          # main's own history, which leaves the merge base at HEAD and lints
-          # nothing new. Read through the environment rather than interpolated
-          # into the script.
-          BASE_REF: ${{ github.base_ref || github.event.repository.default_branch }}
+          # Checkout already fetched full history. Use immutable event SHAs so
+          # this credentialless job never has to refetch the private repository.
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
-          golangci-lint run --new-from-merge-base="origin/${BASE_REF}" ./...
+          base_sha="$BASE_SHA"
+          if [ -z "$base_sha" ] || [[ "$base_sha" =~ ^0+$ ]] || ! git cat-file -e "${base_sha}^{commit}"; then
+            base_sha="$(git rev-parse HEAD^)"
+          fi
+          golangci-lint run --new-from-merge-base="$base_sha" ./...
 
       # A manifest change that does not regenerate leaves every client reading
       # stale keys, which the contract exists to prevent.

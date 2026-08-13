@@ -25,7 +25,7 @@
 ### Task 1: Import and Rebrand Ebook Metadata
 
 **Files:**
-- Modify repository: `/Users/jimcole/projects/vondel-plugin-ebook-metadata`
+- Modify repository: `${WORKSPACE_ROOT}/vondel-plugin-ebook-metadata`
 - Import pinned snapshot source beneath existing gate root
 - Create: `LICENSE`, `NOTICE`, `scripts/verify-private-source.sh`, private CI/release workflows
 - Modify: `go.mod`, `go.sum`, `manifest.json`, `README.md`, all self-importing Go files/tests
@@ -43,7 +43,7 @@
 ### Task 2: Import and Rebrand Autoscan ARR
 
 **Files:**
-- Modify repository: `/Users/jimcole/projects/vondel-plugin-autoscan-arr`
+- Modify repository: `${WORKSPACE_ROOT}/vondel-plugin-autoscan-arr`
 - Import pinned snapshot source beneath existing gate root
 - Create: `LICENSE`, `NOTICE`, `scripts/verify-private-source.sh`, private CI/release workflows
 - Modify: `go.mod`, `go.sum`, `manifest.json`, `README.md`, `main*.go`, `internal/arr/**`, tests
@@ -91,7 +91,7 @@
 ### Task 5: Populate the Canonical Private Catalog
 
 **Files:**
-- Modify: `/Users/jimcole/projects/vondel-plugins/manifest.json`, `catalog/catalog.go`, `catalog/catalog_test.go`, `cmd/update-catalog/main.go`, updater workflow
+- Modify: `${WORKSPACE_ROOT}/vondel-plugins/manifest.json`, `catalog/catalog.go`, `catalog/catalog_test.go`, `cmd/update-catalog/main.go`, updater workflow
 
 **Interfaces:**
 - Consumes seven verified Releases.

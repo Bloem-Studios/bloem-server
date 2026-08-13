@@ -169,8 +169,10 @@ func TestV1TenancyCompatibility(t *testing.T) {
 
 func TestV10FoundationCIRequiresDisposablePostgres(t *testing.T) {
 	type workflowStep struct {
+		Name string         `yaml:"name"`
 		Uses string         `yaml:"uses"`
 		Run  string         `yaml:"run"`
+		Env  map[string]any `yaml:"env"`
 		With map[string]any `yaml:"with"`
 	}
 	type workflowJob struct {
@@ -222,6 +224,50 @@ func TestV10FoundationCIRequiresDisposablePostgres(t *testing.T) {
 			t.Errorf("tenant-identity CI does not run %q", required)
 		}
 	}
+}
+
+func TestCIChangedLineLintNeedsNoRepositoryCredential(t *testing.T) {
+	type workflowStep struct {
+		Name string         `yaml:"name"`
+		Run  string         `yaml:"run"`
+		Env  map[string]any `yaml:"env"`
+	}
+	var workflow struct {
+		Jobs map[string]struct {
+			Steps []workflowStep `yaml:"steps"`
+		} `yaml:"jobs"`
+	}
+	raw, err := os.ReadFile("../../.github/workflows/ci.yml")
+	if err != nil {
+		t.Fatalf("read CI workflow: %v", err)
+	}
+	if err := yaml.Unmarshal(raw, &workflow); err != nil {
+		t.Fatalf("parse CI workflow: %v", err)
+	}
+	goJob, ok := workflow.Jobs["go"]
+	if !ok {
+		t.Fatal("CI has no go job")
+	}
+	for _, step := range goJob.Steps {
+		if step.Name != "Lint changed lines" {
+			continue
+		}
+		if strings.Contains(step.Run, "git fetch") {
+			t.Fatal("lint step refetches the private repository after checkout credentials were removed")
+		}
+		baseSHA := fmt.Sprint(step.Env["BASE_SHA"])
+		if !strings.Contains(baseSHA, "pull_request.base.sha") ||
+			!strings.Contains(baseSHA, "github.event.before") {
+			t.Fatalf("lint BASE_SHA = %q, want event-owned PR and push revisions", baseSHA)
+		}
+		for _, required := range []string{"git cat-file -e", "--new-from-merge-base"} {
+			if !strings.Contains(step.Run, required) {
+				t.Errorf("lint step does not contain %q", required)
+			}
+		}
+		return
+	}
+	t.Fatal("CI has no changed-line lint step")
 }
 
 func assertLegacyToken(t *testing.T, cfg *config.Config, token string) {
