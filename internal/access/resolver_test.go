@@ -4,13 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingskeys"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/google/uuid"
 )
 
 type stubUserRepo struct {
@@ -637,6 +640,7 @@ func TestResolver_MetadataLanguageIgnoresLegacyColumn(t *testing.T) {
 }
 
 func TestResolver_AppliesGroupPolicy(t *testing.T) {
+	organizationID := uuid.New()
 	resolver := NewResolver(
 		stubUserRepo{user: &models.User{
 			ID:                   1,
@@ -644,9 +648,12 @@ func TestResolver_AppliesGroupPolicy(t *testing.T) {
 			MaxPlaybackQuality:   PlaybackQuality4K,
 			AccessPolicyRevision: 5,
 		}},
-		stubStoreProvider{store: stubStore{}},
+		stubStoreProvider{store: stubStore{profile: &userstore.Profile{
+			ID:             "prof-1",
+			OrganizationID: organizationID.String(),
+		}}},
 		nil,
-		stubGroupProvider{group: &GroupPolicy{
+		&stubGroupProvider{group: &GroupPolicy{
 			LibraryIDs:               []int{2, 4},
 			MaxPlaybackQuality:       PlaybackQualityStandard,
 			DownloadAllowed:          true,
@@ -655,7 +662,11 @@ func TestResolver_AppliesGroupPolicy(t *testing.T) {
 		}},
 	)
 
-	scope, err := resolver.Resolve(context.Background(), ResolveInput{UserID: 1})
+	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
+		OrganizationID: organizationID,
+		AccountID:      1,
+	})
+	scope, err := resolver.Resolve(ctx, ResolveInput{UserID: 1, ProfileID: "prof-1"})
 	if err != nil {
 		t.Fatalf("Resolve() error: %v", err)
 	}
@@ -667,11 +678,87 @@ func TestResolver_AppliesGroupPolicy(t *testing.T) {
 	}
 }
 
-type stubGroupProvider struct {
-	group *GroupPolicy
-	err   error
+func TestResolverLoadsProfileBeforeResolvingTenantGroup(t *testing.T) {
+	organizationID := uuid.New()
+	events := []string{}
+	store := orderedResolverStore{
+		stubStore: stubStore{profile: &userstore.Profile{
+			ID:             "prof-1",
+			OrganizationID: organizationID.String(),
+		}},
+		events: &events,
+	}
+	groups := &stubGroupProvider{
+		group:  &GroupPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true, RequestsAllowed: true},
+		events: &events,
+	}
+	resolver := NewResolver(
+		stubUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}},
+		stubStoreProvider{store: store},
+		nil,
+		groups,
+	)
+	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
+		OrganizationID: organizationID,
+		AccountID:      1,
+	})
+
+	if _, err := resolver.Resolve(ctx, ResolveInput{UserID: 1, ProfileID: "prof-1"}); err != nil {
+		t.Fatalf("Resolve() error: %v", err)
+	}
+	if !reflect.DeepEqual(events, []string{"profile", "group"}) {
+		t.Fatalf("resolution order = %#v, want profile then group", events)
+	}
+	wantSubject := GroupSubject{OrganizationID: organizationID, AccountID: 1, ProfileID: "prof-1"}
+	if groups.subject != wantSubject {
+		t.Fatalf("ResolvePolicy subject = %#v, want %#v", groups.subject, wantSubject)
+	}
 }
 
-func (p stubGroupProvider) GetPolicyForUser(context.Context, int) (*GroupPolicy, error) {
+func TestResolverV2WithoutProfileFailsClosedAtGroupResolution(t *testing.T) {
+	organizationID := uuid.New()
+	groups := &stubGroupProvider{err: ErrGroupNotFound}
+	resolver := NewResolver(
+		stubUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}},
+		stubStoreProvider{store: stubStore{}},
+		nil,
+		groups,
+	)
+	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
+		OrganizationID: organizationID,
+		AccountID:      1,
+	})
+
+	if _, err := resolver.Resolve(ctx, ResolveInput{UserID: 1}); !errors.Is(err, ErrGroupNotFound) {
+		t.Fatalf("Resolve() error = %v, want ErrGroupNotFound", err)
+	}
+	wantSubject := GroupSubject{OrganizationID: organizationID, AccountID: 1}
+	if groups.subject != wantSubject {
+		t.Fatalf("ResolvePolicy subject = %#v, want %#v", groups.subject, wantSubject)
+	}
+}
+
+type orderedResolverStore struct {
+	stubStore
+	events *[]string
+}
+
+func (s orderedResolverStore) GetProfile(ctx context.Context, id string) (*userstore.Profile, error) {
+	*s.events = append(*s.events, "profile")
+	return s.stubStore.GetProfile(ctx, id)
+}
+
+type stubGroupProvider struct {
+	group   *GroupPolicy
+	err     error
+	subject GroupSubject
+	events  *[]string
+}
+
+func (p *stubGroupProvider) ResolvePolicy(_ context.Context, subject GroupSubject) (*GroupPolicy, error) {
+	p.subject = subject
+	if p.events != nil {
+		*p.events = append(*p.events, "group")
+	}
 	return p.group, p.err
 }

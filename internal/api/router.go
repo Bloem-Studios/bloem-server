@@ -480,7 +480,14 @@ func NewRouter(deps Dependencies) chi.Router {
 			if err != nil {
 				return playback.SessionLimits{}, err
 			}
-			effective, err := access.EffectivePolicyForUser(ctx, user, accessGroupStore)
+			subject := access.GroupSubject{AccountID: user.ID}
+			if accessGroupStore != nil {
+				subject, err = access.GroupSubjectFromContext(ctx, user.ID, "")
+				if err != nil {
+					return playback.SessionLimits{}, err
+				}
+			}
+			effective, err := access.EffectivePolicyForSubject(ctx, user, subject, accessGroupStore)
 			if err != nil {
 				return playback.SessionLimits{}, err
 			}
@@ -1867,6 +1874,7 @@ func NewRouter(deps Dependencies) chi.Router {
 				if authMiddleware != nil {
 					r.With(
 						authMiddleware.RequireAuth,
+						optionalLegacyTenant(tenantMiddleware),
 						optionalProfileViewerAccess(viewerAccessMiddleware),
 					).Post("/plugin-launch", authHandler.HandlePluginLaunch)
 				}
@@ -1902,6 +1910,7 @@ func NewRouter(deps Dependencies) chi.Router {
 					if viewerAccessMiddleware != nil {
 						r.With(
 							authMiddleware.RequireAuth,
+							optionalLegacyTenant(tenantMiddleware),
 							viewerAccessMiddleware.RequireViewerAccess,
 						).Post("/device/approve-handoff", authHandler.HandleDeviceApproveHandoff)
 					}
@@ -2021,6 +2030,7 @@ func NewRouter(deps Dependencies) chi.Router {
 		if authMiddleware != nil {
 			r.Group(func(r chi.Router) {
 				r.Use(authMiddleware.RequireAuth)
+				r.Use(optionalLegacyTenant(tenantMiddleware))
 				if demoGuard != nil {
 					r.Use(demoGuard.Guard)
 				}
@@ -3297,6 +3307,13 @@ func optionalProfileViewerAccess(viewer *apimw.ViewerAccessMiddleware) func(http
 			validated.ServeHTTP(w, r)
 		})
 	}
+}
+
+func optionalLegacyTenant(tenant *apimw.TenantMiddleware) func(http.Handler) http.Handler {
+	if tenant == nil {
+		return func(next http.Handler) http.Handler { return next }
+	}
+	return tenant.ResolveLegacy
 }
 
 // pgSubtitleMediaResolver implements handlers.SubtitleMediaResolver using a direct PG query.

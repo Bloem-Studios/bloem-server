@@ -11,6 +11,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	policyengine "github.com/Silo-Server/silo-server/internal/policy"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/google/uuid"
 )
 
 func TestPolicyActionDeciderMatchesLegacyCapability(t *testing.T) {
@@ -74,7 +76,11 @@ func TestPolicyActionDeciderMatchesLegacyCreateGate(t *testing.T) {
 }
 
 func TestPolicyActionDeciderUsesGroupDownloadFlags(t *testing.T) {
-	ctx := context.Background()
+	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
+		OrganizationID: uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+		AccountID:      9,
+		Legacy:         true,
+	})
 	user := &models.User{ID: 9, DownloadAllowed: true, DownloadTranscodeAllowed: true}
 	svc := newPolicyActionTestService(
 		user,
@@ -196,7 +202,7 @@ type downloadGroupProvider struct {
 	err   error
 }
 
-func (p downloadGroupProvider) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {
+func (p downloadGroupProvider) ResolvePolicy(context.Context, access.GroupSubject) (*access.GroupPolicy, error) {
 	return p.group, p.err
 }
 

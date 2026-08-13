@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sync/errgroup"
 
@@ -40,6 +41,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingsmigrate"
 	subtitleai "github.com/Silo-Server/silo-server/internal/subtitles/ai"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -58,7 +60,7 @@ type UserRepository interface {
 }
 
 type AccessGroupValidator interface {
-	Get(ctx context.Context, id int64) (*access.Group, error)
+	Get(context.Context, uuid.UUID, int64) (*access.Group, error)
 }
 
 // ServerSettingsStore provides access to server-wide admin settings.
@@ -570,7 +572,12 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 				writeError(w, http.StatusInternalServerError, "internal_error", "Access groups are not configured")
 				return
 			}
-			if _, err := h.AccessGroups.Get(r.Context(), *req.AccessGroupID.Value); err != nil {
+			tenant, ok := tenancy.FromContext(r.Context())
+			if !ok || tenant.OrganizationID == uuid.Nil {
+				writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+				return
+			}
+			if _, err := h.AccessGroups.Get(r.Context(), tenant.OrganizationID, *req.AccessGroupID.Value); err != nil {
 				if errors.Is(err, access.ErrGroupNotFound) {
 					writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
 					return

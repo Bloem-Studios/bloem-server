@@ -306,7 +306,15 @@ func (s *Service) effectiveDownloadUser(ctx context.Context, user *models.User) 
 	if user == nil {
 		return nil, nil
 	}
-	effective, err := access.EffectivePolicyForUser(ctx, user, s.groupProvider)
+	subject := access.GroupSubject{AccountID: user.ID}
+	if s.groupProvider != nil {
+		var err error
+		subject, err = access.GroupSubjectFromContext(ctx, user.ID, "")
+		if err != nil {
+			return nil, err
+		}
+	}
+	effective, err := access.EffectivePolicyForSubject(ctx, user, subject, s.groupProvider)
 	if err != nil {
 		return nil, err
 	}

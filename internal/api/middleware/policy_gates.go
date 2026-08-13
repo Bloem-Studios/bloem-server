@@ -160,7 +160,15 @@ func (m *PolicyPermissionMiddleware) RequireMetadataCurationForItem(next http.Ha
 			writeForbidden(w, metadataCurationRequiredMsg)
 			return
 		}
-		effective, err := access.EffectivePolicyForUser(r.Context(), user, m.groups)
+		subject := access.GroupSubject{AccountID: user.ID, ProfileID: declaredProfileID}
+		if m.groups != nil {
+			subject, err = access.GroupSubjectFromContext(r.Context(), user.ID, declaredProfileID)
+			if err != nil {
+				writeForbidden(w, metadataCurationRequiredMsg)
+				return
+			}
+		}
+		effective, err := access.EffectivePolicyForSubject(r.Context(), user, subject, m.groups)
 		if err != nil {
 			writeForbidden(w, metadataCurationRequiredMsg)
 			return
@@ -250,7 +258,15 @@ func (m *PolicyPermissionMiddleware) RequireMarkerEdit(next http.Handler) http.H
 			writeForbidden(w, markerEditRequiredMsg)
 			return
 		}
-		effective, err := access.EffectivePolicyForUser(r.Context(), user, m.groups)
+		subject := access.GroupSubject{AccountID: user.ID, ProfileID: declaredProfileID}
+		if m.groups != nil {
+			subject, err = access.GroupSubjectFromContext(r.Context(), user.ID, declaredProfileID)
+			if err != nil {
+				writeForbidden(w, markerEditRequiredMsg)
+				return
+			}
+		}
+		effective, err := access.EffectivePolicyForSubject(r.Context(), user, subject, m.groups)
 		if err != nil {
 			writeForbidden(w, markerEditRequiredMsg)
 			return

@@ -12,19 +12,23 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
+
+var accessGroupHandlerOrganizationID = uuid.MustParse("10000000-0000-0000-0000-000000000001")
 
 func TestAccessGroupHandlerIsDefaultRoundTrips(t *testing.T) {
 	store := newAccessGroupHandlerTestStore()
 	handler := NewAccessGroupHandler(store)
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/access-groups", strings.NewReader(`{
+	req := accessGroupRequestWithTenant(httptest.NewRequest(http.MethodPost, "/api/v1/admin/access-groups", strings.NewReader(`{
 		"name": "Users",
 		"is_default": true
-	}`))
+	}`)))
 	handler.HandleCreate(rec, req)
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("HandleCreate status = %d, body %s", rec.Code, rec.Body.String())
@@ -63,7 +67,7 @@ func TestAccessGroupHandlerUpdateDefaultUnsetsPrevious(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/admin/access-groups", nil)
+	req = accessGroupRequestWithTenant(httptest.NewRequest(http.MethodGet, "/api/v1/admin/access-groups", nil))
 	handler.HandleList(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("HandleList status = %d, body %s", rec.Code, rec.Body.String())
@@ -81,6 +85,30 @@ func TestAccessGroupHandlerUpdateDefaultUnsetsPrevious(t *testing.T) {
 	}
 	if !defaults[2] {
 		t.Fatalf("group B is_default = false, want true")
+	}
+}
+
+func TestAccessGroupHandlerUsesOnlyValidatedTenantContext(t *testing.T) {
+	store := newAccessGroupHandlerTestStore()
+	handler := NewAccessGroupHandler(store)
+	foreignOrganizationID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/access-groups", strings.NewReader(`{
+		"name": "Tenant Bound",
+		"organization_id": "20000000-0000-0000-0000-000000000002"
+	}`))
+	req.Header.Set("X-Organization-ID", foreignOrganizationID.String())
+	req = accessGroupRequestWithTenant(req)
+	rec := httptest.NewRecorder()
+
+	handler.HandleCreate(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("HandleCreate status = %d, body %s", rec.Code, rec.Body.String())
+	}
+	if store.lastOrganizationID != accessGroupHandlerOrganizationID {
+		t.Fatalf("store organization = %s, want validated tenant %s", store.lastOrganizationID, accessGroupHandlerOrganizationID)
+	}
+	if store.lastOrganizationID == foreignOrganizationID {
+		t.Fatal("request-selected organization reached store")
 	}
 }
 
@@ -114,8 +142,9 @@ func TestAccessGroupHandlerDefaultGroupGuards(t *testing.T) {
 }
 
 type accessGroupHandlerTestStore struct {
-	nextID int64
-	groups map[int64]access.Group
+	nextID             int64
+	groups             map[int64]access.Group
+	lastOrganizationID uuid.UUID
 }
 
 func newAccessGroupHandlerTestStore() *accessGroupHandlerTestStore {
@@ -125,7 +154,8 @@ func newAccessGroupHandlerTestStore() *accessGroupHandlerTestStore {
 	}
 }
 
-func (s *accessGroupHandlerTestStore) List(context.Context) ([]access.Group, error) {
+func (s *accessGroupHandlerTestStore) List(_ context.Context, organizationID uuid.UUID) ([]access.Group, error) {
+	s.lastOrganizationID = organizationID
 	groups := make([]access.Group, 0, len(s.groups))
 	for _, group := range s.groups {
 		groups = append(groups, group)
@@ -136,7 +166,8 @@ func (s *accessGroupHandlerTestStore) List(context.Context) ([]access.Group, err
 	return groups, nil
 }
 
-func (s *accessGroupHandlerTestStore) Get(_ context.Context, id int64) (*access.Group, error) {
+func (s *accessGroupHandlerTestStore) Get(_ context.Context, organizationID uuid.UUID, id int64) (*access.Group, error) {
+	s.lastOrganizationID = organizationID
 	group, ok := s.groups[id]
 	if !ok {
 		return nil, access.ErrGroupNotFound
@@ -144,10 +175,12 @@ func (s *accessGroupHandlerTestStore) Get(_ context.Context, id int64) (*access.
 	return &group, nil
 }
 
-func (s *accessGroupHandlerTestStore) Create(_ context.Context, input access.CreateGroupInput) (*access.Group, error) {
+func (s *accessGroupHandlerTestStore) Create(_ context.Context, organizationID uuid.UUID, input access.CreateGroupInput) (*access.Group, error) {
+	s.lastOrganizationID = organizationID
 	now := time.Unix(1, 0).UTC()
 	group := access.Group{
 		ID:                       s.nextID,
+		OrganizationID:           organizationID,
 		Name:                     input.Name,
 		Description:              input.Description,
 		LibraryIDs:               append([]int(nil), input.LibraryIDs...),
@@ -170,7 +203,8 @@ func (s *accessGroupHandlerTestStore) Create(_ context.Context, input access.Cre
 	return &group, nil
 }
 
-func (s *accessGroupHandlerTestStore) Update(_ context.Context, id int64, input access.UpdateGroupInput) (*access.Group, error) {
+func (s *accessGroupHandlerTestStore) Update(_ context.Context, organizationID uuid.UUID, id int64, input access.UpdateGroupInput) (*access.Group, error) {
+	s.lastOrganizationID = organizationID
 	group, ok := s.groups[id]
 	if !ok {
 		return nil, access.ErrGroupNotFound
@@ -218,7 +252,8 @@ func (s *accessGroupHandlerTestStore) Update(_ context.Context, id int64, input 
 	return &group, nil
 }
 
-func (s *accessGroupHandlerTestStore) Delete(_ context.Context, id int64) error {
+func (s *accessGroupHandlerTestStore) Delete(_ context.Context, organizationID uuid.UUID, id int64) error {
+	s.lastOrganizationID = organizationID
 	group, ok := s.groups[id]
 	if !ok {
 		return access.ErrGroupNotFound
@@ -245,7 +280,17 @@ func accessGroupRequestWithID(method, path string, body *strings.Reader, id stri
 	req := httptest.NewRequest(method, path, reader)
 	routeCtx := chi.NewRouteContext()
 	routeCtx.URLParams.Add("id", id)
-	return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
+	return accessGroupRequestWithTenant(req)
+}
+
+func accessGroupRequestWithTenant(req *http.Request) *http.Request {
+	tenant := tenancy.Context{
+		OrganizationID: accessGroupHandlerOrganizationID,
+		AccountID:      1,
+		Legacy:         true,
+	}
+	return req.WithContext(tenancy.WithContext(req.Context(), tenant))
 }
 
 func decodeAccessGroupResponse(t *testing.T, rec *httptest.ResponseRecorder) accessGroupResponse {

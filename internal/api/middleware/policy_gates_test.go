@@ -11,7 +11,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/policy"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 func TestPolicyActingAdminMiddlewareParity(t *testing.T) {
@@ -298,6 +300,11 @@ func captureMetadataCurationResponse(
 	ctx := req.Context()
 	if claims != nil {
 		ctx = SetClaims(ctx, claims)
+		ctx = tenancy.WithContext(ctx, tenancy.Context{
+			OrganizationID: uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+			AccountID:      claims.UserID,
+			Legacy:         true,
+		})
 	}
 	routeCtx := chi.NewRouteContext()
 	if itemID != "" {
@@ -319,7 +326,13 @@ func captureMarkerEditResponse(mw markerEditGate, claims *auth.Claims) middlewar
 	}))
 	req := httptest.NewRequest(http.MethodPut, "/markers/files/5", nil)
 	if claims != nil {
-		req = req.WithContext(SetClaims(req.Context(), claims))
+		ctx := SetClaims(req.Context(), claims)
+		ctx = tenancy.WithContext(ctx, tenancy.Context{
+			OrganizationID: uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+			AccountID:      claims.UserID,
+			Legacy:         true,
+		})
+		req = req.WithContext(ctx)
 	}
 	rec := httptest.NewRecorder()
 	next.ServeHTTP(rec, req)
@@ -352,6 +365,6 @@ type middlewareGroupProvider struct {
 	err   error
 }
 
-func (p middlewareGroupProvider) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {
+func (p middlewareGroupProvider) ResolvePolicy(context.Context, access.GroupSubject) (*access.GroupPolicy, error) {
 	return p.group, p.err
 }

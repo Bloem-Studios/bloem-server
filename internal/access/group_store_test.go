@@ -10,17 +10,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestGroupStoreCRUDAndMemberCountsDB(t *testing.T) {
-	ctx, pool, store, suffix := newGroupStoreDBTest(t)
-	group := createTestGroup(t, ctx, store, suffix, "crud")
-	insertAccessGroupTestUser(t, ctx, pool, suffix, &group.ID, 1)
-	insertAccessGroupTestUser(t, ctx, pool, suffix, &group.ID, 2)
+	ctx, pool, store, suffix, organizationID := newGroupStoreDBTest(t)
+	group := createTestGroup(t, ctx, store, organizationID, suffix, "crud")
+	firstUserID := insertAccessGroupTestUser(t, ctx, pool, suffix, &group.ID, 1)
+	secondUserID := insertAccessGroupTestUser(t, ctx, pool, suffix, &group.ID, 2)
+	insertAccessGroupTestProfile(t, ctx, pool, suffix, firstUserID, organizationID, &group.ID)
+	insertAccessGroupTestProfile(t, ctx, pool, suffix, secondUserID, organizationID, &group.ID)
 
-	got, err := store.Get(ctx, group.ID)
+	got, err := store.Get(ctx, organizationID, group.ID)
 	if err != nil {
 		t.Fatalf("Get() error: %v", err)
 	}
@@ -31,7 +34,7 @@ func TestGroupStoreCRUDAndMemberCountsDB(t *testing.T) {
 		t.Fatalf("library_ids = %#v, want [1 3]", got.LibraryIDs)
 	}
 
-	groups, err := store.List(ctx)
+	groups, err := store.List(ctx, organizationID)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -50,7 +53,7 @@ func TestGroupStoreCRUDAndMemberCountsDB(t *testing.T) {
 
 	description := "updated"
 	maxStreams := 1
-	updated, err := store.Update(ctx, group.ID, UpdateGroupInput{
+	updated, err := store.Update(ctx, organizationID, group.ID, UpdateGroupInput{
 		Description: &description,
 		MaxStreams:  &maxStreams,
 	})
@@ -61,7 +64,7 @@ func TestGroupStoreCRUDAndMemberCountsDB(t *testing.T) {
 		t.Fatalf("updated group = %#v, want description/max_streams update", updated)
 	}
 
-	if err := store.Delete(ctx, group.ID); err != nil {
+	if err := store.Delete(ctx, organizationID, group.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 	var assigned int
@@ -78,22 +81,32 @@ func TestGroupStoreCRUDAndMemberCountsDB(t *testing.T) {
 	}
 }
 
-func TestGroupStoreGetPolicyForUserDB(t *testing.T) {
-	ctx, pool, store, suffix := newGroupStoreDBTest(t)
-	group := createTestGroup(t, ctx, store, suffix, "policy")
+func TestGroupStoreResolvePolicyDB(t *testing.T) {
+	ctx, pool, store, suffix, organizationID := newGroupStoreDBTest(t)
+	group := createTestGroup(t, ctx, store, organizationID, suffix, "policy")
 	memberID := insertAccessGroupTestUser(t, ctx, pool, suffix, &group.ID, 1)
 	noGroupID := insertAccessGroupTestUser(t, ctx, pool, suffix, nil, 1)
+	memberProfileID := insertAccessGroupTestProfile(t, ctx, pool, suffix, memberID, organizationID, &group.ID)
+	noGroupProfileID := insertAccessGroupTestProfile(t, ctx, pool, suffix, noGroupID, organizationID, nil)
 
-	policy, err := store.GetPolicyForUser(ctx, memberID)
+	policy, err := store.ResolvePolicy(ctx, GroupSubject{
+		OrganizationID: organizationID,
+		AccountID:      memberID,
+		ProfileID:      memberProfileID,
+	})
 	if err != nil {
-		t.Fatalf("GetPolicyForUser(member) error: %v", err)
+		t.Fatalf("ResolvePolicy(member) error: %v", err)
 	}
 	if policy == nil || policy.ID != group.ID || !reflect.DeepEqual(policy.LibraryIDs, []int{1, 3}) {
 		t.Fatalf("policy = %#v, want group policy", policy)
 	}
-	policy, err = store.GetPolicyForUser(ctx, noGroupID)
+	policy, err = store.ResolvePolicy(ctx, GroupSubject{
+		OrganizationID: organizationID,
+		AccountID:      noGroupID,
+		ProfileID:      noGroupProfileID,
+	})
 	if err != nil {
-		t.Fatalf("GetPolicyForUser(no group) error: %v", err)
+		t.Fatalf("ResolvePolicy(no group) error: %v", err)
 	}
 	if policy != nil {
 		t.Fatalf("policy = %#v, want nil", policy)
@@ -101,13 +114,18 @@ func TestGroupStoreGetPolicyForUserDB(t *testing.T) {
 }
 
 func TestGroupStoreQualityUpdateBumpsMemberRevisionsDB(t *testing.T) {
-	ctx, pool, store, suffix := newGroupStoreDBTest(t)
-	group := createTestGroup(t, ctx, store, suffix, "quality")
-	memberID := insertAccessGroupTestUser(t, ctx, pool, suffix, &group.ID, 10)
+	ctx, pool, store, suffix, organizationID := newGroupStoreDBTest(t)
+	group := createTestGroup(t, ctx, store, organizationID, suffix, "quality")
+	memberID := insertAccessGroupTestUser(t, ctx, pool, suffix, nil, 10)
+	legacyOnlyID := insertAccessGroupTestUser(t, ctx, pool, suffix, &group.ID, 30)
 	nonMemberID := insertAccessGroupTestUser(t, ctx, pool, suffix, nil, 20)
+	insertAccessGroupTestProfile(t, ctx, pool, suffix, memberID, organizationID, &group.ID)
+	insertAccessGroupTestProfile(t, ctx, pool, suffix, memberID, organizationID, &group.ID)
+	insertAccessGroupTestProfile(t, ctx, pool, suffix, legacyOnlyID, organizationID, nil)
+	insertAccessGroupTestProfile(t, ctx, pool, suffix, nonMemberID, organizationID, nil)
 
 	description := "no revision bump"
-	if _, err := store.Update(ctx, group.ID, UpdateGroupInput{Description: &description}); err != nil {
+	if _, err := store.Update(ctx, organizationID, group.ID, UpdateGroupInput{Description: &description}); err != nil {
 		t.Fatalf("Update(description) error: %v", err)
 	}
 	if got := accessPolicyRevisionForUser(t, ctx, pool, memberID); got != 10 {
@@ -115,7 +133,7 @@ func TestGroupStoreQualityUpdateBumpsMemberRevisionsDB(t *testing.T) {
 	}
 
 	quality := PlaybackQualityStandard
-	if _, err := store.Update(ctx, group.ID, UpdateGroupInput{MaxPlaybackQuality: &quality}); err != nil {
+	if _, err := store.Update(ctx, organizationID, group.ID, UpdateGroupInput{MaxPlaybackQuality: &quality}); err != nil {
 		t.Fatalf("Update(max quality) error: %v", err)
 	}
 	if got := accessPolicyRevisionForUser(t, ctx, pool, memberID); got != 11 {
@@ -124,21 +142,161 @@ func TestGroupStoreQualityUpdateBumpsMemberRevisionsDB(t *testing.T) {
 	if got := accessPolicyRevisionForUser(t, ctx, pool, nonMemberID); got != 20 {
 		t.Fatalf("non-member revision after quality update = %d, want 20", got)
 	}
+	if got := accessPolicyRevisionForUser(t, ctx, pool, legacyOnlyID); got != 30 {
+		t.Fatalf("legacy-only account revision after quality update = %d, want 30", got)
+	}
+}
+
+func TestGroupStoreNeverReadsOrMutatesAnotherOrganization(t *testing.T) {
+	ctx, fixture := newOrganizationGroupStoreDBTest(t)
+	local := fixture.createGroup(fixture.orgA, "Shared Name")
+	foreign := fixture.createGroup(fixture.orgB, "Shared Name")
+	foreignDefault := fixture.createDefaultGroup(fixture.orgB, "Default B")
+	localDefaultID := defaultAccessGroupSeedID(t, ctx, fixture.pool, fixture.orgA)
+	assertSingleDefaultGroup(t, ctx, fixture.pool, fixture.orgA, localDefaultID)
+	assertSingleDefaultGroup(t, ctx, fixture.pool, fixture.orgB, foreignDefault.ID)
+
+	if _, err := fixture.store.Get(ctx, fixture.orgA, foreign.ID); !errors.Is(err, ErrGroupNotFound) {
+		t.Fatalf("foreign Get error = %v, want ErrGroupNotFound", err)
+	}
+	changed := "Changed"
+	if _, err := fixture.store.Update(ctx, fixture.orgA, foreign.ID, UpdateGroupInput{Name: &changed}); !errors.Is(err, ErrGroupNotFound) {
+		t.Fatalf("foreign Update error = %v, want ErrGroupNotFound", err)
+	}
+	if err := fixture.store.Delete(ctx, fixture.orgA, foreign.ID); !errors.Is(err, ErrGroupNotFound) {
+		t.Fatalf("foreign Delete error = %v, want ErrGroupNotFound", err)
+	}
+
+	groups, err := fixture.store.List(ctx, fixture.orgA)
+	if err != nil {
+		t.Fatalf("List(org A) error: %v", err)
+	}
+	if len(groups) != 2 { // seeded default plus the local group
+		t.Fatalf("List(org A) returned %d groups, want 2", len(groups))
+	}
+	for _, group := range groups {
+		if group.OrganizationID != fixture.orgA || group.ID == foreign.ID {
+			t.Fatalf("List(org A) disclosed foreign group: %#v", group)
+		}
+	}
+
+	gotForeign, err := fixture.store.Get(ctx, fixture.orgB, foreign.ID)
+	if err != nil {
+		t.Fatalf("Get(org B foreign) error: %v", err)
+	}
+	if gotForeign.Name != "Shared Name" {
+		t.Fatalf("foreign group name = %q, want unchanged", gotForeign.Name)
+	}
+	if local.Name != foreign.Name {
+		t.Fatalf("same-name groups were not created: local=%q foreign=%q", local.Name, foreign.Name)
+	}
+
+	isDefault := true
+	if _, err := fixture.store.Update(ctx, fixture.orgA, local.ID, UpdateGroupInput{IsDefault: &isDefault}); err != nil {
+		t.Fatalf("promote local default: %v", err)
+	}
+	assertSingleDefaultGroup(t, ctx, fixture.pool, fixture.orgA, local.ID)
+	assertSingleDefaultGroup(t, ctx, fixture.pool, fixture.orgB, foreignDefault.ID)
+}
+
+func TestGroupStoreMemberCountsUseProfilesNotLegacyAccounts(t *testing.T) {
+	ctx, fixture := newOrganizationGroupStoreDBTest(t)
+	group := fixture.createGroup(fixture.orgA, "Profile Members")
+	canonicalAccountID := fixture.createUser(nil, 1)
+	fixture.createProfile(canonicalAccountID, fixture.orgA, &group.ID)
+	fixture.createProfile(canonicalAccountID, fixture.orgA, &group.ID)
+	legacyOnlyAccountID := fixture.createUser(&group.ID, 1)
+	fixture.createProfile(legacyOnlyAccountID, fixture.orgA, nil)
+
+	got, err := fixture.store.Get(ctx, fixture.orgA, group.ID)
+	if err != nil {
+		t.Fatalf("Get() error: %v", err)
+	}
+	if got.MemberCount != 2 {
+		t.Fatalf("member_count = %d, want two assigned profiles", got.MemberCount)
+	}
+}
+
+func TestGroupStoreResolvePolicyRejectsForeignOrMismatchedProfile(t *testing.T) {
+	ctx, fixture := newOrganizationGroupStoreDBTest(t)
+	groupA := fixture.createGroup(fixture.orgA, "Policy A")
+	groupB := fixture.createGroup(fixture.orgB, "Policy B")
+	accountA := fixture.createUser(&groupA.ID, 1)
+	accountB := fixture.createUser(&groupB.ID, 1)
+	profileA := fixture.createProfile(accountA, fixture.orgA, &groupA.ID)
+	profileB := fixture.createProfile(accountB, fixture.orgB, &groupB.ID)
+	noGroupProfile := fixture.createProfile(accountA, fixture.orgA, nil)
+
+	policy, err := fixture.store.ResolvePolicy(ctx, GroupSubject{
+		OrganizationID: fixture.orgA,
+		AccountID:      accountA,
+		ProfileID:      profileA,
+	})
+	if err != nil || policy == nil || policy.ID != groupA.ID {
+		t.Fatalf("ResolvePolicy(local) = %#v, %v; want group %d", policy, err, groupA.ID)
+	}
+
+	for name, subject := range map[string]GroupSubject{
+		"foreign organization": {
+			OrganizationID: fixture.orgA,
+			AccountID:      accountB,
+			ProfileID:      profileB,
+		},
+		"foreign account": {
+			OrganizationID: fixture.orgA,
+			AccountID:      accountB,
+			ProfileID:      profileA,
+		},
+		"v2 without profile": {
+			OrganizationID: fixture.orgA,
+			AccountID:      accountA,
+		},
+		"legacy outside default organization": {
+			OrganizationID: fixture.orgB,
+			AccountID:      accountB,
+			Legacy:         true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := fixture.store.ResolvePolicy(ctx, subject); !errors.Is(err, ErrGroupNotFound) {
+				t.Fatalf("ResolvePolicy() error = %v, want ErrGroupNotFound", err)
+			}
+		})
+	}
+
+	policy, err = fixture.store.ResolvePolicy(ctx, GroupSubject{
+		OrganizationID: fixture.orgA,
+		AccountID:      accountA,
+		ProfileID:      noGroupProfile,
+	})
+	if err != nil || policy != nil {
+		t.Fatalf("ResolvePolicy(unassigned profile) = %#v, %v; want nil, nil", policy, err)
+	}
+
+	policy, err = fixture.store.ResolvePolicy(ctx, GroupSubject{
+		OrganizationID: fixture.orgA,
+		AccountID:      accountA,
+		Legacy:         true,
+	})
+	if err != nil || policy == nil || policy.ID != groupA.ID {
+		t.Fatalf("ResolvePolicy(default-org legacy ceiling) = %#v, %v; want group %d", policy, err, groupA.ID)
+	}
 }
 
 func TestDefaultAccessGroupSeedAndUniqueDB(t *testing.T) {
-	ctx, pool, store, suffix := newGroupStoreDBTest(t)
-	seedID := defaultAccessGroupSeedID(t, ctx, pool)
+	ctx, pool, store, suffix, organizationID := newGroupStoreDBTest(t)
+	seedID := defaultAccessGroupSeedID(t, ctx, pool, organizationID)
 	t.Cleanup(func() {
-		restoreDefaultAccessGroup(t, ctx, pool, seedID)
+		restoreDefaultAccessGroup(t, ctx, pool, organizationID, seedID)
 	})
 
-	assertDefaultGroupSeed(t, ctx, pool)
+	assertDefaultGroupSeed(t, ctx, pool, organizationID)
 
 	_, err := pool.Exec(ctx, `
-		INSERT INTO access_groups (name, is_default)
-		VALUES ($1, true)`,
+		INSERT INTO access_groups (name, is_default, organization_id)
+		VALUES ($1, true, $2)`,
 		"Access Group Test "+suffix+" second default",
+		organizationID,
 	)
 	if err == nil {
 		t.Fatal("second default access group insert succeeded, want unique violation")
@@ -148,39 +306,39 @@ func TestDefaultAccessGroupSeedAndUniqueDB(t *testing.T) {
 		t.Fatalf("second default insert error = %v, want unique violation", err)
 	}
 
-	group := createTestGroup(t, ctx, store, suffix, "swap-default")
+	group := createTestGroup(t, ctx, store, organizationID, suffix, "swap-default")
 	isDefault := true
-	updated, err := store.Update(ctx, group.ID, UpdateGroupInput{IsDefault: &isDefault})
+	updated, err := store.Update(ctx, organizationID, group.ID, UpdateGroupInput{IsDefault: &isDefault})
 	if err != nil {
 		t.Fatalf("Update(is_default true) error: %v", err)
 	}
 	if !updated.IsDefault {
 		t.Fatalf("updated IsDefault = false, want true")
 	}
-	assertSingleDefaultGroup(t, ctx, pool, group.ID)
+	assertSingleDefaultGroup(t, ctx, pool, organizationID, group.ID)
 
 	isDefault = false
-	if _, err := store.Update(ctx, group.ID, UpdateGroupInput{IsDefault: &isDefault}); !errors.Is(err, ErrDefaultGroupRequired) {
+	if _, err := store.Update(ctx, organizationID, group.ID, UpdateGroupInput{IsDefault: &isDefault}); !errors.Is(err, ErrDefaultGroupRequired) {
 		t.Fatalf("Update(is_default false) on the default group error = %v, want ErrDefaultGroupRequired", err)
 	}
-	assertSingleDefaultGroup(t, ctx, pool, group.ID)
+	assertSingleDefaultGroup(t, ctx, pool, organizationID, group.ID)
 }
 
 func TestGroupStoreDeleteDefaultRejectedDB(t *testing.T) {
-	ctx, pool, store, suffix := newGroupStoreDBTest(t)
-	seedID := defaultAccessGroupSeedID(t, ctx, pool)
+	ctx, pool, store, suffix, organizationID := newGroupStoreDBTest(t)
+	seedID := defaultAccessGroupSeedID(t, ctx, pool, organizationID)
 	t.Cleanup(func() {
-		restoreDefaultAccessGroup(t, ctx, pool, seedID)
+		restoreDefaultAccessGroup(t, ctx, pool, organizationID, seedID)
 	})
 
-	group := createTestGroup(t, ctx, store, suffix, "delete-default")
+	group := createTestGroup(t, ctx, store, organizationID, suffix, "delete-default")
 	isDefault := true
-	if _, err := store.Update(ctx, group.ID, UpdateGroupInput{IsDefault: &isDefault}); err != nil {
+	if _, err := store.Update(ctx, organizationID, group.ID, UpdateGroupInput{IsDefault: &isDefault}); err != nil {
 		t.Fatalf("Update(is_default true) error: %v", err)
 	}
 	userID := insertAccessGroupTestUser(t, ctx, pool, suffix, &group.ID, 1)
 
-	if err := store.Delete(ctx, group.ID); !errors.Is(err, ErrDefaultGroupRequired) {
+	if err := store.Delete(ctx, organizationID, group.ID); !errors.Is(err, ErrDefaultGroupRequired) {
 		t.Fatalf("Delete(default) error = %v, want ErrDefaultGroupRequired", err)
 	}
 	var hasGroup bool
@@ -193,12 +351,12 @@ func TestGroupStoreDeleteDefaultRejectedDB(t *testing.T) {
 	if !hasGroup {
 		t.Fatalf("user access_group_id cleared by rejected default-group delete")
 	}
-	assertSingleDefaultGroup(t, ctx, pool, group.ID)
+	assertSingleDefaultGroup(t, ctx, pool, organizationID, group.ID)
 
 	// Deleting a non-default group still clears memberships through the FK.
-	other := createTestGroup(t, ctx, store, suffix, "delete-non-default")
+	other := createTestGroup(t, ctx, store, organizationID, suffix, "delete-non-default")
 	otherUserID := insertAccessGroupTestUser(t, ctx, pool, suffix, &other.ID, 2)
-	if err := store.Delete(ctx, other.ID); err != nil {
+	if err := store.Delete(ctx, organizationID, other.ID); err != nil {
 		t.Fatalf("Delete(non-default) error: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `
@@ -212,7 +370,7 @@ func TestGroupStoreDeleteDefaultRejectedDB(t *testing.T) {
 	}
 }
 
-func newGroupStoreDBTest(t *testing.T) (context.Context, *pgxpool.Pool, *GroupStore, string) {
+func newGroupStoreDBTest(t *testing.T) (context.Context, *pgxpool.Pool, *GroupStore, string, uuid.UUID) {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -237,11 +395,12 @@ func newGroupStoreDBTest(t *testing.T) (context.Context, *pgxpool.Pool, *GroupSt
 	}
 
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	organizationID := defaultAccessGroupOrganizationID(t, ctx, pool)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE username LIKE $1`, "access-group-test-"+suffix+"%")
 		_, _ = pool.Exec(ctx, `DELETE FROM access_groups WHERE name LIKE $1`, "Access Group Test "+suffix+"%")
 	})
-	return ctx, pool, NewGroupStore(pool), suffix
+	return ctx, pool, NewGroupStore(pool), suffix, organizationID
 }
 
 func accessGroupDefaultColumnExists(t *testing.T, ctx context.Context, pool *pgxpool.Pool) bool {
@@ -260,20 +419,30 @@ func accessGroupDefaultColumnExists(t *testing.T, ctx context.Context, pool *pgx
 	return exists
 }
 
-func defaultAccessGroupSeedID(t *testing.T, ctx context.Context, pool *pgxpool.Pool) int64 {
+func defaultAccessGroupOrganizationID(t *testing.T, ctx context.Context, pool *pgxpool.Pool) uuid.UUID {
+	t.Helper()
+	var id uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT id FROM organizations WHERE is_default`).Scan(&id); err != nil {
+		t.Fatalf("load default organization: %v", err)
+	}
+	return id
+}
+
+func defaultAccessGroupSeedID(t *testing.T, ctx context.Context, pool *pgxpool.Pool, organizationID uuid.UUID) int64 {
 	t.Helper()
 	var id int64
 	if err := pool.QueryRow(ctx, `
 		SELECT id
 		FROM access_groups
 		WHERE name = 'Default Group'
-		  AND is_default`).Scan(&id); err != nil {
+		  AND is_default
+		  AND organization_id = $1`, organizationID).Scan(&id); err != nil {
 		t.Fatalf("load seeded default access group: %v", err)
 	}
 	return id
 }
 
-func assertDefaultGroupSeed(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+func assertDefaultGroupSeed(t *testing.T, ctx context.Context, pool *pgxpool.Pool, organizationID uuid.UUID) {
 	t.Helper()
 	var (
 		description              string
@@ -292,7 +461,8 @@ func assertDefaultGroupSeed(t *testing.T, ctx context.Context, pool *pgxpool.Poo
 			max_transcodes, allowed_permissions, requests_allowed
 		FROM access_groups
 		WHERE name = 'Default Group'
-		  AND is_default`).Scan(
+		  AND is_default
+		  AND organization_id = $1`, organizationID).Scan(
 		&description,
 		&libraryIDsNull,
 		&maxPlaybackQuality,
@@ -318,7 +488,7 @@ func assertDefaultGroupSeed(t *testing.T, ctx context.Context, pool *pgxpool.Poo
 	}
 }
 
-func assertSingleDefaultGroup(t *testing.T, ctx context.Context, pool *pgxpool.Pool, wantID int64) {
+func assertSingleDefaultGroup(t *testing.T, ctx context.Context, pool *pgxpool.Pool, organizationID uuid.UUID, wantID int64) {
 	t.Helper()
 	var (
 		gotID int64
@@ -327,7 +497,8 @@ func assertSingleDefaultGroup(t *testing.T, ctx context.Context, pool *pgxpool.P
 	if err := pool.QueryRow(ctx, `
 		SELECT COALESCE(MIN(id), 0), COUNT(*)::int
 		FROM access_groups
-		WHERE is_default`).Scan(&gotID, &count); err != nil {
+		WHERE is_default
+		  AND organization_id = $1`, organizationID).Scan(&gotID, &count); err != nil {
 		t.Fatalf("count default access groups: %v", err)
 	}
 	if count != 1 || gotID != wantID {
@@ -335,26 +506,28 @@ func assertSingleDefaultGroup(t *testing.T, ctx context.Context, pool *pgxpool.P
 	}
 }
 
-func restoreDefaultAccessGroup(t *testing.T, ctx context.Context, pool *pgxpool.Pool, seedID int64) {
+func restoreDefaultAccessGroup(t *testing.T, ctx context.Context, pool *pgxpool.Pool, organizationID uuid.UUID, seedID int64) {
 	t.Helper()
 	if _, err := pool.Exec(ctx, `
 		UPDATE access_groups
 		SET is_default = false
 		WHERE is_default
-		  AND id <> $1`, seedID); err != nil {
+		  AND organization_id = $1
+		  AND id <> $2`, organizationID, seedID); err != nil {
 		t.Fatalf("clear non-seed default groups: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `
 		UPDATE access_groups
 		SET is_default = true
-		WHERE id = $1`, seedID); err != nil {
+		WHERE organization_id = $1
+		  AND id = $2`, organizationID, seedID); err != nil {
 		t.Fatalf("restore seeded default group: %v", err)
 	}
 }
 
-func createTestGroup(t *testing.T, ctx context.Context, store *GroupStore, suffix, label string) *Group {
+func createTestGroup(t *testing.T, ctx context.Context, store *GroupStore, organizationID uuid.UUID, suffix, label string) *Group {
 	t.Helper()
-	group, err := store.Create(ctx, CreateGroupInput{
+	group, err := store.Create(ctx, organizationID, CreateGroupInput{
 		Name:                     "Access Group Test " + suffix + " " + label,
 		Description:              "test group",
 		LibraryIDs:               []int{1, 3},
@@ -370,6 +543,96 @@ func createTestGroup(t *testing.T, ctx context.Context, store *GroupStore, suffi
 		t.Fatalf("Create() error: %v", err)
 	}
 	return group
+}
+
+type organizationGroupStoreDBFixture struct {
+	t      *testing.T
+	ctx    context.Context
+	pool   *pgxpool.Pool
+	store  *GroupStore
+	suffix string
+	orgA   uuid.UUID
+	orgB   uuid.UUID
+	groups []int64
+	seedID int64
+}
+
+func newOrganizationGroupStoreDBTest(t *testing.T) (context.Context, *organizationGroupStoreDBFixture) {
+	t.Helper()
+	ctx, pool, store, suffix, orgA := newGroupStoreDBTest(t)
+	fixture := &organizationGroupStoreDBFixture{
+		t:      t,
+		ctx:    ctx,
+		pool:   pool,
+		store:  store,
+		suffix: suffix,
+		orgA:   orgA,
+		seedID: defaultAccessGroupSeedID(t, ctx, pool, orgA),
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO organizations (slug, name, status)
+		VALUES ($1, $2, 'initializing')
+		RETURNING id`,
+		"access-group-test-"+suffix,
+		"Access Group Test "+suffix,
+	).Scan(&fixture.orgB); err != nil {
+		t.Fatalf("create second organization: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE username LIKE $1`, "access-group-test-"+suffix+"%")
+		if len(fixture.groups) > 0 {
+			_, _ = pool.Exec(ctx, `DELETE FROM access_groups WHERE id = ANY($1)`, fixture.groups)
+		}
+		_, _ = pool.Exec(ctx, `UPDATE access_groups SET is_default = true WHERE organization_id = $1 AND id = $2`, fixture.orgA, fixture.seedID)
+		_, _ = pool.Exec(ctx, `DELETE FROM organizations WHERE id = $1`, fixture.orgB)
+	})
+	return ctx, fixture
+}
+
+func (f *organizationGroupStoreDBFixture) createGroup(organizationID uuid.UUID, name string) *Group {
+	f.t.Helper()
+	group, err := f.store.Create(f.ctx, organizationID, CreateGroupInput{
+		Name:                     name,
+		LibraryIDs:               []int{1, 3},
+		MaxPlaybackQuality:       PlaybackQualityStandard,
+		DownloadAllowed:          true,
+		DownloadTranscodeAllowed: true,
+		MaxStreams:               2,
+		MaxTranscodes:            1,
+		AllowedPermissions:       []string{"marker_edit"},
+		RequestsAllowed:          true,
+	})
+	if err != nil {
+		f.t.Fatalf("create group %q in %s: %v", name, organizationID, err)
+	}
+	f.groups = append(f.groups, group.ID)
+	return group
+}
+
+func (f *organizationGroupStoreDBFixture) createDefaultGroup(organizationID uuid.UUID, name string) *Group {
+	f.t.Helper()
+	group, err := f.store.Create(f.ctx, organizationID, CreateGroupInput{
+		Name:                     name,
+		DownloadAllowed:          true,
+		DownloadTranscodeAllowed: true,
+		RequestsAllowed:          true,
+		IsDefault:                true,
+	})
+	if err != nil {
+		f.t.Fatalf("create default group %q in %s: %v", name, organizationID, err)
+	}
+	f.groups = append(f.groups, group.ID)
+	return group
+}
+
+func (f *organizationGroupStoreDBFixture) createUser(legacyGroupID *int64, revision int64) int {
+	f.t.Helper()
+	return insertAccessGroupTestUser(f.t, f.ctx, f.pool, f.suffix, legacyGroupID, revision)
+}
+
+func (f *organizationGroupStoreDBFixture) createProfile(accountID int, organizationID uuid.UUID, groupID *int64) string {
+	f.t.Helper()
+	return insertAccessGroupTestProfile(f.t, f.ctx, f.pool, f.suffix, accountID, organizationID, groupID)
 }
 
 func insertAccessGroupTestUser(
@@ -394,6 +657,31 @@ func insertAccessGroupTestUser(
 		t.Fatalf("insert test user: %v", err)
 	}
 	return id
+}
+
+func insertAccessGroupTestProfile(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	suffix string,
+	userID int,
+	organizationID uuid.UUID,
+	groupID *int64,
+) string {
+	t.Helper()
+	profileID := fmt.Sprintf("access-group-test-%s-%d", suffix, time.Now().UnixNano())
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO user_profiles (id, user_id, name, organization_id, access_group_id)
+		VALUES ($1, $2, $3, $4, $5)`,
+		profileID,
+		userID,
+		profileID,
+		organizationID,
+		groupID,
+	); err != nil {
+		t.Fatalf("insert test profile: %v", err)
+	}
+	return profileID
 }
 
 func accessPolicyRevisionForUser(t *testing.T, ctx context.Context, pool *pgxpool.Pool, userID int) int64 {

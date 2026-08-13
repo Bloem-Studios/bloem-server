@@ -13,7 +13,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingskeys"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/google/uuid"
 )
 
 func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
@@ -398,7 +400,11 @@ override(_, _) := {"profile_verified": false}
 }
 
 func TestViewerResolverAppliesGroupPolicy(t *testing.T) {
-	ctx := context.Background()
+	organizationID := uuid.New()
+	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
+		OrganizationID: organizationID,
+		AccountID:      1,
+	})
 	user := &models.User{
 		ID:                   1,
 		LibraryIDs:           []int{1, 2, 3},
@@ -413,16 +419,19 @@ func TestViewerResolverAppliesGroupPolicy(t *testing.T) {
 		RequestsAllowed:          true,
 	}
 	users := viewerResolverUserRepo{user: user}
-	stores := viewerResolverStoreProvider{store: viewerResolverTestStore{}}
+	stores := viewerResolverStoreProvider{store: viewerResolverTestStore{profile: &userstore.Profile{
+		ID:             "prof-1",
+		OrganizationID: organizationID.String(),
+	}}}
 	resolver := NewViewerResolver(
 		users,
 		stores,
 		nil,
 		newViewerResolverTestPDP(t, ctx),
-		viewerResolverGroupProvider{group: group},
+		&viewerResolverGroupProvider{group: group},
 	)
 
-	scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
+	scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1", ProfileID: "prof-1"})
 	if err != nil {
 		t.Fatalf("Resolve() error: %v", err)
 	}
@@ -431,6 +440,44 @@ func TestViewerResolverAppliesGroupPolicy(t *testing.T) {
 	}
 	if scope.MaxPlaybackQuality != access.PlaybackQualityStandard {
 		t.Fatalf("MaxPlaybackQuality = %q, want %q", scope.MaxPlaybackQuality, access.PlaybackQualityStandard)
+	}
+}
+
+func TestViewerResolverLoadsProfileBeforeResolvingTenantGroup(t *testing.T) {
+	organizationID := uuid.New()
+	events := []string{}
+	store := orderedViewerResolverStore{
+		viewerResolverTestStore: viewerResolverTestStore{profile: &userstore.Profile{
+			ID:             "prof-1",
+			OrganizationID: organizationID.String(),
+		}},
+		events: &events,
+	}
+	groups := &viewerResolverGroupProvider{
+		group:  &access.GroupPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true, RequestsAllowed: true},
+		events: &events,
+	}
+	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
+		OrganizationID: organizationID,
+		AccountID:      1,
+	})
+	resolver := NewViewerResolver(
+		viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}},
+		viewerResolverStoreProvider{store: store},
+		nil,
+		newViewerResolverTestPDP(t, ctx),
+		groups,
+	)
+
+	if _, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, ProfileID: "prof-1"}); err != nil {
+		t.Fatalf("Resolve() error: %v", err)
+	}
+	if !reflect.DeepEqual(events, []string{"profile", "group"}) {
+		t.Fatalf("resolution order = %#v, want profile then group", events)
+	}
+	wantSubject := access.GroupSubject{OrganizationID: organizationID, AccountID: 1, ProfileID: "prof-1"}
+	if groups.subject != wantSubject {
+		t.Fatalf("ResolvePolicy subject = %#v, want %#v", groups.subject, wantSubject)
 	}
 }
 
@@ -452,11 +499,17 @@ type viewerResolverUserRepo struct {
 }
 
 type viewerResolverGroupProvider struct {
-	group *access.GroupPolicy
-	err   error
+	group   *access.GroupPolicy
+	err     error
+	subject access.GroupSubject
+	events  *[]string
 }
 
-func (p viewerResolverGroupProvider) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {
+func (p *viewerResolverGroupProvider) ResolvePolicy(_ context.Context, subject access.GroupSubject) (*access.GroupPolicy, error) {
+	p.subject = subject
+	if p.events != nil {
+		*p.events = append(*p.events, "group")
+	}
 	return p.group, p.err
 }
 
@@ -492,6 +545,16 @@ type viewerResolverTestStore struct {
 	// through ListSettingValuesForResolution. Scope matching is the
 	// resolver's job, so the store returns them unfiltered.
 	settingValues []userstore.SettingValue
+}
+
+type orderedViewerResolverStore struct {
+	viewerResolverTestStore
+	events *[]string
+}
+
+func (s orderedViewerResolverStore) GetProfile(ctx context.Context, id string) (*userstore.Profile, error) {
+	*s.events = append(*s.events, "profile")
+	return s.viewerResolverTestStore.GetProfile(ctx, id)
 }
 
 type countingViewerResolverStore struct {

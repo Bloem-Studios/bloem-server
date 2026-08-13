@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -177,8 +178,12 @@ WHERE user_id = $1 AND id = 'v1-profile'`, userID).Scan(&profileOrganizationID, 
 		ctx := context.Background()
 		pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
 		migrateTenantIdentityLatest(t, ctx, pool)
+		var defaultOrganizationID uuid.UUID
+		if err := pool.QueryRow(ctx, `SELECT id FROM public.organizations WHERE is_default`).Scan(&defaultOrganizationID); err != nil {
+			t.Fatalf("load default organization: %v", err)
+		}
 
-		group, err := access.NewGroupStore(pool).Create(ctx, access.CreateGroupInput{
+		group, err := access.NewGroupStore(pool).Create(ctx, defaultOrganizationID, access.CreateGroupInput{
 			Name:            "V1 access group",
 			Description:     "created by the legacy store",
 			DownloadAllowed: true,

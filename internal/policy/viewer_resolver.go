@@ -46,12 +46,6 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 	if err != nil {
 		return access.Scope{}, fmt.Errorf("loading user %d: %w", input.UserID, err)
 	}
-	effective, err := access.EffectivePolicyForUser(ctx, user, r.groups)
-	if err != nil {
-		return access.Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
-	}
-
-	profileVerified := input.ProfileID == ""
 
 	store, err := r.storeFactory.ForUser(ctx, input.UserID)
 	if err != nil {
@@ -67,6 +61,22 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 		if profile == nil {
 			return access.Scope{}, access.ErrProfileNotFound
 		}
+	}
+
+	subject := access.GroupSubject{AccountID: user.ID, ProfileID: input.ProfileID}
+	if r.groups != nil {
+		subject, err = access.GroupSubjectFromContext(ctx, user.ID, input.ProfileID)
+		if err != nil {
+			return access.Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
+		}
+	}
+	effective, err := access.EffectivePolicyForSubject(ctx, user, subject, r.groups)
+	if err != nil {
+		return access.Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
+	}
+
+	profileVerified := input.ProfileID == ""
+	if profile != nil {
 
 		profileVerified, err = access.VerifyProfileForRequest(
 			profile,

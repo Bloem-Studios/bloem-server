@@ -55,7 +55,31 @@ func (r *Resolver) Resolve(ctx context.Context, input ResolveInput) (Scope, erro
 	if err != nil {
 		return Scope{}, fmt.Errorf("loading user %d: %w", input.UserID, err)
 	}
-	effective, err := EffectivePolicyForUser(ctx, user, r.groups)
+
+	store, err := r.storeFactory.ForUser(ctx, input.UserID)
+	if err != nil {
+		return Scope{}, fmt.Errorf("opening user store for %d: %w", input.UserID, err)
+	}
+
+	var profile *userstore.Profile
+	if input.ProfileID != "" {
+		profile, err = store.GetProfile(ctx, input.ProfileID)
+		if err != nil {
+			return Scope{}, fmt.Errorf("loading profile %s: %w", input.ProfileID, err)
+		}
+		if profile == nil {
+			return Scope{}, ErrProfileNotFound
+		}
+	}
+
+	subject := GroupSubject{AccountID: user.ID, ProfileID: input.ProfileID}
+	if r.groups != nil {
+		subject, err = GroupSubjectFromContext(ctx, user.ID, input.ProfileID)
+		if err != nil {
+			return Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
+		}
+	}
+	effective, err := EffectivePolicyForSubject(ctx, user, subject, r.groups)
 	if err != nil {
 		return Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
 	}
@@ -70,20 +94,8 @@ func (r *Resolver) Resolve(ctx context.Context, input ResolveInput) (Scope, erro
 		ProfileVerified:     input.ProfileID == "",
 	}
 
-	store, err := r.storeFactory.ForUser(ctx, input.UserID)
-	if err != nil {
-		return Scope{}, fmt.Errorf("opening user store for %d: %w", input.UserID, err)
-	}
-
 	preferences := ResolveViewerPreferences(ctx, store, input.ProfileID)
-	if input.ProfileID != "" {
-		profile, err := store.GetProfile(ctx, input.ProfileID)
-		if err != nil {
-			return Scope{}, fmt.Errorf("loading profile %s: %w", input.ProfileID, err)
-		}
-		if profile == nil {
-			return Scope{}, ErrProfileNotFound
-		}
+	if profile != nil {
 
 		scope.MaxContentRating = profile.MaxContentRating
 		scope.MaxPlaybackQuality = MinQuality(scope.MaxPlaybackQuality, NormalizePlaybackQuality(profile.MaxPlaybackQuality))

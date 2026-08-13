@@ -6,11 +6,37 @@ import (
 	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/google/uuid"
 )
 
-// GroupPolicyProvider loads the access-group restriction layer for a user.
+// GroupSubject identifies the profile whose organization-owned access group is
+// resolved. Legacy is the temporary default-organization compatibility ceiling.
+type GroupSubject struct {
+	OrganizationID uuid.UUID
+	AccountID      int
+	ProfileID      string
+	Legacy         bool
+}
+
+// GroupSubjectFromContext derives a group subject exclusively from a
+// server-validated tenant context and the already-authenticated account/profile.
+func GroupSubjectFromContext(ctx context.Context, accountID int, profileID string) (GroupSubject, error) {
+	tenant, ok := tenancy.FromContext(ctx)
+	if !ok || tenant.OrganizationID == uuid.Nil || tenant.AccountID != accountID {
+		return GroupSubject{}, ErrGroupNotFound
+	}
+	return GroupSubject{
+		OrganizationID: tenant.OrganizationID,
+		AccountID:      accountID,
+		ProfileID:      profileID,
+		Legacy:         tenant.Legacy,
+	}, nil
+}
+
+// GroupPolicyProvider loads the access-group restriction layer for a subject.
 type GroupPolicyProvider interface {
-	GetPolicyForUser(ctx context.Context, userID int) (*GroupPolicy, error)
+	ResolvePolicy(context.Context, GroupSubject) (*GroupPolicy, error)
 }
 
 // GroupPolicy is the restriction layer contributed by a user's access group.
@@ -40,13 +66,18 @@ type EffectiveUserPolicy struct {
 	RequestsAllowed          bool
 }
 
-// EffectivePolicyForUser loads a user's group policy and returns the merged
-// restriction layer. Nil providers are treated as "no group".
-func EffectivePolicyForUser(ctx context.Context, user *models.User, provider GroupPolicyProvider) (EffectiveUserPolicy, error) {
+// EffectivePolicyForSubject loads a subject's group policy and returns the
+// merged restriction layer. Nil providers are treated as "no group".
+func EffectivePolicyForSubject(
+	ctx context.Context,
+	user *models.User,
+	subject GroupSubject,
+	provider GroupPolicyProvider,
+) (EffectiveUserPolicy, error) {
 	if provider == nil || user == nil {
 		return ApplyGroupPolicy(user, nil), nil
 	}
-	group, err := provider.GetPolicyForUser(ctx, user.ID)
+	group, err := provider.ResolvePolicy(ctx, subject)
 	if err != nil {
 		return EffectiveUserPolicy{}, err
 	}

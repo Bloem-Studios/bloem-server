@@ -663,7 +663,7 @@ func (s *Service) CreateRequest(ctx context.Context, viewer Viewer, input Create
 	if err := s.ensureRequestsEnabled(ctx); err != nil {
 		return nil, err
 	}
-	if err := s.ensureViewerRequestsAllowed(ctx, viewer.UserID); err != nil {
+	if err := s.ensureViewerRequestsAllowed(ctx, viewer); err != nil {
 		return nil, err
 	}
 	normalized, err := normalizeCreateInput(input)
@@ -1065,11 +1065,15 @@ func (s *Service) ensureRequestsEnabled(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) ensureViewerRequestsAllowed(ctx context.Context, userID int) error {
+func (s *Service) ensureViewerRequestsAllowed(ctx context.Context, viewer Viewer) error {
 	if s.groupProvider == nil {
 		return nil
 	}
-	group, err := s.groupProvider.GetPolicyForUser(ctx, userID)
+	subject, err := access.GroupSubjectFromContext(ctx, viewer.UserID, viewer.ProfileID)
+	if err != nil {
+		return ErrForbidden
+	}
+	group, err := s.groupProvider.ResolvePolicy(ctx, subject)
 	if err != nil {
 		return ErrForbidden
 	}

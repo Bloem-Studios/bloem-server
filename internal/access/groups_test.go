@@ -1,11 +1,51 @@
 package access
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/google/uuid"
 )
+
+func TestEffectivePolicyForSubjectResolvesExactSubject(t *testing.T) {
+	organizationID := uuid.New()
+	subject := GroupSubject{
+		OrganizationID: organizationID,
+		AccountID:      7,
+		ProfileID:      "profile-7",
+	}
+	provider := &recordingGroupPolicyProvider{policy: &GroupPolicy{
+		MaxPlaybackQuality:       PlaybackQualityStandard,
+		DownloadAllowed:          true,
+		DownloadTranscodeAllowed: true,
+		RequestsAllowed:          true,
+	}}
+	user := &models.User{ID: 7, MaxPlaybackQuality: PlaybackQuality4K}
+
+	effective, err := EffectivePolicyForSubject(context.Background(), user, subject, provider)
+	if err != nil {
+		t.Fatalf("EffectivePolicyForSubject() error: %v", err)
+	}
+	if provider.subject != subject {
+		t.Fatalf("ResolvePolicy subject = %#v, want %#v", provider.subject, subject)
+	}
+	if effective.MaxPlaybackQuality != PlaybackQualityStandard {
+		t.Fatalf("MaxPlaybackQuality = %q, want %q", effective.MaxPlaybackQuality, PlaybackQualityStandard)
+	}
+}
+
+type recordingGroupPolicyProvider struct {
+	subject GroupSubject
+	policy  *GroupPolicy
+	err     error
+}
+
+func (p *recordingGroupPolicyProvider) ResolvePolicy(_ context.Context, subject GroupSubject) (*GroupPolicy, error) {
+	p.subject = subject
+	return p.policy, p.err
+}
 
 func TestApplyGroupPolicyNoGroupMirrorsUser(t *testing.T) {
 	user := &models.User{
