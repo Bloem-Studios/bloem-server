@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/hooks/useBranding";
 
-const SILO_WORDMARK_SRC = "/silo-wordmark-sidebar.png";
-const SILO_MARK_SRC = "/silo-icon-1024.png";
+const SILO_WORDMARK_SRC = "/vondel-wordmark-sidebar.png";
+const SILO_MARK_SRC = "/vondel-icon-1024.png";
 
 export type SiloBrandVariant = "wordmark" | "mark";
 
