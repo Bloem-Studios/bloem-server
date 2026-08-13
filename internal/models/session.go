@@ -4,13 +4,17 @@ import "time"
 
 // AuthSession represents a row in the auth_sessions table.
 type AuthSession struct {
-	ID                     string     // UUID session ID (included in JWT claims)
-	UserID                 int        // FK to users.id
-	DeviceName             string     // optional device identifier
-	IPAddress              string     // optional IP address
-	CreatedAt              time.Time  // when the session was created
-	ExpiresAt              time.Time  // when the session expires
-	RevokedAt              *time.Time // nil if active, set when revoked
-	ImpersonatorUserID     *int
-	ImpersonationStartedAt *time.Time
+	ID                        string     // UUID session ID (included in JWT claims)
+	UserID                    int        // FK to users.id
+	DeviceName                string     // optional device identifier
+	DeviceID                  string     // stable client device identity, when supplied
+	IPAddress                 string     // optional IP address
+	CreatedAt                 time.Time  // when the session was created
+	ExpiresAt                 time.Time  // when the session expires
+	RevokedAt                 *time.Time // nil if active, set when revoked
+	ImpersonatorUserID        *int
+	ImpersonationStartedAt    *time.Time
+	ProfileID                 *string
+	ProfileCredentialRevision *int64
+	AuthMethod                string
 }

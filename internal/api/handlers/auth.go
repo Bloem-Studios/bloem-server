@@ -19,19 +19,28 @@ import (
 // AuthHandler handles authentication-related HTTP endpoints.
 type AuthHandler struct {
 	service              *auth.Service
+	profileLogin         profileLoginService
 	jwt                  *auth.JWTService
 	device               *auth.DeviceLoginService
 	oauthRoutesAvailable bool
 }
 
+type profileLoginService interface {
+	LoginProfile(context.Context, string, string, auth.DeviceClaim) (*auth.TokenPair, auth.SessionSubject, error)
+}
+
 // NewAuthHandler creates a new AuthHandler backed by the given auth, JWT,
 // and device login services.
 func NewAuthHandler(service *auth.Service, jwt *auth.JWTService, device *auth.DeviceLoginService) *AuthHandler {
-	return &AuthHandler{
+	handler := &AuthHandler{
 		service: service,
 		jwt:     jwt,
 		device:  device,
 	}
+	if service != nil {
+		handler.profileLogin = service
+	}
+	return handler
 }
 
 // SetOAuthRoutesAvailable controls whether OAuth login providers are
@@ -56,6 +65,26 @@ type loginResponse struct {
 	RefreshToken string       `json:"refresh_token"`
 	ExpiresIn    int          `json:"expires_in"`
 	User         userResponse `json:"user"`
+}
+
+type profileLoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	DeviceID string `json:"device_id"`
+}
+
+// profileLoginResponse deliberately excludes the account record and sibling
+// profiles. A successful direct profile login establishes exactly one subject.
+type profileLoginResponse struct {
+	AccessToken        string `json:"access_token"`
+	RefreshToken       string `json:"refresh_token"`
+	ExpiresIn          int    `json:"expires_in"`
+	ProfileID          string `json:"profile_id"`
+	OrganizationID     string `json:"organization_id"`
+	MembershipID       string `json:"membership_id"`
+	PolicyRevision     int64  `json:"policy_revision"`
+	SecurityRevision   int64  `json:"security_revision"`
+	CredentialRevision int64  `json:"credential_revision"`
 }
 
 // setupRequest represents the JSON body of a POST /auth/setup request.
@@ -184,6 +213,48 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, buildLoginResponse(pair, user, nil))
+}
+
+// HandleProfileLogin exchanges an optional direct profile credential for a
+// profile-bound session without changing the legacy account login flow.
+func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request) {
+	if h.profileLogin == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "Direct profile login is not configured")
+		return
+	}
+	var req profileLoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
+	if strings.TrimSpace(req.Email) == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "Email and password are required")
+		return
+	}
+	pair, subject, err := h.profileLogin.LoginProfile(r.Context(), req.Email, req.Password, auth.DeviceClaim{
+		ID:        req.DeviceID,
+		Name:      r.UserAgent(),
+		IPAddress: clientip.FromContext(r.Context()),
+	})
+	if err != nil {
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			writeError(w, http.StatusUnauthorized, "invalid_credentials", "Invalid email or password")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
+		return
+	}
+	writeJSON(w, http.StatusOK, profileLoginResponse{
+		AccessToken:        pair.AccessToken,
+		RefreshToken:       pair.RefreshToken,
+		ExpiresIn:          pair.ExpiresIn,
+		ProfileID:          subject.ProfileID,
+		OrganizationID:     subject.OrganizationID,
+		MembershipID:       subject.MembershipID,
+		PolicyRevision:     subject.PolicyRevision,
+		SecurityRevision:   subject.SecurityRevision,
+		CredentialRevision: subject.CredentialRevision,
+	})
 }
 
 func (h *AuthHandler) HandleProviders(w http.ResponseWriter, r *http.Request) {

@@ -10,6 +10,8 @@ type Profile struct {
 	Name                       string
 	Avatar                     string
 	PINHash                    string
+	LoginEmail                 string
+	CredentialRevision         int64
 	IsChild                    bool
 	IsPrimary                  bool
 	MaxContentRating           string

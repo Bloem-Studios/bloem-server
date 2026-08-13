@@ -384,6 +384,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	var jwtService *auth.JWTService
 	var sessionRepo *auth.SessionRepository
 	var deviceLoginService *auth.DeviceLoginService
+	var profileCredentialService *auth.ProfileCredentialService
 	if deps.DB != nil && deps.Config != nil {
 		userRepo = auth.NewUserRepository(deps.DB)
 		sessionRepo = auth.NewSessionRepository(deps.DB)
@@ -401,6 +402,7 @@ func NewRouter(deps Dependencies) chi.Router {
 			})
 		}
 		provider := auth.NewLocalProvider(userRepo, sessionRepo)
+		profileCredentialService = auth.NewProfileCredentialService(deps.DB)
 		authService = auth.NewService(
 			provider,
 			jwtService,
@@ -410,6 +412,7 @@ func NewRouter(deps Dependencies) chi.Router {
 			settingsRepo,
 			deps.UserStoreProvider,
 		)
+		authService.SetProfileCredentialService(profileCredentialService)
 		authService.SetOwnershipBootstrapper(deps.OwnershipBootstrapper)
 		authService.SetMembershipProvisioner(deps.MembershipProvisioner)
 		for _, registration := range deps.AuthProviders {
@@ -1869,10 +1872,12 @@ func NewRouter(deps Dependencies) chi.Router {
 				r.Get("/device/capability", authHandler.HandleDeviceCapability)
 				if deps.RateLimitMW != nil {
 					r.With(deps.RateLimitMW.AuthEndpointHandler("login")).Post("/login", authHandler.HandleLogin)
+					r.With(deps.RateLimitMW.AuthEndpointHandler("profile_login")).Post("/profile-login", authHandler.HandleProfileLogin)
 					r.With(deps.RateLimitMW.AuthEndpointHandler("setup")).Post("/setup", authHandler.HandleSetup)
 					r.With(deps.RateLimitMW.AuthEndpointHandler("signup")).Post("/signup", authHandler.HandleSignup)
 				} else {
 					r.Post("/login", authHandler.HandleLogin)
+					r.Post("/profile-login", authHandler.HandleProfileLogin)
 					r.Post("/setup", authHandler.HandleSetup)
 					r.Post("/signup", authHandler.HandleSignup)
 				}

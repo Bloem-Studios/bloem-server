@@ -71,18 +71,71 @@ func ClaimsFromContext(ctx context.Context) *Claims {
 // Service orchestrates authentication operations using an AuthProvider,
 // JWTService, and session/user repositories.
 type Service struct {
-	provider    AuthProvider
-	jwt         *JWTService
-	sessions    serviceSessionRepository
-	users       serviceUserRepository
-	inviteCodes *InviteCodeRepository
-	settings    SettingsGetter
-	providers   map[string]AuthProvider
-	metadata    map[string]LoginProviderInfo
-	defaultID   string
-	accounts    *AccountProvisioner
-	ownership   OwnershipBootstrapper
-	memberships MembershipProvisioner
+	provider           AuthProvider
+	jwt                *JWTService
+	sessions           serviceSessionRepository
+	users              serviceUserRepository
+	inviteCodes        *InviteCodeRepository
+	settings           SettingsGetter
+	providers          map[string]AuthProvider
+	metadata           map[string]LoginProviderInfo
+	defaultID          string
+	accounts           *AccountProvisioner
+	ownership          OwnershipBootstrapper
+	memberships        MembershipProvisioner
+	profileCredentials *ProfileCredentialService
+}
+
+// SetProfileCredentialService installs the optional direct-profile credential
+// service. Leaving it nil preserves legacy account authentication unchanged.
+func (s *Service) SetProfileCredentialService(credentials *ProfileCredentialService) {
+	s.profileCredentials = credentials
+}
+
+// LoginProfile exchanges a direct profile credential for a profile-bound
+// session. It does not use or alter the legacy account-login path.
+func (s *Service) LoginProfile(ctx context.Context, email, password string, device DeviceClaim) (*TokenPair, SessionSubject, error) {
+	if s.profileCredentials == nil {
+		return nil, SessionSubject{}, ErrInvalidCredentials
+	}
+	subject, err := s.profileCredentials.Authenticate(ctx, email, password, device)
+	if err != nil {
+		return nil, SessionSubject{}, err
+	}
+	sessionID := uuid.New().String()
+	profileID := subject.ProfileID
+	credentialRevision := subject.CredentialRevision
+	session := models.AuthSession{
+		ID:                        sessionID,
+		UserID:                    subject.AccountID,
+		DeviceName:                device.Name,
+		DeviceID:                  device.ID,
+		IPAddress:                 device.IPAddress,
+		ExpiresAt:                 time.Now().Add(s.jwt.RefreshExpiry()),
+		ProfileID:                 &profileID,
+		ProfileCredentialRevision: &credentialRevision,
+		AuthMethod:                AuthMethodDirectProfile,
+	}
+	if err := s.sessions.Create(ctx, session); err != nil {
+		return nil, SessionSubject{}, fmt.Errorf("creating direct profile session: %w", err)
+	}
+	pair, err := s.generateTokenPair(Claims{
+		UserID:             subject.AccountID,
+		Role:               "user",
+		SessionID:          sessionID,
+		ProfileID:          subject.ProfileID,
+		OrganizationID:     subject.OrganizationID,
+		MembershipID:       subject.MembershipID,
+		PolicyRevision:     subject.PolicyRevision,
+		SecurityRevision:   subject.SecurityRevision,
+		AuthMethod:         AuthMethodDirectProfile,
+		DeviceID:           device.ID,
+		CredentialRevision: subject.CredentialRevision,
+	})
+	if err != nil {
+		return nil, SessionSubject{}, err
+	}
+	return pair, subject, nil
 }
 
 // SetOwnershipBootstrapper installs the protected ownership activation used by
@@ -576,6 +629,14 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		Role:               user.Role,
 		SessionID:          session.ID,
 		ImpersonatorUserID: session.ImpersonatorUserID,
+		ProfileID:          claims.ProfileID,
+		OrganizationID:     claims.OrganizationID,
+		MembershipID:       claims.MembershipID,
+		PolicyRevision:     claims.PolicyRevision,
+		SecurityRevision:   claims.SecurityRevision,
+		AuthMethod:         claims.AuthMethod,
+		DeviceID:           claims.DeviceID,
+		CredentialRevision: claims.CredentialRevision,
 	})
 }
 

@@ -20,7 +20,7 @@ func scanProfile(scanner interface {
 	var p userstore.Profile
 	var createdAt, updatedAt time.Time
 	err := scanner.Scan(
-		&p.ID, &p.Name, &p.Avatar, &p.PINHash, &p.IsChild, &p.IsPrimary, &p.MaxContentRating,
+		&p.ID, &p.Name, &p.Avatar, &p.PINHash, &p.LoginEmail, &p.CredentialRevision, &p.IsChild, &p.IsPrimary, &p.MaxContentRating,
 		&p.QualityPreference, &p.Language, &p.PreferredMetadataLanguage, &p.SubtitleLanguage, &p.SubtitleMode,
 		&p.AutoSkipIntro, &p.AutoSkipCredits, &p.AutoSkipRecap, &p.AutoPlayNextPreview,
 		&p.LibraryRestrictionsEnabled,
@@ -141,7 +141,7 @@ func createProfile(
 
 func (s *PostgresUserStore) GetProfile(ctx context.Context, id string) (*userstore.Profile, error) {
 	row := s.pool.QueryRow(ctx, `
-		SELECT id, name, avatar, pin_hash, is_child, is_primary, max_content_rating,
+		SELECT id, name, avatar, pin_hash, COALESCE(login_email, ''), credential_revision, is_child, is_primary, max_content_rating,
 		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
 		       show_forced_subtitles, max_playback_quality, organization_id::text, access_group_id, created_at, updated_at
@@ -163,7 +163,7 @@ func (s *PostgresUserStore) GetProfile(ctx context.Context, id string) (*usersto
 
 func (s *PostgresUserStore) ListProfiles(ctx context.Context) ([]userstore.Profile, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, name, avatar, pin_hash, is_child, is_primary, max_content_rating,
+		SELECT id, name, avatar, pin_hash, COALESCE(login_email, ''), credential_revision, is_child, is_primary, max_content_rating,
 		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
 		       show_forced_subtitles, max_playback_quality, organization_id::text, access_group_id, created_at, updated_at

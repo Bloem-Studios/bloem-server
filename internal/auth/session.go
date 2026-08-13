@@ -27,7 +27,7 @@ func IsSessionNotFound(err error) bool {
 }
 
 // sessionColumns is the list of columns returned by all session SELECT queries.
-const sessionColumns = `id, user_id, device_name, COALESCE(host(ip_address), '') AS ip_address, created_at, expires_at, revoked_at, impersonator_user_id, impersonation_started_at`
+const sessionColumns = `id, user_id, device_name, device_id, COALESCE(host(ip_address), '') AS ip_address, created_at, expires_at, revoked_at, impersonator_user_id, impersonation_started_at, profile_id, profile_credential_revision, auth_method`
 
 // SessionRepository provides CRUD operations for the auth_sessions table.
 type SessionRepository struct {
@@ -46,12 +46,16 @@ func scanSession(row pgx.Row) (*models.AuthSession, error) {
 		&s.ID,
 		&s.UserID,
 		&s.DeviceName,
+		&s.DeviceID,
 		&s.IPAddress,
 		&s.CreatedAt,
 		&s.ExpiresAt,
 		&s.RevokedAt,
 		&s.ImpersonatorUserID,
 		&s.ImpersonationStartedAt,
+		&s.ProfileID,
+		&s.ProfileCredentialRevision,
+		&s.AuthMethod,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -71,12 +75,16 @@ func scanSessions(rows pgx.Rows) ([]*models.AuthSession, error) {
 			&s.ID,
 			&s.UserID,
 			&s.DeviceName,
+			&s.DeviceID,
 			&s.IPAddress,
 			&s.CreatedAt,
 			&s.ExpiresAt,
 			&s.RevokedAt,
 			&s.ImpersonatorUserID,
 			&s.ImpersonationStartedAt,
+			&s.ProfileID,
+			&s.ProfileCredentialRevision,
+			&s.AuthMethod,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning session row: %w", err)
@@ -105,10 +113,13 @@ func (r *SessionRepository) createWithQuerier(
 	if session.ID == "" {
 		session.ID = uuid.New().String()
 	}
+	if session.AuthMethod == "" {
+		session.AuthMethod = "account"
+	}
 
 	query := `INSERT INTO auth_sessions
-		(id, user_id, device_name, ip_address, expires_at, impersonator_user_id, impersonation_started_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`
+		(id, user_id, device_name, device_id, ip_address, expires_at, impersonator_user_id, impersonation_started_at, profile_id, profile_credential_revision, auth_method)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 
 	// ip_address is a Postgres inet column; an empty string fails the
 	// inet input parser (SQLSTATE 22P02). Pass NULL when the caller
@@ -123,10 +134,14 @@ func (r *SessionRepository) createWithQuerier(
 		session.ID,
 		session.UserID,
 		session.DeviceName,
+		session.DeviceID,
 		ipArg,
 		session.ExpiresAt,
 		session.ImpersonatorUserID,
 		session.ImpersonationStartedAt,
+		session.ProfileID,
+		session.ProfileCredentialRevision,
+		session.AuthMethod,
 	)
 	if err != nil {
 		return fmt.Errorf("creating session: %w", err)
