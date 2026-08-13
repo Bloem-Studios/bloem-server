@@ -1,0 +1,291 @@
+package api
+
+import (
+	"bytes"
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/Vondel-Media/vondel-server/internal/auth"
+	"github.com/Vondel-Media/vondel-server/internal/config"
+	"github.com/Vondel-Media/vondel-server/internal/database"
+	"github.com/Vondel-Media/vondel-server/internal/tenancy"
+	"github.com/Vondel-Media/vondel-server/internal/userstore/pgstore"
+	"github.com/Vondel-Media/vondel-server/migrations"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
+)
+
+type v1TenancyBootstrap struct{ store *tenancy.Store }
+
+func (b v1TenancyBootstrap) ActivateInitialOwnership(ctx context.Context, accountID int) error {
+	_, err := b.store.ActivateInitialOwnership(ctx, accountID)
+	return err
+}
+
+func (b v1TenancyBootstrap) ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) error {
+	_, err := b.store.ProvisionDefaultMembership(ctx, accountID, legacyRole)
+	return err
+}
+
+type v1LoginEnvelope struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+func TestV1TenancyCompatibility(t *testing.T) {
+	pool := newV1TenancyDatabase(t)
+	store := tenancy.NewStore(pool)
+	bootstrap := v1TenancyBootstrap{store: store}
+	cfg := &config.Config{Auth: config.AuthConfig{
+		JWTSecret:          "v1-tenancy-compatibility-secret",
+		AccessTokenExpiry:  time.Hour,
+		RefreshTokenExpiry: 24 * time.Hour,
+	}}
+	router := NewRouter(Dependencies{
+		DB:                    pool,
+		Config:                cfg,
+		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
+		OwnershipBootstrapper: bootstrap,
+		MembershipProvisioner: bootstrap,
+	})
+
+	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{
+		"username":"owner","email":"owner@example.test","password":"correct horse battery staple",
+		"create_default_profile":true,"default_profile_name":"Owner"
+	}`, "", nil)
+	if setup.Code != http.StatusCreated {
+		t.Fatalf("setup = %d %s", setup.Code, setup.Body.String())
+	}
+	setupLogin := decodeLogin(t, setup)
+	assertLegacyToken(t, cfg, setupLogin.AccessToken)
+
+	var userID int
+	if err := pool.QueryRow(context.Background(), `SELECT id FROM users WHERE username = 'owner'`).Scan(&userID); err != nil {
+		t.Fatalf("load setup owner: %v", err)
+	}
+	var profileID string
+	if err := pool.QueryRow(context.Background(), `SELECT id FROM user_profiles WHERE user_id = $1 AND is_primary`, userID).Scan(&profileID); err != nil {
+		t.Fatalf("load primary profile: %v", err)
+	}
+	pinHash, err := bcrypt.GenerateFromPassword([]byte("2468"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("hash PIN: %v", err)
+	}
+	if _, err := pool.Exec(context.Background(), `UPDATE user_profiles SET pin_hash = $1 WHERE user_id = $2 AND id = $3`, pinHash, userID, profileID); err != nil {
+		t.Fatalf("set profile PIN: %v", err)
+	}
+
+	beforeLogin := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/login", `{"username":"owner","password":"correct horse battery staple"}`, "", nil)
+	if beforeLogin.Code != http.StatusOK {
+		t.Fatalf("login before tenant revision = %d %s", beforeLogin.Code, beforeLogin.Body.String())
+	}
+	beforeTokens := decodeLogin(t, beforeLogin)
+	assertLegacyToken(t, cfg, beforeTokens.AccessToken)
+	beforeProfiles := performJSONRequest(t, router, http.MethodGet, "/api/v1/profiles/", "", beforeTokens.AccessToken, nil)
+	beforePIN := performJSONRequest(t, router, http.MethodPost, "/api/v1/profiles/"+profileID+"/verify-pin", `{"pin":"2468"}`, beforeTokens.AccessToken, nil)
+	beforeAdmin := performJSONRequest(t, router, http.MethodGet, "/api/v1/admin/users", "", beforeTokens.AccessToken, nil)
+	beforeRefresh := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/refresh", fmt.Sprintf(`{"refresh_token":%q}`, beforeTokens.RefreshToken), "", nil)
+	assertV1Responses(t, beforeProfiles, beforePIN, beforeAdmin, beforeRefresh)
+
+	// Model tenant control-plane churn after backfill. Legacy account/profile
+	// authority is unchanged, while current tenant revisions advance.
+	if _, err := pool.Exec(context.Background(), `UPDATE organizations SET policy_revision = policy_revision + 1 WHERE is_default`); err != nil {
+		t.Fatalf("advance organization policy revision: %v", err)
+	}
+	if _, err := pool.Exec(context.Background(), `UPDATE organization_memberships SET security_revision = security_revision + 1 WHERE account_id = $1`, userID); err != nil {
+		t.Fatalf("advance membership security revision: %v", err)
+	}
+
+	afterLogin := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/login", `{"username":"owner","password":"correct horse battery staple"}`, "", map[string]string{"X-Organization-Id": uuid.NewString()})
+	if afterLogin.Code != http.StatusOK {
+		t.Fatalf("login after tenant revision = %d %s", afterLogin.Code, afterLogin.Body.String())
+	}
+	afterTokens := decodeLogin(t, afterLogin)
+	assertLegacyToken(t, cfg, afterTokens.AccessToken)
+	afterProfiles := performJSONRequest(t, router, http.MethodGet, "/api/v1/profiles/", "", afterTokens.AccessToken, map[string]string{"X-Organization-Id": uuid.NewString()})
+	afterPIN := performJSONRequest(t, router, http.MethodPost, "/api/v1/profiles/"+profileID+"/verify-pin", `{"pin":"2468"}`, afterTokens.AccessToken, map[string]string{"X-Organization-Id": uuid.NewString()})
+	afterAdmin := performJSONRequest(t, router, http.MethodGet, "/api/v1/admin/users", "", afterTokens.AccessToken, map[string]string{"X-Organization-Id": uuid.NewString()})
+	afterRefresh := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/refresh", fmt.Sprintf(`{"refresh_token":%q}`, afterTokens.RefreshToken), "", map[string]string{"X-Organization-Id": uuid.NewString()})
+	assertV1Responses(t, afterProfiles, afterPIN, afterAdmin, afterRefresh)
+
+	for name, pair := range map[string][2]*httptest.ResponseRecorder{
+		"profile list":  {beforeProfiles, afterProfiles},
+		"PIN unlock":    {beforePIN, afterPIN},
+		"admin gate":    {beforeAdmin, afterAdmin},
+		"token refresh": {beforeRefresh, afterRefresh},
+	} {
+		before := normalizedV1JSON(t, pair[0].Body.Bytes())
+		after := normalizedV1JSON(t, pair[1].Body.Bytes())
+		if !reflect.DeepEqual(before, after) {
+			t.Errorf("%s changed across tenant revisions:\nbefore=%#v\nafter=%#v", name, before, after)
+		}
+	}
+
+	// An unresolved ownership state blocks native selection but legacy default
+	// resolution and v1 login/profile switching continue to work.
+	if _, err := pool.Exec(context.Background(), `UPDATE organizations SET status = 'initializing', owner_account_id = NULL WHERE is_default`); err != nil {
+		t.Fatalf("make ownership ambiguous: %v", err)
+	}
+	defaultOrganization, err := store.DefaultOrganization(context.Background())
+	if err != nil {
+		t.Fatalf("load ambiguous default: %v", err)
+	}
+	resolver := tenancy.NewResolver(store)
+	if _, err := resolver.Resolve(context.Background(), userID, &defaultOrganization.ID, false); err != tenancy.ErrOwnershipResolutionRequired {
+		t.Fatalf("native ambiguous resolution error = %v, want ErrOwnershipResolutionRequired", err)
+	}
+	if _, err := resolver.Resolve(context.Background(), userID, nil, true); err != nil {
+		t.Fatalf("legacy resolution during ambiguity: %v", err)
+	}
+	legacyDuringAmbiguity := performJSONRequest(t, router, http.MethodGet, "/api/v1/profiles/", "", afterTokens.AccessToken, nil)
+	if legacyDuringAmbiguity.Code != http.StatusOK {
+		t.Fatalf("legacy profile list during ambiguity = %d %s", legacyDuringAmbiguity.Code, legacyDuringAmbiguity.Body.String())
+	}
+
+	capabilities := performJSONRequest(t, router, http.MethodGet, "/api/v10/capabilities", "", "", nil)
+	if capabilities.Code != http.StatusOK || strings.Contains(capabilities.Body.String(), `"direct_profile_login":true`) {
+		t.Fatalf("v10 capabilities = %d %s", capabilities.Code, capabilities.Body.String())
+	}
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
+		response := performJSONRequest(t, router, method, "/api/v10/organizations", `{}`, afterTokens.AccessToken, nil)
+		if response.Code != http.StatusMethodNotAllowed {
+			t.Errorf("%s /api/v10/organizations = %d, want 405", method, response.Code)
+		}
+	}
+}
+
+func assertLegacyToken(t *testing.T, cfg *config.Config, token string) {
+	t.Helper()
+	claims, err := auth.NewJWTService(cfg.Auth.JWTSecret, cfg.Auth.AccessTokenExpiry, cfg.Auth.RefreshTokenExpiry).ValidateToken(token)
+	if err != nil {
+		t.Fatalf("validate legacy token: %v", err)
+	}
+	if claims.OrganizationID != "" || claims.MembershipID != "" || claims.PolicyRevision != 0 || claims.SecurityRevision != 0 {
+		t.Fatalf("v1 token contains tenant authority: %#v", claims)
+	}
+}
+
+func assertV1Responses(t *testing.T, responses ...*httptest.ResponseRecorder) {
+	t.Helper()
+	for _, response := range responses {
+		if response.Code != http.StatusOK {
+			t.Fatalf("v1 response = %d %s", response.Code, response.Body.String())
+		}
+		for _, forbidden := range []string{"organization_id", "membership_id", "policy_revision", "security_revision"} {
+			if strings.Contains(response.Body.String(), `"`+forbidden+`"`) {
+				t.Errorf("v1 response leaked tenant field %q: %s", forbidden, response.Body.String())
+			}
+		}
+	}
+}
+
+func decodeLogin(t *testing.T, response *httptest.ResponseRecorder) v1LoginEnvelope {
+	t.Helper()
+	var envelope v1LoginEnvelope
+	if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
+		t.Fatalf("decode login: %v", err)
+	}
+	if envelope.AccessToken == "" || envelope.RefreshToken == "" {
+		t.Fatalf("login tokens missing: %s", response.Body.String())
+	}
+	return envelope
+}
+
+func performJSONRequest(t *testing.T, handler http.Handler, method, path, body, accessToken string, headers map[string]string) *httptest.ResponseRecorder {
+	t.Helper()
+	request := httptest.NewRequest(method, path, bytes.NewBufferString(body))
+	request.Header.Set("Content-Type", "application/json")
+	if accessToken != "" {
+		request.Header.Set("Authorization", "Bearer "+accessToken)
+	}
+	for name, value := range headers {
+		request.Header.Set(name, value)
+	}
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	return response
+}
+
+func normalizedV1JSON(t *testing.T, raw []byte) any {
+	t.Helper()
+	var value any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		t.Fatalf("decode v1 JSON %s: %v", raw, err)
+	}
+	stripDynamicV1Fields(value)
+	return value
+}
+
+func stripDynamicV1Fields(value any) {
+	switch typed := value.(type) {
+	case map[string]any:
+		for _, field := range []string{"access_token", "refresh_token", "profile_token", "expires_at", "last_login_at"} {
+			delete(typed, field)
+		}
+		for _, child := range typed {
+			stripDynamicV1Fields(child)
+		}
+	case []any:
+		for _, child := range typed {
+			stripDynamicV1Fields(child)
+		}
+	}
+}
+
+func newV1TenancyDatabase(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	random := make([]byte, 8)
+	if _, err := rand.Read(random); err != nil {
+		t.Fatalf("generate database name: %v", err)
+	}
+	name := "vondel_tenancy_" + hex.EncodeToString(random)
+	admin, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect maintenance database: %v", err)
+	}
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
+		admin.Close()
+		t.Fatalf("create disposable database: %v", err)
+	}
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatalf("parse database URL: %v", err)
+	}
+	config.ConnConfig.Database = name
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		t.Fatalf("connect disposable database: %v", err)
+	}
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		pool.Close()
+		t.Fatalf("migrate disposable database: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Close()
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, _ = admin.Exec(cleanupCtx, `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, name)
+		if _, err := admin.Exec(cleanupCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
+			t.Errorf("drop disposable database: %v", err)
+		}
+		admin.Close()
+	})
+	return pool
+}

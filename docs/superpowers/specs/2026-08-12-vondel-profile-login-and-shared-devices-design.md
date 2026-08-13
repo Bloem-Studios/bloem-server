@@ -11,7 +11,9 @@
 Vondel keeps its current household ownership model:
 
 - A `users` account owns administration, invitations, service limits, permissions, and one or more `user_profiles`.
-- The primary profile and household account share the account's existing email/password identity.
+- The account login and primary profile are separate identities. The primary
+  profile may receive its own optional direct credential, but it never reuses
+  the account login email.
 - Secondary profiles remain local-only by default and require neither email nor password.
 - A secondary profile gains a direct login only when its owner explicitly enables one with a globally unique email and password.
 - Silo-compatible clients continue to authenticate the household and then select a profile.
@@ -39,14 +41,18 @@ Shared clients do not require every household member's password. The owner appro
 
 ## Identity Model
 
-### Household and Primary Profile
+### Account and Primary Profile
 
-The household account's globally unique email/password remains the primary identity. It has two intentionally different authentication outcomes:
+The account's globally unique email/password remains the Silo-compatible login
+identity. It creates an account session and exposes the compatible profile
+picker; it does not double as a direct-profile credential.
 
-- Legacy/Silo endpoint: creates a household session and exposes the compatible profile-picker flow.
-- New Vondel direct endpoint: creates a profile-bound session for the primary profile without showing a picker.
-
-The primary profile does not need a second email address or password.
+The primary profile is local-only by default, exactly like a secondary profile.
+If its owner enables direct login, it receives a separate globally unique
+email/password and creates a profile-bound session without showing a picker.
+The profile email cannot equal its parent account email or any other account or
+profile email. This separation prevents one credential from ambiguously
+entering account-administration and media-profile modes.
 
 ### Secondary Profiles
 
@@ -59,7 +65,11 @@ Direct-login enrollment is explicit. Disabling it removes remote credential use 
 
 ### Global Login Namespace
 
-All household-account and enabled profile emails share one case-insensitive global namespace. An email cannot identify both an account and a secondary profile or two different profiles. Creation and update enforce uniqueness transactionally so concurrent enrollment cannot create ambiguity.
+All account and enabled profile emails share one case-insensitive global
+namespace. An email cannot identify both an account and a profile—including
+the account's primary profile—or two different profiles. Creation and update
+enforce uniqueness transactionally so concurrent enrollment cannot create
+ambiguity.
 
 Authentication failures do not reveal whether an email belongs to an account, profile, disabled identity, or no identity.
 
@@ -121,10 +131,15 @@ Every operation is reauthorized against current account, profile, library, and d
 - Passwords use Vondel's existing password hashing policy and strength rules.
 - Profile password hashes are stored separately from profile PIN hashes.
 - Raw passwords, PINs, pairing codes, access tokens, and reset tokens never appear in logs or events.
-- The primary owner can create, change, disable, or reset a secondary profile's direct-login credential.
+- The primary owner can create, change, disable, or reset a profile's
+  direct-login credential, including the primary profile's distinct optional
+  credential.
 - A directly authenticated profile can change only its own email/password after reauthentication.
 - Password reset and email change revoke the affected profile's refresh sessions.
-- Household password reset revokes household, primary-profile, and admin sessions according to the existing account policy; it does not expose or silently replace secondary credentials.
+- Account password reset revokes account and admin sessions according to the
+  existing account policy; it does not expose, replace, or silently revoke a
+  distinct primary or secondary profile credential unless an explicit security
+  policy separately requires that action.
 - Recovery responses are constant-shape and rate-limited to resist account enumeration.
 
 ## Client Capability and Flows
@@ -140,7 +155,9 @@ Existing Silo clients continue using the unchanged legacy endpoints and profile 
 
 - Personal phones, tablets, and computers default to direct-profile login.
 - Apple TV, Android TV, and other shared screens default to pairing.
-- The primary credentials can be used in direct mode on a personal device or legacy mode where a household picker is desired.
+- Account credentials use the legacy-compatible account/profile-picker flow.
+  A personal device enters direct mode only with a separately enabled profile
+  credential, including for the primary profile.
 - Servers without the new capabilities automatically use the legacy Silo flow.
 
 Clients never infer support from server version strings.
@@ -163,7 +180,8 @@ Legacy login and profile-selection endpoints retain their existing wire shapes. 
 
 The database migration is additive:
 
-- Existing users remain household identities and primary-profile direct identities.
+- Existing users remain account identities; no primary-profile direct
+  credential is invented or aliased from the account credential.
 - Existing secondary profiles remain local-only with no invented email or password.
 - Existing profile PINs remain valid for legacy and shared-device switching.
 - Existing sessions keep their legacy semantics until normal expiry; no migration silently widens their access.
@@ -186,7 +204,8 @@ Rollout order is server schema and capability discovery, web administration, sha
 Server and client conformance must cover:
 
 - unchanged legacy household login and profile-picker response shapes;
-- primary direct login using household credentials;
+- primary direct login using a separate optional credential whose email cannot
+  equal the account login;
 - optional secondary enrollment, direct login, disable, reset, and re-enable;
 - local-only secondary profiles with no credentials;
 - case-insensitive global email uniqueness under concurrent operations;
