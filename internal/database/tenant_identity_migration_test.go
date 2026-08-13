@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Vondel-Media/vondel-server/internal/access"
+	"github.com/Vondel-Media/vondel-server/internal/tenancy"
 	"github.com/Vondel-Media/vondel-server/internal/userstore"
 	"github.com/Vondel-Media/vondel-server/internal/userstore/pgstore"
 	"github.com/Vondel-Media/vondel-server/migrations"
@@ -105,6 +106,9 @@ VALUES ('tenant-write-profile', 'tenant-write-profile@example.com', 'x', 'user',
         (SELECT id FROM public.access_groups WHERE is_default))
 RETURNING id, access_group_id`).Scan(&userID, &legacyAccessGroupID); err != nil {
 			t.Fatalf("seed profile owner: %v", err)
+		}
+		if _, err := tenancy.NewStore(pool).ProvisionDefaultMembership(ctx, userID, "user"); err != nil {
+			t.Fatalf("provision profile owner membership: %v", err)
 		}
 		store, err := pgstore.NewPostgresProvider(pool).ForUser(ctx, userID)
 		if err != nil {

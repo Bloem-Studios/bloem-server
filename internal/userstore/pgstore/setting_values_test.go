@@ -2,6 +2,8 @@ package pgstore
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,9 +15,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingskeys"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/Silo-Server/silo-server/migrations"
 )
 
 // countingQueryTracer records every statement pgx sends on behalf of a caller.
@@ -394,7 +399,7 @@ func provisionTestMembership(t *testing.T, pool *pgxpool.Pool, userID int) {
 }
 
 func TestProfileOrganizationAndAccessGroupPersistence(t *testing.T) {
-	pool, userID := newConstraintTestUser(t)
+	pool, userID := newProfileIdentityTestUser(t)
 	ctx := context.Background()
 
 	var organizationID string
@@ -459,7 +464,7 @@ func TestProfileOrganizationAndAccessGroupPersistence(t *testing.T) {
 }
 
 func TestProfileAccessGroupRejectsDifferentOrganization(t *testing.T) {
-	pool, userID := newConstraintTestUser(t)
+	pool, userID := newProfileIdentityTestUser(t)
 	ctx := context.Background()
 	var defaultOrganizationID string
 	if err := pool.QueryRow(ctx, `SELECT id::text FROM organizations WHERE is_default`).Scan(&defaultOrganizationID); err != nil {
@@ -494,4 +499,62 @@ func TestProfileAccessGroupRejectsDifferentOrganization(t *testing.T) {
 	if err == nil {
 		t.Fatal("CreateProfile accepted an access group from another organization")
 	}
+}
+
+func newProfileIdentityTestUser(t *testing.T) (*pgxpool.Pool, int) {
+	t.Helper()
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	random := make([]byte, 8)
+	if _, err := rand.Read(random); err != nil {
+		t.Fatalf("generate database name: %v", err)
+	}
+	name := "vondel_tenancy_" + hex.EncodeToString(random)
+	admin, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect maintenance database: %v", err)
+	}
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
+		admin.Close()
+		t.Fatalf("create disposable database: %v", err)
+	}
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		admin.Close()
+		t.Fatalf("parse maintenance database URL: %v", err)
+	}
+	config.ConnConfig.Database = name
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		admin.Close()
+		t.Fatalf("connect disposable database: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Close()
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, _ = admin.Exec(cleanupCtx, `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, name)
+		if _, err := admin.Exec(cleanupCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
+			t.Errorf("drop disposable database: %v", err)
+		}
+		admin.Close()
+	})
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate disposable database: %v", err)
+	}
+
+	var userID int
+	if err := pool.QueryRow(ctx,
+		`INSERT INTO users (username, role) VALUES ($1, 'user') RETURNING id`,
+		fmt.Sprintf("profile-identity-%d", time.Now().UnixNano()),
+	).Scan(&userID); err != nil {
+		t.Fatalf("seed profile identity user: %v", err)
+	}
+	if _, err := tenancy.NewStore(pool).ProvisionDefaultMembership(ctx, userID, "user"); err != nil {
+		t.Fatalf("provision profile identity membership: %v", err)
+	}
+	return pool, userID
 }

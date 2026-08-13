@@ -25,6 +25,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/yaml.v3"
 )
 
 type v1TenancyBootstrap struct{ store *tenancy.Store }
@@ -162,6 +163,63 @@ func TestV1TenancyCompatibility(t *testing.T) {
 		response := performJSONRequest(t, router, method, "/api/v10/organizations", `{}`, afterTokens.AccessToken, nil)
 		if response.Code != http.StatusMethodNotAllowed {
 			t.Errorf("%s /api/v10/organizations = %d, want 405", method, response.Code)
+		}
+	}
+}
+
+func TestV10FoundationCIRequiresDisposablePostgres(t *testing.T) {
+	type workflowStep struct {
+		Uses string         `yaml:"uses"`
+		Run  string         `yaml:"run"`
+		With map[string]any `yaml:"with"`
+	}
+	type workflowJob struct {
+		Services map[string]struct {
+			Image string `yaml:"image"`
+		} `yaml:"services"`
+		Env   map[string]string `yaml:"env"`
+		Steps []workflowStep    `yaml:"steps"`
+	}
+	var workflow struct {
+		Jobs map[string]workflowJob `yaml:"jobs"`
+	}
+	raw, err := os.ReadFile("../../.github/workflows/ci.yml")
+	if err != nil {
+		t.Fatalf("read CI workflow: %v", err)
+	}
+	if err := yaml.Unmarshal(raw, &workflow); err != nil {
+		t.Fatalf("parse CI workflow: %v", err)
+	}
+	job, ok := workflow.Jobs["tenant-identity"]
+	if !ok {
+		t.Fatal("CI has no tenant-identity acceptance job")
+	}
+	if postgres, ok := job.Services["postgres"]; !ok || postgres.Image == "" {
+		t.Fatalf("tenant-identity postgres service = %#v", job.Services)
+	}
+	if job.Env["SILO_TEST_DATABASE_URL"] == "" {
+		t.Fatal("tenant-identity job does not supply SILO_TEST_DATABASE_URL")
+	}
+
+	var commands string
+	checkoutLocked := false
+	for _, step := range job.Steps {
+		commands += "\n" + step.Run
+		if strings.HasPrefix(step.Uses, "actions/checkout@") && step.With["persist-credentials"] == false {
+			checkoutLocked = true
+		}
+	}
+	if !checkoutLocked {
+		t.Fatal("tenant-identity checkout must disable persisted credentials")
+	}
+	for _, required := range []string{
+		"go test ./internal/database -run TestTenantIdentityMigration",
+		"go test ./internal/tenancy",
+		"go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization'",
+		"go test ./internal/api -run 'TestV1TenancyCompatibility|TestV10Foundation'",
+	} {
+		if !strings.Contains(commands, required) {
+			t.Errorf("tenant-identity CI does not run %q", required)
 		}
 	}
 }
