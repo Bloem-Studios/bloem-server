@@ -70,6 +70,12 @@ jobs:
       - name: Verify tenancy store and resolver invariants
         run: go test ./internal/tenancy -count=1 -v -timeout=30m
 
+      - name: Verify resource ownership migration, backfill, and rollback
+        run: go test ./internal/database -run TestResourceTenancyMigration -count=1 -v -timeout=30m
+
+      - name: Verify resource access and bundle materialization invariants
+        run: go test -race ./internal/resourcetenancy -count=1 -v -timeout=30m
+
       - name: Verify profile organization and access-group persistence
         run: go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization' -count=1 -v -timeout=30m
 
