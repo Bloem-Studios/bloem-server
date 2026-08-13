@@ -1,8 +1,8 @@
 # Vondel Multi-Tenant Security and Authorization Design
 
-**Date:** 2026-08-12  
-**Status:** Approved  
-**API boundary:** Silo-compatible `/api/v1`; native Vondel `/api/v10`  
+**Date:** 2026-08-12
+**Status:** Approved
+**API boundary:** Silo-compatible `/api/v1`; native Vondel `/api/v10`
 **Related prior work:** [Silo Server PR #251 — Add ACL access management](https://github.com/Silo-Server/silo-server/pull/251)
 
 ## Goal
@@ -496,4 +496,3 @@ The implementation is not complete until it passes:
 - Cross-deployment federation.
 - Organization-to-organization sharing. Shared resources remain platform-owned
   and explicitly entitled.
-

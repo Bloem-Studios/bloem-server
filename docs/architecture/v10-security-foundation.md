@@ -34,11 +34,12 @@ protected sequence:
 
 1. create the account;
 2. provision its active default-organization membership;
-3. atomically assign platform and organization ownership and activate the
+3. create the optional default profile with its organization identity;
+4. atomically assign platform and organization ownership and activate the
    organization; and
-4. create the session and tokens.
+5. create the session and tokens.
 
-Failure before step 4 deletes the new account and issues no token. Verify:
+Failure before step 5 deletes the new account and issues no token. Verify:
 
 ```sql
 SELECT owner_account_id, policy_revision, ownership_resolution_required
@@ -54,6 +55,9 @@ ORDER BY organization_id, account_id;
 
 Exactly one default organization must exist. Its owner and the platform owner
 must be the setup account; both organization and membership must be active.
+Protected activation accepts only an enabled account whose legacy account role
+and organization membership role are both `admin`; ordinary, disabled, invited,
+or suspended accounts cannot win an ownership race.
 
 ## Upgrade behavior
 
@@ -137,12 +141,13 @@ From a matching source checkout with the deployment environment file:
 
 ```sh
 make migrate-status ENV_FILE=/path/to/deployment.env
-make migrate-down-to VERSION=20260811145848 ENV_FILE=/path/to/deployment.env
+make migrate-down-to VERSION=20260812163547 ENV_FILE=/path/to/deployment.env
 ```
 
 The down migration removes `platform_security`, `organizations`,
 `organization_memberships`, and the additive organization/profile group
-columns. It restores the global access-group name constraint. It does not
+columns, together with the legacy default-organization insert helper. It
+restores the global access-group name constraint. It does not
 change legacy users, profiles, account-level access-group assignments,
 passwords, sessions, or watch state. Verify those legacy counts and sampled
 rows before starting the previous binary.

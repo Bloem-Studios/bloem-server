@@ -47,17 +47,20 @@ func TestV10CapabilitiesExactContract(t *testing.T) {
 }
 
 func TestV10OrganizationsReturnsOnlyActiveMembershipsAndOrganizations(t *testing.T) {
-	activeID, hiddenID, invitedID := uuid.New(), uuid.New(), uuid.New()
+	activeID, hiddenID, invitedID, ownerlessID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	activeMembershipID := uuid.New()
+	ownerAccountID := 7
 	handler := NewV10SystemHandler(v10OrganizationStoreStub{
 		memberships: []tenancy.Membership{
 			{ID: activeMembershipID, OrganizationID: activeID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 4},
 			{ID: uuid.New(), OrganizationID: hiddenID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "user", SecurityRevision: 2},
 			{ID: uuid.New(), OrganizationID: invitedID, AccountID: 7, Status: tenancy.MembershipInvited, LegacyRole: "user", SecurityRevision: 1},
+			{ID: uuid.New(), OrganizationID: ownerlessID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "user", SecurityRevision: 1},
 		},
 		organizations: map[uuid.UUID]tenancy.Organization{
-			activeID: {ID: activeID, Slug: "vondel", Name: "Vondel", Status: tenancy.OrganizationActive, PolicyRevision: 9, Default: true},
-			hiddenID: {ID: hiddenID, Slug: "hidden", Name: "Hidden", Status: tenancy.OrganizationSuspended, PolicyRevision: 3},
+			activeID:    {ID: activeID, Slug: "vondel", Name: "Vondel", Status: tenancy.OrganizationActive, OwnerAccountID: &ownerAccountID, PolicyRevision: 9, Default: true},
+			hiddenID:    {ID: hiddenID, Slug: "hidden", Name: "Hidden", Status: tenancy.OrganizationSuspended, PolicyRevision: 3},
+			ownerlessID: {ID: ownerlessID, Slug: "ownerless", Name: "Ownerless", Status: tenancy.OrganizationActive, PolicyRevision: 1},
 		},
 	})
 	req := httptest.NewRequest(http.MethodGet, "/api/v10/organizations", nil)

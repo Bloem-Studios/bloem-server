@@ -38,7 +38,7 @@ func (r *Resolver) Resolve(ctx context.Context, accountID int, requestedOrganiza
 	if organization.Status == OrganizationSuspended {
 		return Context{}, ErrTenantSuspended
 	}
-	if !legacy && organization.Status != OrganizationActive {
+	if !legacy && (organization.Status != OrganizationActive || organization.OwnerAccountID == nil) {
 		return Context{}, ErrOwnershipResolutionRequired
 	}
 
@@ -47,7 +47,7 @@ func (r *Resolver) Resolve(ctx context.Context, accountID int, requestedOrganiza
 		return Context{}, ErrTenantNotFoundOrHidden
 	}
 	if err != nil {
-		return Context{}, fmt.Errorf("%w: load membership: %v", ErrTenantUnavailable, err)
+		return Context{}, fmt.Errorf("%w: load membership: %w", ErrTenantUnavailable, err)
 	}
 	if membership.OrganizationID != organization.ID || membership.AccountID != accountID || membership.Status == MembershipInvited {
 		return Context{}, ErrTenantNotFoundOrHidden
@@ -81,7 +81,7 @@ func (r *Resolver) resolveOrganization(ctx context.Context, requestedOrganizatio
 			return Organization{}, ErrOwnershipResolutionRequired
 		}
 		if err != nil {
-			return Organization{}, fmt.Errorf("%w: load default organization: %v", ErrTenantUnavailable, err)
+			return Organization{}, fmt.Errorf("%w: load default organization: %w", ErrTenantUnavailable, err)
 		}
 		return organization, nil
 	}
@@ -91,7 +91,7 @@ func (r *Resolver) resolveOrganization(ctx context.Context, requestedOrganizatio
 		return Organization{}, ErrTenantNotFoundOrHidden
 	}
 	if err != nil {
-		return Organization{}, fmt.Errorf("%w: load organization: %v", ErrTenantUnavailable, err)
+		return Organization{}, fmt.Errorf("%w: load organization: %w", ErrTenantUnavailable, err)
 	}
 	return organization, nil
 }

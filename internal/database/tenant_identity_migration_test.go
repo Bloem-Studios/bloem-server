@@ -7,7 +7,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,7 +26,44 @@ import (
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
-const tenantIdentityPreviousMigration = 20260811145848
+const tenantIdentityPreviousMigration = 20260812163547
+
+func TestTenantIdentityMigrationPreviousVersionIsImmediatePredecessor(t *testing.T) {
+	files, err := fs.Glob(migrations.FS, "sql/*.sql")
+	if err != nil {
+		t.Fatalf("list embedded migrations: %v", err)
+	}
+
+	const tenantIdentityVersion int64 = 20260812190000
+	var immediatePredecessor int64
+	for _, file := range files {
+		versionText, _, ok := strings.Cut(path.Base(file), "_")
+		if !ok {
+			continue
+		}
+		version, err := strconv.ParseInt(versionText, 10, 64)
+		if err != nil {
+			continue
+		}
+		if version < tenantIdentityVersion && version > immediatePredecessor {
+			immediatePredecessor = version
+		}
+	}
+	if tenantIdentityPreviousMigration != immediatePredecessor {
+		t.Fatalf("tenant identity predecessor = %d, want immediate embedded predecessor %d", tenantIdentityPreviousMigration, immediatePredecessor)
+	}
+}
+
+func TestTenantIdentityMigrationRunbookUsesImmediateRollbackTarget(t *testing.T) {
+	runbook, err := os.ReadFile("../../docs/architecture/v10-security-foundation.md")
+	if err != nil {
+		t.Fatalf("read tenant security runbook: %v", err)
+	}
+	want := fmt.Sprintf("make migrate-down-to VERSION=%d", tenantIdentityPreviousMigration)
+	if !strings.Contains(string(runbook), want) {
+		t.Fatalf("tenant security runbook does not contain exact rollback command %q", want)
+	}
+}
 
 func TestTenantIdentityMigrationBackfill(t *testing.T) {
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
@@ -172,15 +213,19 @@ VALUES ($1, 'missing-organization', 'Malformed')`, userID)
 		assertTenantIdentityNotNullViolation(t, err, "profile insert without organization")
 	})
 
-	t.Run("access group insert without organization is rejected", func(t *testing.T) {
+	t.Run("legacy access group insert defaults to the default organization", func(t *testing.T) {
 		ctx := context.Background()
 		pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
 		migrateTenantIdentityLatest(t, ctx, pool)
 
-		_, err := pool.Exec(ctx, `
+		var organizationID string
+		if err := pool.QueryRow(ctx, `
 INSERT INTO public.access_groups (name)
-VALUES ('Malformed access group')`)
-		assertTenantIdentityNotNullViolation(t, err, "access group insert without organization")
+VALUES ('Legacy access group')
+RETURNING organization_id::text`).Scan(&organizationID); err != nil {
+			t.Fatalf("legacy access group insert: %v", err)
+		}
+		assertDefaultOrganizationID(t, ctx, pool, organizationID)
 	})
 
 	t.Run("cross organization profile group pairing is rejected", func(t *testing.T) {
@@ -201,7 +246,7 @@ RETURNING id`).Scan(&userID); err != nil {
 		}
 		if err := pool.QueryRow(ctx, `
 INSERT INTO public.organizations (slug, name, status)
-VALUES ('other-organization', 'Other Organization', 'active')
+VALUES ('other-organization', 'Other Organization', 'initializing')
 RETURNING id::text`).Scan(&otherOrganizationID); err != nil {
 			t.Fatalf("create second organization: %v", err)
 		}
@@ -218,6 +263,23 @@ VALUES ($1, $2, $3, 'cross-organization', 'Cross Organization')`,
 			defaultOrganizationID, otherGroupID, userID)
 		if err == nil {
 			t.Fatal("profile accepted an access group from another organization")
+		}
+	})
+
+	t.Run("active organization without owner is rejected", func(t *testing.T) {
+		ctx := context.Background()
+		pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
+		migrateTenantIdentityLatest(t, ctx, pool)
+
+		_, err := pool.Exec(ctx, `
+INSERT INTO public.organizations (slug, name, status)
+VALUES ('ownerless-active', 'Ownerless Active', 'active')`)
+		if err == nil {
+			t.Fatal("active organization without owner was accepted")
+		}
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "23514" {
+			t.Fatalf("active organization without owner error = %v, want SQLSTATE 23514", err)
 		}
 	})
 }
@@ -467,6 +529,13 @@ SELECT EXISTS (
 		if exists {
 			t.Errorf("down migration left %s.%s behind", column.table, column.column)
 		}
+	}
+	var functionExists bool
+	if err := pool.QueryRow(ctx, `SELECT to_regprocedure('public.vondel_default_organization_id()') IS NOT NULL`).Scan(&functionExists); err != nil {
+		t.Fatalf("check default organization function after down migration: %v", err)
+	}
+	if functionExists {
+		t.Error("down migration left vondel_default_organization_id() behind")
 	}
 }
 

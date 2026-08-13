@@ -187,6 +187,35 @@ func TestStoreActivateInitialOwnershipRequiresActiveMembership(t *testing.T) {
 	assertOwnershipRevisions(t, fixture, fixture.adminID, 1, 1, 1, false)
 }
 
+func TestStoreActivateInitialOwnershipRequiresEnabledAdmin(t *testing.T) {
+	store, fixture := newTenancyFixture(t)
+	for _, tt := range []struct {
+		name      string
+		accountID int
+		disable   bool
+	}{
+		{name: "ordinary member", accountID: fixture.otherID},
+		{name: "disabled admin", accountID: fixture.adminID, disable: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.disable {
+				if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET enabled = false WHERE id = $1`, tt.accountID); err != nil {
+					t.Fatalf("disable account: %v", err)
+				}
+			}
+			_, err := store.ActivateInitialOwnership(fixture.ctx, tt.accountID)
+			if !errors.Is(err, ErrOwnerNotEligible) {
+				t.Fatalf("activation error = %v, want ErrOwnerNotEligible", err)
+			}
+			if tt.disable {
+				if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET enabled = true WHERE id = $1`, tt.accountID); err != nil {
+					t.Fatalf("re-enable account: %v", err)
+				}
+			}
+		})
+	}
+}
+
 func TestStoreActivateInitialOwnershipClearsAmbiguity(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
 	if _, err := fixture.pool.Exec(fixture.ctx, `
@@ -203,6 +232,12 @@ func TestStoreActivateInitialOwnershipClearsAmbiguity(t *testing.T) {
 
 func TestStoreActivateInitialOwnershipConcurrentOwners(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET role = 'admin' WHERE id = $1`, fixture.otherID); err != nil {
+		t.Fatalf("make second account an admin: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET legacy_role = 'admin' WHERE account_id = $1`, fixture.otherID); err != nil {
+		t.Fatalf("make second membership an admin: %v", err)
+	}
 	results := make(chan error, 2)
 	for _, accountID := range []int{fixture.adminID, fixture.otherID} {
 		go func() {
@@ -256,10 +291,13 @@ func newTenancyFixture(t *testing.T) (*Store, tenancyFixture) {
 	fixture.adminID = fixture.insertAccount(t, "admin", "admin")
 	fixture.otherID = fixture.insertAccount(t, "other", "user")
 	organization := fixture.defaultOrganization(t)
-	for _, accountID := range []int{fixture.adminID, fixture.otherID} {
+	for _, account := range []struct {
+		id   int
+		role string
+	}{{fixture.adminID, "admin"}, {fixture.otherID, "user"}} {
 		if _, err := pool.Exec(ctx, `
 			INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-			VALUES ($1, $2, 'active', 'user')`, organization.ID, accountID); err != nil {
+			VALUES ($1, $2, 'active', $3)`, organization.ID, account.id, account.role); err != nil {
 			t.Fatalf("add active membership: %v", err)
 		}
 	}

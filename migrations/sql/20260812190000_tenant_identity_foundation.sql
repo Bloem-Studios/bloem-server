@@ -17,11 +17,21 @@ CREATE TABLE public.organizations (
     policy_revision bigint NOT NULL DEFAULT 1 CHECK (policy_revision > 0),
     is_default boolean NOT NULL DEFAULT false,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT organizations_active_owner_check
+        CHECK (status <> 'active' OR owner_account_id IS NOT NULL)
 );
 
 CREATE UNIQUE INDEX organizations_slug_ci_idx ON public.organizations(lower(slug));
 CREATE UNIQUE INDEX organizations_one_default_idx ON public.organizations(is_default) WHERE is_default;
+
+CREATE FUNCTION public.vondel_default_organization_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT id FROM public.organizations WHERE is_default
+$$;
 
 CREATE TABLE public.organization_memberships (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -75,7 +85,7 @@ ALTER TABLE public.user_profiles
     ADD COLUMN access_group_id bigint;
 
 ALTER TABLE public.access_groups
-    ADD COLUMN organization_id uuid;
+    ADD COLUMN organization_id uuid DEFAULT public.vondel_default_organization_id();
 
 UPDATE public.access_groups
 SET organization_id = (SELECT id FROM public.organizations WHERE is_default);
@@ -146,6 +156,7 @@ ALTER TABLE public.access_groups
     ADD CONSTRAINT access_groups_name_key UNIQUE (name),
     DROP COLUMN IF EXISTS organization_id;
 
+DROP FUNCTION IF EXISTS public.vondel_default_organization_id();
 DROP TABLE IF EXISTS public.organization_memberships;
 DROP TABLE IF EXISTS public.organizations;
 DROP TABLE IF EXISTS public.platform_security;

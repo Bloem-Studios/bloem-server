@@ -136,8 +136,8 @@ func TestDefaultAccessGroupSeedAndUniqueDB(t *testing.T) {
 	assertDefaultGroupSeed(t, ctx, pool)
 
 	_, err := pool.Exec(ctx, `
-		INSERT INTO access_groups (name, is_default, organization_id)
-		VALUES ($1, true, (SELECT id FROM organizations WHERE is_default))`,
+		INSERT INTO access_groups (name, is_default)
+		VALUES ($1, true)`,
 		"Access Group Test "+suffix+" second default",
 	)
 	if err == nil {

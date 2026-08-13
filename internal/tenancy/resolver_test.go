@@ -88,6 +88,24 @@ func TestResolverRejectsUnavailableV10TenantSelection(t *testing.T) {
 	}
 }
 
+func TestResolverRejectsActiveOrganizationWithoutOwner(t *testing.T) {
+	organizationID := uuid.New()
+	membershipID := uuid.New()
+	organization := activeOrganizationWithID(organizationID)
+	organization.OwnerAccountID = nil
+	resolver := NewResolver(resolverTestStore{
+		organizations: map[uuid.UUID]Organization{organizationID: organization},
+		memberships: map[resolverMembershipKey]Membership{
+			{accountID: 17, organizationID: organizationID}: activeMembership(membershipID, organizationID, 17),
+		},
+	})
+
+	_, err := resolver.Resolve(context.Background(), 17, &organizationID, false)
+	if !errors.Is(err, ErrOwnershipResolutionRequired) {
+		t.Fatalf("Resolve error = %v, want ErrOwnershipResolutionRequired", err)
+	}
+}
+
 func TestResolverHidesUnknownOrganization(t *testing.T) {
 	organizationID := uuid.New()
 	resolver := NewResolver(resolverTestStore{})
@@ -224,7 +242,8 @@ func activeOrganization() Organization {
 }
 
 func activeOrganizationWithID(organizationID uuid.UUID) Organization {
-	return Organization{ID: organizationID, Status: OrganizationActive, PolicyRevision: 5}
+	ownerAccountID := 1
+	return Organization{ID: organizationID, Status: OrganizationActive, OwnerAccountID: &ownerAccountID, PolicyRevision: 5}
 }
 
 func activeMembership(membershipID, organizationID uuid.UUID, accountID int) Membership {

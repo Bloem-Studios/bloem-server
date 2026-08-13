@@ -62,4 +62,3 @@ behavioral gate, rollback story, and focused security review.
 - Existing sessions are never upgraded to stronger authority.
 - Each plan ends with a clean-install test, an upgrade test, a rollback test,
   exact Silo compatibility tests, and a security-focused review.
-

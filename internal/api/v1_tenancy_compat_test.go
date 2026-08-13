@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -45,6 +46,11 @@ type v1LoginEnvelope struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type v1PINEnvelope struct {
+	Valid        bool   `json:"valid"`
+	ProfileToken string `json:"profile_token"`
+}
+
 func TestV1TenancyCompatibility(t *testing.T) {
 	pool := newV1TenancyDatabase(t)
 	store := tenancy.NewStore(pool)
@@ -71,6 +77,7 @@ func TestV1TenancyCompatibility(t *testing.T) {
 	}
 	setupLogin := decodeLogin(t, setup)
 	assertLegacyToken(t, cfg, setupLogin.AccessToken)
+	assertNoTenantFields(t, setup)
 
 	var userID int
 	if err := pool.QueryRow(context.Background(), `SELECT id FROM users WHERE username = 'owner'`).Scan(&userID); err != nil {
@@ -94,11 +101,17 @@ func TestV1TenancyCompatibility(t *testing.T) {
 	}
 	beforeTokens := decodeLogin(t, beforeLogin)
 	assertLegacyToken(t, cfg, beforeTokens.AccessToken)
+	assertNoTenantFields(t, beforeLogin)
 	beforeProfiles := performJSONRequest(t, router, http.MethodGet, "/api/v1/profiles/", "", beforeTokens.AccessToken, nil)
 	beforePIN := performJSONRequest(t, router, http.MethodPost, "/api/v1/profiles/"+profileID+"/verify-pin", `{"pin":"2468"}`, beforeTokens.AccessToken, nil)
+	beforePINToken := decodePIN(t, beforePIN)
+	beforeSelection := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/effective?keys=player.playback_speed", "", beforeTokens.AccessToken, map[string]string{
+		"X-Profile-Id":    profileID,
+		"X-Profile-Token": beforePINToken.ProfileToken,
+	})
 	beforeAdmin := performJSONRequest(t, router, http.MethodGet, "/api/v1/admin/users", "", beforeTokens.AccessToken, nil)
 	beforeRefresh := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/refresh", fmt.Sprintf(`{"refresh_token":%q}`, beforeTokens.RefreshToken), "", nil)
-	assertV1Responses(t, beforeProfiles, beforePIN, beforeAdmin, beforeRefresh)
+	assertV1Responses(t, beforeProfiles, beforePIN, beforeSelection, beforeAdmin, beforeRefresh)
 
 	// Model tenant control-plane churn after backfill. Legacy account/profile
 	// authority is unchanged, while current tenant revisions advance.
@@ -115,17 +128,26 @@ func TestV1TenancyCompatibility(t *testing.T) {
 	}
 	afterTokens := decodeLogin(t, afterLogin)
 	assertLegacyToken(t, cfg, afterTokens.AccessToken)
+	assertNoTenantFields(t, afterLogin)
 	afterProfiles := performJSONRequest(t, router, http.MethodGet, "/api/v1/profiles/", "", afterTokens.AccessToken, map[string]string{"X-Organization-Id": uuid.NewString()})
 	afterPIN := performJSONRequest(t, router, http.MethodPost, "/api/v1/profiles/"+profileID+"/verify-pin", `{"pin":"2468"}`, afterTokens.AccessToken, map[string]string{"X-Organization-Id": uuid.NewString()})
+	afterPINToken := decodePIN(t, afterPIN)
+	afterSelection := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/effective?keys=player.playback_speed", "", afterTokens.AccessToken, map[string]string{
+		"X-Organization-Id": uuid.NewString(),
+		"X-Profile-Id":      profileID,
+		"X-Profile-Token":   afterPINToken.ProfileToken,
+	})
 	afterAdmin := performJSONRequest(t, router, http.MethodGet, "/api/v1/admin/users", "", afterTokens.AccessToken, map[string]string{"X-Organization-Id": uuid.NewString()})
 	afterRefresh := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/refresh", fmt.Sprintf(`{"refresh_token":%q}`, afterTokens.RefreshToken), "", map[string]string{"X-Organization-Id": uuid.NewString()})
-	assertV1Responses(t, afterProfiles, afterPIN, afterAdmin, afterRefresh)
+	assertV1Responses(t, afterProfiles, afterPIN, afterSelection, afterAdmin, afterRefresh)
 
 	for name, pair := range map[string][2]*httptest.ResponseRecorder{
-		"profile list":  {beforeProfiles, afterProfiles},
-		"PIN unlock":    {beforePIN, afterPIN},
-		"admin gate":    {beforeAdmin, afterAdmin},
-		"token refresh": {beforeRefresh, afterRefresh},
+		"login":          {beforeLogin, afterLogin},
+		"profile list":   {beforeProfiles, afterProfiles},
+		"PIN unlock":     {beforePIN, afterPIN},
+		"profile select": {beforeSelection, afterSelection},
+		"admin gate":     {beforeAdmin, afterAdmin},
+		"token refresh":  {beforeRefresh, afterRefresh},
 	} {
 		before := normalizedV1JSON(t, pair[0].Body.Bytes())
 		after := normalizedV1JSON(t, pair[1].Body.Bytes())
@@ -144,7 +166,7 @@ func TestV1TenancyCompatibility(t *testing.T) {
 		t.Fatalf("load ambiguous default: %v", err)
 	}
 	resolver := tenancy.NewResolver(store)
-	if _, err := resolver.Resolve(context.Background(), userID, &defaultOrganization.ID, false); err != tenancy.ErrOwnershipResolutionRequired {
+	if _, err := resolver.Resolve(context.Background(), userID, &defaultOrganization.ID, false); !errors.Is(err, tenancy.ErrOwnershipResolutionRequired) {
 		t.Fatalf("native ambiguous resolution error = %v, want ErrOwnershipResolutionRequired", err)
 	}
 	if _, err := resolver.Resolve(context.Background(), userID, nil, true); err != nil {
@@ -287,6 +309,13 @@ func assertV1Responses(t *testing.T, responses ...*httptest.ResponseRecorder) {
 		if response.Code != http.StatusOK {
 			t.Fatalf("v1 response = %d %s", response.Code, response.Body.String())
 		}
+	}
+	assertNoTenantFields(t, responses...)
+}
+
+func assertNoTenantFields(t *testing.T, responses ...*httptest.ResponseRecorder) {
+	t.Helper()
+	for _, response := range responses {
 		for _, forbidden := range []string{"organization_id", "membership_id", "policy_revision", "security_revision"} {
 			if strings.Contains(response.Body.String(), `"`+forbidden+`"`) {
 				t.Errorf("v1 response leaked tenant field %q: %s", forbidden, response.Body.String())
@@ -303,6 +332,18 @@ func decodeLogin(t *testing.T, response *httptest.ResponseRecorder) v1LoginEnvel
 	}
 	if envelope.AccessToken == "" || envelope.RefreshToken == "" {
 		t.Fatalf("login tokens missing: %s", response.Body.String())
+	}
+	return envelope
+}
+
+func decodePIN(t *testing.T, response *httptest.ResponseRecorder) v1PINEnvelope {
+	t.Helper()
+	var envelope v1PINEnvelope
+	if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
+		t.Fatalf("decode PIN response: %v", err)
+	}
+	if !envelope.Valid || envelope.ProfileToken == "" {
+		t.Fatalf("PIN response missing valid profile token: %s", response.Body.String())
 	}
 	return envelope
 }

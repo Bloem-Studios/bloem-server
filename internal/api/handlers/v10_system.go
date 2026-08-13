@@ -93,7 +93,7 @@ func (h *V10SystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.Re
 			writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 			return
 		}
-		if organization.Status != tenancy.OrganizationActive || organization.ID != membership.OrganizationID {
+		if organization.Status != tenancy.OrganizationActive || organization.OwnerAccountID == nil || organization.ID != membership.OrganizationID {
 			continue
 		}
 		result = append(result, v10Organization{

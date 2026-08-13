@@ -369,7 +369,7 @@ func (s *Service) SetupInitialUser(
 	if s.ownership != nil {
 		if err := s.ownership.ActivateInitialOwnership(ctx, createdUser.ID); err != nil {
 			if deleteErr := s.accounts.users.Delete(ctx, createdUser.ID); deleteErr != nil {
-				return nil, nil, fmt.Errorf("activating initial ownership: %w (cleanup user: %v)", err, deleteErr)
+				return nil, nil, fmt.Errorf("activating initial ownership: %w (cleanup user: %w)", err, deleteErr)
 			}
 			return nil, nil, fmt.Errorf("activating initial ownership: %w", err)
 		}

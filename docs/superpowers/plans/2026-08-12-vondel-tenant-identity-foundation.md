@@ -46,7 +46,7 @@
 - `internal/api/router_v10.go` — isolated v10 route mounting.
 - `internal/api/router_v10_test.go` — route/auth boundary tests.
 - `internal/api/router.go` — call the isolated v10 mount and construct the tenancy store when PostgreSQL is present.
-- `cmd/vondel/main.go` — wire ownership activation into the production auth service.
+- `cmd/silo/main.go` — wire ownership activation into the production auth service while preserving the tracked upstream entry point.
 - `docs/architecture/v10-security-foundation.md` — operator-facing activation and ambiguity behavior.
 
 ### Task 1: Expand schema and prove migration safety
@@ -348,7 +348,7 @@ git commit -m "feat(tenancy): resolve authenticated tenant context"
 **Files:**
 - Modify: `internal/auth/service.go`
 - Modify: `internal/auth/service_test.go`
-- Modify: `cmd/vondel/main.go`
+- Modify: `cmd/silo/main.go`
 
 **Interfaces:**
 - Adds `OwnershipBootstrapper.ActivateInitialOwnership(context.Context, int) error` to auth.
@@ -380,7 +380,7 @@ Expected: FAIL because setup does not activate ownership.
 Add an optional bootstrapper to `Service`. In `SetupInitialUser`, retain the
 created user, call ownership activation before `Login`, and use the existing
 account deletion path on failure. Nil remains valid for isolated compatibility
-fixtures, but production `cmd/vondel/main.go` must always wire the tenancy store
+fixtures, but production `cmd/silo/main.go` must always wire the tenancy store
 when `deps.DB` is present.
 
 - [ ] **Step 4: Verify auth behavior and commit**
@@ -388,7 +388,7 @@ when `deps.DB` is present.
 ```bash
 GOWORK=off go test ./internal/auth -count=1
 GOWORK=off go test -race ./internal/auth -count=1
-git add internal/auth/service.go internal/auth/service_test.go cmd/vondel/main.go
+git add internal/auth/service.go internal/auth/service_test.go cmd/silo/main.go
 git commit -m "feat(auth): claim protected ownership during setup"
 ```
 
@@ -598,7 +598,7 @@ GOWORK=off gofmt -w internal/tenancy/*.go internal/auth/*.go internal/api/middle
 GOWORK=off go test ./internal/tenancy ./internal/auth ./internal/api/middleware ./internal/api/handlers ./internal/api ./internal/access ./internal/userstore/...
 GOWORK=off go test -race ./internal/tenancy ./internal/auth ./internal/api/middleware ./internal/access
 GOWORK=off go vet ./internal/tenancy ./internal/auth ./internal/api/middleware ./internal/api/handlers ./internal/api ./internal/access ./internal/userstore/...
-GOWORK=off go build ./cmd/vondel
+GOWORK=off go build ./cmd/silo
 git diff --check
 ```
 

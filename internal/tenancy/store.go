@@ -21,7 +21,11 @@ func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
 }
 
-const organizationColumns = `id, slug, name, status, owner_account_id, policy_revision, is_default`
+const (
+	organizationColumns = `id, slug, name, status, owner_account_id, policy_revision, is_default`
+	legacyRoleAdmin     = "admin"
+	legacyRoleUser      = "user"
+)
 
 type rowScanner interface {
 	Scan(dest ...any) error
@@ -131,7 +135,7 @@ func (s *Store) GetMembership(ctx context.Context, accountID int, organizationID
 // request is a no-op; an existing membership with different role or state is
 // rejected so provisioning never overwrites protected state.
 func (s *Store) ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) (membership Membership, err error) {
-	if legacyRole != "admin" && legacyRole != "user" {
+	if legacyRole != legacyRoleAdmin && legacyRole != legacyRoleUser {
 		return Membership{}, fmt.Errorf("provision default membership: invalid legacy role %q", legacyRole)
 	}
 
@@ -238,18 +242,40 @@ func (s *Store) ActivateInitialOwnership(ctx context.Context, accountID int) (st
 		return OwnershipState{}, ErrOwnerAlreadyAssigned
 	}
 
-	membership, err := scanMembership(tx.QueryRow(ctx, `
-		SELECT id, organization_id, account_id, status, legacy_role, security_revision
-		FROM organization_memberships
-		WHERE organization_id = $1
-		  AND account_id = $2
-		  AND status = $3
-		FOR UPDATE`, organization.ID, accountID, MembershipActive))
+	var (
+		membership     Membership
+		accountRole    string
+		accountEnabled bool
+	)
+	err = tx.QueryRow(ctx, `
+		SELECT memberships.id, memberships.organization_id, memberships.account_id,
+		       memberships.status, memberships.legacy_role, memberships.security_revision,
+		       users.role, users.enabled
+		FROM organization_memberships AS memberships
+		JOIN users ON users.id = memberships.account_id
+		WHERE memberships.organization_id = $1
+		  AND memberships.account_id = $2
+		FOR UPDATE OF memberships, users`, organization.ID, accountID).Scan(
+		&membership.ID,
+		&membership.OrganizationID,
+		&membership.AccountID,
+		&membership.Status,
+		&membership.LegacyRole,
+		&membership.SecurityRevision,
+		&accountRole,
+		&accountEnabled,
+	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return OwnershipState{}, ErrMembershipNotFound
 		}
-		return OwnershipState{}, fmt.Errorf("lock active owner membership: %w", err)
+		return OwnershipState{}, fmt.Errorf("lock owner eligibility: %w", err)
+	}
+	if membership.Status != MembershipActive {
+		return OwnershipState{}, ErrMembershipNotFound
+	}
+	if membership.LegacyRole != legacyRoleAdmin || accountRole != legacyRoleAdmin || !accountEnabled {
+		return OwnershipState{}, ErrOwnerNotEligible
 	}
 
 	if platformOwner != nil && organization.OwnerAccountID != nil && organization.Status == OrganizationActive && !resolutionRequired {

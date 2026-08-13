@@ -172,8 +172,8 @@ func insertAuthAccessGroupTestGroupWithLabel(
 		name += " " + label
 	}
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO access_groups (name, organization_id)
-		VALUES ($1, (SELECT id FROM organizations WHERE is_default))
+		INSERT INTO access_groups (name)
+		VALUES ($1)
 		RETURNING id`,
 		name,
 	).Scan(&id); err != nil {

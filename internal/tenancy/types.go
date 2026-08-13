@@ -58,6 +58,7 @@ var (
 	ErrOrganizationNotFound        = errors.New("organization not found")
 	ErrMembershipNotFound          = errors.New("membership not found")
 	ErrMembershipConflict          = errors.New("membership conflicts with requested state")
+	ErrOwnerNotEligible            = errors.New("account is not eligible for ownership")
 	ErrTenantNotFoundOrHidden      = errors.New("tenant not found or hidden")
 	ErrTenantSuspended             = errors.New("tenant suspended")
 	ErrTenantUnavailable           = errors.New("tenant unavailable")

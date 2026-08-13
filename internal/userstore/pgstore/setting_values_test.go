@@ -479,7 +479,7 @@ func TestProfileAccessGroupRejectsDifferentOrganization(t *testing.T) {
 	var otherOrganizationID string
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO organizations (slug, name, status)
-		VALUES ($1, 'Other', 'active') RETURNING id::text`, fmt.Sprintf("profile-other-%d", time.Now().UnixNano())).Scan(&otherOrganizationID); err != nil {
+		VALUES ($1, 'Other', 'initializing') RETURNING id::text`, fmt.Sprintf("profile-other-%d", time.Now().UnixNano())).Scan(&otherOrganizationID); err != nil {
 		t.Fatalf("seed other organization: %v", err)
 	}
 	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM organizations WHERE id = $1`, otherOrganizationID) })

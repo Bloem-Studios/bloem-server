@@ -36,6 +36,11 @@ type AccountProvisioner struct {
 	memberships   MembershipProvisioner
 }
 
+const (
+	legacyRoleAdmin = "admin"
+	legacyRoleUser  = "user"
+)
+
 // SetMembershipProvisioner installs the default-membership provisioning seam.
 // Nil remains valid for isolated compatibility fixtures without tenant state.
 func (p *AccountProvisioner) SetMembershipProvisioner(provisioner MembershipProvisioner) {
@@ -65,7 +70,7 @@ func (p *AccountProvisioner) CreateAccount(
 		if err := p.memberships.ProvisionDefaultMembership(ctx, user.ID, membershipLegacyRole(input.User.Role)); err != nil {
 			if deleteErr := p.users.Delete(ctx, user.ID); deleteErr != nil {
 				return nil, fmt.Errorf(
-					"provision default membership: %w (cleanup user: %v)",
+					"provision default membership: %w (cleanup user: %w)",
 					err,
 					deleteErr,
 				)
@@ -81,7 +86,7 @@ func (p *AccountProvisioner) CreateAccount(
 	if err := p.createDefaultProfile(ctx, user.ID, input); err != nil {
 		if deleteErr := p.users.Delete(ctx, user.ID); deleteErr != nil {
 			return nil, fmt.Errorf(
-				"create default profile: %w (cleanup user: %v)",
+				"create default profile: %w (cleanup user: %w)",
 				err,
 				deleteErr,
 			)
@@ -95,10 +100,10 @@ func (p *AccountProvisioner) CreateAccount(
 // membershipLegacyRole preserves the legacy migration's two-value membership
 // contract without changing the account's stored role.
 func membershipLegacyRole(role string) string {
-	if role == "admin" {
-		return "admin"
+	if role == legacyRoleAdmin {
+		return legacyRoleAdmin
 	}
-	return "user"
+	return legacyRoleUser
 }
 
 func (p *AccountProvisioner) createDefaultProfile(
