@@ -57,7 +57,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 1 committed; scoped re-review pending.
+Status: fix round 2 committed; scoped re-review pending.
 
 Initial implementation commit:
 
@@ -115,6 +115,22 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - Fix commits/findings, if any: `cabaeafc`.
 - External side effects: none. No push, no deployment, no repository or issue activity.
 - Next continuation point: send `af681894..cabaeafc` to a fresh independent reviewer for a scoped re-review of the original five findings plus the fix diff. Task 1 is complete only on approval; foundation tasks 2 through 7 remain pending.
+
+### 2026-08-14 — Foundation Task 1, fix round 2
+
+- Base/head commits: `cabaeafc` → `d405f821 fix(auth): close remaining direct profile escapes and enforce rotation`.
+- Independent review verdict on fix round 1: rejected, two critical and two important findings. Verdicts by original finding: race not fully closed; profile boundary not closed; registry synchronization closed; refresh closed for identity claims but with a new reliability defect; email leakage closed; the repaired zero-row regression closed; the migration snapshot fix closed.
+- Decision or ruling: all four findings accepted without dispute; two were reproduced directly before implementing. The reviewer's database-boundary design for credential rotation was adopted as recommended rather than substituted, after an explicit maintainer decision to take the full version.
+- Findings and what closed them:
+  1. Boundary escapes. Device pairing approval and denial hand the paired device a full account session; an account API key is not profile-bound and skips PIN verification. Both were reachable from a direct-profile session, along with account diagnostics and Discord linking. A direct-profile session on a profile that is the household primary also passed the household-manager check, which widened into sibling devices and settings. All now guarded at the router, and `canManageHousehold` refuses direct-profile sessions outright.
+  2. Out-of-band credential writes. `credential_revision` is the revocation mechanism but only the service maintained it, so any other writer left old sessions valid and allowed a login that verified the superseded password. A `BEFORE UPDATE` trigger now forces the increment and an `AFTER UPDATE` trigger revokes that profile's direct sessions in the same transaction; the service no longer does either by hand.
+  3. Refresh revoked a valid session on any revalidation error, including transient database failures. It now revokes only for a genuinely invalid binding.
+  4. The credential pair constraint accepted a blank email or hash.
+- RED evidence: every regression confirmed failing against the previous behavior. The router acceptance test failed on device approval, device denial, API key creation, API key listing, and account diagnostics; the rotation, blank-pair, and transient-refresh tests all failed with their fixes reverted.
+- Self-inflicted defect caught in the round: the first version of the pair constraint compared only trimmed values, so a half-set pair evaluated to NULL and the CHECK accepted it. Its own test caught this before commit and the constraint now states nullness explicitly.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
+- External side effects: none. No push, no deployment, no repository or issue activity.
+- Next continuation point: scoped re-review of `cabaeafc..d405f821` covering the four findings and anything this round introduced. Task 1 completes only on approval.
 
 ## Update template
 
