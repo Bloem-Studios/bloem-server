@@ -2,10 +2,7 @@ package database
 
 import (
 	"context"
-	"os"
 	"testing"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/migrations"
 )
@@ -18,19 +15,17 @@ import (
 // --migrate-down-to — actually restores them, and that it reaches the Go
 // migrations the standalone goose CLI cannot see.
 func TestMigrateDownToRestoresLegacyDisplayPrefs(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("connect: %v", err)
-	}
-	defer pool.Close()
+	pool := newDisposableMigrationDatabase(t)
 
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate up: %v", err)
+	}
+	// Rehearse from the point immediately before the Go move. Seeding after a
+	// complete migration and calling RunMigrations again cannot exercise the
+	// move because Goose has already recorded its version.
+	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", 20260728132326); err != nil {
+		t.Fatalf("prepare displayprefs migration: %v", err)
 	}
 
 	var userID int
@@ -48,7 +43,7 @@ ON CONFLICT (username) DO UPDATE SET email=EXCLUDED.email RETURNING id`).Scan(&u
 		 ON CONFLICT (user_id,key) DO UPDATE SET value=EXCLUDED.value`, userID, key, blob); err != nil {
 		t.Fatalf("seed legacy row: %v", err)
 	}
-	// Apply the move by re-running it (the migration already ran before the seed).
+	// Apply the move and all later migrations over the legacy row.
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("re-up: %v", err)
 	}

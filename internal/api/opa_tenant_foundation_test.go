@@ -509,14 +509,20 @@ func newDisposableAPIDatabase(t *testing.T, prefix string, required bool) *pgxpo
 	}
 	t.Cleanup(func() {
 		pool.Close()
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		_, _ = admin.Exec(cleanupCtx, `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()`, name)
-		if _, err := admin.Exec(cleanupCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
+		terminateCtx, cancelTerminate := context.WithTimeout(context.Background(), 30*time.Second)
+		_, _ = admin.Exec(terminateCtx, `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()`, name)
+		cancelTerminate()
+
+		dropCtx, cancelDrop := context.WithTimeout(context.Background(), 30*time.Second)
+		if _, err := admin.Exec(dropCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
 			t.Errorf("drop disposable database %q: %v", name, err)
 		}
+		cancelDrop()
+
 		var exists bool
-		if err := admin.QueryRow(cleanupCtx, `SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname=$1)`, name).Scan(&exists); err != nil {
+		verifyCtx, cancelVerify := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancelVerify()
+		if err := admin.QueryRow(verifyCtx, `SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname=$1)`, name).Scan(&exists); err != nil {
 			t.Errorf("verify disposable database %q cleanup: %v", name, err)
 		} else if exists {
 			t.Errorf("disposable database %q still exists after cleanup", name)

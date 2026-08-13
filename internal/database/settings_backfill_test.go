@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,20 +21,12 @@ import (
 // composite profile foreign key and the six partial unique indexes, and that
 // jsonb accepts the values the planner encodes.
 func TestPostgresSettingsBackfill(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
 	ctx := context.Background()
+	pool := newDisposableMigrationDatabase(t)
 
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("connect test database: %v", err)
-	}
-	t.Cleanup(pool.Close)
-
-	// Seed legacy state, then run migrations over it. Ordering matters: the
-	// backfill has to find rows that predate it, which is the real upgrade.
+	// Build the current schema, seed rows shaped like legacy settings, then run
+	// the backfill function directly. The planner itself is idempotent only
+	// behind Goose's version gate, so this test deliberately bypasses that gate.
 	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("initial migration: %v", err)
 	}
@@ -209,9 +200,12 @@ RETURNING id`).Scan(&userID)
 INSERT INTO user_profiles
     (user_id, id, name, quality_preference, language, subtitle_language,
      subtitle_mode, show_forced_subtitles, preferred_metadata_language,
-     auto_skip_intro, auto_skip_credits, organization_id)
+     auto_skip_intro, auto_skip_credits, organization_id, access_group_id)
 VALUES ($1, 'mp1', 'Migrate Me', '1080p', 'ja', 'en', 'always', false, 'fr',
-        true, false, (SELECT id FROM organizations WHERE is_default))
+        true, false,
+        (SELECT id FROM organizations WHERE is_default),
+        (SELECT id FROM access_groups WHERE organization_id =
+            (SELECT id FROM organizations WHERE is_default) AND is_default))
 ON CONFLICT (user_id, id) DO NOTHING`, userID); err != nil {
 		t.Fatalf("seeding profile: %v", err)
 	}
