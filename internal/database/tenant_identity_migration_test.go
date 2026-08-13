@@ -605,3 +605,15 @@ func newTenantIdentityDisposableDatabase(t *testing.T, ctx context.Context, dsn 
 	})
 	return pool
 }
+
+func newDisposableMigrationDatabase(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		if os.Getenv("CI") != "" {
+			t.Fatal("SILO_TEST_DATABASE_URL is required in CI for PostgreSQL migration tests")
+		}
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	return newTenantIdentityDisposableDatabase(t, context.Background(), dsn)
+}
