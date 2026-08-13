@@ -76,6 +76,8 @@ import AdminRecommendations from "@/pages/AdminRecommendations";
 import AdminPolicyLayout from "@/pages/admin-policy/AdminPolicyLayout";
 import OrganizationsPage from "@/pages/admin-platform/OrganizationsPage";
 import OrganizationDetailPage from "@/pages/admin-platform/OrganizationDetailPage";
+import OrganizationOverviewPage from "@/pages/admin-organization/OrganizationOverviewPage";
+import PeoplePage from "@/pages/admin-organization/PeoplePage";
 import Recommendations from "@/pages/Recommendations";
 import RecommendationsSection from "@/pages/RecommendationsSection";
 import Calendar from "@/pages/Calendar";
@@ -252,16 +254,6 @@ function AdminContextSelection() {
           {failure.message}
         </p>
       ) : null}
-    </section>
-  );
-}
-
-function AdminScopePlaceholder({ title }: { title: string }) {
-  return (
-    <section className="admin-page">
-      <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
-        {title}
-      </h1>
     </section>
   );
 }
@@ -537,10 +529,8 @@ function AppRoutes() {
                     <Route path="stats" element={<Navigate to="/admin" replace />} />
                   </Route>
                   <Route element={<OrganizationContextGuard />}>
-                    <Route
-                      path="organization"
-                      element={<AdminScopePlaceholder title="Organization overview" />}
-                    />
+                    <Route path="organization" element={<OrganizationOverviewPage />} />
+                    <Route path="organization/people" element={<PeoplePage />} />
                     <Route
                       path="organization/*"
                       element={<Navigate to="/admin/organization" replace />}
