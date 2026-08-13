@@ -33,6 +33,16 @@ func TestOrganizationAccessGroupMigrationUpDownUp(t *testing.T) {
 	runMigrationDownUp(t, db, "20260813110000_organization_access_group_invariants.sql")
 	assertDefaultGroupState(t, db, orgA, "Default A", true)
 	assertDefaultGroupState(t, db, orgB, "Default B", false)
+	if _, err := db.Exec(context.Background(), `
+UPDATE access_groups
+SET is_default = true
+WHERE organization_id = $1 AND name = 'Default B'`, orgB); err != nil {
+		t.Fatalf("restore organization B default group after re-up: %v", err)
+	}
+	_, err = db.Exec(context.Background(), `
+		INSERT INTO access_groups (organization_id, name, is_default)
+		VALUES ($1, 'Second B', true)`, orgB)
+	assertSQLState(t, err, "23505")
 }
 
 func runAllMigrations(t *testing.T, db *pgxpool.Pool) {
