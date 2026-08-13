@@ -11,6 +11,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/policy"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/google/uuid"
 )
 
 func TestSessionManager_StartStop(t *testing.T) {
@@ -424,14 +426,14 @@ func TestSessionManager_PolicyAllowsAudioOnlyTranscodeWhenVideoTranscodingDisabl
 	})
 	sm.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(newPlaybackPolicyPDP(t)))
 
-	if _, err := sm.StartSession(1, "profile-1", 100, playback.PlayRemux, true); err != nil {
+	if _, err := sm.StartSessionWithContext(playbackResolvedTenantContext(), 1, "profile-1", 100, playback.PlayRemux, true); err != nil {
 		t.Fatalf("StartSession(audio transcode) error = %v, want nil", err)
 	}
 }
 
 func TestSessionManager_PolicyAdmissionDeciderMatchesLegacy(t *testing.T) {
 	pdp := newPlaybackPolicyPDP(t)
-	ctx := context.Background()
+	ctx := playbackResolvedTenantContext()
 
 	for _, maxStreams := range []int{0, 1, 2} {
 		for _, maxTranscodes := range []int{0, 1, 2} {
@@ -532,6 +534,19 @@ func newPlaybackPolicyPDP(t *testing.T) *policy.PDP {
 		t.Fatalf("NewEngine() error: %v", err)
 	}
 	return policy.NewPDP(engine)
+}
+
+func playbackResolvedTenantContext() context.Context {
+	return tenancy.WithContext(context.Background(), tenancy.Context{
+		OrganizationID:     uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+		MembershipID:       uuid.MustParse("20000000-0000-0000-0000-000000000001"),
+		AccountID:          1,
+		OrganizationStatus: tenancy.OrganizationInitializing,
+		MembershipStatus:   tenancy.MembershipActive,
+		PolicyRevision:     7,
+		SecurityRevision:   11,
+		Legacy:             true,
+	})
 }
 
 func sameAdmissionError(got, want error) bool {

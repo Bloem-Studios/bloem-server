@@ -36,7 +36,7 @@ func parityMetadataLangValues(profile *userstore.Profile) []userstore.SettingVal
 }
 
 func TestResolveViewerScopeParity(t *testing.T) {
-	ctx := context.Background()
+	ctx := resolvedTenantContextForPolicyTest()
 	engine, err := NewEngine(ctx)
 	if err != nil {
 		t.Fatalf("NewEngine() error: %v", err)
@@ -208,6 +208,7 @@ func parityProfile(restricted bool, allowed []int) *userstore.Profile {
 func scopeInputFromParity(user *models.User, profile *userstore.Profile, disabled []int, verified bool) ScopeInput {
 	input := ScopeInput{
 		SchemaVersion:        1,
+		Tenant:               validLegacyTenantFactsForPolicyTest(),
 		UserID:               user.ID,
 		SessionID:            "sess-1",
 		AccountLibraryIDs:    cloneParityInts(user.LibraryIDs),
@@ -235,6 +236,19 @@ func scopeInputFromParity(user *models.User, profile *userstore.Profile, disable
 		input.ProfileMetadataLang = parityMetadataLang
 	}
 	return input
+}
+
+func validLegacyTenantFactsForPolicyTest() TenantFacts {
+	return TenantFacts{
+		Present:                    true,
+		Legacy:                     true,
+		OrganizationID:             "10000000-0000-0000-0000-000000000001",
+		MembershipID:               "20000000-0000-0000-0000-000000000001",
+		OrganizationStatus:         "initializing",
+		MembershipStatus:           "active",
+		OrganizationPolicyRevision: 7,
+		MembershipSecurityRevision: 11,
+	}
 }
 
 func decisionToAccessScope(input ScopeInput, decision ScopeDecision) access.Scope {

@@ -39,9 +39,10 @@ type SimulateRequest struct {
 
 // SimulateResult is the raw policy decision produced by a throwaway engine.
 type SimulateResult struct {
-	Decision   json.RawMessage `json:"decision"`
-	EvalTimeNS int64           `json:"eval_time_ns"`
-	Generation int64           `json:"generation"`
+	Decision         json.RawMessage `json:"decision"`
+	EvalTimeNS       int64           `json:"eval_time_ns"`
+	Generation       int64           `json:"generation"`
+	NonAuthoritative bool            `json:"non_authoritative"`
 }
 
 // Simulate evaluates a policy decision against a throwaway engine. It never
@@ -86,9 +87,10 @@ func Simulate(ctx context.Context, store *PolicyStore, req SimulateRequest) (Sim
 		return SimulateResult{}, err
 	}
 	return SimulateResult{
-		Decision:   decision,
-		EvalTimeNS: meta.EvalTimeNS,
-		Generation: meta.Revision,
+		Decision:         decision,
+		EvalTimeNS:       meta.EvalTimeNS,
+		Generation:       meta.Revision,
+		NonAuthoritative: true,
 	}, nil
 }
 
@@ -146,6 +148,7 @@ func guardBenchmarkInput(domain string) (any, error) {
 	case DomainScope:
 		input = ScopeInput{
 			SchemaVersion: 1, UserID: 1, SessionID: "eval-cost-guard",
+			Tenant:            representativeTenantFacts(),
 			AccountLibraryIDs: []int{1, 2, 3}, AccountRestricted: true,
 			AccountMaxQuality: "2160p", AccessPolicyRevision: 1,
 			DisabledLibraryIDs: []int{4}, ProfilePresent: true,
@@ -156,6 +159,7 @@ func guardBenchmarkInput(domain string) (any, error) {
 	case DomainPermission:
 		input = PermissionInput{
 			SchemaVersion: 1, UserID: 1, Role: "user", UserEnabled: true,
+			Tenant:              representativeTenantFacts(),
 			AssignedPermissions: []string{PermissionMarkerEdit},
 			Permission:          PermissionMarkerEdit,
 			TargetLibraryIDs:    []int{1}, UserLibraryIDs: []int{1, 2},
@@ -164,6 +168,7 @@ func guardBenchmarkInput(domain string) (any, error) {
 	case DomainAction:
 		input = ActionInput{
 			SchemaVersion: 1, Action: ActionDownload, UserID: 1,
+			Tenant:          representativeTenantFacts(),
 			DownloadAllowed: true, DownloadTranscodeAllowed: true,
 			MaxStreams: 5, MaxTranscodes: 2, DownloadsEnabled: true,
 			TranscodeEnabled: true, ArtifactsAvailable: true,
@@ -184,6 +189,19 @@ func guardBenchmarkInput(domain string) (any, error) {
 		return nil, fmt.Errorf("decoding eval-cost guard input: %w", err)
 	}
 	return decoded, nil
+}
+
+func representativeTenantFacts() TenantFacts {
+	return TenantFacts{
+		Present:                    true,
+		Legacy:                     true,
+		OrganizationID:             "10000000-0000-0000-0000-000000000001",
+		MembershipID:               "20000000-0000-0000-0000-000000000001",
+		OrganizationStatus:         "initializing",
+		MembershipStatus:           "active",
+		OrganizationPolicyRevision: 1,
+		MembershipSecurityRevision: 1,
+	}
 }
 
 func decodeSimulateInput(raw json.RawMessage) (any, error) {

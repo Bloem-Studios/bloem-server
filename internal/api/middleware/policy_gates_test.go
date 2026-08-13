@@ -125,6 +125,61 @@ func TestPolicyActingAdminMiddlewareEvalErrorIsInternal(t *testing.T) {
 	}
 }
 
+func TestPolicyActingAdminMiddlewareRejectsMissingTenantFacts(t *testing.T) {
+	next := NewPolicyActingAdminMiddleware(newMiddlewarePolicyPDP(t), nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/admin/sessions", nil)
+	req = req.WithContext(SetClaims(req.Context(), adminClaims()))
+	rec := httptest.NewRecorder()
+
+	next.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d; body %s", rec.Code, http.StatusInternalServerError, rec.Body.String())
+	}
+}
+
+func TestPolicyMiddlewarePopulatesResolvedTenantFacts(t *testing.T) {
+	want := policy.TenantFacts{
+		Present:                    true,
+		Legacy:                     true,
+		OrganizationID:             "10000000-0000-0000-0000-000000000001",
+		MembershipID:               "20000000-0000-0000-0000-000000000001",
+		OrganizationStatus:         "initializing",
+		MembershipStatus:           "active",
+		OrganizationPolicyRevision: 7,
+		MembershipSecurityRevision: 11,
+	}
+
+	t.Run("acting admin", func(t *testing.T) {
+		decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
+		response := captureActingAdminResponse(NewPolicyActingAdminMiddleware(decider, nil), adminClaims(), "")
+		if response.code != http.StatusNoContent {
+			t.Fatalf("status = %d body = %s, want no content", response.code, response.body)
+		}
+		if len(decider.inputs) != 1 || decider.inputs[0].Tenant != want {
+			t.Fatalf("permission inputs = %+v, want tenant %+v", decider.inputs, want)
+		}
+	})
+
+	t.Run("permission gate", func(t *testing.T) {
+		decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
+		response := captureMarkerEditResponse(NewPolicyPermissionMiddleware(
+			fakePermissionUserLoader{user: &models.User{ID: 7, Role: "user", Enabled: true, Permissions: []string{policy.PermissionMarkerEdit}}},
+			nil,
+			nil,
+			decider,
+		), userClaims())
+		if response.code != http.StatusNoContent {
+			t.Fatalf("status = %d body = %s, want no content", response.code, response.body)
+		}
+		if len(decider.inputs) != 1 || decider.inputs[0].Tenant != want {
+			t.Fatalf("permission inputs = %+v, want tenant %+v", decider.inputs, want)
+		}
+	})
+}
+
 func TestPolicyMetadataCurationMiddlewareAppliesGroupPermissionMask(t *testing.T) {
 	user := &models.User{
 		ID:          7,
@@ -273,7 +328,9 @@ func captureActingAdminResponse(
 		req.Header.Set("X-Profile-Id", profileID)
 	}
 	if claims != nil {
-		req = req.WithContext(SetClaims(req.Context(), claims))
+		ctx := SetClaims(req.Context(), claims)
+		ctx = tenancy.WithContext(ctx, middlewareResolvedTenant(claims.UserID))
+		req = req.WithContext(ctx)
 	}
 	rec := httptest.NewRecorder()
 	next.ServeHTTP(rec, req)
@@ -300,11 +357,7 @@ func captureMetadataCurationResponse(
 	ctx := req.Context()
 	if claims != nil {
 		ctx = SetClaims(ctx, claims)
-		ctx = tenancy.WithContext(ctx, tenancy.Context{
-			OrganizationID: uuid.MustParse("10000000-0000-0000-0000-000000000001"),
-			AccountID:      claims.UserID,
-			Legacy:         true,
-		})
+		ctx = tenancy.WithContext(ctx, middlewareResolvedTenant(claims.UserID))
 	}
 	routeCtx := chi.NewRouteContext()
 	if itemID != "" {
@@ -327,16 +380,25 @@ func captureMarkerEditResponse(mw markerEditGate, claims *auth.Claims) middlewar
 	req := httptest.NewRequest(http.MethodPut, "/markers/files/5", nil)
 	if claims != nil {
 		ctx := SetClaims(req.Context(), claims)
-		ctx = tenancy.WithContext(ctx, tenancy.Context{
-			OrganizationID: uuid.MustParse("10000000-0000-0000-0000-000000000001"),
-			AccountID:      claims.UserID,
-			Legacy:         true,
-		})
+		ctx = tenancy.WithContext(ctx, middlewareResolvedTenant(claims.UserID))
 		req = req.WithContext(ctx)
 	}
 	rec := httptest.NewRecorder()
 	next.ServeHTTP(rec, req)
 	return middlewareResponse{code: rec.Code, body: rec.Body.String()}
+}
+
+func middlewareResolvedTenant(accountID int) tenancy.Context {
+	return tenancy.Context{
+		OrganizationID:     uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+		MembershipID:       uuid.MustParse("20000000-0000-0000-0000-000000000001"),
+		AccountID:          accountID,
+		OrganizationStatus: tenancy.OrganizationInitializing,
+		MembershipStatus:   tenancy.MembershipActive,
+		PolicyRevision:     7,
+		SecurityRevision:   11,
+		Legacy:             true,
+	}
 }
 
 func assertMiddlewareResponsesEqual(t *testing.T, got, want middlewareResponse) {
@@ -358,6 +420,16 @@ type errorPermissionDecider struct{}
 
 func (errorPermissionDecider) CheckPermission(context.Context, policy.PermissionInput) (policy.PermissionDecision, policy.Meta, error) {
 	return policy.PermissionDecision{}, policy.Meta{}, errors.New("policy unavailable")
+}
+
+type capturingPermissionDecider struct {
+	inputs   []policy.PermissionInput
+	decision policy.PermissionDecision
+}
+
+func (d *capturingPermissionDecider) CheckPermission(_ context.Context, input policy.PermissionInput) (policy.PermissionDecision, policy.Meta, error) {
+	d.inputs = append(d.inputs, input)
+	return d.decision, policy.Meta{}, nil
 }
 
 type middlewareGroupProvider struct {

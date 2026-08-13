@@ -33,6 +33,7 @@ func TestActionParityDownloads(t *testing.T) {
 						presets := resolver.PresetsFor(user, cfg, artifactsAvailable)
 						input := policy.ActionInput{
 							SchemaVersion:            1,
+							Tenant:                   validLegacyTenantFacts(),
 							UserID:                   user.ID,
 							DownloadAllowed:          user.DownloadAllowed,
 							DownloadTranscodeAllowed: user.DownloadTranscodeAllowed,
@@ -81,6 +82,7 @@ func TestActionParityPlaybackAdmission(t *testing.T) {
 						limits := playback.SessionLimits{MaxStreams: maxStreams, MaxTranscodes: maxTranscodes}
 						input := policy.ActionInput{
 							SchemaVersion:           1,
+							Tenant:                  validLegacyTenantFacts(),
 							Action:                  policy.ActionPlaybackAdmission,
 							UserID:                  42,
 							MaxStreams:              limits.MaxStreams,
@@ -103,6 +105,19 @@ func TestActionParityPlaybackAdmission(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func validLegacyTenantFacts() policy.TenantFacts {
+	return policy.TenantFacts{
+		Present:                    true,
+		Legacy:                     true,
+		OrganizationID:             "10000000-0000-0000-0000-000000000001",
+		MembershipID:               "20000000-0000-0000-0000-000000000001",
+		OrganizationStatus:         "initializing",
+		MembershipStatus:           "active",
+		OrganizationPolicyRevision: 7,
+		MembershipSecurityRevision: 11,
 	}
 }
 

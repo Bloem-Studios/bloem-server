@@ -1,5 +1,13 @@
 package policy
 
+import (
+	"context"
+	"fmt"
+
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/google/uuid"
+)
+
 const (
 	// ActionDownload checks whether a user may create or serve original downloads.
 	ActionDownload = "download"
@@ -23,6 +31,47 @@ const (
 	PermissionMetadataCuration = "metadata_curation"
 )
 
+// TenantFacts is the resolved tenant identity supplied to policy by trusted
+// server adapters. Present distinguishes an authoritative resolved document
+// from a zero-valued or caller-constructed input.
+type TenantFacts struct {
+	Present                    bool   `json:"present"`
+	Legacy                     bool   `json:"legacy"`
+	OrganizationID             string `json:"organization_id"`
+	MembershipID               string `json:"membership_id"`
+	OrganizationStatus         string `json:"organization_status"`
+	MembershipStatus           string `json:"membership_status"`
+	OrganizationPolicyRevision int64  `json:"organization_policy_revision"`
+	MembershipSecurityRevision int64  `json:"membership_security_revision"`
+}
+
+// TenantFactsFromContext converts the server-resolved tenant context into the
+// policy input contract. Missing, incomplete, or inactive tenant state is
+// rejected before policy evaluation.
+func TenantFactsFromContext(ctx context.Context) (TenantFacts, error) {
+	if ctx == nil {
+		return TenantFacts{}, ErrTenantFactsUnavailable
+	}
+	tenant, ok := tenancy.FromContext(ctx)
+	if !ok || tenant.OrganizationID == uuid.Nil || tenant.MembershipID == uuid.Nil ||
+		tenant.PolicyRevision <= 0 || tenant.SecurityRevision <= 0 ||
+		tenant.MembershipStatus != tenancy.MembershipActive ||
+		(tenant.OrganizationStatus != tenancy.OrganizationActive &&
+			!(tenant.Legacy && tenant.OrganizationStatus == tenancy.OrganizationInitializing)) {
+		return TenantFacts{}, fmt.Errorf("%w: resolved tenant context is incomplete or inactive", ErrTenantFactsUnavailable)
+	}
+	return TenantFacts{
+		Present:                    true,
+		Legacy:                     tenant.Legacy,
+		OrganizationID:             tenant.OrganizationID.String(),
+		MembershipID:               tenant.MembershipID.String(),
+		OrganizationStatus:         string(tenant.OrganizationStatus),
+		MembershipStatus:           string(tenant.MembershipStatus),
+		OrganizationPolicyRevision: tenant.PolicyRevision,
+		MembershipSecurityRevision: tenant.SecurityRevision,
+	}, nil
+}
+
 // ScopeInput is the policy input document for resolving an authenticated
 // viewer request into an effective access scope.
 //
@@ -31,7 +80,8 @@ const (
 // account_library_ids slice is not enough for policy authors to infer whether
 // the account is unrestricted.
 type ScopeInput struct {
-	SchemaVersion int `json:"schema_version"`
+	SchemaVersion int         `json:"schema_version"`
+	Tenant        TenantFacts `json:"tenant"`
 
 	UserID                int    `json:"user_id"`
 	SessionID             string `json:"session_id"`
@@ -81,7 +131,8 @@ type ScopeDecision struct {
 // Rego never performs database lookups. user_libraries_restricted distinguishes
 // nil user library assignment (unrestricted) from an empty allowlist.
 type PermissionInput struct {
-	SchemaVersion int `json:"schema_version"`
+	SchemaVersion int         `json:"schema_version"`
+	Tenant        TenantFacts `json:"tenant"`
 
 	UserID                  int      `json:"user_id"`
 	Role                    string   `json:"role"`
@@ -145,7 +196,8 @@ const (
 // Go supplies all dynamic facts: live playback counts, user flags, and config
 // flags. Policy never reads server configuration or session state directly.
 type ActionInput struct {
-	SchemaVersion int `json:"schema_version"`
+	SchemaVersion int         `json:"schema_version"`
+	Tenant        TenantFacts `json:"tenant"`
 
 	Action                   string `json:"action"`
 	UserID                   int    `json:"user_id"`

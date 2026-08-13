@@ -42,6 +42,10 @@ func NewViewerResolver(
 
 // Resolve computes the effective viewer scope for the request.
 func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput) (access.Scope, error) {
+	tenantFacts, err := TenantFactsFromContext(ctx)
+	if err != nil {
+		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant facts: %w", err)
+	}
 	user, err := r.users.GetByID(ctx, input.UserID)
 	if err != nil {
 		return access.Scope{}, fmt.Errorf("loading user %d: %w", input.UserID, err)
@@ -93,6 +97,7 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 
 	policyInput := ScopeInput{
 		SchemaVersion:        1,
+		Tenant:               tenantFacts,
 		UserID:               user.ID,
 		SessionID:            input.SessionID,
 		ProfileID:            input.ProfileID,

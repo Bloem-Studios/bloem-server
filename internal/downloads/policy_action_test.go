@@ -17,7 +17,7 @@ import (
 )
 
 func TestPolicyActionDeciderMatchesLegacyCapability(t *testing.T) {
-	ctx := context.Background()
+	ctx := downloadResolvedTenantContext()
 	pdp := newDownloadPolicyPDP(t)
 
 	for _, downloadsEnabled := range []bool{false, true} {
@@ -50,7 +50,7 @@ func TestPolicyActionDeciderMatchesLegacyCapability(t *testing.T) {
 }
 
 func TestPolicyActionDeciderMatchesLegacyCreateGate(t *testing.T) {
-	ctx := context.Background()
+	ctx := downloadResolvedTenantContext()
 	pdp := newDownloadPolicyPDP(t)
 
 	for _, downloadsEnabled := range []bool{false, true} {
@@ -240,7 +240,7 @@ func TestResolveTranscodePassesDeviceQualityFactsAndAppliesCeiling(t *testing.T)
 	file := &models.MediaFile{ID: 3, Resolution: "2160p"}
 
 	got, err := resolver.Resolve(
-		context.Background(), Quality10Mbps, user, cfg, file,
+		downloadResolvedTenantContext(), Quality10Mbps, user, cfg, file,
 		playback.ClientCapabilities{}, true, "device-9",
 	)
 	if err != nil {
@@ -254,6 +254,10 @@ func TestResolveTranscodePassesDeviceQualityFactsAndAppliesCeiling(t *testing.T)
 		in.DeviceID != "device-9" ||
 		in.RequestedQuality != Quality10Mbps {
 		t.Fatalf("action input = %+v, want download_transcode facts with device and requested quality", in)
+	}
+	if in.Tenant.OrganizationID != "10000000-0000-0000-0000-000000000001" ||
+		in.Tenant.MembershipSecurityRevision != 11 {
+		t.Fatalf("tenant facts = %+v, want resolved request tenant", in.Tenant)
 	}
 	if got.PrepareTarget.Resolution != "1080p" {
 		t.Fatalf("PrepareTarget.Resolution = %q, want %q (policy ceiling applied)",
@@ -269,7 +273,7 @@ func TestResolveTranscodeCeilingKeepsCompliantTarget(t *testing.T) {
 	file := &models.MediaFile{ID: 3, Resolution: "1080p"}
 
 	got, err := resolver.Resolve(
-		context.Background(), Quality10Mbps, user, cfg, file,
+		downloadResolvedTenantContext(), Quality10Mbps, user, cfg, file,
 		playback.ClientCapabilities{}, true, "",
 	)
 	if err != nil {
@@ -367,7 +371,7 @@ func (allowDownloadItemAccess) EnsureAccessible(context.Context, string, catalog
 // while a capped transcode of the same source stays allowed, and a compliant
 // source passes with the served quality asserted to the policy.
 func TestResolveOriginalAssertsServedQuality(t *testing.T) {
-	ctx := context.Background()
+	ctx := downloadResolvedTenantContext()
 	pdp := newDownloadPolicyPDP(t)
 	resolver := DownloadQualityResolver{actionDecider: pdp}
 	cfg := config.DownloadConfig{Enabled: true, TranscodeEnabled: true}
@@ -405,7 +409,7 @@ func TestResolveOriginalPopulatesFileQualityFact(t *testing.T) {
 	file := &models.MediaFile{ID: 3, Resolution: "1080p"}
 
 	if _, err := resolver.Resolve(
-		context.Background(), QualityOriginal, user, cfg, file,
+		downloadResolvedTenantContext(), QualityOriginal, user, cfg, file,
 		playback.ClientCapabilities{}, true, "device-9",
 	); err != nil {
 		t.Fatalf("Resolve() error: %v", err)
@@ -420,4 +424,33 @@ func TestResolveOriginalPopulatesFileQualityFact(t *testing.T) {
 		in.DeviceID != "device-9" {
 		t.Fatalf("action input = %+v, want download action with file_quality asserted", in)
 	}
+}
+
+func TestDownloadPolicyRejectsMissingTenantFactsBeforeEvaluation(t *testing.T) {
+	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true}}
+	resolver := DownloadQualityResolver{actionDecider: decider}
+	user := &models.User{ID: 9, DownloadAllowed: true}
+	cfg := config.DownloadConfig{Enabled: true}
+	file := &models.MediaFile{ID: 3, Resolution: "1080p"}
+
+	_, err := resolver.Resolve(context.Background(), QualityOriginal, user, cfg, file, playback.ClientCapabilities{}, true, "")
+	if !errors.Is(err, ErrDownloadNotAllowed) {
+		t.Fatalf("Resolve() error = %v, want ErrDownloadNotAllowed", err)
+	}
+	if len(decider.inputs) != 0 {
+		t.Fatalf("decider calls = %d, want 0", len(decider.inputs))
+	}
+}
+
+func downloadResolvedTenantContext() context.Context {
+	return tenancy.WithContext(context.Background(), tenancy.Context{
+		OrganizationID:     uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+		MembershipID:       uuid.MustParse("20000000-0000-0000-0000-000000000001"),
+		AccountID:          9,
+		OrganizationStatus: tenancy.OrganizationInitializing,
+		MembershipStatus:   tenancy.MembershipActive,
+		PolicyRevision:     7,
+		SecurityRevision:   11,
+		Legacy:             true,
+	})
 }

@@ -239,14 +239,19 @@ func (s *Service) checkDownloadAction(
 		}
 		return nil
 	}
-	decision, _, err := s.actionDecider.CheckAction(ctx, downloadActionInput(
+	input, err := downloadActionInput(
+		ctx,
 		action,
 		userID,
 		user,
 		cfg,
 		artifactsAvailable,
 		deviceID,
-	))
+	)
+	if err != nil {
+		return ErrDownloadNotAllowed
+	}
+	decision, _, err := s.actionDecider.CheckAction(ctx, input)
 	if err != nil {
 		return ErrDownloadNotAllowed
 	}
@@ -312,7 +317,8 @@ func (r DownloadQualityResolver) ensureTranscodeAvailable(
 		}
 		return "", nil
 	}
-	input := downloadActionInput(
+	input, err := downloadActionInput(
+		ctx,
 		policyengine.ActionDownloadTranscode,
 		userIDForPolicy(user),
 		user,
@@ -320,6 +326,9 @@ func (r DownloadQualityResolver) ensureTranscodeAvailable(
 		artifactsAvailable,
 		deviceID,
 	)
+	if err != nil {
+		return "", ErrDownloadNotAllowed
+	}
 	input.RequestedQuality = requestedQuality
 	decision, _, err := r.actionDecider.CheckAction(ctx, input)
 	if err != nil {
@@ -350,7 +359,8 @@ func (r DownloadQualityResolver) ensureServedQualityAllowed(
 		}
 		return nil
 	}
-	input := downloadActionInput(
+	input, err := downloadActionInput(
+		ctx,
 		policyengine.ActionDownload,
 		userIDForPolicy(user),
 		user,
@@ -358,6 +368,9 @@ func (r DownloadQualityResolver) ensureServedQualityAllowed(
 		artifactsAvailable,
 		deviceID,
 	)
+	if err != nil {
+		return ErrDownloadNotAllowed
+	}
 	input.RequestedQuality = QualityOriginal
 	input.FileQuality = file.Resolution
 	decision, _, err := r.actionDecider.CheckAction(ctx, input)
@@ -412,15 +425,21 @@ func ensureTranscodeAllowed(user *models.User, cfg config.DownloadConfig) error 
 // enforced by the scope-derived access filter at item access
 // (EnsureAccessible) before any action check runs.
 func downloadActionInput(
+	ctx context.Context,
 	action string,
 	userID int,
 	user *models.User,
 	cfg config.DownloadConfig,
 	artifactsAvailable bool,
 	deviceID string,
-) policyengine.ActionInput {
+) (policyengine.ActionInput, error) {
+	tenantFacts, err := policyengine.TenantFactsFromContext(ctx)
+	if err != nil {
+		return policyengine.ActionInput{}, err
+	}
 	input := policyengine.ActionInput{
 		SchemaVersion:      1,
+		Tenant:             tenantFacts,
 		Action:             action,
 		UserID:             userID,
 		DownloadsEnabled:   cfg.Enabled,
@@ -435,7 +454,7 @@ func downloadActionInput(
 		input.DownloadTranscodeAllowed = user.DownloadTranscodeAllowed
 		input.MaxPlaybackQuality = user.MaxPlaybackQuality
 	}
-	return input
+	return input, nil
 }
 
 func userIDForPolicy(user *models.User) int {

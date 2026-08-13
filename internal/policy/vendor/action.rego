@@ -17,6 +17,35 @@ base_decision := download_decision(input) if {
 	action(input) == "playback_admission"
 } else := deny("unknown action", "unknown_action")
 
+# tenant_valid validates the additive tenant document for consumers that need
+# to tighten policy by tenant state. This transition keeps base grants stable;
+# trusted Go adapters reject invalid tenant context before evaluation.
+tenant_valid(i) if {
+	tenant := object.get(i, "tenant", {})
+	object.get(tenant, "present", false) == true
+	organization_id := object.get(tenant, "organization_id", "")
+	is_string(organization_id)
+	organization_id != ""
+	membership_id := object.get(tenant, "membership_id", "")
+	is_string(membership_id)
+	membership_id != ""
+	object.get(tenant, "membership_status", "") == "active"
+	tenant_organization_status_valid(tenant)
+	organization_revision := object.get(tenant, "organization_policy_revision", 0)
+	is_number(organization_revision)
+	organization_revision > 0
+	membership_revision := object.get(tenant, "membership_security_revision", 0)
+	is_number(membership_revision)
+	membership_revision > 0
+}
+
+tenant_organization_status_valid(tenant) if {
+	object.get(tenant, "organization_status", "") == "active"
+} else if {
+	object.get(tenant, "legacy", false) == true
+	object.get(tenant, "organization_status", "") == "initializing"
+}
+
 download_decision(i) := allow if {
 	download_base_allowed(i)
 	quality_allowed(i)

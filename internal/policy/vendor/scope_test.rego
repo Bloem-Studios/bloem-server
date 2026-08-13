@@ -4,6 +4,16 @@ import rego.v1
 
 base_input := {
 	"schema_version": 1,
+	"tenant": {
+		"present": true,
+		"legacy": true,
+		"organization_id": "10000000-0000-0000-0000-000000000001",
+		"membership_id": "20000000-0000-0000-0000-000000000001",
+		"organization_status": "initializing",
+		"membership_status": "active",
+		"organization_policy_revision": 7,
+		"membership_security_revision": 11,
+	},
 	"user_id": 7,
 	"session_id": "sess-1",
 	"profile_id": "",
@@ -24,6 +34,12 @@ base_input := {
 	"device_id": "device-1",
 	"client_ip": "192.0.2.10",
 	"is_api_key": false,
+}
+
+test_tenant_validation_rejects_malformed_status if {
+	not tenant_valid(object.union(base_input, {
+		"tenant": object.union(base_input.tenant, {"organization_status": "broken"}),
+	}))
 }
 
 test_no_profile_unrestricted if {

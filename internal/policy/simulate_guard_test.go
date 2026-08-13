@@ -2,10 +2,31 @@ package policy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
 )
+
+func TestSimulateMarksCallerProvidedTenantFactsNonAuthoritative(t *testing.T) {
+	raw, err := json.Marshal(ScopeInput{
+		SchemaVersion:        1,
+		Tenant:               validLegacyTenantFactsForPolicyTest(),
+		UserID:               7,
+		AccessPolicyRevision: 1,
+		ProfileVerified:      true,
+	})
+	if err != nil {
+		t.Fatalf("json.Marshal() error: %v", err)
+	}
+	result, err := Simulate(context.Background(), nil, SimulateRequest{Domain: DomainScope, Input: raw})
+	if err != nil {
+		t.Fatalf("Simulate() error: %v", err)
+	}
+	if !result.NonAuthoritative {
+		t.Fatal("NonAuthoritative = false, want true")
+	}
+}
 
 // TestGuardEvalCostRejectsSlowOverride pins the C7 activation guard: a custom
 // override that cannot evaluate within the budget is rejected with

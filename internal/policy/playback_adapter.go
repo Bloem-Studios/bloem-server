@@ -2,6 +2,7 @@ package policy
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/playback"
@@ -16,6 +17,10 @@ type ActionChecker interface {
 // admission hook. Session counts and limit loading remain owned by playback.
 func NewPlaybackAdmissionDecider(checker ActionChecker) playback.AdmissionDecider {
 	return func(ctx context.Context, req playback.AdmissionRequest) (playback.AdmissionDecision, error) {
+		tenantFacts, err := TenantFactsFromContext(ctx)
+		if err != nil {
+			return playback.AdmissionDecision{}, fmt.Errorf("playback admission tenant facts: %w", err)
+		}
 		requestedAction := RequestedActionDirectPlay
 		if req.RequiresVideoTranscode {
 			requestedAction = RequestedActionTranscode
@@ -24,6 +29,7 @@ func NewPlaybackAdmissionDecider(checker ActionChecker) playback.AdmissionDecide
 		}
 		decision, _, err := checker.CheckAction(ctx, ActionInput{
 			SchemaVersion:           1,
+			Tenant:                  tenantFacts,
 			Action:                  ActionPlaybackAdmission,
 			UserID:                  req.UserID,
 			MaxStreams:              req.Limits.MaxStreams,

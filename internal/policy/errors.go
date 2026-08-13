@@ -23,6 +23,9 @@ var (
 	ErrUnknownDecision = errors.New("unknown policy decision")
 	// ErrCompileFailed marks policy compilation failures with structured issues.
 	ErrCompileFailed = errors.New("policy compile failed")
+	// ErrTenantFactsUnavailable marks a missing, incomplete, or inactive
+	// server-resolved tenant context at a policy adapter boundary.
+	ErrTenantFactsUnavailable = errors.New("tenant facts unavailable")
 )
 
 // CompileIssue identifies one policy compiler diagnostic.

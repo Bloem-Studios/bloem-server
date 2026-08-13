@@ -4,6 +4,16 @@ import rego.v1
 
 base_input := {
 	"schema_version": 1,
+	"tenant": {
+		"present": true,
+		"legacy": true,
+		"organization_id": "10000000-0000-0000-0000-000000000001",
+		"membership_id": "20000000-0000-0000-0000-000000000001",
+		"organization_status": "initializing",
+		"membership_status": "active",
+		"organization_policy_revision": 7,
+		"membership_security_revision": 11,
+	},
 	"action": "download",
 	"user_id": 7,
 	"download_allowed": true,
@@ -26,6 +36,12 @@ base_input := {
 	"request_time": "2026-07-02T12:00:00Z",
 	"device_id": "device-1",
 	"client_ip": "192.0.2.10",
+}
+
+test_tenant_validation_rejects_zero_revision if {
+	not tenant_valid(object.union(base_input, {
+		"tenant": object.union(base_input.tenant, {"organization_policy_revision": 0}),
+	}))
 }
 
 test_download_allowed if {

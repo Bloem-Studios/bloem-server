@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func BenchmarkResolveViewerScope(b *testing.B) {
+func BenchmarkResolveViewerScopePolicy(b *testing.B) {
 	ctx := context.Background()
 	engine, err := NewEngine(ctx)
 	if err != nil {
@@ -14,6 +14,7 @@ func BenchmarkResolveViewerScope(b *testing.B) {
 	pdp := NewPDP(engine)
 	input := ScopeInput{
 		SchemaVersion:         1,
+		Tenant:                representativeTenantFacts(),
 		UserID:                42,
 		SessionID:             "sess-1",
 		ProfileID:             "prof-1",
