@@ -97,6 +97,7 @@ func TestPolicySimulateTighteningOverride(t *testing.T) {
 		DisabledLibraryIDs:   []int{},
 		ProfilePresent:       false,
 		ProfileVerified:      true,
+		TenantLibraryIDs:     []int{1, 2, 3},
 		RequestTime:          "2026-07-02T12:00:00Z",
 	}
 	source := `package silo_custom.scope

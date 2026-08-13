@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -152,6 +153,7 @@ func TestCustomStubAndScopeOverrideCoexist(t *testing.T) {
 		AccountRestricted:    false,
 		AccessPolicyRevision: 9,
 		ProfileVerified:      true,
+		TenantLibraryIDs:     []int{1, 2, 3},
 		RequestTime:          "2026-07-02T12:00:00Z",
 	})
 	if err != nil {
@@ -195,13 +197,14 @@ override(base, _) := base if {`,
 		AccountRestricted:    false,
 		AccessPolicyRevision: 9,
 		ProfileVerified:      true,
+		TenantLibraryIDs:     []int{1, 2, 3},
 		RequestTime:          "2026-07-02T12:00:00Z",
 	})
 	if err != nil {
 		t.Fatalf("ResolveViewerScope() error: %v", err)
 	}
-	if !decision.Unrestricted {
-		t.Fatalf("Unrestricted = false, want vendor-only unrestricted decision: %#v", decision)
+	if decision.Unrestricted || !reflect.DeepEqual(decision.AllowedLibraryIDs, []int{1, 2, 3}) {
+		t.Fatalf("vendor-only tenant-bound decision = %#v, want restricted [1 2 3]", decision)
 	}
 
 	logOutput := logs.String()
@@ -257,6 +260,7 @@ override(base, _) := base if {`,
 		AccountRestricted:    false,
 		AccessPolicyRevision: 9,
 		ProfileVerified:      true,
+		TenantLibraryIDs:     []int{1, 2, 3},
 		RequestTime:          "2026-07-02T12:00:00Z",
 	})
 	if err != nil {

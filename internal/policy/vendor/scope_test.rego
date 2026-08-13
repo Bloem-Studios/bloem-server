@@ -19,6 +19,7 @@ base_input := {
 	"profile_id": "",
 	"account_library_ids": [],
 	"account_restricted": false,
+	"tenant_library_ids": [1, 2, 3, 4, 5, 7],
 	"account_max_playback_quality": "",
 	"access_policy_revision": 11,
 	"disabled_library_ids": [],
@@ -36,17 +37,27 @@ base_input := {
 	"is_api_key": false,
 }
 
+test_tenant_scope_intersects_unrestricted_profile if {
+	got := decision with input as object.union(base_input, {
+		"account_restricted": false,
+		"profile_library_restricted": false,
+		"tenant_library_ids": [10, 20],
+	})
+	not got.unrestricted
+	got.allowed_library_ids == [10, 20]
+}
+
 test_tenant_validation_rejects_malformed_status if {
 	not tenant_valid(object.union(base_input, {
 		"tenant": object.union(base_input.tenant, {"organization_status": "broken"}),
 	}))
 }
 
-test_no_profile_unrestricted if {
+test_no_profile_is_bounded_by_tenant if {
 	got := decision with input as base_input
-	got.unrestricted
-	not got.libraries_restricted
-	got.allowed_library_ids == []
+	not got.unrestricted
+	got.libraries_restricted
+	got.allowed_library_ids == [1, 2, 3, 4, 5, 7]
 	got.disabled_library_ids == []
 	got.max_content_rating == ""
 	got.max_playback_quality == ""
@@ -57,12 +68,12 @@ test_no_profile_unrestricted if {
 test_account_restricted if {
 	got := decision with input as object.union(base_input, {
 		"account_restricted": true,
-		"account_library_ids": [3, 1, 3],
+		"account_library_ids": [99, 3, 1, 3],
 		"account_max_playback_quality": "4K",
 	})
 	not got.unrestricted
 	got.libraries_restricted
-	got.allowed_library_ids == [3, 1, 3]
+	got.allowed_library_ids == [1, 3]
 	got.disabled_library_ids == []
 	got.max_playback_quality == "2160p"
 }
@@ -72,7 +83,7 @@ test_profile_restricted if {
 		"profile_id": "prof-1",
 		"profile_present": true,
 		"profile_library_restricted": true,
-		"profile_allowed_library_ids": [4, 2, 2],
+		"profile_allowed_library_ids": [99, 4, 2, 2],
 		"profile_max_content_rating": "PG-13",
 		"profile_max_playback_quality": "720p",
 		"profile_preferred_metadata_language": "es",
@@ -108,13 +119,13 @@ test_disabled_subtracts_when_restricted if {
 	got.disabled_library_ids == []
 }
 
-test_disabled_passes_through_when_unrestricted if {
+test_disabled_subtracts_from_tenant_bound if {
 	got := decision with input as object.union(base_input, {
 		"disabled_library_ids": [2],
 	})
-	got.unrestricted
-	got.allowed_library_ids == []
-	got.disabled_library_ids == [2]
+	not got.unrestricted
+	got.allowed_library_ids == [1, 3, 4, 5, 7]
+	got.disabled_library_ids == []
 }
 
 test_unverified_profile_passthrough if {
@@ -134,6 +145,23 @@ tightening_override(_, _) := {
 	"max_content_rating": "PG",
 	"max_playback_quality": "1080p",
 	"profile_verified": false,
+}
+
+tenant_widening_override(_, _) := {
+	"unrestricted": false,
+	"allowed_library_ids": [10, 99],
+}
+
+test_tenant_scope_cannot_be_widened_by_custom_policy if {
+	got := decision
+		with input as object.union(base_input, {
+			"account_restricted": false,
+			"profile_library_restricted": false,
+			"tenant_library_ids": [10],
+		})
+		with data.silo_custom.scope.override as tenant_widening_override
+	not got.unrestricted
+	got.allowed_library_ids == [10]
 }
 
 test_tightening_override_applies if {

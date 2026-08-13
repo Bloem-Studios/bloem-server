@@ -154,7 +154,8 @@ func guardBenchmarkInput(domain string) (any, error) {
 			DisabledLibraryIDs: []int{4}, ProfilePresent: true,
 			ProfileMaxRating: "PG-13", ProfileMaxQuality: "1080p",
 			ProfileLibraryLimited: true, ProfileLibraryIDs: []int{1, 2},
-			ProfileHasPIN: true, ProfileVerified: true, RequestTime: benchTime,
+			ProfileHasPIN: true, ProfileVerified: true,
+			TenantLibraryIDs: []int{1, 2, 3, 4}, RequestTime: benchTime,
 		}
 	case DomainPermission:
 		input = PermissionInput{

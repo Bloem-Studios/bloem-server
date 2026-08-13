@@ -207,6 +207,7 @@ func testScopeInput() ScopeInput {
 		ProfileID:            "profile-a",
 		ProfilePresent:       true,
 		ProfileVerified:      true,
+		TenantLibraryIDs:     []int{1, 2, 3},
 		RequestTime:          "2026-07-02T00:00:00Z",
 		AccountMaxQuality:    "4k",
 		ProfileMaxQuality:    "1080p",

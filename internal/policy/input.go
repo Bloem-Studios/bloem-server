@@ -100,6 +100,7 @@ type ScopeInput struct {
 	ProfileHasPIN         bool   `json:"profile_has_pin"`
 	ProfileVerified       bool   `json:"profile_verified"`
 	ProfileMetadataLang   string `json:"profile_preferred_metadata_language"`
+	TenantLibraryIDs      []int  `json:"tenant_library_ids"`
 
 	RequestTime string `json:"request_time"`
 	DeviceID    string `json:"device_id"`

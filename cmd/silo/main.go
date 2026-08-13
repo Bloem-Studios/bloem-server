@@ -90,6 +90,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
+	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/s3client"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/scanqueue"
@@ -1683,7 +1684,7 @@ func main() {
 		profileTokens := access.NewProfileTokenService(cfg.Auth.JWTSecret, 0)
 		var notificationScopes notifications.ScopeResolver
 		if policySystem != nil {
-			notificationScopes = policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), accessGroupStore)
+			notificationScopes = policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore)
 		} else {
 			// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 			notificationScopes = access.NewResolver(userRepo, userStoreProvider, profileTokens, accessGroupStore)
@@ -2208,7 +2209,7 @@ func main() {
 			profileTokens := access.NewProfileTokenService(cfg.Auth.JWTSecret, 0)
 			var reconcileResolver scopeResolver
 			if policySystem != nil {
-				reconcileResolver = policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), accessGroupStore)
+				reconcileResolver = policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore)
 			} else {
 				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 				reconcileResolver = access.NewResolver(userRepo, userStoreProvider, profileTokens, accessGroupStore)
@@ -2317,7 +2318,7 @@ func main() {
 		}
 		var absScopeResolver scopeResolver
 		if policySystem != nil {
-			absScopeResolver = policy.NewViewerResolver(absUserRepo, userStoreProvider, nil, policySystem.PDP(), accessGroupStore)
+			absScopeResolver = policy.NewViewerResolver(absUserRepo, userStoreProvider, nil, policySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore)
 		} else {
 			absScopeResolver = access.NewResolver(absUserRepo, userStoreProvider, nil, accessGroupStore)
 		}
@@ -2690,6 +2691,7 @@ func main() {
 						userStoreProvider,
 						nil, // profile tokens unused: compat login already verifies PINs
 						policySystem.PDP(),
+						resourcetenancy.NewStore(deps.DB),
 						accessGroupStore,
 					)
 				} else {

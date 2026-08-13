@@ -25,9 +25,9 @@ base_decision := decision if {
 	}
 }
 
-# tenant_valid validates the additive tenant document for consumers that need
-# to tighten policy by tenant state. This transition keeps base grants stable;
-# trusted Go adapters reject invalid tenant context before evaluation.
+# tenant_valid validates the additive tenant document. Trusted Go adapters
+# reject invalid tenant context before evaluation; the tenant library bound
+# below then constrains every resolved scope.
 tenant_valid(i) if {
 	tenant := object.get(i, "tenant", {})
 	object.get(tenant, "present", false) == true
@@ -56,23 +56,23 @@ tenant_organization_status_valid(tenant) if {
 
 library_decision(i) := result if {
 	effective := effective_libraries(i)
-	effective.unrestricted
-	result := {
-		"unrestricted": true,
-		"allowed_library_ids": [],
-		"disabled_library_ids": disabled_ids(i),
-		"libraries_restricted": false,
-	}
-} else := result if {
-	effective := effective_libraries(i)
-	not effective.unrestricted
+	allowed := tenant_bounded_libraries(i, effective)
 	result := {
 		"unrestricted": false,
-		"allowed_library_ids": subtract(effective.allowed_library_ids, disabled_ids(i)),
+		"allowed_library_ids": subtract(allowed, disabled_ids(i)),
 		"disabled_library_ids": [],
 		"libraries_restricted": true,
 	}
 }
+
+tenant_bounded_libraries(i, effective) := tenant_library_ids(i) if {
+	effective.unrestricted
+} else := intersect(tenant_library_ids(i), effective.allowed_library_ids)
+
+tenant_library_ids(i) := unique_sorted(ids) if {
+	ids := object.get(i, "tenant_library_ids", [])
+	is_array(ids)
+} else := []
 
 effective_libraries(i) := result if {
 	i.account_restricted
@@ -213,7 +213,7 @@ merged_allowed(base, override, unrestricted, disabled) := [] if {
 	not unrestricted
 	not base.unrestricted
 	not object.get(override, "unrestricted", base.unrestricted)
-	allowed := subtract(intersect(base.allowed_library_ids, object.get(override, "allowed_library_ids", [])), disabled)
+	allowed := subtract(intersect(base.allowed_library_ids, object.get(override, "allowed_library_ids", base.allowed_library_ids)), disabled)
 }
 
 disabled_if_unrestricted(disabled, unrestricted) := disabled if {

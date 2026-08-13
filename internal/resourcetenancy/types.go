@@ -3,6 +3,7 @@ package resourcetenancy
 import (
 	"errors"
 
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 )
 
@@ -65,3 +66,14 @@ var (
 	ErrDefaultBundleUnavailable = errors.New("default entitlement bundle unavailable")
 	ErrInvalidActor             = errors.New("invalid entitlement actor")
 )
+
+func tenantCanAccessResources(tenant tenancy.Context) bool {
+	return tenant.OrganizationID != uuid.Nil &&
+		tenant.MembershipID != uuid.Nil &&
+		tenant.AccountID > 0 &&
+		tenant.PolicyRevision > 0 &&
+		tenant.SecurityRevision > 0 &&
+		tenant.MembershipStatus == tenancy.MembershipActive &&
+		(tenant.OrganizationStatus == tenancy.OrganizationActive ||
+			(tenant.Legacy && tenant.OrganizationDefault && tenant.OrganizationStatus == tenancy.OrganizationInitializing))
+}

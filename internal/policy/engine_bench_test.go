@@ -31,6 +31,7 @@ func BenchmarkResolveViewerScopePolicy(b *testing.B) {
 		ProfileHasPIN:         true,
 		ProfileVerified:       true,
 		ProfileMetadataLang:   "fr",
+		TenantLibraryIDs:      []int{1, 2, 3, 4},
 		RequestTime:           "2026-07-02T12:00:00Z",
 		DeviceID:              "device-1",
 		ClientIP:              "192.0.2.10",

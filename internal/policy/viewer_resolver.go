@@ -7,16 +7,24 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
+// TenantLibraryResolver resolves the media folders visible to an authoritative
+// tenant context.
+type TenantLibraryResolver interface {
+	AvailableMediaFolderIDs(context.Context, tenancy.Context) ([]int, error)
+}
+
 // ViewerResolver resolves viewer access scopes through the policy PDP.
 type ViewerResolver struct {
-	users        access.UserRepository
-	storeFactory userstore.UserStoreProvider
-	tokens       access.ProfileTokenValidator
-	pdp          *PDP
-	groups       access.GroupPolicyProvider
+	users           access.UserRepository
+	storeFactory    userstore.UserStoreProvider
+	tokens          access.ProfileTokenValidator
+	pdp             *PDP
+	tenantLibraries TenantLibraryResolver
+	groups          access.GroupPolicyProvider
 }
 
 // NewViewerResolver creates a PDP-backed viewer scope resolver.
@@ -25,6 +33,7 @@ func NewViewerResolver(
 	storeFactory userstore.UserStoreProvider,
 	tokens access.ProfileTokenValidator,
 	pdp *PDP,
+	tenantLibraries TenantLibraryResolver,
 	groups ...access.GroupPolicyProvider,
 ) *ViewerResolver {
 	var groupProvider access.GroupPolicyProvider
@@ -32,11 +41,12 @@ func NewViewerResolver(
 		groupProvider = groups[0]
 	}
 	return &ViewerResolver{
-		users:        users,
-		storeFactory: storeFactory,
-		tokens:       tokens,
-		pdp:          pdp,
-		groups:       groupProvider,
+		users:           users,
+		storeFactory:    storeFactory,
+		tokens:          tokens,
+		pdp:             pdp,
+		tenantLibraries: tenantLibraries,
+		groups:          groupProvider,
 	}
 }
 
@@ -93,6 +103,17 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 			return access.Scope{}, err
 		}
 	}
+	if r.tenantLibraries == nil {
+		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant libraries: missing resolver")
+	}
+	tenant, ok := tenancy.FromContext(ctx)
+	if !ok {
+		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant libraries: %w", ErrTenantFactsUnavailable)
+	}
+	tenantLibraryIDs, err := r.tenantLibraries.AvailableMediaFolderIDs(ctx, tenant)
+	if err != nil {
+		return access.Scope{}, fmt.Errorf("resolve viewer scope tenant libraries: %w", err)
+	}
 	preferences := access.ResolveViewerPreferences(ctx, store, input.ProfileID)
 
 	policyInput := ScopeInput{
@@ -107,6 +128,7 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 		AccessPolicyRevision: user.AccessPolicyRevision,
 		DisabledLibraryIDs:   preferences.DisabledLibraryIDs,
 		ProfileVerified:      profileVerified,
+		TenantLibraryIDs:     slices.Clone(tenantLibraryIDs),
 		RequestTime:          time.Now().UTC().Format(time.RFC3339),
 		// ResolveInput cannot distinguish API keys from compat callers that
 		// also skip PIN verification, so v1 leaves this false.

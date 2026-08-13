@@ -20,6 +20,48 @@ func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
 }
 
+// AvailableMediaFolderIDs returns the media folders visible to the resolved
+// tenant: organization-owned folders and platform folders with an active
+// entitlement for that organization.
+func (s *Store) AvailableMediaFolderIDs(ctx context.Context, tenant tenancy.Context) ([]int, error) {
+	if !tenantCanAccessResources(tenant) {
+		return nil, ErrResourceHidden
+	}
+	if s == nil || s.pool == nil {
+		return nil, ErrResourceUnavailable
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT DISTINCT folders.id
+		FROM media_folders AS folders
+		JOIN resource_owners AS owners ON owners.id = folders.owner_id
+		LEFT JOIN organization_entitlements AS entitlements
+		  ON entitlements.organization_id = $1
+		 AND entitlements.root_owner_id = owners.id
+		 AND entitlements.media_folder_id = folders.id
+		 AND entitlements.status = 'active'
+		WHERE (owners.kind = 'organization' AND owners.organization_id = $1)
+		   OR (owners.kind = 'platform' AND entitlements.id IS NOT NULL)
+		ORDER BY folders.id`, tenant.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: load available media folders: %v", ErrResourceUnavailable, err)
+	}
+	defer rows.Close()
+
+	ids := make([]int, 0)
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("%w: scan available media folder: %v", ErrResourceUnavailable, err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: load available media folders: %v", ErrResourceUnavailable, err)
+	}
+	return ids, nil
+}
+
 func (s *Store) RootOwner(ctx context.Context, root RootRef) (Owner, error) {
 	if err := validateRoot(root); err != nil {
 		return Owner{}, err
@@ -60,10 +102,7 @@ func (s *Store) RequireAccess(ctx context.Context, tenant tenancy.Context, root 
 	if err := validateRoot(root); err != nil {
 		return Grant{}, err
 	}
-	if tenant.OrganizationID == uuid.Nil || tenant.MembershipID == uuid.Nil || tenant.AccountID <= 0 || tenant.MembershipStatus != tenancy.MembershipActive {
-		return Grant{}, ErrResourceHidden
-	}
-	if tenant.OrganizationStatus != tenancy.OrganizationActive && !(tenant.Legacy && tenant.OrganizationStatus == tenancy.OrganizationInitializing) {
+	if !tenantCanAccessResources(tenant) {
 		return Grant{}, ErrResourceHidden
 	}
 

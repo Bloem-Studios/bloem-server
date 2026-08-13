@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -31,9 +32,7 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 		settingValues    []userstore.SettingValue
 		input            access.ResolveInput
 		tokens           access.ProfileTokenValidator
-		wantNilAllowed   bool
 		wantEmptyAllowed bool
-		wantDisabled     []int
 		wantMetadataLang string
 	}{
 		{
@@ -42,10 +41,8 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 				ID:                   1,
 				AccessPolicyRevision: 5,
 			},
-			settings:       map[string]string{"disabled_library_ids": "[7]"},
-			input:          access.ResolveInput{UserID: 1, SessionID: "sess-1"},
-			wantNilAllowed: true,
-			wantDisabled:   []int{7},
+			settings: map[string]string{"disabled_library_ids": "[7]"},
+			input:    access.ResolveInput{UserID: 1, SessionID: "sess-1"},
 		},
 		{
 			name: "profile unrestricted",
@@ -60,8 +57,7 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 				MaxPlaybackQuality:        "4k",
 				PreferredMetadataLanguage: "fr",
 			},
-			input:          access.ResolveInput{UserID: 1, SessionID: "sess-1", ProfileID: "prof-1"},
-			wantNilAllowed: true,
+			input: access.ResolveInput{UserID: 1, SessionID: "sess-1", ProfileID: "prof-1"},
 		},
 		{
 			name: "account and profile restrictions intersect",
@@ -94,11 +90,9 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 				ID:                   1,
 				AccessPolicyRevision: 5,
 			},
-			profile:        &userstore.Profile{ID: "prof-1"},
-			settings:       map[string]string{"disabled_library_ids": "[3,5]"},
-			input:          access.ResolveInput{UserID: 1, SessionID: "sess-1", ProfileID: "prof-1"},
-			wantNilAllowed: true,
-			wantDisabled:   []int{3, 5},
+			profile:  &userstore.Profile{ID: "prof-1"},
+			settings: map[string]string{"disabled_library_ids": "[3,5]"},
+			input:    access.ResolveInput{UserID: 1, SessionID: "sess-1", ProfileID: "prof-1"},
 		},
 		{
 			name: "empty restricted library set stays non nil",
@@ -131,7 +125,6 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 				ProfileID:           "prof-1",
 				SkipPINVerification: true,
 			},
-			wantNilAllowed: true,
 		},
 		{
 			name: "pin profile with valid token",
@@ -157,7 +150,6 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 					PolicyRevision: 5,
 				},
 			},
-			wantNilAllowed: true,
 		},
 		{
 			name: "quality and rating ceilings use policy normalization",
@@ -172,8 +164,7 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 				MaxPlaybackQuality:        "standard",
 				PreferredMetadataLanguage: "de",
 			},
-			input:          access.ResolveInput{UserID: 1, SessionID: "sess-1", ProfileID: "prof-1"},
-			wantNilAllowed: true,
+			input: access.ResolveInput{UserID: 1, SessionID: "sess-1", ProfileID: "prof-1"},
 		},
 		{
 			// The canonical catalog.metadata_language row feeds the policy input
@@ -197,7 +188,6 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 				Value: json.RawMessage(`"de"`),
 			}},
 			input:            access.ResolveInput{UserID: 1, SessionID: "sess-1", ProfileID: "prof-1"},
-			wantNilAllowed:   true,
 			wantMetadataLang: "de",
 		},
 	}
@@ -212,26 +202,22 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 			users := viewerResolverUserRepo{user: tt.user}
 			stores := viewerResolverStoreProvider{store: store}
 			legacyResolver := access.NewResolver(users, stores, tt.tokens)
-			viewerResolver := NewViewerResolver(users, stores, tt.tokens, pdp)
+			viewerResolver := NewViewerResolver(users, stores, tt.tokens, pdp, defaultViewerResolverTenantLibraries())
 
 			legacyScope, legacyErr := legacyResolver.Resolve(ctx, tt.input)
 			policyScope, policyErr := viewerResolver.Resolve(ctx, tt.input)
 			if legacyErr != nil || policyErr != nil {
 				t.Fatalf("Resolve() errors: legacy=%v policy=%v", legacyErr, policyErr)
 			}
-			if !reflect.DeepEqual(policyScope, legacyScope) {
-				t.Fatalf("scope mismatch\npolicy: %#v\nlegacy: %#v", policyScope, legacyScope)
+			boundedLegacyScope := boundLegacyScopeToTenant(legacyScope, defaultViewerResolverTenantLibraries().ids)
+			if !reflect.DeepEqual(policyScope, boundedLegacyScope) {
+				t.Fatalf("scope mismatch\npolicy: %#v\nbounded legacy: %#v\nlegacy: %#v", policyScope, boundedLegacyScope, legacyScope)
 			}
-			if tt.wantNilAllowed && policyScope.AllowedLibraryIDs != nil {
-				t.Fatalf("AllowedLibraryIDs = %#v, want nil", policyScope.AllowedLibraryIDs)
-			}
+			assertCatalogAndPlaybackAuthorizationParity(t, policyScope, legacyScope, defaultViewerResolverTenantLibraries().ids)
 			if tt.wantEmptyAllowed {
 				if policyScope.AllowedLibraryIDs == nil || len(policyScope.AllowedLibraryIDs) != 0 {
 					t.Fatalf("AllowedLibraryIDs = %#v, want non-nil empty slice", policyScope.AllowedLibraryIDs)
 				}
-			}
-			if tt.wantDisabled != nil && !reflect.DeepEqual(policyScope.DisabledLibraryIDs, tt.wantDisabled) {
-				t.Fatalf("DisabledLibraryIDs = %#v, want %#v", policyScope.DisabledLibraryIDs, tt.wantDisabled)
 			}
 			// Always asserted: cases with only the legacy profile column expect
 			// "" — the canonical resolution's contract default — proving the
@@ -343,7 +329,7 @@ func TestTenantFactsFromContextMarshalsExactFacts(t *testing.T) {
 func TestViewerResolverRejectsMissingTenantFacts(t *testing.T) {
 	users := viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}}
 	stores := viewerResolverStoreProvider{store: viewerResolverTestStore{}}
-	resolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, context.Background()))
+	resolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, context.Background()), defaultViewerResolverTenantLibraries())
 
 	_, err := resolver.Resolve(context.Background(), access.ResolveInput{UserID: 1, SessionID: "sess-1"})
 	if !errors.Is(err, ErrTenantFactsUnavailable) {
@@ -357,12 +343,61 @@ func TestViewerResolverRejectsTenantForDifferentAccount(t *testing.T) {
 	ctx := tenancy.WithContext(context.Background(), tenant)
 	users := viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}}
 	stores := viewerResolverStoreProvider{store: viewerResolverTestStore{}}
-	resolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, context.Background()))
+	resolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, context.Background()), defaultViewerResolverTenantLibraries())
 
 	_, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
 	if !errors.Is(err, ErrTenantFactsUnavailable) {
 		t.Fatalf("Resolve() error = %v, want ErrTenantFactsUnavailable", err)
 	}
+}
+
+func TestViewerResolverTenantScopeLoadsVisibleLibraries(t *testing.T) {
+	ctx := resolvedTenantContextForPolicyTest()
+	libraries := &viewerResolverTenantLibraries{ids: []int{20, 10, 20}}
+	resolver := NewViewerResolver(
+		viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}},
+		viewerResolverStoreProvider{store: viewerResolverTestStore{}},
+		nil,
+		newViewerResolverTestPDP(t, ctx),
+		libraries,
+	)
+
+	scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
+	if err != nil {
+		t.Fatalf("Resolve() error: %v", err)
+	}
+	if !scope.LibrariesRestricted || !reflect.DeepEqual(scope.AllowedLibraryIDs, []int{10, 20}) {
+		t.Fatalf("tenant-bounded scope = %#v, want restricted [10 20]", scope)
+	}
+	if len(libraries.tenants) != 1 || libraries.tenants[0] != resolvedTenantForPolicyTest() {
+		t.Fatalf("availability tenants = %#v, want exact resolved tenant", libraries.tenants)
+	}
+}
+
+func TestViewerResolverTenantScopeFailsClosedWithoutAvailability(t *testing.T) {
+	ctx := resolvedTenantContextForPolicyTest()
+	users := viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}}
+	stores := viewerResolverStoreProvider{store: viewerResolverTestStore{}}
+	pdp := newViewerResolverTestPDP(t, ctx)
+
+	t.Run("missing resolver", func(t *testing.T) {
+		resolver := NewViewerResolver(users, stores, nil, pdp, nil)
+		scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
+		if err == nil {
+			t.Fatal("Resolve() error = nil, want tenant availability error")
+		}
+		assertZeroScope(t, scope)
+	})
+
+	t.Run("availability error", func(t *testing.T) {
+		availabilityErr := errors.New("availability query failed")
+		resolver := NewViewerResolver(users, stores, nil, pdp, &viewerResolverTenantLibraries{err: availabilityErr})
+		scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
+		if !errors.Is(err, availabilityErr) {
+			t.Fatalf("Resolve() error = %v, want wrapped availability error", err)
+		}
+		assertZeroScope(t, scope)
+	})
 }
 
 func TestViewerResolverCustomPolicyUsingLegacyFieldsKeepsDecision(t *testing.T) {
@@ -387,6 +422,7 @@ override(_, request) := {"max_playback_quality": "720p"} if {
 		viewerResolverStoreProvider{store: viewerResolverTestStore{}},
 		nil,
 		NewPDP(engine),
+		defaultViewerResolverTenantLibraries(),
 	)
 
 	scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
@@ -395,6 +431,9 @@ override(_, request) := {"max_playback_quality": "720p"} if {
 	}
 	if scope.MaxPlaybackQuality != "1080p" {
 		t.Fatalf("MaxPlaybackQuality = %q, want normalized old-field custom decision 1080p", scope.MaxPlaybackQuality)
+	}
+	if !reflect.DeepEqual(scope.AllowedLibraryIDs, defaultViewerResolverTenantLibraries().ids) {
+		t.Fatalf("AllowedLibraryIDs = %#v, want unchanged tenant bound %#v", scope.AllowedLibraryIDs, defaultViewerResolverTenantLibraries().ids)
 	}
 }
 
@@ -516,7 +555,7 @@ func TestViewerResolverPINErrorsMatchLegacy(t *testing.T) {
 			users := viewerResolverUserRepo{user: user}
 			stores := viewerResolverStoreProvider{store: viewerResolverTestStore{profile: profile}}
 			legacyResolver := access.NewResolver(users, stores, tt.tokens)
-			viewerResolver := NewViewerResolver(users, stores, tt.tokens, pdp)
+			viewerResolver := NewViewerResolver(users, stores, tt.tokens, pdp, defaultViewerResolverTenantLibraries())
 
 			_, legacyErr := legacyResolver.Resolve(ctx, tt.input)
 			policyScope, policyErr := viewerResolver.Resolve(ctx, tt.input)
@@ -538,7 +577,7 @@ func TestViewerResolverProfileNotFoundMatchesLegacy(t *testing.T) {
 	stores := viewerResolverStoreProvider{store: viewerResolverTestStore{}}
 	input := access.ResolveInput{UserID: 1, SessionID: "sess-1", ProfileID: "missing"}
 	legacyResolver := access.NewResolver(users, stores, nil)
-	viewerResolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, ctx))
+	viewerResolver := NewViewerResolver(users, stores, nil, newViewerResolverTestPDP(t, ctx), defaultViewerResolverTenantLibraries())
 
 	_, legacyErr := legacyResolver.Resolve(ctx, input)
 	policyScope, policyErr := viewerResolver.Resolve(ctx, input)
@@ -555,7 +594,7 @@ func TestViewerResolverEvalFailureFailsClosed(t *testing.T) {
 	ctx := resolvedTenantContextForPolicyTest()
 	users := viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}}
 	stores := viewerResolverStoreProvider{store: viewerResolverTestStore{}}
-	resolver := NewViewerResolver(users, stores, nil, NewPDP(newEngine()))
+	resolver := NewViewerResolver(users, stores, nil, NewPDP(newEngine()), defaultViewerResolverTenantLibraries())
 
 	scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
 	if err == nil {
@@ -582,7 +621,7 @@ override(_, _) := {"profile_verified": false}
 	if err != nil {
 		t.Fatalf("NewEngineWithCustom() error: %v", err)
 	}
-	resolver := NewViewerResolver(users, stores, nil, NewPDP(engine))
+	resolver := NewViewerResolver(users, stores, nil, NewPDP(engine), defaultViewerResolverTenantLibraries())
 
 	scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, SessionID: "sess-1"})
 	if !errors.Is(err, access.ErrProfileUnverified) {
@@ -619,6 +658,7 @@ func TestViewerResolverAppliesGroupPolicy(t *testing.T) {
 		stores,
 		nil,
 		newViewerResolverTestPDP(t, ctx),
+		defaultViewerResolverTenantLibraries(),
 		&viewerResolverGroupProvider{group: group},
 	)
 
@@ -648,6 +688,7 @@ func TestViewerResolverLoadsProfileBeforeResolvingTenantGroup(t *testing.T) {
 		group:  &access.GroupPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true, RequestsAllowed: true},
 		events: &events,
 	}
+	libraries := &viewerResolverTenantLibraries{ids: defaultViewerResolverTenantLibraries().ids, events: &events}
 	tenant := resolvedTenantForPolicyTest()
 	tenant.OrganizationID = organizationID
 	ctx := tenancy.WithContext(context.Background(), tenant)
@@ -656,14 +697,15 @@ func TestViewerResolverLoadsProfileBeforeResolvingTenantGroup(t *testing.T) {
 		viewerResolverStoreProvider{store: store},
 		nil,
 		newViewerResolverTestPDP(t, ctx),
+		libraries,
 		groups,
 	)
 
 	if _, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, ProfileID: "prof-1"}); err != nil {
 		t.Fatalf("Resolve() error: %v", err)
 	}
-	if !reflect.DeepEqual(events, []string{"profile", "group"}) {
-		t.Fatalf("resolution order = %#v, want profile then group", events)
+	if !reflect.DeepEqual(events, []string{"profile", "group", "libraries"}) {
+		t.Fatalf("resolution order = %#v, want validated profile/group before tenant libraries", events)
 	}
 	wantSubject := access.GroupSubject{OrganizationID: organizationID, AccountID: 1, ProfileID: "prof-1", Legacy: true}
 	if groups.subject != wantSubject {
@@ -693,6 +735,25 @@ type viewerResolverGroupProvider struct {
 	err     error
 	subject access.GroupSubject
 	events  *[]string
+}
+
+type viewerResolverTenantLibraries struct {
+	ids     []int
+	err     error
+	tenants []tenancy.Context
+	events  *[]string
+}
+
+func defaultViewerResolverTenantLibraries() *viewerResolverTenantLibraries {
+	return &viewerResolverTenantLibraries{ids: []int{1, 2, 3, 4, 5, 7}}
+}
+
+func (r *viewerResolverTenantLibraries) AvailableMediaFolderIDs(_ context.Context, tenant tenancy.Context) ([]int, error) {
+	r.tenants = append(r.tenants, tenant)
+	if r.events != nil {
+		*r.events = append(*r.events, "libraries")
+	}
+	return slices.Clone(r.ids), r.err
 }
 
 func (p *viewerResolverGroupProvider) ResolvePolicy(_ context.Context, subject access.GroupSubject) (*access.GroupPolicy, error) {
@@ -790,6 +851,7 @@ func TestViewerResolverBatchesViewerPreferenceRead(t *testing.T) {
 	resolver := NewViewerResolver(
 		viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}},
 		viewerResolverStoreProvider{store: store}, nil, newViewerResolverTestPDP(t, ctx),
+		defaultViewerResolverTenantLibraries(),
 	)
 
 	scope, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, ProfileID: "prof-1"})
@@ -799,7 +861,7 @@ func TestViewerResolverBatchesViewerPreferenceRead(t *testing.T) {
 	if store.resolutionReads != 1 {
 		t.Fatalf("canonical preference reads = %d, want 1", store.resolutionReads)
 	}
-	if !reflect.DeepEqual(scope.DisabledLibraryIDs, []int{3, 5}) || scope.PreferredMetadataLanguage != "de" {
+	if !reflect.DeepEqual(scope.AllowedLibraryIDs, []int{1, 2, 4, 7}) || scope.DisabledLibraryIDs != nil || scope.PreferredMetadataLanguage != "de" {
 		t.Errorf("resolved scope = %#v", scope)
 	}
 	if got := scope.MetadataLanguageOverrides["no"]; got != access.OriginalMetadataLanguage {
@@ -845,6 +907,7 @@ func viewerResolverExpectedInput(
 		AccessPolicyRevision: user.AccessPolicyRevision,
 		DisabledLibraryIDs:   cloneViewerResolverInts(disabled),
 		ProfileVerified:      profileVerified,
+		TenantLibraryIDs:     slices.Clone(defaultViewerResolverTenantLibraries().ids),
 		RequestTime:          time.Now().UTC().Format(time.RFC3339),
 		IsAPIKey:             false,
 	}

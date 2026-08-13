@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -68,6 +69,11 @@ func TestStoreRequireAccessFailsClosed(t *testing.T) {
 		{name: "invited membership", tenant: withMembershipStatus(fixture.defaultTenant, tenancy.MembershipInvited), root: fixture.platformFolder, err: ErrResourceHidden},
 		{name: "suspended organization", tenant: withOrganizationStatus(fixture.defaultTenant, tenancy.OrganizationSuspended), root: fixture.platformFolder, err: ErrResourceHidden},
 		{name: "initializing v2 organization", tenant: asV2(withOrganizationStatus(fixture.defaultTenant, tenancy.OrganizationInitializing)), root: fixture.platformFolder, err: ErrResourceHidden},
+		{name: "non-default legacy initializing organization", tenant: func() tenancy.Context {
+			tenant := withOrganizationStatus(fixture.defaultTenant, tenancy.OrganizationInitializing)
+			tenant.OrganizationDefault = false
+			return tenant
+		}(), root: fixture.platformFolder, err: ErrResourceHidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -128,6 +134,100 @@ func TestStoreRootOwnerDoesNotTrustCallerIdentity(t *testing.T) {
 	}
 	if _, err := store.RootOwner(fixture.ctx, RootRef{Kind: RootPluginInstallation, ID: fixture.organizationFolder.ID}); !errors.Is(err, ErrResourceHidden) {
 		t.Fatalf("cross-kind lookup error = %v, want ErrResourceHidden", err)
+	}
+}
+
+func TestStoreAvailableMediaFolderIDsReturnsOnlyTenantVisibleFolders(t *testing.T) {
+	fixture := newResourceTenancyFixture(t)
+	store := NewStore(fixture.pool)
+
+	got, err := store.AvailableMediaFolderIDs(fixture.ctx, fixture.defaultTenant)
+	if err != nil {
+		t.Fatalf("AvailableMediaFolderIDs: %v", err)
+	}
+	want := []int{int(fixture.platformFolder.ID), int(fixture.ownedFolder.ID)}
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Fatalf("AvailableMediaFolderIDs = %#v, want exactly entitled platform and organization-owned folders %#v", got, want)
+	}
+}
+
+func TestStoreAvailableMediaFolderIDsFailsClosedForInvalidTenantOrStore(t *testing.T) {
+	fixture := newResourceTenancyFixture(t)
+	store := NewStore(fixture.pool)
+
+	tests := []struct {
+		name   string
+		tenant tenancy.Context
+	}{
+		{name: "missing organization", tenant: tenancy.Context{MembershipStatus: tenancy.MembershipActive}},
+		{name: "missing account", tenant: withAccountID(fixture.defaultTenant, 0)},
+		{name: "zero policy revision", tenant: withPolicyRevision(fixture.defaultTenant, 0)},
+		{name: "zero security revision", tenant: withSecurityRevision(fixture.defaultTenant, 0)},
+		{name: "invited membership", tenant: withMembershipStatus(fixture.defaultTenant, tenancy.MembershipInvited)},
+		{name: "suspended membership", tenant: withMembershipStatus(fixture.defaultTenant, tenancy.MembershipSuspended)},
+		{name: "suspended organization", tenant: withOrganizationStatus(fixture.defaultTenant, tenancy.OrganizationSuspended)},
+		{name: "initializing v2 organization", tenant: asV2(withOrganizationStatus(fixture.defaultTenant, tenancy.OrganizationInitializing))},
+		{name: "non-default legacy initializing organization", tenant: func() tenancy.Context {
+			tenant := withOrganizationStatus(fixture.defaultTenant, tenancy.OrganizationInitializing)
+			tenant.OrganizationDefault = false
+			return tenant
+		}()},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := store.AvailableMediaFolderIDs(fixture.ctx, tt.tenant); !errors.Is(err, ErrResourceHidden) {
+				t.Fatalf("AvailableMediaFolderIDs error = %v, want ErrResourceHidden", err)
+			}
+		})
+	}
+
+	legacyDefault := withOrganizationStatus(fixture.defaultTenant, tenancy.OrganizationInitializing)
+	if _, err := store.AvailableMediaFolderIDs(fixture.ctx, legacyDefault); err != nil {
+		t.Fatalf("legacy default organization availability: %v", err)
+	}
+	if _, err := (&Store{}).AvailableMediaFolderIDs(fixture.ctx, fixture.defaultTenant); !errors.Is(err, ErrResourceUnavailable) {
+		t.Fatalf("missing store error = %v, want ErrResourceUnavailable", err)
+	}
+	canceled, cancel := context.WithCancel(fixture.ctx)
+	cancel()
+	if _, err := store.AvailableMediaFolderIDs(canceled, fixture.defaultTenant); !errors.Is(err, ErrResourceUnavailable) {
+		t.Fatalf("database query error = %v, want ErrResourceUnavailable", err)
+	}
+}
+
+func withAccountID(tenant tenancy.Context, accountID int) tenancy.Context {
+	tenant.AccountID = accountID
+	return tenant
+}
+
+func withPolicyRevision(tenant tenancy.Context, revision int64) tenancy.Context {
+	tenant.PolicyRevision = revision
+	return tenant
+}
+
+func withSecurityRevision(tenant tenancy.Context, revision int64) tenancy.Context {
+	tenant.SecurityRevision = revision
+	return tenant
+}
+
+func TestStoreAvailableMediaFolderIDsRequiresActivePlatformEntitlement(t *testing.T) {
+	fixture := newResourceTenancyFixture(t)
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE organization_entitlements
+		SET status='suspended'
+		WHERE organization_id=$1 AND media_folder_id=$2`,
+		fixture.defaultTenant.OrganizationID, fixture.platformFolder.ID,
+	); err != nil {
+		t.Fatalf("suspend platform entitlement: %v", err)
+	}
+
+	got, err := NewStore(fixture.pool).AvailableMediaFolderIDs(fixture.ctx, fixture.defaultTenant)
+	if err != nil {
+		t.Fatalf("AvailableMediaFolderIDs: %v", err)
+	}
+	if !slices.Equal(got, []int{int(fixture.ownedFolder.ID)}) {
+		t.Fatalf("AvailableMediaFolderIDs = %#v, want only organization-owned folder after suspension", got)
 	}
 }
 
@@ -195,6 +295,8 @@ type resourceTenancyFixture struct {
 	defaultTenant      tenancy.Context
 	otherTenant        tenancy.Context
 	platformFolder     RootRef
+	ownedFolder        RootRef
+	unentitledFolder   RootRef
 	organizationFolder RootRef
 }
 
@@ -217,6 +319,22 @@ func newResourceTenancyFixture(t *testing.T) resourceTenancyFixture {
 	if err := pool.QueryRow(ctx, `INSERT INTO media_folders (type, name) VALUES ('movies', 'Platform root') RETURNING id`).Scan(&platformFolderID); err != nil {
 		t.Fatalf("create platform root: %v", err)
 	}
+	var unentitledFolderID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO media_folders (type, name) VALUES ('movies', 'Unentitled platform root') RETURNING id`).Scan(&unentitledFolderID); err != nil {
+		t.Fatalf("create unentitled platform root: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `DELETE FROM organization_entitlements WHERE organization_id=$1 AND media_folder_id=$2`, defaultTenant.OrganizationID, unentitledFolderID); err != nil {
+		t.Fatalf("remove default entitlement for unentitled platform root: %v", err)
+	}
+
+	var defaultOwnerID uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT id FROM resource_owners WHERE kind='organization' AND organization_id=$1`, defaultTenant.OrganizationID).Scan(&defaultOwnerID); err != nil {
+		t.Fatalf("load default organization owner: %v", err)
+	}
+	var ownedFolderID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO media_folders (type, name, owner_id) VALUES ('movies', 'Default organization root', $1) RETURNING id`, defaultOwnerID).Scan(&ownedFolderID); err != nil {
+		t.Fatalf("create default organization root: %v", err)
+	}
 
 	var otherOwnerID uuid.UUID
 	if err := pool.QueryRow(ctx, `SELECT id FROM resource_owners WHERE kind='organization' AND organization_id=$1`, otherTenant.OrganizationID).Scan(&otherOwnerID); err != nil {
@@ -233,6 +351,8 @@ func newResourceTenancyFixture(t *testing.T) resourceTenancyFixture {
 		defaultTenant:      defaultTenant,
 		otherTenant:        otherTenant,
 		platformFolder:     RootRef{Kind: RootMediaFolder, ID: platformFolderID},
+		ownedFolder:        RootRef{Kind: RootMediaFolder, ID: ownedFolderID},
+		unentitledFolder:   RootRef{Kind: RootMediaFolder, ID: unentitledFolderID},
 		organizationFolder: RootRef{Kind: RootMediaFolder, ID: organizationFolderID},
 	}
 }
@@ -271,14 +391,15 @@ func activateResourceTenant(t *testing.T, ctx context.Context, pool *pgxpool.Poo
 		t.Fatalf("create %s membership: %v", label, err)
 	}
 	return tenancy.Context{
-		OrganizationID:     organizationID,
-		MembershipID:       membershipID,
-		AccountID:          accountID,
-		OrganizationStatus: tenancy.OrganizationActive,
-		MembershipStatus:   tenancy.MembershipActive,
-		PolicyRevision:     1,
-		SecurityRevision:   1,
-		Legacy:             useDefault,
+		OrganizationID:      organizationID,
+		MembershipID:        membershipID,
+		AccountID:           accountID,
+		OrganizationStatus:  tenancy.OrganizationActive,
+		MembershipStatus:    tenancy.MembershipActive,
+		PolicyRevision:      1,
+		SecurityRevision:    1,
+		Legacy:              useDefault,
+		OrganizationDefault: useDefault,
 	}
 }
 
