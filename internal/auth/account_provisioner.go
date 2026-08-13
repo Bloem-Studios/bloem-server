@@ -14,6 +14,12 @@ type AccountUserRepository interface {
 	Delete(ctx context.Context, id int) error
 }
 
+// MembershipProvisioner assigns an account to the deployment's default
+// organization immediately after account creation.
+type MembershipProvisioner interface {
+	ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) error
+}
+
 type DefaultProfileOptions struct {
 	Enabled bool
 	Name    string
@@ -27,6 +33,18 @@ type CreateAccountInput struct {
 type AccountProvisioner struct {
 	users         AccountUserRepository
 	storeProvider userstore.UserStoreProvider
+	memberships   MembershipProvisioner
+}
+
+const (
+	legacyRoleAdmin = "admin"
+	legacyRoleUser  = "user"
+)
+
+// SetMembershipProvisioner installs the default-membership provisioning seam.
+// Nil remains valid for isolated compatibility fixtures without tenant state.
+func (p *AccountProvisioner) SetMembershipProvisioner(provisioner MembershipProvisioner) {
+	p.memberships = provisioner
 }
 
 func NewAccountProvisioner(
@@ -48,6 +66,19 @@ func (p *AccountProvisioner) CreateAccount(
 		return nil, err
 	}
 
+	if p.memberships != nil {
+		if err := p.memberships.ProvisionDefaultMembership(ctx, user.ID, membershipLegacyRole(input.User.Role)); err != nil {
+			if deleteErr := p.users.Delete(ctx, user.ID); deleteErr != nil {
+				return nil, fmt.Errorf(
+					"provision default membership: %w (cleanup user: %w)",
+					err,
+					deleteErr,
+				)
+			}
+			return nil, fmt.Errorf("provision default membership: %w", err)
+		}
+	}
+
 	if !input.DefaultProfile.Enabled {
 		return user, nil
 	}
@@ -55,7 +86,7 @@ func (p *AccountProvisioner) CreateAccount(
 	if err := p.createDefaultProfile(ctx, user.ID, input); err != nil {
 		if deleteErr := p.users.Delete(ctx, user.ID); deleteErr != nil {
 			return nil, fmt.Errorf(
-				"create default profile: %w (cleanup user: %v)",
+				"create default profile: %w (cleanup user: %w)",
 				err,
 				deleteErr,
 			)
@@ -64,6 +95,15 @@ func (p *AccountProvisioner) CreateAccount(
 	}
 
 	return user, nil
+}
+
+// membershipLegacyRole preserves the legacy migration's two-value membership
+// contract without changing the account's stored role.
+func membershipLegacyRole(role string) string {
+	if role == legacyRoleAdmin {
+		return legacyRoleAdmin
+	}
+	return legacyRoleUser
 }
 
 func (p *AccountProvisioner) createDefaultProfile(

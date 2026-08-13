@@ -38,10 +38,7 @@ const UPSTREAM_NAME = "Silo";
  * word-like or path-like on either side. Lowercase `silo` is left entirely
  * alone, because every occurrence of it is technical.
  */
-const BRAND_PATTERN = new RegExp(
-  `(^|[^A-Za-z0-9_/.\\-])${UPSTREAM_NAME}(?![A-Za-z0-9_\\-])`,
-  "g",
-);
+const BRAND_PATTERN = new RegExp(`(^|[^A-Za-z0-9_/.\\-])${UPSTREAM_NAME}(?![A-Za-z0-9_\\-])`, "g");
 
 export function applyBrand(source: string, productName: string = PRODUCT_NAME): string {
   return source.replace(BRAND_PATTERN, (_match, before: string) => `${before}${productName}`);

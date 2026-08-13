@@ -25,7 +25,7 @@
 ### Task 1: Create and Import the Private Vondel Catalog
 
 **Files:**
-- Create repository: `/Users/jimcole/projects/vondel-plugins`
+- Create repository: `${WORKSPACE_ROOT}/vondel-plugins`
 - Import: `LICENSE`, `README.md`, `go.mod`, `go.sum`, `catalog/**`, `cmd/update-catalog/**`, `manifest.json`
 - Create: `NOTICE`
 - Create: `.github/workflows/ci.yml`
@@ -82,7 +82,7 @@ Commit and push `main`; confirm `gh repo view Vondel-Media/vondel-plugins --json
 ### Task 2: Import MetaDB with Vondel Build Identity
 
 **Files:**
-- Create repository: `/Users/jimcole/projects/vondel-plugin-metadb`
+- Create repository: `${WORKSPACE_ROOT}/vondel-plugin-metadb`
 - Import all 13 tracked source files from the pinned snapshot
 - Create: `NOTICE`
 - Create: `.github/workflows/ci.yml`
@@ -111,7 +111,7 @@ Configure private SDK resolution, test/vet/build all supported targets, guard ag
 ### Task 3: Import TMDB Without the Embedded Provider Credential
 
 **Files:**
-- Create repository: `/Users/jimcole/projects/vondel-plugin-tmdb`
+- Create repository: `${WORKSPACE_ROOT}/vondel-plugin-tmdb`
 - Import snapshot files except unsafe upstream workflow behavior
 - Create: `NOTICE`, `scripts/verify-private-release.sh`
 - Modify: `go.mod`, `go.sum`, `main.go`, `main_test.go`, `manifest.json`, `README.md`, `provider/client.go`, `provider/provider.go`, `provider/provider_test.go`, `.github/workflows/*.yml`
@@ -139,7 +139,7 @@ Run tests/race/vet/build for all three platforms, the credential string scan, em
 ### Task 4: Import TVDB Without the Embedded Provider Credential
 
 **Files:**
-- Create repository: `/Users/jimcole/projects/vondel-plugin-tvdb`
+- Create repository: `${WORKSPACE_ROOT}/vondel-plugin-tvdb`
 - Create: `NOTICE`, `scripts/verify-private-release.sh`
 - Modify: `go.mod`, `go.sum`, `main.go`, `main_test.go`, `manifest.json`, `README.md`, `provider/client.go`, `provider/provider.go`, `provider/*_test.go`, `.github/workflows/*.yml`
 
@@ -162,7 +162,7 @@ Apply the Vondel identity/private-release rules from Task 3, preserve TVDB provi
 ### Task 5: Import Licensed Audiobook and Manga Plugins
 
 **Files:**
-- Create repositories: `/Users/jimcole/projects/vondel-plugin-audiobook-metadata`, `/Users/jimcole/projects/vondel-plugin-manga-metadata`
+- Create repositories: `${WORKSPACE_ROOT}/vondel-plugin-audiobook-metadata`, `${WORKSPACE_ROOT}/vondel-plugin-manga-metadata`
 - Create in each: `NOTICE`, `scripts/verify-private-release.sh`
 - Modify in each: `go.mod`, `go.sum`, `main.go`, `main_test.go`, `manifest.json`, `README.md`, `.github/workflows/*.yml`, all self-importing Go files
 - Modify Manga: `provider/mangadex.go`
@@ -186,7 +186,7 @@ Run tests/race/vet/build, keep Manga's `MANGABAKA_LIVE=1` check optional and non
 ### Task 6: Create Permission-Gated Ebook and Autoscan ARR Repositories
 
 **Files:**
-- Create repositories: `/Users/jimcole/projects/vondel-plugin-ebook-metadata`, `/Users/jimcole/projects/vondel-plugin-autoscan-arr`
+- Create repositories: `${WORKSPACE_ROOT}/vondel-plugin-ebook-metadata`, `${WORKSPACE_ROOT}/vondel-plugin-autoscan-arr`
 - Create in each: `README.md`, `UPSTREAM.md`, `.gitignore`
 
 **Interfaces:**
@@ -208,7 +208,7 @@ Create both repositories privately, push the documentation-only roots, and confi
 ### Task 7: Cross-Repository Fork Audit
 
 **Files:**
-- Create: `/Users/jimcole/projects/vondel-server/docs/plugin-fork-inventory.md`
+- Create: `${WORKSPACE_ROOT}/vondel-server/docs/plugin-fork-inventory.md`
 
 **Interfaces:**
 - Consumes: all eight private target repositories and their origin/upstream state.

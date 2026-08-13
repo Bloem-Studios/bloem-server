@@ -22,7 +22,7 @@
 ### Task 1: Full Apple Client Import
 
 **Files:**
-- Repository: `/Users/jimcole/projects/vondel-apple`
+- Repository: `${WORKSPACE_ROOT}/vondel-apple`
 - Import: complete tracked archive from pinned Apple commit
 - Create: `NOTICE`, compatibility/brand/privacy guard tests, private CI
 - Modify: XcodeGen/project, plist, entitlements, Swift identity symbols/copy, Fastlane/docs/workflows/assets
@@ -42,7 +42,7 @@
 ### Task 2: Full Android Client Import
 
 **Files:**
-- Repository: `/Users/jimcole/projects/vondel-android`
+- Repository: `${WORKSPACE_ROOT}/vondel-android`
 - Import: complete tracked archive from pinned Android commit
 - Create: `NOTICE`, compatibility/brand/privacy guard tests, private CI
 - Modify: Gradle settings/modules, manifests/resources, Kotlin/Java packages, Fastlane/docs/workflows/assets
@@ -62,7 +62,7 @@
 ### Task 3: Cross-Client Verification and Inventory
 
 **Files:**
-- Modify: `/Users/jimcole/projects/vondel-server/docs/client-fork-inventory.md`
+- Modify: `${WORKSPACE_ROOT}/vondel-server/docs/client-fork-inventory.md`
 
 **Interfaces:**
 - Consumes: exact clean roots and CI evidence from Tasks 1–2.

@@ -24,7 +24,7 @@
 ### Task 1: Import the Upstream SDK into a Private Vondel Repository
 
 **Files:**
-- Create repository working tree: `/Users/jimcole/projects/vondel-plugin-sdk`
+- Create repository working tree: `${WORKSPACE_ROOT}/vondel-plugin-sdk`
 - Preserve: `LICENSE`
 - Preserve source snapshot: all tracked files from upstream tag `v0.13.2`
 
@@ -48,16 +48,16 @@ Expected: upstream resolves to `1ad0fe54408e99d35e6aee86c489a0edd528f6b2`; the V
 Run:
 
 ```bash
-git clone --branch v0.13.2 --single-branch https://github.com/Silo-Server/silo-plugin-sdk.git /Users/jimcole/projects/vondel-plugin-sdk
-git -C /Users/jimcole/projects/vondel-plugin-sdk rev-parse HEAD
-git -C /Users/jimcole/projects/vondel-plugin-sdk status --porcelain
+git clone --branch v0.13.2 --single-branch https://github.com/Silo-Server/silo-plugin-sdk.git ${WORKSPACE_ROOT}/vondel-plugin-sdk
+git -C ${WORKSPACE_ROOT}/vondel-plugin-sdk rev-parse HEAD
+git -C ${WORKSPACE_ROOT}/vondel-plugin-sdk status --porcelain
 ```
 
 Expected: the printed revision is the pinned SHA and status is empty.
 
 - [ ] **Step 3: Verify the imported baseline before changing identity**
 
-Run from `/Users/jimcole/projects/vondel-plugin-sdk`:
+Run from `${WORKSPACE_ROOT}/vondel-plugin-sdk`:
 
 ```bash
 GOWORK=off go mod download
@@ -68,7 +68,7 @@ Expected: all upstream SDK and example-package tests PASS before Vondel changes.
 
 - [ ] **Step 4: Replace the imported history with a clean root without changing files**
 
-Run from `/Users/jimcole/projects/vondel-plugin-sdk`:
+Run from `${WORKSPACE_ROOT}/vondel-plugin-sdk`:
 
 ```bash
 source_sha="$(git rev-parse HEAD)"
@@ -540,7 +540,7 @@ if rg -n 'gh repo edit.*visibility|npm publish|docker push|pkg\.go\.dev' .github
   fail "workflow contains a public publication path"
 fi
 
-if rg -n '/Users/|/home/[^/]+/|https://[^/@]+:[^/@]+@github\.com' \
+if rg -n '/(Users|home)/[^/]+/|https://[^/@]+:[^/@]+@github\.com' \
   --glob '!scripts/verify-private-release.sh' .; then
   fail "repository contains a local path or credential-bearing URL"
 fi

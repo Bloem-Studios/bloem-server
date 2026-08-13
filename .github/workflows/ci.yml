@@ -27,6 +27,55 @@ permissions:
   contents: read
 
 jobs:
+  tenant-identity:
+    name: Tenant identity (disposable PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: vondel_tenant
+          POSTGRES_PASSWORD: invented-ci-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vondel_tenant -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      GOWORK: "off"
+      SILO_TEST_DATABASE_URL: postgres://vondel_tenant:invented-ci-password@127.0.0.1:5432/postgres?sslmode=disable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install libvips
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libvips-dev
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify migration upgrade, ambiguity, legacy writes, and rollback
+        run: go test ./internal/database -run TestTenantIdentityMigration -count=1 -v -timeout=30m
+
+      - name: Verify tenancy store and resolver invariants
+        run: go test ./internal/tenancy -count=1 -v -timeout=30m
+
+      - name: Verify profile organization and access-group persistence
+        run: go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization' -count=1 -v -timeout=30m
+
+      - name: Verify v1 compatibility and read-only v10 foundation
+        run: go test ./internal/api -run 'TestV1TenancyCompatibility|TestV10Foundation' -count=1 -v -timeout=30m
+
   go:
     name: Go
     runs-on: ubuntu-latest
@@ -85,14 +134,15 @@ jobs:
 
       - name: Lint changed lines
         env:
-          # A PR carries its target branch; a push to main compares against
-          # main's own history, which leaves the merge base at HEAD and lints
-          # nothing new. Read through the environment rather than interpolated
-          # into the script.
-          BASE_REF: ${{ github.base_ref || github.event.repository.default_branch }}
+          # Checkout already fetched full history. Use immutable event SHAs so
+          # this credentialless job never has to refetch the private repository.
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
-          golangci-lint run --new-from-merge-base="origin/${BASE_REF}" ./...
+          base_sha="$BASE_SHA"
+          if [ -z "$base_sha" ] || [[ "$base_sha" =~ ^0+$ ]] || ! git cat-file -e "${base_sha}^{commit}"; then
+            base_sha="$(git rev-parse HEAD^)"
+          fi
+          golangci-lint run --new-from-merge-base="$base_sha" ./...
 
       # A manifest change that does not regenerate leaves every client reading
       # stale keys, which the contract exists to prevent.

@@ -1,8 +1,15 @@
-# Silo
+# Vondel Server
 
-Silo is a self-hosted media streaming server for your movies, shows, music, and books. Point it at your media folders and stream to your devices — at home or away — with direct play, remuxing, and hardware-accelerated transcoding handled automatically.
+Vondel Server is a private tracking fork of
+[Silo Server](https://github.com/Silo-Server/silo-server). It retains upstream
+Git history, module paths, protocol identifiers, and environment-variable names
+so upstream commits remain mergeable and existing Silo clients remain
+compatible. See [FORK.md](FORK.md) for provenance, deliberate divergence, and
+the protected-upstream remote setup.
 
-Join the community on [Discord](https://discord.gg/4RxuUQAEnW). If Silo is useful to you, consider [sponsoring the project](https://github.com/sponsors/quick104) — see [Supporting Silo](#supporting-silo).
+The operational documentation below follows upstream closely. Technical names
+such as `SILO_DATA_ROOT` remain compatibility contracts; the distributed web
+application and visual assets identify the product as Vondel.
 
 ## Highlights
 

@@ -116,8 +116,8 @@ func TestShouldTryAlternateFileV3PinsOriginalQuality(t *testing.T) {
 	}
 }
 
-func TestTerminalAllowsAlternateFileV3IncludesHDRIncompatibility(t *testing.T) {
-	for _, reason := range []string{"no_alternate_version", "hdr_transcode_unsupported"} {
+func TestTerminalAllowsAlternateFileV3IncludesVersionSpecificIncompatibility(t *testing.T) {
+	for _, reason := range []string{"no_alternate_version", "hdr_transcode_unsupported", "subtitle_conversion_unsupported"} {
 		if !terminalAllowsAlternateFileV3(&playback.TerminalV3{Reason: reason}) {
 			t.Fatalf("terminal reason %q should permit alternate selection", reason)
 		}

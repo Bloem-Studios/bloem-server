@@ -72,6 +72,12 @@ func NewPluginProvider(
 	})
 }
 
+// SetMembershipProvisioner assigns default memberships to auto-provisioned
+// plugin accounts.
+func (p *PluginProvider) SetMembershipProvisioner(provisioner MembershipProvisioner) {
+	p.accounts.SetMembershipProvisioner(provisioner)
+}
+
 func (p *PluginProvider) Authenticate(ctx context.Context, creds Credentials) (*models.User, error) {
 	client, err := p.client(ctx)
 	if err != nil {

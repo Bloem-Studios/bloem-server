@@ -25,6 +25,10 @@ type Claims struct {
 	ImpersonatorUserID *int   `json:"impersonator_user_id,omitempty"`
 	APIKeyID           int64  `json:"api_key_id,omitempty"`
 	RateTier           string `json:"rate_tier,omitempty"`
+	OrganizationID     string `json:"organization_id,omitempty"`
+	MembershipID       string `json:"membership_id,omitempty"`
+	PolicyRevision     int64  `json:"policy_revision,omitempty"`
+	SecurityRevision   int64  `json:"security_revision,omitempty"`
 	jwt.RegisteredClaims
 }
 

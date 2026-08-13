@@ -49,7 +49,8 @@ func TestResolveHistoryEpisodeScope(t *testing.T) {
 	}
 	profileID := fmt.Sprintf("00000000-0000-4000-8000-%012d", suffix%1_000_000_000_000)
 	if _, err := pool.Exec(ctx,
-		`INSERT INTO user_profiles (id, user_id, name) VALUES ($1, $2, 'HES Profile')`,
+		`INSERT INTO user_profiles (id, user_id, name, organization_id)
+		 VALUES ($1, $2, 'HES Profile', (SELECT id FROM organizations WHERE is_default))`,
 		profileID, userID,
 	); err != nil {
 		t.Fatalf("seed profile: %v", err)

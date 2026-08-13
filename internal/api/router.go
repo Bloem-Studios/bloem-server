@@ -72,6 +72,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/subtitles/subsource"
 	"github.com/Silo-Server/silo-server/internal/taskmanager"
 	"github.com/Silo-Server/silo-server/internal/taskmanager/repository"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/watchstate"
@@ -157,6 +158,8 @@ type Dependencies struct {
 	PluginHTTPProxy              *plugins.HTTPProxy
 	PluginUserConfig             *plugins.UserConfigStore
 	AuthProviders                []auth.RegisteredProvider
+	OwnershipBootstrapper        auth.OwnershipBootstrapper
+	MembershipProvisioner        auth.MembershipProvisioner
 	// PublicURL is the externally-reachable origin (scheme + host) for this
 	// silo instance. Used to build redirect_uri values handed to OAuth
 	// IdPs. Empty disables the /oauth/{install_id}/{init,callback} routes.
@@ -397,14 +400,18 @@ func NewRouter(deps Dependencies) chi.Router {
 			settingsRepo,
 			deps.UserStoreProvider,
 		)
+		authService.SetOwnershipBootstrapper(deps.OwnershipBootstrapper)
+		authService.SetMembershipProvisioner(deps.MembershipProvisioner)
 		for _, registration := range deps.AuthProviders {
 			authService.RegisterProvider(registration.Info, registration.Provider)
 		}
 		if settingsRepo != nil {
+			invitationAccounts := auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider)
+			invitationAccounts.SetMembershipProvisioner(deps.MembershipProvisioner)
 			invitationService = invitations.NewService(
 				invitations.NewRepository(deps.DB),
 				userRepo,
-				auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider),
+				invitationAccounts,
 				authService,
 				mail.NewSMTPSender(settingsRepo),
 				settingsRepo,
@@ -1100,6 +1107,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	var adminJobsHandler *handlers.AdminJobsHandler
 	if userRepo != nil {
 		adminHandler = handlers.NewAdminHandler(userRepo, deps.DB, deps.UserStoreProvider)
+		adminHandler.SetMembershipProvisioner(deps.MembershipProvisioner)
 		adminHandler.SessionsLoader = playbackSessionsLoader
 		adminHandler.DetailSvc = detailSvc
 		adminHandler.EventBus = deps.EventBus
@@ -1725,6 +1733,11 @@ func NewRouter(deps Dependencies) chi.Router {
 	// http.Server (see absCompatSrv in cmd/silo/main.go) so the discovery
 	// probes (/ping, /healthcheck, /status, etc.) don't collide with the
 	// SPA fallback. Same pattern as the Jellyfin compat listener on 8096.
+	var tenantMiddleware *apimw.TenantMiddleware
+	if deps.DB != nil {
+		tenantMiddleware = apimw.NewTenantMiddleware(tenancy.NewResolver(tenancy.NewStore(deps.DB)))
+	}
+	mountV10(r, deps, authMiddleware, tenantMiddleware)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.ServeHTTP)

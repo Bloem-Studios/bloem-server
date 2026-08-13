@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { applyBrand } from "./product-brand";
 
 describe("applyBrand", () => {
   // The whole point: upstream's prose, rebranded, without editing upstream's
   // source. These are real strings from the tree.
   it("rebrands the product name in prose", () => {
-    expect(applyBrand('"Pause could not reach the player directly. Silo will end the session."')).toBe(
-      '"Pause could not reach the player directly. Vondel will end the session."',
-    );
+    expect(
+      applyBrand('"Pause could not reach the player directly. Silo will end the session."'),
+    ).toBe('"Pause could not reach the player directly. Vondel will end the session."');
     expect(applyBrand("Managed by Silo")).toBe("Managed by Vondel");
     expect(applyBrand("Silo will download it server-side before importing.")).toBe(
       "Vondel will download it server-side before importing.",
@@ -23,12 +25,12 @@ describe("applyBrand", () => {
     const untouched = [
       'import { SiloBrand } from "@/components/SiloBrand";',
       "type SiloThemeFile = { name: string };",
-      'const id = payload.silo_profile_id;',
+      "const id = payload.silo_profile_id;",
       'scope: "silo_custom.scope"',
       'plugin: "silo.autoscan.arr"',
       'src="/silo-wordmark-sidebar.png"',
       '"https://github.com/Silo-Server/example-plugin"',
-      'module github.com/Silo-Server/silo-server',
+      "module github.com/Silo-Server/silo-server",
       '"/tmp/silo-transcode/test-extras"',
       "const siloUser = users[0];",
     ];
@@ -57,5 +59,32 @@ describe("applyBrand", () => {
 
   it("takes the name it is given", () => {
     expect(applyBrand("Silo is running.", "Meridian")).toBe("Meridian is running.");
+  });
+
+  it("ships Vondel public identity without restricted Silo brand assets", () => {
+    const publicPath = (name: string) => resolve(process.cwd(), "public", name);
+    const manifest = JSON.parse(readFileSync(publicPath("site.webmanifest"), "utf8"));
+    expect(manifest.name).toBe("Vondel");
+    expect(manifest.short_name).toBe("Vondel");
+
+    const serviceWorker = readFileSync(publicPath("sw.js"), "utf8");
+    expect(serviceWorker).toContain('data.title || "Vondel"');
+    expect(serviceWorker).not.toContain('data.title || "Silo"');
+
+    for (const restricted of ["silo-icon-1024.png", "silo-wordmark-sidebar.png"]) {
+      expect(existsSync(publicPath(restricted))).toBe(false);
+    }
+    for (const owned of ["vondel-icon-1024.png", "vondel-wordmark-sidebar.png"]) {
+      expect(existsSync(publicPath(owned))).toBe(true);
+    }
+
+    const brandComponent = readFileSync(
+      resolve(process.cwd(), "src/components/SiloBrand.tsx"),
+      "utf8",
+    );
+    expect(brandComponent).toContain('"/vondel-wordmark-sidebar.png"');
+    expect(brandComponent).toContain('"/vondel-icon-1024.png"');
+    expect(brandComponent).not.toContain('"/silo-wordmark-sidebar.png"');
+    expect(brandComponent).not.toContain('"/silo-icon-1024.png"');
   });
 });

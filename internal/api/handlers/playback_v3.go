@@ -2360,15 +2360,18 @@ func shouldTryAlternateFileV3(qualityPreference string) bool {
 }
 
 const (
-	terminalNoAlternateVersionV3      = "no_alternate_version"
-	terminalHDRTranscodeUnsupportedV3 = "hdr_transcode_unsupported"
+	terminalNoAlternateVersionV3            = "no_alternate_version"
+	terminalHDRTranscodeUnsupportedV3       = "hdr_transcode_unsupported"
+	terminalSubtitleConversionUnsupportedV3 = "subtitle_conversion_unsupported"
 )
 
 func terminalAllowsAlternateFileV3(terminal *playback.TerminalV3) bool {
 	if terminal == nil {
 		return false
 	}
-	return terminal.Reason == terminalNoAlternateVersionV3 || terminal.Reason == terminalHDRTranscodeUnsupportedV3
+	return terminal.Reason == terminalNoAlternateVersionV3 ||
+		terminal.Reason == terminalHDRTranscodeUnsupportedV3 ||
+		terminal.Reason == terminalSubtitleConversionUnsupportedV3
 }
 
 func replanAllowsAlternateFileV3(operation playback.ReplanOperationV3, qualityPreference string) bool {

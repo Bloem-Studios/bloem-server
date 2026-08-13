@@ -2,6 +2,8 @@ package pgstore
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,9 +15,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingskeys"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/Silo-Server/silo-server/migrations"
 )
 
 // countingQueryTracer records every statement pgx sends on behalf of a caller.
@@ -94,6 +99,7 @@ func TestPostgresResolutionIssuesOneQuery(t *testing.T) {
 	).Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
+	provisionTestMembership(t, pool, userID)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
 	})
@@ -373,8 +379,182 @@ func newConstraintTestUser(t *testing.T) (*pgxpool.Pool, int) {
 	).Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
+	provisionTestMembership(t, pool, userID)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
 	})
+	return pool, userID
+}
+
+func provisionTestMembership(t *testing.T, pool *pgxpool.Pool, userID int) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		SELECT id, $1, 'active', 'user'
+		FROM organizations
+		WHERE is_default
+		ON CONFLICT (organization_id, account_id) DO NOTHING`, userID); err != nil {
+		t.Fatalf("provision test membership: %v", err)
+	}
+}
+
+func TestProfileOrganizationAndAccessGroupPersistence(t *testing.T) {
+	pool, userID := newProfileIdentityTestUser(t)
+	ctx := context.Background()
+
+	var organizationID string
+	var accessGroupID int64
+	if err := pool.QueryRow(ctx, `
+		SELECT o.id::text, g.id
+		FROM organizations o
+		JOIN access_groups g ON g.organization_id = o.id
+		WHERE o.is_default
+		ORDER BY g.id
+		LIMIT 1`).Scan(&organizationID, &accessGroupID); err != nil {
+		t.Fatalf("load default profile identity: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = $2 WHERE id = $1`, userID, accessGroupID); err != nil {
+		t.Fatalf("assign legacy group: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		VALUES ($1, $2, 'active', 'user')
+		ON CONFLICT (organization_id, account_id) DO NOTHING`, organizationID, userID); err != nil {
+		t.Fatalf("seed membership: %v", err)
+	}
+
+	store := newStore(pool, userID)
+	if err := store.CreateProfile(ctx, userstore.Profile{
+		ID:             "tenant-profile",
+		Name:           "Tenant Profile",
+		OrganizationID: organizationID,
+		AccessGroupID:  &accessGroupID,
+	}); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	profile, err := store.GetProfile(ctx, "tenant-profile")
+	if err != nil {
+		t.Fatalf("GetProfile: %v", err)
+	}
+	if profile == nil || profile.OrganizationID != organizationID || profile.AccessGroupID == nil || *profile.AccessGroupID != accessGroupID {
+		t.Fatalf("profile identity = %#v", profile)
+	}
+	profiles, err := store.ListProfiles(ctx)
+	if err != nil {
+		t.Fatalf("ListProfiles: %v", err)
+	}
+	if len(profiles) != 1 || profiles[0].OrganizationID != organizationID || profiles[0].AccessGroupID == nil || *profiles[0].AccessGroupID != accessGroupID {
+		t.Fatalf("listed profiles = %#v", profiles)
+	}
+
+	var legacyGroupID *int64
+	if err := pool.QueryRow(ctx, `SELECT access_group_id FROM users WHERE id = $1`, userID).Scan(&legacyGroupID); err != nil {
+		t.Fatalf("load legacy assignment: %v", err)
+	}
+	if legacyGroupID == nil || *legacyGroupID != accessGroupID {
+		t.Fatalf("legacy access group changed: %v", legacyGroupID)
+	}
+	var legacyMemberCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE access_group_id = $1`, accessGroupID).Scan(&legacyMemberCount); err != nil {
+		t.Fatalf("count legacy members: %v", err)
+	}
+	if legacyMemberCount < 1 {
+		t.Fatalf("legacy member count = %d, want at least seeded account", legacyMemberCount)
+	}
+}
+
+func TestProfileAccessGroupRejectsDifferentOrganization(t *testing.T) {
+	pool, userID := newProfileIdentityTestUser(t)
+	ctx := context.Background()
+	var defaultOrganizationID string
+	if err := pool.QueryRow(ctx, `SELECT id::text FROM organizations WHERE is_default`).Scan(&defaultOrganizationID); err != nil {
+		t.Fatalf("load default organization: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		VALUES ($1, $2, 'active', 'user')
+		ON CONFLICT (organization_id, account_id) DO NOTHING`, defaultOrganizationID, userID); err != nil {
+		t.Fatalf("seed membership: %v", err)
+	}
+	var otherOrganizationID string
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO organizations (slug, name, status)
+		VALUES ($1, 'Other', 'initializing') RETURNING id::text`, fmt.Sprintf("profile-other-%d", time.Now().UnixNano())).Scan(&otherOrganizationID); err != nil {
+		t.Fatalf("seed other organization: %v", err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM organizations WHERE id = $1`, otherOrganizationID) })
+	var otherGroupID int64
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO access_groups (name, organization_id)
+		VALUES ($1, $2) RETURNING id`, fmt.Sprintf("profile-other-%d", time.Now().UnixNano()), otherOrganizationID).Scan(&otherGroupID); err != nil {
+		t.Fatalf("seed other group: %v", err)
+	}
+
+	err := newStore(pool, userID).CreateProfile(ctx, userstore.Profile{
+		ID:             "cross-tenant-profile",
+		Name:           "Cross Tenant",
+		OrganizationID: defaultOrganizationID,
+		AccessGroupID:  &otherGroupID,
+	})
+	if err == nil {
+		t.Fatal("CreateProfile accepted an access group from another organization")
+	}
+}
+
+func newProfileIdentityTestUser(t *testing.T) (*pgxpool.Pool, int) {
+	t.Helper()
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	random := make([]byte, 8)
+	if _, err := rand.Read(random); err != nil {
+		t.Fatalf("generate database name: %v", err)
+	}
+	name := "vondel_tenancy_" + hex.EncodeToString(random)
+	admin, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect maintenance database: %v", err)
+	}
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
+		admin.Close()
+		t.Fatalf("create disposable database: %v", err)
+	}
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		admin.Close()
+		t.Fatalf("parse maintenance database URL: %v", err)
+	}
+	config.ConnConfig.Database = name
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		admin.Close()
+		t.Fatalf("connect disposable database: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Close()
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, _ = admin.Exec(cleanupCtx, `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, name)
+		if _, err := admin.Exec(cleanupCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
+			t.Errorf("drop disposable database: %v", err)
+		}
+		admin.Close()
+	})
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate disposable database: %v", err)
+	}
+
+	var userID int
+	if err := pool.QueryRow(ctx,
+		`INSERT INTO users (username, role) VALUES ($1, 'user') RETURNING id`,
+		fmt.Sprintf("profile-identity-%d", time.Now().UnixNano()),
+	).Scan(&userID); err != nil {
+		t.Fatalf("seed profile identity user: %v", err)
+	}
+	if _, err := tenancy.NewStore(pool).ProvisionDefaultMembership(ctx, userID, "user"); err != nil {
+		t.Fatalf("provision profile identity membership: %v", err)
+	}
 	return pool, userID
 }
