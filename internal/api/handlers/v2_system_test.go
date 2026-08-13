@@ -15,17 +15,17 @@ import (
 	"github.com/google/uuid"
 )
 
-type v10OrganizationStoreStub struct {
+type v2OrganizationStoreStub struct {
 	memberships   []tenancy.Membership
 	organizations map[uuid.UUID]tenancy.Organization
 	err           error
 }
 
-func (s v10OrganizationStoreStub) ListMemberships(context.Context, int) ([]tenancy.Membership, error) {
+func (s v2OrganizationStoreStub) ListMemberships(context.Context, int) ([]tenancy.Membership, error) {
 	return s.memberships, s.err
 }
 
-func (s v10OrganizationStoreStub) GetOrganization(_ context.Context, id uuid.UUID) (tenancy.Organization, error) {
+func (s v2OrganizationStoreStub) GetOrganization(_ context.Context, id uuid.UUID) (tenancy.Organization, error) {
 	organization, ok := s.organizations[id]
 	if !ok {
 		return tenancy.Organization{}, tenancy.ErrOrganizationNotFound
@@ -33,24 +33,24 @@ func (s v10OrganizationStoreStub) GetOrganization(_ context.Context, id uuid.UUI
 	return organization, nil
 }
 
-func TestV10CapabilitiesExactContract(t *testing.T) {
-	handler := NewV10SystemHandler(nil)
+func TestV2CapabilitiesExactContract(t *testing.T) {
+	handler := NewV2SystemHandler(nil)
 	rec := httptest.NewRecorder()
-	handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, "/api/v10/capabilities", nil))
+	handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, "/api/v2/capabilities", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	want := `{"api":"v10","identity_schema":1,"features":{"legacy_silo_v1":true,"organization_memberships":true,"direct_profile_login":false,"shared_device_pairing":false,"delegated_admin_roles":false}}`
+	want := `{"api":"v2","identity_schema":1,"features":{"legacy_silo_v1":true,"organization_memberships":true,"direct_profile_login":false,"shared_device_pairing":false,"delegated_admin_roles":false}}`
 	if strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("body = %s, want %s", rec.Body.String(), want)
 	}
 }
 
-func TestV10OrganizationsReturnsOnlyActiveMembershipsAndOrganizations(t *testing.T) {
+func TestV2OrganizationsReturnsOnlyActiveMembershipsAndOrganizations(t *testing.T) {
 	activeID, hiddenID, invitedID, ownerlessID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	activeMembershipID := uuid.New()
 	ownerAccountID := 7
-	handler := NewV10SystemHandler(v10OrganizationStoreStub{
+	handler := NewV2SystemHandler(v2OrganizationStoreStub{
 		memberships: []tenancy.Membership{
 			{ID: activeMembershipID, OrganizationID: activeID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 4},
 			{ID: uuid.New(), OrganizationID: hiddenID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "user", SecurityRevision: 2},
@@ -63,7 +63,7 @@ func TestV10OrganizationsReturnsOnlyActiveMembershipsAndOrganizations(t *testing
 			ownerlessID: {ID: ownerlessID, Slug: "ownerless", Name: "Ownerless", Status: tenancy.OrganizationActive, PolicyRevision: 1},
 		},
 	})
-	req := httptest.NewRequest(http.MethodGet, "/api/v10/organizations", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v2/organizations", nil)
 	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 7}))
 	rec := httptest.NewRecorder()
 	handler.HandleOrganizations(rec, req)
@@ -90,18 +90,18 @@ func TestV10OrganizationsReturnsOnlyActiveMembershipsAndOrganizations(t *testing
 	}
 }
 
-func TestV10OrganizationsRequiresAuthentication(t *testing.T) {
-	handler := NewV10SystemHandler(v10OrganizationStoreStub{})
+func TestV2OrganizationsRequiresAuthentication(t *testing.T) {
+	handler := NewV2SystemHandler(v2OrganizationStoreStub{})
 	rec := httptest.NewRecorder()
-	handler.HandleOrganizations(rec, httptest.NewRequest(http.MethodGet, "/api/v10/organizations", nil))
+	handler.HandleOrganizations(rec, httptest.NewRequest(http.MethodGet, "/api/v2/organizations", nil))
 	if rec.Code != http.StatusUnauthorized || strings.TrimSpace(rec.Body.String()) != `{"error":"unauthorized","message":"Authentication required"}` {
 		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
 	}
 }
 
-func TestV10OrganizationsUnavailableWithoutStore(t *testing.T) {
-	handler := NewV10SystemHandler(nil)
-	req := httptest.NewRequest(http.MethodGet, "/api/v10/organizations", nil)
+func TestV2OrganizationsUnavailableWithoutStore(t *testing.T) {
+	handler := NewV2SystemHandler(nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v2/organizations", nil)
 	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 7}))
 	rec := httptest.NewRecorder()
 	handler.HandleOrganizations(rec, req)
@@ -110,9 +110,9 @@ func TestV10OrganizationsUnavailableWithoutStore(t *testing.T) {
 	}
 }
 
-func TestV10OrganizationsFailsClosedOnStoreError(t *testing.T) {
-	handler := NewV10SystemHandler(v10OrganizationStoreStub{err: errors.New("database failed")})
-	req := httptest.NewRequest(http.MethodGet, "/api/v10/organizations", nil)
+func TestV2OrganizationsFailsClosedOnStoreError(t *testing.T) {
+	handler := NewV2SystemHandler(v2OrganizationStoreStub{err: errors.New("database failed")})
+	req := httptest.NewRequest(http.MethodGet, "/api/v2/organizations", nil)
 	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 7}))
 	rec := httptest.NewRecorder()
 	handler.HandleOrganizations(rec, req)

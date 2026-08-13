@@ -57,7 +57,7 @@ public compatibility surface and reapply the smallest Vondel delta.
 - A private plugin SDK, catalog and first-party plugin set.
 - Client contract conformance tests (`internal/clientcontract`) and an install
   and scan acceptance test (`internal/acceptance`).
-- A tenant and identity foundation under `/api/v10`, while `/api/v1` remains
+- A tenant and identity foundation under `/api/v2`, while `/api/v1` remains
   the Silo-compatible surface.
 - Product identity: Vondel naming in user-facing copy.
 

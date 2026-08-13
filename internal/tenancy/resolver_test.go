@@ -79,7 +79,7 @@ func TestResolverUsesDefaultOrganizationOnlyForLegacy(t *testing.T) {
 	}
 }
 
-func TestResolverRejectsUnavailableV10TenantSelection(t *testing.T) {
+func TestResolverRejectsUnavailableV2TenantSelection(t *testing.T) {
 	resolver := NewResolver(resolverTestStore{defaultOrganization: activeOrganization()})
 
 	_, err := resolver.Resolve(context.Background(), 17, nil, false)
@@ -174,7 +174,7 @@ func TestResolverRejectsUnavailableOrUnsafeTenantState(t *testing.T) {
 			want: ErrTenantSuspended,
 		},
 		{
-			name: "initializing organization requires ownership resolution for v10",
+			name: "initializing organization requires ownership resolution for v2",
 			store: resolverTestStore{
 				organizations: map[uuid.UUID]Organization{
 					organizationID: func() Organization {

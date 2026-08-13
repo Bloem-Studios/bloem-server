@@ -36,7 +36,7 @@ organization-private library creation.
   OPA may narrow access but cannot grant missing ownership or entitlement.
 - RLS activates only after repository-to-policy parity is executable and green.
 - Legacy v1 requests resolve through the default organization and the same
-  tenant-aware repositories used by v10.
+  tenant-aware repositories used by v2.
 
 ## Non-Goals
 
@@ -185,7 +185,7 @@ timing response may reveal a root that the organization cannot access.
 Legacy `/api/v1` account login, profile selection, PIN handling, refresh,
 catalog, playback, and administration keep their existing wire shapes. A v1
 session resolves to the default organization through the same tenant resolver
-and repositories as v10. The default organization's explicit entitlements make
+and repositories as v2. The default organization's explicit entitlements make
 current platform resources visible.
 
 There is no legacy bypass in repositories and no second enforcer. Compatibility

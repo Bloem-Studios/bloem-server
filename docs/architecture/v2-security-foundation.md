@@ -1,11 +1,11 @@
-# Vondel v10 security foundation
+# Vondel v2 security foundation
 
 Vondel retains the Silo-compatible `/api/v1` account login, profile picker,
 PIN unlock, token refresh, and administrative projection. The native
-`/api/v10` namespace is a separate additive boundary. This phase exposes only:
+`/api/v2` namespace is a separate additive boundary. This phase exposes only:
 
-- public `GET /api/v10/capabilities`; and
-- authenticated `GET /api/v10/organizations`.
+- public `GET /api/v2/capabilities`; and
+- authenticated `GET /api/v2/organizations`.
 
 The capability response is the source of truth. Direct-profile login, shared
 device pairing, and delegated administrative roles remain `false` until their
@@ -15,7 +15,7 @@ own reviewed phases ship. Clients must not infer features from version strings.
 
 - Existing v1 JWTs remain valid and carry no organization authority.
 - V1 ignores organization headers and resolves only the default organization.
-- V10 organization-bound middleware takes selection only from validated
+- V2 organization-bound middleware takes selection only from validated
   session claims, then rechecks the current organization, membership, policy
   revision, and security revision before attaching tenant context.
 - Missing, suspended, hidden, ambiguous, foreign, or stale tenant state fails
@@ -70,7 +70,7 @@ default organization.
 When multiple enabled legacy administrators exist, migrations deliberately set
 `ownership_resolution_required=true`, leave both owners null, and keep the
 default organization initializing. V1 login and profile switching remain
-available; native organization-bound v10 requests do not.
+available; native organization-bound v2 requests do not.
 
 ### Resolve multiple-admin ambiguity
 
@@ -154,13 +154,13 @@ rows before starting the previous binary.
 
 ## Release gate
 
-Before enabling v10 in an environment:
+Before enabling v2 in an environment:
 
 1. run migration up/down/up tests on a disposable database;
 2. run the v1 compatibility suite for setup, login, profile list, PIN unlock,
    admin projection, and refresh;
 3. confirm v1 tokens and payloads contain no tenant identity;
-4. confirm v10 has no write routes and advertises only implemented features;
+4. confirm v2 has no write routes and advertises only implemented features;
 5. resolve ownership ambiguity, if present; and
 6. retain the pre-migration backup until the rollback window is explicitly
    closed.

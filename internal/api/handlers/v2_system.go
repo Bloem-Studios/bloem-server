@@ -10,26 +10,26 @@ import (
 	"github.com/google/uuid"
 )
 
-type V10OrganizationStore interface {
+type V2OrganizationStore interface {
 	ListMemberships(context.Context, int) ([]tenancy.Membership, error)
 	GetOrganization(context.Context, uuid.UUID) (tenancy.Organization, error)
 }
 
-type V10SystemHandler struct {
-	organizations V10OrganizationStore
+type V2SystemHandler struct {
+	organizations V2OrganizationStore
 }
 
-func NewV10SystemHandler(organizations V10OrganizationStore) *V10SystemHandler {
-	return &V10SystemHandler{organizations: organizations}
+func NewV2SystemHandler(organizations V2OrganizationStore) *V2SystemHandler {
+	return &V2SystemHandler{organizations: organizations}
 }
 
-type v10CapabilitiesResponse struct {
-	API            string                `json:"api"`
-	IdentitySchema int                   `json:"identity_schema"`
-	Features       v10CapabilityFeatures `json:"features"`
+type v2CapabilitiesResponse struct {
+	API            string               `json:"api"`
+	IdentitySchema int                  `json:"identity_schema"`
+	Features       v2CapabilityFeatures `json:"features"`
 }
 
-type v10CapabilityFeatures struct {
+type v2CapabilityFeatures struct {
 	LegacySiloV1            bool `json:"legacy_silo_v1"`
 	OrganizationMemberships bool `json:"organization_memberships"`
 	DirectProfileLogin      bool `json:"direct_profile_login"`
@@ -37,22 +37,22 @@ type v10CapabilityFeatures struct {
 	DelegatedAdminRoles     bool `json:"delegated_admin_roles"`
 }
 
-func (h *V10SystemHandler) HandleCapabilities(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, v10CapabilitiesResponse{
-		API:            "v10",
+func (h *V2SystemHandler) HandleCapabilities(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, v2CapabilitiesResponse{
+		API:            "v2",
 		IdentitySchema: 1,
-		Features: v10CapabilityFeatures{
+		Features: v2CapabilityFeatures{
 			LegacySiloV1:            true,
 			OrganizationMemberships: true,
 		},
 	})
 }
 
-type v10OrganizationListResponse struct {
-	Organizations []v10Organization `json:"organizations"`
+type v2OrganizationListResponse struct {
+	Organizations []v2Organization `json:"organizations"`
 }
 
-type v10Organization struct {
+type v2Organization struct {
 	ID               string `json:"id"`
 	Slug             string `json:"slug"`
 	Name             string `json:"name"`
@@ -63,7 +63,7 @@ type v10Organization struct {
 	SecurityRevision int64  `json:"security_revision"`
 }
 
-func (h *V10SystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.Request) {
+func (h *V2SystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	if claims == nil || claims.UserID <= 0 {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
@@ -80,7 +80,7 @@ func (h *V10SystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	result := make([]v10Organization, 0, len(memberships))
+	result := make([]v2Organization, 0, len(memberships))
 	for _, membership := range memberships {
 		if membership.AccountID != claims.UserID || membership.Status != tenancy.MembershipActive {
 			continue
@@ -96,7 +96,7 @@ func (h *V10SystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.Re
 		if organization.Status != tenancy.OrganizationActive || organization.OwnerAccountID == nil || organization.ID != membership.OrganizationID {
 			continue
 		}
-		result = append(result, v10Organization{
+		result = append(result, v2Organization{
 			ID:               organization.ID.String(),
 			Slug:             organization.Slug,
 			Name:             organization.Name,
@@ -108,5 +108,5 @@ func (h *V10SystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.Re
 		})
 	}
 
-	writeJSON(w, http.StatusOK, v10OrganizationListResponse{Organizations: result})
+	writeJSON(w, http.StatusOK, v2OrganizationListResponse{Organizations: result})
 }

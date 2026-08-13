@@ -49,7 +49,7 @@ func runTenantMiddleware(t *testing.T, middleware func(http.Handler) http.Handle
 		gotClaims = GetClaims(r.Context())
 		w.WriteHeader(http.StatusNoContent)
 	})
-	req := httptest.NewRequest(http.MethodGet, "/api/v10/organizations", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v2/organizations", nil)
 	for name, value := range headers {
 		req.Header.Set(name, value)
 	}
@@ -61,7 +61,7 @@ func runTenantMiddleware(t *testing.T, middleware func(http.Handler) http.Handle
 	return rec.Code, gotTenant, gotTenantOK, gotClaims
 }
 
-func TestTenantRequireV10InjectsResolvedContext(t *testing.T) {
+func TestTenantRequireV2InjectsResolvedContext(t *testing.T) {
 	want := tenancy.Context{
 		OrganizationID:   uuid.New(),
 		MembershipID:     uuid.New(),
@@ -73,7 +73,7 @@ func TestTenantRequireV10InjectsResolvedContext(t *testing.T) {
 	middleware := NewTenantMiddleware(resolver)
 	claims := tenantClaims(want)
 
-	status, got, ok, gotClaims := runTenantMiddleware(t, middleware.RequireV10, claims, map[string]string{
+	status, got, ok, gotClaims := runTenantMiddleware(t, middleware.RequireV2, claims, map[string]string{
 		"X-Organization-Id": uuid.NewString(),
 	})
 	if status != http.StatusNoContent || !ok || got != want {
@@ -87,40 +87,40 @@ func TestTenantRequireV10InjectsResolvedContext(t *testing.T) {
 	}
 }
 
-func TestTenantRequireV10RejectsAbsentClaims(t *testing.T) {
+func TestTenantRequireV2RejectsAbsentClaims(t *testing.T) {
 	middleware := NewTenantMiddleware(&tenantResolverStub{})
-	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireV10, &auth.Claims{UserID: 41}, nil)
+	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireV2, &auth.Claims{UserID: 41}, nil)
 	if status != http.StatusUnauthorized || ok {
 		t.Fatalf("status/context = %d/%v, want 401/false", status, ok)
 	}
 }
 
-func TestTenantRequireV10RejectsForeignMembership(t *testing.T) {
+func TestTenantRequireV2RejectsForeignMembership(t *testing.T) {
 	want := tenancy.Context{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 41, PolicyRevision: 7, SecurityRevision: 11}
 	claims := tenantClaims(want)
 	claims.MembershipID = uuid.NewString()
 	middleware := NewTenantMiddleware(&tenantResolverStub{result: want})
-	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireV10, claims, nil)
+	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireV2, claims, nil)
 	if status != http.StatusUnauthorized || ok {
 		t.Fatalf("status/context = %d/%v, want 401/false", status, ok)
 	}
 }
 
-func TestTenantRequireV10RejectsStaleRevisions(t *testing.T) {
+func TestTenantRequireV2RejectsStaleRevisions(t *testing.T) {
 	want := tenancy.Context{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 41, PolicyRevision: 7, SecurityRevision: 11}
 	claims := tenantClaims(want)
 	claims.SecurityRevision--
 	middleware := NewTenantMiddleware(&tenantResolverStub{result: want})
-	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireV10, claims, nil)
+	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireV2, claims, nil)
 	if status != http.StatusUnauthorized || ok {
 		t.Fatalf("status/context = %d/%v, want 401/false", status, ok)
 	}
 }
 
-func TestTenantRequireV10RejectsSuspendedMembership(t *testing.T) {
+func TestTenantRequireV2RejectsSuspendedMembership(t *testing.T) {
 	want := tenancy.Context{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 41, PolicyRevision: 7, SecurityRevision: 11}
 	middleware := NewTenantMiddleware(&tenantResolverStub{err: tenancy.ErrTenantSuspended})
-	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireV10, tenantClaims(want), nil)
+	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireV2, tenantClaims(want), nil)
 	if status != http.StatusForbidden || ok {
 		t.Fatalf("status/context = %d/%v, want 403/false", status, ok)
 	}

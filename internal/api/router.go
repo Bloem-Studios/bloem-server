@@ -1737,7 +1737,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	if deps.DB != nil {
 		tenantMiddleware = apimw.NewTenantMiddleware(tenancy.NewResolver(tenancy.NewStore(deps.DB)))
 	}
-	mountV10(r, deps, authMiddleware, tenantMiddleware)
+	mountV2(r, deps, authMiddleware, tenantMiddleware)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.ServeHTTP)

@@ -67,7 +67,7 @@ func TestStoreRequireAccessFailsClosed(t *testing.T) {
 		{name: "suspended membership", tenant: withMembershipStatus(fixture.defaultTenant, tenancy.MembershipSuspended), root: fixture.platformFolder, err: ErrResourceHidden},
 		{name: "invited membership", tenant: withMembershipStatus(fixture.defaultTenant, tenancy.MembershipInvited), root: fixture.platformFolder, err: ErrResourceHidden},
 		{name: "suspended organization", tenant: withOrganizationStatus(fixture.defaultTenant, tenancy.OrganizationSuspended), root: fixture.platformFolder, err: ErrResourceHidden},
-		{name: "initializing v10 organization", tenant: asV10(withOrganizationStatus(fixture.defaultTenant, tenancy.OrganizationInitializing)), root: fixture.platformFolder, err: ErrResourceHidden},
+		{name: "initializing v2 organization", tenant: asV2(withOrganizationStatus(fixture.defaultTenant, tenancy.OrganizationInitializing)), root: fixture.platformFolder, err: ErrResourceHidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -292,7 +292,7 @@ func withOrganizationStatus(value tenancy.Context, status tenancy.OrganizationSt
 	return value
 }
 
-func asV10(value tenancy.Context) tenancy.Context {
+func asV2(value tenancy.Context) tenancy.Context {
 	value.Legacy = false
 	return value
 }

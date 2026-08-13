@@ -79,8 +79,8 @@ jobs:
       - name: Verify profile organization and access-group persistence
         run: go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization' -count=1 -v -timeout=30m
 
-      - name: Verify v1 compatibility and read-only v10 foundation
-        run: go test ./internal/api -run 'TestV1TenancyCompatibility|TestV10Foundation' -count=1 -v -timeout=30m
+      - name: Verify v1 compatibility and read-only v2 foundation
+        run: go test ./internal/api -run 'TestV1TenancyCompatibility|TestV2Foundation' -count=1 -v -timeout=30m
 
   go:
     name: Go

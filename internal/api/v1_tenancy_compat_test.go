@@ -177,19 +177,19 @@ func TestV1TenancyCompatibility(t *testing.T) {
 		t.Fatalf("legacy profile list during ambiguity = %d %s", legacyDuringAmbiguity.Code, legacyDuringAmbiguity.Body.String())
 	}
 
-	capabilities := performJSONRequest(t, router, http.MethodGet, "/api/v10/capabilities", "", "", nil)
+	capabilities := performJSONRequest(t, router, http.MethodGet, "/api/v2/capabilities", "", "", nil)
 	if capabilities.Code != http.StatusOK || strings.Contains(capabilities.Body.String(), `"direct_profile_login":true`) {
-		t.Fatalf("v10 capabilities = %d %s", capabilities.Code, capabilities.Body.String())
+		t.Fatalf("v2 capabilities = %d %s", capabilities.Code, capabilities.Body.String())
 	}
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
-		response := performJSONRequest(t, router, method, "/api/v10/organizations", `{}`, afterTokens.AccessToken, nil)
+		response := performJSONRequest(t, router, method, "/api/v2/organizations", `{}`, afterTokens.AccessToken, nil)
 		if response.Code != http.StatusMethodNotAllowed {
-			t.Errorf("%s /api/v10/organizations = %d, want 405", method, response.Code)
+			t.Errorf("%s /api/v2/organizations = %d, want 405", method, response.Code)
 		}
 	}
 }
 
-func TestV10FoundationCIRequiresDisposablePostgres(t *testing.T) {
+func TestV2FoundationCIRequiresDisposablePostgres(t *testing.T) {
 	type workflowStep struct {
 		Name string         `yaml:"name"`
 		Uses string         `yaml:"uses"`
@@ -244,7 +244,7 @@ func TestV10FoundationCIRequiresDisposablePostgres(t *testing.T) {
 		"go test ./internal/database -run TestTenantIdentityMigration",
 		"go test ./internal/tenancy",
 		"go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization'",
-		"go test ./internal/api -run 'TestV1TenancyCompatibility|TestV10Foundation'",
+		"go test ./internal/api -run 'TestV1TenancyCompatibility|TestV2Foundation'",
 	} {
 		if !strings.Contains(commands, required) {
 			t.Errorf("tenant-identity CI does not run %q", required)
