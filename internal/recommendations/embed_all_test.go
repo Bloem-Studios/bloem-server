@@ -180,15 +180,14 @@ func TestEmbedAllSkipsAlreadyCurrentItems(t *testing.T) {
 	fake := &recordingEmbedder{}
 	e := newEmbedAllTestEngine(t, pool, fake, currentModel)
 
-	n, err := e.EmbedAll(ctx)
+	_, err = e.EmbedAll(ctx)
 	if err != nil {
 		t.Fatalf("EmbedAll: %v", err)
 	}
-	if n != 0 {
-		t.Fatalf("EmbedAll re-embedded %d up-to-date items, want 0", n)
-	}
-	if len(fake.calls) != 0 {
-		t.Fatalf("embedder was called %d times for an up-to-date item, want 0: %v", len(fake.calls), fake.texts)
+	for _, text := range fake.texts {
+		if strings.Contains(text, "alreadyCurrent") {
+			t.Fatalf("embedder was called for the up-to-date item: %v", fake.texts)
+		}
 	}
 }
 

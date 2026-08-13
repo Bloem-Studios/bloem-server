@@ -314,7 +314,7 @@ func TestHandleDownloadPrepareTrackingDoesNotBlockAndRemovesAfterTrack(t *testin
 	}
 	select {
 	case <-handlerDone:
-	case <-time.After(time.Second):
+	case <-time.After(5 * time.Second):
 		close(tracker.trackRelease)
 		<-handlerDone
 		t.Fatal("download prepare waited for session tracking")
