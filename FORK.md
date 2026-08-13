@@ -30,6 +30,28 @@ Maintainer checkouts deliberately set `upstream`'s push URL to an invalid
 value. Nothing from this repository is pushed directly to Silo-Server;
 upstream contributions use a separate fork and pull request.
 
+## Taking upstream changes
+
+Update the tracked fork with a normal merge so both projects' ancestry remains
+visible and future merges can reuse Git's conflict resolutions:
+
+```sh
+git fetch --prune upstream
+git switch main
+git pull --ff-only origin main
+git merge --no-ff upstream/main
+```
+
+Run the complete verification suite before pushing the merge to `origin`. For
+an urgent isolated fix, cherry-pick the exact upstream commit onto a Vondel
+topic branch instead; the next full upstream merge will recognize that patch.
+Never force-push shared Vondel branches or squash imported upstream history.
+
+Vondel changes should remain focused downstream commits. Prefer additive
+packages, migrations, routes, and build-time branding over broad rewrites of
+upstream-owned files. When a merge conflict is unavoidable, preserve Silo's
+public compatibility surface and reapply the smallest Vondel delta.
+
 ## What Vondel adds
 
 - A private plugin SDK, catalog and first-party plugin set.
