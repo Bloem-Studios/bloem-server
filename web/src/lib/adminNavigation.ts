@@ -179,6 +179,13 @@ export const ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
         icon: Send,
         href: "/admin/requests",
       },
+      {
+        label: "Live TV",
+        description: "OTA tuners, channel lineup, guide sources, DVR, and transcoding.",
+        keywords: ["ota", "hdhomerun", "epg", "dvr", "guide", "schedules direct"],
+        icon: Radio,
+        href: "/admin/livetv",
+      },
     ],
   },
   {

@@ -62,6 +62,8 @@ type ItemsHandler struct {
 	// unbounded progress scan. It is the section subsystem's read-time fetcher and
 	// is independent of any virtual-library/hub-section exposure.
 	sectionsFetcher *sections.Fetcher
+	liveTVEnabled   bool
+	liveTV          *LiveTVHandler
 }
 
 // NewItemsHandler creates a new items handler.
@@ -130,7 +132,7 @@ func (h *ItemsHandler) userViews(ctx context.Context, session *Session) ([]baseI
 		return nil, err
 	}
 
-	items := make([]baseItemDTO, 0, len(libraries)+1)
+	items := make([]baseItemDTO, 0, len(libraries)+2)
 	if h.collectionsViewVisible(ctx, libraries) {
 		items = append(items, h.collectionsView())
 	}
@@ -139,12 +141,25 @@ func (h *ItemsHandler) userViews(ctx context.Context, session *Session) ([]baseI
 		h.rememberLibraryImages(library, dto.ID)
 		items = append(items, dto)
 	}
+	if h.liveTVEnabled && h.liveTV != nil {
+		items = append(items, h.liveTV.liveTVView())
+	}
 	return items, nil
+}
+
+// SetLiveTV wires the Live TV collection into compatible clients.
+func (h *ItemsHandler) SetLiveTV(handler *LiveTVHandler) {
+	h.liveTV = handler
+	h.liveTVEnabled = handler != nil
 }
 
 // HandleItems serves GET /Items.
 func (h *ItemsHandler) HandleItems(w http.ResponseWriter, r *http.Request) {
 	session := SessionFromContext(r.Context())
+	if isLiveTVViewID(newCaseInsensitiveQuery(r.URL.Query()).Get("ParentId")) && h.liveTV != nil {
+		h.liveTV.HandleChannels(w, r)
+		return
+	}
 	if session == nil {
 		writeError(w, http.StatusUnauthorized, "Unauthorized", "Missing authentication token")
 		return
@@ -307,6 +322,16 @@ func (h *ItemsHandler) HandleItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rawID := chi.URLParam(r, "id")
+	if isLiveTVViewID(rawID) && h.liveTV != nil {
+		writeJSON(w, http.StatusOK, h.liveTV.liveTVView())
+		return
+	}
+	if h.liveTV != nil {
+		if _, ok := h.liveTV.DecodeLiveTVChannelID(rawID); ok {
+			h.liveTV.HandleChannel(w, r)
+			return
+		}
+	}
 
 	// The synthetic Collections view is a fixed sentinel ID, not a codec-encoded
 	// one; clients fetch the CollectionFolder by ID (e.g. Infuse) before browsing

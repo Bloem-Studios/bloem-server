@@ -41,6 +41,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/invitations"
 	"github.com/Silo-Server/silo-server/internal/libraryingest"
 	"github.com/Silo-Server/silo-server/internal/literaryworks"
+	"github.com/Silo-Server/silo-server/internal/livetv"
 	"github.com/Silo-Server/silo-server/internal/logstream"
 	"github.com/Silo-Server/silo-server/internal/mail"
 	"github.com/Silo-Server/silo-server/internal/markers"
@@ -145,6 +146,7 @@ type Dependencies struct {
 	FFmpegLogSink                playback.FFmpegLogSink
 	RedisClient                  *redis.Client              // for session listing (may be nil)
 	TaskManager                  *taskmanager.TaskManager   // task manager (may be nil)
+	LiveTV                       *livetv.Service            // shared Live TV / OTA / DVR service (may be nil)
 	ArtifactManager              *downloads.ArtifactManager // download prepare-to-file pipeline (may be nil)
 	AdminJobCancelRegistry       *adminjob.CancelRegistry
 	IntroRepository              *intromarkers.Repository
@@ -579,11 +581,24 @@ func NewRouter(deps Dependencies) chi.Router {
 	// gates closure can reference it before that block runs.
 	var watchTogetherHandler *handlers.WatchTogetherHandler
 	var autoscanHandler *handlers.AutoscanHandler
+	var liveTVHandler *handlers.LiveTVHandler
 	var ebookReaderHandler *handlers.EbookReaderHandler
 	var ebookProgressStore *handlers.PGEbookReaderProgressStore
 	var ebookConfigStore *handlers.PGEbookReaderConfigStore
 	var ebookAnnotationStore *handlers.PGEbookReaderAnnotationStore
 	if deps.DB != nil {
+		liveTVHandler = handlers.NewLiveTVHandler(deps.LiveTV)
+		if liveTVHandler == nil {
+			liveTVHandler = handlers.NewLiveTVHandler(livetv.NewService(deps.DB))
+		}
+		if liveTVHandler != nil && deps.Config != nil {
+			liveTVHandler.JWTSecret = deps.Config.Auth.JWTSecret
+		}
+		if deps.LiveTV != nil {
+			deps.LiveTV.SetHistoryRecorder(handlers.NewLiveTVHistoryRecorder(
+				handlers.NewPGPlaybackAdminStore(deps.DB, deps.EventsHub),
+			))
+		}
 		ebookProgressStore = handlers.NewPGEbookReaderProgressStore(deps.DB)
 		ebookConfigStore = handlers.NewPGEbookReaderConfigStore(deps.DB)
 		ebookAnnotationStore = handlers.NewPGEbookReaderAnnotationStore(deps.DB)
@@ -2023,6 +2038,9 @@ func NewRouter(deps Dependencies) chi.Router {
 		// All remaining routes require auth.
 		if authMiddleware != nil {
 			r.Group(func(r chi.Router) {
+				if deps.Config != nil {
+					r.Use(authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret))
+				}
 				r.Use(authMiddleware.RequireAuth)
 				r.Use(optionalLegacyTenant(tenantMiddleware))
 				if demoGuard != nil {
@@ -2381,6 +2399,47 @@ func NewRouter(deps Dependencies) chi.Router {
 						r.Get("/mine", requestHandler.HandleListMine)
 						r.Get("/{id}", requestHandler.HandleGet)
 						r.Post("/{id}/cancel", requestHandler.HandleCancel)
+					})
+				}
+
+				if liveTVHandler != nil {
+					r.Route("/livetv", func(r chi.Router) {
+						r.Get("/channels", liveTVHandler.HandleListChannels)
+						r.Get("/guide", liveTVHandler.HandleListGuide)
+						r.Get("/programs/{programId}", liveTVHandler.HandleGetProgram)
+						r.Get("/recordings", liveTVHandler.HandleListRecordings)
+						r.Get("/series-rules", liveTVHandler.HandleListSeriesRules)
+
+						r.Group(func(r chi.Router) {
+							r.Use(apimw.RequireProfile)
+							r.Post("/channels/{channelId}/session", liveTVHandler.HandleStartChannelSession)
+							r.Get("/sessions/{sessionId}/stream", liveTVHandler.HandleSessionStream)
+							r.Method(http.MethodHead, "/sessions/{sessionId}/stream", http.HandlerFunc(liveTVHandler.HandleSessionStream))
+							r.Get("/live-hls/{playbackId}/{name}", liveTVHandler.HandleLiveHLS)
+							r.Post("/sessions/{sessionId}/heartbeat", liveTVHandler.HandleSessionHeartbeat)
+							r.Delete("/sessions/{sessionId}", liveTVHandler.HandleReleaseSession)
+							r.Post("/recordings", liveTVHandler.HandleScheduleRecording)
+							r.Delete("/recordings/{recordingId}", liveTVHandler.HandleCancelRecording)
+							r.Post("/series-rules", liveTVHandler.HandleCreateSeriesRule)
+							r.Delete("/series-rules/{ruleId}", liveTVHandler.HandleDeleteSeriesRule)
+						})
+
+						r.Group(func(r chi.Router) {
+							r.Use(apimw.RequireAdmin)
+							r.Get("/tuners", liveTVHandler.HandleListTuners)
+							r.Post("/tuners/discover", liveTVHandler.HandleDiscoverTuners)
+							r.Post("/tuners", liveTVHandler.HandleAddTuner)
+							r.Delete("/tuners/{tunerId}", liveTVHandler.HandleDeleteTuner)
+							r.Post("/tuners/{tunerId}/scan", liveTVHandler.HandleScanTuner)
+							r.Patch("/channels/{channelId}", liveTVHandler.HandlePatchChannel)
+							r.Get("/guide-sources", liveTVHandler.HandleListGuideSources)
+							r.Post("/guide-sources/schedules-direct/lineups", liveTVHandler.HandleLookupSchedulesDirectLineups)
+							r.Post("/guide-sources/xml-sync/lineups", liveTVHandler.HandleLookupXMLSyncLineups)
+							r.Post("/guide-sources", liveTVHandler.HandleCreateGuideSource)
+							r.Patch("/guide-sources/{sourceId}", liveTVHandler.HandleUpdateGuideSource)
+							r.Delete("/guide-sources/{sourceId}", liveTVHandler.HandleDeleteGuideSource)
+							r.Post("/guide-sources/{sourceId}/sync", liveTVHandler.HandleSyncGuideSource)
+						})
 					})
 				}
 
@@ -3360,7 +3419,17 @@ func optionalLegacyTenant(tenant *apimw.TenantMiddleware) func(http.Handler) htt
 	if tenant == nil {
 		return func(next http.Handler) http.Handler { return next }
 	}
-	return tenant.ResolveLegacy
+	resolved := tenant.ResolveLegacy
+	return func(next http.Handler) http.Handler {
+		withTenant := resolved(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if apimw.IsStreamTokenAuthorized(r.Context()) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			withTenant.ServeHTTP(w, r)
+		})
+	}
 }
 
 // pgSubtitleMediaResolver implements handlers.SubtitleMediaResolver using a direct PG query.

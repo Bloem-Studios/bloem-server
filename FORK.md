@@ -65,8 +65,9 @@ public compatibility surface and reapply the smallest Vondel delta.
 - Product identity: Vondel naming in user-facing copy.
 
 Administrative roles and mutation routes, direct-profile login, shared-device
-pairing, Live TV, OTA/DVR, EPG, plugin authorization, and adult-scene policy
-are not implemented by this foundation increment.
+pairing, plugin authorization, and adult-scene policy are separate increments.
+Live TV, OTA/DVR, and EPG are supplied by an attributed AGPL adaptation of the
+Prairie Server subsystem pinned in `docs/livetv/prairie-source-manifest.tsv`.
 
 ## Ongoing merge cost
 

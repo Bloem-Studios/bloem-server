@@ -118,7 +118,11 @@ type AuthHandler struct {
 	cfg           func() *config.Config
 	loginResolver loginResolver
 	authenticator *Authenticator
+	liveTVEnabled bool
 }
+
+// SetLiveTVEnabled advertises Live TV access when the shared service is wired.
+func (h *AuthHandler) SetLiveTVEnabled(enabled bool) { h.liveTVEnabled = enabled }
 
 // NewAuthHandler creates a new auth handler. The config provider is invoked
 // per request so compat setting changes apply without restart.
@@ -242,7 +246,7 @@ func (h *AuthHandler) userDTO(session *Session) userDTOResponse {
 			EnableSharedDeviceControl:       false,
 			EnableRemoteAccess:              true,
 			EnableLiveTVManagement:          false,
-			EnableLiveTVAccess:              false,
+			EnableLiveTVAccess:              h.liveTVEnabled,
 			EnableMediaPlayback:             true,
 			EnableAudioPlaybackTranscoding:  true,
 			EnableVideoPlaybackTranscoding:  true,
@@ -253,7 +257,7 @@ func (h *AuthHandler) userDTO(session *Session) userDTOResponse {
 			EnableSyncTranscoding:           false,
 			EnableMediaConversion:           false,
 			EnableAllDevices:                true,
-			EnableAllChannels:               false,
+			EnableAllChannels:               h.liveTVEnabled,
 			EnableAllFolders:                true,
 			InvalidLoginAttemptCount:        0,
 			LoginAttemptsBeforeLockout:      0,

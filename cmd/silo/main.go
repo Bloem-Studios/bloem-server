@@ -62,6 +62,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/jellycompat"
 	"github.com/Silo-Server/silo-server/internal/libraryingest"
 	"github.com/Silo-Server/silo-server/internal/literaryworks"
+	"github.com/Silo-Server/silo-server/internal/livetv"
 	"github.com/Silo-Server/silo-server/internal/logfilter"
 	"github.com/Silo-Server/silo-server/internal/logredact"
 	"github.com/Silo-Server/silo-server/internal/logstream"
@@ -1266,6 +1267,7 @@ func main() {
 	// Step 4b: Create metadata service and match worker (if needed).
 	var metadataService *metadata.MetadataService
 	var metadataImageCacheProcessor *metadata.ImageCacheProcessor
+	var sharedImageCacher *imagecache.Cacher
 	var personRefreshService *metadata.PersonRefreshService
 	var matchWorker *metadata.MatchWorker
 	var libraryIngestExecutor *libraryingest.Executor
@@ -1432,14 +1434,14 @@ func main() {
 		// Wire the image cacher whenever object storage is available so explicit
 		// admin image applies can succeed even if automatic metadata caching is off.
 		if deps.S3Public != nil {
-			imageCacher := imagecache.New(deps.S3Public)
-			imageCacher.SetArtworkRevisionTracker(catalog.NewArtworkRevisionTracker(deps.DB))
-			metadataService.SetImageCacher(imageCacher)
+			sharedImageCacher = imagecache.New(deps.S3Public)
+			sharedImageCacher.SetArtworkRevisionTracker(catalog.NewArtworkRevisionTracker(deps.DB))
+			metadataService.SetImageCacher(sharedImageCacher)
 			imageCacheJobs := metadata.NewImageCacheJobRepository(deps.DB)
 			metadataService.SetImageCacheJobEnqueuer(imageCacheJobs)
 			metadataImageCacheProcessor = metadata.NewImageCacheProcessorWithTargets(
 				imageCacheJobs,
-				imageCacher,
+				sharedImageCacher,
 				imageResolver,
 				metadata.ImageCacheProcessorTargets{
 					Items:               itemRepo,
@@ -1462,24 +1464,24 @@ func main() {
 				metadataImageCacheProcessor.SetEnabled(updated.Metadata.CacheImages)
 			})
 			if deps.Scanner != nil {
-				deps.Scanner.SetImageCacher(imageCacher)
+				deps.Scanner.SetImageCacher(sharedImageCacher)
 			}
 			if cfg.Metadata.CacheImages {
-				personRefreshService.SetImageCacher(imageCacher)
+				personRefreshService.SetImageCacher(sharedImageCacher)
 				personRefreshService.SetImageCacheJobEnqueuer(imageCacheJobs)
 				slog.Info("metadata image caching enabled")
 			}
 			if audiobookEnricher != nil {
-				audiobookEnricher.SetImageCacher(imageCacher)
+				audiobookEnricher.SetImageCacher(sharedImageCacher)
 				audiobookEnricher.SetImageCacheJobEnqueuer(imageCacheJobs)
 				audiobookEnricher.SetFFmpegPath(scanner.FFmpegPathFromFFprobe(scanner.FFprobePathFromFFmpeg(cfg.Playback.FFmpegPath)))
 			}
 			if ebookEnricher != nil {
-				ebookEnricher.SetImageCacher(imageCacher)
+				ebookEnricher.SetImageCacher(sharedImageCacher)
 				ebookEnricher.SetImageCacheJobEnqueuer(imageCacheJobs)
 			}
 			if mangaEnricher != nil {
-				mangaEnricher.SetImageCacher(imageCacher)
+				mangaEnricher.SetImageCacher(sharedImageCacher)
 				mangaEnricher.SetImageCacheJobEnqueuer(imageCacheJobs)
 			}
 		}
@@ -2062,6 +2064,52 @@ func main() {
 	}
 	brandingSvc := branding.NewService(settingsRepo, brandingStore)
 
+	// Live TV is a single shared service used by the native API, Jellyfin
+	// compatibility surface, guide sync, DVR processing, and HLS playback.
+	var liveTVSvc *livetv.Service
+	if deps.DB != nil {
+		liveTVSvc = livetv.NewService(deps.DB)
+		liveTVSettings := func(context.Context) livetv.TranscodeSettings {
+			current := cfg
+			if live := configWatcher.Config(); live != nil {
+				current = live
+			}
+			return livetv.TranscodeSettings{
+				HWAccel:       current.LiveTV.HWAccel,
+				HWDecode:      current.LiveTV.HWDecode,
+				EncoderPreset: current.LiveTV.EncoderPreset,
+				FrameRateCap:  current.LiveTV.FrameRateCap,
+				MaxResolution: current.LiveTV.MaxResolution,
+				PlayMethod:    current.LiveTV.PlayMethod,
+				MaxTranscodes: current.LiveTV.MaxTranscodes,
+			}
+		}
+		liveTVSvc.SetPlaybackBridge(livetv.NewHLSBridge(livetv.HLSBridgeOptions{
+			Root:       cfg.Playback.TranscodeDir,
+			FFmpegPath: cfg.Playback.FFmpegPath,
+			Settings:   liveTVSettings,
+		}))
+		dvrPath := cfg.LiveTV.DVRPath
+		if dvrPath == "" {
+			dvrPath = config.DefaultLiveTVDVRPath
+		}
+		liveTVSvc.SetRecorder(livetv.NewRecorder(liveTVSvc, dvrPath, cfg.Playback.FFmpegPath))
+		if sharedImageCacher != nil && deps.ImageResolver != nil {
+			liveTVArtwork := livetv.NewArtworkCache(deps.DB, sharedImageCacher, deps.ImageResolver)
+			if deps.S3Public != nil {
+				liveTVArtwork.SetObjectDeleter(deps.S3Public)
+			}
+			liveTVArtwork.SetEnabled(cfg.Metadata.CacheImages)
+			liveTVSvc.SetArtworkCache(liveTVArtwork)
+			configWatcher.OnChange(func(_, updated *config.Config) {
+				if updated != nil {
+					liveTVArtwork.SetEnabled(updated.Metadata.CacheImages)
+				}
+			})
+		}
+		deps.LiveTV = liveTVSvc
+	}
+
 	// Wire up task manager for admin task API.
 	if needsWorkers && deps.DB != nil {
 		triggerRepo := taskrepository.NewPgTriggerRepository(deps.DB)
@@ -2107,6 +2155,10 @@ func main() {
 			diagnosticsStore,
 		))
 		taskMgr.Register(tasks.NewPolicyDecisionLogCleanupTask(deps.DB, settingsRepo, policyPM))
+		if liveTVSvc != nil {
+			taskMgr.Register(tasks.NewSyncLiveTVGuideTask(liveTVSvc))
+			taskMgr.Register(tasks.NewLiveTVDVRTickTask(liveTVSvc))
+		}
 		if deps.FileRepo != nil {
 			// Download prepare-to-file pipeline (Phase 3): a durable, leased encode
 			// queue hosted on the task manager. Built here (before Start) and shared
@@ -2601,6 +2653,7 @@ func main() {
 			// transcode node that restarts can rebuild a jellycompat session.
 			RecipeNodeStore: noderecipe.NewStore(apiRedisClient, 0),
 			SessionSyncer:   deps.SessionSyncer,
+			LiveTV:          liveTVSvc,
 		}
 
 		// Wire direct dependencies when DB is available.

@@ -69,6 +69,10 @@ func NewAuthMiddleware(tv TokenValidator, sv SessionValidator, akv APIKeyValidat
 // parsed claims in the request context for downstream handlers.
 func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if IsStreamTokenAuthorized(r.Context()) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		token, ok := extractBearerToken(r)
 		if !ok {
 			writeUnauthorized(w, "Missing or malformed authorization header")

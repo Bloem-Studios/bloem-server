@@ -28,6 +28,10 @@ func NewViewerAccessMiddleware(resolver ViewerResolver) *ViewerAccessMiddleware 
 // RequireViewerAccess resolves viewer scope from auth + profile headers.
 func (m *ViewerAccessMiddleware) RequireViewerAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if IsStreamTokenAuthorized(r.Context()) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		claims := GetClaims(r.Context())
 		if claims == nil {
 			writeUnauthorized(w, "Authentication required")

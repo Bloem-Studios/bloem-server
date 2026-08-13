@@ -80,6 +80,10 @@ type TranscodeOpts struct {
 	// Empty preserves the legacy text path for callers minted before the field.
 	SubtitleCodec   string
 	AudioTrackIndex int // -1 = default (first track), >= 0 = specific track
+	// SourceAudioCodec and SourceAudioChannels describe the mapped source track.
+	// Live TV uses them to avoid unsafe lossless-surround conversions and upmixing.
+	SourceAudioCodec    string
+	SourceAudioChannels int
 	// TargetAudioChannels selects mono (1), stereo (2/default), or 5.1 (6+)
 	// output. Ignored for copy/passthrough audio targets.
 	TargetAudioChannels int
@@ -89,9 +93,12 @@ type TranscodeOpts struct {
 	TargetBitrateKbps      int     // max video bitrate in kbps; 0 = CRF-only (no cap)
 	TotalDuration          float64 // total media duration in seconds (for VOD manifest)
 	FastStart              bool    // use superfast preset for faster first-segment production
-	NodeType               string
-	ExecutionMode          string
-	FFmpegLogSink          FFmpegLogSink
+	// EncoderPreset lets live sessions trade compression for realtime latency.
+	// Empty retains the historical VOD behavior.
+	EncoderPreset string
+	NodeType      string
+	ExecutionMode string
+	FFmpegLogSink FFmpegLogSink
 }
 
 // DV7ToHDR10BitstreamFilter strips Dolby Vision RPU metadata during a
@@ -669,14 +676,44 @@ func appendHWAccelArgs(args []string, opts TranscodeOpts) []string {
 // videoPreset returns an encoder-compatible preset. CPU encoders use a faster
 // fast-start preset for initial playback, while QSV stays on the fastest
 // preset family it supports.
+const (
+	EncoderPresetLowLatency = "low_latency"
+	EncoderPresetBalanced   = "balanced"
+	EncoderPresetQuality    = "quality"
+)
+
 func videoPreset(opts TranscodeOpts, hwAccel string) string {
 	if hwAccel == "qsv" {
+		return "veryfast"
+	}
+	switch opts.EncoderPreset {
+	case EncoderPresetLowLatency:
+		return "ultrafast"
+	case EncoderPresetBalanced:
 		return "veryfast"
 	}
 	if opts.FastStart {
 		return "superfast"
 	}
 	return "veryfast"
+}
+
+func nvencPresetArgs(preset string) []string {
+	switch preset {
+	case EncoderPresetLowLatency:
+		return []string{"-preset", "p2", "-tune", "ll"}
+	case EncoderPresetBalanced:
+		return []string{"-preset", "p4"}
+	default:
+		return nil
+	}
+}
+
+func x264LatencyArgs(preset string) []string {
+	if preset == EncoderPresetLowLatency {
+		return []string{"-tune", "zerolatency"}
+	}
+	return nil
 }
 
 // appendVideoArgs adds video codec arguments.
@@ -729,6 +766,7 @@ func appendVideoArgs(args []string, opts TranscodeOpts) []string {
 		}
 	case opts.HWAccel == transcodeHWNVENC && codec == transcodeCodecH264:
 		args = append(args, "-c:v", "h264_nvenc", "-rc:v", "vbr")
+		args = append(args, nvencPresetArgs(opts.EncoderPreset)...)
 		if hasBitrateCap {
 			args = append(args,
 				"-b:v", fmt.Sprintf("%dk", opts.TargetBitrateKbps),
@@ -739,6 +777,7 @@ func appendVideoArgs(args []string, opts TranscodeOpts) []string {
 		}
 	case opts.HWAccel == transcodeHWNVENC && codec == "hevc":
 		args = append(args, "-c:v", "hevc_nvenc", "-rc:v", "vbr")
+		args = append(args, nvencPresetArgs(opts.EncoderPreset)...)
 		if hasBitrateCap {
 			args = append(args,
 				"-b:v", fmt.Sprintf("%dk", opts.TargetBitrateKbps),
@@ -757,6 +796,7 @@ func appendVideoArgs(args []string, opts TranscodeOpts) []string {
 			args = append(args, "-c:v", "libx264", "-preset", preset, "-crf", "23",
 				"-pix_fmt", "yuv420p", "-profile:v", "high", "-level", "4.1")
 		}
+		args = append(args, x264LatencyArgs(opts.EncoderPreset)...)
 		if hasBitrateCap {
 			args = append(args,
 				"-maxrate", fmt.Sprintf("%dk", opts.TargetBitrateKbps),
@@ -833,7 +873,8 @@ func appendAudioArgs(args []string, opts TranscodeOpts) []string {
 		// Legacy Dolby Digital; universal AVR support.
 		args = append(args, "-c:a", "ac3", "-b:a", "448k")
 	default:
-		channels, bitrateKbps := resolvedAACOutputV3(opts.TargetAudioChannels, opts.TargetAudioBitrateKbps)
+		channels := EffectiveAudioChannels(opts.SourceAudioChannels, opts.TargetAudioChannels, opts.SourceAudioCodec)
+		_, bitrateKbps := resolvedAACOutputV3(channels, opts.TargetAudioBitrateKbps)
 		args = append(args, "-c:a", "aac", "-b:a", strconv.Itoa(bitrateKbps)+"k", "-ac", strconv.Itoa(channels))
 	}
 

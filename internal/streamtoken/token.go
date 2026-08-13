@@ -8,6 +8,9 @@ import (
 )
 
 const (
+	// QueryParam carries a signed, session-bound stream token on integrated
+	// playback delivery URLs.
+	QueryParam = "st"
 	// PlayMethodDownload identifies a token minted only after the API has
 	// authorized a file download. Proxy download routes reject playback tokens.
 	PlayMethodDownload = "download"

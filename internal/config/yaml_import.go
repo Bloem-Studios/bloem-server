@@ -219,6 +219,17 @@ func YAMLToSettingsMap(path string) (map[string]string, error) {
 	}
 	m["playback.transcode_enabled"] = strconv.FormatBool(raw.Playback.TranscodeEnabled)
 
+	setIfNonEmpty(m, "livetv.dvr_path", raw.LiveTV.DVRPath)
+	if raw.LiveTV.MaxTranscodes != 0 {
+		m["livetv.max_transcodes"] = strconv.Itoa(raw.LiveTV.MaxTranscodes)
+	}
+	setIfNonEmpty(m, "livetv.hw_accel", raw.LiveTV.HWAccel)
+	setIfNonEmpty(m, "livetv.hw_decode", raw.LiveTV.HWDecode)
+	setIfNonEmpty(m, "livetv.encoder_preset", raw.LiveTV.EncoderPreset)
+	setIfNonEmpty(m, "livetv.framerate_cap", raw.LiveTV.FrameRateCap)
+	setIfNonEmpty(m, "livetv.max_resolution", raw.LiveTV.MaxResolution)
+	setIfNonEmpty(m, "livetv.play_method", raw.LiveTV.PlayMethod)
+
 	// Redis
 	m["redis.url"] = raw.Redis.URL
 	// Redis Sentinel

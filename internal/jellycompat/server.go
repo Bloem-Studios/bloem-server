@@ -13,6 +13,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/config"
+	"github.com/Silo-Server/silo-server/internal/livetv"
 	"github.com/Silo-Server/silo-server/internal/nodepool"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	"github.com/Silo-Server/silo-server/internal/scantrigger"
@@ -111,6 +112,7 @@ type Dependencies struct {
 	SubtitleRepo subtitles.Repository // optional; downloaded subtitle support
 	S3Client     subtitles.S3Client   // optional
 	S3Bucket     string               // optional
+	LiveTV       *livetv.Service      // optional native Live TV / OTA / DVR service
 }
 
 // CurrentConfig returns the live config when hot reload is wired, falling

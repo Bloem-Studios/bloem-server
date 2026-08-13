@@ -180,6 +180,29 @@ type PlaybackConfig struct {
 	TranscodeEnabled             bool   `yaml:"transcode_enabled"`
 }
 
+// LiveTVConfig holds Live TV / OTA / DVR delivery settings.
+type LiveTVConfig struct {
+	DVRPath       string `yaml:"dvr_path"`
+	MaxTranscodes int    `yaml:"max_transcodes"`
+	HWAccel       string `yaml:"hw_accel"`
+	HWDecode      string `yaml:"hw_decode"`
+	EncoderPreset string `yaml:"encoder_preset"`
+	FrameRateCap  string `yaml:"framerate_cap"`
+	MaxResolution string `yaml:"max_resolution"`
+	PlayMethod    string `yaml:"play_method"`
+}
+
+const (
+	DefaultLiveTVDVRPath       = "/var/lib/vondel/dvr"
+	DefaultLiveTVMaxTranscodes = 3
+	DefaultLiveTVHWAccel       = "auto"
+	DefaultLiveTVHWDecode      = "auto"
+	DefaultLiveTVEncoderPreset = "low_latency"
+	DefaultLiveTVFrameRateCap  = "source"
+	DefaultLiveTVMaxResolution = "source"
+	DefaultLiveTVPlayMethod    = "auto"
+)
+
 // RedisConfig holds Redis connection settings.
 type RedisConfig struct {
 	URL               string   `yaml:"url"`
@@ -361,6 +384,7 @@ type Config struct {
 	Matcher              MatcherConfig              `yaml:"matcher"`
 	Metadata             MetadataConfig             `yaml:"-"`
 	Playback             PlaybackConfig             `yaml:"playback"`
+	LiveTV               LiveTVConfig               `yaml:"livetv"`
 	Redis                RedisConfig                `yaml:"redis"`
 	RateLimit            RateLimitConfig            `yaml:"rate_limiting"`
 	Auth                 AuthConfig                 `yaml:"-"`
@@ -386,6 +410,7 @@ type configRaw struct {
 	Scanner        scannerConfigRaw        `yaml:"scanner"`
 	Matcher        MatcherConfig           `yaml:"matcher"`
 	Playback       PlaybackConfig          `yaml:"playback"`
+	LiveTV         LiveTVConfig            `yaml:"livetv"`
 	Redis          RedisConfig             `yaml:"redis"`
 	RateLimit      RateLimitConfig         `yaml:"rate_limiting"`
 	Auth           authConfigRaw           `yaml:"auth"`
@@ -501,6 +526,16 @@ func setDefaults() *configRaw {
 			ChapterThumbnailExecution:    "local",
 			ChapterThumbnailNodeCapacity: 1,
 			TranscodeEnabled:             true,
+		},
+		LiveTV: LiveTVConfig{
+			DVRPath:       DefaultLiveTVDVRPath,
+			MaxTranscodes: DefaultLiveTVMaxTranscodes,
+			HWAccel:       DefaultLiveTVHWAccel,
+			HWDecode:      DefaultLiveTVHWDecode,
+			EncoderPreset: DefaultLiveTVEncoderPreset,
+			FrameRateCap:  DefaultLiveTVFrameRateCap,
+			MaxResolution: DefaultLiveTVMaxResolution,
+			PlayMethod:    DefaultLiveTVPlayMethod,
 		},
 		RateLimit: RateLimitConfig{
 			Enabled: true,
