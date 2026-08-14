@@ -1364,6 +1364,16 @@ func (h *SettingValuesHandler) identityForSessionKey(
 
 	identity := userstore.SettingIdentity{Key: key, Scope: scope}
 
+	// No definition uses the account scope today, but the scope arrives from
+	// the query string: the moment one exists, a session bound to a single
+	// profile would be reading and writing account-wide state through a route
+	// the inventory already admits. Refuse it here so that day changes nothing.
+	if scope == settingscontract.ScopeAccount && apimw.IsDirectProfileSession(r) {
+		writeError(w, http.StatusForbidden, "forbidden",
+			"Direct profile sessions cannot use account-scoped settings")
+		return userstore.SettingIdentity{}, false
+	}
+
 	// The profile defaults to the session header, so an ordinary caller cannot
 	// write another's settings by naming it. A household parent may name a
 	// different profile on their own account — authorized below.

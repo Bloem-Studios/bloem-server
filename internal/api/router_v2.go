@@ -69,10 +69,11 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 		peopleHandler = handlers.NewV2AdminPeopleHandlerWithWake(peopleService, deps.AdminPeopleWorker)
 	}
 	system := handlers.NewV2SystemHandler(store)
-	// Direct profile login is wired whenever the auth stack has a database:
-	// the router installs the credential service and the /auth/profile-login
-	// route under exactly that condition.
-	system.SetDirectProfileLoginAvailable(deps.DB != nil)
+	// Advertise from the condition that actually mounts /auth/profile-login:
+	// the auth stack builds only with both a database and a config, and a
+	// capability that disagrees with the route table is worse than no
+	// capability at all.
+	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
 	mountV2Routes(r, system, session, authMW, adminMW, platformHandler, peopleHandler, organizationHandler, explainHandler)
 }
 
