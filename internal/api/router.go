@@ -2290,6 +2290,7 @@ func NewRouter(deps Dependencies) chi.Router {
 						household.Delete("/{id}", profileHandler.HandleDeleteProfile)
 
 						own := r.With(apimw.RequireOwnDirectProfile("id"))
+						own.Get("/{id}", profileHandler.HandleGetProfile)
 						own.Put("/{id}", profileHandler.HandleUpdateProfile)
 						own.Put("/{id}/avatar", profileHandler.HandleUploadAvatar)
 						own.Delete("/{id}/avatar", profileHandler.HandleDeleteAvatar)

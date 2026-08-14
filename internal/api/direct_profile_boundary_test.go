@@ -153,15 +153,6 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 	})
 
 	// The session still works as itself.
-	t.Run("own profile update is allowed", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodPut,
-			"/api/v1/profiles/"+readerProfileID, `{"quality_preference":"1080p"}`, directToken, nil)
-		if response.Code == http.StatusForbidden {
-			t.Fatalf("own profile update = %d %s, want the direct session to act as itself",
-				response.Code, response.Body.String())
-		}
-	})
-
 	// The refusal is real, not just a status code: the sibling is unchanged.
 	t.Run("a refused sibling mutation changes nothing", func(t *testing.T) {
 		var before string
@@ -199,7 +190,7 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 			{http.MethodGet, "/api/v1/playback/capability", "", http.StatusOK},
 			// A session that does not exist must be answered on the merits by
 			// the handler, which is what proves the boundary let it through.
-			{http.MethodPost, "/api/v1/playback/session-that-does-not-exist/progress", `{"position_seconds":12}`, http.StatusNotFound},
+			{http.MethodPost, "/api/v1/playback/session-that-does-not-exist/progress", `{"position":12}`, http.StatusNotFound},
 			{http.MethodDelete, "/api/v1/playback/session-that-does-not-exist", "", http.StatusNotFound},
 			{http.MethodGet, "/api/v1/stream/session-that-does-not-exist", "", http.StatusNotFound},
 		} {
@@ -225,6 +216,53 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		}
 		if stored != "720p" {
 			t.Fatalf("quality preference = %q, want the update to have landed", stored)
+		}
+	})
+
+	// A bound profile can read its own record, which is how a freshly logged
+	// in client learns its name, avatar, and preferences.
+	t.Run("own profile record is readable", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet,
+			"/api/v1/profiles/"+readerProfileID, "", directToken, nil)
+		if response.Code != http.StatusOK {
+			t.Fatalf("own profile read = %d %s, want %d", response.Code, response.Body.String(), http.StatusOK)
+		}
+		var profile struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(response.Body.Bytes(), &profile); err != nil {
+			t.Fatalf("decode own profile: %v", err)
+		}
+		if profile.ID != readerProfileID || profile.Name != "Reader" {
+			t.Fatalf("own profile = %#v, want the bound profile's record", profile)
+		}
+	})
+
+	// The PIN gates profile switching for account sessions, so a profile
+	// password may neither exercise it nor replace it.
+	t.Run("the profile PIN is out of reach", func(t *testing.T) {
+		var before string
+		if err := pool.QueryRow(ctx, `SELECT pin_hash FROM user_profiles WHERE user_id = $1 AND id = $2`,
+			accountID, readerProfileID).Scan(&before); err != nil {
+			t.Fatalf("read pin hash: %v", err)
+		}
+		for name, probe := range map[string]struct{ method, path, body string }{
+			"verifying its own PIN": {http.MethodPost, "/api/v1/profiles/" + readerProfileID + "/verify-pin", `{"pin":"2468"}`},
+			"setting its own PIN":   {http.MethodPut, "/api/v1/profiles/" + readerProfileID, `{"pin":"1234"}`},
+		} {
+			response := performJSONRequest(t, router, probe.method, probe.path, probe.body, directToken, nil)
+			if response.Code != http.StatusForbidden {
+				t.Errorf("%s = %d %s, want %d", name, response.Code, response.Body.String(), http.StatusForbidden)
+			}
+		}
+		var after string
+		if err := pool.QueryRow(ctx, `SELECT pin_hash FROM user_profiles WHERE user_id = $1 AND id = $2`,
+			accountID, readerProfileID).Scan(&after); err != nil {
+			t.Fatalf("re-read pin hash: %v", err)
+		}
+		if after != before {
+			t.Fatal("a refused PIN change altered the stored hash")
 		}
 	})
 
@@ -366,8 +404,14 @@ func TestDirectProfileSessionIsRejectedOnV1WhenItsTenancyGoesStale(t *testing.T)
 	directToken := decodeLogin(t, login).AccessToken
 
 	// Before anything moves, a v1 profile-scoped route resolves normally.
-	if before := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/values", "", directToken, nil); before.Code == http.StatusUnauthorized {
-		t.Fatalf("v1 request before rotation = %d %s, want it to resolve", before.Code, before.Body.String())
+	before := performJSONRequest(t, router, http.MethodGet,
+		"/api/v1/settings/effective?keys=player.playback_speed", "", directToken, nil)
+	if before.Code != http.StatusOK {
+		t.Fatalf("v1 request before rotation = %d %s, want %d",
+			before.Code, before.Body.String(), http.StatusOK)
+	}
+	if !strings.Contains(before.Body.String(), "player.playback_speed") {
+		t.Fatalf("v1 response before rotation = %s, want the requested setting", before.Body.String())
 	}
 
 	// Rotating the organization's policy revision leaves the token asserting a

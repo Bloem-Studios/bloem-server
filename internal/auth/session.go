@@ -49,59 +49,96 @@ func (r *SessionRepository) CreateProfileSessionIfCurrent(
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Locking is what closes the window between verifying a subject and
-	// inserting the session it authorizes.
+	// inserting the session it authorizes: this session asserts the account is
+	// enabled and the organization and membership are active at the revisions
+	// it carries, so none of that may change underneath it.
 	//
-	// The profile row is taken FOR UPDATE, because a concurrent credential
-	// reset takes the same lock and one of the two then observes the other's
-	// committed revision. The account, organization, and membership rows are
-	// taken FOR SHARE: this session asserts their state is current, so a
-	// concurrent disablement, suspension, or revision rotation must not commit
-	// underneath it — but two logins make no conflicting claim about them, and
-	// FOR UPDATE there would serialize every login in an organization behind
-	// one row.
-	var current SessionSubject
-	var enabled bool
-	var organizationStatus, membershipStatus string
-	err = tx.QueryRow(ctx, `
-		SELECT profiles.user_id,
-		       profiles.id,
-		       profiles.organization_id::text,
-		       memberships.id::text,
-		       organizations.policy_revision,
-		       memberships.security_revision,
-		       profiles.credential_revision,
-		       users.enabled,
-		       organizations.status,
-		       memberships.status
-		FROM user_profiles profiles
-		JOIN users ON users.id = profiles.user_id
-		JOIN organizations ON organizations.id = profiles.organization_id
-		JOIN organization_memberships memberships
-		  ON memberships.organization_id = profiles.organization_id
-		 AND memberships.account_id = profiles.user_id
-		WHERE profiles.user_id = $1 AND profiles.id = $2
-		FOR UPDATE OF profiles
-		FOR SHARE OF users, organizations, memberships`, subject.AccountID, subject.ProfileID).Scan(
-		&current.AccountID,
-		&current.ProfileID,
-		&current.OrganizationID,
-		&current.MembershipID,
-		&current.PolicyRevision,
-		&current.SecurityRevision,
-		&current.CredentialRevision,
-		&enabled,
-		&organizationStatus,
-		&membershipStatus,
+	// The rows are taken one statement at a time, in the order organization,
+	// account, membership, profile. That order is the one the tenancy writers
+	// already use — administration locks a membership before the profile it
+	// moves — and taking them in a single joined statement would acquire them
+	// in scan order instead, which is profile-first and deadlocks against
+	// exactly that writer.
+	//
+	// The tenancy rows are taken FOR SHARE rather than FOR UPDATE: this
+	// session only asserts their state, so concurrent logins make no
+	// conflicting claim and must not serialize behind one organization row.
+	// The profile is taken FOR UPDATE because a credential reset contends for
+	// it directly.
+	var (
+		organizationID   string
+		policyRevision   int64
+		organizationStat string
 	)
+	err = tx.QueryRow(ctx, `
+		SELECT id::text, policy_revision, status
+		FROM organizations WHERE id::text = $1
+		FOR SHARE`, subject.OrganizationID).Scan(&organizationID, &policyRevision, &organizationStat)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrSessionRevoked
 		}
-		return fmt.Errorf("load current direct profile subject: %w", err)
+		return fmt.Errorf("lock organization for direct profile session: %w", err)
 	}
-	current.Device = subject.Device
-	current.AuthMethod = subject.AuthMethod
-	if current != subject || !enabled || organizationStatus != statusActive || membershipStatus != statusActive {
+
+	var accountID int
+	var enabled bool
+	err = tx.QueryRow(ctx, `
+		SELECT id, enabled FROM users WHERE id = $1
+		FOR SHARE`, subject.AccountID).Scan(&accountID, &enabled)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSessionRevoked
+		}
+		return fmt.Errorf("lock account for direct profile session: %w", err)
+	}
+
+	var (
+		membershipID     string
+		securityRevision int64
+		membershipStat   string
+	)
+	err = tx.QueryRow(ctx, `
+		SELECT id::text, security_revision, status
+		FROM organization_memberships
+		WHERE organization_id::text = $1 AND account_id = $2
+		FOR SHARE`, subject.OrganizationID, subject.AccountID).
+		Scan(&membershipID, &securityRevision, &membershipStat)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSessionRevoked
+		}
+		return fmt.Errorf("lock membership for direct profile session: %w", err)
+	}
+
+	var profileID, profileOrganizationID string
+	var credentialRevision int64
+	err = tx.QueryRow(ctx, `
+		SELECT id, organization_id::text, credential_revision
+		FROM user_profiles WHERE user_id = $1 AND id = $2
+		FOR UPDATE`, subject.AccountID, subject.ProfileID).
+		Scan(&profileID, &profileOrganizationID, &credentialRevision)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSessionRevoked
+		}
+		return fmt.Errorf("lock profile for direct profile session: %w", err)
+	}
+
+	current := SessionSubject{
+		AccountID:          accountID,
+		ProfileID:          profileID,
+		OrganizationID:     profileOrganizationID,
+		MembershipID:       membershipID,
+		PolicyRevision:     policyRevision,
+		SecurityRevision:   securityRevision,
+		CredentialRevision: credentialRevision,
+		Device:             subject.Device,
+		AuthMethod:         subject.AuthMethod,
+	}
+	if current != subject || !enabled ||
+		organizationID != subject.OrganizationID ||
+		organizationStat != statusActive || membershipStat != statusActive {
 		return ErrSessionRevoked
 	}
 

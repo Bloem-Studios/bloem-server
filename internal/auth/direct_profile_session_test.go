@@ -565,16 +565,22 @@ func TestDirectProfileLoginLosesRaceWithSubjectChanges(t *testing.T) {
 			}
 			service, _, sessions := newDirectProfileService(t, credentials.pool, credentials.ProfileCredentialService)
 
-			// Hold the profile row so the login's insert has to queue, then
-			// change the subject fact and commit while it waits.
+			// Apply the change without committing. The row it touches is one
+			// the login must read under a share lock, so the login parks
+			// behind it; committing then releases a login that has to observe
+			// the new value.
+			//
+			// The writer deliberately holds only the row it is changing. A
+			// blocker that grabbed the profile row first would be taking locks
+			// in the reverse of the order this repository uses, and would
+			// deadlock rather than test anything.
 			blocker, err := credentials.pool.Begin(ctx)
 			if err != nil {
 				t.Fatalf("begin blocker: %v", err)
 			}
 			defer func() { _ = blocker.Rollback(ctx) }()
-			if _, err := blocker.Exec(ctx,
-				`SELECT 1 FROM user_profiles WHERE user_id = $1 AND id = $2 FOR UPDATE`, accountID, profileID); err != nil {
-				t.Fatalf("lock profile row: %v", err)
+			if _, err := blocker.Exec(ctx, mutation, accountID); err != nil {
+				t.Fatalf("apply %s: %v", name, err)
 			}
 
 			loginErr := make(chan error, 1)
@@ -584,9 +590,6 @@ func TestDirectProfileLoginLosesRaceWithSubjectChanges(t *testing.T) {
 			}()
 			waitForBlockedBackend(t, ctx, credentials.pool)
 
-			if _, err := blocker.Exec(ctx, mutation, accountID); err != nil {
-				t.Fatalf("apply %s: %v", name, err)
-			}
 			if err := blocker.Commit(ctx); err != nil {
 				t.Fatalf("commit %s: %v", name, err)
 			}
@@ -604,5 +607,54 @@ func TestDirectProfileLoginLosesRaceWithSubjectChanges(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Session creation and profile-group administration touch the same membership
+// and profile rows. Administration locks the membership first, so session
+// creation must too: taking them in the opposite order lets the two form a
+// cycle and aborts one of them with a deadlock instead of doing its work.
+func TestDirectProfileLoginDoesNotDeadlockWithMembershipFirstWriters(t *testing.T) {
+	ctx := context.Background()
+	credentials := newProfileCredentialService(t)
+	accountID, profileID := newProfileCredentialFixture(t, credentials.pool, "deadlock-order")
+	const email = "deadlock-order@example.test"
+	if err := credentials.Set(ctx, accountID, profileID, email, "profile-password"); err != nil {
+		t.Fatalf("Set credential: %v", err)
+	}
+	service, _, _ := newDirectProfileService(t, credentials.pool, credentials.ProfileCredentialService)
+
+	// An administrative writer in the established order: membership, then the
+	// profile it is moving.
+	writer, err := credentials.pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin writer: %v", err)
+	}
+	defer func() { _ = writer.Rollback(ctx) }()
+	if _, err := writer.Exec(ctx, `
+		SELECT 1 FROM organization_memberships WHERE account_id = $1 FOR UPDATE`, accountID); err != nil {
+		t.Fatalf("lock membership: %v", err)
+	}
+
+	loginErr := make(chan error, 1)
+	go func() {
+		_, _, err := service.LoginProfile(ctx, email, "profile-password", DeviceClaim{ID: "deadlock-device"})
+		loginErr <- err
+	}()
+	waitForBlockedBackend(t, ctx, credentials.pool)
+
+	// The writer now takes the profile row, which the login must not already
+	// be holding. If session creation locked the profile first, this is where
+	// the cycle would close.
+	if _, err := writer.Exec(ctx, `
+		SELECT 1 FROM user_profiles WHERE user_id = $1 AND id = $2 FOR UPDATE`, accountID, profileID); err != nil {
+		t.Fatalf("writer could not take the profile row in order: %v", err)
+	}
+	if err := writer.Commit(ctx); err != nil {
+		t.Fatalf("commit writer: %v", err)
+	}
+
+	if err := <-loginErr; err != nil {
+		t.Fatalf("LoginProfile = %v, want it to succeed once the writer committed", err)
 	}
 }

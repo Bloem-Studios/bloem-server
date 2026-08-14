@@ -93,7 +93,7 @@ func TestDirectProfileSessionCannotTouchSiblingPlaybackSession(t *testing.T) {
 	// Replan is absent deliberately: it already compares the profile as well as
 	// the account, so it was never part of this hole.
 	for name, probe := range map[string]struct{ method, path, body string }{
-		"progress":  {http.MethodPost, "/api/v1/playback/" + theirs.ID + "/progress", `{"position_seconds":42}`},
+		"progress":  {http.MethodPost, "/api/v1/playback/" + theirs.ID + "/progress", `{"position":42}`},
 		"stop":      {http.MethodDelete, "/api/v1/playback/" + theirs.ID, ""},
 		"control":   {http.MethodGet, "/api/v1/playback/sessions/" + theirs.ID + "/control/ws", ""},
 		"stream":    {http.MethodGet, "/api/v1/stream/" + theirs.ID, ""},
@@ -115,12 +115,21 @@ func TestDirectProfileSessionCannotTouchSiblingPlaybackSession(t *testing.T) {
 		t.Fatalf("sibling session was destroyed by a refused request: %v", err)
 	}
 
-	t.Run("own session is not refused", func(t *testing.T) {
+	t.Run("own session takes the progress", func(t *testing.T) {
 		response := performJSONRequest(t, router, http.MethodPost,
-			"/api/v1/playback/"+mine.ID+"/progress", `{"position_seconds":42}`, readerToken, nil)
-		if response.Code == http.StatusForbidden {
-			t.Fatalf("own session progress = 403 %s, want the bound profile to control its own playback",
-				response.Body.String())
+			"/api/v1/playback/"+mine.ID+"/progress", `{"position":42}`, readerToken, nil)
+		if response.Code != http.StatusOK && response.Code != http.StatusNoContent {
+			t.Fatalf("own session progress = %d %s, want the bound profile to control its own playback",
+				response.Code, response.Body.String())
+		}
+		// The refusals above are only meaningful if the permitted call did
+		// something: assert the position actually moved.
+		updated, err := sessionMgr.GetSession(mine.ID)
+		if err != nil {
+			t.Fatalf("reload own session: %v", err)
+		}
+		if updated.Position < 42 {
+			t.Fatalf("own session position = %v, want the reported progress to have landed", updated.Position)
 		}
 	})
 }

@@ -233,6 +233,43 @@ func (h *ProfileHandler) HandleListProfiles(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// HandleGetProfile handles GET /profiles/{id}.
+//
+// The household list at GET /profiles is account-scoped and stays that way. A
+// direct-profile session is bound to one profile and needs to read that
+// profile's own record — its name, avatar, and preferences — which the login
+// response does not carry; RequireOwnDirectProfile holds such a session to its
+// own id, and an account session may read any profile it owns.
+func (h *ProfileHandler) HandleGetProfile(w http.ResponseWriter, r *http.Request) {
+	userID := apimw.GetUserID(r.Context())
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
+		return
+	}
+	profileID := chi.URLParam(r, "id")
+	if profileID == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "Profile ID is required")
+		return
+	}
+
+	store, err := h.storeProvider.ForUser(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
+		return
+	}
+	profile, err := store.GetProfile(r.Context(), profileID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load profile")
+		return
+	}
+	if profile == nil {
+		writeError(w, http.StatusNotFound, "not_found", "Profile not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, h.toProfileResponse(r.Context(), store, *profile))
+}
+
 // HandleCreateProfile handles POST /profiles.
 func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
@@ -434,6 +471,15 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 	var req updateProfileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
+	if req.PIN != nil && apimw.IsDirectProfileSession(r) {
+		// The PIN gates profile switching for account sessions, so it is a
+		// credential of a different scope than the one this session holds.
+		// Setting it from here would let a profile password rewrite the lock
+		// that stands in front of the household.
+		writeError(w, http.StatusForbidden, "forbidden",
+			"Direct profile sessions cannot change the profile PIN")
 		return
 	}
 	var avatarRef *string
