@@ -103,6 +103,16 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		{"sibling profile deletion", http.MethodDelete, "/api/v1/profiles/" + readerProfileID, ""},
 		{"sibling pin verification", http.MethodPost, "/api/v1/profiles/" + primaryProfileID + "/verify-pin", `{"pin":"2468"}`},
 		{"account diagnostics", http.MethodGet, "/api/v1/diagnostics/status", ""},
+		{"account settings list", http.MethodGet, "/api/v1/settings/", ""},
+		{"account setting read", http.MethodGet, "/api/v1/settings/ui.theme", ""},
+		{"account setting write", http.MethodPut, "/api/v1/settings/ui.theme", `{"value":"dark"}`},
+		{"compat connect info", http.MethodGet, "/api/v1/compat/connect-info", ""},
+		{"history import sources", http.MethodGet, "/api/v1/history-imports/sources", ""},
+		{"plex sync connections", http.MethodGet, "/api/v1/plex-sync/connections", ""},
+		{"webhook sync connections", http.MethodGet, "/api/v1/webhook-sync/connections", ""},
+		{"plugin launch", http.MethodPost, "/api/v1/auth/plugin-launch", `{"installation_id":1}`},
+		{"requests", http.MethodGet, "/api/v1/requests/", ""},
+		{"admin users", http.MethodGet, "/api/v1/admin/users", ""},
 		// The Discord link routes carry the same guard, but they are only
 		// mounted when a notification service is wired, which this fixture
 		// deliberately does not do.
@@ -134,6 +144,43 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		if response.Code == http.StatusForbidden {
 			t.Fatalf("own profile update = %d %s, want the direct session to act as itself",
 				response.Code, response.Body.String())
+		}
+	})
+
+	// The refusal is real, not just a status code: the sibling is unchanged.
+	t.Run("a refused sibling mutation changes nothing", func(t *testing.T) {
+		var before string
+		if err := pool.QueryRow(ctx, `SELECT name FROM user_profiles WHERE user_id = $1 AND id = $2`,
+			accountID, primaryProfileID).Scan(&before); err != nil {
+			t.Fatalf("read sibling name: %v", err)
+		}
+		response := performJSONRequest(t, router, http.MethodPut,
+			"/api/v1/profiles/"+primaryProfileID, `{"name":"Hijacked"}`, directToken, nil)
+		if response.Code != http.StatusForbidden {
+			t.Fatalf("sibling mutation = %d %s, want %d", response.Code, response.Body.String(), http.StatusForbidden)
+		}
+		var after string
+		if err := pool.QueryRow(ctx, `SELECT name FROM user_profiles WHERE user_id = $1 AND id = $2`,
+			accountID, primaryProfileID).Scan(&after); err != nil {
+			t.Fatalf("re-read sibling name: %v", err)
+		}
+		if after != before {
+			t.Fatalf("sibling name = %q, want it unchanged at %q", after, before)
+		}
+	})
+
+	// The profile surface the session is entitled to still works.
+	t.Run("own profile surfaces still work", func(t *testing.T) {
+		for _, path := range []string{
+			"/api/v1/settings/values",
+			"/api/v1/settings/effective?keys=player.playback_speed",
+			"/api/v1/home/",
+		} {
+			response := performJSONRequest(t, router, http.MethodGet, path, "", directToken, nil)
+			if response.Code == http.StatusForbidden {
+				t.Errorf("%s = %d %s, want the direct profile surface to remain usable",
+					path, response.Code, response.Body.String())
+			}
 		}
 	})
 

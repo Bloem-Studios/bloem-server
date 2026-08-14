@@ -1,5 +1,34 @@
 -- +goose Up
 -- +goose StatementBegin
+-- Go trims a login email with strings.TrimSpace before it is stored or looked
+-- up, so the database has to agree on what "blank" means or a value the
+-- application would reduce to nothing survives a direct SQL write. btrim's
+-- default set is spaces only, which lets a tab, a newline, or a non-breaking
+-- space through; the set below is the whitespace Go trims.
+CREATE FUNCTION public.vondel_login_whitespace()
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+AS $$
+    SELECT U&' \0009\000A\000B\000C\000D\0085\00A0\1680\2000\2001\2002\2003\2004\2005\2006\2007\2008\2009\200A\2028\2029\202F\205F\3000'
+$$;
+
+CREATE FUNCTION public.vondel_login_text_blank(value text)
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE
+AS $$
+    SELECT value IS NULL OR btrim(value, public.vondel_login_whitespace()) = ''
+$$;
+
+CREATE FUNCTION public.vondel_normalize_login_email(value text)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+AS $$
+    SELECT lower(btrim(value, public.vondel_login_whitespace()))
+$$;
+
 ALTER TABLE public.user_profiles
     ADD COLUMN login_email text,
     ADD COLUMN password_hash text,
@@ -14,8 +43,8 @@ ALTER TABLE public.user_profiles
         CHECK (
             (login_email IS NULL AND password_hash IS NULL)
             OR (
-                login_email IS NOT NULL AND password_hash IS NOT NULL
-                AND btrim(login_email) <> '' AND btrim(password_hash) <> ''
+                NOT public.vondel_login_text_blank(login_email)
+                AND NOT public.vondel_login_text_blank(password_hash)
             )
         );
 
@@ -39,7 +68,8 @@ CREATE INDEX auth_sessions_direct_profile_idx
     WHERE auth_method = 'direct_profile' AND revoked_at IS NULL;
 
 CREATE TABLE public.login_email_registry (
-    normalized_email text PRIMARY KEY CHECK (normalized_email = lower(btrim(normalized_email))),
+    normalized_email text PRIMARY KEY
+        CHECK (normalized_email = public.vondel_normalize_login_email(normalized_email)),
     account_id integer REFERENCES public.users(id) ON DELETE CASCADE,
     profile_user_id integer,
     profile_id text,
@@ -55,9 +85,9 @@ CREATE TABLE public.login_email_registry (
 );
 
 INSERT INTO public.login_email_registry (normalized_email, account_id)
-SELECT lower(btrim(email)), id
+SELECT public.vondel_normalize_login_email(email), id
 FROM public.users
-WHERE email IS NOT NULL AND btrim(email) <> '';
+WHERE NOT public.vondel_login_text_blank(email);
 
 CREATE FUNCTION public.vondel_sync_account_login_email_registry()
 RETURNS trigger
@@ -69,9 +99,9 @@ BEGIN
         WHERE account_id = OLD.id;
     END IF;
 
-    IF TG_OP <> 'DELETE' AND NEW.email IS NOT NULL AND btrim(NEW.email) <> '' THEN
+    IF TG_OP <> 'DELETE' AND NOT public.vondel_login_text_blank(NEW.email) THEN
         INSERT INTO public.login_email_registry (normalized_email, account_id)
-        VALUES (lower(btrim(NEW.email)), NEW.id);
+        VALUES (public.vondel_normalize_login_email(NEW.email), NEW.id);
     END IF;
     RETURN COALESCE(NEW, OLD);
 END;
@@ -92,7 +122,7 @@ BEGIN
     END IF;
     IF TG_OP <> 'DELETE' AND NEW.login_email IS NOT NULL THEN
         INSERT INTO public.login_email_registry (normalized_email, profile_user_id, profile_id)
-        VALUES (lower(btrim(NEW.login_email)), NEW.user_id, NEW.id);
+        VALUES (public.vondel_normalize_login_email(NEW.login_email), NEW.user_id, NEW.id);
     END IF;
     RETURN COALESCE(NEW, OLD);
 END;
@@ -175,4 +205,8 @@ ALTER TABLE public.user_profiles
     DROP COLUMN IF EXISTS credential_revision,
     DROP COLUMN IF EXISTS password_hash,
     DROP COLUMN IF EXISTS login_email;
+
+DROP FUNCTION IF EXISTS public.vondel_normalize_login_email(text);
+DROP FUNCTION IF EXISTS public.vondel_login_text_blank(text);
+DROP FUNCTION IF EXISTS public.vondel_login_whitespace();
 -- +goose StatementEnd

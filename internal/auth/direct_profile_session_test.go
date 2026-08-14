@@ -356,14 +356,30 @@ func TestProfileCredentialPairRejectsBlankValues(t *testing.T) {
 	credentials := newProfileCredentialService(t)
 	accountID, profileID := newProfileCredentialFixture(t, credentials.pool, "blank-pair")
 
+	// The blank cases cover every whitespace Go's strings.TrimSpace removes:
+	// btrim's default set is spaces alone, so a tab or a non-breaking space
+	// would otherwise pass for a real credential.
 	for name, statement := range map[string]string{
-		"blank email":      `UPDATE user_profiles SET login_email = '', password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
-		"whitespace email": `UPDATE user_profiles SET login_email = '   ', password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
-		"blank hash":       `UPDATE user_profiles SET login_email = 'blank@example.test', password_hash = '' WHERE user_id = $1 AND id = $2`,
-		"email only":       `UPDATE user_profiles SET login_email = 'blank@example.test' WHERE user_id = $1 AND id = $2`,
-		"hash only":        `UPDATE user_profiles SET password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
+		"blank email":   `UPDATE user_profiles SET login_email = '', password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
+		"space email":   `UPDATE user_profiles SET login_email = '   ', password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
+		"tab email":     `UPDATE user_profiles SET login_email = E'\t', password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
+		"newline email": `UPDATE user_profiles SET login_email = E'\r\n', password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
+		"unicode email": `UPDATE user_profiles SET login_email = U&'\00a0\3000', password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
+		"blank hash":    `UPDATE user_profiles SET login_email = 'blank@example.test', password_hash = '' WHERE user_id = $1 AND id = $2`,
+		"tab hash":      `UPDATE user_profiles SET login_email = 'blank@example.test', password_hash = E'\t' WHERE user_id = $1 AND id = $2`,
+		"unicode hash":  `UPDATE user_profiles SET login_email = 'blank@example.test', password_hash = U&'\00a0' WHERE user_id = $1 AND id = $2`,
+		"email only":    `UPDATE user_profiles SET login_email = 'blank@example.test' WHERE user_id = $1 AND id = $2`,
+		"hash only":     `UPDATE user_profiles SET password_hash = 'hash' WHERE user_id = $1 AND id = $2`,
 	} {
 		t.Run(name, func(t *testing.T) {
+			// Each case starts from a shared-only profile: these subtests run
+			// in map order against one row, so a write that slipped through
+			// would otherwise change what the next case is even asking.
+			if _, err := credentials.pool.Exec(ctx, `
+				UPDATE user_profiles SET login_email = NULL, password_hash = NULL
+				WHERE user_id = $1 AND id = $2`, accountID, profileID); err != nil {
+				t.Fatalf("reset credential pair: %v", err)
+			}
 			if _, err := credentials.pool.Exec(ctx, statement, accountID, profileID); err == nil {
 				t.Fatal("database accepted an incomplete credential pair")
 			}

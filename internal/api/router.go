@@ -442,6 +442,10 @@ func NewRouter(deps Dependencies) chi.Router {
 		)
 		authHandler = handlers.NewAuthHandler(authService, jwtService, deviceLoginService)
 		authMiddleware = apimw.NewAuthMiddleware(jwtService, sessionRepo, apiKeyRepo, userRepo)
+		// Default-deny for direct-profile sessions. Installed here, at the one
+		// place claims are resolved, so a route is out of reach until
+		// directProfileAllowedRoutes names it.
+		authMiddleware.SetDirectProfileRouteGuard(newDirectProfileRouteGuard(func() chi.Routes { return r }))
 		if deps.UserStoreProvider != nil {
 			if deps.PolicySystem != nil {
 				viewerResolver = policy.NewViewerResolver(userRepo, deps.UserStoreProvider, profileTokenService, deps.PolicySystem.PDP(), resourcetenancy.NewStore(deps.DB), accessGroupStore)

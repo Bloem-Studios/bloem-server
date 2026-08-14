@@ -49,6 +49,29 @@ type AuthMiddleware struct {
 	apiKeyUserLoader APIKeyUserLoader // nil if API keys not configured
 
 	apiKeyLastUsed *auth.APIKeyLastUsedTracker
+
+	// directProfileRoutes decides whether a direct-profile session may reach
+	// the route a request matched. Nil leaves direct-profile sessions
+	// unrestricted, which is only correct for fixtures that register no
+	// account-scoped routes.
+	directProfileRoutes DirectProfileRouteGuard
+}
+
+// DirectProfileRouteGuard reports whether a direct-profile session may use the
+// route a request matches.
+type DirectProfileRouteGuard func(r *http.Request) bool
+
+// SetDirectProfileRouteGuard installs the direct-profile route boundary.
+//
+// It hangs off authentication rather than off individual routes because the
+// boundary is default-deny: a direct-profile session authenticates one profile
+// and may use only the routes that serve one profile. Enumerating the routes
+// it may *not* use was tried and does not converge — the API has hundreds of
+// routes, every new one is account-scoped until someone says otherwise, and
+// three review rounds each found more escapes. Putting the decision where
+// claims are resolved means a route is unreachable until it is named.
+func (am *AuthMiddleware) SetDirectProfileRouteGuard(guard DirectProfileRouteGuard) {
+	am.directProfileRoutes = guard
 }
 
 // NewAuthMiddleware creates a new AuthMiddleware with the given token validator
@@ -144,6 +167,11 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), claimsKey, claims)
+		if claims.AuthMethod == auth.AuthMethodDirectProfile &&
+			am.directProfileRoutes != nil && !am.directProfileRoutes(r) {
+			writeForbidden(w, "Direct profile sessions cannot use this endpoint")
+			return
+		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
