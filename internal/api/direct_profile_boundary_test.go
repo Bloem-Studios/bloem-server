@@ -8,7 +8,11 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
+	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/plugins"
+	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
@@ -34,6 +38,13 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
 		MembershipProvisioner: bootstrap,
+		SessionMgr:            playback.NewSessionManager(4, 2),
+		FileRepo:              scanner.NewFileRepository(pool),
+		FolderRepo:            catalog.NewFolderRepository(pool),
+		// Mounted only so the proxy route exists. A direct-profile token is
+		// refused before the proxy is ever asked to serve anything, which is
+		// the property under test.
+		PluginHTTPProxy: plugins.NewHTTPProxy(nil, nil),
 	})
 
 	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{
@@ -113,6 +124,9 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		{"plugin launch", http.MethodPost, "/api/v1/auth/plugin-launch", `{"installation_id":1}`},
 		{"requests", http.MethodGet, "/api/v1/requests/", ""},
 		{"admin users", http.MethodGet, "/api/v1/admin/users", ""},
+		// The plugin proxy authenticates itself and never reaches the
+		// allowlist, so it refuses profile-bound tokens on its own.
+		{"plugin proxy", http.MethodGet, "/api/v1/plugins/1/anything", ""},
 		// The Discord link routes carry the same guard, but they are only
 		// mounted when a notification service is wired, which this fixture
 		// deliberately does not do.
@@ -169,17 +183,27 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		}
 	})
 
-	// The profile surface the session is entitled to still works.
+	// The profile surface the session is entitled to still works. These assert
+	// only that the boundary lets the request through: without a real media
+	// file the handlers answer 4xx/5xx for their own reasons, and it is the
+	// 403 refusal that would mean the allowlist had locked a bound profile out
+	// of watching anything.
 	t.Run("own profile surfaces still work", func(t *testing.T) {
-		for _, path := range []string{
-			"/api/v1/settings/values",
-			"/api/v1/settings/effective?keys=player.playback_speed",
-			"/api/v1/home/",
+		for _, probe := range []struct{ method, path, body string }{
+			{http.MethodGet, "/api/v1/settings/values", ""},
+			{http.MethodGet, "/api/v1/settings/effective?keys=player.playback_speed", ""},
+			{http.MethodGet, "/api/v1/home/", ""},
+			{http.MethodGet, "/api/v1/user/libraries", ""},
+			{http.MethodGet, "/api/v1/playback/capability", ""},
+			{http.MethodPost, "/api/v1/playback/start", `{"item_id":"missing"}`},
+			{http.MethodPost, "/api/v1/playback/session-that-does-not-exist/progress", `{"position_seconds":12}`},
+			{http.MethodDelete, "/api/v1/playback/session-that-does-not-exist", ""},
+			{http.MethodGet, "/api/v1/stream/session-that-does-not-exist", ""},
 		} {
-			response := performJSONRequest(t, router, http.MethodGet, path, "", directToken, nil)
+			response := performJSONRequest(t, router, probe.method, probe.path, probe.body, directToken, nil)
 			if response.Code == http.StatusForbidden {
-				t.Errorf("%s = %d %s, want the direct profile surface to remain usable",
-					path, response.Code, response.Body.String())
+				t.Errorf("%s %s = 403 %s, want the direct profile surface to remain usable",
+					probe.method, probe.path, response.Body.String())
 			}
 		}
 	})

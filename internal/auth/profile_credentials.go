@@ -69,7 +69,11 @@ func (s *ProfileCredentialService) Set(ctx context.Context, accountID int, profi
 	if s == nil || s.pool == nil {
 		return fmt.Errorf("profile credential service is unavailable")
 	}
-	email = NormalizeEmail(email)
+	// Only trim here. Case folding belongs to the database, which owns the
+	// registry key: Go and PostgreSQL do not agree on Unicode case for every
+	// input, and two implementations of "the same email" is exactly the bug
+	// that lets a registered address fail to authenticate.
+	email = strings.TrimSpace(email)
 	if (email == "") != (password == "") {
 		return ErrIncompleteProfileCredentials
 	}
@@ -169,7 +173,7 @@ func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, pass
 		JOIN organization_memberships memberships
 		  ON memberships.organization_id = profiles.organization_id
 		 AND memberships.account_id = profiles.user_id
-		WHERE registry.normalized_email = $1`, normalizedLoginEmail(email)).Scan(
+		WHERE registry.normalized_email = public.vondel_normalize_login_email($1)`, email).Scan(
 		&subject.AccountID,
 		&subject.ProfileID,
 		&subject.OrganizationID,
@@ -273,10 +277,6 @@ func lockProfileCredentialSubject(ctx context.Context, tx pgx.Tx, accountID int,
 		return ErrProfileCredentialNotFound
 	}
 	return nil
-}
-
-func normalizedLoginEmail(email string) string {
-	return strings.ToLower(strings.TrimSpace(email))
 }
 
 // mapProfileCredentialWriteError sanitizes credential write failures. The

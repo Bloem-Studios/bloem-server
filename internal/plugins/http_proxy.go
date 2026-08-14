@@ -136,11 +136,10 @@ func (p *HTTPProxy) ServeRoute(w http.ResponseWriter, r *http.Request, installat
 		}
 		// Full-page plugin navigation cannot attach X-Profile-Id. The launch
 		// cookie carries the validated active profile in that case; direct
-		// bearer/API-key calls may still provide the header. A token that is
-		// itself profile-bound takes no header at all: for it the profile is
-		// part of the credential, not a per-request choice.
+		// bearer/API-key calls may still provide the header. Profile-bound
+		// tokens never reach here: the proxy refuses them before this point.
 		profileID := strings.TrimSpace(contextProfileID)
-		if profileID == "" && !pluginAccessProfileBound(r.Context()) {
+		if profileID == "" {
 			profileID = strings.TrimSpace(r.Header.Get("X-Profile-Id"))
 		}
 		if p.themes != nil {
@@ -352,9 +351,6 @@ type pluginAccess struct {
 	admin         bool
 	userID        int
 	profileID     string
-	// profileBound marks a token whose profile is a fact of the credential
-	// rather than a per-request selection, so no header may override it.
-	profileBound bool
 }
 
 func WithPluginAccess(ctx context.Context, authenticated bool, admin bool) context.Context {
@@ -394,27 +390,6 @@ func pluginAccessUserFromContext(ctx context.Context) (bool, bool, int, string) 
 		return false, false, 0, ""
 	}
 	return access.authenticated, access.admin, access.userID, access.profileID
-}
-
-// pluginAccessProfileBound reports whether the request's profile is fixed by
-// its token.
-func pluginAccessProfileBound(ctx context.Context) bool {
-	access, ok := ctx.Value(pluginAccessKey).(pluginAccess)
-	return ok && access.profileBound
-}
-
-// WithProfileBoundPluginAccessUser records access whose profile came from the
-// token itself. The proxy will not let a request header replace it.
-func WithProfileBoundPluginAccessUser(
-	ctx context.Context, admin bool, userID int, profileID string,
-) context.Context {
-	return context.WithValue(ctx, pluginAccessKey, pluginAccess{
-		authenticated: true,
-		admin:         admin,
-		userID:        userID,
-		profileID:     profileID,
-		profileBound:  true,
-	})
 }
 
 func queryToStruct(values url.Values) *structpb.Struct {

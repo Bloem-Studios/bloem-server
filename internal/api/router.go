@@ -1808,12 +1808,18 @@ func NewRouter(deps Dependencies) chi.Router {
 					return
 				}
 				authenticated, admin, userID, profileID, profileBound := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, apiKeyRepo, userRepo)
-				var ctx context.Context
 				if profileBound {
-					ctx = plugins.WithProfileBoundPluginAccessUser(r.Context(), admin, userID, profileID)
-				} else {
-					ctx = plugins.WithPluginAccessUser(r.Context(), authenticated, admin, userID, profileID)
+					// The plugin proxy authenticates on its own and so never
+					// passes RequireAuth, which is where direct-profile
+					// sessions are held to their allowlist. Rather than teach
+					// the allowlist about routes a plugin defines at runtime,
+					// refuse the whole surface: the proxy hands plugin code
+					// the owning account's id and role, which is precisely
+					// what a profile-bound session must not be able to spend.
+					http.Error(w, "Direct profile sessions cannot use plugin routes", http.StatusForbidden)
+					return
 				}
+				ctx := plugins.WithPluginAccessUser(r.Context(), authenticated, admin, userID, profileID)
 				deps.PluginHTTPProxy.ServeRoute(w, r.WithContext(ctx), installationID, authenticated, admin)
 			})
 			r.Get("/plugin-assets/{installation_id}/*", func(w http.ResponseWriter, r *http.Request) {

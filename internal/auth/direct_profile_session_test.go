@@ -441,3 +441,37 @@ func TestDirectProfileRefreshKeepsSessionWhenRevalidationFails(t *testing.T) {
 		t.Fatal("a transient revalidation failure revoked a valid session")
 	}
 }
+
+// One canonical normalization: the database owns it. Go trimming and lowering
+// separately would mean two implementations of "the same email", and they do
+// not agree on Unicode case for every input, so an address that registered
+// could fail to authenticate.
+func TestDirectProfileLoginNormalizesEmailInTheDatabase(t *testing.T) {
+	ctx := context.Background()
+	credentials := newProfileCredentialService(t)
+	accountID, profileID := newProfileCredentialFixture(t, credentials.pool, "normalization")
+	const stored = "  MiXeD.Case@Example.TEST  "
+	if err := credentials.Set(ctx, accountID, profileID, stored, "profile-password"); err != nil {
+		t.Fatalf("Set credential: %v", err)
+	}
+
+	var key string
+	if err := credentials.pool.QueryRow(ctx, `
+		SELECT normalized_email FROM login_email_registry
+		WHERE profile_user_id = $1 AND profile_id = $2`, accountID, profileID).Scan(&key); err != nil {
+		t.Fatalf("load registry key: %v", err)
+	}
+	if key != "mixed.case@example.test" {
+		t.Fatalf("registry key = %q, want the database-normalized form", key)
+	}
+
+	for _, attempt := range []string{
+		"mixed.case@example.test",
+		"MIXED.CASE@EXAMPLE.TEST",
+		"  MiXeD.Case@Example.TEST\t",
+	} {
+		if _, err := credentials.Authenticate(ctx, attempt, "profile-password", DeviceClaim{ID: "normalization-device"}); err != nil {
+			t.Fatalf("Authenticate(%q) = %v, want the same subject", attempt, err)
+		}
+	}
+}

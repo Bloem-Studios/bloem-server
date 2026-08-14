@@ -24,8 +24,14 @@ import (
 // sessions", and getting that distinction wrong is the whole risk here.
 // Patterns are matched against the route the request actually resolved to, so
 // this list cannot drift from the router without the inventory test noticing.
-// settingsValuesRoute is the canonical profile-scoped settings collection.
-const settingsValuesRoute = "/api/v1/settings/values"
+// Route patterns named in more than one place: the allowlist here, and the
+// acceptance tests that prove a bound profile can still reach them.
+const (
+	settingsValuesRoute     = "/api/v1/settings/values"
+	playbackCapabilityRoute = "/api/v1/playback/capability"
+	playbackStartRoute      = "/api/v1/playback/start"
+	userLibrariesRoute      = "/api/v1/user/libraries"
+)
 
 var directProfileAllowedRoutes = map[string]bool{
 	// Ending the session, and the routes that are not authenticated anyway.
@@ -58,6 +64,27 @@ var directProfileAllowedRoutes = map[string]bool{
 	"/api/v1/settings/values/{key}":                  true,
 	"/api/v1/settings/values/effective":              true,
 	"/api/v1/settings/values/nav.shortcuts/item":     true,
+
+	// Playback. These are the routes a bound profile needs to actually watch
+	// something: negotiate, start, replan, report progress, and stop. The
+	// transcode and stream delivery routes authorize on the session id rather
+	// than the caller, and are admitted for the same session the profile just
+	// started.
+	playbackCapabilityRoute:                                  true,
+	playbackStartRoute:                                       true,
+	"/api/v1/playback/route-events":                          true,
+	"/api/v1/playback/{session_id}":                          true,
+	"/api/v1/playback/{session_id}/replan":                   true,
+	"/api/v1/playback/{session_id}/progress":                 true,
+	"/api/v1/playback/sessions/{session_id}/control/ws":      true,
+	"/api/v1/playback/transcode/{session_id}/master.m3u8":    true,
+	"/api/v1/playback/transcode/{session_id}/segment/{name}": true,
+	"/api/v1/stream/{session_id}":                            true,
+	"/api/v1/stream/{session_id}/subtitles/{track}":          true,
+	"/api/v1/stream/{session_id}/subtitles/{track}/fonts":    true,
+
+	// The client's library bootstrap.
+	userLibrariesRoute: true,
 
 	// The viewer's own device registry.
 	"/api/v1/devices/":                     true,

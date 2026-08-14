@@ -7,7 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
+	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/go-chi/chi/v5"
@@ -18,13 +21,18 @@ func newRouteInventoryRouter(t *testing.T) chi.Routes {
 	pool := newV1TenancyDatabase(t)
 	store := tenancy.NewStore(pool)
 	bootstrap := v1TenancyBootstrap{store: store}
+	// The playback and stream routes only mount when a session manager is
+	// present, and they are exactly the surface a bound profile needs most, so
+	// the inventory would be describing a router nobody runs without it.
 	router := NewRouter(Dependencies{
-		DB:     pool,
-		Config: &config.Config{Auth: config.AuthConfig{JWTSecret: "route-inventory", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour}},
-
+		DB:                    pool,
+		Config:                &config.Config{Auth: config.AuthConfig{JWTSecret: "route-inventory", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour}},
 		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
 		MembershipProvisioner: bootstrap,
+		SessionMgr:            playback.NewSessionManager(4, 2),
+		FileRepo:              scanner.NewFileRepository(pool),
+		FolderRepo:            catalog.NewFolderRepository(pool),
 	})
 	routes, ok := router.(chi.Routes)
 	if !ok {
@@ -129,6 +137,15 @@ func TestDirectProfileAllowedRoutesAreThisExactSet(t *testing.T) {
 		"/api/v1/library/{id}/sections/{sectionId}/items",
 		"/api/v1/library/{id}/user-collections",
 		"/api/v1/metadata/ai/status",
+		"/api/v1/playback/capability",
+		"/api/v1/playback/route-events",
+		"/api/v1/playback/sessions/{session_id}/control/ws",
+		"/api/v1/playback/start",
+		"/api/v1/playback/transcode/{session_id}/master.m3u8",
+		"/api/v1/playback/transcode/{session_id}/segment/{name}",
+		"/api/v1/playback/{session_id}",
+		"/api/v1/playback/{session_id}/progress",
+		"/api/v1/playback/{session_id}/replan",
 		"/api/v1/profile/sections/",
 		"/api/v1/profile/sections/flags",
 		"/api/v1/profile/sections/reset",
@@ -170,9 +187,13 @@ func TestDirectProfileAllowedRoutesAreThisExactSet(t *testing.T) {
 		"/api/v1/settings/values/effective",
 		"/api/v1/settings/values/nav.shortcuts/item",
 		"/api/v1/settings/values/{key}",
+		"/api/v1/stream/{session_id}",
+		"/api/v1/stream/{session_id}/subtitles/{track}",
+		"/api/v1/stream/{session_id}/subtitles/{track}/fonts",
 		"/api/v1/subtitle-prefs/{series_id}",
 		"/api/v1/subtitles/providers/status",
 		"/api/v1/sync/progress",
+		"/api/v1/user/libraries",
 		"/api/v1/watch/{id}",
 		"/api/v1/watched/{id}",
 		"/api/v1/watchlist/",
