@@ -33,63 +33,65 @@ const (
 	userLibrariesRoute      = "/api/v1/user/libraries"
 )
 
-var directProfileAllowedRoutes = map[string]bool{
+var directProfileAllowedRoutes = map[string][]string{
 	// Ending the session, and the routes that are not authenticated anyway.
-	"/api/v1/auth/logout": true,
+	"/api/v1/auth/logout": allMethods,
 
 	// The session's own profile record. Per-profile routes additionally hold
 	// the session to its own profile id (RequireOwnDirectProfile), so these
 	// entries admit the route, not a sibling.
-	"/api/v1/profiles/{id}":             true,
-	"/api/v1/profiles/{id}/avatar":      true,
-	"/api/v1/profiles/{id}/verify-pin":  true,
-	"/api/v1/profile/sections/":         true,
-	"/api/v1/profile/sections/flags":    true,
-	"/api/v1/profile/sections/reset":    true,
-	"/api/v1/profile/sections/settings": true,
+	// PUT only: deleting a profile is household management, and a bound
+	// profile does not delete even itself.
+	"/api/v1/profiles/{id}":             {http.MethodPut},
+	"/api/v1/profiles/{id}/avatar":      allMethods,
+	"/api/v1/profiles/{id}/verify-pin":  allMethods,
+	"/api/v1/profile/sections/":         allMethods,
+	"/api/v1/profile/sections/flags":    allMethods,
+	"/api/v1/profile/sections/reset":    allMethods,
+	"/api/v1/profile/sections/settings": allMethods,
 
 	// Profile-scoped settings: the canonical contract API and the device and
 	// effective views. The legacy account-wide "/api/v1/settings/" list and
 	// "/api/v1/settings/{key}" are deliberately absent.
-	"/api/v1/settings/capability":                    true,
-	"/api/v1/settings/contract":                      true,
-	"/api/v1/settings/contract/capabilities":         true,
-	"/api/v1/settings/manifest":                      true,
-	"/api/v1/settings/overlay-config":                true,
-	"/api/v1/settings/effective":                     true,
-	"/api/v1/settings/subtitle_appearance/effective": true,
-	"/api/v1/settings/device/{key}":                  true,
-	"/api/v1/settings/device/subtitle_appearance":    true,
-	settingsValuesRoute:                              true,
-	"/api/v1/settings/values/{key}":                  true,
-	"/api/v1/settings/values/effective":              true,
-	"/api/v1/settings/values/nav.shortcuts/item":     true,
+	"/api/v1/settings/capability":                    allMethods,
+	"/api/v1/settings/contract":                      allMethods,
+	"/api/v1/settings/contract/capabilities":         allMethods,
+	"/api/v1/settings/manifest":                      allMethods,
+	"/api/v1/settings/overlay-config":                allMethods,
+	"/api/v1/settings/effective":                     allMethods,
+	"/api/v1/settings/subtitle_appearance/effective": allMethods,
+	"/api/v1/settings/device/{key}":                  allMethods,
+	"/api/v1/settings/device/subtitle_appearance":    allMethods,
+	settingsValuesRoute:                              allMethods,
+	"/api/v1/settings/values/{key}":                  allMethods,
+	"/api/v1/settings/values/effective":              allMethods,
+	"/api/v1/settings/values/nav.shortcuts/item":     allMethods,
 
 	// Playback. These are the routes a bound profile needs to actually watch
 	// something: negotiate, start, replan, report progress, and stop. The
 	// transcode and stream delivery routes authorize on the session id rather
 	// than the caller, and are admitted for the same session the profile just
 	// started.
-	playbackCapabilityRoute:                                  true,
-	playbackStartRoute:                                       true,
-	"/api/v1/playback/route-events":                          true,
-	"/api/v1/playback/{session_id}":                          true,
-	"/api/v1/playback/{session_id}/replan":                   true,
-	"/api/v1/playback/{session_id}/progress":                 true,
-	"/api/v1/playback/sessions/{session_id}/control/ws":      true,
-	"/api/v1/playback/transcode/{session_id}/master.m3u8":    true,
-	"/api/v1/playback/transcode/{session_id}/segment/{name}": true,
-	"/api/v1/stream/{session_id}":                            true,
-	"/api/v1/stream/{session_id}/subtitles/{track}":          true,
-	"/api/v1/stream/{session_id}/subtitles/{track}/fonts":    true,
+	playbackCapabilityRoute:                                  allMethods,
+	playbackStartRoute:                                       allMethods,
+	"/api/v1/playback/route-events":                          allMethods,
+	"/api/v1/playback/{session_id}":                          allMethods,
+	"/api/v1/playback/{session_id}/replan":                   allMethods,
+	"/api/v1/playback/{session_id}/progress":                 allMethods,
+	"/api/v1/playback/sessions/{session_id}/control/ws":      allMethods,
+	"/api/v1/playback/transcode/{session_id}/master.m3u8":    allMethods,
+	"/api/v1/playback/transcode/{session_id}/segment/{name}": allMethods,
+	"/api/v1/stream/{session_id}":                            allMethods,
+	"/api/v1/stream/{session_id}/subtitles/{track}":          allMethods,
+	"/api/v1/stream/{session_id}/subtitles/{track}/fonts":    allMethods,
 
 	// The client's library bootstrap.
-	userLibrariesRoute: true,
+	userLibrariesRoute: allMethods,
 
 	// The viewer's own device registry.
-	"/api/v1/devices/":                     true,
-	"/api/v1/devices/{device_id}":          true,
-	"/api/v1/devices/{device_id}/settings": true,
+	"/api/v1/devices/":                     allMethods,
+	"/api/v1/devices/{device_id}":          allMethods,
+	"/api/v1/devices/{device_id}/settings": allMethods,
 }
 
 // directProfileAllowedPrefixes covers the browsing, playback, and profile
@@ -117,6 +119,7 @@ var directProfileAllowedPrefixes = []string{
 	"/api/v1/downloads",
 	"/api/v1/direct-download",
 	"/api/v1/subtitles",
+	"/api/v1/ebooks",
 	// Per-series and per-library playback preferences hang off the profile.
 	"/api/v1/audio-prefs",
 	"/api/v1/subtitle-prefs",
@@ -126,14 +129,25 @@ var directProfileAllowedPrefixes = []string{
 	"/api/v1/ready",
 }
 
-// directProfileRouteAllowed reports whether a resolved route pattern is part of
-// the direct-profile surface.
-func directProfileRouteAllowed(pattern string) bool {
+// allMethods marks a pattern whose every registered method is profile-scoped.
+var allMethods = []string{"*"}
+
+// directProfileRouteAllowed reports whether a resolved route is part of the
+// direct-profile surface. Method and pattern are both significant: a path can
+// be profile-scoped for one verb and account-scoped for another, and
+// /api/v1/profiles/{id} is exactly that — a bound profile edits itself but does
+// not delete itself.
+func directProfileRouteAllowed(method, pattern string) bool {
 	if pattern == "" {
 		return false
 	}
-	if directProfileAllowedRoutes[pattern] {
-		return true
+	if methods, ok := directProfileAllowedRoutes[pattern]; ok {
+		for _, allowed := range methods {
+			if allowed == "*" || allowed == method {
+				return true
+			}
+		}
+		return false
 	}
 	for _, prefix := range directProfileAllowedPrefixes {
 		if pattern == prefix || strings.HasPrefix(pattern, prefix+"/") {
@@ -164,6 +178,6 @@ func newDirectProfileRouteGuard(routes func() chi.Routes) apimw.DirectProfileRou
 			// turn every typo into a 403.
 			return true
 		}
-		return directProfileRouteAllowed(rctx.RoutePattern())
+		return directProfileRouteAllowed(r.Method, rctx.RoutePattern())
 	}
 }

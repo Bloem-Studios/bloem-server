@@ -475,3 +475,134 @@ func TestDirectProfileLoginNormalizesEmailInTheDatabase(t *testing.T) {
 		}
 	}
 }
+
+// Re-saving a record without changing its login identity must be a no-op for
+// the registry. User management legitimately writes the current email back,
+// and a registry that re-registers on every write turns an ordinary admin save
+// into a duplicate-key failure.
+func TestLoginEmailRegistryToleratesUnchangedWrites(t *testing.T) {
+	ctx := context.Background()
+	service := newProfileCredentialService(t)
+	users := NewUserRepository(service.pool)
+	account, err := users.Create(ctx, models.CreateUserInput{
+		Username: "unchanged-writes",
+		Email:    "unchanged-writes@example.test",
+		Password: "account-password",
+		Role:     "user",
+	})
+	if err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	for name, statement := range map[string]string{
+		"same email":      `UPDATE users SET email = 'unchanged-writes@example.test' WHERE id = $1`,
+		"self assigned":   `UPDATE users SET email = email WHERE id = $1`,
+		"unrelated field": `UPDATE users SET email = email, role = 'user' WHERE id = $1`,
+	} {
+		t.Run("account "+name, func(t *testing.T) {
+			if _, err := service.pool.Exec(ctx, statement, account.ID); err != nil {
+				t.Fatalf("no-op account update: %v", err)
+			}
+		})
+	}
+	var owned int
+	if err := service.pool.QueryRow(ctx, `
+		SELECT count(*) FROM login_email_registry WHERE account_id = $1`, account.ID).Scan(&owned); err != nil {
+		t.Fatalf("count registry rows: %v", err)
+	}
+	if owned != 1 {
+		t.Fatalf("account registry rows = %d, want exactly 1", owned)
+	}
+
+	accountID, profileID := newProfileCredentialFixture(t, service.pool, "unchanged-profile")
+	if err := service.Set(ctx, accountID, profileID, "unchanged-profile@example.test", "profile-password"); err != nil {
+		t.Fatalf("set profile credential: %v", err)
+	}
+	if _, err := service.pool.Exec(ctx, `
+		UPDATE user_profiles SET login_email = login_email, password_hash = password_hash
+		WHERE user_id = $1 AND id = $2`, accountID, profileID); err != nil {
+		t.Fatalf("no-op profile credential update: %v", err)
+	}
+	// A no-op must also leave the credential revision alone: rotating it would
+	// revoke every live session for a write that changed nothing.
+	var revision int64
+	var registered string
+	if err := service.pool.QueryRow(ctx, `
+		SELECT p.credential_revision, r.normalized_email
+		FROM user_profiles p
+		JOIN login_email_registry r ON r.profile_user_id = p.user_id AND r.profile_id = p.id
+		WHERE p.user_id = $1 AND p.id = $2`, accountID, profileID).Scan(&revision, &registered); err != nil {
+		t.Fatalf("reload profile credential: %v", err)
+	}
+	if registered != "unchanged-profile@example.test" {
+		t.Fatalf("registered email = %q, want it preserved", registered)
+	}
+	if revision != 2 {
+		t.Fatalf("credential revision = %d, want the single rotation from Set", revision)
+	}
+}
+
+// The subject a direct-profile session asserts is not only its credential: it
+// also claims the account is enabled and the organization and membership are
+// active at the revisions it carries. Each of those must be held still between
+// verification and insertion, or the session is issued against facts that
+// changed underneath it.
+func TestDirectProfileLoginLosesRaceWithSubjectChanges(t *testing.T) {
+	for name, mutation := range map[string]string{
+		"account disabled":       `UPDATE users SET enabled = false WHERE id = $1`,
+		"organization suspended": `UPDATE organizations SET status = 'suspended' WHERE id = (SELECT organization_id FROM user_profiles WHERE user_id = $1 LIMIT 1)`,
+		"policy rotated":         `UPDATE organizations SET policy_revision = policy_revision + 1 WHERE id = (SELECT organization_id FROM user_profiles WHERE user_id = $1 LIMIT 1)`,
+		"membership suspended":   `UPDATE organization_memberships SET status = 'suspended' WHERE account_id = $1`,
+		"security rotated":       `UPDATE organization_memberships SET security_revision = security_revision + 1 WHERE account_id = $1`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			credentials := newProfileCredentialService(t)
+			accountID, profileID := newProfileCredentialFixture(t, credentials.pool, "subject-race")
+			const email = "subject-race@example.test"
+			if err := credentials.Set(ctx, accountID, profileID, email, "profile-password"); err != nil {
+				t.Fatalf("Set credential: %v", err)
+			}
+			service, _, sessions := newDirectProfileService(t, credentials.pool, credentials.ProfileCredentialService)
+
+			// Hold the profile row so the login's insert has to queue, then
+			// change the subject fact and commit while it waits.
+			blocker, err := credentials.pool.Begin(ctx)
+			if err != nil {
+				t.Fatalf("begin blocker: %v", err)
+			}
+			defer func() { _ = blocker.Rollback(ctx) }()
+			if _, err := blocker.Exec(ctx,
+				`SELECT 1 FROM user_profiles WHERE user_id = $1 AND id = $2 FOR UPDATE`, accountID, profileID); err != nil {
+				t.Fatalf("lock profile row: %v", err)
+			}
+
+			loginErr := make(chan error, 1)
+			go func() {
+				_, _, err := service.LoginProfile(ctx, email, "profile-password", DeviceClaim{ID: "subject-race-device"})
+				loginErr <- err
+			}()
+			waitForBlockedBackend(t, ctx, credentials.pool)
+
+			if _, err := blocker.Exec(ctx, mutation, accountID); err != nil {
+				t.Fatalf("apply %s: %v", name, err)
+			}
+			if err := blocker.Commit(ctx); err != nil {
+				t.Fatalf("commit %s: %v", name, err)
+			}
+
+			if err := <-loginErr; !errors.Is(err, ErrSessionRevoked) {
+				t.Fatalf("LoginProfile error = %v, want ErrSessionRevoked", err)
+			}
+			live, err := sessions.ListByUser(ctx, accountID)
+			if err != nil {
+				t.Fatalf("list sessions: %v", err)
+			}
+			for _, session := range live {
+				if session.AuthMethod == AuthMethodDirectProfile && session.RevokedAt == nil {
+					t.Fatalf("session %s was issued against a subject that had already changed", session.ID)
+				}
+			}
+		})
+	}
+}

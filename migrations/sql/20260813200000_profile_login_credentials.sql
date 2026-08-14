@@ -94,7 +94,15 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND OLD.email IS DISTINCT FROM NEW.email) THEN
+    IF TG_OP = 'UPDATE' AND OLD.email IS NOT DISTINCT FROM NEW.email THEN
+        -- Nothing about the registered address changed. Re-inserting the row
+        -- it already owns would fail on its own primary key, and an ordinary
+        -- account update that merely re-supplies the current email is exactly
+        -- what user management does.
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'DELETE' OR TG_OP = 'UPDATE' THEN
         DELETE FROM public.login_email_registry
         WHERE account_id = OLD.id;
     END IF;
@@ -116,7 +124,13 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND (OLD.login_email, OLD.password_hash) IS DISTINCT FROM (NEW.login_email, NEW.password_hash)) THEN
+    IF TG_OP = 'UPDATE'
+       AND (OLD.login_email, OLD.password_hash) IS NOT DISTINCT FROM (NEW.login_email, NEW.password_hash) THEN
+        -- Same reasoning as the account trigger: an update that leaves the
+        -- credential untouched must not re-register it.
+        RETURN NEW;
+    END IF;
+    IF TG_OP = 'DELETE' OR TG_OP = 'UPDATE' THEN
         DELETE FROM public.login_email_registry
         WHERE profile_user_id = OLD.user_id AND profile_id = OLD.id;
     END IF;

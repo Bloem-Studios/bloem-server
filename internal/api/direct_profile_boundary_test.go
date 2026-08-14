@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -183,28 +184,47 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		}
 	})
 
-	// The profile surface the session is entitled to still works. These assert
-	// only that the boundary lets the request through: without a real media
-	// file the handlers answer 4xx/5xx for their own reasons, and it is the
-	// 403 refusal that would mean the allowlist had locked a bound profile out
-	// of watching anything.
+	// The profile surface the session is entitled to still works. Each case
+	// pins the status the handler actually answers, not merely "not 403": a
+	// deleted handler, a 404 from a route that stopped being mounted, or a 500
+	// from broken tenant resolution would all pass a not-403 assertion while
+	// meaning the feature is broken.
 	t.Run("own profile surfaces still work", func(t *testing.T) {
-		for _, probe := range []struct{ method, path, body string }{
-			{http.MethodGet, "/api/v1/settings/values", ""},
-			{http.MethodGet, "/api/v1/settings/effective?keys=player.playback_speed", ""},
-			{http.MethodGet, "/api/v1/home/", ""},
-			{http.MethodGet, "/api/v1/user/libraries", ""},
-			{http.MethodGet, "/api/v1/playback/capability", ""},
-			{http.MethodPost, "/api/v1/playback/start", `{"item_id":"missing"}`},
-			{http.MethodPost, "/api/v1/playback/session-that-does-not-exist/progress", `{"position_seconds":12}`},
-			{http.MethodDelete, "/api/v1/playback/session-that-does-not-exist", ""},
-			{http.MethodGet, "/api/v1/stream/session-that-does-not-exist", ""},
+		for _, probe := range []struct {
+			method, path, body string
+			want               int
+		}{
+			{http.MethodGet, "/api/v1/settings/effective?keys=player.playback_speed", "", http.StatusOK},
+			{http.MethodGet, "/api/v1/user/libraries", "", http.StatusOK},
+			{http.MethodGet, "/api/v1/playback/capability", "", http.StatusOK},
+			// A session that does not exist must be answered on the merits by
+			// the handler, which is what proves the boundary let it through.
+			{http.MethodPost, "/api/v1/playback/session-that-does-not-exist/progress", `{"position_seconds":12}`, http.StatusNotFound},
+			{http.MethodDelete, "/api/v1/playback/session-that-does-not-exist", "", http.StatusNotFound},
+			{http.MethodGet, "/api/v1/stream/session-that-does-not-exist", "", http.StatusNotFound},
 		} {
 			response := performJSONRequest(t, router, probe.method, probe.path, probe.body, directToken, nil)
-			if response.Code == http.StatusForbidden {
-				t.Errorf("%s %s = 403 %s, want the direct profile surface to remain usable",
-					probe.method, probe.path, response.Body.String())
+			if response.Code != probe.want {
+				t.Errorf("%s %s = %d %s, want %d",
+					probe.method, probe.path, response.Code, response.Body.String(), probe.want)
 			}
+		}
+	})
+
+	// Acting as itself is not just permitted but effective: the write lands.
+	t.Run("own profile update persists", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodPut,
+			"/api/v1/profiles/"+readerProfileID, `{"quality_preference":"720p"}`, directToken, nil)
+		if response.Code != http.StatusOK {
+			t.Fatalf("own profile update = %d %s, want %d", response.Code, response.Body.String(), http.StatusOK)
+		}
+		var stored string
+		if err := pool.QueryRow(ctx, `SELECT quality_preference FROM user_profiles WHERE user_id = $1 AND id = $2`,
+			accountID, readerProfileID).Scan(&stored); err != nil {
+			t.Fatalf("reload own profile: %v", err)
+		}
+		if stored != "720p" {
+			t.Fatalf("quality preference = %q, want the update to have landed", stored)
 		}
 	})
 
@@ -286,5 +306,88 @@ func TestDirectProfileSessionOnPrimaryProfileCannotManageHousehold(t *testing.T)
 	}
 	if name != "Child" {
 		t.Fatalf("child profile name = %q, want it unchanged", name)
+	}
+}
+
+// A direct-profile session carries its own organization, membership, and
+// revisions. v1 must validate against those rather than projecting the session
+// into the deployment's default organization the way a legacy account session
+// is projected, or the session is evaluated against a tenant it was never
+// issued for and never notices its authorization going stale.
+func TestDirectProfileSessionIsRejectedOnV1WhenItsTenancyGoesStale(t *testing.T) {
+	ctx := context.Background()
+	pool := newV1TenancyDatabase(t)
+	bootstrap := v1TenancyBootstrap{store: tenancy.NewStore(pool)}
+	router := NewRouter(Dependencies{
+		DB: pool,
+		Config: &config.Config{Auth: config.AuthConfig{
+			JWTSecret:          "direct-profile-tenancy-secret",
+			AccessTokenExpiry:  time.Hour,
+			RefreshTokenExpiry: 24 * time.Hour,
+		}},
+		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
+		OwnershipBootstrapper: bootstrap,
+		MembershipProvisioner: bootstrap,
+		SessionMgr:            playback.NewSessionManager(4, 2),
+		FileRepo:              scanner.NewFileRepository(pool),
+		FolderRepo:            catalog.NewFolderRepository(pool),
+	})
+
+	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{
+		"username":"owner","email":"owner@example.test","password":"correct horse battery staple",
+		"create_default_profile":true,"default_profile_name":"Owner"
+	}`, "", nil)
+	if setup.Code != http.StatusCreated {
+		t.Fatalf("setup = %d %s", setup.Code, setup.Body.String())
+	}
+	accountToken := decodeLogin(t, setup).AccessToken
+	var accountID int
+	if err := pool.QueryRow(ctx, `SELECT id FROM users WHERE username = 'owner'`).Scan(&accountID); err != nil {
+		t.Fatalf("load account: %v", err)
+	}
+	if created := performJSONRequest(t, router, http.MethodPost, "/api/v1/profiles/",
+		`{"name":"Reader"}`, accountToken, nil); created.Code >= http.StatusBadRequest {
+		t.Fatalf("create profile = %d %s", created.Code, created.Body.String())
+	}
+	var profileID string
+	if err := pool.QueryRow(ctx, `SELECT id FROM user_profiles WHERE user_id = $1 AND name = 'Reader'`,
+		accountID).Scan(&profileID); err != nil {
+		t.Fatalf("load profile: %v", err)
+	}
+	if err := auth.NewProfileCredentialService(pool).Set(ctx, accountID, profileID,
+		"stale-tenancy@example.test", "profile-password"); err != nil {
+		t.Fatalf("set credential: %v", err)
+	}
+	login := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/profile-login",
+		`{"email":"stale-tenancy@example.test","password":"profile-password","device_id":"stale-device"}`, "", nil)
+	if login.Code != http.StatusOK {
+		t.Fatalf("profile login = %d %s", login.Code, login.Body.String())
+	}
+	directToken := decodeLogin(t, login).AccessToken
+
+	// Before anything moves, a v1 profile-scoped route resolves normally.
+	if before := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/values", "", directToken, nil); before.Code == http.StatusUnauthorized {
+		t.Fatalf("v1 request before rotation = %d %s, want it to resolve", before.Code, before.Body.String())
+	}
+
+	// Rotating the organization's policy revision leaves the token asserting a
+	// revision that no longer exists.
+	if _, err := pool.Exec(ctx, `UPDATE organizations SET policy_revision = policy_revision + 1 WHERE is_default`); err != nil {
+		t.Fatalf("rotate policy revision: %v", err)
+	}
+
+	after := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/values", "", directToken, nil)
+	if after.Code != http.StatusUnauthorized {
+		t.Fatalf("v1 request after rotation = %d %s, want %d",
+			after.Code, after.Body.String(), http.StatusUnauthorized)
+	}
+	if !strings.Contains(after.Body.String(), "authorization_state_stale") {
+		t.Fatalf("v1 rejection body = %s, want it to name the stale authorization state", after.Body.String())
+	}
+
+	// A legacy account session is unaffected: it never claimed a revision.
+	if legacy := performJSONRequest(t, router, http.MethodGet, "/api/v1/profiles/", "", accountToken, nil); legacy.Code != http.StatusOK {
+		t.Fatalf("account session after rotation = %d %s, want %d",
+			legacy.Code, legacy.Body.String(), http.StatusOK)
 	}
 }

@@ -48,10 +48,17 @@ func (r *SessionRepository) CreateProfileSessionIfCurrent(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// Locking the profile row is what closes the window between verifying a
-	// credential and inserting the session: a concurrent credential reset
-	// takes the same lock, so one of the two waits and then observes the
-	// other's committed revision.
+	// Locking is what closes the window between verifying a subject and
+	// inserting the session it authorizes.
+	//
+	// The profile row is taken FOR UPDATE, because a concurrent credential
+	// reset takes the same lock and one of the two then observes the other's
+	// committed revision. The account, organization, and membership rows are
+	// taken FOR SHARE: this session asserts their state is current, so a
+	// concurrent disablement, suspension, or revision rotation must not commit
+	// underneath it — but two logins make no conflicting claim about them, and
+	// FOR UPDATE there would serialize every login in an organization behind
+	// one row.
 	var current SessionSubject
 	var enabled bool
 	var organizationStatus, membershipStatus string
@@ -73,7 +80,8 @@ func (r *SessionRepository) CreateProfileSessionIfCurrent(
 		  ON memberships.organization_id = profiles.organization_id
 		 AND memberships.account_id = profiles.user_id
 		WHERE profiles.user_id = $1 AND profiles.id = $2
-		FOR UPDATE OF profiles`, subject.AccountID, subject.ProfileID).Scan(
+		FOR UPDATE OF profiles
+		FOR SHARE OF users, organizations, memberships`, subject.AccountID, subject.ProfileID).Scan(
 		&current.AccountID,
 		&current.ProfileID,
 		&current.OrganizationID,
