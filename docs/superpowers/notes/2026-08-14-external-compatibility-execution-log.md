@@ -59,7 +59,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 11 committed, closing every finding of the sixth full review; a seventh full review is next.
+Status: fix round 12 committed, closing every finding of the seventh full review — the first with no security findings; an eighth full review is next.
 
 Initial implementation commit:
 
@@ -261,6 +261,19 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
   3. The production composition path is pinned: prepareIdentityTransportV3 must emit a token verified against its session. Both new regressions confirmed red.
 - GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes.
 - Next continuation point: seventh full review.
+
+### 2026-08-14 — Foundation Task 1, seventh full review and fix round 12
+
+- Base/head commits: `997f7f92` → `4ec751e7 fix(auth): admit HEAD probes and the proxy download route`.
+- Seventh full review verdict on `81047e91..997f7f92`: not accepted, but for the first time no security findings — two over-restrictions that broke legitimate playback clients and two test-integrity repairs.
+- Findings and what closed them:
+  1. The router registers HEAD for stream and subtitle delivery, players probe with it, and the allowlist admitted only GET — the inventory had pinned the breakage as though intended. Both admit HEAD now, proven in both directions: an own-session probe reaches the handler, sibling probes refuse. The own-session probe runs last in its test because a probe that finds no media file aborts the session, which the earlier assertions need alive — itself discovered when the probe silently destroyed the fixture.
+  2. The proxy-served direct-download route authorizes identically to the admitted tokened route but was absent from the surface.
+  3. The round-11 capability condition was unpinned: existing tests forced the flag or built only the fully wired router. A wiring test now builds all four database and config combinations and asserts the advertisement agrees with whether the login route mounts.
+  4. The account-scope refusal ran after the definition lookup, so its guarantee depended on the key existing. It now precedes any contract logic and the regression covers an unknown key.
+- RED evidence: reverting the two admissions fails the reach-the-handler probes; reverting the refusal ordering fails the unknown-key case; the composition and account-scope regressions from round 11 fail with their fixes reverted.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes.
+- Next continuation point: eighth full review of `81047e91..4ec751e7`.
 
 ## Update template
 
