@@ -38,9 +38,13 @@ violations):
   state (SQLite with WAL by default). Deleting it loses client-token
   correlation and presentation preferences; every canonical thing — progress,
   favorites, collections, playlists, downloads, identity — lives in Vondel.
-  Larger installs may instead point a companion at its *own* PostgreSQL
-  database (never Vondel's server, database, schema, or credential); supply
-  that DSN as a secret file, not an environment value.
+  The state volume must be defined by the compose project itself — declaring
+  it `external: true` or giving it an explicit `name:` (which could alias a
+  pre-existing host volume) is rejected by the structural scan. Larger
+  installs may instead point a companion at its *own* PostgreSQL database
+  (never Vondel's server, database, schema, or credential); supply that DSN
+  as a secret file, not an environment value — the scan rejects
+  database-shaped environment keys and DSN-shaped values in any form.
 - **Vondel never controls Docker.** The admin UI reports state and prints
   exact commands; a human or an external deployment controller runs them.
 
