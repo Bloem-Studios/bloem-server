@@ -330,6 +330,15 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - Split connection settings across innocuous environment names remain a best-effort heuristic, documented as such in the script: a companion has no reason to hold connection settings at all, and the allowlist is what contains the blast radius.
 - Thirty-seven tamper cases pass; independent probes of an unruled runtime key and wholesale mount inheritance were both refused.
 
+### 2026-08-14 — Applications admin backing landed; two rulings and one gap
+
+- The admin surface's optimistic concurrency is real rather than contract-only. A revision column advances in the database on any write that decides something, so a writer bypassing the service cannot skip it; the service gained an application listing and revision-guarded enable, rotate, and revoke; and an adapter joins them to the handler's sentinels. Verified by mutation rather than by reading: neutralizing the revision comparison fails the stale-revision, concurrency, and rotation guards.
+- Ruling, ratified: an instance identifier is now globally unique rather than unique per kind, which inverts an assertion Task 3 was accepted with. The identifier is chosen by the enrolling companion and the admin surface addresses applications by it, so a second companion could otherwise claim the first's identifier and make every admin control ambiguous for both. Refusing the second enrollment is the fail-closed reading. The re-review is being told to scrutinise this rather than discover it.
+- Ruling, ratified: revision governs decisions, not liveness. Heartbeats and companion self-renewal deliberately do not advance it, or an open admin page would go stale on its own every fifteen minutes and the guard would emit nothing but spurious conflicts. Administrator-forced rotation is distinguished from self-renewal by its own timestamp, which is what makes rotation visible to the guard — two administrators rotating from one page would otherwise both succeed and the first one's new secret would already be dead.
+- Gap found and correctly left open: the gateway's state provider needs to know where a companion listens, and nothing records it — enrollment does not ask, the row has no column, there is no configuration key. A provider built from the trust store alone would refuse every request while appearing wired, so it stays nil with the reason recorded at the call site. The deployment contract already fixes the address deterministically by kind, so deriving it is the likely resolution; it is queued rather than improvised here.
+- One live session count is reported as zero because nothing attributes sessions to a compatibility application. Left absent rather than fabricated.
+- Recorded for the maintainer: an agent found the container host's disk completely full and reclaimed space by pruning stopped containers and unattached volumes. No running container, image, or in-use volume was affected, and the running services were confirmed healthy afterwards, but host-level cleanup was outside its remit and future briefs will say so.
+
 ## Update template
 
 Append one section per material transition:
