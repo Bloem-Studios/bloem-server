@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -276,10 +279,13 @@ func (m markerHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 // publicMux is what the production listener serves. This drives the real
 // function main() uses, so a change to the composition — reverting the
 // gateway ahead of the SPA fallback, say — fails here rather than shipping.
-func TestPublicMuxRoutesEachLayer(t *testing.T) {
-	mux := publicMux(markerHandler{"api"}, markerHandler{"spa"}, markerHandler{"gateway"})
-
-	cases := []struct {
+// publicListenerCases is the shared probe table for the public listener:
+// every layer, in the shapes real clients emit.
+func publicListenerCases() []struct {
+	path  string
+	layer string
+} {
+	return []struct {
 		path  string
 		layer string
 	}{
@@ -292,8 +298,8 @@ func TestPublicMuxRoutesEachLayer(t *testing.T) {
 		{"/web/index.html", "gateway"},
 		// Audiobookshelf's single family.
 		{"/audiobookshelf/api/ping", "gateway"},
-		// Native surfaces: the API tree, metrics, the SPA shell, and the
-		// reserved SPA routes that share a name with a Jellyfin family.
+		// Native surfaces: the API tree, the SPA shell, and the reserved SPA
+		// routes that share a name with a Jellyfin family.
 		{"/api/v1/health", "api"},
 		{"/api/v1/auth/login", "api"},
 		{"/api/v2/admin/session", "api"},
@@ -304,7 +310,14 @@ func TestPublicMuxRoutesEachLayer(t *testing.T) {
 		{"/", "spa"},
 		{"/assets/app.js", "spa"},
 	}
-	for _, tc := range cases {
+}
+
+// publicMux is what publicServer installs; this drives it directly so a
+// composition fault is reported against the composition rather than the
+// server wrapper.
+func TestPublicMuxRoutesEachLayer(t *testing.T) {
+	mux := publicMux(markerHandler{"api"}, markerHandler{"spa"}, markerHandler{"gateway"})
+	for _, tc := range publicListenerCases() {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
 		if got := rec.Header().Get("X-Layer"); got != tc.layer {
@@ -341,55 +354,120 @@ func TestPublicMuxWithoutGateway(t *testing.T) {
 	}
 }
 
-// publicMux is only worth testing if main actually serves it. Driving the
-// helper proves the helper; it says nothing about whether main still calls
-// it, so reverting main to an inline mux would leave the gateway out of
-// production with every package green. This pins the call site in source,
-// the same way the compatgateway package pins the SPA's route table.
-func TestMainServesThePublicMux(t *testing.T) {
-	source, err := os.ReadFile("main.go")
+// The public listener is what production serves, so the test drives the
+// function that builds it. main holds no composition of its own: it calls
+// publicServer and starts the result, which is why this can be a behavioral
+// test rather than a source-text assertion.
+func TestPublicServerRoutesEachLayer(t *testing.T) {
+	srv := publicServer(":9999", markerHandler{"api"}, markerHandler{"spa"}, markerHandler{"gateway"})
+	if srv.Addr != ":9999" {
+		t.Fatalf("public server listens on %q", srv.Addr)
+	}
+	if srv.ReadTimeout == 0 || srv.WriteTimeout == 0 || srv.IdleTimeout == 0 {
+		t.Fatalf("public server must carry its timeouts, got %+v", srv)
+	}
+	for _, tc := range publicListenerCases() {
+		rec := httptest.NewRecorder()
+		srv.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
+		if got := rec.Header().Get("X-Layer"); got != tc.layer {
+			t.Fatalf("%s reached layer %q, want %q", tc.path, got, tc.layer)
+		}
+	}
+}
+
+// The public listener must be the one publicServer builds. Resolved through
+// the AST rather than by matching source text: a substring needle cannot see
+// that a composed value was assigned and then discarded, and every rival
+// spelling of a mux walks straight past it.
+//
+// This is a guard, not the guarantee — the guarantee is that main has no
+// composition left to get wrong. It pins three properties: package main
+// calls publicServer exactly once, starts what it returns, and never swaps
+// the handler afterwards.
+func TestPublicListenerIsBuiltByPublicServer(t *testing.T) {
+	entries, err := os.ReadDir(".")
 	if err != nil {
-		t.Fatalf("read main.go: %v", err)
+		t.Fatalf("list package sources: %v", err)
 	}
-	text := string(source)
-
-	const composition = "publicMux(router, server.FrontendHandler(), compatGateway)"
-	if !strings.Contains(text, composition) {
-		t.Fatalf("main.go must compose the public listener as %q", composition)
-	}
-
-	// Any other mux in main.go is a second composition that could quietly
-	// bypass the gateway; the only legitimate one is publicMux's own.
-	body := publicMuxBody(t, text)
-	for _, index := range allIndexes(text, "http.NewServeMux()") {
-		if index < body[0] || index >= body[1] {
-			t.Fatalf("main.go builds a ServeMux outside publicMux at offset %d; the public listener has exactly one composition", index)
+	fset := token.NewFileSet()
+	var files []*ast.File
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
 		}
-	}
-}
-
-// publicMuxBody returns the [start, end) offsets of publicMux's body.
-func publicMuxBody(t *testing.T, text string) [2]int {
-	t.Helper()
-	start := strings.Index(text, "func publicMux(")
-	if start < 0 {
-		t.Fatal("main.go no longer declares publicMux")
-	}
-	end := strings.Index(text[start:], "\n}\n")
-	if end < 0 {
-		t.Fatal("publicMux body is unterminated")
-	}
-	return [2]int{start, start + end}
-}
-
-func allIndexes(text, needle string) []int {
-	var indexes []int
-	for offset := 0; ; {
-		found := strings.Index(text[offset:], needle)
-		if found < 0 {
-			return indexes
+		parsed, parseErr := parser.ParseFile(fset, name, nil, 0)
+		if parseErr != nil {
+			t.Fatalf("parse %s: %v", name, parseErr)
 		}
-		indexes = append(indexes, offset+found)
-		offset += found + len(needle)
+		if parsed.Name.Name != "main" {
+			t.Fatalf("%s is package %s, not main", name, parsed.Name.Name)
+		}
+		files = append(files, parsed)
+	}
+	// Every file of package main is parsed, not just main.go: a listener
+	// composed in a sibling file would otherwise be invisible here.
+	if len(files) < 2 {
+		t.Fatalf("parsed only %d package sources; the scan is stale", len(files))
+	}
+
+	var assignedTo []string
+	calls := 0
+	listened := map[string]bool{}
+	handlerAssigned := map[string]bool{}
+	for _, file := range files {
+		ast.Inspect(file, func(node ast.Node) bool {
+			switch typed := node.(type) {
+			case *ast.AssignStmt:
+				for i, rhs := range typed.Rhs {
+					call, isCall := rhs.(*ast.CallExpr)
+					if !isCall {
+						continue
+					}
+					name, isIdent := call.Fun.(*ast.Ident)
+					if !isIdent || name.Name != "publicServer" {
+						continue
+					}
+					calls++
+					if i < len(typed.Lhs) {
+						if target, isIdent := typed.Lhs[i].(*ast.Ident); isIdent {
+							assignedTo = append(assignedTo, target.Name)
+						}
+					}
+				}
+				// Reassigning the server's handler would discard the
+				// composition just as effectively as never calling it.
+				for _, lhs := range typed.Lhs {
+					if selector, isSelector := lhs.(*ast.SelectorExpr); isSelector && selector.Sel.Name == "Handler" {
+						if receiver, isIdent := selector.X.(*ast.Ident); isIdent {
+							handlerAssigned[receiver.Name] = true
+						}
+					}
+				}
+			case *ast.CallExpr:
+				selector, isSelector := typed.Fun.(*ast.SelectorExpr)
+				if !isSelector || (selector.Sel.Name != "ListenAndServe" && selector.Sel.Name != "ListenAndServeTLS" && selector.Sel.Name != "Serve") {
+					return true
+				}
+				if receiver, isIdent := selector.X.(*ast.Ident); isIdent {
+					listened[receiver.Name] = true
+				}
+			}
+			return true
+		})
+	}
+
+	if calls != 1 {
+		t.Fatalf("package main calls publicServer %d times; the public listener has exactly one source", calls)
+	}
+	if len(assignedTo) != 1 {
+		t.Fatalf("the publicServer result must be assigned to one identifier, got %v", assignedTo)
+	}
+	server := assignedTo[0]
+	if !listened[server] {
+		t.Fatalf("%s is never served; the composed listener is built and discarded", server)
+	}
+	if handlerAssigned[server] {
+		t.Fatalf("%s.Handler is reassigned after publicServer composed it", server)
 	}
 }

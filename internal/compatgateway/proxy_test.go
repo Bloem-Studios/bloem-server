@@ -184,6 +184,13 @@ func TestRouteTableOwnership(t *testing.T) {
 // route colliding with a family fails here instead of disappearing behind
 // the gateway.
 func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
+	// An object route table would declare paths this scan cannot see at all.
+	// The SPA does not use one today; if that changes, the pin must be
+	// rewritten rather than silently bypassed.
+	if table := spaObjectRouterFiles(t); len(table) > 0 {
+		t.Fatalf("SPA builds an object route table in %v; this pin only reads <Route> elements", table)
+	}
+
 	elements, files := spaRouteElements(t)
 	if len(elements) < 20 || files == 0 {
 		t.Fatalf("found %d <Route> elements across %d files; the scan is stale", len(elements), files)
@@ -194,15 +201,25 @@ func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
 	}
 
 	literal := regexp.MustCompile(`\spath="([^"]*)"`)
+	// Any spelling that names a path, readable or not.
+	declaresPath := regexp.MustCompile(`[\s{]path\s*[:=]`)
+	spread := regexp.MustCompile(`\{\s*\.\.\.`)
 	seen := map[string]bool{}
 	caseSensitive := map[string]bool{}
 	relative := 0
 	for _, element := range elements {
-		// A route whose path this scan cannot read is a failure, not a gap:
-		// path={ROUTE_CONST}, path={"/genres"}, and template literals would
-		// otherwise be swallowed by a family without anyone noticing.
-		if strings.Contains(element, "path={") || strings.Contains(element, "path=`") {
-			t.Fatalf("SPA route declares a non-literal path this pin cannot read: %s", strings.Join(strings.Fields(element), " "))
+		// A route whose path this scan cannot read is a failure, not a gap.
+		// The rule is stated positively: if the tag mentions a path at all —
+		// in any spelling, including single quotes, braces, backticks, or
+		// extra whitespace — it must be one this pin can read. Silently
+		// continuing when the literal pattern misses is what let
+		// path={CONST} and path='/genres' through before.
+		if declaresPath.MatchString(element) && !literal.MatchString(element) {
+			t.Fatalf("SPA route declares a path this pin cannot read: %s", condense(element))
+		}
+		// A spread can carry a path the scan never sees at all.
+		if spread.MatchString(element) {
+			t.Fatalf("SPA route spreads props, hiding its path from this pin: %s", condense(element))
 		}
 		match := literal.FindStringSubmatch(element)
 		if match == nil {
@@ -221,6 +238,11 @@ func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
 			continue
 		}
 		seen[segment] = true
+		// Recorded per element, not per segment: a second /search route
+		// without caseSensitive would otherwise ride on the first one's.
+		if reservedNativeSegments[segment] && !strings.Contains(element, "caseSensitive") {
+			t.Fatalf("SPA route %q must set caseSensitive on every declaration: %s", segment, condense(element))
+		}
 		if strings.Contains(element, "caseSensitive") {
 			caseSensitive[segment] = true
 		}
@@ -255,6 +277,30 @@ func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
 	}
 }
 
+// spaObjectRouterFiles reports files declaring a data-router route table,
+// whose paths are object keys rather than <Route> attributes.
+func spaObjectRouterFiles(t *testing.T) []string {
+	t.Helper()
+	var found []string
+	for _, file := range spaSourceFiles(t) {
+		source, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatalf("read %s: %v", file, err)
+		}
+		for _, builder := range []string{"createBrowserRouter", "createHashRouter", "createMemoryRouter", "useRoutes("} {
+			if strings.Contains(string(source), builder) {
+				found = append(found, filepath.Base(file))
+				break
+			}
+		}
+	}
+	return found
+}
+
+func condense(element string) string {
+	return strings.Join(strings.Fields(element), " ")
+}
+
 // spaRouteElements returns every <Route …> opening tag in web/src, so a route
 // declared outside App.tsx cannot escape the pin. Brace depth is tracked so
 // an element={<Page />} attribute does not end the tag early.
@@ -262,6 +308,25 @@ func spaRouteElements(t *testing.T) ([]string, int) {
 	t.Helper()
 	var elements []string
 	files := 0
+	for _, file := range spaSourceFiles(t) {
+		source, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatalf("read %s: %v", file, err)
+		}
+		found := routeOpeningTags(string(source))
+		if len(found) > 0 {
+			files++
+			elements = append(elements, found...)
+		}
+	}
+	return elements, files
+}
+
+// spaSourceFiles lists every non-test TypeScript source under web/src, so a
+// route declared outside App.tsx cannot escape the pin.
+func spaSourceFiles(t *testing.T) []string {
+	t.Helper()
+	var files []string
 	root := filepath.Join("..", "..", "web", "src")
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -273,29 +338,18 @@ func spaRouteElements(t *testing.T) ([]string, int) {
 		if ext := filepath.Ext(path); ext != ".tsx" && ext != ".ts" {
 			return nil
 		}
-		source, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return readErr
-		}
-		found := routeOpeningTags(string(source))
-		if len(found) > 0 {
-			files++
-			elements = append(elements, found...)
-		}
+		files = append(files, path)
 		return nil
 	})
 	if err != nil {
 		t.Fatalf("scan SPA sources: %v", err)
 	}
-	return elements, files
+	if len(files) < 50 {
+		t.Fatalf("scan found only %d SPA sources; the walk is stale", len(files))
+	}
+	return files
 }
 
-// routeOpeningTags returns the attribute region of every <Route> in one
-// source file, nested routes included. A container route holds its whole
-// child tree inside element={…}, so a region ends at the first "&gt;" outside
-// braces *or* at the first nested route tag, whichever comes first, and the
-// scan resumes just past the tag name rather than past the region — otherwise
-// every child of a container is invisible.
 func routeOpeningTags(source string) []string {
 	var tags []string
 	for idx := 0; idx < len(source); {
@@ -1046,6 +1100,58 @@ func TestDotSegmentPathsAreRefused(t *testing.T) {
 		}
 		if len(transport.recorded()) != 0 {
 			t.Fatalf("path %q was forwarded to a companion", path)
+		}
+	}
+}
+
+// An encoded slash inside the family segment makes the decoded and escaped
+// forms strip to different paths; net/url then discards RawPath and the
+// encoding guarantee is silently lost. Refuse rather than forward.
+func TestInconsistentlyEncodedPrefixIsRefused(t *testing.T) {
+	for _, path := range []string{
+		"/emby%2fItems/x",
+		"/emby%2FItems/x",
+		"/audiobookshelf%2fapi/ping",
+	} {
+		transport := &recordingTransport{}
+		states := &fakeStates{}
+		states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+		states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+		gateway := newTestGateway(t, states, transport)
+
+		rec := httptest.NewRecorder()
+		gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("path %q answered %d, want 400", path, rec.Code)
+		}
+		if len(transport.recorded()) != 0 {
+			t.Fatalf("path %q was forwarded with an inconsistent prefix", path)
+		}
+	}
+}
+
+// Hardening beyond what any current companion decodes: a doubly-encoded dot
+// segment and a dot segment hidden behind a path parameter are refused too,
+// so a companion that normalizes either cannot be walked out of its tree.
+func TestObfuscatedDotSegmentsAreRefused(t *testing.T) {
+	for _, path := range []string{
+		"/audiobookshelf/%252e%252e/x",
+		"/Items/..;/admin",
+		"/emby/%2e%2e;foo/x",
+	} {
+		transport := &recordingTransport{}
+		states := &fakeStates{}
+		states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+		states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+		gateway := newTestGateway(t, states, transport)
+
+		rec := httptest.NewRecorder()
+		gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("path %q answered %d, want 400", path, rec.Code)
+		}
+		if len(transport.recorded()) != 0 {
+			t.Fatalf("path %q was forwarded", path)
 		}
 	}
 }

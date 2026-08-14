@@ -180,6 +180,16 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Stripping happens twice — once on the decoded path, once on the escaped
+	// one — and the two must agree, or net/url discards RawPath and the
+	// encoding the client sent is lost. They disagree when the family segment
+	// itself carries an encoded slash ("/emby%2fItems/x"), which no real
+	// client sends.
+	if route.StripPrefix && !stripsConsistently(r.URL) {
+		writeGatewayError(w, http.StatusBadRequest, "invalid_path", "The request path is not a valid compatibility path")
+		return
+	}
+
 	if r.ContentLength > g.maxRequestBytes {
 		writeGatewayError(w, http.StatusRequestEntityTooLarge, "request_too_large", "Request body exceeds the compatibility gateway limit")
 		return
@@ -323,14 +333,39 @@ func strippedPath(path string) string {
 	return trimmed[idx:]
 }
 
-// hasDotSegment reports whether any whole path segment is "." or "..".
+// hasDotSegment reports whether any path segment is a dot segment, seeing
+// through the two disguises a companion might undo for itself: a path
+// parameter after a semicolon, and one further round of percent-decoding.
+// Neither Go nor Node strips ;-params or double-decodes, so this is
+// hardening rather than a live hole — but the check costs nothing and the
+// gateway should not be the component that forwards one.
 func hasDotSegment(path string) bool {
 	for _, segment := range strings.Split(path, "/") {
-		if segment == "." || segment == ".." {
+		if segment == "" {
+			continue
+		}
+		if isDotSegment(segment) {
+			return true
+		}
+		if decoded, err := url.PathUnescape(segment); err == nil && decoded != segment && isDotSegment(decoded) {
 			return true
 		}
 	}
 	return false
+}
+
+func isDotSegment(segment string) bool {
+	if parameter := strings.IndexByte(segment, ';'); parameter >= 0 {
+		segment = segment[:parameter]
+	}
+	return segment == "." || segment == ".."
+}
+
+// stripsConsistently reports whether stripping the decoded and the escaped
+// path yields the same path, so RawPath survives on the outgoing request.
+func stripsConsistently(u *url.URL) bool {
+	decoded, err := url.PathUnescape(strippedPath(u.EscapedPath()))
+	return err == nil && decoded == strippedPath(u.Path)
 }
 
 // rewriteRedirect keeps companion redirects on the canonical origin. A
