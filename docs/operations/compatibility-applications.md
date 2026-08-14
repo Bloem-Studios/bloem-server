@@ -22,15 +22,36 @@ A companion is a protocol translator, nothing more. Structurally enforced by
 any time; `scripts/verify-compat-compose_test.sh` proves the scanner detects
 violations).
 
-The scan is **default-deny**: a companion service may declare only the Compose
-keys on an explicit allowlist (image, environment, networks, volumes, secrets,
-security_opt, ports, restart, healthcheck, depends_on, labels, read_only, init,
-user, stop_grace_period, pull_policy) and each of those keys has its values
-checked as well. Everything else — `volumes_from`, `devices`, `privileged`,
-namespace sharing, `tmpfs`, `sysctls`, `runtime`, and any key a future Compose
-release introduces — fails the scan by construction. If you have a genuine need
-for a key that is not on the list, it must be added there deliberately and
-reviewed, not worked around.
+The scan is **default-deny in two dimensions**:
+
+- **Service set.** A rendered combination may contain the base stack plus
+  exactly the companions its overlays activate. An extra service — however
+  innocuous it looks, and even if hidden behind a Compose profile — fails the
+  scan.
+- **Service keys.** A companion service may declare only these keys: `image`,
+  `environment`, `networks`, `volumes`, `secrets`, `security_opt`, `ports`,
+  `restart`. Each one also has its *values* checked. Every other key —
+  `volumes_from`, `devices`, `privileged`, namespace sharing, `tmpfs`,
+  `sysctls`, `runtime`, `healthcheck`, `labels`, and anything a future Compose
+  release introduces — fails by construction.
+
+Nothing is on those lists speculatively: a key qualifies only by being used by
+a committed contract *and* having its values pinned. `healthcheck` and `labels`
+are instructive exclusions — a healthcheck command runs arbitrary code inside
+the companion (it can read the enrollment secret and post it to a service on
+the shared network), and labels are inert only until a label-driven proxy on
+the host acts on them and republishes an internal companion. If a companion
+genuinely needs such a key, add it to the allowlist deliberately, with a value
+check, under review — do not work around the scan.
+
+**Scan reach.** The scan renders the committed files with the operator
+environment excluded, so it verifies the two interpolated variables per
+companion (`VONDEL_*_IMAGE` and `VONDEL_*_ENROLLMENT_FILE`) **only at their
+committed defaults**. An operator who overrides them at deploy time — pointing
+the enrollment secret at a different file, or the image at a different
+registry — is outside what the scan can see. Treat those two variables as
+security-relevant configuration and review them the way you review the compose
+files themselves.
 
 What that enforces:
 
@@ -81,9 +102,13 @@ What that enforces:
    printf '%s' '<token>' > .secrets/compat/vondel-audiobookshelf-enrollment.token
    ```
 
-   (For Jellyfin: `.secrets/compat/vondel-jellyfin-enrollment.token`. Override
-   the locations with `VONDEL_AUDIOBOOKSHELF_ENROLLMENT_FILE` /
-   `VONDEL_JELLYFIN_ENROLLMENT_FILE`.)
+   (For Jellyfin: `.secrets/compat/vondel-jellyfin-enrollment.token`. These
+   paths can be moved with `VONDEL_AUDIOBOOKSHELF_ENROLLMENT_FILE` /
+   `VONDEL_JELLYFIN_ENROLLMENT_FILE`, but prefer the defaults: whatever file
+   these name is mounted into the companion at the enrollment path, so an
+   override points a host file into the container and is not covered by the
+   structural scan. Keep the default unless you have a specific reason, and
+   review the value if you change it.)
 
 4. **Activate the overlay.** This is the supported activation path — the
    companions are deliberately absent from the base `docker-compose.yml`:

