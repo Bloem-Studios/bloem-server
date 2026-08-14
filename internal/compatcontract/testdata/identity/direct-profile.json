@@ -1,0 +1,17 @@
+{
+  "name": "direct-profile-identity",
+  "cases": [
+    {"name":"direct profile login binds exactly one profile","method":"POST","path":"/api/v1/auth/profile-login","body_json":{"email":"{{direct_email}}","password":"{{direct_password}}","device_id":"{{device_id}}"},"want_status":200,"capture":{"direct_token":"$.access_token"},"want_json_fields":{"$.profile_id":"{{direct_profile_id}}"},"absent_strings":["{{sibling_profile_id}}"]},
+    {"name":"a wrong profile password is refused","method":"POST","path":"/api/v1/auth/profile-login","body_json":{"email":"{{direct_email}}","password":"{{wrong_password}}","device_id":"{{device_id}}"},"exception":"unauthenticated","absent_strings":["access_token"]},
+    {"name":"the profile directory is refused","method":"GET","path":"/api/v1/profiles/","headers":{"Authorization":"Bearer {{direct_token}}"},"want_status":403,"absent_strings":["{{sibling_profile_id}}"]},
+    {"name":"household session management is refused","method":"GET","path":"/api/v1/profiles/household/sessions","headers":{"Authorization":"Bearer {{direct_token}}"},"want_status":403},
+    {"name":"a sibling profile update is refused","method":"PUT","path":"/api/v1/profiles/{{sibling_profile_id}}","body_json":{"name":"Hijacked"},"headers":{"Authorization":"Bearer {{direct_token}}"},"want_status":403},
+    {"name":"minting an account api key is refused","method":"POST","path":"/api/v1/api-keys/","body_json":{"name":"escape"},"headers":{"Authorization":"Bearer {{direct_token}}"},"want_status":403},
+    {"name":"verifying a profile pin is refused","method":"POST","path":"/api/v1/profiles/{{direct_profile_id}}/verify-pin","body_json":{"pin":"2468"},"headers":{"Authorization":"Bearer {{direct_token}}"},"want_status":403},
+    {"name":"the bound profile reads its own record","method":"GET","path":"/api/v1/profiles/{{direct_profile_id}}","headers":{"Authorization":"Bearer {{direct_token}}"},"want_status":200,"want_json_fields":{"$.id":"{{direct_profile_id}}"}},
+    {"name":"the bound profile updates its own record","method":"PUT","path":"/api/v1/profiles/{{direct_profile_id}}","body_json":{"quality_preference":"720p"},"headers":{"Authorization":"Bearer {{direct_token}}"},"want_status":200},
+    {"name":"a stale organization policy revision is refused","method":"GET","path":"/api/v1/settings/values","headers":{"Authorization":"Bearer {{stale_policy_token}}"},"want_status":401,"present_strings":["authorization_state_stale"]},
+    {"name":"a stale membership security revision is refused","method":"GET","path":"/api/v1/settings/values","headers":{"Authorization":"Bearer {{stale_security_token}}"},"want_status":401,"present_strings":["authorization_state_stale"]},
+    {"name":"a reset profile credential is refused","method":"GET","path":"/api/v1/settings/values","headers":{"Authorization":"Bearer {{reset_credential_token}}"},"want_status":401}
+  ]
+}

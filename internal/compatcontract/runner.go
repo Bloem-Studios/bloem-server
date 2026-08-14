@@ -12,6 +12,9 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,7 +39,7 @@ func run(ctx context.Context, target Target, suite Suite) (Report, error) {
 		result := CaseResult{Name: c.Name}
 		started := time.Now()
 		var caseErr error
-		if len(c.WantWebSocketJSON) > 0 || c.WantWebSocketNoMessage {
+		if len(c.WantWebSocketJSON) > 0 || c.WantWebSocketFiltered {
 			caseErr = runWebSocketCase(ctx, target, base, c, &result)
 		} else {
 			caseErr = runHTTPCase(ctx, target, base, c, &result)
@@ -86,7 +89,105 @@ func hasSensitiveQuery(values url.Values) bool {
 	return false
 }
 
+var bindingPattern = regexp.MustCompile(`\{\{([A-Za-z0-9_]+)\}\}`)
+
+// expandBindings substitutes {{name}} placeholders from bindings. An unbound
+// placeholder is an error so a fixture cannot silently probe a literal
+// "{{token}}" and mistake the refusal for the behavior under test.
+func expandBindings(value string, bindings map[string]string) (string, error) {
+	var missing []string
+	expanded := bindingPattern.ReplaceAllStringFunc(value, func(match string) string {
+		name := match[2 : len(match)-2]
+		bound, ok := bindings[name]
+		if !ok {
+			missing = append(missing, name)
+			return match
+		}
+		return bound
+	})
+	if len(missing) > 0 {
+		return "", fmt.Errorf("unbound fixture placeholder %q", missing[0])
+	}
+	return expanded, nil
+}
+
+func expandStrings(values []string, bindings map[string]string) ([]string, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	expanded := make([]string, 0, len(values))
+	for _, value := range values {
+		e, err := expandBindings(value, bindings)
+		if err != nil {
+			return nil, err
+		}
+		expanded = append(expanded, e)
+	}
+	return expanded, nil
+}
+
+// expandCase resolves every placeholder-bearing field of a case against the
+// target's bindings, returning a fully concrete copy.
+func expandCase(c Case, bindings map[string]string) (Case, error) {
+	var err error
+	if c.Path, err = expandBindings(c.Path, bindings); err != nil {
+		return c, err
+	}
+	if len(c.BodyJSON) > 0 {
+		expanded, expandErr := expandBindings(string(c.BodyJSON), bindings)
+		if expandErr != nil {
+			return c, expandErr
+		}
+		c.BodyJSON = json.RawMessage(expanded)
+	}
+	if len(c.Headers) > 0 {
+		headers := make(map[string]string, len(c.Headers))
+		for key, value := range c.Headers {
+			if headers[key], err = expandBindings(value, bindings); err != nil {
+				return c, err
+			}
+		}
+		c.Headers = headers
+	}
+	if c.PresentStrings, err = expandStrings(c.PresentStrings, bindings); err != nil {
+		return c, err
+	}
+	if c.AbsentStrings, err = expandStrings(c.AbsentStrings, bindings); err != nil {
+		return c, err
+	}
+	if len(c.WantJSONFields) > 0 {
+		fields := make(map[string]json.RawMessage, len(c.WantJSONFields))
+		for selector, want := range c.WantJSONFields {
+			expanded, expandErr := expandBindings(string(want), bindings)
+			if expandErr != nil {
+				return c, expandErr
+			}
+			fields[selector] = json.RawMessage(expanded)
+		}
+		c.WantJSONFields = fields
+	}
+	if c.Timing != nil {
+		timing := *c.Timing
+		if timing.ControlPath, err = expandBindings(timing.ControlPath, bindings); err != nil {
+			return c, err
+		}
+		c.Timing = &timing
+	}
+	return c, nil
+}
+
+func caseBody(c Case) []byte {
+	if len(c.BodyJSON) > 0 {
+		return []byte(c.BodyJSON)
+	}
+	return c.Body
+}
+
 func runHTTPCase(ctx context.Context, target Target, base *url.URL, c Case, result *CaseResult) error {
+	c, err := expandCase(c, target.Bindings)
+	if err != nil {
+		return err
+	}
 	method := c.Method
 	if method == "" {
 		method = http.MethodGet
@@ -95,9 +196,12 @@ func runHTTPCase(ctx context.Context, target Target, base *url.URL, c Case, resu
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, method, caseURL.String(), bytes.NewReader(c.Body))
+	req, err := http.NewRequestWithContext(ctx, method, caseURL.String(), bytes.NewReader(caseBody(c)))
 	if err != nil {
 		return errors.New("build request")
+	}
+	if len(c.BodyJSON) > 0 {
+		req.Header.Set("Content-Type", "application/json")
 	}
 	if target.Credentials != nil {
 		if err := target.Credentials.Apply(req); err != nil {
@@ -118,8 +222,40 @@ func runHTTPCase(ctx context.Context, target Target, base *url.URL, c Case, resu
 		return errors.New("read response")
 	}
 	result.Status = resp.StatusCode
+	// Captures run before assertions so a case that fails its own contract
+	// still hands the credential it was issued to the cases that must prove
+	// the credential is bounded.
+	if err := captureBindings(c, body, target.Bindings); err != nil {
+		return err
+	}
 	if err := checkCaseResponse(c, resp, body); err != nil {
 		return err
+	}
+	return nil
+}
+
+func captureBindings(c Case, body []byte, bindings map[string]string) error {
+	if len(c.Capture) == 0 {
+		return nil
+	}
+	if bindings == nil {
+		return errors.New("case captures a binding but the target has no bindings map")
+	}
+	for name, selector := range c.Capture {
+		value, err := jsonValueAt(body, selector)
+		if err != nil {
+			return fmt.Errorf("capture %s: %w", name, err)
+		}
+		switch typed := value.(type) {
+		case string:
+			bindings[name] = typed
+		case float64:
+			bindings[name] = strconv.FormatFloat(typed, 'f', -1, 64)
+		case bool:
+			bindings[name] = strconv.FormatBool(typed)
+		default:
+			return fmt.Errorf("capture %s: selector does not resolve to a scalar", name)
+		}
 	}
 	return nil
 }
@@ -147,6 +283,19 @@ func checkCaseResponse(c Case, resp *http.Response, body []byte) error {
 		}
 		if got != want {
 			return fmt.Errorf("count %s = %d, want %d", selector, got, want)
+		}
+	}
+	for selector, want := range c.WantJSONFields {
+		got, err := jsonValueAt(body, selector)
+		if err != nil {
+			return fmt.Errorf("field %s: %w", selector, err)
+		}
+		var wantValue any
+		if err := json.Unmarshal(want, &wantValue); err != nil {
+			return fmt.Errorf("field %s: fixture value is not JSON", selector)
+		}
+		if !reflect.DeepEqual(wantValue, got) {
+			return fmt.Errorf("field %s does not match the fixture value", selector)
 		}
 	}
 	if c.WantSHA256 != "" {
@@ -181,30 +330,52 @@ func matchesException(name string, status int) bool {
 	}
 }
 
-// jsonElementCount resolves a dotted selector ("$", "$.Items",
-// "$.Data.Rows") against body and returns the length of the array it selects.
-// A missing field or a non-array value is an error rather than a zero count,
-// so a contract that promises an empty collection cannot be satisfied by the
-// collection disappearing.
-func jsonElementCount(body []byte, selector string) (int, error) {
+// jsonValueAt resolves a dotted selector ("$", "$.Items", "$.0.Name") against
+// body. Numeric segments index arrays; other segments traverse objects. A
+// missing field is an error rather than a nil value.
+func jsonValueAt(body []byte, selector string) (any, error) {
 	if selector != "$" && !strings.HasPrefix(selector, "$.") {
-		return 0, errors.New("selector must start at $")
+		return nil, errors.New("selector must start at $")
 	}
 	var value any
 	if err := json.Unmarshal(body, &value); err != nil {
-		return 0, errors.New("response is not JSON")
+		return nil, errors.New("response is not JSON")
 	}
-	if selector != "$" {
-		for _, field := range strings.Split(selector[2:], ".") {
-			object, ok := value.(map[string]any)
+	if selector == "$" {
+		return value, nil
+	}
+	for _, segment := range strings.Split(selector[2:], ".") {
+		if index, err := strconv.Atoi(segment); err == nil {
+			array, ok := value.([]any)
 			if !ok {
-				return 0, errors.New("selector path does not traverse an object")
+				return nil, errors.New("selector indexes a non-array")
 			}
-			value, ok = object[field]
-			if !ok {
-				return 0, errors.New("selector path is absent from the response")
+			if index < 0 || index >= len(array) {
+				return nil, errors.New("selector index is out of range")
 			}
+			value = array[index]
+			continue
 		}
+		object, ok := value.(map[string]any)
+		if !ok {
+			return nil, errors.New("selector path does not traverse an object")
+		}
+		value, ok = object[segment]
+		if !ok {
+			return nil, errors.New("selector path is absent from the response")
+		}
+	}
+	return value, nil
+}
+
+// jsonElementCount returns the length of the array a selector resolves to. A
+// missing field or a non-array value is an error rather than a zero count, so
+// a contract that promises an empty collection cannot be satisfied by the
+// collection disappearing.
+func jsonElementCount(body []byte, selector string) (int, error) {
+	value, err := jsonValueAt(body, selector)
+	if err != nil {
+		return 0, err
 	}
 	array, ok := value.([]any)
 	if !ok {
@@ -220,6 +391,10 @@ func sameJSON(want, got []byte) bool {
 }
 
 func runWebSocketCase(ctx context.Context, target Target, base *url.URL, c Case, result *CaseResult) error {
+	c, err := expandCase(c, target.Bindings)
+	if err != nil {
+		return err
+	}
 	fixtureURL, err := resolveFixtureURL(base, c.Path)
 	if err != nil {
 		return err
@@ -263,23 +438,37 @@ func runWebSocketCase(ctx context.Context, target Target, base *url.URL, c Case,
 			return errors.New("websocket JSON does not match fixture")
 		}
 	}
-	if c.WantWebSocketNoMessage {
-		_ = conn.SetReadDeadline(time.Now().Add(50 * time.Millisecond))
-		_, message, err := conn.ReadMessage()
-		if err == nil {
+	if c.WantWebSocketFiltered {
+		// Watch a bounded window. Legitimate traffic — keepalives, ordinary
+		// events, or silence — is all acceptable; only a frame carrying an
+		// excluded identifier fails.
+		_ = conn.SetReadDeadline(time.Now().Add(150 * time.Millisecond))
+		for {
+			_, frame, err := conn.ReadMessage()
+			if err != nil {
+				// Deadline or close ends the watch; both mean no forbidden
+				// frame arrived in the window.
+				break
+			}
 			for _, forbidden := range c.AbsentStrings {
-				if forbidden != "" && bytes.Contains(message, []byte(forbidden)) {
+				if forbidden != "" && bytes.Contains(frame, []byte(forbidden)) {
 					return errors.New("websocket frame contains an excluded fixture identifier")
 				}
 			}
-			return errors.New("websocket emitted an unexpected event frame")
 		}
 	}
 	result.Status = http.StatusSwitchingProtocols
 	return nil
 }
 
-func checkTimingDistribution(ctx context.Context, target Target, base *url.URL, c Case) error {
+// checkTimingDistribution interleaves protected and control requests, insists
+// every sample answers the same negative status, and compares medians with a
+// relative tolerance plus a small absolute floor. c must already be expanded.
+func checkTimingDistribution(ctx context.Context, target Target, base *url.URL, raw Case) error {
+	c, err := expandCase(raw, target.Bindings)
+	if err != nil {
+		return err
+	}
 	if c.Timing.ControlPath == "" {
 		return errors.New("timing fixture has no control path")
 	}
@@ -291,55 +480,96 @@ func checkTimingDistribution(ctx context.Context, target Target, base *url.URL, 
 	if maxRatio <= 1 {
 		maxRatio = 3
 	}
-	protected, err := samplePath(ctx, target, base, c.Method, c.Path, c.Headers, samples)
-	if err != nil {
-		return err
+
+	protected := make([]time.Duration, 0, samples)
+	control := make([]time.Duration, 0, samples)
+	expectedStatus := 0
+	sample := func(path string, into *[]time.Duration) error {
+		duration, status, err := timeSample(ctx, target, base, c, path)
+		if err != nil {
+			return err
+		}
+		// Every sample must satisfy the case's own negative expectation and
+		// agree with every other sample's status: a control that answers a
+		// visibly different status is an oracle regardless of elapsed time.
+		if err := checkTimingSampleStatus(c, status); err != nil {
+			return err
+		}
+		if expectedStatus == 0 {
+			expectedStatus = status
+		} else if status != expectedStatus {
+			return fmt.Errorf("timing samples answer status %d and %d; protected and control responses must be indistinguishable", expectedStatus, status)
+		}
+		*into = append(*into, duration)
+		return nil
 	}
-	control, err := samplePath(ctx, target, base, c.Method, c.Timing.ControlPath, c.Headers, samples)
-	if err != nil {
-		return err
+	for range samples {
+		if err := sample(c.Path, &protected); err != nil {
+			return err
+		}
+		if err := sample(c.Timing.ControlPath, &control); err != nil {
+			return err
+		}
 	}
-	if timingMean(protected) > time.Duration(float64(timingMean(control))*maxRatio)+20*time.Millisecond || timingMean(control) > time.Duration(float64(timingMean(protected))*maxRatio)+20*time.Millisecond {
+
+	medianProtected := timingMedian(protected)
+	medianControl := timingMedian(control)
+	smaller, larger := medianProtected, medianControl
+	if smaller > larger {
+		smaller, larger = larger, smaller
+	}
+	const noiseFloor = 2 * time.Millisecond
+	if larger-smaller > noiseFloor && float64(larger) > float64(smaller)*maxRatio {
 		return errors.New("protected and random missing-ID timing distributions diverge")
 	}
 	return nil
 }
 
-// samplePath measures the case's own request identity: credentials and case
-// headers are attached exactly as runHTTPCase attaches them, so the compared
-// distributions come from the authenticated path a real client would time.
-func samplePath(ctx context.Context, target Target, base *url.URL, method, path string, headers map[string]string, samples int) ([]time.Duration, error) {
+func checkTimingSampleStatus(c Case, status int) error {
+	if c.Exception != "" {
+		if !matchesException(c.Exception, status) {
+			return fmt.Errorf("timing sample status %d does not match %s exception", status, c.Exception)
+		}
+		return nil
+	}
+	if c.WantStatus != 0 && status != c.WantStatus {
+		return fmt.Errorf("timing sample status %d, want %d", status, c.WantStatus)
+	}
+	return nil
+}
+
+// timeSample issues one request with the case's own method, headers, and
+// credentials — the identity a real client would time — and returns the
+// elapsed time and status.
+func timeSample(ctx context.Context, target Target, base *url.URL, c Case, path string) (time.Duration, int, error) {
+	method := c.Method
 	if method == "" {
 		method = http.MethodGet
 	}
-	durations := make([]time.Duration, 0, samples)
-	for range samples {
-		fixtureURL, err := resolveFixtureURL(base, path)
-		if err != nil {
-			return nil, err
-		}
-		req, err := http.NewRequestWithContext(ctx, method, fixtureURL.String(), nil)
-		if err != nil {
-			return nil, errors.New("build timing request")
-		}
-		if target.Credentials != nil {
-			if err := target.Credentials.Apply(req); err != nil {
-				return nil, errors.New("apply timing credentials")
-			}
-		}
-		for key, value := range headers {
-			req.Header.Set(key, value)
-		}
-		started := time.Now()
-		resp, err := target.Client.Do(req)
-		if err != nil {
-			return nil, errors.New("send timing request")
-		}
-		_, _ = io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
-		durations = append(durations, time.Since(started))
+	fixtureURL, err := resolveFixtureURL(base, path)
+	if err != nil {
+		return 0, 0, err
 	}
-	return durations, nil
+	req, err := http.NewRequestWithContext(ctx, method, fixtureURL.String(), nil)
+	if err != nil {
+		return 0, 0, errors.New("build timing request")
+	}
+	if target.Credentials != nil {
+		if err := target.Credentials.Apply(req); err != nil {
+			return 0, 0, errors.New("apply timing credentials")
+		}
+	}
+	for key, value := range c.Headers {
+		req.Header.Set(key, value)
+	}
+	started := time.Now()
+	resp, err := target.Client.Do(req)
+	if err != nil {
+		return 0, 0, errors.New("send timing request")
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+	return time.Since(started), resp.StatusCode, nil
 }
 
 func resolveFixtureURL(base *url.URL, rawPath string) (*url.URL, error) {
@@ -350,12 +580,18 @@ func resolveFixtureURL(base *url.URL, rawPath string) (*url.URL, error) {
 	return base.ResolveReference(fixtureURL), nil
 }
 
-func timingMean(values []time.Duration) time.Duration {
-	var total time.Duration
-	for _, value := range values {
-		total += value
+func timingMedian(values []time.Duration) time.Duration {
+	if len(values) == 0 {
+		return 0
 	}
-	return total / time.Duration(len(values))
+	sorted := make([]time.Duration, len(values))
+	copy(sorted, values)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	middle := len(sorted) / 2
+	if len(sorted)%2 == 0 {
+		return (sorted[middle-1] + sorted[middle]) / 2
+	}
+	return sorted[middle]
 }
 
 func redactError(err error) string {

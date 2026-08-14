@@ -3,59 +3,77 @@ package compatcontract
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
-const fixtureOrdinaryLibrary = "lib-ordinary-001"
+// ---------------------------------------------------------------------------
+// Audiobookshelf identity reference listener, mimicking the embedded ABS
+// handler's real semantics: account login resolving the primary profile,
+// username#profile selection with the account password, per-request token
+// validation, and logout revocation. Observed over public HTTP only.
+// ---------------------------------------------------------------------------
 
-// audiobookshelfViolations switch individual contract breaches on so the
-// identity suite can be proven to detect each of them. The zero value is a
-// compliant reference listener.
-type audiobookshelfViolations struct {
-	discloseDirectory     bool
-	discloseSiblings      bool
-	grantRoot             bool
-	acceptStaleTokens     bool
-	discloseForeignItem   bool
-	discloseAdultCatalog  bool
-	discloseAdultArtwork  bool
-	discloseAdultPlayback bool
-	leakAdultActivity     bool
+func audiobookshelfIdentityBindings() map[string]string {
+	return map[string]string{
+		"account_username":  refAccountUsername,
+		"account_password":  refAccountPassword,
+		"wrong_password":    refWrongPassword,
+		"account_id":        refAccountID,
+		"primary_profile":   refPrimaryProfile,
+		"reader_profile":    refReaderProfile,
+		"unknown_profile":   refUnknownProfile,
+		"missing_adult_id":  refMissingAdultID,
+		"missing_random_id": refMissingRandomID,
+		"abs_account_token": "fixture-preseeded-abs-account-token",
+		"abs_reader_token":  "fixture-preseeded-abs-reader-token",
+	}
 }
 
-// newAudiobookshelfIdentityListener serves the frozen Audiobookshelf identity
-// semantics over public HTTP; the suite observes nothing but requests and
-// responses.
+// audiobookshelfViolations seed exactly one contract breach each; the zero
+// value is a compliant reference listener.
+type audiobookshelfViolations struct {
+	acceptAnonymousMe     bool
+	acceptWrongPassword   bool
+	misresolvePrimary     bool
+	rootOnExplicitLogin   bool
+	acceptUnknownProfile  bool
+	misattributePrincipal bool
+	acceptMalformedToken  bool
+	logoutWrongStatus     bool
+	ignoreLogout          bool
+	delayAdultMiss        bool
+	unequalControlStatus  bool
+}
+
 func newAudiobookshelfIdentityListener(t *testing.T, v audiobookshelfViolations) *httptest.Server {
 	t.Helper()
-	stale := map[string]bool{}
-	for _, token := range fixtureStaleTokens {
-		stale[token] = true
+	var mu sync.Mutex
+	nextToken := 0
+	tokens := map[string]string{ // token -> profile display name
+		"fixture-preseeded-abs-account-token": refPrimaryProfile,
+		"fixture-preseeded-abs-reader-token":  refReaderProfile,
 	}
-	authorized := func(r *http.Request) bool {
-		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if token == fixtureAccountToken || token == fixtureDirectToken {
-			return true
+	bearer := func(r *http.Request) string {
+		return strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	}
+	principal := func(r *http.Request) (string, bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		profile, ok := tokens[bearer(r)]
+		if !ok && v.acceptMalformedToken && bearer(r) == "fixture-not-a-real-token" {
+			return refPrimaryProfile, true
 		}
-		return stale[token] && v.acceptStaleTokens
+		return profile, ok
 	}
 	refuse := func(w http.ResponseWriter) { http.Error(w, "unauthorized", http.StatusUnauthorized) }
-	writeLogin := func(w http.ResponseWriter, profileID string) {
-		userType := "user"
-		if v.grantRoot {
-			userType = "root"
-		}
-		user := map[string]any{"id": profileID, "type": userType}
-		if v.discloseSiblings {
-			user["householdProfiles"] = []string{fixturePrimaryProfile, fixturePinProfile}
-		}
-		writeFixtureJSON(w, map[string]any{"user": user, "userDefaultLibraryId": fixtureOrdinaryLibrary})
-	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /login", func(w http.ResponseWriter, r *http.Request) {
@@ -64,68 +82,86 @@ func newAudiobookshelfIdentityListener(t *testing.T, v audiobookshelfViolations)
 			http.Error(w, "invalid request", http.StatusBadRequest)
 			return
 		}
-		switch {
-		case creds.Username == fixtureDirectEmail && creds.Password == fixtureDirectPassword:
-			writeLogin(w, fixtureDirectProfile)
-		case creds.Username == fixtureAccountEmail && creds.Password == fixtureAccountPassword:
-			writeLogin(w, fixturePrimaryProfile)
-		default:
-			refuse(w)
+		account, profileSelector := creds.Username, ""
+		if i := strings.LastIndexByte(creds.Username, '#'); i >= 0 {
+			account, profileSelector = creds.Username[:i], creds.Username[i+1:]
 		}
-	})
-	mux.HandleFunc("GET /api/users", func(w http.ResponseWriter, r *http.Request) {
-		if v.discloseDirectory {
-			writeFixtureJSON(w, map[string]any{"users": []string{fixturePrimaryProfile, fixtureDirectProfile, fixturePinProfile}})
+		if account != refAccountUsername || (creds.Password != refAccountPassword && !v.acceptWrongPassword) {
+			refuse(w)
 			return
 		}
-		refuse(w)
+		profile := refPrimaryProfile
+		if v.misresolvePrimary {
+			profile = refReaderProfile
+		}
+		if profileSelector != "" {
+			switch profileSelector {
+			case refPrimaryProfile, refReaderProfile:
+				profile = profileSelector
+			default:
+				if !v.acceptUnknownProfile {
+					refuse(w)
+					return
+				}
+				profile = profileSelector
+			}
+		}
+		userType := "user"
+		if v.rootOnExplicitLogin && profileSelector == refReaderProfile {
+			userType = "root"
+		}
+		mu.Lock()
+		nextToken++
+		token := fmt.Sprintf("fixture-abs-session-%03d", nextToken)
+		tokens[token] = profile
+		mu.Unlock()
+		writeFixtureJSON(w, map[string]any{
+			"user": map[string]any{
+				"id":          refAccountID,
+				"username":    profile,
+				"type":        userType,
+				"accessToken": token,
+			},
+		})
 	})
 	mux.HandleFunc("GET /api/me", func(w http.ResponseWriter, r *http.Request) {
-		if !authorized(r) {
+		if v.acceptAnonymousMe && bearer(r) == "" {
+			writeFixtureJSON(w, map[string]any{"id": refAccountID, "username": refPrimaryProfile, "profiles": []string{refPrimaryProfile, refReaderProfile}})
+			return
+		}
+		profile, ok := principal(r)
+		if !ok {
 			refuse(w)
 			return
 		}
-		writeFixtureJSON(w, map[string]any{"id": fixturePrimaryProfile, "type": "user"})
+		if v.misattributePrincipal {
+			profile = refPrimaryProfile
+		}
+		writeFixtureJSON(w, map[string]any{"id": refAccountID, "username": profile, "type": "user"})
 	})
-	mux.HandleFunc("GET /api/me/listening-sessions", func(w http.ResponseWriter, r *http.Request) {
-		if !authorized(r) {
-			refuse(w)
+	mux.HandleFunc("POST /logout", func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		if !v.ignoreLogout {
+			delete(tokens, bearer(r))
+		}
+		mu.Unlock()
+		if v.logoutWrongStatus {
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		sessions := []map[string]any{}
-		if v.leakAdultActivity {
-			sessions = append(sessions, map[string]any{"libraryItemId": fixtureAdultItem})
-		}
-		writeFixtureJSON(w, map[string]any{"sessions": sessions})
-	})
-	mux.HandleFunc("GET /api/libraries/{id}/items", func(w http.ResponseWriter, r *http.Request) {
-		if !authorized(r) {
-			refuse(w)
-			return
-		}
-		results := []map[string]any{{"id": fixtureOrdinaryItem}}
-		if v.discloseAdultCatalog {
-			results = append(results, map[string]any{"id": fixtureAdultItem})
-		}
-		writeFixtureJSON(w, map[string]any{"results": results, "total": 1, "page": 0})
+		writeFixtureJSON(w, map[string]any{"redirect_url": nil})
 	})
 	mux.HandleFunc("GET /api/items/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if v.discloseForeignItem && r.PathValue("id") == fixtureForeignItem {
-			writeFixtureJSON(w, map[string]any{"id": fixtureForeignItem})
+		if _, ok := principal(r); !ok {
+			refuse(w)
 			return
 		}
-		http.NotFound(w, r)
-	})
-	mux.HandleFunc("GET /api/items/{id}/cover", func(w http.ResponseWriter, r *http.Request) {
-		if v.discloseAdultArtwork && r.PathValue("id") == fixtureAdultItem {
-			_, _ = w.Write([]byte("adult-image-001"))
-			return
+		id := r.PathValue("id")
+		if v.delayAdultMiss && id == refMissingAdultID {
+			time.Sleep(12 * time.Millisecond)
 		}
-		http.NotFound(w, r)
-	})
-	mux.HandleFunc("POST /api/items/{id}/play", func(w http.ResponseWriter, r *http.Request) {
-		if v.discloseAdultPlayback && r.PathValue("id") == fixtureAdultItem {
-			writeFixtureJSON(w, map[string]any{"id": "fixture-play-session-401", "libraryItemId": fixtureAdultItem})
+		if v.unequalControlStatus && id == refMissingRandomID {
+			refuse(w)
 			return
 		}
 		http.NotFound(w, r)
@@ -133,10 +169,19 @@ func newAudiobookshelfIdentityListener(t *testing.T, v audiobookshelfViolations)
 	return httptest.NewServer(mux)
 }
 
+func runAudiobookshelfReference(t *testing.T, v audiobookshelfViolations, suite Suite) (Report, error) {
+	t.Helper()
+	server := newAudiobookshelfIdentityListener(t, v)
+	defer server.Close()
+	return Run(context.Background(), Target{
+		BaseURL:  server.URL,
+		Client:   server.Client(),
+		Bindings: audiobookshelfIdentityBindings(),
+	}, suite)
+}
+
 func TestAudiobookshelfIdentityContractFreezesSubjectSemantics(t *testing.T) {
-	compliant := newAudiobookshelfIdentityListener(t, audiobookshelfViolations{})
-	defer compliant.Close()
-	report, err := Run(context.Background(), Target{BaseURL: compliant.URL, Client: compliant.Client()}, AudiobookshelfIdentity())
+	report, err := runAudiobookshelfReference(t, audiobookshelfViolations{}, AudiobookshelfIdentity())
 	if err != nil {
 		t.Fatalf("compliant listener: %v; report=%s", err, report.JSON())
 	}
@@ -146,29 +191,28 @@ func TestAudiobookshelfIdentityContractFreezesSubjectSemantics(t *testing.T) {
 		violations audiobookshelfViolations
 		failing    string
 	}{
-		{"disclosed user directory", audiobookshelfViolations{discloseDirectory: true}, "unknown caller receives no profile directory"},
-		{"direct login disclosing siblings", audiobookshelfViolations{discloseSiblings: true}, "direct profile login binds exactly one profile"},
-		{"direct login granted root", audiobookshelfViolations{grantRoot: true}, "direct profile login binds exactly one profile"},
-		{"stale revisions accepted", audiobookshelfViolations{acceptStaleTokens: true}, "a stale security revision is refused"},
-		{"cross organization disclosure", audiobookshelfViolations{discloseForeignItem: true}, "cross organization item is not disclosed"},
-		{"adult item in catalog count", audiobookshelfViolations{discloseAdultCatalog: true}, "ordinary catalog count excludes adult items"},
-		{"adult artwork served", audiobookshelfViolations{discloseAdultArtwork: true}, "adult artwork is not disclosed"},
-		{"adult playback started", audiobookshelfViolations{discloseAdultPlayback: true}, "adult playback is not disclosed"},
-		{"adult activity leaked", audiobookshelfViolations{leakAdultActivity: true}, "activity omits adult items"},
+		{"anonymous principal answered", audiobookshelfViolations{acceptAnonymousMe: true}, "an unknown caller is refused"},
+		{"wrong password accepted", audiobookshelfViolations{acceptWrongPassword: true}, "a wrong password is refused"},
+		{"wrong remembered profile", audiobookshelfViolations{misresolvePrimary: true}, "legacy account login resolves the remembered profile"},
+		{"root granted on login", audiobookshelfViolations{rootOnExplicitLogin: true}, "an explicit profile selection uses the account password"},
+		{"unknown profile accepted", audiobookshelfViolations{acceptUnknownProfile: true}, "an unknown profile is indistinguishable from bad credentials"},
+		{"principal misattributed", audiobookshelfViolations{misattributePrincipal: true}, "the token answers for its own principal"},
+		{"malformed token accepted", audiobookshelfViolations{acceptMalformedToken: true}, "a malformed token is refused"},
+		{"logout answers the wrong status", audiobookshelfViolations{logoutWrongStatus: true}, "logging out revokes the token"},
+		{"logout ignored", audiobookshelfViolations{ignoreLogout: true}, "a revoked token is refused"},
+		{"stable adult delay", audiobookshelfViolations{delayAdultMiss: true}, "missing adult and missing random ids time alike"},
+		{"control status differs", audiobookshelfViolations{unequalControlStatus: true}, "missing adult and missing random ids time alike"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			server := newAudiobookshelfIdentityListener(t, tt.violations)
-			defer server.Close()
-			_, err := Run(context.Background(), Target{BaseURL: server.URL, Client: server.Client()}, AudiobookshelfIdentity())
-			if err == nil {
-				t.Fatal("a violating listener passed the identity contract")
-			}
-			if !strings.Contains(err.Error(), tt.failing) {
-				t.Fatalf("failure = %v, want it to name %q", err, tt.failing)
-			}
+			report, err := runAudiobookshelfReference(t, tt.violations, AudiobookshelfIdentity())
+			requireSingleFailure(t, report, err, tt.failing)
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Fixture hygiene: every embedded suite stays deterministic and reserved.
+// ---------------------------------------------------------------------------
 
 func allFixtureSuites() []Suite {
 	return []Suite{
@@ -180,6 +224,7 @@ func allFixtureSuites() []Suite {
 		AudiobookshelfAuthorizedAdultPolicy(),
 		JellyfinIdentity(),
 		AudiobookshelfIdentity(),
+		DirectProfileIdentity(),
 	}
 }
 
@@ -224,13 +269,13 @@ func TestBaselineFixturesUseReservedValues(t *testing.T) {
 			}
 			seen[c.Name] = true
 
-			caseURL, err := url.Parse(c.Path)
+			caseURL, err := url.Parse(strings.NewReplacer("{{", "", "}}", "").Replace(c.Path))
 			if err != nil || caseURL.IsAbs() || caseURL.Host != "" {
 				t.Fatalf("%s case %q path %q is not relative", suite.Name, c.Name, c.Path)
 			}
 
 			var text []string
-			text = append(text, c.Path, string(c.Body))
+			text = append(text, c.Path, string(c.Body), string(c.BodyJSON))
 			text = append(text, c.PresentStrings...)
 			text = append(text, c.AbsentStrings...)
 			for _, value := range c.Headers {
@@ -238,6 +283,9 @@ func TestBaselineFixturesUseReservedValues(t *testing.T) {
 			}
 			for _, want := range c.WantHeaders {
 				text = append(text, want)
+			}
+			for _, want := range c.WantJSONFields {
+				text = append(text, string(want))
 			}
 			text = append(text, string(c.WantJSON))
 			for _, blob := range text {
@@ -257,9 +305,10 @@ func TestBaselineFixturesUseReservedValues(t *testing.T) {
 }
 
 // TestIdentitySuitesPinTimingDistributions freezes the documented timing
-// tolerance: the missing-adult and random-missing distributions are compared
-// over at least 100 samples with at most a 3x mean ratio (the runner adds a
-// fixed 20ms absolute allowance for scheduler noise).
+// tolerance: the missing-adult and random-missing medians are compared over
+// at least 100 interleaved samples with at most a 3x ratio (the runner adds a
+// fixed 2ms absolute floor for scheduler noise, and every sample must answer
+// the same status).
 func TestIdentitySuitesPinTimingDistributions(t *testing.T) {
 	for _, suite := range []Suite{JellyfinIdentity(), AudiobookshelfIdentity()} {
 		found := false
@@ -284,18 +333,103 @@ func TestIdentitySuitesPinTimingDistributions(t *testing.T) {
 	}
 }
 
-// TestIdentitySuitesNameEveryRevocationRevision freezes that each revocation
-// revision keeps its own named case in both identity suites.
-func TestIdentitySuitesNameEveryRevocationRevision(t *testing.T) {
-	for _, suite := range []Suite{JellyfinIdentity(), AudiobookshelfIdentity()} {
+// TestIdentitySuitesNameTheirRevocationCases freezes that each surface keeps
+// its own named revocation coverage: a case removed from a suite fails here
+// before any listener is consulted.
+func TestIdentitySuitesNameTheirRevocationCases(t *testing.T) {
+	required := map[string][]string{
+		JellyfinIdentity().Name: {
+			"logging out revokes the compat session",
+			"a logged out session is refused",
+			"a revoked account session is refused",
+		},
+		AudiobookshelfIdentity().Name: {
+			"logging out revokes the token",
+			"a revoked token is refused",
+			"a malformed token is refused",
+		},
+		DirectProfileIdentity().Name: {
+			"a stale organization policy revision is refused",
+			"a stale membership security revision is refused",
+			"a reset profile credential is refused",
+		},
+	}
+	for _, suite := range []Suite{JellyfinIdentity(), AudiobookshelfIdentity(), DirectProfileIdentity()} {
 		names := map[string]bool{}
 		for _, c := range suite.Cases {
 			names[c.Name] = true
 		}
-		for _, required := range identityRevocationCaseNames {
-			if !names[required] {
-				t.Errorf("%s is missing revocation case %q", suite.Name, required)
+		for _, want := range required[suite.Name] {
+			if !names[want] {
+				t.Errorf("%s is missing revocation case %q", suite.Name, want)
 			}
 		}
 	}
+}
+
+// TestIdentitySuitesChainTheIssuedCredential freezes the chain the review
+// demanded: each suite's login case captures the credential the login
+// actually issues, and the cases that bound that credential's privileges
+// spend the same binding rather than an unrelated fixture token.
+func TestIdentitySuitesChainTheIssuedCredential(t *testing.T) {
+	requireChain := func(t *testing.T, suite Suite, loginCase, binding string, spenders []string) {
+		t.Helper()
+		byName := map[string]Case{}
+		for _, c := range suite.Cases {
+			byName[c.Name] = c
+		}
+		login, ok := byName[loginCase]
+		if !ok {
+			t.Fatalf("%s is missing login case %q", suite.Name, loginCase)
+		}
+		captured := false
+		for name := range login.Capture {
+			if name == binding {
+				captured = true
+			}
+		}
+		if !captured {
+			t.Fatalf("%s login case %q does not capture %q", suite.Name, loginCase, binding)
+		}
+		placeholder := "{{" + binding + "}}"
+		for _, spender := range spenders {
+			c, ok := byName[spender]
+			if !ok {
+				t.Errorf("%s is missing chained case %q", suite.Name, spender)
+				continue
+			}
+			spends := strings.Contains(c.Path, placeholder)
+			for _, value := range c.Headers {
+				if strings.Contains(value, placeholder) {
+					spends = true
+				}
+			}
+			if !spends {
+				t.Errorf("%s case %q does not spend the captured %s", suite.Name, spender, binding)
+			}
+		}
+	}
+
+	requireChain(t, DirectProfileIdentity(), "direct profile login binds exactly one profile", "direct_token", []string{
+		"the profile directory is refused",
+		"household session management is refused",
+		"a sibling profile update is refused",
+		"minting an account api key is refused",
+		"verifying a profile pin is refused",
+		"the bound profile reads its own record",
+		"the bound profile updates its own record",
+	})
+	requireChain(t, JellyfinIdentity(), "an explicit profile selection needs no pin", "jf_reader_token", []string{
+		"the session sees itself and nothing more",
+		"a sibling user id is not disclosed",
+		"another household's user id is not disclosed",
+		"the current user endpoint answers the bound session",
+		"events omit adult items",
+		"missing adult and missing random ids time alike",
+	})
+	requireChain(t, AudiobookshelfIdentity(), "an explicit profile selection uses the account password", "abs_reader_token", []string{
+		"the token answers for its own principal",
+		"logging out revokes the token",
+		"a revoked token is refused",
+	})
 }
