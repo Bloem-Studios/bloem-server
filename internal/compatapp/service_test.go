@@ -31,6 +31,13 @@ func newCompatAppService(t *testing.T) *Service {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
+		// The plan's verification gates run this package with the require
+		// flag set; skipping silently there would let "go test" report ok
+		// having executed nothing. Same convention as the tenant identity
+		// migration tests.
+		if os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
+			t.Fatal("SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1")
+		}
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
 	ctx := context.Background()

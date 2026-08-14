@@ -73,14 +73,24 @@ func (s *Service) CreateEnrollment(ctx context.Context, kind Kind, requested []C
 	now := s.now()
 	expiresAt := now.Add(EnrollmentTTL)
 	enrollmentID := uuid.NewString()
-	if err := s.store.InsertEnrollment(ctx, enrollmentID, string(kind), digest, capabilityStrings(capabilities), expiresAt); err != nil {
+	// One transaction: an enrollment must not exist without its audit row,
+	// which is the atomicity every other lifecycle path already has.
+	tx, err := s.store.pool.Begin(ctx)
+	if err != nil {
+		return EnrollmentSecret{}, fmt.Errorf("begin enrollment create: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := s.store.InsertEnrollment(ctx, tx, enrollmentID, string(kind), digest, capabilityStrings(capabilities), expiresAt); err != nil {
 		return EnrollmentSecret{}, err
 	}
-	if err := s.store.InsertAudit(ctx, s.store.pool, "", enrollmentID, auditEnrollmentCreated, map[string]any{
+	if err := s.store.InsertAudit(ctx, tx, "", enrollmentID, auditEnrollmentCreated, map[string]any{
 		"kind":         string(kind),
 		"capabilities": capabilityStrings(capabilities),
 	}); err != nil {
 		return EnrollmentSecret{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return EnrollmentSecret{}, fmt.Errorf("commit enrollment create: %w", err)
 	}
 	return EnrollmentSecret{
 		ID:           enrollmentID,

@@ -59,8 +59,8 @@ type applicationRow struct {
 	APIRangeMax    int
 }
 
-func (st *Store) InsertEnrollment(ctx context.Context, id, kind, secretDigest string, capabilities []string, expiresAt time.Time) error {
-	if _, err := st.pool.Exec(ctx, `
+func (st *Store) InsertEnrollment(ctx context.Context, q queryExecer, id, kind, secretDigest string, capabilities []string, expiresAt time.Time) error {
+	if _, err := q.Exec(ctx, `
 		INSERT INTO compat_application_enrollments (id, kind, secret_digest, granted_capabilities, expires_at)
 		VALUES ($1, $2, $3, $4, $5)`,
 		id, kind, secretDigest, capabilities, expiresAt); err != nil {
