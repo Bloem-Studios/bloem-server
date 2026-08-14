@@ -105,6 +105,20 @@ type syncProgressRequest struct {
 	Items []syncProgressItem `json:"items"`
 }
 
+// Per-item sync result statuses. The contract the clients decode allows
+// exactly these three values: a client that cannot tell a landed write from a
+// discarded one stops resending a position the server never stored.
+const (
+	// syncStatusUpdated means the row was written.
+	syncStatusUpdated = "updated"
+	// syncStatusIgnored means the row was accepted but not written: the
+	// min-resume floor discarded it, or a newer stored event won last-write-wins.
+	// Nothing is wrong and the client must not retry it as an error.
+	syncStatusIgnored = "ignored"
+	// syncStatusError means the item was rejected; Error carries the reason.
+	syncStatusError = "error"
+)
+
 type syncProgressResultItem struct {
 	MediaItemID string `json:"media_item_id"`
 	Status      string `json:"status"`
@@ -319,11 +333,22 @@ func (h *ProgressHandler) HandleSyncProgress(w http.ResponseWriter, r *http.Requ
 		}
 
 		if item.MediaItemID == "" {
-			result.Status = "error"
+			result.Status = syncStatusError
 			result.Error = "media_item_id is required"
 			results = append(results, result)
 			continue
 		}
+
+		// Resolve the min-resume floor up front so the response can name a
+		// discarded row. Every write path below applies the same rule internally
+		// (the stores call ResolveProgressState too); this is the pure
+		// classification, not a second copy of the threshold logic, and it does
+		// not change which store call runs.
+		pos, completed, skip := userstore.ResolveProgressState(item.Position, item.Duration, thresholds)
+		// applied stays true for the paths whose store call reports no
+		// applied/not-applied signal: reaching them without an error means the
+		// write landed.
+		applied := true
 
 		var updateErr error
 		switch {
@@ -334,7 +359,7 @@ func (h *ProgressHandler) HandleSyncProgress(w http.ResponseWriter, r *http.Requ
 			// never the timestamp alone.
 			client, parseErr := parseClientEventTime(*item.UpdatedAt)
 			if parseErr != nil {
-				result.Status = "error"
+				result.Status = syncStatusError
 				result.Error = "updated_at must be RFC3339"
 				results = append(results, result)
 				continue
@@ -345,9 +370,10 @@ func (h *ProgressHandler) HandleSyncProgress(w http.ResponseWriter, r *http.Requ
 				slog.WarnContext(r.Context(), "clamped future-dated progress event time", "component", "api",
 					"profile_id", profileID, "media_item_id", item.MediaItemID)
 			}
-			pos, completed, skip := userstore.ResolveProgressState(item.Position, item.Duration, thresholds)
 			if !skip {
-				_, updateErr = store.SetProgressIfNewer(r.Context(), profileID, item.MediaItemID, pos, item.Duration, completed, eventAt)
+				// A false here is last-write-wins: a newer stored event beat this
+				// queued one, so nothing was written.
+				applied, updateErr = store.SetProgressIfNewer(r.Context(), profileID, item.MediaItemID, pos, item.Duration, completed, eventAt)
 			}
 		case item.ForceOverwrite:
 			updateErr = store.SetProgress(r.Context(), profileID, item.MediaItemID, item.Position, item.Duration, thresholds)
@@ -355,11 +381,18 @@ func (h *ProgressHandler) HandleSyncProgress(w http.ResponseWriter, r *http.Requ
 			updateErr = store.UpdateProgress(r.Context(), profileID, item.MediaItemID, item.Position, item.Duration, thresholds)
 		}
 
-		if updateErr != nil {
-			result.Status = "error"
+		switch {
+		case updateErr != nil:
+			result.Status = syncStatusError
 			result.Error = "failed to update progress"
-		} else {
-			result.Status = "ok"
+		case skip || !applied:
+			result.Status = syncStatusIgnored
+			// Still a processed item: the profile refresh and event fan-out
+			// below keep the reach they had when every non-error row reported
+			// success, because this change is reporting only.
+			hadSuccessfulUpdate = true
+		default:
+			result.Status = syncStatusUpdated
 			hadSuccessfulUpdate = true
 		}
 
