@@ -174,6 +174,56 @@ expect_scan_failure \
 	"$abs_file" \
 	"s|file: \${VONDEL_AUDIOBOOKSHELF_ENROLLMENT_FILE:-.*}|environment: VONDEL_AUDIOBOOKSHELF_ENROLLMENT|"
 
+expect_scan_failure \
+	"detects a host device mapping" \
+	"$abs_file" \
+	"/$service_anchor/a\\
+    devices:\\
+      - /dev/mem:/dev/mem
+"
+
+expect_scan_failure \
+	"detects a host pid namespace" \
+	"$jf_file" \
+	"/$service_anchor/a\\
+    pid: host
+"
+
+expect_scan_failure \
+	"detects a host ipc namespace" \
+	"$abs_file" \
+	"/$service_anchor/a\\
+    ipc: host
+"
+
+expect_scan_failure \
+	"detects an external state volume aliasing a host volume" \
+	"$abs_file" \
+	"/^  vondel-audiobookshelf-state:$/a\\
+    external: true
+"
+
+expect_scan_failure \
+	"detects an explicitly named state volume aliasing another volume" \
+	"$jf_file" \
+	"/^  vondel-jellyfin-state:$/a\\
+    name: shared-host-media
+"
+
+expect_scan_failure \
+	"detects a keyword-form database key in companion environment" \
+	"$abs_file" \
+	"/VONDEL_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/vondel_compat_enrollment/a\\
+      DB_HOST: postgres
+"
+
+expect_scan_failure \
+	"detects a libpq keyword DSN in companion environment" \
+	"$jf_file" \
+	"/VONDEL_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/vondel_compat_enrollment/a\\
+      STATE_BACKEND: host=postgres user=silo password=silo dbname=silo
+"
+
 # --- Summary -----------------------------------------------------------------
 
 printf '%d passed, %d failed\n' "$passed" "$failed"

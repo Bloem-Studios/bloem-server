@@ -66,6 +66,10 @@ for f in "$base_file" "$abs_file" "$jf_file" "$diag_file"; do
 	fi
 done
 
+# Fixed project name for rendering; locally defined volumes render with this
+# prefix, which the state-volume locality check relies on.
+project_name="vondel-compat-verify"
+
 failures=0
 
 fail() {
@@ -86,7 +90,7 @@ render() {
 	(
 		cd "$compose_dir" &&
 			MEDIA_ROOT="/dev/null" SECRET_KEY="verify-only" \
-				docker compose --project-name vondel-compat-verify \
+				docker compose --project-name "$project_name" \
 				--env-file /dev/null "${args[@]}" config --format json
 	)
 }
@@ -106,10 +110,11 @@ check() {
 }
 
 # Environment keys a companion must never receive: Vondel's own service
-# configuration, anything provider/tuner/signing shaped, and anything
-# credential-shaped (secrets travel as files, never as environment values).
+# configuration, anything database/connection shaped (DB_*, PG*, CONN*),
+# anything provider/tuner/signing shaped, and anything credential-shaped
+# (secrets travel as files, never as environment values).
 # shellcheck disable=SC2016  # single-quoted on purpose: this is a jq regex, not shell
-forbidden_env_key_re='^(DATABASE_URL|REDIS_URL|SECRET_KEY|MEILI_MASTER_KEY)$|^(POSTGRES_|REDIS_|MEILI_)|TUNER|PROVIDER|SIGNING|PASSWORD|TOKEN|SECRET|API_KEY|CREDENTIAL'
+forbidden_env_key_re='^(DATABASE_URL|REDIS_URL|SECRET_KEY|MEILI_MASTER_KEY)$|^(POSTGRES_|REDIS_|MEILI_|DB_|PG|CONN)|TUNER|PROVIDER|SIGNING|PASSWORD|TOKEN|SECRET|API_KEY|CREDENTIAL'
 
 # Shared invariants for one companion service in one rendered combination.
 #   verify_companion <json> <label> <service> <diagnostics: yes|no>
@@ -155,6 +160,12 @@ verify_companion() {
 		"$s.network_mode == null" \
 		"$svc must not set network_mode"
 	check "$json" "$label" \
+		"($s.devices // []) | length == 0" \
+		"$svc must not map host devices"
+	check "$json" "$label" \
+		"$s.pid == null and $s.ipc == null and $s.userns_mode == null and $s.cgroup == null" \
+		"$svc must not share host namespaces (pid/ipc/userns_mode/cgroup)"
+	check "$json" "$label" \
 		"$s | has(\"build\") | not" \
 		"$svc must be pulled from the private registry, never built here"
 	check "$json" "$label" \
@@ -169,15 +180,33 @@ verify_companion() {
 			[.volumes | to_entries[] | select(.key as \$k | \$names | index(\$k))] |
 			all((.value.driver_opts // {}) | length == 0)" \
 		"$svc state volumes must not use driver_opts to reach host paths"
+	# A companion state volume must be defined locally by this project. An
+	# `external: true` volume or an explicit `name:` can alias a pre-existing
+	# host volume (for example one bound to the media tree), so both are
+	# rejected: the rendered name must be the project-prefixed one Compose
+	# generates for locally defined volumes.
+	check "$json" "$label" \
+		"[($s.volumes // [])[] | .source] as \$names |
+			[.volumes | to_entries[] | select(.key as \$k | \$names | index(\$k))] |
+			all(
+				(.value.external != true)
+				and (.value.name == \"${project_name}_\" + .key)
+			)" \
+		"$svc state volumes must be locally defined (no external: true, no explicit name aliasing another volume)"
 
 	check "$json" "$label" \
 		"($s.environment // {}) | keys | all(test(\$forbidden; \"\") | not)" \
 		"$svc must not receive Vondel database/Redis/signing/provider/tuner or credential-shaped environment keys"
 	check "$json" "$label" \
 		"($s.environment // {}) | [.[]] | all(
-			(tostring | test(\"(postgres(ql)?|redis|rediss)://\")) | not
+			(tostring | ascii_downcase) as \$v |
+			(
+				(\$v | test(\"(postgres(ql)?|redis|rediss)://\"))
+				or (\$v | test(\"password=\"))
+				or ((\$v | test(\"host=\")) and (\$v | test(\"dbname=\")))
+			) | not
 		)" \
-		"$svc environment must not carry database or Redis URLs"
+		"$svc environment must not carry database/Redis URLs or keyword-form (libpq) DSNs"
 
 	check "$json" "$label" \
 		"($s.secrets // []) | length == 1 and .[0].target == \"vondel_compat_enrollment\"" \
