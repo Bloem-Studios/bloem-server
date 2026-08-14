@@ -658,3 +658,44 @@ func TestDirectProfileLoginDoesNotDeadlockWithMembershipFirstWriters(t *testing.
 		t.Fatalf("LoginProfile = %v, want it to succeed once the writer committed", err)
 	}
 }
+
+// The device binding is enforced on every request after login, so it must be
+// impossible to mint a direct session without one — at the service, for any
+// adapter that skips the HTTP handler, and in the database, for any writer
+// that skips the service.
+func TestDirectProfileSessionRequiresADevice(t *testing.T) {
+	ctx := context.Background()
+	credentials := newProfileCredentialService(t)
+	accountID, profileID := newProfileCredentialFixture(t, credentials.pool, "device-required")
+	if err := credentials.Set(ctx, accountID, profileID, "device-required@example.test", "profile-password"); err != nil {
+		t.Fatalf("Set credential: %v", err)
+	}
+	service, _, _ := newDirectProfileService(t, credentials.pool, credentials.ProfileCredentialService)
+
+	for name, deviceID := range map[string]string{
+		"empty":      "",
+		"whitespace": " \t ",
+	} {
+		t.Run("service refuses a "+name+" device", func(t *testing.T) {
+			_, _, err := service.LoginProfile(ctx, "device-required@example.test", "profile-password", DeviceClaim{ID: deviceID})
+			if !errors.Is(err, ErrDeviceRequired) {
+				t.Fatalf("LoginProfile = %v, want ErrDeviceRequired", err)
+			}
+		})
+	}
+
+	t.Run("database refuses a blank device on a direct session", func(t *testing.T) {
+		var revision int64
+		if err := credentials.pool.QueryRow(ctx, `
+			SELECT credential_revision FROM user_profiles WHERE user_id = $1 AND id = $2`,
+			accountID, profileID).Scan(&revision); err != nil {
+			t.Fatalf("load revision: %v", err)
+		}
+		if _, err := credentials.pool.Exec(ctx, `
+			INSERT INTO auth_sessions (id, user_id, device_name, device_id, expires_at, profile_id, profile_credential_revision, auth_method)
+			VALUES ('blank-device-session', $1, 'Blank', '', now() + interval '1 hour', $2, $3, 'direct_profile')`,
+			accountID, profileID, revision); err == nil {
+			t.Fatal("database accepted a direct profile session with no device")
+		}
+	})
+}

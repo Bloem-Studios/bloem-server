@@ -56,7 +56,8 @@ ALTER TABLE public.auth_sessions
         CHECK (auth_method IN ('account', 'direct_profile')),
     ADD CONSTRAINT auth_sessions_direct_profile_binding_check CHECK (
         (auth_method = 'account' AND profile_id IS NULL AND profile_credential_revision IS NULL) OR
-        (auth_method = 'direct_profile' AND profile_id IS NOT NULL AND profile_credential_revision IS NOT NULL)
+        (auth_method = 'direct_profile' AND profile_id IS NOT NULL AND profile_credential_revision IS NOT NULL
+         AND NOT public.vondel_login_text_blank(device_id))
     ),
     ADD CONSTRAINT auth_sessions_user_profile_fkey
         FOREIGN KEY (user_id, profile_id)

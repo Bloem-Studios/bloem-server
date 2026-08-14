@@ -167,13 +167,22 @@ var directProfileAllowedRoutes = map[string][]string{
 	"/api/v1/collections/capabilities": {http.MethodGet},
 }
 
+// directProfileDeniedRoutes are routes inside an admitted read subtree that
+// must nevertheless be refused. Personal collections are off this surface
+// until their ownership is profile-aware, and these two library reads return
+// them through a different door than /collections.
+var directProfileDeniedRoutes = map[string]bool{
+	"/api/v1/library/{id}/user-collections": true,
+	"/api/v1/library/{id}/collections":      true,
+}
+
 // directProfileRouteAllowed reports whether a resolved route is part of the
 // direct-profile surface. Method and pattern are both significant: a path can
 // be profile-scoped for one verb and not another, and /api/v1/profiles/{id} is
 // exactly that — a bound profile reads and edits itself, and does not delete
 // itself.
 func directProfileRouteAllowed(method, pattern string) bool {
-	if pattern == "" {
+	if pattern == "" || directProfileDeniedRoutes[pattern] {
 		return false
 	}
 	if methods, ok := directProfileAllowedRoutes[pattern]; ok {

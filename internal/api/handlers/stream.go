@@ -87,7 +87,12 @@ func NewStreamHandler(sessionMgr SessionManagerInterface, fileResolver FilePathR
 // For transcode: returns 400 (transcode uses manifest/segment endpoints).
 func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
-	if userID == 0 {
+	if userID == 0 && !apimw.IsStreamTokenAuthorized(r.Context()) {
+		// A verified session-bound stream token IS the authorization for this
+		// delivery path: playback start returns a stream_url carrying one
+		// precisely because native players cannot attach a bearer to every
+		// range request. Refusing the claimless request the server itself
+		// issued made that URL unusable as designed.
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	}

@@ -284,6 +284,19 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		}
 	})
 
+	// Personal collections must not return through the library door either.
+	t.Run("library personal-collection reads are refused", func(t *testing.T) {
+		for _, path := range []string{
+			"/api/v1/library/1/user-collections",
+			"/api/v1/library/1/collections",
+		} {
+			response := performJSONRequest(t, router, http.MethodGet, path, "", directToken, nil)
+			if response.Code != http.StatusForbidden {
+				t.Errorf("GET %s = %d %s, want %d", path, response.Code, response.Body.String(), http.StatusForbidden)
+			}
+		}
+	})
+
 	// The session bound one device at login; the header every device-scoped
 	// handler reads must not be able to substitute another.
 	t.Run("a conflicting device header is refused", func(t *testing.T) {
@@ -297,18 +310,21 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 	})
 
 	t.Run("the bound device is injected when the header is absent", func(t *testing.T) {
-		// This route demands a device identity and answers 400 without one, so
-		// a 200 with no header proves the middleware supplied the binding.
-		response := performJSONRequest(t, router, http.MethodPut,
-			"/api/v1/settings/device/player.subtitle_size", `{"value":"large"}`, directToken, nil)
-		if response.Code == http.StatusBadRequest &&
-			strings.Contains(response.Body.String(), "X-Silo-Device-Id") {
-			t.Fatalf("device settings write = %d %s, want the token-bound device injected",
-				response.Code, response.Body.String())
+		// This route refuses a request that names no device, so writing with
+		// no header and reading the value back proves the middleware supplied
+		// the binding and the row landed on the bound device.
+		write := performJSONRequest(t, router, http.MethodPut,
+			"/api/v1/settings/device/playback.preferred_quality", `{"value":"720p"}`, directToken, nil)
+		if write.Code != http.StatusNoContent {
+			t.Fatalf("device settings write = %d %s, want %d",
+				write.Code, write.Body.String(), http.StatusNoContent)
 		}
-		if response.Code == http.StatusForbidden {
-			t.Fatalf("device settings write = %d %s, want the bound device accepted",
-				response.Code, response.Body.String())
+		read := performJSONRequest(t, router, http.MethodGet,
+			"/api/v1/settings/device/playback.preferred_quality", "", directToken,
+			map[string]string{"X-Silo-Device-Id": "reader-tablet"})
+		if read.Code != http.StatusOK || !strings.Contains(read.Body.String(), "720p") {
+			t.Fatalf("device settings read = %d %s, want the written value on the bound device",
+				read.Code, read.Body.String())
 		}
 	})
 

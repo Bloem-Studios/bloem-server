@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -20,6 +21,10 @@ var (
 	ErrImpersonationNotAllowed = errors.New("impersonation not allowed")
 	ErrAlreadyImpersonating    = errors.New("already impersonating")
 	ErrNotImpersonating        = errors.New("not impersonating")
+	// ErrDeviceRequired refuses a direct profile login that names no device:
+	// the session binds to exactly one, and an empty binding would make every
+	// later device check vacuous.
+	ErrDeviceRequired = errors.New("a device id is required for direct profile login")
 )
 
 // TokenPair holds the access and refresh tokens returned after login or refresh.
@@ -118,6 +123,14 @@ func (s *Service) SetProfileCredentialService(credentials *ProfileCredentialServ
 func (s *Service) LoginProfile(ctx context.Context, email, password string, device DeviceClaim) (*TokenPair, SessionSubject, error) {
 	if s.profileCredentials == nil {
 		return nil, SessionSubject{}, ErrInvalidCredentials
+	}
+	// The device binding is enforced on every later request, so a session may
+	// not be minted without one. The HTTP handler checks this too, but any
+	// compatibility adapter calling this service directly must hit the same
+	// wall.
+	device.ID = strings.TrimSpace(device.ID)
+	if device.ID == "" {
+		return nil, SessionSubject{}, ErrDeviceRequired
 	}
 	subject, err := s.profileCredentials.Authenticate(ctx, email, password, device)
 	if err != nil {
