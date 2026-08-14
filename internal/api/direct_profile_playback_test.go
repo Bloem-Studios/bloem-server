@@ -137,6 +137,17 @@ func TestDirectProfileSessionCannotTouchSiblingPlaybackSession(t *testing.T) {
 		}
 	})
 
+	// The subtitle HEAD probe must reach its handler too; with no media file
+	// behind the session the handler answers on the merits.
+	t.Run("own session subtitle HEAD probe reaches the handler", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodHead,
+			"/api/v1/stream/"+mine.ID+"/subtitles/0", "", readerToken, nil)
+		if response.Code != http.StatusNotFound || !strings.Contains(response.Body.String(), "Media file not found") {
+			t.Fatalf("own subtitle HEAD probe = %d %s, want the handler's own missing-media answer",
+				response.Code, response.Body.String())
+		}
+	})
+
 	// Runs after the progress assertions: a HEAD probe that reaches the
 	// handler aborts a session whose media file is gone, so this destroys
 	// `mine` and must come last.
@@ -154,16 +165,20 @@ func TestDirectProfileSessionCannotTouchSiblingPlaybackSession(t *testing.T) {
 	})
 
 	// Proxy-served direct downloads carry the same profile-scoped
-	// authorization as the tokened route; the boundary must admit them. A
-	// request with no file_id is answered by the handler's own validation,
-	// which is the proof it was not refused at the boundary.
+	// authorization as the tokened route; the boundary must admit both verbs.
+	// The fixture wires the download service, so a request with no file_id is
+	// answered by the handler's own validation — the proof it was not refused
+	// at the boundary.
 	t.Run("direct-download-proxy reaches the handler", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/direct-download-proxy", "", readerToken, nil)
-		if response.Code != http.StatusServiceUnavailable && response.Code != http.StatusBadRequest {
-			t.Fatalf("direct-download-proxy = %d %s, want the handler's own answer rather than a boundary refusal",
-				response.Code, response.Body.String())
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			response := performJSONRequest(t, router, method, "/api/v1/direct-download-proxy", "", readerToken, nil)
+			if response.Code != http.StatusBadRequest {
+				t.Fatalf("%s direct-download-proxy = %d %s, want the handler's own missing-file_id answer",
+					method, response.Code, response.Body.String())
+			}
 		}
 	})
+
 }
 
 // Playback start returns a stream_url carrying a signed session-bound token

@@ -168,7 +168,12 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 
 		ctx := context.WithValue(r.Context(), claimsKey, claims)
 		if claims.AuthMethod == auth.AuthMethodDirectProfile {
-			if am.directProfileRoutes != nil && !am.directProfileRoutes(r) {
+			// Fail closed: with no guard installed, a direct-profile session
+			// reaches nothing. The boundary is default-deny, and "the caller
+			// forgot to install the allowlist" must not mean "every endpoint
+			// is open" — a fixture that genuinely wants an unrestricted
+			// middleware installs an allow-all guard on purpose.
+			if am.directProfileRoutes == nil || !am.directProfileRoutes(r) {
 				writeForbidden(w, "Direct profile sessions cannot use this endpoint")
 				return
 			}
