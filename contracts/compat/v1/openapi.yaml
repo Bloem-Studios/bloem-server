@@ -84,7 +84,20 @@ paths:
     get:
       operationId: health
       summary: Server health, API range, and the caller's granted capabilities.
+      description: >
+        Reading it records a heartbeat carrying the companion's self-reported
+        status. Without a status the heartbeat is contact-only and recorded as
+        unknown; a status outside the vocabulary is refused before anything is
+        recorded.
       x-vondel-capability: service
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: The companion's self-reported health.
+          schema:
+            type: string
+            enum: [healthy, degraded, unhealthy]
       responses:
         <<: *stdErrors
         "200":
@@ -1225,10 +1238,19 @@ components:
         kind:
           type: string
           enum: [audiobookshelf, jellyfin]
+          description: >
+            The companion's declaration of what it is enrolling as. The
+            authoritative kind comes from the enrollment secret; a
+            contradicting declaration is refused with 409.
         instance_id:
           type: string
         version:
           type: string
+        image_digest:
+          type: string
+          description: >
+            Resolved image digest of the running companion, surfaced on the
+            administration page for deterministic change control.
         api:
           $ref: "#/components/schemas/APIRange"
         requested_capabilities:

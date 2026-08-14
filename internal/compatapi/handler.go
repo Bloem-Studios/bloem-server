@@ -6,6 +6,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -120,7 +121,6 @@ func (h *Handler) Operations() []Operation {
 
 type requestContext struct {
 	app        AppIdentity
-	bearer     string
 	subject    Subject
 	tokenState subjectTokenClaims
 }
@@ -248,7 +248,6 @@ func (h *Handler) endpoint(op Operation, fn endpointFunc) http.HandlerFunc {
 				return
 			}
 			rc.app = app
-			rc.bearer = bearer
 		}
 
 		// 2. Rate limiting.
@@ -608,6 +607,19 @@ func (h *Handler) withIdempotency(w http.ResponseWriter, r *http.Request, op Ope
 	r.Body = io.NopCloser(bytes.NewReader(body))
 
 	scope := rc.app.ApplicationID + "\x00" + op.ID
+	if op.ID == opEnroll {
+		// Enrollment is unauthenticated, so the application id above is
+		// empty and one shared scope would let any caller pre-poison another
+		// companion's retry by spending its idempotency key first. Deriving
+		// the scope from the presented secret keeps callers apart: without
+		// the victim's secret an attacker cannot touch the victim's scope.
+		var probe struct {
+			Secret string `json:"secret"`
+		}
+		_ = json.Unmarshal(body, &probe)
+		secretDigest := sha256.Sum256([]byte(probe.Secret))
+		scope = op.ID + "\x00" + hex.EncodeToString(secretDigest[:])
+	}
 	digest := sha256.New()
 	digest.Write([]byte(r.Method))
 	digest.Write([]byte{0})
@@ -756,7 +768,9 @@ func (h *Handler) handleEnroll(w http.ResponseWriter, r *http.Request, _ *reques
 		h.writeError(w, r, http.StatusBadRequest, "invalid_request", "secret, kind, and instance_id are required")
 		return
 	}
-	credential, err := h.svc.Enroller.Enroll(r.Context(), body.Secret, body.EnrollmentRequest)
+	// r.TLS carries the enrolling connection's client certificate, when any;
+	// the enrollment service binds it to the application.
+	credential, err := h.svc.Enroller.Enroll(r.Context(), body.Secret, body.EnrollmentRequest, r.TLS)
 	if err != nil {
 		h.writeServiceError(w, r, err)
 		return
@@ -769,7 +783,10 @@ func (h *Handler) handleRenewCredential(w http.ResponseWriter, r *http.Request, 
 		h.writeError(w, r, http.StatusServiceUnavailable, "unavailable", "credential renewal is unavailable")
 		return
 	}
-	credential, err := h.svc.Renewer.Renew(r.Context(), rc.bearer)
+	// The middleware already authenticated the bearer together with the
+	// connection's TLS state; renewal reuses that verified identity instead
+	// of re-authenticating with a possibly different connection view.
+	credential, err := h.svc.Renewer.Renew(r.Context(), rc.app.ApplicationID)
 	if err != nil {
 		h.writeServiceError(w, r, err)
 		return
@@ -792,9 +809,22 @@ type applicationWire struct {
 }
 
 func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request, rc *requestContext) {
+	// The probe may report the companion's own health; without a report the
+	// heartbeat is contact-only and recorded as unknown. A status outside
+	// the vocabulary is refused before anything is recorded.
+	status := HealthUnknown
+	if raw := r.URL.Query().Get("status"); raw != "" {
+		switch HealthStatus(raw) {
+		case HealthHealthy, HealthDegraded, HealthUnhealthy:
+			status = HealthStatus(raw)
+		default:
+			h.writeError(w, r, http.StatusBadRequest, "invalid_request", "status must be healthy, degraded, or unhealthy")
+			return
+		}
+	}
 	if h.svc.Heartbeats != nil {
 		// Best effort: liveness bookkeeping must not fail the health probe.
-		_ = h.svc.Heartbeats.Heartbeat(r.Context(), rc.app.ApplicationID, h.cfg.Now())
+		_ = h.svc.Heartbeats.Heartbeat(r.Context(), rc.app.ApplicationID, status, h.cfg.Now())
 	}
 	h.writeJSON(w, http.StatusOK, healthWire{
 		Status:  "ok",

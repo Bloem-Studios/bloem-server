@@ -85,7 +85,7 @@ func validEnrollmentRequest(instanceID string) EnrollmentRequest {
 		ImageDigest:  "sha256:0123456789abcdef",
 		APIRangeMin:  1,
 		APIRangeMax:  1,
-		Capabilities: []Capability{CapabilityCatalogRead, CapabilityPlaybackStream},
+		Capabilities: []Capability{CapabilityCatalog, CapabilityPlayback},
 	}
 }
 
@@ -93,10 +93,10 @@ func mustCreateEnrollment(t *testing.T, s *Service, kind Kind, capabilities ...C
 	t.Helper()
 	if len(capabilities) == 0 {
 		capabilities = []Capability{
-			CapabilityIdentityExchange,
-			CapabilityCatalogRead,
-			CapabilityPlaybackStream,
-			CapabilityStateReadWrite,
+			CapabilityIdentity,
+			CapabilityCatalog,
+			CapabilityPlayback,
+			CapabilityState,
 		}
 	}
 	enrollment, err := s.CreateEnrollment(context.Background(), kind, capabilities)
@@ -143,14 +143,48 @@ func TestCreateEnrollmentFailsClosedOnUnknownKindAndCapabilities(t *testing.T) {
 	ctx := context.Background()
 	service := newCompatAppService(t)
 
-	if _, err := service.CreateEnrollment(ctx, Kind("plex"), []Capability{CapabilityCatalogRead}); !errors.Is(err, ErrUnknownKind) {
+	if _, err := service.CreateEnrollment(ctx, Kind("plex"), []Capability{CapabilityCatalog}); !errors.Is(err, ErrUnknownKind) {
 		t.Fatalf("CreateEnrollment unknown kind error = %v, want ErrUnknownKind", err)
 	}
 	if _, err := service.CreateEnrollment(ctx, KindJellyfin, []Capability{Capability("catalog.everything")}); !errors.Is(err, ErrUnknownCapability) {
 		t.Fatalf("CreateEnrollment unknown capability error = %v, want ErrUnknownCapability", err)
 	}
+	// The retired dotted vocabulary must stay retired: only the contract's
+	// slugs enroll.
+	if _, err := service.CreateEnrollment(ctx, KindJellyfin, []Capability{Capability("catalog.read")}); !errors.Is(err, ErrUnknownCapability) {
+		t.Fatalf("CreateEnrollment dotted-name error = %v, want ErrUnknownCapability", err)
+	}
+	// The contract's implicit "service" capability is never grantable.
+	if _, err := service.CreateEnrollment(ctx, KindJellyfin, []Capability{Capability("service")}); !errors.Is(err, ErrUnknownCapability) {
+		t.Fatalf("CreateEnrollment service-capability error = %v, want ErrUnknownCapability", err)
+	}
 	if _, err := service.CreateEnrollment(ctx, KindJellyfin, nil); !errors.Is(err, ErrNoCapabilities) {
 		t.Fatalf("CreateEnrollment empty grant error = %v, want ErrNoCapabilities", err)
+	}
+}
+
+func TestEnrollRefusesContradictingKindDeclaration(t *testing.T) {
+	ctx := context.Background()
+	service := newCompatAppService(t)
+	enrollment := mustCreateEnrollment(t, service, KindAudiobookshelf, CapabilityCatalog)
+
+	request := validEnrollmentRequest("inst-declared-kind")
+	request.Capabilities = []Capability{CapabilityCatalog}
+	request.DeclaredKind = KindJellyfin
+	if _, err := service.Enroll(ctx, enrollment.Secret, request); !errors.Is(err, ErrKindMismatch) {
+		t.Fatalf("Enroll contradicting kind error = %v, want ErrKindMismatch", err)
+	}
+
+	// The mismatch must not consume the secret: the honest declaration
+	// enrolls with the same enrollment.
+	request.DeclaredKind = KindAudiobookshelf
+	credential, err := service.Enroll(ctx, enrollment.Secret, request)
+	if err != nil {
+		t.Fatalf("Enroll after corrected declaration: %v", err)
+	}
+	identity, err := service.Authenticate(ctx, credential.Secret, nil)
+	if err != nil || identity.Kind != KindAudiobookshelf {
+		t.Fatalf("identity = %+v err = %v, want audiobookshelf", identity, err)
 	}
 }
 
@@ -160,7 +194,7 @@ func TestCreateEnrollmentReturnsSecretOnceAndStoresOnlyDigest(t *testing.T) {
 	issued := time.Now().UTC().Truncate(time.Second)
 	setServiceClock(service, issued)
 
-	enrollment, err := service.CreateEnrollment(ctx, KindAudiobookshelf, []Capability{CapabilityCatalogRead})
+	enrollment, err := service.CreateEnrollment(ctx, KindAudiobookshelf, []Capability{CapabilityCatalog})
 	if err != nil {
 		t.Fatalf("CreateEnrollment: %v", err)
 	}
@@ -238,7 +272,7 @@ func TestEnrollIssuesHashedCredentialAndConsumesSecret(t *testing.T) {
 	if !application.Enabled || application.RevokedAt != nil || application.TLSFingerprint != "" {
 		t.Fatalf("application = %#v, want enabled unrevoked same-host application", application)
 	}
-	wantCapabilities := []Capability{CapabilityCatalogRead, CapabilityPlaybackStream}
+	wantCapabilities := []Capability{CapabilityCatalog, CapabilityPlayback}
 	if len(application.Capabilities) != len(wantCapabilities) {
 		t.Fatalf("granted capabilities = %v, want %v", application.Capabilities, wantCapabilities)
 	}
@@ -302,10 +336,10 @@ func TestEnrollRejectsUnknownOrForeignSecrets(t *testing.T) {
 func TestEnrollEnforcesCapabilitySubsetWithoutBurningTheSecret(t *testing.T) {
 	ctx := context.Background()
 	service := newCompatAppService(t)
-	enrollment := mustCreateEnrollment(t, service, KindJellyfin, CapabilityCatalogRead)
+	enrollment := mustCreateEnrollment(t, service, KindJellyfin, CapabilityCatalog)
 
 	request := validEnrollmentRequest("subset")
-	request.Capabilities = []Capability{CapabilityCatalogRead, CapabilityStateReadWrite}
+	request.Capabilities = []Capability{CapabilityCatalog, CapabilityState}
 	if _, err := service.Enroll(ctx, enrollment.Secret, request); !errors.Is(err, ErrCapabilityNotGranted) {
 		t.Fatalf("Enroll over-grant error = %v, want ErrCapabilityNotGranted", err)
 	}
@@ -322,7 +356,7 @@ func TestEnrollEnforcesCapabilitySubsetWithoutBurningTheSecret(t *testing.T) {
 
 	// A rejected request must not consume the admin's secret: the corrected
 	// companion configuration still enrolls.
-	request.Capabilities = []Capability{CapabilityCatalogRead}
+	request.Capabilities = []Capability{CapabilityCatalog}
 	if _, err := service.Enroll(ctx, enrollment.Secret, request); err != nil {
 		t.Fatalf("Enroll corrected request: %v", err)
 	}
@@ -365,12 +399,12 @@ func TestEnrollRejectsDuplicateInstanceIdentity(t *testing.T) {
 
 	// The same instance identifier under the other kind is a different
 	// application instance.
-	otherKind, err := service.CreateEnrollment(ctx, KindAudiobookshelf, []Capability{CapabilityCatalogRead})
+	otherKind, err := service.CreateEnrollment(ctx, KindAudiobookshelf, []Capability{CapabilityCatalog})
 	if err != nil {
 		t.Fatalf("CreateEnrollment: %v", err)
 	}
 	request := validEnrollmentRequest("shared-instance")
-	request.Capabilities = []Capability{CapabilityCatalogRead}
+	request.Capabilities = []Capability{CapabilityCatalog}
 	if _, err := service.Enroll(ctx, otherKind.Secret, request); err != nil {
 		t.Fatalf("Enroll same instance under other kind: %v", err)
 	}

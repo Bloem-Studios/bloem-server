@@ -108,11 +108,14 @@ type APIRange struct {
 	Max int `json:"max"`
 }
 
-// EnrollmentRequest is a companion's one-time registration.
+// EnrollmentRequest is a companion's one-time registration. Kind is the
+// companion's declaration of what it is enrolling as; the authoritative kind
+// comes from the enrollment secret, and a contradiction is refused.
 type EnrollmentRequest struct {
 	Kind                  string   `json:"kind"`
 	InstanceID            string   `json:"instance_id"`
 	Version               string   `json:"version"`
+	ImageDigest           string   `json:"image_digest,omitempty"`
 	API                   APIRange `json:"api"`
 	RequestedCapabilities []string `json:"requested_capabilities"`
 }
@@ -126,22 +129,37 @@ type ServiceCredential struct {
 	GrantedCapabilities []string  `json:"granted_capabilities,omitempty"`
 }
 
-// AppEnroller consumes a one-use enrollment secret. Matches the enrollment
-// service's Enroll.
+// AppEnroller consumes a one-use enrollment secret. peerTLS carries the
+// enrolling connection's TLS state so a presented client certificate is
+// bound to the application and required on every later authentication.
 type AppEnroller interface {
-	Enroll(ctx context.Context, secret string, req EnrollmentRequest) (ServiceCredential, error)
+	Enroll(ctx context.Context, secret string, req EnrollmentRequest, peerTLS *tls.ConnectionState) (ServiceCredential, error)
 }
 
-// CredentialRenewer issues a fresh service credential to the bearer of a
-// still-valid one.
+// CredentialRenewer issues a fresh service credential to an application whose
+// current credential the middleware has already authenticated — including its
+// TLS binding — so renewal never re-authenticates with a different (or
+// absent) connection state.
 type CredentialRenewer interface {
-	Renew(ctx context.Context, bearer string) (ServiceCredential, error)
+	Renew(ctx context.Context, applicationID string) (ServiceCredential, error)
 }
 
-// HeartbeatRecorder records companion liveness; the health endpoint reports
-// through it.
+// HealthStatus is the companion-reported health carried by a health probe.
+type HealthStatus string
+
+const (
+	// HealthUnknown is recorded for a probe that reports no status: contact
+	// only, no health claim.
+	HealthUnknown   HealthStatus = "unknown"
+	HealthHealthy   HealthStatus = "healthy"
+	HealthDegraded  HealthStatus = "degraded"
+	HealthUnhealthy HealthStatus = "unhealthy"
+)
+
+// HeartbeatRecorder records companion liveness and reported health; the
+// health endpoint reports through it.
 type HeartbeatRecorder interface {
-	Heartbeat(ctx context.Context, applicationID string, at time.Time) error
+	Heartbeat(ctx context.Context, applicationID string, status HealthStatus, at time.Time) error
 }
 
 // DeviceClaim identifies the end-user device behind a compatibility session.

@@ -141,6 +141,13 @@ func (s *Service) Enroll(ctx context.Context, secret string, request EnrollmentR
 	if instanceID == "" || version == "" {
 		return ServiceCredential{}, ErrInvalidEnrollmentRequest
 	}
+	// The authoritative kind comes from the enrollment secret; a companion
+	// declaring a different kind is misconfigured (or holding someone else's
+	// secret) and must be refused here, inside the validation block, so the
+	// secret survives for an honest retry.
+	if request.DeclaredKind != "" && request.DeclaredKind != enrollment.Kind {
+		return ServiceCredential{}, ErrKindMismatch
+	}
 	if request.APIRangeMin < 1 || request.APIRangeMax < request.APIRangeMin {
 		return ServiceCredential{}, ErrInvalidEnrollmentRequest
 	}

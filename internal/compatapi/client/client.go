@@ -171,12 +171,15 @@ func pageQuery(cursor string, limit int) url.Values {
 
 // --- service ---------------------------------------------------------------
 
-// EnrollRequest exchanges a one-use enrollment secret.
+// EnrollRequest exchanges a one-use enrollment secret. Kind is a declaration
+// verified against the secret's authoritative kind; ImageDigest is the
+// running companion image, surfaced to administrators.
 type EnrollRequest struct {
 	Secret                string             `json:"secret"`
 	Kind                  string             `json:"kind"`
 	InstanceID            string             `json:"instance_id"`
 	Version               string             `json:"version,omitempty"`
+	ImageDigest           string             `json:"image_digest,omitempty"`
 	API                   compatapi.APIRange `json:"api"`
 	RequestedCapabilities []string           `json:"requested_capabilities,omitempty"`
 }
@@ -210,10 +213,16 @@ type Health struct {
 	} `json:"application"`
 }
 
-// Health fetches /health.
-func (c *Client) Health(ctx context.Context) (Health, error) {
+// Health fetches /health, reporting the companion's own health status when
+// one is given. An empty status is a contact-only heartbeat, recorded by the
+// server as unknown; valid values are healthy, degraded, and unhealthy.
+func (c *Client) Health(ctx context.Context, status string) (Health, error) {
+	query := url.Values{}
+	if status != "" {
+		query.Set("status", status)
+	}
 	var out Health
-	err := c.call(ctx, callSpec{method: http.MethodGet, path: "/health"}, &out)
+	err := c.call(ctx, callSpec{method: http.MethodGet, path: "/health", query: query}, &out)
 	return out, err
 }
 

@@ -10,6 +10,7 @@ package compatapp
 import (
 	"crypto/tls"
 	"errors"
+	"sort"
 	"time"
 )
 
@@ -30,42 +31,54 @@ var knownKinds = map[Kind]struct{}{
 // Capability names one reviewed slice of the private compatibility API. The
 // set is closed: a name outside it fails enrollment, because a companion must
 // never receive an authorization the reviewer could not have understood.
+//
+// The vocabulary is the OpenAPI contract's (contracts/compat/v1/openapi.yaml,
+// the frozen public artifact): one slug per x-vondel-capability value. The
+// contract's implicit "service" capability — enrollment, renewal, health —
+// belongs to every enrolled application and is deliberately not grantable
+// here. A lockstep test in internal/compatapi pins the two vocabularies to
+// each other.
 type Capability string
 
 const (
-	// CapabilityIdentityExchange covers credential exchange, device trust,
-	// profile discovery, PIN verification, and profile switching.
-	CapabilityIdentityExchange Capability = "identity.exchange"
-	// CapabilityCatalogRead covers libraries, browse, search, detail, and
-	// metadata reads.
-	CapabilityCatalogRead Capability = "catalog.read"
-	// CapabilityArtworkRead covers artwork and signed resource resolution.
-	CapabilityArtworkRead Capability = "artwork.read"
-	// CapabilityStateReadWrite covers progress, watched state, favorites,
-	// bookmarks, collections, playlists, and downloads.
-	CapabilityStateReadWrite Capability = "state.readwrite"
-	// CapabilityPlaybackStream covers playback planning, stream
-	// authorization, cancellation, and recovery.
-	CapabilityPlaybackStream Capability = "playback.stream"
-	// CapabilitySessionsReport covers live session and device reporting.
-	CapabilitySessionsReport Capability = "sessions.report"
-	// CapabilityLiveTVAccess covers Live TV channels, guide, stream
-	// authorization, DVR rules, and recordings.
-	CapabilityLiveTVAccess Capability = "livetv.access"
-	// CapabilityEventsSubscribe covers subject-filtered events with
-	// resumable cursors.
-	CapabilityEventsSubscribe Capability = "events.subscribe"
+	// CapabilityIdentity covers credential exchange, device trust, profile
+	// discovery, PIN verification, and profile switching.
+	CapabilityIdentity Capability = "identity"
+	// CapabilityCatalog covers libraries, browse, search, detail, metadata
+	// reads, and artwork/signed resource resolution.
+	CapabilityCatalog Capability = "catalog"
+	// CapabilityState covers progress, watched state, favorites, bookmarks,
+	// collections, playlists, and downloads.
+	CapabilityState Capability = "state"
+	// CapabilityPlayback covers playback planning, stream authorization,
+	// cancellation, recovery, and live session/device reporting.
+	CapabilityPlayback Capability = "playback"
+	// CapabilityLiveTV covers Live TV channels, guide, tuner availability,
+	// stream authorization, DVR rules, and recordings.
+	CapabilityLiveTV Capability = "livetv"
+	// CapabilityEvents covers subject-filtered events with resumable
+	// cursors.
+	CapabilityEvents Capability = "events"
 )
 
 var knownCapabilities = map[Capability]struct{}{
-	CapabilityIdentityExchange: {},
-	CapabilityCatalogRead:      {},
-	CapabilityArtworkRead:      {},
-	CapabilityStateReadWrite:   {},
-	CapabilityPlaybackStream:   {},
-	CapabilitySessionsReport:   {},
-	CapabilityLiveTVAccess:     {},
-	CapabilityEventsSubscribe:  {},
+	CapabilityIdentity: {},
+	CapabilityCatalog:  {},
+	CapabilityState:    {},
+	CapabilityPlayback: {},
+	CapabilityLiveTV:   {},
+	CapabilityEvents:   {},
+}
+
+// GrantableCapabilities returns the closed, sorted registry of capabilities
+// an enrollment may grant.
+func GrantableCapabilities() []Capability {
+	out := make([]Capability, 0, len(knownCapabilities))
+	for capability := range knownCapabilities {
+		out = append(out, capability)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
 }
 
 // HealthStatus is the companion-reported health recorded by Heartbeat.
@@ -113,11 +126,17 @@ type EnrollmentSecret struct {
 // EnrollmentRequest is what a companion registers when redeeming an
 // enrollment secret.
 type EnrollmentRequest struct {
-	InstanceID   string
-	Version      string
-	ImageDigest  string
-	APIRangeMin  int
-	APIRangeMax  int
+	InstanceID  string
+	Version     string
+	ImageDigest string
+	APIRangeMin int
+	APIRangeMax int
+	// DeclaredKind is the kind the companion believes it is enrolling as.
+	// The authoritative kind comes from the enrollment secret; a non-empty
+	// declaration that contradicts it fails with ErrKindMismatch without
+	// consuming the secret, so a swapped or mis-mounted secret is caught at
+	// the door instead of silently enrolling the wrong protocol.
+	DeclaredKind Kind
 	Capabilities []Capability
 	// PeerTLS carries the TLS state of the enrolling connection, when any.
 	// If a client certificate was presented, its fingerprint is bound to the
@@ -179,6 +198,7 @@ var (
 	ErrCapabilityNotGranted     = errors.New("requested capability is outside the enrollment grant")
 	ErrEnrollmentDenied         = errors.New("enrollment secret is unknown, expired, or already used")
 	ErrInvalidEnrollmentRequest = errors.New("enrollment request is malformed")
+	ErrKindMismatch             = errors.New("declared kind contradicts the enrollment secret")
 	ErrAPIRangeUnsupported      = errors.New("companion API range excludes the server version")
 	ErrInstanceAlreadyEnrolled  = errors.New("application instance is already enrolled")
 	ErrCredentialInvalid        = errors.New("service credential is unknown, expired, or revoked")

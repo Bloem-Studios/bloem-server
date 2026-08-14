@@ -39,20 +39,22 @@ func (f *fakeApps) Authenticate(_ context.Context, bearer string, _ *tls.Connect
 }
 
 type fakeEnroller struct {
-	mu         sync.Mutex
-	calls      int
-	credential ServiceCredential
-	err        error
-	lastSecret string
-	lastReq    EnrollmentRequest
+	mu          sync.Mutex
+	calls       int
+	credential  ServiceCredential
+	err         error
+	lastSecret  string
+	lastReq     EnrollmentRequest
+	lastPeerTLS *tls.ConnectionState
 }
 
-func (f *fakeEnroller) Enroll(_ context.Context, secret string, req EnrollmentRequest) (ServiceCredential, error) {
+func (f *fakeEnroller) Enroll(_ context.Context, secret string, req EnrollmentRequest, peerTLS *tls.ConnectionState) (ServiceCredential, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls++
 	f.lastSecret = secret
 	f.lastReq = req
+	f.lastPeerTLS = peerTLS
 	if f.err != nil {
 		return ServiceCredential{}, f.err
 	}
@@ -60,11 +62,16 @@ func (f *fakeEnroller) Enroll(_ context.Context, secret string, req EnrollmentRe
 }
 
 type fakeRenewer struct {
-	credential ServiceCredential
-	err        error
+	mu                sync.Mutex
+	credential        ServiceCredential
+	err               error
+	lastApplicationID string
 }
 
-func (f *fakeRenewer) Renew(_ context.Context, _ string) (ServiceCredential, error) {
+func (f *fakeRenewer) Renew(_ context.Context, applicationID string) (ServiceCredential, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.lastApplicationID = applicationID
 	if f.err != nil {
 		return ServiceCredential{}, f.err
 	}
@@ -72,14 +79,16 @@ func (f *fakeRenewer) Renew(_ context.Context, _ string) (ServiceCredential, err
 }
 
 type fakeHeartbeats struct {
-	mu    sync.Mutex
-	calls []string
+	mu       sync.Mutex
+	calls    []string
+	statuses []HealthStatus
 }
 
-func (f *fakeHeartbeats) Heartbeat(_ context.Context, applicationID string, _ time.Time) error {
+func (f *fakeHeartbeats) Heartbeat(_ context.Context, applicationID string, status HealthStatus, _ time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls = append(f.calls, applicationID)
+	f.statuses = append(f.statuses, status)
 	return nil
 }
 
@@ -195,17 +204,20 @@ func (f *fakeCatalog) ArtworkGrant(_ context.Context, subject Subject, audience,
 }
 
 type fakeState struct {
-	mu            sync.Mutex
-	progress      Progress
-	setCalls      int
-	lastUpdate    ProgressUpdate
-	favoritesPage ItemPage
-	bookmarks     []Bookmark
-	collections   CollectionPage
-	collection    Collection
-	playlists     PlaylistPage
-	downloads     []Download
-	download      Download
+	mu         sync.Mutex
+	progress   Progress
+	setCalls   int
+	lastUpdate ProgressUpdate
+	// setProgressHook, when set, runs at SetProgress entry (outside the
+	// lock) so tests can inject one-shot failures or park a call in flight.
+	setProgressHook func() error
+	favoritesPage   ItemPage
+	bookmarks       []Bookmark
+	collections     CollectionPage
+	collection      Collection
+	playlists       PlaylistPage
+	downloads       []Download
+	download        Download
 }
 
 func (f *fakeState) Progress(_ context.Context, _ Subject, _ string) (Progress, error) {
@@ -213,6 +225,11 @@ func (f *fakeState) Progress(_ context.Context, _ Subject, _ string) (Progress, 
 }
 
 func (f *fakeState) SetProgress(_ context.Context, _ Subject, itemID string, p ProgressUpdate) (Progress, error) {
+	if f.setProgressHook != nil {
+		if err := f.setProgressHook(); err != nil {
+			return Progress{}, err
+		}
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.setCalls++
@@ -890,6 +907,63 @@ func TestRenewIssuesAFreshCredential(t *testing.T) {
 	if cred.Token != "svc-renewed" {
 		t.Fatalf("token = %q", cred.Token)
 	}
+	// Renewal reuses the identity the middleware authenticated — with the
+	// request's TLS state — rather than re-authenticating the bearer itself,
+	// so an mTLS-bound application can renew.
+	if f.renewer.lastApplicationID != "app-full" {
+		t.Fatalf("renewer saw application %q, want app-full", f.renewer.lastApplicationID)
+	}
+}
+
+// TestEnrollForwardsConnectionStateAndImageDigest pins the enrollment inputs
+// the trust service needs: the connection's TLS state (for certificate
+// binding) and the companion's image digest.
+func TestEnrollForwardsConnectionStateAndImageDigest(t *testing.T) {
+	f := newFixture(t, nil)
+	peer := &tls.ConnectionState{ServerName: "vondel-test-peer"}
+	rec := f.do(t, http.MethodPost, "/enroll", map[string]any{
+		"secret":       "enroll-secret",
+		"kind":         "jellyfin",
+		"instance_id":  "inst-tls",
+		"version":      "0.1.0",
+		"image_digest": "sha256:cafef00d",
+		"api":          map[string]int{"min": 1, "max": 1},
+	}, withIdempotencyKey("enroll-tls"), withTLS(peer))
+	requireStatus(t, rec, http.StatusCreated)
+	if f.enroller.lastPeerTLS == nil || f.enroller.lastPeerTLS.ServerName != "vondel-test-peer" {
+		t.Fatalf("enroller saw peer TLS %+v, want the request's connection state", f.enroller.lastPeerTLS)
+	}
+	if f.enroller.lastReq.ImageDigest != "sha256:cafef00d" {
+		t.Fatalf("enroller saw image digest %q", f.enroller.lastReq.ImageDigest)
+	}
+	if f.enroller.lastReq.Kind != "jellyfin" {
+		t.Fatalf("enroller saw kind %q; the declaration must be forwarded for verification", f.enroller.lastReq.Kind)
+	}
+}
+
+// TestHealthRecordsReportedStatus pins the health-reporting contract: no
+// status means a contact-only unknown heartbeat, a valid status is recorded
+// verbatim, and an invalid status is refused before anything is recorded.
+func TestHealthRecordsReportedStatus(t *testing.T) {
+	f := newFixture(t, nil)
+
+	rec := f.do(t, http.MethodGet, "/health", nil, withBearer(bearerFull))
+	requireStatus(t, rec, http.StatusOK)
+	if got := f.heartbeats.statuses; len(got) != 1 || got[0] != HealthUnknown {
+		t.Fatalf("statusless probe recorded %v, want [unknown]", got)
+	}
+
+	rec = f.do(t, http.MethodGet, "/health?status=degraded", nil, withBearer(bearerFull))
+	requireStatus(t, rec, http.StatusOK)
+	if got := f.heartbeats.statuses; len(got) != 2 || got[1] != HealthDegraded {
+		t.Fatalf("reported probe recorded %v, want degraded last", got)
+	}
+
+	rec = f.do(t, http.MethodGet, "/health?status=on-fire", nil, withBearer(bearerFull))
+	requireErrorCode(t, rec, http.StatusBadRequest, "invalid_request")
+	if got := f.heartbeats.statuses; len(got) != 2 {
+		t.Fatalf("a refused status must record nothing, got %v", got)
+	}
 }
 
 // --- idempotency ------------------------------------------------------------
@@ -928,6 +1002,126 @@ func TestIdempotentReplayDoesNotReinvokeTheService(t *testing.T) {
 	requireStatus(t, rec3, http.StatusOK)
 	if f.state.setCalls != 2 {
 		t.Fatalf("second application's write must execute, calls=%d", f.state.setCalls)
+	}
+}
+
+// TestFailedMutationsAreRetriable pins that a server-side failure is never
+// stored for replay: the same idempotency key re-executes after a 500.
+func TestFailedMutationsAreRetriable(t *testing.T) {
+	f := newFixture(t, nil)
+	token := f.login(t, bearerFull)
+	body := map[string]any{"position_seconds": 42}
+
+	failures := 1
+	attempts := 0
+	f.state.setProgressHook = func() error {
+		attempts++
+		if failures > 0 {
+			failures--
+			return errors.New("transient store failure")
+		}
+		return nil
+	}
+	rec := f.do(t, http.MethodPut, "/state/progress/item-1", body,
+		withBearer(bearerFull), withSubjectToken(token), withIdempotencyKey("retry-1"))
+	requireErrorCode(t, rec, http.StatusInternalServerError, "internal")
+
+	rec = f.do(t, http.MethodPut, "/state/progress/item-1", body,
+		withBearer(bearerFull), withSubjectToken(token), withIdempotencyKey("retry-1"))
+	requireStatus(t, rec, http.StatusOK)
+	if rec.Header().Get("Idempotency-Replayed") != "" {
+		t.Fatal("the retry must execute, not replay the failure")
+	}
+	if attempts != 2 {
+		t.Fatalf("service attempts = %d, want 2", attempts)
+	}
+}
+
+// TestConcurrentDuplicateMutationConflicts pins that a key still executing is
+// a conflict, not a second execution and not a replay of nothing.
+func TestConcurrentDuplicateMutationConflicts(t *testing.T) {
+	f := newFixture(t, nil)
+	token := f.login(t, bearerFull)
+	body := map[string]any{"position_seconds": 42}
+
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var once sync.Once
+	f.state.setProgressHook = func() error {
+		once.Do(func() {
+			close(entered)
+			<-release
+		})
+		return nil
+	}
+
+	firstDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		firstDone <- f.do(t, http.MethodPut, "/state/progress/item-1", body,
+			withBearer(bearerFull), withSubjectToken(token), withIdempotencyKey("dup-1"))
+	}()
+	<-entered
+
+	rec := f.do(t, http.MethodPut, "/state/progress/item-1", body,
+		withBearer(bearerFull), withSubjectToken(token), withIdempotencyKey("dup-1"))
+	requireErrorCode(t, rec, http.StatusConflict, "idempotency_conflict")
+
+	close(release)
+	requireStatus(t, <-firstDone, http.StatusOK)
+	if f.state.setCalls != 1 {
+		t.Fatalf("service executed %d times, want 1", f.state.setCalls)
+	}
+}
+
+// TestReplayRefusedAfterSubjectRevocation pins the check order: a stored
+// idempotent response must not be served to a subject that has since been
+// revoked — reauthorization precedes replay.
+func TestReplayRefusedAfterSubjectRevocation(t *testing.T) {
+	f := newFixture(t, nil)
+	token := f.login(t, bearerFull)
+	body := map[string]any{"position_seconds": 42}
+
+	rec := f.do(t, http.MethodPut, "/state/progress/item-1", body,
+		withBearer(bearerFull), withSubjectToken(token), withIdempotencyKey("revoked-replay"))
+	requireStatus(t, rec, http.StatusOK)
+
+	f.subjects.current = func(Subject) (Subject, error) { return Subject{}, ErrSubjectRevoked }
+	rec = f.do(t, http.MethodPut, "/state/progress/item-1", body,
+		withBearer(bearerFull), withSubjectToken(token), withIdempotencyKey("revoked-replay"))
+	requireErrorCode(t, rec, http.StatusUnauthorized, "subject_revoked")
+	if rec.Header().Get("Idempotency-Replayed") != "" {
+		t.Fatal("a revoked subject must never receive a stored replay")
+	}
+}
+
+// TestEnrollIdempotencyScopeIsSecretBound pins that an unauthenticated caller
+// cannot pre-poison another companion's enrollment retry: the enrollment
+// idempotency scope is derived from the presented secret, so the same
+// idempotency key under different secrets never collides.
+func TestEnrollIdempotencyScopeIsSecretBound(t *testing.T) {
+	f := newFixture(t, nil)
+	attacker := map[string]any{
+		"secret": "vce_attacker_guess", "kind": "audiobookshelf", "instance_id": "inst-a",
+		"api": map[string]int{"min": 1, "max": 1},
+	}
+	victim := map[string]any{
+		"secret": "vce_victim_real", "kind": "audiobookshelf", "instance_id": "inst-v",
+		"api": map[string]int{"min": 1, "max": 1},
+	}
+	rec := f.do(t, http.MethodPost, "/enroll", attacker, withIdempotencyKey("shared-key"))
+	requireStatus(t, rec, http.StatusCreated)
+
+	rec = f.do(t, http.MethodPost, "/enroll", victim, withIdempotencyKey("shared-key"))
+	requireStatus(t, rec, http.StatusCreated)
+	if f.enroller.calls != 2 {
+		t.Fatalf("both enrollments must execute, calls = %d", f.enroller.calls)
+	}
+
+	// The same secret with the same key still replays instead of re-running.
+	rec = f.do(t, http.MethodPost, "/enroll", victim, withIdempotencyKey("shared-key"))
+	requireStatus(t, rec, http.StatusCreated)
+	if f.enroller.calls != 2 {
+		t.Fatalf("the true replay must not re-execute, calls = %d", f.enroller.calls)
 	}
 }
 
