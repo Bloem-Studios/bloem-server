@@ -59,7 +59,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 6 committed, closing every finding of the first full review; a second full review is in progress.
+Status: fix round 7 committed, closing every finding of the second full review; a third full review is in progress.
 
 Initial implementation commit:
 
@@ -195,6 +195,21 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
 - Standing caution: six rounds in, each of the last two closed defects the previous review missed, including one that broke pre-existing behaviour. A green suite has been a weak signal on this branch, so acceptance should rest on review rather than on the gates.
 - Next continuation point: second full review of `81047e91..a10e93e7`, given the least-privilege ruling explicitly and asked again for remaining places where account identity is treated as sufficient authorization, and for tests that would still pass if their behaviour were removed.
+
+### 2026-08-14 — Foundation Task 1, second full review and fix round 7
+
+- Base/head commits: `a10e93e7` → `6426a1c2 fix(auth): admit reads by subtree and writes one route at a time`.
+- Second full review verdict on `81047e91..a10e93e7`: cannot be accepted. Six findings, three high. The reviewer had the least-privilege ruling this time and judged the implementation against it.
+- Findings and what closed them:
+  1. A profile password could still reach a differently scoped credential. PIN verification was on the surface and the PIN was a permitted self-service field, so the credential could both exercise and replace the lock that gates profile switching for account sessions. Both are refused, and the regression checks the stored hash rather than the status code.
+  2. Broad subtrees admitted mutations, and the ownership checks behind some of them compare accounts, which cannot separate two profiles of one household. Reading is still admitted by subtree, because those surfaces are uniformly profile-scoped and resolved through viewer access, but every write is now named individually. Subtitle search, download, upload, and the AI jobs left the surface entirely as shared state.
+  3. The inventory could not see the S3-backed subtitle routes it was admitting. Removing that subtree from the surface retired the gap rather than papering over it.
+  4. The lock order introduced in the previous round deadlocked against profile-group administration, which locks a membership before the profile it moves. Session creation now acquires organization, account, membership, profile, one statement at a time, in that order. The regression fails with SQLSTATE 40P01 against the previous joined statement.
+  5. A bound profile could not read its own record. A new additive route serves it, guarded to the session's own profile, while the household list stays account-scoped.
+  6. Three positive assertions passed on any non-refusal. They now pin the status and the resulting state.
+- Defects found in this round's own work: the subject-change race test held the profile row before the tenancy rows, an order no real writer uses, so it deadlocked rather than testing anything once the lock order was corrected; it now holds only the row it changes. One positive assertion had been posting a field name the handler does not read, so it asserted nothing at all, which only surfaced once the assertion required a real state change. Two allowlist entries named routes the router does not register.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
+- Next continuation point: third full review of `81047e91..6426a1c2`, asked to check every admitted mutation for whether its handler can tell two profiles of one household apart, to test rather than accept the argument that reads admitted by subtree are profile-scoped, and again to name tests that would pass with their behaviour removed.
 
 ## Update template
 
