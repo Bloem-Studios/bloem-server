@@ -140,6 +140,15 @@ func checkCaseResponse(c Case, resp *http.Response, body []byte) error {
 	if len(c.WantJSON) > 0 && !sameJSON(c.WantJSON, body) {
 		return errors.New("response JSON does not match fixture")
 	}
+	for selector, want := range c.WantJSONCounts {
+		got, err := jsonElementCount(body, selector)
+		if err != nil {
+			return fmt.Errorf("count %s: %w", selector, err)
+		}
+		if got != want {
+			return fmt.Errorf("count %s = %d, want %d", selector, got, want)
+		}
+	}
 	if c.WantSHA256 != "" {
 		sum := sha256.Sum256(body)
 		if !strings.EqualFold(c.WantSHA256, hex.EncodeToString(sum[:])) {
@@ -170,6 +179,38 @@ func matchesException(name string, status int) bool {
 	default:
 		return false
 	}
+}
+
+// jsonElementCount resolves a dotted selector ("$", "$.Items",
+// "$.Data.Rows") against body and returns the length of the array it selects.
+// A missing field or a non-array value is an error rather than a zero count,
+// so a contract that promises an empty collection cannot be satisfied by the
+// collection disappearing.
+func jsonElementCount(body []byte, selector string) (int, error) {
+	if selector != "$" && !strings.HasPrefix(selector, "$.") {
+		return 0, errors.New("selector must start at $")
+	}
+	var value any
+	if err := json.Unmarshal(body, &value); err != nil {
+		return 0, errors.New("response is not JSON")
+	}
+	if selector != "$" {
+		for _, field := range strings.Split(selector[2:], ".") {
+			object, ok := value.(map[string]any)
+			if !ok {
+				return 0, errors.New("selector path does not traverse an object")
+			}
+			value, ok = object[field]
+			if !ok {
+				return 0, errors.New("selector path is absent from the response")
+			}
+		}
+	}
+	array, ok := value.([]any)
+	if !ok {
+		return 0, errors.New("selector does not resolve to an array")
+	}
+	return len(array), nil
 }
 
 func sameJSON(want, got []byte) bool {
@@ -250,11 +291,11 @@ func checkTimingDistribution(ctx context.Context, target Target, base *url.URL, 
 	if maxRatio <= 1 {
 		maxRatio = 3
 	}
-	protected, err := samplePath(ctx, target, base, c.Method, c.Path, samples)
+	protected, err := samplePath(ctx, target, base, c.Method, c.Path, c.Headers, samples)
 	if err != nil {
 		return err
 	}
-	control, err := samplePath(ctx, target, base, c.Method, c.Timing.ControlPath, samples)
+	control, err := samplePath(ctx, target, base, c.Method, c.Timing.ControlPath, c.Headers, samples)
 	if err != nil {
 		return err
 	}
@@ -264,7 +305,10 @@ func checkTimingDistribution(ctx context.Context, target Target, base *url.URL, 
 	return nil
 }
 
-func samplePath(ctx context.Context, target Target, base *url.URL, method, path string, samples int) ([]time.Duration, error) {
+// samplePath measures the case's own request identity: credentials and case
+// headers are attached exactly as runHTTPCase attaches them, so the compared
+// distributions come from the authenticated path a real client would time.
+func samplePath(ctx context.Context, target Target, base *url.URL, method, path string, headers map[string]string, samples int) ([]time.Duration, error) {
 	if method == "" {
 		method = http.MethodGet
 	}
@@ -282,6 +326,9 @@ func samplePath(ctx context.Context, target Target, base *url.URL, method, path 
 			if err := target.Credentials.Apply(req); err != nil {
 				return nil, errors.New("apply timing credentials")
 			}
+		}
+		for key, value := range headers {
+			req.Header.Set(key, value)
 		}
 		started := time.Now()
 		resp, err := target.Client.Do(req)

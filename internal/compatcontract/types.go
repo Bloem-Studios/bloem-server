@@ -37,6 +37,11 @@ type Suite struct {
 
 // Case records one observable protocol interaction. Fixture IDs and URLs must
 // be invented and use reserved domains only.
+//
+// WantJSONCounts asserts how many elements the arrays selected by dotted
+// paths contain ("$" is the response root, "$.Items" a field, "$.Data.Rows" a
+// nested field). Counts freeze non-disclosure — an empty profile directory,
+// an adult-free catalog page — without the report ever retaining a body.
 type Case struct {
 	Name                   string              `json:"name"`
 	Method                 string              `json:"method,omitempty"`
@@ -46,6 +51,7 @@ type Case struct {
 	WantStatus             int                 `json:"want_status,omitempty"`
 	WantHeaders            map[string]string   `json:"want_headers,omitempty"`
 	WantJSON               json.RawMessage     `json:"want_json,omitempty"`
+	WantJSONCounts         map[string]int      `json:"want_json_counts,omitempty"`
 	WantSHA256             string              `json:"want_sha256,omitempty"`
 	WantWebSocketJSON      []json.RawMessage   `json:"want_websocket_json,omitempty"`
 	WantWebSocketNoMessage bool                `json:"want_websocket_no_message,omitempty"`

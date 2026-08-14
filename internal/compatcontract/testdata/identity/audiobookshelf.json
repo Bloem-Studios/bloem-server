@@ -1,0 +1,20 @@
+{
+  "name": "audiobookshelf-identity",
+  "cases": [
+    {"name":"unknown caller receives no profile directory","method":"GET","path":"/api/users","exception":"unauthenticated","absent_strings":["primary-profile-001","direct-profile-002","pin-profile-003","excluded-profile-004","foreign-profile-901"]},
+    {"name":"direct profile login binds exactly one profile","method":"POST","path":"/login","body":"eyJ1c2VybmFtZSI6ImRpcmVjdC1yZWFkZXJAZml4dHVyZS5leGFtcGxlIiwicGFzc3dvcmQiOiJmaXh0dXJlLWRpcmVjdC1wYXNzd29yZC0wMDEifQ==","headers":{"Content-Type":"application/json"},"want_status":200,"present_strings":["direct-profile-002"],"absent_strings":["primary-profile-001","pin-profile-003","excluded-profile-004","\"type\":\"root\""]},
+    {"name":"legacy account login resolves the remembered profile","method":"POST","path":"/login","body":"eyJ1c2VybmFtZSI6ImhvdXNlaG9sZEBmaXh0dXJlLmV4YW1wbGUiLCJwYXNzd29yZCI6ImZpeHR1cmUtYWNjb3VudC1wYXNzd29yZC0wMDIifQ==","headers":{"Content-Type":"application/json"},"want_status":200,"present_strings":["primary-profile-001"],"absent_strings":["pin-profile-003","foreign-profile-901"]},
+    {"name":"cross organization item is not disclosed","method":"GET","path":"/api/items/foreign-item-901","headers":{"Authorization":"Bearer fixture-account-session-token-201"},"exception":"not_found","absent_strings":["foreign-item-901"]},
+    {"name":"a stale security revision is refused","method":"GET","path":"/api/me","headers":{"Authorization":"Bearer fixture-stale-security-revision-token-101"},"exception":"unauthenticated"},
+    {"name":"a reset credential revision is refused","method":"GET","path":"/api/me","headers":{"Authorization":"Bearer fixture-stale-credential-revision-token-102"},"exception":"unauthenticated"},
+    {"name":"a stale membership revision is refused","method":"GET","path":"/api/me","headers":{"Authorization":"Bearer fixture-stale-membership-revision-token-103"},"exception":"unauthenticated"},
+    {"name":"a stale account policy revision is refused","method":"GET","path":"/api/me","headers":{"Authorization":"Bearer fixture-stale-account-policy-revision-token-104"},"exception":"unauthenticated"},
+    {"name":"a stale organization policy revision is refused","method":"GET","path":"/api/me","headers":{"Authorization":"Bearer fixture-stale-org-policy-revision-token-105"},"exception":"unauthenticated"},
+    {"name":"a revoked device is refused","method":"GET","path":"/api/me","headers":{"Authorization":"Bearer fixture-revoked-device-token-106"},"exception":"unauthenticated"},
+    {"name":"ordinary catalog count excludes adult items","method":"GET","path":"/api/libraries/lib-ordinary-001/items","headers":{"Authorization":"Bearer fixture-account-session-token-201"},"want_status":200,"want_json_counts":{"$.results":1},"present_strings":["ordinary-item-001","\"total\":1"],"absent_strings":["adult-item-001"]},
+    {"name":"adult artwork is not disclosed","method":"GET","path":"/api/items/adult-item-001/cover","headers":{"Authorization":"Bearer fixture-account-session-token-201"},"exception":"not_found","absent_strings":["adult-item-001","adult-image-001"]},
+    {"name":"adult playback is not disclosed","method":"POST","path":"/api/items/adult-item-001/play","headers":{"Authorization":"Bearer fixture-account-session-token-201"},"exception":"not_found","absent_strings":["adult-item-001"]},
+    {"name":"activity omits adult items","method":"GET","path":"/api/me/listening-sessions","headers":{"Authorization":"Bearer fixture-account-session-token-201"},"want_status":200,"absent_strings":["adult-item-001"]},
+    {"name":"missing adult and missing random ids time alike","method":"GET","path":"/api/items/adult-item-001","headers":{"Authorization":"Bearer fixture-account-session-token-201"},"exception":"not_found","timing":{"control_path":"/api/items/random-missing-002","samples":100,"max_ratio":3}}
+  ]
+}
