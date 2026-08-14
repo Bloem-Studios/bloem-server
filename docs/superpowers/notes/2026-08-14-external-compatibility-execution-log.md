@@ -356,6 +356,47 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - The deployment scan's service-set constraint had exempted base services from every check, so an intruder service needed only to take a base name; an overlay could make the server itself privileged; and the data plane could be attached to the companion network. That last one matters because the operator guide promises a companion never receives the database, and that promise was enforced only by withholding a connection string — reachability, the actual boundary, was unchecked. An overlay may now add its companions and one key on the server, nothing else, and the companion network's membership is asserted exactly.
 - Both rounds were finished and verified by the maintainer after the implementing agents reached their session limits. All three service evasions and the composition bypass were reproduced independently before and after.
 
+### 2026-08-14 — Round five: both surfaces restructured rather than patched
+
+- Task 5 (`a0787a00`, merged `f382add1`) stopped defending the composition and moved it. Package
+  main now opens exactly one listener in `listenPublic`, and `servePublic(ln, router, frontend,
+  gateway *compatgateway.Gateway, errCh)` composes and serves with the `*http.Server` never
+  escaping — it returns a `publicPort` exposing only `shutdown()`. The guards were rewritten from
+  syntax matching onto `go/types` via `golang.org/x/tools/go/packages`: no `http.Server` literal
+  and no `Serve`/`ListenAndServe` call may appear in package main outside the three named
+  functions, the blessed functions have exactly one call site each, and the gateway argument must
+  resolve to the `compatgateway.New` result. Four rounds of the same evasion is what a type-level
+  guard costs; a name-level one kept being satisfied by a variable that happened to be called the
+  right thing.
+- Verified independently on the merged tree: passing a nil gateway now fails by name
+  (`main_test.go:1023: the gateway argument is nil; the public port must be composed with the
+  real ...compatgateway.New`), and swapping the frontend and gateway arguments is a compile error
+  rather than a silent reordering. A typed-nil `*Gateway` is converted to a nil `http.Handler`
+  before it reaches the mux, because a typed nil satisfies the interface as non-nil and would
+  route the owned families into a nil receiver.
+- Task 6 (`a5ff3adc`, merged `446fc94b`) closed the four gaps the fourth pass left and grew to 55
+  tamper cases. Top-level sections are no longer default-allow — `.networks`, `.volumes`,
+  `.secrets`, and `.configs` are diffed with a key allowlist on network entries; `silo.networks`
+  is pinned to exactly `default` plus `vondel-compat` with no options; base services carry their
+  own key allowlist; and a second scan pass runs with the operator `.env` when one is present.
+  Verified independently: an attacker-named external `default` network with zero service-level
+  change now produces nine FAIL lines.
+- The base file's *values* are explicitly outside the scan and the operator guide now says so
+  rather than implying coverage. Shell, systemd, and CI-exported variables are likewise unseen —
+  the second pass covers a committed `.env` only.
+- One harness lesson carried from round four, applied here: the scan's own failure modes are
+  green-proof now. A `jq` fault, a missing tool, or an empty render is a failure, not a pass —
+  the previous round had three tamper cases passing only because the scan crashed mid-run.
+- Full suite on the integrated tree: 131 packages ok. Two failures under full parallelism
+  (`TestRemoteCleanupBudgetBoundsUnreachableOrigins`, `TestDefaultOrganizationMaterializedMediaScopeParity`
+  logging `policy evaluation timed out timeout=1ns`) both pass in isolation and are recorded as
+  pre-existing load flakes, matching the earlier `adminpeople` one. Both are timeout-budget tests.
+- External side effects: none beyond pushing `feature/opa-tenant-foundation` to `f382add1`, which
+  the maintainer authorized. `main` is untouched.
+- Next continuation point: the sixth (acceptance) review of Tasks 5 and 6, then Task 7 —
+  Foundation Acceptance and CI Gate, which owns wiring `scripts/verify-compat-compose.sh` into
+  CI, where it currently runs nowhere.
+
 ## Update template
 
 Append one section per material transition:
