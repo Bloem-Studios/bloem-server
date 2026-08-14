@@ -240,10 +240,26 @@ func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
 		seen[segment] = true
 		// Recorded per element, not per segment: a second /search route
 		// without caseSensitive would otherwise ride on the first one's.
-		if reservedNativeSegments[segment] && !strings.Contains(element, "caseSensitive") {
-			t.Fatalf("SPA route %q must set caseSensitive on every declaration: %s", segment, condense(element))
+		//
+		// The prop has to be *on*, not merely mentioned. A substring test
+		// counted caseSensitive={false} as satisfying the reservation, which
+		// is the exact opposite of what it asks for: React Router would then
+		// match /LiveTv in the SPA while the gateway routes every non-
+		// lowercase casing to Jellyfin, and the two halves of one origin
+		// disagree about who owns the path.
+		if reservedNativeSegments[segment] {
+			switch {
+			case caseSensitiveOff.MatchString(element):
+				t.Fatalf("SPA route %q sets caseSensitive={false}; the reservation is lowercase-exact and this hands every other casing to both owners at once: %s",
+					segment, condense(element))
+			case !caseSensitiveMentioned.MatchString(element):
+				t.Fatalf("SPA route %q must set caseSensitive on every declaration: %s", segment, condense(element))
+			case !caseSensitiveOn.MatchString(element):
+				t.Fatalf("SPA route %q sets caseSensitive to a value this pin cannot read as enabled; write it bare or as {true}: %s",
+					segment, condense(element))
+			}
 		}
-		if strings.Contains(element, "caseSensitive") {
+		if caseSensitiveOn.MatchString(element) {
 			caseSensitive[segment] = true
 		}
 		if families[strings.ToLower(segment)] && !reservedNativeSegments[segment] {
@@ -276,6 +292,16 @@ func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
 		}
 	}
 }
+
+// caseSensitive route-prop spellings. The prop is only satisfied when it is
+// written bare or as {true}; anything else — {false}, a variable, an
+// expression — is either a refusal or a value this pin cannot read, and both
+// are failures rather than passes.
+var (
+	caseSensitiveMentioned = regexp.MustCompile(`(?:^|[\s{])caseSensitive\b`)
+	caseSensitiveOn        = regexp.MustCompile(`(?:^|[\s{])caseSensitive\s*(?:=\s*\{\s*true\s*\})?(?:$|[\s/>])`)
+	caseSensitiveOff       = regexp.MustCompile(`(?:^|[\s{])caseSensitive\s*=\s*\{\s*false\s*\}`)
+)
 
 // spaObjectRouterFiles reports files declaring a data-router route table,
 // whose paths are object keys rather than <Route> attributes.
@@ -322,8 +348,18 @@ func spaRouteElements(t *testing.T) ([]string, int) {
 	return elements, files
 }
 
-// spaSourceFiles lists every non-test TypeScript source under web/src, so a
-// route declared outside App.tsx cannot escape the pin.
+// spaSourceExtensions is every extension the SPA build accepts a module from.
+// The walk used to see only .ts/.tsx, so a route declared in a .jsx file — or
+// in one of the ESM/CJS TypeScript variants — was invisible to the pin.
+var spaSourceExtensions = map[string]bool{
+	".ts": true, ".tsx": true,
+	".js": true, ".jsx": true,
+	".mts": true, ".cts": true,
+	".mjs": true, ".cjs": true,
+}
+
+// spaSourceFiles lists every non-test SPA source under web/src, so a route
+// declared outside App.tsx cannot escape the pin.
 func spaSourceFiles(t *testing.T) []string {
 	t.Helper()
 	var files []string
@@ -335,7 +371,7 @@ func spaSourceFiles(t *testing.T) []string {
 		if entry.IsDir() || strings.Contains(entry.Name(), ".test.") {
 			return nil
 		}
-		if ext := filepath.Ext(path); ext != ".tsx" && ext != ".ts" {
+		if !spaSourceExtensions[filepath.Ext(path)] {
 			return nil
 		}
 		files = append(files, path)
