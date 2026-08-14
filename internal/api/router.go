@@ -1759,6 +1759,26 @@ func NewRouter(deps Dependencies) chi.Router {
 		r.Get("/health", healthHandler.ServeHTTP)
 		r.Get("/ready", readyHandler.ServeHTTP)
 
+		// Public identity and aggregate capability probes. Both are mounted
+		// here, ahead of the auth routes and outside every auth group, because
+		// a client has to answer "which server is this, and what does it do"
+		// before it has any credentials to present.
+		//
+		// Health is untouched: its server_name/server_id keep coming from the
+		// Jellyfin-compatibility configuration for the clients that already
+		// read them. Scope keying uses /server/identity instead.
+		//
+		// The setup reporter is assigned through the guard rather than passed
+		// directly: authService is a typed pointer, and handing a nil one to an
+		// interface parameter would produce a non-nil interface holding nil.
+		var setupState handlers.SetupStateReporter
+		if authService != nil {
+			setupState = authService
+		}
+		serverIdentityHandler := handlers.NewServerIdentityHandler(settingsRepo, deps.BrandingService, setupState)
+		r.Get("/server/identity", serverIdentityHandler.HandleGetServerIdentity)
+		r.Get("/capabilities", handlers.NewCapabilitiesHandler().HandleGetCapabilities)
+
 		// Branding handler is shared between the public read/serve endpoints
 		// (registered with the theme endpoints below) and the admin
 		// upload/delete endpoints (registered in the admin group).

@@ -43,3 +43,14 @@ Feature-detection precedent: clients discover which metadata providers (includin
 built-in NFO provider, #216) apply to a library type via
 `GET /api/v1/libraries/provider-defaults` rather than version sniffing. New capabilities
 should follow the same capability-endpoint pattern.
+
+Aggregate feature detection: `GET /api/v1/capabilities` is the public, unauthenticated summary of
+what a deployment does — `schema_version`, the `media_types` it serves, and the `features` it
+advertises — and `GET /api/v1/server/identity` is the public answer to which server it is
+(`server_id`, `server_name`, `api_versions`, `setup_complete`). Together they are how a client
+decides what to enable before it holds any credentials. The per-subsystem probes stay authoritative
+for the details of one subsystem; the aggregate set only names what exists. `GET /api/v1/health` is
+unchanged by this: its `server_name` and `server_id` still come from the Jellyfin-compatibility
+configuration, are still omitted when that configuration is absent, and are not a scope key —
+`server_id` from the identity endpoint is, backed by a plain `server.instance_id` server setting
+minted once and never regenerated.
