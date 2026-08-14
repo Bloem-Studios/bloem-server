@@ -51,9 +51,9 @@ type AuthMiddleware struct {
 	apiKeyLastUsed *auth.APIKeyLastUsedTracker
 
 	// directProfileRoutes decides whether a direct-profile session may reach
-	// the route a request matched. Nil leaves direct-profile sessions
-	// unrestricted, which is only correct for fixtures that register no
-	// account-scoped routes.
+	// the route a request matched. Nil fails closed: every direct-profile
+	// request is refused until a guard is installed. A fixture that wants an
+	// unrestricted middleware installs an explicit allow-all guard.
 	directProfileRoutes DirectProfileRouteGuard
 }
 
