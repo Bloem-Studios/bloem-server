@@ -57,7 +57,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 2 committed; scoped re-review pending.
+Status: fix round 3 committed; scoped re-review pending.
 
 Initial implementation commit:
 
@@ -131,6 +131,21 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
 - External side effects: none. No push, no deployment, no repository or issue activity.
 - Next continuation point: scoped re-review of `cabaeafc..d405f821` covering the four findings and anything this round introduced. Task 1 completes only on approval.
+
+### 2026-08-14 — Foundation Task 1, fix round 3
+
+- Base/head commits: `d405f821` → `16baf555 fix(auth): make the direct profile boundary default-deny`.
+- Independent review verdict on fix round 2: database-enforced credential rotation and the refresh failure handling both accepted, including trigger interaction, multi-row behavior, insert behavior, and the down migration. The profile boundary and the blank-credential constraint were rejected again.
+- Decision or ruling: the reviewer recommended continuing to guard named account route groups. That recommendation was NOT followed, by explicit maintainer decision, and the divergence is recorded here deliberately. The router registers 656 routes across 65 groups; three review rounds each surfaced new reachable surfaces, so enumeration was judged not to converge. The boundary is now default-deny.
+- What changed:
+  - A direct-profile session is refused at authentication unless the route it matched is named in the allowlist. Entries are exact chi route patterns, resolved by matching the request against the root router, because a path prefix cannot separate a profile's own record from the household collection that shares its prefix. This also splits the mixed settings group without restructuring it: the contract, device, and effective views are admitted and the account-wide list and single-key routes are not.
+  - An inventory test walks the real router and pins the admitted set, so a route added under an allowed subtree fails until someone confirms a single profile may use it. A second test rejects allowlist entries the router no longer registers.
+  - Login normalization moved into one immutable database function matching Go's whitespace trimming, used by the pairing constraint, the registry key check, both sync triggers, and the backfill. PostgreSQL's default trim removes spaces only, so a tab, newline, or non-breaking space had been passing as a real credential.
+- RED evidence: the whitespace regressions fail against the previous constraint. The allowlist tests are new-surface tests rather than regressions of old behavior, and the router acceptance test covering the newly named account routes fails without the guard.
+- Defect found and fixed inside the round: the blank-credential subtests shared one profile row and ran in map order, so a write that slipped through changed what later cases asserted. Each case now resets the row first. Two allowlist entries also named route shapes the router does not register, which the stale-entry test caught.
+- GREEN verification: full `make test-go` against real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
+- External side effects: none.
+- Next continuation point: scoped re-review of `d405f821..16baf555`. The review brief asks the reviewer to attack the default-deny design directly, including whether every authenticated path passes through the guard and whether the admitted subtrees are genuinely profile-scoped. Task 1 completes only on approval.
 
 ## Update template
 
