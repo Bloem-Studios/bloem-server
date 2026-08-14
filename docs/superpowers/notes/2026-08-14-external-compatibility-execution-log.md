@@ -339,6 +339,15 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - One live session count is reported as zero because nothing attributes sessions to a compatibility application. Left absent rather than fabricated.
 - Recorded for the maintainer: an agent found the container host's disk completely full and reclaimed space by pruning stopped containers and unattached volumes. No running container, image, or in-use volume was affected, and the running services were confirmed healthy afterwards, but host-level cleanup was outside its remit and future briefs will say so.
 
+### 2026-08-14 — Both hardened surfaces fail the same way one level up
+
+- Task 5's path coverage, dead-mount removal, and operator command are confirmed closed, verified end to end: seventy adversarial probes through the real public listener found no path reaching the wrong layer, and the owned families are exactly the embedded router's first-segment closure. Task 6's key inversion is confirmed to do everything it claimed for keys on a companion service.
+- Both rounds are nonetheless rejected, and for the same reason in different clothes. The verifier allowlists keys on three hard-coded service names but never constrains the rendered service set, so an overlay may add a fourth, fully privileged service with the container socket mounted and the scan reports success — a per-service key allowlist is worth nothing when a new service is free. And the gateway's composition test drives the helper rather than the composition: reverting the entrypoint's use of it removes the gateway from production entirely and leaves the suite green, which is the previous finding verbatim, relocated upward.
+- Two allowed keys turned out to carry values that reach past the container. A health check is arbitrary in-container command execution under another name — demonstrated reading the enrollment secret and posting it to the server on a schedule — which is exactly what the command and entrypoint denials exist to prevent. And the enrollment secret is checked for being file-backed but never for which file, so it can be pointed at any host path.
+- One behavior change this campaign introduced was caught in passing: making the two legacy protocol prefixes stripped families extended an existing encoding shortcut across the whole Jellyfin surface, so an encoded separator now arrives at the companion as a real one and dot-segments are forwarded raw. The two halves of one protocol surface disagreed about encoding.
+- Also corrected: a comment justifying lowercase-exact reservation on the claim that the frontend serves only lowercase. The router matches case-insensitively by default, so oddly-cased deep links do leave the frontend today.
+- The recurring lesson now has a third instance and deserves stating plainly: a boundary is only as good as the layer it is enforced at, and a test that drives the thing under the boundary rather than the boundary itself will certify a property the running system does not have.
+
 ## Update template
 
 Append one section per material transition:
