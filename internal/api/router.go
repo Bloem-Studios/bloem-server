@@ -584,6 +584,8 @@ func NewRouter(deps Dependencies) chi.Router {
 	var autoscanHandler *handlers.AutoscanHandler
 	var liveTVHandler *handlers.LiveTVHandler
 	var ebookReaderHandler *handlers.EbookReaderHandler
+	// Watch documents (contracts watch_document_v1) for the TV clients.
+	var watchHandler *handlers.WatchHandler
 	var ebookProgressStore *handlers.PGEbookReaderProgressStore
 	var ebookConfigStore *handlers.PGEbookReaderConfigStore
 	var ebookAnnotationStore *handlers.PGEbookReaderAnnotationStore
@@ -641,6 +643,21 @@ func NewRouter(deps Dependencies) chi.Router {
 		var episodeFileProvider handlers.EpisodeFileProvider
 		if deps.FileRepo != nil {
 			episodeFileProvider = deps.FileRepo
+		}
+
+		// The Watch documents both TV clients consume. They need a catalog, a
+		// media-file repository and a progress store; without any one of them
+		// there is no document to compose, so the routes stay unmounted rather
+		// than answering with an empty library.
+		if deps.FileRepo != nil && deps.UserStoreProvider != nil {
+			watchHandler = handlers.NewWatchHandler(handlers.NewCatalogWatchReader(
+				browseRepo,
+				itemRepo,
+				episodeRepo,
+				seasonRepo,
+				deps.FileRepo,
+				deps.UserStoreProvider,
+			))
 		}
 
 		rootClaimRepo := catalog.NewRootClaimRepository(deps.DB)
@@ -2321,6 +2338,21 @@ func NewRouter(deps Dependencies) chi.Router {
 							r.Delete("/{item_id}", ratingsHandler.HandleDeleteRating)
 						})
 					}
+				}
+
+				// Watch documents (profile-scoped). They sit beside the
+				// progress routes because the home document carries the same
+				// profile's progress rows.
+				//
+				// Registered as flat paths rather than a /watch subrouter: the
+				// catalog's own GET /watch/{id} already occupies that prefix,
+				// and mounting a subrouter over it would swallow it. chi
+				// resolves a static segment ahead of a parameter at the same
+				// level, so /watch/home and /watch/items/{content_id} land here
+				// while /watch/{id} keeps serving item detail.
+				if watchHandler != nil {
+					r.With(apimw.RequireProfile).Get("/watch/home", watchHandler.HandleWatchHome)
+					r.With(apimw.RequireProfile).Get("/watch/items/{content_id}", watchHandler.HandleWatchItem)
 				}
 
 				// Progress and sync routes (profile-scoped).

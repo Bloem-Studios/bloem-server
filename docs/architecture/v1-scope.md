@@ -54,3 +54,13 @@ unchanged by this: its `server_name` and `server_id` still come from the Jellyfi
 configuration, are still omitted when that configuration is absent, and are not a scope key —
 `server_id` from the identity endpoint is, backed by a plain `server.instance_id` server setting
 minted once and never regenerated.
+
+Watch documents: `GET /api/v1/watch/home` and `GET /api/v1/watch/items/{content_id}` serve the
+`watch_document_v1` shape the TV clients decode — one snapshot carrying the items a profile may
+watch, that profile's progress rows for those items, and a single server-chosen
+`featured_content_id`. Both are profile-scoped and honor library restrictions, so a document never
+names an item the profile may not see; the featured identifier is a name only, and the client's own
+presentation rules decide what to do with it. Clients detect them through `watch_document_v1` in the
+aggregate capability set rather than by probing. The catalog's own `GET /api/v1/watch/{id}` item
+detail is unchanged and keeps serving its shape: `home` and `items` are static segments that resolve
+ahead of that parameter.

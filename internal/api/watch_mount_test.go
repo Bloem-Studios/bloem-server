@@ -1,0 +1,393 @@
+package api
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/santhosh-tekuri/jsonschema/v6"
+
+	"github.com/Silo-Server/silo-server/internal/config"
+	"github.com/Silo-Server/silo-server/internal/database"
+	"github.com/Silo-Server/silo-server/internal/scanner"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
+	"github.com/Silo-Server/silo-server/migrations"
+)
+
+// The invented world this test seeds. No real title, person, path or hostname
+// appears in it.
+const (
+	watchMovieLibraryID  = 1
+	watchSeriesLibraryID = 2
+
+	watchMovieContentID  = "4242"
+	watchSeriesContentID = "8080"
+	watchEpisodeOneID    = "8080-s01e01"
+	watchEpisodeTwoID    = "8080-s01e02"
+
+	watchMovieFileID    = 4242001
+	watchEpisodeOneFile = 8080001
+	watchEpisodeTwoFile = 8080002
+)
+
+// TestWatchDocumentsAreServedByTheRealRouter drives the real router end to end:
+// the routes are mounted inside the authenticated, profile-scoped v1 group, the
+// database-backed reader runs its real queries, and both documents conform to
+// the contracts schema. The handler-level tests use a fake reader, so this is
+// the only place the adapter's SQL is exercised.
+func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
+	pool := newWatchDatabase(t)
+	ctx := context.Background()
+	cfg := &config.Config{Auth: config.AuthConfig{
+		JWTSecret:          "watch-document-mount-secret",
+		AccessTokenExpiry:  time.Hour,
+		RefreshTokenExpiry: 24 * time.Hour,
+	}}
+	provider := pgstore.NewPostgresProvider(pool)
+	bootstrap := v1TenancyBootstrap{store: tenancy.NewStore(pool)}
+	router := NewRouter(Dependencies{
+		DB:                    pool,
+		Config:                cfg,
+		UserStoreProvider:     provider,
+		FileRepo:              scanner.NewFileRepository(pool),
+		OwnershipBootstrapper: bootstrap,
+		MembershipProvisioner: bootstrap,
+	})
+
+	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{
+		"username":"watch.viewer","email":"watch.viewer@example.invalid",
+		"password":"invented password for a disposable database",
+		"create_default_profile":true,"default_profile_name":"Watch Viewer"
+	}`, "", nil)
+	if setup.Code != http.StatusCreated {
+		t.Fatalf("setup = %d %s", setup.Code, setup.Body.String())
+	}
+	token := decodeLogin(t, setup).AccessToken
+
+	var userID int
+	if err := pool.QueryRow(ctx, `SELECT id FROM users WHERE username = 'watch.viewer'`).Scan(&userID); err != nil {
+		t.Fatalf("load account: %v", err)
+	}
+	var profileID string
+	if err := pool.QueryRow(ctx, `SELECT id FROM user_profiles WHERE user_id = $1 AND is_primary`, userID).Scan(&profileID); err != nil {
+		t.Fatalf("load primary profile: %v", err)
+	}
+
+	seedWatchCatalog(t, pool)
+	seedWatchProgress(t, provider, userID, profileID)
+
+	profileHeaders := map[string]string{"X-Profile-Id": profileID}
+
+	t.Run("unauthenticated", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/home", "", "", profileHeaders)
+		if response.Code != http.StatusUnauthorized {
+			t.Fatalf("home without a token = %d %s", response.Code, response.Body.String())
+		}
+	})
+
+	t.Run("without a profile", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/home", "", token, nil)
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("home without a profile = %d %s", response.Code, response.Body.String())
+		}
+	})
+
+	t.Run("home", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/home", "", token, profileHeaders)
+		if response.Code != http.StatusOK {
+			t.Fatalf("home = %d %s", response.Code, response.Body.String())
+		}
+		document := assertWatchDocumentConforms(t, response.Body.Bytes())
+		ids := watchContentIDs(document)
+		if !contains(ids, watchMovieContentID) || !contains(ids, watchSeriesContentID) {
+			t.Fatalf("home items = %v, want the seeded movie and series", ids)
+		}
+		if document["featured_content_id"] != watchMovieContentID {
+			t.Errorf("featured_content_id = %#v, want %s", document["featured_content_id"], watchMovieContentID)
+		}
+		for _, item := range watchItems(document) {
+			if item["content_id"] == watchMovieContentID && item["file_id"] != float64(watchMovieFileID) {
+				t.Errorf("movie file_id = %#v, want %d", item["file_id"], watchMovieFileID)
+			}
+		}
+		// The seeded progress rows: the movie's own row, and the series' row
+		// carried under the series with its episode named.
+		rows := watchProgressRows(document)
+		if len(rows) != 2 {
+			t.Fatalf("progress rows = %d, want 2: %s", len(rows), response.Body.String())
+		}
+		for _, row := range rows {
+			switch row["content_id"] {
+			case watchMovieContentID:
+				if _, ok := row["episode_id"]; ok {
+					t.Errorf("movie progress row carries episode_id: %#v", row)
+				}
+			case watchSeriesContentID:
+				if row["episode_id"] != watchEpisodeOneID {
+					t.Errorf("series progress episode_id = %#v, want %s", row["episode_id"], watchEpisodeOneID)
+				}
+			default:
+				t.Errorf("unexpected progress row: %#v", row)
+			}
+		}
+	})
+
+	t.Run("series detail", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/items/"+watchSeriesContentID, "", token, profileHeaders)
+		if response.Code != http.StatusOK {
+			t.Fatalf("series detail = %d %s", response.Code, response.Body.String())
+		}
+		document := assertWatchDocumentConforms(t, response.Body.Bytes())
+		want := []string{watchSeriesContentID, watchEpisodeOneID, watchEpisodeTwoID}
+		if got := watchContentIDs(document); strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Fatalf("series detail items = %v, want %v", got, want)
+		}
+		items := watchItems(document)
+		seasons, _ := items[0]["seasons"].([]any)
+		if len(seasons) != 1 {
+			t.Fatalf("seasons = %#v, want one", items[0]["seasons"])
+		}
+		season, _ := seasons[0].(map[string]any)
+		if season["title"] != "Lantern Floor" {
+			t.Errorf("season title = %#v", season["title"])
+		}
+		if items[1]["file_id"] != float64(watchEpisodeOneFile) || items[2]["file_id"] != float64(watchEpisodeTwoFile) {
+			t.Errorf("episode file ids = %#v, %#v", items[1]["file_id"], items[2]["file_id"])
+		}
+	})
+
+	t.Run("movie detail", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/items/"+watchMovieContentID, "", token, profileHeaders)
+		if response.Code != http.StatusOK {
+			t.Fatalf("movie detail = %d %s", response.Code, response.Body.String())
+		}
+		document := assertWatchDocumentConforms(t, response.Body.Bytes())
+		items := watchItems(document)
+		if len(items) != 1 || items[0]["file_id"] != float64(watchMovieFileID) {
+			t.Fatalf("movie detail items = %#v", items)
+		}
+	})
+
+	t.Run("unknown item", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/items/6003", "", token, profileHeaders)
+		if response.Code != http.StatusNotFound {
+			t.Fatalf("unknown item = %d %s", response.Code, response.Body.String())
+		}
+	})
+
+	// Restricting the profile to the movie library must remove the series from
+	// both arrays and make its detail document unreachable.
+	t.Run("library restrictions", func(t *testing.T) {
+		store, err := provider.ForUser(ctx, userID)
+		if err != nil {
+			t.Fatalf("open user store: %v", err)
+		}
+		restricted := true
+		allowed := []int{watchMovieLibraryID}
+		if err := store.UpdateProfile(ctx, profileID, userstore.UpdateProfileInput{
+			LibraryRestrictionsEnabled: &restricted,
+			AllowedLibraryIDs:          &allowed,
+		}); err != nil {
+			t.Fatalf("restrict profile libraries: %v", err)
+		}
+
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/home", "", token, profileHeaders)
+		if response.Code != http.StatusOK {
+			t.Fatalf("restricted home = %d %s", response.Code, response.Body.String())
+		}
+		document := assertWatchDocumentConforms(t, response.Body.Bytes())
+		ids := watchContentIDs(document)
+		if contains(ids, watchSeriesContentID) {
+			t.Errorf("restricted home lists the series: %v", ids)
+		}
+		if !contains(ids, watchMovieContentID) {
+			t.Errorf("restricted home lost the permitted movie: %v", ids)
+		}
+		for _, row := range watchProgressRows(document) {
+			if row["content_id"] == watchSeriesContentID {
+				t.Errorf("restricted home carries progress for the series: %#v", row)
+			}
+		}
+
+		detail := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/items/"+watchSeriesContentID, "", token, profileHeaders)
+		if detail.Code != http.StatusNotFound {
+			t.Fatalf("restricted series detail = %d %s", detail.Code, detail.Body.String())
+		}
+	})
+}
+
+func newWatchDatabase(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	pool := newDisposableAPIDatabase(t, "vondel_watch_", false)
+	if err := database.RunMigrations(context.Background(), pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate disposable database: %v", err)
+	}
+	return pool
+}
+
+func seedWatchCatalog(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
+	statements := []struct {
+		sql  string
+		args []any
+	}{
+		{`INSERT INTO media_folders (id, type, name) VALUES ($1, 'movie', 'Invented Watch Films'), ($2, 'series', 'Invented Watch Series')`,
+			[]any{watchMovieLibraryID, watchSeriesLibraryID}},
+		{`INSERT INTO media_items (content_id, type, title, year, runtime, content_rating, overview)
+		  VALUES ($1, 'movie', 'The Invented Crossing', 2026, 108, 'PG', 'A harbor surveyor follows a light that appears only after midnight.'),
+		         ($2, 'series', 'Eight Quiet Rooms', 2026, 0, 'PG', 'Residents of an unfinished building discover that every empty room remembers a different visitor.')`,
+			[]any{watchMovieContentID, watchSeriesContentID}},
+		{`INSERT INTO media_item_libraries (content_id, media_folder_id, first_seen_at)
+		  VALUES ($1, $3, '2026-08-13T09:00:00Z'), ($2, $4, '2026-08-11T09:00:00Z')`,
+			[]any{watchMovieContentID, watchSeriesContentID, watchMovieLibraryID, watchSeriesLibraryID}},
+		{`INSERT INTO seasons (content_id, series_id, season_number, title, overview, poster_path, poster_thumbhash, metadata_s3_path, metadata_etag)
+		  VALUES ('8080-s01', $1, 1, 'Lantern Floor', 'The first floor to be finished.', '', '', '', '')`,
+			[]any{watchSeriesContentID}},
+		{`INSERT INTO episodes (content_id, series_id, season_id, season_number, episode_number, title, overview, runtime)
+		  VALUES ($2, $1, '8080-s01', 1, 1, 'The First Locked Room', 'A brass key is found inside a wall that has never had a door.', 45),
+		         ($3, $1, '8080-s01', 1, 2, 'Echoes in the Stairwell', 'The residents hear their own footsteps a day before they make them.', 45)`,
+			[]any{watchSeriesContentID, watchEpisodeOneID, watchEpisodeTwoID}},
+		// Episodes are only visible once they belong to a library: the
+		// episode listings gate on episode_libraries.
+		{`INSERT INTO episode_libraries (episode_id, media_folder_id, first_seen_at)
+		  VALUES ($1, $3, '2026-08-11T09:00:00Z'), ($2, $3, '2026-08-11T09:00:00Z')`,
+			[]any{watchEpisodeOneID, watchEpisodeTwoID, watchSeriesLibraryID}},
+		{`INSERT INTO media_files (id, content_id, media_folder_id, file_path, file_size, duration, container)
+		  VALUES ($1, $2, $3, '/invented/films/the-invented-crossing.mp4', 1048576, 6480, 'mp4')`,
+			[]any{watchMovieFileID, watchMovieContentID, watchMovieLibraryID}},
+		{`INSERT INTO media_files (id, content_id, episode_id, media_folder_id, file_path, season_number, episode_number, file_size, duration, container)
+		  VALUES ($1, $5, $3, $4, '/invented/series/eight-quiet-rooms/s01e01.mp4', 1, 1, 524288, 2700, 'mp4'),
+		         ($2, $5, $6, $4, '/invented/series/eight-quiet-rooms/s01e02.mp4', 1, 2, 524288, 2700, 'mp4')`,
+			[]any{watchEpisodeOneFile, watchEpisodeTwoFile, watchEpisodeOneID, watchSeriesLibraryID, watchSeriesContentID, watchEpisodeTwoID}},
+	}
+	for _, statement := range statements {
+		if _, err := pool.Exec(ctx, statement.sql, statement.args...); err != nil {
+			t.Fatalf("seed catalog (%s): %v", strings.TrimSpace(strings.SplitN(statement.sql, "\n", 2)[0]), err)
+		}
+	}
+}
+
+func seedWatchProgress(t *testing.T, provider userstore.UserStoreProvider, userID int, profileID string) {
+	t.Helper()
+	ctx := context.Background()
+	store, err := provider.ForUser(ctx, userID)
+	if err != nil {
+		t.Fatalf("open user store: %v", err)
+	}
+	if err := store.SetProgressAt(ctx, profileID, watchMovieContentID, 1234.5, 6480, false,
+		time.Date(2026, 8, 13, 11, 45, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("seed movie progress: %v", err)
+	}
+	// An episode row: stored against the episode's own identifier, with no
+	// series linkage of its own.
+	if err := store.SetProgressAt(ctx, profileID, watchEpisodeOneID, 960, 2700, false,
+		time.Date(2026, 8, 13, 11, 50, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("seed episode progress: %v", err)
+	}
+}
+
+func assertWatchDocumentConforms(t *testing.T, body []byte) map[string]any {
+	t.Helper()
+	root := watchContractsCheckout(t)
+	raw, err := os.ReadFile(filepath.Join(root, "schema", "watch", "document.schema.json"))
+	if err != nil {
+		t.Fatalf("read watch document schema: %v", err)
+	}
+	var schemaDocument any
+	if err := json.Unmarshal(raw, &schemaDocument); err != nil {
+		t.Fatalf("decode watch document schema: %v", err)
+	}
+	compiler := jsonschema.NewCompiler()
+	compiler.AssertFormat()
+	if err := compiler.AddResource("watch-document.json", schemaDocument); err != nil {
+		t.Fatalf("add watch document schema: %v", err)
+	}
+	schema, err := compiler.Compile("watch-document.json")
+	if err != nil {
+		t.Fatalf("compile watch document schema: %v", err)
+	}
+	var value any
+	if err := json.Unmarshal(body, &value); err != nil {
+		t.Fatalf("decode watch document %s: %v", body, err)
+	}
+	if err := schema.Validate(value); err != nil {
+		t.Fatalf("response does not conform to watch_document_v1: %v\nbody: %s", err, body)
+	}
+	document, _ := value.(map[string]any)
+	return document
+}
+
+// watchContractsCheckout locates the contracts repository, skipping with the
+// variable named rather than passing when it cannot be found.
+func watchContractsCheckout(t *testing.T) string {
+	t.Helper()
+	candidates := []string{
+		os.Getenv("VONDEL_CONTRACTS_ROOT"),
+		os.Getenv("VONDEL_CLIENT_CONTRACTS_DIR"),
+		filepath.Join("..", "..", "..", "vondel-client-contracts"),
+	}
+	var looked []string
+	for _, candidate := range candidates {
+		if candidate == "" {
+			continue
+		}
+		abs, err := filepath.Abs(candidate)
+		if err != nil {
+			continue
+		}
+		looked = append(looked, abs)
+		if _, err := os.Stat(filepath.Join(abs, "schema", "watch", "document.schema.json")); err == nil {
+			return abs
+		}
+	}
+	t.Skipf("watch document schema unavailable: set VONDEL_CONTRACTS_ROOT to a vondel-client-contracts checkout (looked in %s)",
+		strings.Join(looked, ", "))
+	return ""
+}
+
+func watchItems(document map[string]any) []map[string]any {
+	raw, _ := document["items"].([]any)
+	items := make([]map[string]any, 0, len(raw))
+	for _, entry := range raw {
+		item, _ := entry.(map[string]any)
+		items = append(items, item)
+	}
+	return items
+}
+
+func watchProgressRows(document map[string]any) []map[string]any {
+	raw, _ := document["progress"].([]any)
+	rows := make([]map[string]any, 0, len(raw))
+	for _, entry := range raw {
+		row, _ := entry.(map[string]any)
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+func watchContentIDs(document map[string]any) []string {
+	var ids []string
+	for _, item := range watchItems(document) {
+		id, _ := item["content_id"].(string)
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func contains(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
