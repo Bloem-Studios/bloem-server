@@ -59,7 +59,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 12 committed, closing every finding of the seventh full review — the first with no security findings; an eighth full review is next.
+Status: fix round 13 committed, closing both findings of the eighth full review; a ninth full review is next.
 
 Initial implementation commit:
 
@@ -274,6 +274,17 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - RED evidence: reverting the two admissions fails the reach-the-handler probes; reverting the refusal ordering fails the unknown-key case; the composition and account-scope regressions from round 11 fail with their fixes reverted.
 - GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes.
 - Next continuation point: eighth full review of `81047e91..4ec751e7`.
+
+### 2026-08-14 — Foundation Task 1, eighth full review and fix round 13
+
+- Base/head commits: `4ec751e7` → `36e53e10 fix(auth): fail closed without a route guard and finish the HEAD coverage`.
+- Eighth full review verdict on `81047e91..4ec751e7`: not accepted. One medium, one low — the smallest set of any round.
+- Findings and what closed them:
+  1. The middleware failed open: an AuthMiddleware without an installed route guard admitted direct-profile sessions everywhere. A nil guard now refuses them — forgetting the allowlist means nothing is reachable, not everything — with a regression covering guardless refusal, allow-all admission, and account sessions untouched. No existing caller relied on the fail-open.
+  2. The round-12 positive probes missed the subtitle HEAD and only probed the proxy with GET, accepting a not-configured 503. Both verbs are now probed against the wired download service with the handler's own answers pinned, and the subtitle probe is ordered before the stream probe, which aborts a media-less session.
+- RED evidence: reverting the fail-closed check fails the guardless-refusal case; the round-12 admissions were already red-proven.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes.
+- Next continuation point: ninth full review of `81047e91..36e53e10`.
 
 ## Update template
 
