@@ -114,6 +114,35 @@ services:
   #     - path: .env
   #       required: false
 
+  # ---------------------------------------------------------------------------
+  # Optional private compatibility companions (NOT enabled from this file).
+  #
+  # vondel-audiobookshelf and vondel-jellyfin are removable protocol facades
+  # that talk to Vondel's private compatibility API. Activation is overlay-only
+  # so their deployment contract stays in one reviewed place:
+  #
+  #   docker compose -f docker-compose.yml -f docker-compose.audiobookshelf.yml up -d
+  #   docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml up -d
+  #
+  # The overlays keep each companion on an internal network with no host ports,
+  # a single-use enrollment token mounted as a Docker secret file, and one named
+  # volume of disposable protocol state. Companions never receive the Vondel
+  # database, Redis, media mounts, SECRET_KEY, provider or tuner credentials,
+  # or the Docker socket, and their images stay in the private
+  # ghcr.io/vondel-media registry. For illustration, a companion service looks
+  # like this (see docker-compose.audiobookshelf.yml for the real contract):
+  #
+  # vondel-audiobookshelf:
+  #   image: ghcr.io/vondel-media/vondel-audiobookshelf:latest   # private pull
+  #   restart: unless-stopped
+  #   networks: internal vondel-compat only — no ports, no egress
+  #   secrets: single-use enrollment token at /run/secrets/vondel_compat_enrollment
+  #   volumes: one named volume of disposable protocol state (SQLite/WAL)
+  #
+  # Operator guide: docs/operations/compatibility-applications.md
+  # Structural enforcement: scripts/verify-compat-compose.sh
+  # ---------------------------------------------------------------------------
+
   # Optional distributed-mode example. Most single-host installs should
   # just use the integrated service above.
   # silo-transcode:
