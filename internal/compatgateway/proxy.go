@@ -188,7 +188,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			out.URL.Scheme = status.Endpoint.Scheme
 			out.URL.Host = status.Endpoint.Host
 			if route.StripPrefix {
-				out.URL.Path = strippedPath(out.URL.Path, route.Prefix)
+				out.URL.Path = strippedPath(out.URL.Path)
 				out.URL.RawPath = ""
 			}
 			// The internal identity is minted here and only here; whatever the
@@ -295,16 +295,17 @@ func requestTraceID(r *http.Request) string {
 }
 
 // strippedPath removes the public prefix for applications that expect
-// protocol-native paths. "/audiobookshelf" itself becomes "/".
-func strippedPath(path, prefix string) string {
-	stripped := strings.TrimPrefix(path, prefix)
-	if stripped == "" {
+// protocol-native paths: "/audiobookshelf/api/ping" becomes "/api/ping" and
+// "/audiobookshelf" itself becomes "/". It drops the first segment rather
+// than a literal prefix string, so it holds for whatever casing the client
+// used on a case-insensitively matched family such as /emby.
+func strippedPath(path string) string {
+	trimmed := strings.TrimPrefix(path, "/")
+	idx := strings.IndexByte(trimmed, '/')
+	if idx < 0 {
 		return "/"
 	}
-	if !strings.HasPrefix(stripped, "/") {
-		return "/" + stripped
-	}
-	return stripped
+	return trimmed[idx:]
 }
 
 // rewriteRedirect keeps companion redirects on the canonical origin. A

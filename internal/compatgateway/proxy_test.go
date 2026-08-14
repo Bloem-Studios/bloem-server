@@ -11,6 +11,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -153,6 +156,9 @@ func TestRouteTableOwnership(t *testing.T) {
 	if !ok || abs.App != KindAudiobookshelf || !abs.StripPrefix {
 		t.Fatalf("audiobookshelf must own /audiobookshelf with a stripped prefix, got %+v", abs)
 	}
+	// The legacy prefixes the embedded listener strips are the only stripped
+	// Jellyfin families; every protocol family keeps its own path.
+	legacyStripped := map[string]bool{"/emby": true, "/jellyfin": true}
 	for prefix, route := range byPrefix {
 		if prefix == "/audiobookshelf" {
 			continue
@@ -160,13 +166,57 @@ func TestRouteTableOwnership(t *testing.T) {
 		if route.App != KindJellyfin {
 			t.Fatalf("only jellyfin and /audiobookshelf are owned, got %+v", route)
 		}
-		if route.StripPrefix {
-			t.Fatalf("jellyfin routes keep their protocol paths, got %+v", route)
+		if route.StripPrefix != legacyStripped[prefix] {
+			t.Fatalf("route %+v has the wrong strip behavior", route)
 		}
 	}
-	for _, required := range []string{"/System", "/Users", "/Items", "/Sessions", "/LiveTv", "/web"} {
+	for _, required := range []string{"/System", "/Users", "/Items", "/Sessions", "/LiveTv", "/web", "/emby", "/jellyfin"} {
 		if _, ok := byPrefix[required]; !ok {
 			t.Fatalf("jellyfin fixed route set must include %q", required)
+		}
+	}
+}
+
+// The reserved native segments are exactly the SPA's own first path segments
+// that would otherwise be swallowed by a same-named Jellyfin family. This
+// pins the set against the SPA's real route list, so a future lowercase SPA
+// route colliding with a family fails here instead of disappearing behind
+// the gateway.
+func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("..", "..", "web", "src", "App.tsx"))
+	if err != nil {
+		t.Fatalf("read SPA route table: %v", err)
+	}
+	matches := regexp.MustCompile(`path="(/[^"]*)"`).FindAllStringSubmatch(string(source), -1)
+	if len(matches) < 20 {
+		t.Fatalf("found only %d SPA routes; the extraction pattern is stale", len(matches))
+	}
+	families := map[string]bool{}
+	for _, route := range RouteTable() {
+		families[strings.ToLower(strings.TrimPrefix(route.Prefix, "/"))] = true
+	}
+	seen := map[string]bool{}
+	for _, match := range matches {
+		segment := firstSegment(match[1])
+		if segment == "" || segment == "*" || strings.HasPrefix(segment, ":") {
+			continue
+		}
+		seen[segment] = true
+		if !families[strings.ToLower(segment)] {
+			continue
+		}
+		if !reservedNativeSegments[segment] {
+			t.Fatalf("SPA route segment %q collides with a gateway family and is not reserved", segment)
+		}
+	}
+	// The reserved set must not grow beyond what the SPA actually serves:
+	// a stale entry silently withholds a family from the gateway.
+	for segment := range reservedNativeSegments {
+		if !seen[segment] {
+			t.Fatalf("reserved segment %q is not an SPA route any more", segment)
+		}
+		if !families[strings.ToLower(segment)] {
+			t.Fatalf("reserved segment %q collides with no gateway family; reserving it is pointless", segment)
 		}
 	}
 }
@@ -194,24 +244,37 @@ func TestMatchPath(t *testing.T) {
 		ok   bool
 	}{
 		{"/System/Info/Public", KindJellyfin, true},
-		// Ownership is exact-case. On the shared canonical origin a
-		// case-insensitive claim would shadow the native SPA routes /search,
-		// /library, and /livetv behind /Search, /Library, and /LiveTv.
-		// Official Jellyfin clients emit the canonical casing; lowercase
-		// probes fall through to the SPA.
-		{"/system/info/public", "", false},
+		// The listener this replaces canonicalizes case, so real clients
+		// reach these families in any casing. Ownership follows suit.
+		{"/system/info/public", KindJellyfin, true},
+		{"/SYSTEM/Info", KindJellyfin, true},
+		{"/users/authenticatebyname", KindJellyfin, true},
+		{"/items/5", KindJellyfin, true},
 		{"/Users/AuthenticateByName", KindJellyfin, true},
 		{"/web/index.html", KindJellyfin, true},
 		{"/web", KindJellyfin, true},
+		{"/Web", KindJellyfin, true},
+		// The legacy /emby and /jellyfin prefixes the embedded listener
+		// strips are owned families in their own right.
+		{"/emby/System/Info", KindJellyfin, true},
+		{"/jellyfin/System/Info", KindJellyfin, true},
+		{"/emby/Users/AuthenticateByName", KindJellyfin, true},
+		{"/EMBY/System/Info", KindJellyfin, true},
 		{"/audiobookshelf", KindAudiobookshelf, true},
 		{"/audiobookshelf/api/ping", KindAudiobookshelf, true},
+		{"/Audiobookshelf/api/ping", KindAudiobookshelf, true},
+		// Reserved native segments win over a family that differs only in
+		// case: these are live SPA client routes on the same origin.
+		{"/search", "", false},
+		{"/library/5", "", false},
+		{"/livetv", "", false},
 		{"/", "", false},
 		{"/api/v1/items", "", false},
 		{"/api/v2/admin/session", "", false},
 		{"/metrics", "", false},
-		{"/SystemX", "", false},                 // prefix match is per segment, not per string
-		{"/audiobookshelfx/api", "", false},     // no partial-segment ownership
-		{"/Audiobookshelf/api/ping", "", false}, // the ABS prefix is exact
+		{"/SystemX", "", false},             // prefix match is per segment, not per string
+		{"/audiobookshelfx/api", "", false}, // no partial-segment ownership
+		{"/embyx/System", "", false},
 	}
 	for _, tc := range cases {
 		route, ok := MatchPath(tc.path)
@@ -662,7 +725,15 @@ func TestWithFrontendFallbackSplitsOwnership(t *testing.T) {
 	spa := &spaMarker{}
 	composed := WithFrontendFallback(gateway, spa)
 
-	gatewayPaths := []string{"/System/Info", "/audiobookshelf/api/ping", "/web", "/web/index.html", "/Users/AuthenticateByName"}
+	// The probe table covers every shape the embedded listener answers: the
+	// canonical casing, the lowercase and shouted forms it canonicalizes,
+	// and the two legacy prefixes it strips.
+	gatewayPaths := []string{
+		"/System/Info", "/audiobookshelf/api/ping", "/web", "/web/index.html",
+		"/Users/AuthenticateByName",
+		"/system/info", "/SYSTEM/Info",
+		"/emby/System/Info", "/jellyfin/System/Info", "/emby/Users/AuthenticateByName",
+	}
 	for _, path := range gatewayPaths {
 		rec := httptest.NewRecorder()
 		composed.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
@@ -678,10 +749,10 @@ func TestWithFrontendFallbackSplitsOwnership(t *testing.T) {
 	}
 
 	// The /web-vs-SPA adjudication: /web belongs to the gateway (Jellyfin
-	// Web), the SPA shell at "/" and everything else native stays SPA —
-	// including the lowercase SPA routes an insensitive claim would swallow,
-	// and lowercase Jellyfin probes, which are not part of the reviewed set.
-	spaPaths := []string{"/", "/index.html", "/assets/app.js", "/search", "/library/5", "/livetv", "/admin/settings", "/system/info/public", "/Web"}
+	// Web), while the SPA shell at "/" and everything else native stays SPA
+	// — including the three reserved lowercase segments that would otherwise
+	// be swallowed by the /Search, /Library, and /LiveTv families.
+	spaPaths := []string{"/", "/index.html", "/assets/app.js", "/search", "/library/5", "/livetv", "/admin/settings", "/profiles", "/settings/playback"}
 	for _, path := range spaPaths {
 		rec := httptest.NewRecorder()
 		composed.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))

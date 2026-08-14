@@ -32,7 +32,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/clientip"
-	"github.com/Silo-Server/silo-server/internal/compatgateway"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
 	"github.com/Silo-Server/silo-server/internal/downloads"
@@ -218,11 +217,14 @@ type Dependencies struct {
 	// disable, rotate, and revoke; they never write application state
 	// themselves.
 	CompatApplications handlers.CompatibilityApplicationService
-	// CompatGateway is the fixed-path compatibility edge gateway (may be
-	// nil; no compatibility routes are registered). It is mounted from the
-	// static compatgateway.RouteTable alone — route ownership is
-	// compile-time configuration, never runtime registration.
-	CompatGateway http.Handler
+	// The compatibility edge gateway is deliberately absent from this
+	// router. The public listener hands only /api/** here, so the gateway's
+	// families (/System/**, /emby/**, /audiobookshelf/**, /web/**, …) are
+	// claimed one layer up, in cmd/silo's publicMux, ahead of the SPA
+	// fallback. Mounting it here as well would be dead code that only tests
+	// could reach. What this router still owes the gateway is the negative
+	// guarantee: no native route may fall inside an owned family, which
+	// TestCompatGatewayRoutesDoNotOverlapNativeRoutes pins.
 }
 
 // absHandler is the narrow interface the router needs from the ABS handler.
@@ -3425,19 +3427,6 @@ func NewRouter(deps Dependencies) chi.Router {
 			})
 		}
 	})
-
-	// Fixed-path compatibility gateway. Route ownership comes from the
-	// static, reviewed compatgateway.RouteTable alone: starting a companion
-	// container claims no routes, and nothing can add one at runtime. The
-	// table never contains "/", "/api/**", or "/metrics", so native handlers
-	// — auth above all — are never replaced; the compat gateway route-overlap
-	// tests pin both directions.
-	if deps.CompatGateway != nil {
-		for _, route := range compatgateway.RouteTable() {
-			r.Handle(route.Prefix, deps.CompatGateway)
-			r.Handle(route.Prefix+"/*", deps.CompatGateway)
-		}
-	}
 
 	return r
 }

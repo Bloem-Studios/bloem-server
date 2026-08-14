@@ -356,7 +356,10 @@ func operatorCommands(kind string) compatibilityCommands {
 		Rollback: fmt.Sprintf("Pin the previous image digest for %s in %s, then run: %s up -d %s", service, overlay, compose, service),
 		// The state volume carries the Compose project prefix
 		// (<project>_<service>-state), so a bare `docker volume rm
-		// <service>-state` fails as typed; resolve the real name first.
-		Remove: fmt.Sprintf("%s rm -sf %s  # discard its disposable protocol state: docker volume rm \"$(docker volume ls -q --filter name=%s-state)\"", compose, service, service),
+		// <service>-state` fails as typed. --filter name= is an unanchored
+		// substring match, so it is anchored here — otherwise a host running
+		// two Compose projects removes both — and piped through xargs -r so
+		// no match removes nothing instead of erroring on an empty argument.
+		Remove: fmt.Sprintf("%s rm -sf %s  # discard its disposable protocol state: docker volume ls -q --filter name='_%s-state$' | xargs -r docker volume rm", compose, service, service),
 	}
 }

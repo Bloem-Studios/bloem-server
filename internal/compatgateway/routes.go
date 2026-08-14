@@ -24,11 +24,13 @@ const (
 
 // Route is one fixed, reviewed path family owned by a compatibility
 // application. Prefix is a single leading path segment; ownership covers the
-// segment itself and everything beneath it, matched exactly — including
-// case. On the shared canonical origin a case-insensitive claim would shadow
-// native SPA routes (/search, /library, /livetv sit right next to /Search,
-// /Library, /LiveTv); official Jellyfin clients emit the canonical casing,
-// and lowercase probes fall through to the SPA.
+// segment itself and everything beneath it, matched per whole segment and
+// case-insensitively — the embedded listener this replaces canonicalizes
+// segment case, so real clients reach these families in any casing.
+//
+// Case-insensitive ownership on the shared origin would swallow the SPA's
+// own lowercase routes, so reservedNativeSegments is consulted first; see
+// its comment for the three that actually collide.
 type Route struct {
 	App AppKind
 	// Prefix is the owned path family, e.g. "/System" or "/audiobookshelf".
@@ -43,7 +45,34 @@ const (
 	audiobookshelfPrefix = "/audiobookshelf"
 	// jellyfinWebPrefix is the Jellyfin Web application mount.
 	jellyfinWebPrefix = "/web"
+	// embyPrefix and jellyfinPrefix are the alternate client base paths.
+	embyPrefix     = "/emby"
+	jellyfinPrefix = "/jellyfin"
 )
+
+// legacyJellyfinPrefixes are the alternate roots the embedded listener
+// accepts and strips before dispatch (canonicalizeCompatPath in
+// internal/jellycompat). Clients configured with a base path of /emby or
+// /jellyfin address every protocol family beneath them, so the gateway owns
+// both and strips them on the way upstream.
+var legacyJellyfinPrefixes = []string{embyPrefix, jellyfinPrefix}
+
+// reservedNativeSegments are first path segments the native Vondel
+// application keeps even though a compatibility family carries the same
+// name. Ownership is case-insensitive, and these three SPA client routes —
+// /search, /library/:id, /livetv — sit exactly under the /Search, /Library,
+// and /LiveTv families. They are matched lowercase-exact: the SPA serves
+// only the lowercase form, so /Search still reaches Jellyfin.
+//
+// The set is pinned against the SPA's real route table by
+// TestReservedNativeSegmentsCoverTheSPARoutes, which fails both when a new
+// lowercase SPA route would be swallowed and when an entry here stops being
+// an SPA route.
+var reservedNativeSegments = map[string]bool{
+	"search":  true,
+	"library": true,
+	"livetv":  true,
+}
 
 // jellyfinPrefixes is the reviewed fixed Jellyfin protocol route set. It is
 // the first-segment closure of the embedded Jellyfin-compatibility listener:
@@ -88,9 +117,12 @@ var jellyfinPrefixes = []string{
 var routeTable = buildRouteTable()
 
 func buildRouteTable() []Route {
-	table := make([]Route, 0, len(jellyfinPrefixes)+1)
+	table := make([]Route, 0, len(jellyfinPrefixes)+len(legacyJellyfinPrefixes)+1)
 	for _, prefix := range jellyfinPrefixes {
 		table = append(table, Route{App: KindJellyfin, Prefix: prefix})
+	}
+	for _, prefix := range legacyJellyfinPrefixes {
+		table = append(table, Route{App: KindJellyfin, Prefix: prefix, StripPrefix: true})
 	}
 	table = append(table, Route{App: KindAudiobookshelf, Prefix: audiobookshelfPrefix, StripPrefix: true})
 	return table
@@ -106,15 +138,16 @@ func RouteTable() []Route {
 
 // MatchPath resolves the application owning a request path. Ownership is
 // decided per whole path segment — "/SystemX" is not owned by "/System" —
-// and matched exactly, case included, so the gateway can sit in front of the
-// SPA without swallowing its lowercase client routes.
+// and matched case-insensitively, because the listener this replaces
+// canonicalizes segment case before dispatch. A reserved native segment is
+// checked first so the gateway cannot swallow an SPA route of the same name.
 func MatchPath(path string) (Route, bool) {
 	segment := firstSegment(path)
-	if segment == "" {
+	if segment == "" || reservedNativeSegments[segment] {
 		return Route{}, false
 	}
 	for _, route := range routeTable {
-		if segment == strings.TrimPrefix(route.Prefix, "/") {
+		if strings.EqualFold(segment, strings.TrimPrefix(route.Prefix, "/")) {
 			return route, true
 		}
 	}
