@@ -22,7 +22,7 @@ A companion is a protocol translator, nothing more. Structurally enforced by
 any time; `scripts/verify-compat-compose_test.sh` proves the scanner detects
 violations).
 
-The scan is **default-deny in two dimensions**:
+The scan is **default-deny in several dimensions**:
 
 - **Service set.** A rendered combination may contain the base stack plus
   exactly the companions its overlays activate. An extra service — however
@@ -34,6 +34,22 @@ The scan is **default-deny in two dimensions**:
   `volumes_from`, `devices`, `privileged`, namespace sharing, `tmpfs`,
   `sysctls`, `runtime`, `healthcheck`, `labels`, and anything a future Compose
   release introduces — fails by construction.
+- **Top level.** The rendered `networks`, `volumes`, `secrets` and `configs`
+  maps are diffed against the base render exactly the way `services` is: an
+  overlay may add only its own companion entries, and may not alter a base one.
+  This closes a whole class of evasion that touches no service at all —
+  redefining the top-level `default` network as
+  `{external: true, name: attacker_shared_bridge}` moves the entire base stack
+  onto somebody else's network, and an `include:` directive does the same at one
+  remove. Top-level network entries additionally carry a key allowlist of their
+  own (`name`, `internal`), so `external`, `driver`, `driver_opts` and `ipam`
+  are denied outright — `driver: macvlan` with a `parent` interface would bridge
+  the "internal" companion network onto the host LAN.
+- **Vondel's network membership.** `silo` joins exactly `default` and
+  `vondel-compat`, with no options on either. It may not be attached to a third
+  network, and may not declare aliases — an alias such as `postgres` or `redis`
+  on `vondel-compat` is service impersonation on the network the companions
+  resolve names over.
 
 Nothing is on those lists speculatively: a key qualifies only by being used by
 a committed contract *and* having its values pinned. `healthcheck` and `labels`
@@ -44,14 +60,35 @@ the host acts on them and republishes an internal companion. If a companion
 genuinely needs such a key, add it to the allowlist deliberately, with a value
 check, under review — do not work around the scan.
 
-**Scan reach.** The scan renders the committed files with the operator
-environment excluded, so it verifies the two interpolated variables per
-companion (`VONDEL_*_IMAGE` and `VONDEL_*_ENROLLMENT_FILE`) **only at their
-committed defaults**. An operator who overrides them at deploy time — pointing
-the enrollment secret at a different file, or the image at a different
-registry — is outside what the scan can see. Treat those two variables as
-security-relevant configuration and review them the way you review the compose
-files themselves.
+**Scan reach.** Two things are worth knowing about what the scan does and does
+not cover.
+
+*Interpolation.* The scan renders every combination twice when the repository
+root contains a `.env`: once with the operator environment excluded, judging the
+values the repository commits, and once with your `.env`, judging the values
+your deployment will actually use. Failures from the second pass carry a `.env`
+suffix in the combination label. So an override of `VONDEL_*_IMAGE` or
+`VONDEL_*_ENROLLMENT_FILE` is checked — but only if it lives in `.env`. Values
+exported in the shell that runs `docker compose up`, or supplied by a systemd
+unit or a CI runner's environment, are still outside what the scan can see.
+Treat those variables as security-relevant configuration and keep them in
+`.env`, where the scan reads them.
+
+Note what the second pass implies: the enrollment-secret path is *pinned*, not
+merely defaulted. A `.env` that points `VONDEL_*_ENROLLMENT_FILE` anywhere other
+than `./.secrets/compat/<companion>-enrollment.token` now fails the scan by
+design — mounting an arbitrary host file at the enrollment path is the exact
+evasion the pinning exists to stop. Write the token to the committed path.
+
+*The base stack.* `docker-compose.yml` is not a trusted input: its services are
+swept through their own key allowlist, so a `privileged: true` or `pid: host`
+added to `silo` in the base file is rejected the same way it would be in an
+overlay. That is a **key-level** boundary only. Base service *values* are not
+pinned — the base stack legitimately holds media bind mounts, published host
+ports, a `DATABASE_URL` and the `SECRET_KEY`, and there is no small set of
+correct values for those. A change to a base service that stays inside its
+allowlisted keys is invisible to this scan and needs ordinary human review. Do
+not read a green scan as a statement that the base file is unchanged.
 
 What that enforces:
 
