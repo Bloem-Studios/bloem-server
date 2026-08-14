@@ -59,7 +59,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 9 committed, closing every finding of the fourth full review; a fifth full review is next.
+Status: fix round 10 committed, closing every finding of the fifth full review; a sixth full review is next.
 
 Initial implementation commit:
 
@@ -237,6 +237,19 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - Suite note: one pre-existing flake surfaced in the full run (an adminpeople cursor-tampering test whose random tamper occasionally yields a decodable cursor); it passes repeatedly in isolation, was not introduced by this branch, and is left untouched.
 - GREEN verification: full `make test-go` against a real PostgreSQL passes (129 packages). `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes.
 - Next continuation point: fifth full review of `81047e91..69a83a35`.
+
+### 2026-08-14 — Foundation Task 1, fifth full review and fix round 10
+
+- Base/head commits: `69a83a35` → `9d5824a2 fix(auth): advertise the capability, equalize login cost, readmit library reads`.
+- Fifth full review verdict on `81047e91..69a83a35`: cannot be accepted. Three medium, one low — the second consecutive review with nothing high.
+- Findings and what closed them:
+  1. Capability discovery reported direct profile login unavailable while the route was live, and three contract tests pinned the stale value, so they would have survived the feature's removal. The capability is now advertised when the auth stack is wired, and the pins demand it.
+  2. Login timing distinguished registered direct-profile emails from unknown ones: an unknown email returned before any hashing while a registered one paid a full bcrypt comparison. Both paths — and malformed stored hashes — now cost exactly one comparison, proven by a comparer-injected regression.
+  3. The round-9 denial of the two library collection reads over-restricted: the listing query requires a per-profile visibility row, so those views are legitimate browse results under the ruling. Notably, the implementer had verified exactly this in round 7 and then deferred to the round-8 review finding without re-checking; the reviewer has now converged on the original evidence. The reads are readmitted, and the blanket-403 test became a visibility-isolation test with a bound-profile and a sibling-only collection.
+  4. The progressive-delivery test signed its own token, so it could not notice playback ceasing to emit one. The contract is now pinned at both ends: the URL builder emits a verified session-bound token, and the router test proves tokened claimless delivery reaches the handler. Deliberate divergence, recorded: the reviewer asked for one test driving a real playback start; the two halves cover the same property without the media-file fixture a v3 start requires.
+- RED evidence: the capability contract test fails with the advertisement removed; the timing regression fails with the dummy comparison removed; the visibility test replaces a blanket refusal that the surface change would have caught in the inventory.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes.
+- Next continuation point: sixth full review of `81047e91..9d5824a2`.
 
 ## Update template
 
