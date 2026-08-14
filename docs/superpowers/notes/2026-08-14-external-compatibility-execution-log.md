@@ -307,6 +307,13 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - Deploy-time note: once wired, the gateway-owned families on the canonical origin answer 503 compatibility_unavailable until a companion is enrolled and enabled — the spec's intended behavior, but a visible change from the SPA catch-all.
 - Full-suite verification on the merged tree: 130 packages ok; two failures reproduced as pre-existing load flakes (a 25ms policy-evaluation timeout and an adminpeople test), both passing twice in isolation.
 
+### 2026-08-14 — Task 2 ACCEPTED; Task 6 inverted to default-deny
+
+- Task 2 is accepted at `91b7fe81`. The re-review confirmed all five findings closed and, rather than trusting the claim, neutered the direct-profile route guard on a scratch copy and watched the contract consumer go red — the suites are genuinely bound to real enforcement. Two limitations recorded as acceptable: the timing tolerance is a ratio, so it is a regression guard rather than a constant-time proof, and the websocket absence check is time-bounded by nature.
+- Task 6's four targeted evasions were independently confirmed closed, but the reviewer devised three more of the same class within one pass — a disabled sandbox via `security_opt`, wholesale mount inheritance via `volumes_from`, and cgroup device rules — plus several lesser ones. Its own summary was that the scan is a whack-a-mole enumerator.
+- Ruling: the verifier is being inverted to default-deny rather than extended. Each companion service's key set must be a subset of an explicit allowlist, with value checks on the keys that are allowed; any key nobody has thought about is refused for being unknown. This is the same lesson the route boundary taught in Task 1 — enumerating the forbidden never converges — applied to deployment contracts, and a tamper case asserting an unknown future key is rejected is the point of the change.
+- Tracked for Task 7: the structural scan is not yet invoked by any CI workflow, so today it enforces nothing outside a developer running it.
+
 ## Update template
 
 Append one section per material transition:
