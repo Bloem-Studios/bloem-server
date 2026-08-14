@@ -14,10 +14,16 @@
 # cap_add, then devices, then pid/ipc, then volumes_from, then
 # device_cgroup_rules, then uts/sysctls/tmpfs/extra_hosts...).
 #
-# So the primary control is COMPANION_SERVICE_KEYS below: a companion service's
-# rendered key set must be a SUBSET of that allowlist. Anything else — known or
-# not yet invented — fails the scan by construction and is named in the error.
-# Adding a key to the allowlist is a deliberate, reviewable act.
+# So the primary controls are two allowlists, and everything outside them fails
+# by construction, named in the error:
+#
+#   1. SERVICE SET — a combination may render the base stack plus exactly the
+#      companions its overlays activate. A key allowlist means nothing if a
+#      tampered overlay can simply append a fourth, privileged service.
+#   2. SERVICE KEYS — a companion service may declare only allowlisted keys,
+#      and every non-base service is held to the same list.
+#
+# Adding to either list is a deliberate, reviewable act.
 #
 # Permitting a key is not permitting any value, so each allowed key that can
 # carry risk keeps a value-level check:
@@ -29,8 +35,9 @@
 #                  bridge in the diagnostics override, which publishing needs);
 #   - volumes    — locally defined named volumes only: no bind mounts, no
 #                  external/aliased volumes, no driver_opts;
-#   - secrets    — exactly one file-backed enrollment secret mounted at
-#                  /run/secrets/vondel_compat_enrollment;
+#   - secrets    — exactly one enrollment secret, mounted at
+#                  /run/secrets/vondel_compat_enrollment and backed by the
+#                  committed ./.secrets/compat file, not an arbitrary host path;
 #   - security_opt — exactly no-new-privileges:true; never unconfined seccomp,
 #                  AppArmor, system paths, or label:disable;
 #   - environment — no Vondel database/Redis/signing/provider/tuner or
@@ -106,11 +113,16 @@ render() {
 	for f in "$@"; do
 		args+=(-f "$f")
 	done
+	# --profile '*' renders profile-gated services too, so a service cannot be
+	# hidden from the scan behind a profile and switched on at deploy time.
+	# COMPOSE_PROFILES is cleared for the same determinism reason as
+	# --env-file /dev/null: the scan judges the committed files, not the
+	# operator's shell.
 	(
 		cd "$compose_dir" &&
-			MEDIA_ROOT="/dev/null" SECRET_KEY="verify-only" \
+			MEDIA_ROOT="/dev/null" SECRET_KEY="verify-only" COMPOSE_PROFILES="" \
 				docker compose --project-name "$project_name" \
-				--env-file /dev/null "${args[@]}" config --format json
+				--env-file /dev/null --profile '*' "${args[@]}" config --format json
 	)
 }
 
@@ -151,42 +163,82 @@ check_service_key_allowlist() {
 	fi
 }
 
+# verify_service_set <rendered-json> <combo-label> <expected-services-json>
+# The other half of default-deny: no service may exist that this combination
+# did not ask for. Also sweeps every non-base service through the companion key
+# allowlist, so an unexpected service is named for what it is AND for what it
+# declares.
+verify_service_set() {
+	local json=$1 label=$2 expected=$3
+	local extra svc
+
+	extra=$(jq -r --argjson expected "$expected" \
+		'.services | keys | map(select(. as $k | $expected | index($k) | not)) | join(", ")' \
+		<<<"$json")
+	if [[ -n "$extra" ]]; then
+		fail "[$label] unexpected service(s) in the rendered configuration: $extra"
+	fi
+
+	while IFS= read -r svc; do
+		[[ -z "$svc" ]] && continue
+		check_service_key_allowlist "$json" "$label" "$svc"
+	done < <(jq -r --argjson base "$base_services_json" \
+		'.services | keys[] | select(. as $k | $base | index($k) | not)' <<<"$json")
+}
+
 # ---------------------------------------------------------------------------
-# THE ALLOWLIST. A companion service may declare these keys and nothing else.
+# THE KEY ALLOWLIST. A companion service may declare these keys and nothing
+# else. Every entry is a key the committed overlays actually render, and every
+# one of them is value-checked below.
 #
-# Derived from what the committed overlays actually render, plus a small
-# reviewed set of operational keys that cannot widen a companion's reach beyond
-# its own container. Every entry carries the reason it is safe; anything absent
-# is denied, including Compose keys that do not exist yet.
+#   image         the private companion image (value-checked: registry)
+#   environment   companion configuration (value-checked: keys + values)
+#   networks      private network membership (value-checked: exact set)
+#   volumes       disposable state (value-checked: local named volumes)
+#   secrets       enrollment token (value-checked: one, file-backed, exact file)
+#   security_opt  hardening (value-checked: no-new-privileges:true only)
+#   ports         denied outright except loopback diagnostics (value-checked)
+#   restart       restart policy; container lifecycle only, no value to choose
 #
-#   image              the private companion image (value-checked: registry)
-#   environment        companion configuration (value-checked: keys + values)
-#   networks           private network membership (value-checked: exact set)
-#   volumes            disposable state (value-checked: local named volumes)
-#   secrets            enrollment token (value-checked: file-backed, one, path)
-#   security_opt       hardening (value-checked: no-new-privileges:true only)
-#   ports              denied outright except loopback diagnostics (value-checked)
-#   restart            restart policy; container lifecycle only
-#   healthcheck        runs a probe INSIDE the container; no host reach
-#   depends_on         start ordering only
-#   labels             metadata only; no runtime capability
-#   read_only          hardening: read-only root filesystem
-#   init               run a pid-1 reaper inside the container
-#   user               drop privileges inside the container; cannot exceed the
-#                      image default, which is already root
-#   stop_grace_period  shutdown timing only
-#   pull_policy        when to pull; the image value check still applies
+# NOTHING is allowlisted speculatively. An earlier revision admitted a set of
+# keys reasoned to be harmless — healthcheck ("runs inside the container"),
+# labels ("metadata only"), depends_on, read_only, init, user,
+# stop_grace_period, pull_policy — none of which any committed overlay used.
+# Review holed two of those justifications immediately:
 #
-# Deliberately NOT allowed, and therefore denied by the allowlist rather than by
-# any named rule: build, privileged, cap_add, devices, device_cgroup_rules,
-# volumes_from, tmpfs, pid, ipc, uts, userns_mode, cgroup, cgroup_parent,
-# network_mode, sysctls, group_add, extra_hosts, command, entrypoint, and
-# everything else.
+#   - healthcheck.test is arbitrary command execution inside the companion,
+#     the same capability `command`/`entrypoint` are denied for. A CMD-SHELL
+#     probe can read /run/secrets/vondel_compat_enrollment and post it to a
+#     service it shares a network with.
+#   - labels are inert only if nothing on the host consumes them. A Traefik
+#     router label republishes an internal companion on public ingress,
+#     defeating the ports rule this whole design leans on; ofelia labels
+#     execute jobs.
+#
+# The lesson generalizes, so the rule is now mechanical: a key earns its place
+# by being used by a committed contract AND having its values pinned. A
+# companion that later needs a healthcheck gets one back the way security_opt
+# is handled — pinned to an exact argv, reviewed at that time.
+#
+# Everything else is denied by this list rather than by any named rule: build,
+# privileged, cap_add, devices, device_cgroup_rules, volumes_from, tmpfs, pid,
+# ipc, uts, userns_mode, cgroup, cgroup_parent, network_mode, sysctls,
+# group_add, extra_hosts, command, entrypoint, runtime, dns, storage_opt,
+# healthcheck, labels, and every key Compose has not shipped yet.
 companion_service_keys_json='[
 	"image", "environment", "networks", "volumes", "secrets", "security_opt",
-	"ports", "restart", "healthcheck", "depends_on", "labels", "read_only",
-	"init", "user", "stop_grace_period", "pull_policy"
+	"ports", "restart"
 ]'
+
+# ---------------------------------------------------------------------------
+# THE SERVICE ALLOWLIST. A per-service key allowlist is worth nothing if a new
+# service is free, so the rendered SERVICE SET is constrained too: a scanned
+# combination may contain the base stack plus exactly the companions its
+# overlays activate. A tampered overlay that appends a privileged sidekick with
+# the Docker socket and / bind-mounted is rejected because that service is not
+# in the expected set — and every non-base service is additionally run through
+# the companion key allowlist, so it is named twice over.
+base_services_json='["postgres", "redis", "silo", "meilisearch"]'
 
 # Values `docker compose config` renders for keys that were never declared.
 # A key holding one of these is treated as absent, so the renderer's own null
@@ -326,6 +378,16 @@ verify_companion() {
 		"($s.secrets[0].source // \"\") as \$src |
 			(.secrets[\$src] // {}) | has(\"file\") and (has(\"environment\") | not)" \
 		"$svc enrollment secret must be file-backed, never environment-backed"
+	# File-backed is not enough: WHICH file matters. An unpinned `file:` can
+	# name /etc/passwd (or a second top-level secret backed by /etc/hosts can be
+	# swapped in through `source:`), mounting an arbitrary host file into the
+	# companion at the enrollment path — the no-host-paths rule defeated through
+	# an allowed key. The path is therefore pinned to the committed location,
+	# resolved against the compose directory the way Compose resolves it.
+	check "$json" "$label" \
+		"($s.secrets[0].source // \"\") as \$src |
+			(.secrets[\$src].file // \"\") == \"$compose_dir/.secrets/compat/$svc-enrollment.token\"" \
+		"$svc enrollment secret must be the committed ./.secrets/compat/$svc-enrollment.token file"
 }
 
 # Invariants for the Vondel service when companions are present.
@@ -342,30 +404,42 @@ verify_vondel() {
 
 echo "verify-compat-compose: scanning rendered configurations in $compose_dir"
 
+# Each combination declares the exact service set it may render: the base stack
+# plus the companions its overlays activate, and nothing else.
+base_only='["postgres", "redis", "silo", "meilisearch"]'
+with_abs='["postgres", "redis", "silo", "meilisearch", "vondel-audiobookshelf"]'
+with_jf='["postgres", "redis", "silo", "meilisearch", "vondel-jellyfin"]'
+with_both='["postgres", "redis", "silo", "meilisearch", "vondel-audiobookshelf", "vondel-jellyfin"]'
+
 # Combination A: base file alone must define no companion services.
 json=$(render "$base_file")
+verify_service_set "$json" "base" "$base_only"
 check "$json" "base" \
 	'.services | keys | all(test("^vondel-(audiobookshelf|jellyfin)$") | not)' \
 	"the base compose file must not define companion services; activation is overlay-only"
 
 # Combination B: base + audiobookshelf.
 json=$(render "$base_file" "$abs_file")
+verify_service_set "$json" "audiobookshelf" "$with_abs"
 verify_companion "$json" "audiobookshelf" "vondel-audiobookshelf" "no"
 verify_vondel "$json" "audiobookshelf"
 
 # Combination C: base + jellyfin.
 json=$(render "$base_file" "$jf_file")
+verify_service_set "$json" "jellyfin" "$with_jf"
 verify_companion "$json" "jellyfin" "vondel-jellyfin" "no"
 verify_vondel "$json" "jellyfin"
 
 # Combination D: base + both companions.
 json=$(render "$base_file" "$abs_file" "$jf_file")
+verify_service_set "$json" "both" "$with_both"
 verify_companion "$json" "both" "vondel-audiobookshelf" "no"
 verify_companion "$json" "both" "vondel-jellyfin" "no"
 verify_vondel "$json" "both"
 
 # Combination E: base + both companions + diagnostics override.
 json=$(render "$base_file" "$abs_file" "$jf_file" "$diag_file")
+verify_service_set "$json" "diagnostics" "$with_both"
 verify_companion "$json" "diagnostics" "vondel-audiobookshelf" "yes"
 verify_companion "$json" "diagnostics" "vondel-jellyfin" "yes"
 verify_vondel "$json" "diagnostics"
