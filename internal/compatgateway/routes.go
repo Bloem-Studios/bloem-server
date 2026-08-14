@@ -7,7 +7,10 @@
 // /metrics — are never claimed.
 package compatgateway
 
-import "strings"
+import (
+	"net/http"
+	"strings"
+)
 
 // AppKind names a compatibility application.
 type AppKind string
@@ -21,7 +24,11 @@ const (
 
 // Route is one fixed, reviewed path family owned by a compatibility
 // application. Prefix is a single leading path segment; ownership covers the
-// segment itself and everything beneath it.
+// segment itself and everything beneath it, matched exactly — including
+// case. On the shared canonical origin a case-insensitive claim would shadow
+// native SPA routes (/search, /library, /livetv sit right next to /Search,
+// /Library, /LiveTv); official Jellyfin clients emit the canonical casing,
+// and lowercase probes fall through to the SPA.
 type Route struct {
 	App AppKind
 	// Prefix is the owned path family, e.g. "/System" or "/audiobookshelf".
@@ -29,10 +36,6 @@ type Route struct {
 	// StripPrefix removes the public prefix before the request is forwarded,
 	// for applications whose protocol adapter expects protocol-native paths.
 	StripPrefix bool
-	// CaseInsensitive matches the prefix segment ignoring case. The Jellyfin
-	// protocol treats paths case-insensitively; the Audiobookshelf public
-	// prefix is exact.
-	CaseInsensitive bool
 }
 
 const (
@@ -87,7 +90,7 @@ var routeTable = buildRouteTable()
 func buildRouteTable() []Route {
 	table := make([]Route, 0, len(jellyfinPrefixes)+1)
 	for _, prefix := range jellyfinPrefixes {
-		table = append(table, Route{App: KindJellyfin, Prefix: prefix, CaseInsensitive: true})
+		table = append(table, Route{App: KindJellyfin, Prefix: prefix})
 	}
 	table = append(table, Route{App: KindAudiobookshelf, Prefix: audiobookshelfPrefix, StripPrefix: true})
 	return table
@@ -102,21 +105,16 @@ func RouteTable() []Route {
 }
 
 // MatchPath resolves the application owning a request path. Ownership is
-// decided per whole path segment: "/SystemX" is not owned by "/System".
+// decided per whole path segment — "/SystemX" is not owned by "/System" —
+// and matched exactly, case included, so the gateway can sit in front of the
+// SPA without swallowing its lowercase client routes.
 func MatchPath(path string) (Route, bool) {
 	segment := firstSegment(path)
 	if segment == "" {
 		return Route{}, false
 	}
 	for _, route := range routeTable {
-		owned := strings.TrimPrefix(route.Prefix, "/")
-		if route.CaseInsensitive {
-			if strings.EqualFold(segment, owned) {
-				return route, true
-			}
-			continue
-		}
-		if segment == owned {
+		if segment == strings.TrimPrefix(route.Prefix, "/") {
 			return route, true
 		}
 	}
@@ -133,4 +131,25 @@ func firstSegment(path string) string {
 		trimmed = trimmed[:idx]
 	}
 	return trimmed
+}
+
+// WithFrontendFallback composes the public root handler for the canonical
+// origin: paths the fixed route table owns are answered by the gateway,
+// everything else — the Vondel SPA shell, its assets, and every native
+// client route — by fallback. cmd/silo mounts this at "/" on the public
+// listener: that mux hands only /api/** to the chi router, so the gateway's
+// families are claimed here, ahead of the SPA fallback, or not at all. A nil
+// gateway composes to the plain fallback, keeping deployments without the
+// compatibility stack byte-identical.
+func WithFrontendFallback(gateway, fallback http.Handler) http.Handler {
+	if gateway == nil {
+		return fallback
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, owned := MatchPath(r.URL.Path); owned {
+			gateway.ServeHTTP(w, r)
+			return
+		}
+		fallback.ServeHTTP(w, r)
+	})
 }

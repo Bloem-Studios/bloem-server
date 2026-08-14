@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -193,7 +194,12 @@ func TestMatchPath(t *testing.T) {
 		ok   bool
 	}{
 		{"/System/Info/Public", KindJellyfin, true},
-		{"/system/info/public", KindJellyfin, true}, // Jellyfin paths are case-insensitive
+		// Ownership is exact-case. On the shared canonical origin a
+		// case-insensitive claim would shadow the native SPA routes /search,
+		// /library, and /livetv behind /Search, /Library, and /LiveTv.
+		// Official Jellyfin clients emit the canonical casing; lowercase
+		// probes fall through to the SPA.
+		{"/system/info/public", "", false},
 		{"/Users/AuthenticateByName", KindJellyfin, true},
 		{"/web/index.html", KindJellyfin, true},
 		{"/web", KindJellyfin, true},
@@ -623,5 +629,165 @@ func TestRedirectsRemainSameOrigin(t *testing.T) {
 	}
 	if got := rec.Header().Get("Location"); strings.Contains(got, "evil.example") {
 		t.Fatalf("off-origin location %q leaked to the client", got)
+	}
+}
+
+// --- Composed public root (gateway ahead of the SPA fallback) ---------------
+
+// spaMarker stands in for the Vondel SPA fallback and records what reached it.
+type spaMarker struct {
+	mu    sync.Mutex
+	paths []string
+}
+
+func (s *spaMarker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	s.paths = append(s.paths, r.URL.Path)
+	s.mu.Unlock()
+	w.Header().Set("X-Handler", "spa")
+	w.WriteHeader(http.StatusOK)
+}
+
+// The production listener hands only /api/** to the chi router; everything
+// else goes through this composition. Gateway families must be answered by
+// the gateway, and every native path — the SPA shell, its assets, and the
+// lowercase client routes that sit next to Jellyfin's canonical-cased
+// families — must still reach the SPA.
+func TestWithFrontendFallbackSplitsOwnership(t *testing.T) {
+	transport := &recordingTransport{}
+	states := &fakeStates{}
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+	gateway := newTestGateway(t, states, transport)
+	spa := &spaMarker{}
+	composed := WithFrontendFallback(gateway, spa)
+
+	gatewayPaths := []string{"/System/Info", "/audiobookshelf/api/ping", "/web", "/web/index.html", "/Users/AuthenticateByName"}
+	for _, path := range gatewayPaths {
+		rec := httptest.NewRecorder()
+		composed.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Header().Get("X-Handler") == "spa" {
+			t.Fatalf("gateway family path %q reached the SPA", path)
+		}
+		if rec.Code != http.StatusOK {
+			t.Fatalf("gateway family path %q answered %d through the composition", path, rec.Code)
+		}
+	}
+	if len(transport.recorded()) != len(gatewayPaths) {
+		t.Fatalf("expected %d proxied requests, got %d", len(gatewayPaths), len(transport.recorded()))
+	}
+
+	// The /web-vs-SPA adjudication: /web belongs to the gateway (Jellyfin
+	// Web), the SPA shell at "/" and everything else native stays SPA —
+	// including the lowercase SPA routes an insensitive claim would swallow,
+	// and lowercase Jellyfin probes, which are not part of the reviewed set.
+	spaPaths := []string{"/", "/index.html", "/assets/app.js", "/search", "/library/5", "/livetv", "/admin/settings", "/system/info/public", "/Web"}
+	for _, path := range spaPaths {
+		rec := httptest.NewRecorder()
+		composed.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Header().Get("X-Handler") != "spa" {
+			t.Fatalf("native path %q did not reach the SPA (status %d)", path, rec.Code)
+		}
+	}
+	if len(transport.recorded()) != len(gatewayPaths) {
+		t.Fatal("a native path was proxied to a companion")
+	}
+}
+
+// With no application routable, owned families answer unavailable — a
+// missing application only ever takes down its own paths — while the SPA
+// keeps serving everything native.
+func TestWithFrontendFallbackWhenNothingIsRoutable(t *testing.T) {
+	transport := &recordingTransport{}
+	gateway := newTestGateway(t, &fakeStates{}, transport)
+	spa := &spaMarker{}
+	composed := WithFrontendFallback(gateway, spa)
+
+	for _, path := range []string{"/System/Info", "/audiobookshelf/api/ping", "/web"} {
+		rec := httptest.NewRecorder()
+		composed.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Fatalf("owned path %q answered %d, want 503", path, rec.Code)
+		}
+	}
+	rec := httptest.NewRecorder()
+	composed.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/search", nil))
+	if rec.Header().Get("X-Handler") != "spa" {
+		t.Fatal("native paths must stay on the SPA while companions are absent")
+	}
+	if len(transport.recorded()) != 0 {
+		t.Fatal("nothing routable, nothing dialed")
+	}
+}
+
+// A nil gateway composes to the plain SPA: deployments without the
+// compatibility stack keep today's behavior exactly.
+func TestWithFrontendFallbackNilGateway(t *testing.T) {
+	spa := &spaMarker{}
+	composed := WithFrontendFallback(nil, spa)
+	for _, path := range []string{"/", "/System/Info", "/audiobookshelf/api/ping", "/web"} {
+		rec := httptest.NewRecorder()
+		composed.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Header().Get("X-Handler") != "spa" {
+			t.Fatalf("path %q must fall through to the SPA when no gateway exists", path)
+		}
+	}
+}
+
+// A Location of /\evil.example/phish carries no Host, so it survives a
+// host-only check, but browsers normalize the backslash to // and leave the
+// origin. It must be refused like any other off-origin redirect.
+func TestBackslashRedirectIsRefused(t *testing.T) {
+	transport := &recordingTransport{
+		respond: func(*http.Request) (*http.Response, error) {
+			rec := httptest.NewRecorder()
+			rec.Header().Set("Location", `/\evil.example/phish`)
+			rec.WriteHeader(http.StatusFound)
+			return rec.Result(), nil
+		},
+	}
+	states := &fakeStates{}
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	gateway := newTestGateway(t, states, transport)
+
+	rec := httptest.NewRecorder()
+	gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/System/Info", nil))
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("backslash redirect must be refused, got %d", rec.Code)
+	}
+	if location := rec.Header().Get("Location"); strings.Contains(location, "evil.example") {
+		t.Fatalf("backslash location %q leaked to the client", location)
+	}
+}
+
+// A chunked request (no Content-Length) that overruns the body limit is cut
+// off mid-stream and answered 413, not forwarded truncated.
+func TestChunkedRequestBodyLimit(t *testing.T) {
+	transport := &recordingTransport{
+		respond: func(r *http.Request) (*http.Response, error) {
+			if _, err := io.Copy(io.Discard, r.Body); err != nil {
+				return nil, err
+			}
+			rec := httptest.NewRecorder()
+			rec.WriteHeader(http.StatusOK)
+			return rec.Result(), nil
+		},
+	}
+	states := &fakeStates{}
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	gateway := New(Config{
+		States:          states,
+		Transport:       transport,
+		IdentitySecret:  []byte("s"),
+		MaxRequestBytes: 16,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/Sessions/Playing", nil)
+	req.Body = io.NopCloser(strings.NewReader(strings.Repeat("x", 4096)))
+	req.ContentLength = -1 // chunked: the length is unknown up front
+	rec := httptest.NewRecorder()
+	gateway.ServeHTTP(rec, req)
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("got status %d, want 413", rec.Code)
 	}
 }

@@ -354,6 +354,9 @@ func operatorCommands(kind string) compatibilityCommands {
 		Install:  compose + " up -d",
 		Update:   fmt.Sprintf("%s pull %s && %s up -d %s", compose, service, compose, service),
 		Rollback: fmt.Sprintf("Pin the previous image digest for %s in %s, then run: %s up -d %s", service, overlay, compose, service),
-		Remove:   fmt.Sprintf("%s rm -sf %s  # add 'docker volume rm %s-state' to discard its disposable protocol state", compose, service, service),
+		// The state volume carries the Compose project prefix
+		// (<project>_<service>-state), so a bare `docker volume rm
+		// <service>-state` fails as typed; resolve the real name first.
+		Remove: fmt.Sprintf("%s rm -sf %s  # discard its disposable protocol state: docker volume rm \"$(docker volume ls -q --filter name=%s-state)\"", compose, service, service),
 	}
 }

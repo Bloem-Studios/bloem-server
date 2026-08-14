@@ -50,6 +50,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/chapterthumbs"
 	"github.com/Silo-Server/silo-server/internal/clientip"
+	"github.com/Silo-Server/silo-server/internal/compatgateway"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
@@ -2540,7 +2541,20 @@ func main() {
 	// (/ping, /healthcheck, /status, /init, /login, /socket.io) own the URL
 	// space without collision with silo's SPA fallback. Mirrors how the
 	// Jellyfin compat server is set up at :8096.
-	metricsMux.Handle("/", server.FrontendHandler())
+	//
+	// The fixed-path compatibility gateway sits here, ahead of the SPA
+	// fallback: this mux hands only /api/** to the chi router, so the
+	// gateway's reviewed route families (/System/**, /audiobookshelf/**,
+	// /web/**, …) must be claimed at the composed-mux layer or public
+	// ingress never reaches them. The application lifecycle backing is not
+	// wired yet, so every owned family answers a protocol-appropriate
+	// compatibility_unavailable — the specified behavior for a missing
+	// application — while every native path falls through to the SPA
+	// untouched. When the backing lands, it plugs into Config.States here.
+	compatGateway := compatgateway.New(compatgateway.Config{
+		IdentitySecret: []byte(cfg.Auth.JWTSecret),
+	})
+	metricsMux.Handle("/", compatgateway.WithFrontendFallback(compatGateway, server.FrontendHandler()))
 
 	// Step 9: Start background workers (if needed).
 	var sessionCleaner *worker.SessionCleaner
