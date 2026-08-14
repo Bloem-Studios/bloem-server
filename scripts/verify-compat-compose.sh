@@ -71,7 +71,20 @@ if [[ $# -gt 1 ]]; then
 fi
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-compose_dir=${1:-$(cd "$script_dir/.." && pwd)}
+# Normalize through `cd ... && pwd` so the value compared against the paths
+# `docker compose config` emits is canonical and absolute. Comparing an
+# unnormalized argument ("." or a path with a doubled slash) against Compose's
+# normalized output made every value check that names a path fail on an
+# untampered tree — and, because the test harness treated any non-zero exit as
+# detection, made the whole tamper suite vacuous.
+if ! compose_dir=$(cd "${1:-$script_dir/..}" 2>/dev/null && pwd); then
+	printf 'verify-compat-compose: not a directory: %s\n' "${1:-$script_dir/..}" >&2
+	exit 2
+fi
+if [[ "$compose_dir" != /* ]]; then
+	printf 'verify-compat-compose: compose dir did not resolve to an absolute path: %s\n' "$compose_dir" >&2
+	exit 2
+fi
 
 for tool in docker jq; do
 	if ! command -v "$tool" >/dev/null 2>&1; then
@@ -160,6 +173,61 @@ check_service_key_allowlist() {
 			| join(\", \")" <<<"$json")
 	if [[ -n "$unknown" ]]; then
 		fail "[$label] $svc declares keys outside the companion allowlist: $unknown"
+	fi
+}
+
+# verify_compat_network_membership <rendered-json> <combo-label> <expected-json>
+# Withholding a DSN is not a boundary; REACHABILITY is. Nothing stopped an
+# overlay from attaching postgres and redis to the companion network, which
+# would hand a companion Vondel's database (compose defaults silo/silo) and an
+# unauthenticated Redis while every environment check still passed. The set of
+# services on vondel-compat is therefore pinned: Vondel plus this combination's
+# companions, nobody else.
+verify_compat_network_membership() {
+	local json=$1 label=$2 expected=$3
+	local actual
+	actual=$(jq -c '[.services | to_entries[]
+		| select((.value.networks // {}) | has("vondel-compat")) | .key] | sort' <<<"$json")
+	if [[ "$actual" != "$(jq -c 'sort' <<<"$expected")" ]]; then
+		fail "[$label] services attached to vondel-compat must be exactly $(jq -c 'sort' <<<"$expected"), found $actual"
+	fi
+}
+
+# verify_overlay_delta <base-json> <combo-json> <combo-label> <expected-new-json>
+# The general form of the same finding. Rather than exempting base services from
+# checks — which is what let a privileged service named `meilisearch`, and a
+# tampered `silo`, through — the base stack is rendered on its own and diffed
+# against the combination. An overlay may add its companion services and touch
+# exactly one key on silo (networks, to join the companion network). Any other
+# service-level change is a finding, whatever service or key it lands on.
+verify_overlay_delta() {
+	local base_json=$1 combo_json=$2 label=$3 expected_new=$4
+	local violations
+	violations=$(jq -nr \
+		--argjson base "$base_json" \
+		--argjson combo "$combo_json" \
+		--argjson allowed_new "$expected_new" '
+		def changed_keys($a; $b):
+			[(($a | keys) + ($b | keys)) | unique | .[] | select($a[.] != $b[.])];
+		($base.services | keys) as $bk |
+		($combo.services | keys) as $ck |
+		[
+			(($ck - $bk) | select(sort != ($allowed_new | sort))
+				| "overlay added unexpected service(s): \(. - $allowed_new)"),
+			(($bk - $ck) | select(length > 0)
+				| "overlay removed base service(s): \(.)"),
+			($bk - ($bk - $ck))[]
+				| . as $s
+				| (if $s == "silo" then ["networks"] else [] end) as $allowed
+				| (changed_keys($base.services[$s]; $combo.services[$s]) - $allowed) as $changed
+				| select($changed | length > 0)
+				| "overlay modified base service \($s): \($changed)"
+		] | .[]' <<<'{}')
+	if [[ -n "$violations" ]]; then
+		while IFS= read -r line; do
+			[[ -z "$line" ]] && continue
+			fail "[$label] $line"
+		done <<<"$violations"
 	fi
 }
 
@@ -411,38 +479,50 @@ with_abs='["postgres", "redis", "silo", "meilisearch", "vondel-audiobookshelf"]'
 with_jf='["postgres", "redis", "silo", "meilisearch", "vondel-jellyfin"]'
 with_both='["postgres", "redis", "silo", "meilisearch", "vondel-audiobookshelf", "vondel-jellyfin"]'
 
-# Combination A: base file alone must define no companion services.
-json=$(render "$base_file")
-verify_service_set "$json" "base" "$base_only"
-check "$json" "base" \
+# Combination A: base file alone must define no companion services. This render
+# is also the baseline every overlay combination is diffed against.
+base_json=$(render "$base_file")
+verify_service_set "$base_json" "base" "$base_only"
+check "$base_json" "base" \
 	'.services | keys | all(test("^vondel-(audiobookshelf|jellyfin)$") | not)' \
 	"the base compose file must not define companion services; activation is overlay-only"
 
 # Combination B: base + audiobookshelf.
 json=$(render "$base_file" "$abs_file")
 verify_service_set "$json" "audiobookshelf" "$with_abs"
+verify_overlay_delta "$base_json" "$json" "audiobookshelf" '["vondel-audiobookshelf"]'
+verify_compat_network_membership "$json" "audiobookshelf" '["silo", "vondel-audiobookshelf"]'
 verify_companion "$json" "audiobookshelf" "vondel-audiobookshelf" "no"
 verify_vondel "$json" "audiobookshelf"
 
 # Combination C: base + jellyfin.
 json=$(render "$base_file" "$jf_file")
 verify_service_set "$json" "jellyfin" "$with_jf"
+verify_overlay_delta "$base_json" "$json" "jellyfin" '["vondel-jellyfin"]'
+verify_compat_network_membership "$json" "jellyfin" '["silo", "vondel-jellyfin"]'
 verify_companion "$json" "jellyfin" "vondel-jellyfin" "no"
 verify_vondel "$json" "jellyfin"
 
 # Combination D: base + both companions.
 json=$(render "$base_file" "$abs_file" "$jf_file")
 verify_service_set "$json" "both" "$with_both"
+verify_overlay_delta "$base_json" "$json" "both" '["vondel-audiobookshelf", "vondel-jellyfin"]'
+verify_compat_network_membership "$json" "both" '["silo", "vondel-audiobookshelf", "vondel-jellyfin"]'
 verify_companion "$json" "both" "vondel-audiobookshelf" "no"
 verify_companion "$json" "both" "vondel-jellyfin" "no"
 verify_vondel "$json" "both"
 
-# Combination E: base + both companions + diagnostics override.
-json=$(render "$base_file" "$abs_file" "$jf_file" "$diag_file")
-verify_service_set "$json" "diagnostics" "$with_both"
-verify_companion "$json" "diagnostics" "vondel-audiobookshelf" "yes"
-verify_companion "$json" "diagnostics" "vondel-jellyfin" "yes"
-verify_vondel "$json" "diagnostics"
+# Combination E: base + both companions + diagnostics override. The diagnostics
+# file legitimately changes the companions (loopback ports, default network), so
+# the delta check compares it against the two-companion combination instead of
+# the base, holding the base services to the same no-change rule.
+diag_json=$(render "$base_file" "$abs_file" "$jf_file" "$diag_file")
+verify_service_set "$diag_json" "diagnostics" "$with_both"
+verify_overlay_delta "$base_json" "$diag_json" "diagnostics" '["vondel-audiobookshelf", "vondel-jellyfin"]'
+verify_compat_network_membership "$diag_json" "diagnostics" '["silo", "vondel-audiobookshelf", "vondel-jellyfin"]'
+verify_companion "$diag_json" "diagnostics" "vondel-audiobookshelf" "yes"
+verify_companion "$diag_json" "diagnostics" "vondel-jellyfin" "yes"
+verify_vondel "$diag_json" "diagnostics"
 
 if [[ "$failures" -ne 0 ]]; then
 	printf 'verify-compat-compose: %d check(s) failed\n' "$failures" >&2
