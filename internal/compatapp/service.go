@@ -261,6 +261,11 @@ func (s *Service) Authenticate(ctx context.Context, bearer string, peerTLS *tls.
 
 // Rotate revokes every outstanding credential for one application and issues
 // a fresh one. Other applications are untouched.
+//
+// This is the companion's own renewal path: it runs on the credential window,
+// not on an administrator's decision, so it deliberately does not advance the
+// application's administrative revision. See RotateByInstance for the
+// administrator-forced rotation.
 func (s *Service) Rotate(ctx context.Context, applicationID string) (credential ServiceCredential, err error) {
 	if s == nil || s.store == nil {
 		return ServiceCredential{}, fmt.Errorf("compat application service is unavailable")
@@ -275,32 +280,48 @@ func (s *Service) Rotate(ctx context.Context, applicationID string) (credential 
 	if err != nil {
 		return ServiceCredential{}, err
 	}
-	now := s.now()
-	if err := s.store.RevokeCredentials(ctx, tx, application.ID, now); err != nil {
-		return ServiceCredential{}, err
-	}
-	rawCredential, credentialDigest, err := newSecret(serviceCredentialPrefix)
+	rotated, err := s.rotateLocked(ctx, tx, application, false)
 	if err != nil {
-		return ServiceCredential{}, err
-	}
-	credentialID := uuid.NewString()
-	expiresAt := now.Add(CredentialTTL)
-	if err := s.store.InsertCredential(ctx, tx, credentialID, application.ID, credentialDigest, expiresAt); err != nil {
-		return ServiceCredential{}, err
-	}
-	if err := s.store.InsertAudit(ctx, tx, application.ID, "", auditRotated, nil); err != nil {
 		return ServiceCredential{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return ServiceCredential{}, fmt.Errorf("commit rotation: %w", err)
 	}
-	return ServiceCredential{
-		ApplicationID: application.ID,
-		CredentialID:  credentialID,
-		Secret:        rawCredential,
-		ExpiresAt:     expiresAt,
-		Capabilities:  toCapabilities(application.Capabilities),
-	}, nil
+	return rotated, nil
+}
+
+// RotateByInstance is the administrator-forced rotation behind the admin
+// surface. It refuses a decision taken against a stale revision, and — unlike
+// companion self-renewal — records the rotation on the application row, which
+// is what advances the revision. Without that, two administrators rotating
+// from the same page would both succeed and the first one's freshly issued
+// secret would be dead before it was ever used.
+func (s *Service) RotateByInstance(ctx context.Context, instanceID string, expectedRevision int64) (ServiceCredential, Application, error) {
+	if s == nil || s.store == nil {
+		return ServiceCredential{}, Application{}, fmt.Errorf("compat application service is unavailable")
+	}
+	tx, err := s.store.Begin(ctx)
+	if err != nil {
+		return ServiceCredential{}, Application{}, fmt.Errorf("begin rotation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	application, err := s.decidableApplication(ctx, tx, instanceID, expectedRevision)
+	if err != nil {
+		return ServiceCredential{}, Application{}, err
+	}
+	rotated, err := s.rotateLocked(ctx, tx, application, true)
+	if err != nil {
+		return ServiceCredential{}, Application{}, err
+	}
+	view, err := s.store.ApplicationVia(ctx, tx, application.ID)
+	if err != nil {
+		return ServiceCredential{}, Application{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return ServiceCredential{}, Application{}, fmt.Errorf("commit rotation: %w", err)
+	}
+	return rotated, view, nil
 }
 
 // Revoke permanently withdraws an application's trust and every credential it
@@ -319,23 +340,44 @@ func (s *Service) Revoke(ctx context.Context, applicationID string) (err error) 
 	if err != nil {
 		return err
 	}
-	if application.RevokedAt != nil {
-		return nil
-	}
-	now := s.now()
-	if err := s.store.MarkApplicationRevoked(ctx, tx, application.ID, now); err != nil {
-		return err
-	}
-	if err := s.store.RevokeCredentials(ctx, tx, application.ID, now); err != nil {
-		return err
-	}
-	if err := s.store.InsertAudit(ctx, tx, application.ID, "", auditRevoked, nil); err != nil {
+	if err := s.revokeLocked(ctx, tx, application); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit revocation: %w", err)
 	}
 	return nil
+}
+
+// RevokeByInstance is Revoke behind the admin surface's revision guard.
+// Revocation is terminal, so replaying it against the current revision
+// settles instead of failing: the administrator asked for a state the
+// application is already in.
+func (s *Service) RevokeByInstance(ctx context.Context, instanceID string, expectedRevision int64) (Application, error) {
+	if s == nil || s.store == nil {
+		return Application{}, fmt.Errorf("compat application service is unavailable")
+	}
+	tx, err := s.store.Begin(ctx)
+	if err != nil {
+		return Application{}, fmt.Errorf("begin revocation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	application, err := s.guardedApplication(ctx, tx, instanceID, expectedRevision)
+	if err != nil {
+		return Application{}, err
+	}
+	if err := s.revokeLocked(ctx, tx, application); err != nil {
+		return Application{}, err
+	}
+	view, err := s.store.ApplicationVia(ctx, tx, application.ID)
+	if err != nil {
+		return Application{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Application{}, fmt.Errorf("commit revocation: %w", err)
+	}
+	return view, nil
 }
 
 // SetEnabled flips the reversible off switch. A no-op transition succeeds
@@ -355,6 +397,98 @@ func (s *Service) SetEnabled(ctx context.Context, applicationID string, enabled 
 	if err != nil {
 		return err
 	}
+	if err := s.setEnabledLocked(ctx, tx, application, enabled); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit enablement update: %w", err)
+	}
+	return nil
+}
+
+// SetEnabledByInstance is SetEnabled behind the admin surface's revision
+// guard, addressed by the instance identity the operator sees.
+func (s *Service) SetEnabledByInstance(ctx context.Context, instanceID string, enabled bool, expectedRevision int64) (Application, error) {
+	if s == nil || s.store == nil {
+		return Application{}, fmt.Errorf("compat application service is unavailable")
+	}
+	tx, err := s.store.Begin(ctx)
+	if err != nil {
+		return Application{}, fmt.Errorf("begin enablement update: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	application, err := s.decidableApplication(ctx, tx, instanceID, expectedRevision)
+	if err != nil {
+		return Application{}, err
+	}
+	if err := s.setEnabledLocked(ctx, tx, application, enabled); err != nil {
+		return Application{}, err
+	}
+	view, err := s.store.ApplicationVia(ctx, tx, application.ID)
+	if err != nil {
+		return Application{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Application{}, fmt.Errorf("commit enablement update: %w", err)
+	}
+	return view, nil
+}
+
+// ListApplications returns the administration view of every enrolled
+// application. It reads the application table alone, so no credential —
+// raw or digested — can travel with it.
+func (s *Service) ListApplications(ctx context.Context) ([]Application, error) {
+	if s == nil || s.store == nil {
+		return nil, fmt.Errorf("compat application service is unavailable")
+	}
+	return s.store.ListApplications(ctx)
+}
+
+// guardedApplication locks an application by the instance identity the admin
+// surface addresses and refuses a decision that was not taken against the
+// revision the row currently carries.
+//
+// The lock is the whole concurrency model. Two administrators deciding from
+// the same page serialize on this row; the second one's SELECT ... FOR UPDATE
+// only returns once the first has committed, and it returns the committed
+// row, so its guard compares against the revision the winner produced.
+func (s *Service) guardedApplication(ctx context.Context, tx pgx.Tx, instanceID string, expectedRevision int64) (applicationRow, error) {
+	application, err := s.store.LockApplicationByInstance(ctx, tx, instanceID)
+	if err != nil {
+		return applicationRow{}, err
+	}
+	if application.Revision != expectedRevision {
+		return applicationRow{}, &RevisionMismatchError{
+			InstanceID: application.InstanceID,
+			Expected:   expectedRevision,
+			Current:    application.Revision,
+		}
+	}
+	return application, nil
+}
+
+// decidableApplication is guardedApplication for the decisions revocation
+// makes meaningless. The revision is checked first: an administrator who was
+// looking at the application before it was revoked gets the more useful
+// "reload, it moved" answer, because revocation itself advances the revision.
+func (s *Service) decidableApplication(ctx context.Context, tx pgx.Tx, instanceID string, expectedRevision int64) (applicationRow, error) {
+	application, err := s.guardedApplication(ctx, tx, instanceID, expectedRevision)
+	if err != nil {
+		return applicationRow{}, err
+	}
+	if application.RevokedAt != nil {
+		return applicationRow{}, &ApplicationRevokedError{
+			InstanceID: application.InstanceID,
+			Current:    application.Revision,
+		}
+	}
+	return application, nil
+}
+
+// setEnabledLocked applies the enablement decision to an already-locked row.
+// A no-op transition decided nothing, so it writes neither state nor audit.
+func (s *Service) setEnabledLocked(ctx context.Context, tx pgx.Tx, application applicationRow, enabled bool) error {
 	if application.Enabled == enabled {
 		return nil
 	}
@@ -365,13 +499,57 @@ func (s *Service) SetEnabled(ctx context.Context, applicationID string, enabled 
 	if enabled {
 		event = auditEnabled
 	}
-	if err := s.store.InsertAudit(ctx, tx, application.ID, "", event, nil); err != nil {
+	return s.store.InsertAudit(ctx, tx, application.ID, "", event, nil)
+}
+
+// revokeLocked withdraws trust from an already-locked row, settling quietly
+// when the application is already revoked.
+func (s *Service) revokeLocked(ctx context.Context, tx pgx.Tx, application applicationRow) error {
+	if application.RevokedAt != nil {
+		return nil
+	}
+	now := s.now()
+	if err := s.store.MarkApplicationRevoked(ctx, tx, application.ID, now); err != nil {
 		return err
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit enablement update: %w", err)
+	if err := s.store.RevokeCredentials(ctx, tx, application.ID, now); err != nil {
+		return err
 	}
-	return nil
+	return s.store.InsertAudit(ctx, tx, application.ID, "", auditRevoked, nil)
+}
+
+// rotateLocked kills every outstanding credential for an already-locked row
+// and issues one fresh credential. administrative marks the rotation on the
+// application row, which is what makes it visible to the revision guard.
+func (s *Service) rotateLocked(ctx context.Context, tx pgx.Tx, application applicationRow, administrative bool) (ServiceCredential, error) {
+	now := s.now()
+	if err := s.store.RevokeCredentials(ctx, tx, application.ID, now); err != nil {
+		return ServiceCredential{}, err
+	}
+	rawCredential, credentialDigest, err := newSecret(serviceCredentialPrefix)
+	if err != nil {
+		return ServiceCredential{}, err
+	}
+	credentialID := uuid.NewString()
+	expiresAt := now.Add(CredentialTTL)
+	if err := s.store.InsertCredential(ctx, tx, credentialID, application.ID, credentialDigest, expiresAt); err != nil {
+		return ServiceCredential{}, err
+	}
+	if administrative {
+		if err := s.store.MarkCredentialRotated(ctx, tx, application.ID, now); err != nil {
+			return ServiceCredential{}, err
+		}
+	}
+	if err := s.store.InsertAudit(ctx, tx, application.ID, "", auditRotated, nil); err != nil {
+		return ServiceCredential{}, err
+	}
+	return ServiceCredential{
+		ApplicationID: application.ID,
+		CredentialID:  credentialID,
+		Secret:        rawCredential,
+		ExpiresAt:     expiresAt,
+		Capabilities:  toCapabilities(application.Capabilities),
+	}, nil
 }
 
 // Heartbeat records companion-reported health and last contact.

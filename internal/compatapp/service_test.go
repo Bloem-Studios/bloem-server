@@ -397,16 +397,22 @@ func TestEnrollRejectsDuplicateInstanceIdentity(t *testing.T) {
 		t.Fatalf("Enroll duplicate instance error = %v, want ErrInstanceAlreadyEnrolled", err)
 	}
 
-	// The same instance identifier under the other kind is a different
-	// application instance.
+	// Nor under the other kind. This originally read the other way — one
+	// instance identifier per kind — but the administration surface
+	// addresses an application by instance_id alone
+	// (/applications/{instance_id}/disable), and the identifier is chosen by
+	// the enrolling companion. Scoping uniqueness to the kind would let a
+	// second companion claim the first one's identifier and leave every
+	// administrative control ambiguous for both. The identifier is a global
+	// address, enforced by compat_applications_instance_id_key.
 	otherKind, err := service.CreateEnrollment(ctx, KindAudiobookshelf, []Capability{CapabilityCatalog})
 	if err != nil {
 		t.Fatalf("CreateEnrollment: %v", err)
 	}
 	request := validEnrollmentRequest("shared-instance")
 	request.Capabilities = []Capability{CapabilityCatalog}
-	if _, err := service.Enroll(ctx, otherKind.Secret, request); err != nil {
-		t.Fatalf("Enroll same instance under other kind: %v", err)
+	if _, err := service.Enroll(ctx, otherKind.Secret, request); !errors.Is(err, ErrInstanceAlreadyEnrolled) {
+		t.Fatalf("Enroll same instance under other kind error = %v, want ErrInstanceAlreadyEnrolled", err)
 	}
 }
 

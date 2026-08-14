@@ -10,6 +10,7 @@ package compatapp
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 )
@@ -164,7 +165,9 @@ type Identity struct {
 }
 
 // Application is the durable trust record for one enrolled companion
-// instance, as the administration surface sees it.
+// instance, as the administration surface sees it. It carries no secret
+// material: credentials live in their own table as digests and never reach
+// this struct.
 type Application struct {
 	ID             string
 	Kind           Kind
@@ -179,7 +182,16 @@ type Application struct {
 	Health         HealthStatus
 	LastContactAt  *time.Time
 	RevokedAt      *time.Time
-	CreatedAt      time.Time
+	// CredentialRotatedAt is when an administrator last forced a rotation.
+	// Companion self-renewal does not set it.
+	CredentialRotatedAt *time.Time
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	// Revision is the optimistic-concurrency token the administration
+	// surface decides against. The database derives it: it advances by one
+	// on every administrative change to this application and on nothing
+	// else. See migrations/sql/20260813200400_compat_application_revision.sql.
+	Revision int64
 }
 
 // AuditEvent is one immutable trust-lifecycle record.
@@ -191,7 +203,41 @@ type AuditEvent struct {
 	CreatedAt     time.Time
 }
 
+// RevisionMismatchError reports an administrative decision taken against a
+// revision the application has already moved past — the optimistic-concurrency
+// conflict the admin surface renders as 409. Current is the revision to
+// reload and retry against.
+type RevisionMismatchError struct {
+	InstanceID string
+	Expected   int64
+	Current    int64
+}
+
+func (e *RevisionMismatchError) Error() string {
+	return fmt.Sprintf("compat application %q is at revision %d, not the expected %d", e.InstanceID, e.Current, e.Expected)
+}
+
+// Unwrap lets callers match the sentinel while errors.As still recovers the
+// revision to retry against.
+func (e *RevisionMismatchError) Unwrap() error { return ErrRevisionMismatch }
+
+// ApplicationRevokedError reports a decision taken against an application
+// whose trust was permanently withdrawn. It carries the current revision for
+// the same reason RevisionMismatchError does: the caller's next move is to
+// reload, and revocation is terminal state it has not seen yet.
+type ApplicationRevokedError struct {
+	InstanceID string
+	Current    int64
+}
+
+func (e *ApplicationRevokedError) Error() string {
+	return fmt.Sprintf("compat application %q is revoked (revision %d)", e.InstanceID, e.Current)
+}
+
+func (e *ApplicationRevokedError) Unwrap() error { return ErrApplicationRevoked }
+
 var (
+	ErrRevisionMismatch         = errors.New("compat application revision no longer matches")
 	ErrUnknownKind              = errors.New("unknown compatibility application kind")
 	ErrUnknownCapability        = errors.New("unknown compatibility capability")
 	ErrNoCapabilities           = errors.New("at least one capability is required")

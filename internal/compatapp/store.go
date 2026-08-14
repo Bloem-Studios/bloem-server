@@ -57,6 +57,7 @@ type applicationRow struct {
 	RevokedAt      *time.Time
 	APIRangeMin    int
 	APIRangeMax    int
+	Revision       int64
 }
 
 func (st *Store) InsertEnrollment(ctx context.Context, q queryExecer, id, kind, secretDigest string, capabilities []string, expiresAt time.Time) error {
@@ -195,24 +196,50 @@ func (st *Store) RenewCredential(ctx context.Context, credentialID string, expir
 	return nil
 }
 
+// lockApplicationColumns is the trust state every lifecycle path decides on.
+const lockApplicationColumns = `id::text, kind, instance_id, granted_capabilities, tls_fingerprint,
+		       enabled, revoked_at, api_range_min, api_range_max, revision`
+
 // LockApplication loads an application's trust state under its row lock.
 func (st *Store) LockApplication(ctx context.Context, tx pgx.Tx, applicationID string) (applicationRow, error) {
-	var row applicationRow
-	err := tx.QueryRow(ctx, `
-		SELECT id::text, kind, instance_id, granted_capabilities, tls_fingerprint,
-		       enabled, revoked_at, api_range_min, api_range_max
+	return scanLockedApplication(tx.QueryRow(ctx, `
+		SELECT `+lockApplicationColumns+`
 		FROM compat_applications
 		WHERE id = $1
-		FOR UPDATE`, applicationID).Scan(
-		&row.ID, &row.Kind, &row.InstanceID, &row.Capabilities, &row.TLSFingerprint,
-		&row.Enabled, &row.RevokedAt, &row.APIRangeMin, &row.APIRangeMax)
+		FOR UPDATE`, applicationID))
+}
+
+// LockApplicationByInstance is the administration surface's addressing mode:
+// it names an application by the instance identity the operator sees, not by
+// the internal row id. instance_id is unique across kinds (see
+// migrations/sql/20260813200400_compat_application_revision.sql), so the
+// address resolves to at most one row.
+//
+// The row lock is the whole concurrency model: two administrators deciding
+// from the same page serialize here, and the second one re-reads the row the
+// first one committed, so its revision guard sees the moved revision instead
+// of the one it read before the race.
+func (st *Store) LockApplicationByInstance(ctx context.Context, tx pgx.Tx, instanceID string) (applicationRow, error) {
+	return scanLockedApplication(tx.QueryRow(ctx, `
+		SELECT `+lockApplicationColumns+`
+		FROM compat_applications
+		WHERE instance_id = $1
+		FOR UPDATE`, instanceID))
+}
+
+func scanLockedApplication(row pgx.Row) (applicationRow, error) {
+	var application applicationRow
+	err := row.Scan(
+		&application.ID, &application.Kind, &application.InstanceID, &application.Capabilities,
+		&application.TLSFingerprint, &application.Enabled, &application.RevokedAt,
+		&application.APIRangeMin, &application.APIRangeMax, &application.Revision)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return applicationRow{}, ErrApplicationNotFound
 		}
 		return applicationRow{}, fmt.Errorf("lock application: %w", sanitizeDatabaseError(err))
 	}
-	return row, nil
+	return application, nil
 }
 
 func (st *Store) RevokeCredentials(ctx context.Context, tx pgx.Tx, applicationID string, at time.Time) error {
@@ -240,6 +267,18 @@ func (st *Store) SetApplicationEnabled(ctx context.Context, tx pgx.Tx, applicati
 		UPDATE compat_applications SET enabled = $2 WHERE id = $1`,
 		applicationID, enabled); err != nil {
 		return fmt.Errorf("set application enabled: %w", sanitizeDatabaseError(err))
+	}
+	return nil
+}
+
+// MarkCredentialRotated records an administrator-forced rotation. It is a
+// governed column, so writing it is what advances the application's revision;
+// companion self-renewal deliberately does not call it.
+func (st *Store) MarkCredentialRotated(ctx context.Context, tx pgx.Tx, applicationID string, at time.Time) error {
+	if _, err := tx.Exec(ctx, `
+		UPDATE compat_applications SET credential_rotated_at = $2 WHERE id = $1`,
+		applicationID, at); err != nil {
+		return fmt.Errorf("mark credential rotated: %w", sanitizeDatabaseError(err))
 	}
 	return nil
 }
@@ -280,28 +319,85 @@ type queryExecer interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
 
-// Application loads the administration view of one application.
-func (st *Store) Application(ctx context.Context, applicationID string) (Application, error) {
-	var app Application
-	var imageDigest, fingerprint *string
-	var capabilities []string
-	var health string
-	err := st.pool.QueryRow(ctx, `
-		SELECT id::text, kind, instance_id, version, image_digest,
+// rowQuerier lets a single-row read ride either a transaction or the pool.
+type rowQuerier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// applicationViewColumns is the administration view. It names columns
+// explicitly and names no credential table, so the view cannot grow a secret
+// by accident.
+const applicationViewColumns = `id::text, kind, instance_id, version, image_digest,
 		       api_range_min, api_range_max, granted_capabilities,
 		       tls_fingerprint, enabled, health_status,
-		       last_contact_at, revoked_at, created_at
+		       last_contact_at, revoked_at, credential_rotated_at,
+		       created_at, updated_at, revision`
+
+// Application loads the administration view of one application.
+func (st *Store) Application(ctx context.Context, applicationID string) (Application, error) {
+	return st.ApplicationVia(ctx, st.pool, applicationID)
+}
+
+// ApplicationVia is Application against a caller-supplied querier, so a
+// mutation can read back the view it just wrote inside its own transaction.
+// Reading after commit would report a revision some other writer had already
+// moved on from.
+func (st *Store) ApplicationVia(ctx context.Context, q rowQuerier, applicationID string) (Application, error) {
+	app, err := scanApplication(q.QueryRow(ctx, `
+		SELECT `+applicationViewColumns+`
 		FROM compat_applications
-		WHERE id = $1`, applicationID).Scan(
-		&app.ID, &app.Kind, &app.InstanceID, &app.Version, &imageDigest,
-		&app.APIRangeMin, &app.APIRangeMax, &capabilities,
-		&fingerprint, &app.Enabled, &health,
-		&app.LastContactAt, &app.RevokedAt, &app.CreatedAt)
+		WHERE id = $1`, applicationID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Application{}, ErrApplicationNotFound
 		}
 		return Application{}, fmt.Errorf("load application: %w", sanitizeDatabaseError(err))
+	}
+	return app, nil
+}
+
+// ListApplications returns the administration view of every enrolled
+// application, ordered so two reads of an unchanged deployment agree.
+func (st *Store) ListApplications(ctx context.Context) ([]Application, error) {
+	rows, err := st.pool.Query(ctx, `
+		SELECT `+applicationViewColumns+`
+		FROM compat_applications
+		ORDER BY kind, instance_id`)
+	if err != nil {
+		return nil, fmt.Errorf("list applications: %w", sanitizeDatabaseError(err))
+	}
+	defer rows.Close()
+	applications := make([]Application, 0)
+	for rows.Next() {
+		app, scanErr := scanApplication(rows)
+		if scanErr != nil {
+			return nil, fmt.Errorf("scan application: %w", sanitizeDatabaseError(scanErr))
+		}
+		applications = append(applications, app)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read applications: %w", sanitizeDatabaseError(err))
+	}
+	return applications, nil
+}
+
+// scanRow is the shared shape of pgx.Row and pgx.Rows for a single record.
+type scanRow interface {
+	Scan(dest ...any) error
+}
+
+func scanApplication(row scanRow) (Application, error) {
+	var app Application
+	var imageDigest, fingerprint *string
+	var capabilities []string
+	var health string
+	if err := row.Scan(
+		&app.ID, &app.Kind, &app.InstanceID, &app.Version, &imageDigest,
+		&app.APIRangeMin, &app.APIRangeMax, &capabilities,
+		&fingerprint, &app.Enabled, &health,
+		&app.LastContactAt, &app.RevokedAt, &app.CredentialRotatedAt,
+		&app.CreatedAt, &app.UpdatedAt, &app.Revision); err != nil {
+		return Application{}, err
 	}
 	if imageDigest != nil {
 		app.ImageDigest = *imageDigest

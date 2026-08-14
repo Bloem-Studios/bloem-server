@@ -50,6 +50,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/chapterthumbs"
 	"github.com/Silo-Server/silo-server/internal/clientip"
+	"github.com/Silo-Server/silo-server/internal/compatapp"
 	"github.com/Silo-Server/silo-server/internal/compatgateway"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/database"
@@ -911,6 +912,11 @@ func main() {
 	deps.AdminContextTokens = auth.NewAdminContextTokenService(cfg.Auth.JWTSecret)
 	if pool != nil {
 		deps.PlatformAdminAuthorizer = auth.NewPlatformAdminAuthorizer(auth.NewUserRepository(pool))
+		// Companion enrollment and revocable service trust, behind the
+		// Compatibility Applications admin surface. Without a database the
+		// adapter is nil and the surface stays unmounted rather than half
+		// wired.
+		deps.CompatApplications = handlers.NewCompatApplicationService(compatapp.NewService(pool))
 	}
 	if deps.DB != nil {
 		bootstrapper := tenancyOwnershipBootstrapper{store: tenancy.NewStore(deps.DB)}
@@ -2560,12 +2566,24 @@ func main() {
 
 	// Step 8: Compose the public listener (metrics, API, gateway, SPA).
 	//
-	// The fixed-path compatibility gateway. Its lifecycle backing is not
-	// constructed yet, so Config.States is nil and every owned family answers
-	// a protocol-appropriate compatibility_unavailable — the specified
-	// behavior for a missing application — while every native path falls
-	// through to the SPA untouched. Wiring the backing means setting States
-	// here and nothing else.
+	// The fixed-path compatibility gateway sits here, ahead of the SPA
+	// fallback: this mux hands only /api/** to the chi router, so the
+	// gateway's reviewed route families (/System/**, /audiobookshelf/**,
+	// /web/**, …) must be claimed at the composed-mux layer or public
+	// ingress never reaches them. The application lifecycle backing is not
+	// wired yet, so every owned family answers a protocol-appropriate
+	// compatibility_unavailable — the specified behavior for a missing
+	// application — while every native path falls through to the SPA
+	// untouched. When the backing lands, it plugs into Config.States here.
+	//
+	// The lifecycle service wired into deps.CompatApplications above already
+	// answers every field of compatgateway.Status except one: Endpoint.
+	// Nothing records where a companion listens — enrollment does not ask,
+	// the application row has no column for it, and there is no
+	// configuration key — and Status.Routable() requires an endpoint. A
+	// provider built from the trust store alone would refuse every request
+	// while looking wired, so States stays nil until a companion address
+	// exists.
 	compatGateway := compatgateway.New(compatgateway.Config{
 		IdentitySecret: []byte(cfg.Auth.JWTSecret),
 	})
