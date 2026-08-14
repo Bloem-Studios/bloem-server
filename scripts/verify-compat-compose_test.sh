@@ -224,6 +224,145 @@ expect_scan_failure \
       STATE_BACKEND: host=postgres user=silo password=silo dbname=silo
 "
 
+# --- Default-deny: keys outside the companion allowlist ----------------------
+#
+# These are not caught by any rule naming them. The service-key allowlist
+# denies them because they are simply not on it — which is the point: the same
+# check covers Compose keys nobody has thought of yet (see the unknown-key case
+# at the end).
+
+expect_scan_failure \
+	"detects a disabled seccomp sandbox in security_opt" \
+	"$abs_file" \
+	"s|- no-new-privileges:true|- seccomp:unconfined|"
+
+expect_scan_failure \
+	"detects an unconfined AppArmor profile in security_opt" \
+	"$jf_file" \
+	"/- no-new-privileges:true/a\\
+      - apparmor:unconfined
+"
+
+expect_scan_failure \
+	"detects unconfined system paths in security_opt" \
+	"$abs_file" \
+	"/- no-new-privileges:true/a\\
+      - systempaths=unconfined
+"
+
+expect_scan_failure \
+	"detects label:disable in security_opt" \
+	"$jf_file" \
+	"/- no-new-privileges:true/a\\
+      - label:disable
+"
+
+expect_scan_failure \
+	"detects volumes_from inheriting another container's mounts" \
+	"$abs_file" \
+	"/$service_anchor/a\\
+    volumes_from:\\
+      - silo
+"
+
+expect_scan_failure \
+	"detects device_cgroup_rules granting device access" \
+	"$jf_file" \
+	"/$service_anchor/a\\
+    device_cgroup_rules:\\
+      - 'c 1:1 rwm'
+"
+
+expect_scan_failure \
+	"detects a host uts namespace" \
+	"$abs_file" \
+	"/$service_anchor/a\\
+    uts: host
+"
+
+expect_scan_failure \
+	"detects a cgroup_parent escape" \
+	"$jf_file" \
+	"/$service_anchor/a\\
+    cgroup_parent: /
+"
+
+expect_scan_failure \
+	"detects extra_hosts reaching the host gateway" \
+	"$abs_file" \
+	"/$service_anchor/a\\
+    extra_hosts:\\
+      - \"host.docker.internal:host-gateway\"
+"
+
+expect_scan_failure \
+	"detects sysctls tuning" \
+	"$jf_file" \
+	"/$service_anchor/a\\
+    sysctls:\\
+      net.ipv4.ip_forward: 1
+"
+
+expect_scan_failure \
+	"detects group_add" \
+	"$abs_file" \
+	"/$service_anchor/a\\
+    group_add:\\
+      - \"0\"
+"
+
+expect_scan_failure \
+	"detects a tmpfs shadowing the enrollment secret mount" \
+	"$jf_file" \
+	"/$service_anchor/a\\
+    tmpfs:\\
+      - /run/secrets
+"
+
+expect_scan_failure \
+	"detects a DSN split across innocuously named environment keys" \
+	"$abs_file" \
+	"/VONDEL_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/vondel_compat_enrollment/a\\
+      STORE_HOST: postgres\\
+      STORE_DBNAME: silo\\
+      STORE_USER: silo\\
+      STORE_PW: silo
+"
+
+# The cases this whole design exists for: keys no rule of ours has ever named,
+# standing in for whatever Compose adds next. They must be rejected by the
+# allowlist alone.
+#
+# These use real Compose keys rather than an invented one on purpose. An
+# invented key is rejected by Compose's own schema before the scan ever sees
+# it, so it would prove nothing about the allowlist — an `x-` extension field
+# is stripped from the rendered service entirely, which proves just as little.
+# `runtime` swaps the container runtime, `dns` redirects name resolution, and
+# `storage_opt` tunes the storage driver; all three render, all three are
+# unruled, and all three must still fail.
+expect_scan_failure \
+	"rejects the unruled runtime key by allowlist alone" \
+	"$jf_file" \
+	"/$service_anchor/a\\
+    runtime: sysbox-runc
+"
+
+expect_scan_failure \
+	"rejects the unruled dns key by allowlist alone" \
+	"$abs_file" \
+	"/$service_anchor/a\\
+    dns:\\
+      - 10.0.0.1
+"
+
+expect_scan_failure \
+	"rejects the unruled storage_opt key by allowlist alone" \
+	"$jf_file" \
+	"/$service_anchor/a\\
+    storage_opt:\\
+      size: 10G
+"
+
 # --- Summary -----------------------------------------------------------------
 
 printf '%d passed, %d failed\n' "$passed" "$failed"
