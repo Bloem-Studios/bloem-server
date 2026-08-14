@@ -2144,8 +2144,8 @@ func TestKeyedSettingsRefuseAccountScopeForDirectProfileSessions(t *testing.T) {
 	handler, _ := newValuesTestHandler(t)
 	key := settingskeys.NavShortcuts
 
-	direct := func(method string, body []byte) *httptest.ResponseRecorder {
-		target := "/settings/values/" + key + "?scope=account"
+	direct := func(method, requestKey string, body []byte) *httptest.ResponseRecorder {
+		target := "/settings/values/" + requestKey + "?scope=account"
 		var req *http.Request
 		if body == nil {
 			req = httptest.NewRequest(method, target, nil)
@@ -2156,7 +2156,7 @@ func TestKeyedSettingsRefuseAccountScopeForDirectProfileSessions(t *testing.T) {
 			UserID: 1, ProfileID: "profile-1", AuthMethod: auth.AuthMethodDirectProfile,
 		})
 		routeCtx := chi.NewRouteContext()
-		routeCtx.URLParams.Add("key", key)
+		routeCtx.URLParams.Add("key", requestKey)
 		req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, routeCtx))
 		rec := httptest.NewRecorder()
 		switch method {
@@ -2171,11 +2171,19 @@ func TestKeyedSettingsRefuseAccountScopeForDirectProfileSessions(t *testing.T) {
 	}
 
 	for _, method := range []string{http.MethodGet, http.MethodPut, http.MethodDelete} {
-		rec := direct(method, []byte(`{"value":{}}`))
+		rec := direct(method, key, []byte(`{"value":{}}`))
 		if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "account-scoped") {
 			t.Fatalf("%s account scope via direct session = %d %s, want the explicit account-scope refusal",
 				method, rec.Code, rec.Body.String())
 		}
+	}
+
+	// The refusal precedes the definition lookup, so an unknown key answers
+	// the same way — the boundary must not depend on the contract's contents.
+	unknown := direct(http.MethodGet, "no.such.key", nil)
+	if unknown.Code != http.StatusForbidden || !strings.Contains(unknown.Body.String(), "account-scoped") {
+		t.Fatalf("unknown key account scope = %d %s, want the refusal ahead of definition lookup",
+			unknown.Code, unknown.Body.String())
 	}
 
 	// An account session reaching the same URL is not caught by this refusal:

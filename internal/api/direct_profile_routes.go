@@ -123,10 +123,16 @@ var directProfileAllowedRoutes = map[string][]string{
 	"/api/v1/playback/sessions/{session_id}/control/ws":      {http.MethodGet},
 	"/api/v1/playback/transcode/{session_id}/master.m3u8":    {http.MethodGet},
 	"/api/v1/playback/transcode/{session_id}/segment/{name}": {http.MethodGet},
-	"/api/v1/stream/{session_id}":                            {http.MethodGet},
-	"/api/v1/stream/{session_id}/subtitles/{track}":          {http.MethodGet},
+	"/api/v1/stream/{session_id}":                            {http.MethodGet, http.MethodHead},
+	"/api/v1/stream/{session_id}/subtitles/{track}":          {http.MethodGet, http.MethodHead},
 	"/api/v1/stream/{session_id}/subtitles/{track}/fonts":    {http.MethodGet},
 	"/api/v1/sync/progress":                                  {http.MethodPost},
+
+	// Proxy-served direct downloads authorize exactly as the tokened
+	// direct-download route does — same profile id, same access filter — so a
+	// proxy-aware client is entitled to the same bytes. HEAD is how players
+	// probe before they fetch.
+	"/api/v1/direct-download-proxy": {http.MethodGet, http.MethodHead},
 
 	// The client's library bootstrap.
 	userLibrariesRoute: {http.MethodGet},

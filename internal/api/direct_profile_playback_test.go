@@ -95,12 +95,14 @@ func TestDirectProfileSessionCannotTouchSiblingPlaybackSession(t *testing.T) {
 	// Replan is absent deliberately: it already compares the profile as well as
 	// the account, so it was never part of this hole.
 	for name, probe := range map[string]struct{ method, path, body string }{
-		"progress":  {http.MethodPost, "/api/v1/playback/" + theirs.ID + "/progress", `{"position":42}`},
-		"stop":      {http.MethodDelete, "/api/v1/playback/" + theirs.ID, ""},
-		"control":   {http.MethodGet, "/api/v1/playback/sessions/" + theirs.ID + "/control/ws", ""},
-		"stream":    {http.MethodGet, "/api/v1/stream/" + theirs.ID, ""},
-		"subtitles": {http.MethodGet, "/api/v1/stream/" + theirs.ID + "/subtitles/0", ""},
-		"transcode": {http.MethodGet, "/api/v1/playback/transcode/" + theirs.ID + "/master.m3u8", ""},
+		"progress":       {http.MethodPost, "/api/v1/playback/" + theirs.ID + "/progress", `{"position":42}`},
+		"stop":           {http.MethodDelete, "/api/v1/playback/" + theirs.ID, ""},
+		"control":        {http.MethodGet, "/api/v1/playback/sessions/" + theirs.ID + "/control/ws", ""},
+		"stream":         {http.MethodGet, "/api/v1/stream/" + theirs.ID, ""},
+		"stream head":    {http.MethodHead, "/api/v1/stream/" + theirs.ID, ""},
+		"subtitles":      {http.MethodGet, "/api/v1/stream/" + theirs.ID + "/subtitles/0", ""},
+		"subtitles head": {http.MethodHead, "/api/v1/stream/" + theirs.ID + "/subtitles/0", ""},
+		"transcode":      {http.MethodGet, "/api/v1/playback/transcode/" + theirs.ID + "/master.m3u8", ""},
 	} {
 		t.Run("sibling "+name+" is refused", func(t *testing.T) {
 			response := performJSONRequest(t, router, probe.method, probe.path, probe.body, readerToken, nil)
@@ -132,6 +134,34 @@ func TestDirectProfileSessionCannotTouchSiblingPlaybackSession(t *testing.T) {
 		}
 		if updated.Position < 42 {
 			t.Fatalf("own session position = %v, want the reported progress to have landed", updated.Position)
+		}
+	})
+
+	// Runs after the progress assertions: a HEAD probe that reaches the
+	// handler aborts a session whose media file is gone, so this destroys
+	// `mine` and must come last.
+	//
+	// Players probe with HEAD before they fetch; the boundary must let the
+	// probe through to the handler for the session's own profile. The fixture
+	// has no media file behind the session, so the handler's own not-found is
+	// the proof the request got past the boundary.
+	t.Run("own session HEAD probe reaches the handler", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodHead, "/api/v1/stream/"+mine.ID, "", readerToken, nil)
+		if response.Code != http.StatusNotFound {
+			t.Fatalf("own HEAD probe = %d %s, want the handler's not-found rather than a boundary refusal",
+				response.Code, response.Body.String())
+		}
+	})
+
+	// Proxy-served direct downloads carry the same profile-scoped
+	// authorization as the tokened route; the boundary must admit them. A
+	// request with no file_id is answered by the handler's own validation,
+	// which is the proof it was not refused at the boundary.
+	t.Run("direct-download-proxy reaches the handler", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/direct-download-proxy", "", readerToken, nil)
+		if response.Code != http.StatusServiceUnavailable && response.Code != http.StatusBadRequest {
+			t.Fatalf("direct-download-proxy = %d %s, want the handler's own answer rather than a boundary refusal",
+				response.Code, response.Body.String())
 		}
 	})
 }

@@ -1357,22 +1357,25 @@ func (h *SettingValuesHandler) identityFromRequest(
 func (h *SettingValuesHandler) identityForSessionKey(
 	w http.ResponseWriter, r *http.Request, requestedKey string,
 ) (userstore.SettingIdentity, bool) {
+	// No definition uses the account scope today, but the scope arrives from
+	// the query string: the moment one exists, a session bound to a single
+	// profile would be reading and writing account-wide state through a route
+	// the inventory already admits. Refuse before any contract logic — the
+	// refusal must not depend on whether the key exists or what its
+	// definition allows.
+	if settingscontract.Scope(strings.TrimSpace(r.URL.Query().Get("scope"))) == settingscontract.ScopeAccount &&
+		apimw.IsDirectProfileSession(r) {
+		writeError(w, http.StatusForbidden, "forbidden",
+			"Direct profile sessions cannot use account-scoped settings")
+		return userstore.SettingIdentity{}, false
+	}
+
 	key, scope, ok := h.keyedScope(w, requestedKey, r.URL.Query())
 	if !ok {
 		return userstore.SettingIdentity{}, false
 	}
 
 	identity := userstore.SettingIdentity{Key: key, Scope: scope}
-
-	// No definition uses the account scope today, but the scope arrives from
-	// the query string: the moment one exists, a session bound to a single
-	// profile would be reading and writing account-wide state through a route
-	// the inventory already admits. Refuse it here so that day changes nothing.
-	if scope == settingscontract.ScopeAccount && apimw.IsDirectProfileSession(r) {
-		writeError(w, http.StatusForbidden, "forbidden",
-			"Direct profile sessions cannot use account-scoped settings")
-		return userstore.SettingIdentity{}, false
-	}
 
 	// The profile defaults to the session header, so an ordinary caller cannot
 	// write another's settings by naming it. A household parent may name a
