@@ -699,3 +699,56 @@ func TestDirectProfileSessionRequiresADevice(t *testing.T) {
 		}
 	})
 }
+
+// Every failed authentication must cost exactly one bcrypt comparison, or
+// response timing separates registered direct-profile emails from unknown
+// ones regardless of the uniform error body.
+func TestAuthenticateCostsOneComparisonOnEveryFailurePath(t *testing.T) {
+	ctx := context.Background()
+	credentials := newProfileCredentialService(t)
+	accountID, profileID := newProfileCredentialFixture(t, credentials.pool, "timing")
+	if err := credentials.Set(ctx, accountID, profileID, "timing@example.test", "profile-password"); err != nil {
+		t.Fatalf("Set credential: %v", err)
+	}
+
+	comparisons := 0
+	original := bcryptCompare
+	bcryptCompare = func(hash, password []byte) error {
+		comparisons++
+		return original(hash, password)
+	}
+	defer func() { bcryptCompare = original }()
+
+	for name, email := range map[string]string{
+		"registered email, wrong password": "timing@example.test",
+		"unknown email":                    "nobody@example.test",
+	} {
+		t.Run(name, func(t *testing.T) {
+			comparisons = 0
+			_, err := credentials.Authenticate(ctx, email, "wrong-password", DeviceClaim{ID: "timing-device"})
+			if !errors.Is(err, ErrInvalidCredentials) {
+				t.Fatalf("Authenticate = %v, want ErrInvalidCredentials", err)
+			}
+			if comparisons != 1 {
+				t.Fatalf("bcrypt comparisons = %d, want exactly 1", comparisons)
+			}
+		})
+	}
+
+	// A malformed stored hash must not shortcut either.
+	t.Run("malformed stored hash", func(t *testing.T) {
+		if _, err := credentials.pool.Exec(ctx, `
+			UPDATE user_profiles SET password_hash = 'not-a-bcrypt-hash' WHERE user_id = $1 AND id = $2`,
+			accountID, profileID); err != nil {
+			t.Fatalf("corrupt stored hash: %v", err)
+		}
+		comparisons = 0
+		_, err := credentials.Authenticate(ctx, "timing@example.test", "wrong-password", DeviceClaim{ID: "timing-device"})
+		if !errors.Is(err, ErrInvalidCredentials) {
+			t.Fatalf("Authenticate = %v, want ErrInvalidCredentials", err)
+		}
+		if comparisons != 1 {
+			t.Fatalf("bcrypt comparisons = %d, want exactly 1", comparisons)
+		}
+	})
+}

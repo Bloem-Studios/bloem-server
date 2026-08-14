@@ -168,13 +168,11 @@ var directProfileAllowedRoutes = map[string][]string{
 }
 
 // directProfileDeniedRoutes are routes inside an admitted read subtree that
-// must nevertheless be refused. Personal collections are off this surface
-// until their ownership is profile-aware, and these two library reads return
-// them through a different door than /collections.
-var directProfileDeniedRoutes = map[string]bool{
-	"/api/v1/library/{id}/user-collections": true,
-	"/api/v1/library/{id}/collections":      true,
-}
+// must nevertheless be refused. Empty today: the library collection views,
+// once listed here, turned out to filter on a per-profile visibility row
+// (user_personal_collection_profiles) and are legitimate browse results for a
+// bound profile. The mechanism stays for the next read that is not.
+var directProfileDeniedRoutes = map[string]bool{}
 
 // directProfileRouteAllowed reports whether a resolved route is part of the
 // direct-profile surface. Method and pattern are both significant: a path can

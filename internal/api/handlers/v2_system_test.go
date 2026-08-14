@@ -34,13 +34,16 @@ func (s v2OrganizationStoreStub) GetOrganization(_ context.Context, id uuid.UUID
 }
 
 func TestV2CapabilitiesExactContract(t *testing.T) {
+	// Capability discovery must track what is actually wired: a server with
+	// direct profile login advertises it, one without does not.
 	handler := NewV2SystemHandler(nil)
+	handler.SetDirectProfileLoginAvailable(true)
 	rec := httptest.NewRecorder()
 	handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, "/api/v2/capabilities", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	want := `{"api":"v2","identity_schema":1,"features":{"legacy_silo_v1":true,"organization_memberships":true,"tenant_bounded_media_scope":true,"direct_profile_login":false,"shared_device_pairing":false,"delegated_admin_roles":false}}`
+	want := `{"api":"v2","identity_schema":1,"features":{"legacy_silo_v1":true,"organization_memberships":true,"tenant_bounded_media_scope":true,"direct_profile_login":true,"shared_device_pairing":false,"delegated_admin_roles":false}}`
 	if strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("body = %s, want %s", rec.Body.String(), want)
 	}

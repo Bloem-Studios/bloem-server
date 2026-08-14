@@ -342,7 +342,7 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	}
 
 	capabilities := performJSONRequest(t, router, http.MethodGet, "/api/v2/capabilities", "", "", nil)
-	const wantCapabilities = `{"api":"v2","identity_schema":1,"features":{"legacy_silo_v1":true,"organization_memberships":true,"tenant_bounded_media_scope":true,"direct_profile_login":false,"shared_device_pairing":false,"delegated_admin_roles":false}}`
+	const wantCapabilities = `{"api":"v2","identity_schema":1,"features":{"legacy_silo_v1":true,"organization_memberships":true,"tenant_bounded_media_scope":true,"direct_profile_login":true,"shared_device_pairing":false,"delegated_admin_roles":false}}`
 	if capabilities.Code != http.StatusOK || strings.TrimSpace(capabilities.Body.String()) != wantCapabilities {
 		t.Errorf("v2 capabilities = %d %s, want exact implemented contract %s", capabilities.Code, strings.TrimSpace(capabilities.Body.String()), wantCapabilities)
 	}

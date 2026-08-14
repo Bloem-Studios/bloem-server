@@ -284,16 +284,37 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		}
 	})
 
-	// Personal collections must not return through the library door either.
-	t.Run("library personal-collection reads are refused", func(t *testing.T) {
-		for _, path := range []string{
-			"/api/v1/library/1/user-collections",
-			"/api/v1/library/1/collections",
+	// The library collection view is admitted because its query filters on a
+	// per-profile visibility row. Prove the filter, not just the status: a
+	// collection shared with the bound profile appears, a sibling-only one
+	// does not.
+	t.Run("library user-collections show only the bound profile's rows", func(t *testing.T) {
+		for _, c := range []struct{ id, name, visibleTo string }{
+			{"col-mine", "Mine Visible", readerProfileID},
+			{"col-sibling", "Sibling Only", primaryProfileID},
 		} {
-			response := performJSONRequest(t, router, http.MethodGet, path, "", directToken, nil)
-			if response.Code != http.StatusForbidden {
-				t.Errorf("GET %s = %d %s, want %d", path, response.Code, response.Body.String(), http.StatusForbidden)
+			if _, err := pool.Exec(ctx, `
+				INSERT INTO user_personal_collections
+					(id, user_id, profile_id, name, creator_profile_id, include_in_server_collections)
+				VALUES ($1, $2, $3, $4, $3, TRUE)`, c.id, accountID, c.visibleTo, c.name); err != nil {
+				t.Fatalf("insert %s: %v", c.id, err)
 			}
+			if _, err := pool.Exec(ctx, `
+				INSERT INTO user_personal_collection_profiles (user_id, collection_id, profile_id)
+				VALUES ($1, $2, $3)`, accountID, c.id, c.visibleTo); err != nil {
+				t.Fatalf("share %s: %v", c.id, err)
+			}
+		}
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/library/1/user-collections", "", directToken, nil)
+		if response.Code != http.StatusOK {
+			t.Fatalf("library user-collections = %d %s, want %d", response.Code, response.Body.String(), http.StatusOK)
+		}
+		body := response.Body.String()
+		if !strings.Contains(body, "Mine Visible") {
+			t.Fatalf("library user-collections = %s, want the bound profile's collection", body)
+		}
+		if strings.Contains(body, "Sibling Only") {
+			t.Fatalf("library user-collections = %s, want the sibling-only collection filtered out", body)
 		}
 	})
 
