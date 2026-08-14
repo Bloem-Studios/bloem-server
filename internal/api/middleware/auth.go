@@ -167,10 +167,23 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), claimsKey, claims)
-		if claims.AuthMethod == auth.AuthMethodDirectProfile &&
-			am.directProfileRoutes != nil && !am.directProfileRoutes(r) {
-			writeForbidden(w, "Direct profile sessions cannot use this endpoint")
-			return
+		if claims.AuthMethod == auth.AuthMethodDirectProfile {
+			if am.directProfileRoutes != nil && !am.directProfileRoutes(r) {
+				writeForbidden(w, "Direct profile sessions cannot use this endpoint")
+				return
+			}
+			// The session was bound to one device at login, and device
+			// identity feeds downloads, device settings, and policy input.
+			// Handlers read the X-Silo-Device-Id header, so the header is made
+			// canonical here: a conflicting value is refused rather than
+			// letting the session act as a device it never authenticated, and
+			// an absent one is filled in from the binding so every consumer
+			// sees the same identity.
+			if declared := strings.TrimSpace(r.Header.Get("X-Silo-Device-Id")); declared != "" && declared != claims.DeviceID {
+				writeForbidden(w, "Device does not match this session's binding")
+				return
+			}
+			r.Header.Set("X-Silo-Device-Id", claims.DeviceID)
 		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

@@ -15,6 +15,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
 
@@ -46,6 +47,13 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		// refused before the proxy is ever asked to serve anything, which is
 		// the property under test.
 		PluginHTTPProxy: plugins.NewHTTPProxy(nil, nil),
+		UserCollectionSync: usercollections.NewService(
+			pgstore.NewPostgresProvider(pool),
+			catalog.NewItemRepository(pool),
+			catalog.NewLibraryItemRepository(pool),
+			nil,
+			nil,
+		),
 	})
 
 	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{
@@ -125,6 +133,16 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		{"plugin launch", http.MethodPost, "/api/v1/auth/plugin-launch", `{"installation_id":1}`},
 		{"requests", http.MethodGet, "/api/v1/requests/", ""},
 		{"admin users", http.MethodGet, "/api/v1/admin/users", ""},
+		// Personal collections authorize by account alone, so the whole
+		// surface — reads included — is off limits until ownership is
+		// profile-aware.
+		{"personal collection list", http.MethodGet, "/api/v1/collections/", ""},
+		{"personal collection items", http.MethodGet, "/api/v1/collections/some-collection/items", ""},
+		{"personal collection creation", http.MethodPost, "/api/v1/collections/", `{"name":"escape"}`},
+		{"personal collection deletion", http.MethodDelete, "/api/v1/collections/some-collection", ""},
+		{"collection group creation via order", http.MethodPut, "/api/v1/collections/groups/order", `{"order":[]}`},
+		{"collection group creation", http.MethodPost, "/api/v1/collections/groups", `{"name":"escape"}`},
+		{"collection import", http.MethodPost, "/api/v1/collections/import/tmdb", `{"list_id":1}`},
 		// The plugin proxy authenticates itself and never reaches the
 		// allowlist, so it refuses profile-bound tokens on its own.
 		{"plugin proxy", http.MethodGet, "/api/v1/plugins/1/anything", ""},
@@ -263,6 +281,54 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		}
 		if after != before {
 			t.Fatal("a refused PIN change altered the stored hash")
+		}
+	})
+
+	// The session bound one device at login; the header every device-scoped
+	// handler reads must not be able to substitute another.
+	t.Run("a conflicting device header is refused", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet,
+			"/api/v1/settings/effective?keys=player.playback_speed", "", directToken,
+			map[string]string{"X-Silo-Device-Id": "somebody-elses-device"})
+		if response.Code != http.StatusForbidden {
+			t.Fatalf("conflicting device header = %d %s, want %d",
+				response.Code, response.Body.String(), http.StatusForbidden)
+		}
+	})
+
+	t.Run("the bound device is injected when the header is absent", func(t *testing.T) {
+		// This route demands a device identity and answers 400 without one, so
+		// a 200 with no header proves the middleware supplied the binding.
+		response := performJSONRequest(t, router, http.MethodPut,
+			"/api/v1/settings/device/player.subtitle_size", `{"value":"large"}`, directToken, nil)
+		if response.Code == http.StatusBadRequest &&
+			strings.Contains(response.Body.String(), "X-Silo-Device-Id") {
+			t.Fatalf("device settings write = %d %s, want the token-bound device injected",
+				response.Code, response.Body.String())
+		}
+		if response.Code == http.StatusForbidden {
+			t.Fatalf("device settings write = %d %s, want the bound device accepted",
+				response.Code, response.Body.String())
+		}
+	})
+
+	t.Run("the matching device header is accepted", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet,
+			"/api/v1/settings/effective?keys=player.playback_speed", "", directToken,
+			map[string]string{"X-Silo-Device-Id": "reader-tablet"})
+		if response.Code != http.StatusOK {
+			t.Fatalf("matching device header = %d %s, want %d",
+				response.Code, response.Body.String(), http.StatusOK)
+		}
+	})
+
+	// The binding is only meaningful if it cannot be empty.
+	t.Run("login without a device id is refused", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/profile-login",
+			`{"email":"reader@example.test","password":"reader-password"}`, "", nil)
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("device-less login = %d %s, want %d",
+				response.Code, response.Body.String(), http.StatusBadRequest)
 		}
 	})
 

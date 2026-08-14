@@ -231,6 +231,14 @@ func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusBadRequest, "bad_request", "Email and password are required")
 		return
 	}
+	// The session binds to exactly one device, and that binding is enforced on
+	// every subsequent request. An empty device id would bind the session to
+	// "no device" and make the enforcement vacuous.
+	req.DeviceID = strings.TrimSpace(req.DeviceID)
+	if req.DeviceID == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "A device_id is required for direct profile login")
+		return
+	}
 	pair, subject, err := h.profileLogin.LoginProfile(r.Context(), req.Email, req.Password, auth.DeviceClaim{
 		ID:        req.DeviceID,
 		Name:      r.UserAgent(),

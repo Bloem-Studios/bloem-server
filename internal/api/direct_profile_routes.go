@@ -38,7 +38,6 @@ var readOnlySubtrees = []string{
 	"/api/v1/items",
 	"/api/v1/library",
 	"/api/v1/catalog",
-	"/api/v1/collections",
 	"/api/v1/works",
 	"/api/v1/metadata",
 	"/api/v1/home",
@@ -159,22 +158,13 @@ var directProfileAllowedRoutes = map[string][]string{
 	"/api/v1/downloads/subscriptions/{id}": {http.MethodPatch, http.MethodDelete},
 	"/api/v1/downloads/subscriptions/sync": {http.MethodPost},
 
-	// The profile's own collections. These rows carry the creating profile, so
-	// the mutations are the profile's own rather than the household's.
-	"/api/v1/collections/":                     {http.MethodPost},
-	"/api/v1/collections/{id}":                 {http.MethodPut, http.MethodDelete},
-	"/api/v1/collections/{id}/image":           {http.MethodDelete},
-	"/api/v1/collections/{id}/items/{item_id}": {http.MethodPut, http.MethodDelete},
-	"/api/v1/collections/{id}/items/order":     {http.MethodPut},
-	"/api/v1/collections/{id}/sync":            {http.MethodPost},
-	"/api/v1/collections/order":                {http.MethodPut},
-	"/api/v1/collections/groups":               {http.MethodPost},
-	"/api/v1/collections/groups/{id}":          {http.MethodPut, http.MethodDelete},
-	"/api/v1/collections/groups/order":         {http.MethodPut},
-	"/api/v1/collections/preview":              {http.MethodPost},
-	"/api/v1/collections/import/mdblist":       {http.MethodPost},
-	"/api/v1/collections/import/tmdb":          {http.MethodPost},
-	"/api/v1/collections/import/trakt":         {http.MethodPost},
+	// Personal collections are off this surface entirely, reads included.
+	// Their handlers and store scope by account alone, so neither a read nor
+	// a mutation can tell two profiles of one household apart; they return
+	// when collection ownership is profile-aware. The server-wide collection
+	// views carry no household state and stay.
+	"/api/v1/collections/server":       {http.MethodGet},
+	"/api/v1/collections/capabilities": {http.MethodGet},
 }
 
 // directProfileRouteAllowed reports whether a resolved route is part of the
@@ -192,7 +182,10 @@ func directProfileRouteAllowed(method, pattern string) bool {
 				return true
 			}
 		}
-		return false
+		// An exact entry names the writes a pattern permits; it must not
+		// swallow the reads its subtree already grants. Returning false here
+		// for GET denied a profile its own favorites, ratings, downloads, and
+		// preferences purely because the same path also had a listed PUT.
 	}
 	if method != http.MethodGet && method != http.MethodHead {
 		return false
