@@ -432,6 +432,21 @@ func runCompatWebCommand(ctx context.Context, args []string) error {
 //
 // A nil gateway composes to the plain SPA fallback, keeping deployments
 // without the compatibility stack byte-identical to the pre-gateway listener.
+// publicServer builds the public listener: the composed handler from
+// publicMux plus the timeouts the public port runs with. It exists so the
+// thing production serves is a value a test can construct and drive, rather
+// than a shape assembled inline in main — TestPublicServerRoutesEachLayer
+// exercises this exact function.
+func publicServer(addr string, router, frontend, gateway http.Handler) *http.Server {
+	return &http.Server{
+		Addr:         addr,
+		Handler:      publicMux(router, frontend, gateway),
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 120 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+}
+
 func publicMux(router, frontend, gateway http.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
@@ -2587,7 +2602,7 @@ func main() {
 	compatGateway := compatgateway.New(compatgateway.Config{
 		IdentitySecret: []byte(cfg.Auth.JWTSecret),
 	})
-	metricsMux := publicMux(router, server.FrontendHandler(), compatGateway)
+	srv := publicServer(cfg.Server.Listen, router, server.FrontendHandler(), compatGateway)
 
 	// Step 9: Start background workers (if needed).
 	var sessionCleaner *worker.SessionCleaner
@@ -2674,14 +2689,9 @@ func main() {
 		slog.Info("background workers started")
 	}
 
-	// Step 10: Create and start the HTTP server.
-	srv := &http.Server{
-		Addr:         cfg.Server.Listen,
-		Handler:      metricsMux,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 120 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
+	// Step 10: Start the HTTP server. It was built by publicServer above —
+	// main composes nothing itself, so there is no second wiring here that
+	// could drift from the one the tests drive.
 
 	var compatSrv *http.Server
 	if (mode == "integrated" || mode == "api") && cfg.JellyfinCompat.Enabled && cfg.JellyfinCompat.Listen != "" {
