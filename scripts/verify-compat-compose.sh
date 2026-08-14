@@ -5,7 +5,7 @@
 # and enforces the deployment rulings from
 # docs/superpowers/specs/2026-08-12-vondel-compatibility-sidecars-design.md.
 #
-# THE SCAN IS DEFAULT-DENY AT THE SERVICE LEVEL.
+# THE SCAN IS DEFAULT-DENY AT THE SERVICE LEVEL AND AT THE TOP LEVEL.
 #
 # Enumerating forbidden Compose keys does not converge: every Compose key — and
 # every key a future Compose release adds — is permitted until someone thinks
@@ -14,16 +14,30 @@
 # cap_add, then devices, then pid/ipc, then volumes_from, then
 # device_cgroup_rules, then uts/sysctls/tmpfs/extra_hosts...).
 #
-# So the primary controls are two allowlists, and everything outside them fails
+# So the primary controls are allowlists, and everything outside them fails
 # by construction, named in the error:
 #
 #   1. SERVICE SET — a combination may render the base stack plus exactly the
 #      companions its overlays activate. A key allowlist means nothing if a
 #      tampered overlay can simply append a fourth, privileged service.
 #   2. SERVICE KEYS — a companion service may declare only allowlisted keys,
-#      and every non-base service is held to the same list.
+#      and every non-base service is held to the same list. Base services are
+#      held to their own, wider list (see BASE SERVICES below).
+#   3. TOP LEVEL — the rendered `networks`, `volumes`, `secrets` and `configs`
+#      maps are diffed against the base render exactly the way `services` is,
+#      so an overlay may add only its own companion entries and may not touch a
+#      base one. Top-level network entries additionally have a key allowlist of
+#      their own.
 #
-# Adding to either list is a deliberate, reviewable act.
+# Adding to any of these lists is a deliberate, reviewable act.
+#
+# The top-level rule is not theoretical. While only `.services` was diffed, an
+# overlay could redefine the top-level `default` network as
+# `{external: true, name: attacker_shared_bridge}` — directly, or through an
+# `include:` directive — and move postgres, redis, silo and meilisearch onto an
+# attacker-named network with ZERO service-level change; and it could give
+# vondel-compat an arbitrary driver/driver_opts/ipam. Every service-level check
+# passed on all three.
 #
 # Permitting a key is not permitting any value, so each allowed key that can
 # carry risk keeps a value-level check:
@@ -32,7 +46,9 @@
 #   - ports      — none at all, except the diagnostics override, which may bind
 #                  127.0.0.1 only;
 #   - networks   — exactly the internal vondel-compat network (plus the default
-#                  bridge in the diagnostics override, which publishing needs);
+#                  bridge in the diagnostics override, which publishing needs),
+#                  and for silo exactly {default, vondel-compat} with no
+#                  per-network options;
 #   - volumes    — locally defined named volumes only: no bind mounts, no
 #                  external/aliased volumes, no driver_opts;
 #   - secrets    — exactly one enrollment secret, mounted at
@@ -43,9 +59,33 @@
 #   - environment — no Vondel database/Redis/signing/provider/tuner or
 #                  credential-shaped keys, and no DSN-shaped values.
 #
-# The Vondel service is checked separately and only for what it must not gain
-# (the companion enrollment secret) — it legitimately owns media mounts and the
-# database, so a service-key allowlist does not apply to it.
+# The Vondel service is checked separately, because it legitimately owns media
+# mounts and the database: it must not gain the companion enrollment secret,
+# and its network membership is pinned to exactly {default, vondel-compat} with
+# no options on vondel-compat. Exempting silo.networks wholesale let an overlay
+# attach silo to an `external: true` network belonging to another stack, and let
+# silo claim aliases such as `postgres` or `redis` on vondel-compat — which is
+# service impersonation on the very network the companions trust.
+#
+# BASE SERVICES. docker-compose.yml is not trusted implicitly. Its services are
+# swept through their own key allowlist (base_service_keys_json), because the
+# overlay delta uses the base render as its own baseline: a `privileged: true`
+# plus `pid: host` added to silo IN THE BASE FILE is invisible to a diff of base
+# against base, and passed the entire scan before that sweep existed. What the
+# base allowlist does NOT do is pin base values — base services legitimately
+# hold media bind mounts, published ports, a DATABASE_URL and a SECRET_KEY, and
+# there is no small set of correct values for those. So the base is covered at
+# the key level only, and that is a boundary, not a closed class: a base-service
+# change that stays within the allowlisted keys still needs human review.
+#
+# ENV INTERPOLATION. The scan renders each combination twice when the compose
+# directory contains a .env: once with --env-file /dev/null, judging the values
+# the repository commits, and once with the operator's .env, judging the values
+# that deployment will actually use. Without the second pass an operator .env
+# setting VONDEL_JELLYFIN_ENROLLMENT_FILE=/etc/passwd reproduced, invisibly, the
+# exact tamper the committed-defaults pass catches. Failure messages therefore
+# say a value must "resolve to" something, not that it is committed as such; the
+# combination label carries a ".env" suffix on the second pass.
 #
 # Usage: scripts/verify-compat-compose.sh [compose-dir]
 #
@@ -116,10 +156,17 @@ fail() {
 	failures=$((failures + 1))
 }
 
+# The env file the current pass renders with. Pass 1 uses /dev/null so the
+# committed defaults are what gets judged; pass 2 (only when the compose
+# directory has a .env) uses the operator's file so the values that will
+# actually be deployed are judged too.
+render_env_file="/dev/null"
+
 # Render a combination of compose files to canonical JSON.
-# --env-file /dev/null keeps any operator .env out of the scan so the committed
-# defaults are what gets verified; the two required base variables are supplied
-# with inert values. Rendering never touches the Docker daemon state.
+# The two required base variables are supplied with inert values; they are set
+# in the environment, which Compose gives precedence over .env, so the operator
+# pass cannot redirect the media root either. Rendering never touches Docker
+# daemon state.
 render() {
 	local args=()
 	local f
@@ -128,14 +175,14 @@ render() {
 	done
 	# --profile '*' renders profile-gated services too, so a service cannot be
 	# hidden from the scan behind a profile and switched on at deploy time.
-	# COMPOSE_PROFILES is cleared for the same determinism reason as
-	# --env-file /dev/null: the scan judges the committed files, not the
-	# operator's shell.
+	# COMPOSE_PROFILES is cleared for determinism: the scan judges the committed
+	# files and, on the second pass, the operator's .env — never the operator's
+	# shell.
 	(
 		cd "$compose_dir" &&
 			MEDIA_ROOT="/dev/null" SECRET_KEY="verify-only" COMPOSE_PROFILES="" \
 				docker compose --project-name "$project_name" \
-				--env-file /dev/null --profile '*' "${args[@]}" config --format json
+				--env-file "$render_env_file" --profile '*' "${args[@]}" config --format json
 	)
 }
 
@@ -157,23 +204,30 @@ check() {
 	fi
 }
 
-# check_service_key_allowlist <rendered-json> <combo-label> <service>
-# The default-deny control: fail on any declared key outside the allowlist, and
-# name the offending keys so the operator learns what to justify or remove.
-check_service_key_allowlist() {
-	local json=$1 label=$2 svc=$3
+# check_key_allowlist <rendered-json> <combo-label> <service> <allowed-json> <list-name>
+# The default-deny control: fail on any declared key outside the given allowlist,
+# and name the offending keys so the operator learns what to justify or remove.
+check_key_allowlist() {
+	local json=$1 label=$2 svc=$3 allowed=$4 list_name=$5
 	local unknown
 	unknown=$(jq -r \
 		--arg svc "$svc" \
-		--argjson allowed "$companion_service_keys_json" \
+		--argjson allowed "$allowed" \
 		".services[\$svc] | to_entries
 			| map(select($declared_filter))
 			| map(.key)
 			| map(select(. as \$k | \$allowed | index(\$k) | not))
 			| join(\", \")" <<<"$json")
 	if [[ -n "$unknown" ]]; then
-		fail "[$label] $svc declares keys outside the companion allowlist: $unknown"
+		fail "[$label] $svc declares keys outside $list_name: $unknown"
 	fi
+}
+
+# check_service_key_allowlist <rendered-json> <combo-label> <service>
+# The companion form: every non-base service is held to the companion list.
+check_service_key_allowlist() {
+	check_key_allowlist "$1" "$2" "$3" "$companion_service_keys_json" \
+		"the companion allowlist"
 }
 
 # verify_compat_network_membership <rendered-json> <combo-label> <expected-json>
@@ -197,9 +251,22 @@ verify_compat_network_membership() {
 # The general form of the same finding. Rather than exempting base services from
 # checks — which is what let a privileged service named `meilisearch`, and a
 # tampered `silo`, through — the base stack is rendered on its own and diffed
-# against the combination. An overlay may add its companion services and touch
+# against the combination. An overlay may add its companion entries and touch
 # exactly one key on silo (networks, to join the companion network). Any other
-# service-level change is a finding, whatever service or key it lands on.
+# change is a finding, whatever it lands on.
+#
+# The diff covers `services`, `networks`, `volumes`, `secrets` and `configs`.
+# Diffing only `services` left the entire top level default-allow, which an
+# overlay could exploit with zero service-level change: redefining the top-level
+# `default` network as external and renamed moves the whole base stack onto an
+# attacker's network, and an `include:` directive does the same thing at one
+# remove. Both are now "overlay modified base network default".
+#
+# <expected-new-json> is an object keyed by section, e.g.
+#   {"services": ["vondel-jellyfin"], "networks": ["vondel-compat"],
+#    "volumes": ["vondel-jellyfin-state"],
+#    "secrets": ["vondel_jellyfin_enrollment"], "configs": []}
+# Every section must be listed; a missing section is treated as "adds nothing".
 verify_overlay_delta() {
 	local base_json=$1 combo_json=$2 label=$3 expected_new=$4
 	local violations
@@ -208,28 +275,77 @@ verify_overlay_delta() {
 		--argjson combo "$combo_json" \
 		--argjson allowed_new "$expected_new" '
 		def changed_keys($a; $b):
-			[(($a | keys) + ($b | keys)) | unique | .[] | select($a[.] != $b[.])];
-		($base.services | keys) as $bk |
-		($combo.services | keys) as $ck |
-		[
-			(($ck - $bk) | select(sort != ($allowed_new | sort))
-				| "overlay added unexpected service(s): \(. - $allowed_new)"),
-			(($bk - $ck) | select(length > 0)
-				| "overlay removed base service(s): \(.)"),
-			(
-				($bk - ($bk - $ck))[]
-				| . as $s
-				| (if $s == "silo" then ["networks"] else [] end) as $allowed
-				| (changed_keys($base.services[$s]; $combo.services[$s]) - $allowed) as $changed
-				| select($changed | length > 0)
-				| "overlay modified base service \($s): \($changed)"
-			)
-		] | .[]' <<<'{}')
+			[((($a // {}) | keys) + (($b // {}) | keys)) | unique | .[]
+				| select(($a // {})[.] != ($b // {})[.])];
+		def section($sec; $noun; $exempt):
+			(($base[$sec] // {}) | keys) as $bk |
+			(($combo[$sec] // {}) | keys) as $ck |
+			(($allowed_new[$sec] // []) | sort) as $new |
+			[
+				(($ck - $bk) | select(sort != $new)
+					| "overlay added unexpected \($noun)(s): \(. - $new)"),
+				(($bk - $ck) | select(length > 0)
+					| "overlay removed base \($noun)(s): \(.)"),
+				(
+					($bk - ($bk - $ck))[]
+					| . as $k
+					| ($exempt[$k] // []) as $allowed
+					| (changed_keys($base[$sec][$k]; $combo[$sec][$k]) - $allowed) as $changed
+					| select($changed | length > 0)
+					| "overlay modified base \($noun) \($k): \($changed)"
+				)
+			];
+		(
+			section("services"; "service"; {"silo": ["networks"]})
+			+ section("networks"; "network"; {})
+			+ section("volumes"; "volume"; {})
+			+ section("secrets"; "secret"; {})
+			+ section("configs"; "config"; {})
+		) | .[]' <<<'{}')
 	if [[ -n "$violations" ]]; then
 		while IFS= read -r line; do
 			[[ -z "$line" ]] && continue
 			fail "[$label] $line"
 		done <<<"$violations"
+	fi
+}
+
+# verify_top_level_networks <rendered-json> <combo-label> <expected-keys-json>
+# The delta above pins base networks against the base render, but a network the
+# overlay legitimately ADDS (vondel-compat) has nothing to be diffed against, so
+# it gets the same treatment every companion service gets: a key allowlist plus
+# a pinned name. `driver: macvlan` with `driver_opts.parent: eth0` on
+# vondel-compat is a bridge onto the host LAN and passed every other check;
+# `external: true` with a `name:` aliases somebody else's network under ours.
+# Both are denied here by not being on the list, along with ipam, attachable,
+# labels, enable_ipv6 and whatever Compose adds next.
+verify_top_level_networks() {
+	local json=$1 label=$2 expected=$3
+	local actual unknown renamed
+
+	actual=$(jq -c '(.networks // {}) | keys | sort' <<<"$json")
+	if [[ "$actual" != "$(jq -c 'sort' <<<"$expected")" ]]; then
+		fail "[$label] top-level networks must be exactly $(jq -c 'sort' <<<"$expected"), found $actual"
+		return
+	fi
+
+	unknown=$(jq -r --argjson allowed "$network_entry_keys_json" \
+		"(.networks // {}) | to_entries
+			| map(.key as \$n | ((.value // {}) | to_entries
+				| map(select($declared_filter))
+				| map(select(.key as \$k | \$allowed | index(\$k) | not))
+				| map(\"\(\$n).\(.key)\")))
+			| flatten | join(\", \")" <<<"$json")
+	if [[ -n "$unknown" ]]; then
+		fail "[$label] top-level network keys outside the allowlist (external, driver, driver_opts, ipam and the rest are all denied here): $unknown"
+	fi
+
+	renamed=$(jq -r --arg prefix "${project_name}_" \
+		'(.networks // {}) | to_entries
+			| map(select((.value.name // "") != ($prefix + .key)))
+			| map(.key) | join(", ")' <<<"$json")
+	if [[ -n "$renamed" ]]; then
+		fail "[$label] top-level network(s) must be locally defined by this project (no external: true, no explicit name aliasing another network): $renamed"
 	fi
 }
 
@@ -254,6 +370,17 @@ verify_service_set() {
 		check_service_key_allowlist "$json" "$label" "$svc"
 	done < <(jq -r --argjson base "$base_services_json" \
 		'.services | keys[] | select(. as $k | $base | index($k) | not)' <<<"$json")
+
+	# Base services get their own, wider list. Without this the base file was
+	# trusted implicitly — the delta check uses the base render as its own
+	# baseline, so `privileged: true` and `pid: host` added to silo IN THE BASE
+	# FILE were invisible to every check in this script.
+	while IFS= read -r svc; do
+		[[ -z "$svc" ]] && continue
+		check_key_allowlist "$json" "$label" "$svc" "$base_service_keys_json" \
+			"the base service allowlist"
+	done < <(jq -r --argjson base "$base_services_json" \
+		'.services | keys[] | select(. as $k | $base | index($k))' <<<"$json")
 }
 
 # ---------------------------------------------------------------------------
@@ -309,6 +436,37 @@ companion_service_keys_json='[
 # in the expected set — and every non-base service is additionally run through
 # the companion key allowlist, so it is named twice over.
 base_services_json='["postgres", "redis", "silo", "meilisearch"]'
+
+# ---------------------------------------------------------------------------
+# THE BASE SERVICE KEY ALLOWLIST. docker-compose.yml is not a trusted input:
+# the overlay delta diffs the base render against itself, so anything tampered
+# INTO the base file is the baseline rather than a finding. A base service is
+# therefore held to this list — every key the committed base stack actually
+# renders, and nothing more. `privileged`, `pid`, `cap_add`, `devices`,
+# `network_mode`, `volumes_from`, `userns_mode` and their successors are absent,
+# so a host escape planted in the base file is named the same way one planted in
+# an overlay is.
+#
+# This is a key-level boundary only, and deliberately not a claim that base
+# services are safe: their VALUES are not pinned, because base services
+# legitimately hold media bind mounts, published host ports, a DATABASE_URL and
+# the SECRET_KEY, and no small set of correct values exists for those. A change
+# to a base service that stays inside these keys is invisible to this scan and
+# still needs human review.
+base_service_keys_json='[
+	"image", "environment", "networks", "volumes", "ports", "restart",
+	"command", "entrypoint", "depends_on", "healthcheck", "profiles", "shm_size"
+]'
+
+# ---------------------------------------------------------------------------
+# THE TOP-LEVEL NETWORK KEY ALLOWLIST. A network the overlays add has no base
+# counterpart to be diffed against, so it is default-denied the same way a
+# service is. `name` is present because Compose always renders one (and it is
+# value-checked: it must be the project-prefixed name Compose generates for a
+# locally defined network); `internal` is the property the whole companion
+# isolation story rests on. Everything else — external, driver, driver_opts,
+# ipam, attachable, labels, enable_ipv6 — is denied.
+network_entry_keys_json='["name", "internal"]'
 
 # Values `docker compose config` renders for keys that were never declared.
 # A key holding one of these is treated as absent, so the renderer's own null
@@ -379,7 +537,7 @@ verify_companion() {
 
 	check "$json" "$label" \
 		"$s.image | test(\"^ghcr\\\\.io/vondel-media/$svc(:|@|$)\")" \
-		"$svc image must default to the private ghcr.io/vondel-media registry"
+		"$svc image must resolve to the private ghcr.io/vondel-media registry"
 
 	check "$json" "$label" \
 		"($s.volumes // []) | all(.type == \"volume\")" \
@@ -454,19 +612,36 @@ verify_companion() {
 	# companion at the enrollment path — the no-host-paths rule defeated through
 	# an allowed key. The path is therefore pinned to the committed location,
 	# resolved against the compose directory the way Compose resolves it.
+	#
+	# "resolve to", not "is": the committed value is interpolated from
+	# VONDEL_*_ENROLLMENT_FILE, so an operator .env can move it. That is exactly
+	# why this scan makes a second pass over the operator's .env — a defaults-only
+	# scan reported this check green while the deployment mounted /etc/passwd.
 	check "$json" "$label" \
 		"($s.secrets[0].source // \"\") as \$src |
 			(.secrets[\$src].file // \"\") == \"$compose_dir/.secrets/compat/$svc-enrollment.token\"" \
-		"$svc enrollment secret must be the committed ./.secrets/compat/$svc-enrollment.token file"
+		"$svc enrollment secret must resolve to the committed ./.secrets/compat/$svc-enrollment.token file"
 }
 
 # Invariants for the Vondel service when companions are present.
 #   verify_vondel <json> <label>
+#
+# silo.networks is the one key the overlay delta lets an overlay touch, so it is
+# pinned here rather than merely sampled. Checking only has("default") and
+# has("vondel-compat") allowed BOTH halves of the key to be abused: an extra
+# network entry (`lateral: {external: true, name: attacker_stack_default}`)
+# bridged silo into another stack, and options on the vondel-compat entry let
+# silo claim aliases such as `postgres` or `redis` on the network the companions
+# resolve names over. Exact set, no options.
 verify_vondel() {
 	local json=$1 label=$2
 	check "$json" "$label" \
-		'.services.silo.networks | has("vondel-compat") and has("default")' \
-		"the Vondel service must join vondel-compat while keeping its default network"
+		'(.services.silo.networks // {}) | keys | sort == ["default", "vondel-compat"]' \
+		"the Vondel service must join exactly the default and vondel-compat networks"
+	check "$json" "$label" \
+		'((.services.silo.networks["vondel-compat"] // {}) == {})
+			and ((.services.silo.networks["default"] // {}) == {})' \
+		"the Vondel service must declare no network options (no aliases impersonating another service, no per-network overrides)"
 	check "$json" "$label" \
 		'[.services.silo.secrets // [] | .[] | .target] | index("vondel_compat_enrollment") == null' \
 		"the Vondel service must not receive the companion enrollment secret"
@@ -481,50 +656,115 @@ with_abs='["postgres", "redis", "silo", "meilisearch", "vondel-audiobookshelf"]'
 with_jf='["postgres", "redis", "silo", "meilisearch", "vondel-jellyfin"]'
 with_both='["postgres", "redis", "silo", "meilisearch", "vondel-audiobookshelf", "vondel-jellyfin"]'
 
-# Combination A: base file alone must define no companion services. This render
-# is also the baseline every overlay combination is diffed against.
-base_json=$(render "$base_file")
-verify_service_set "$base_json" "base" "$base_only"
-check "$base_json" "base" \
-	'.services | keys | all(test("^vondel-(audiobookshelf|jellyfin)$") | not)' \
-	"the base compose file must not define companion services; activation is overlay-only"
+# The top-level networks each combination may render.
+nets_base='["default"]'
+nets_compat='["default", "vondel-compat"]'
 
-# Combination B: base + audiobookshelf.
-json=$(render "$base_file" "$abs_file")
-verify_service_set "$json" "audiobookshelf" "$with_abs"
-verify_overlay_delta "$base_json" "$json" "audiobookshelf" '["vondel-audiobookshelf"]'
-verify_compat_network_membership "$json" "audiobookshelf" '["silo", "vondel-audiobookshelf"]'
-verify_companion "$json" "audiobookshelf" "vondel-audiobookshelf" "no"
-verify_vondel "$json" "audiobookshelf"
+# The complete set of top-level entries each overlay combination may ADD to the
+# base render. Everything not listed here — in any of the five sections — is a
+# finding, and every base entry must survive unchanged.
+delta_abs='{
+	"services": ["vondel-audiobookshelf"],
+	"networks": ["vondel-compat"],
+	"volumes": ["vondel-audiobookshelf-state"],
+	"secrets": ["vondel_audiobookshelf_enrollment"],
+	"configs": []
+}'
+delta_jf='{
+	"services": ["vondel-jellyfin"],
+	"networks": ["vondel-compat"],
+	"volumes": ["vondel-jellyfin-state"],
+	"secrets": ["vondel_jellyfin_enrollment"],
+	"configs": []
+}'
+delta_both='{
+	"services": ["vondel-audiobookshelf", "vondel-jellyfin"],
+	"networks": ["vondel-compat"],
+	"volumes": ["vondel-audiobookshelf-state", "vondel-jellyfin-state"],
+	"secrets": ["vondel_audiobookshelf_enrollment", "vondel_jellyfin_enrollment"],
+	"configs": []
+}'
 
-# Combination C: base + jellyfin.
-json=$(render "$base_file" "$jf_file")
-verify_service_set "$json" "jellyfin" "$with_jf"
-verify_overlay_delta "$base_json" "$json" "jellyfin" '["vondel-jellyfin"]'
-verify_compat_network_membership "$json" "jellyfin" '["silo", "vondel-jellyfin"]'
-verify_companion "$json" "jellyfin" "vondel-jellyfin" "no"
-verify_vondel "$json" "jellyfin"
+# scan_combinations <label-suffix>
+# Renders and checks every supported combination. Called once per env pass; the
+# suffix names the pass in every failure message.
+scan_combinations() {
+	local sfx=$1
+	local base_json json diag_json
 
-# Combination D: base + both companions.
-json=$(render "$base_file" "$abs_file" "$jf_file")
-verify_service_set "$json" "both" "$with_both"
-verify_overlay_delta "$base_json" "$json" "both" '["vondel-audiobookshelf", "vondel-jellyfin"]'
-verify_compat_network_membership "$json" "both" '["silo", "vondel-audiobookshelf", "vondel-jellyfin"]'
-verify_companion "$json" "both" "vondel-audiobookshelf" "no"
-verify_companion "$json" "both" "vondel-jellyfin" "no"
-verify_vondel "$json" "both"
+	# Combination A: base file alone must define no companion services. This
+	# render is also the baseline every overlay combination is diffed against.
+	base_json=$(render "$base_file")
+	verify_service_set "$base_json" "base$sfx" "$base_only"
+	verify_top_level_networks "$base_json" "base$sfx" "$nets_base"
+	check "$base_json" "base$sfx" \
+		'.services | keys | all(test("^vondel-(audiobookshelf|jellyfin)$") | not)' \
+		"the base compose file must not define companion services; activation is overlay-only"
 
-# Combination E: base + both companions + diagnostics override. The diagnostics
-# file legitimately changes the companions (loopback ports, default network), so
-# the delta check compares it against the two-companion combination instead of
-# the base, holding the base services to the same no-change rule.
-diag_json=$(render "$base_file" "$abs_file" "$jf_file" "$diag_file")
-verify_service_set "$diag_json" "diagnostics" "$with_both"
-verify_overlay_delta "$base_json" "$diag_json" "diagnostics" '["vondel-audiobookshelf", "vondel-jellyfin"]'
-verify_compat_network_membership "$diag_json" "diagnostics" '["silo", "vondel-audiobookshelf", "vondel-jellyfin"]'
-verify_companion "$diag_json" "diagnostics" "vondel-audiobookshelf" "yes"
-verify_companion "$diag_json" "diagnostics" "vondel-jellyfin" "yes"
-verify_vondel "$diag_json" "diagnostics"
+	# Combination B: base + audiobookshelf. KEEP THIS COMBINATION. It is the only
+	# one that can catch `internal: true` turned to `false` on vondel-compat in
+	# the audiobookshelf overlay: both overlays define that network, so in every
+	# combination that also loads the jellyfin overlay the later definition wins
+	# and silently restores internal: true. A "simplification" that drops the
+	# single-overlay combinations because D covers them loses that detection.
+	json=$(render "$base_file" "$abs_file")
+	verify_service_set "$json" "audiobookshelf$sfx" "$with_abs"
+	verify_top_level_networks "$json" "audiobookshelf$sfx" "$nets_compat"
+	verify_overlay_delta "$base_json" "$json" "audiobookshelf$sfx" "$delta_abs"
+	verify_compat_network_membership "$json" "audiobookshelf$sfx" '["silo", "vondel-audiobookshelf"]'
+	verify_companion "$json" "audiobookshelf$sfx" "vondel-audiobookshelf" "no"
+	verify_vondel "$json" "audiobookshelf$sfx"
+
+	# Combination C: base + jellyfin. Symmetrically, the only combination that can
+	# catch the same tamper in the jellyfin overlay.
+	json=$(render "$base_file" "$jf_file")
+	verify_service_set "$json" "jellyfin$sfx" "$with_jf"
+	verify_top_level_networks "$json" "jellyfin$sfx" "$nets_compat"
+	verify_overlay_delta "$base_json" "$json" "jellyfin$sfx" "$delta_jf"
+	verify_compat_network_membership "$json" "jellyfin$sfx" '["silo", "vondel-jellyfin"]'
+	verify_companion "$json" "jellyfin$sfx" "vondel-jellyfin" "no"
+	verify_vondel "$json" "jellyfin$sfx"
+
+	# Combination D: base + both companions.
+	json=$(render "$base_file" "$abs_file" "$jf_file")
+	verify_service_set "$json" "both$sfx" "$with_both"
+	verify_top_level_networks "$json" "both$sfx" "$nets_compat"
+	verify_overlay_delta "$base_json" "$json" "both$sfx" "$delta_both"
+	verify_compat_network_membership "$json" "both$sfx" '["silo", "vondel-audiobookshelf", "vondel-jellyfin"]'
+	verify_companion "$json" "both$sfx" "vondel-audiobookshelf" "no"
+	verify_companion "$json" "both$sfx" "vondel-jellyfin" "no"
+	verify_vondel "$json" "both$sfx"
+
+	# Combination E: base + both companions + diagnostics override. The delta is
+	# taken against the BASE render, like every other combination: the diagnostics
+	# file only ever touches the two companion services, which are new relative to
+	# the base and so are judged by verify_companion in diagnostics mode rather
+	# than by the delta. Diffing against the two-companion combination instead
+	# would flag the loopback ports and default-network attachment this file
+	# exists to add, while gaining nothing — the base services are pinned to the
+	# base render either way.
+	diag_json=$(render "$base_file" "$abs_file" "$jf_file" "$diag_file")
+	verify_service_set "$diag_json" "diagnostics$sfx" "$with_both"
+	verify_top_level_networks "$diag_json" "diagnostics$sfx" "$nets_compat"
+	verify_overlay_delta "$base_json" "$diag_json" "diagnostics$sfx" "$delta_both"
+	verify_compat_network_membership "$diag_json" "diagnostics$sfx" '["silo", "vondel-audiobookshelf", "vondel-jellyfin"]'
+	verify_companion "$diag_json" "diagnostics$sfx" "vondel-audiobookshelf" "yes"
+	verify_companion "$diag_json" "diagnostics$sfx" "vondel-jellyfin" "yes"
+	verify_vondel "$diag_json" "diagnostics$sfx"
+}
+
+# Pass 1: committed defaults only.
+render_env_file="/dev/null"
+scan_combinations ""
+
+# Pass 2: the operator's .env, when there is one. Every value in these contracts
+# that matters is interpolated (image, enrollment file, diagnostic port), so a
+# defaults-only scan judges a configuration nobody deploys.
+if [[ -f "$compose_dir/.env" ]]; then
+	echo "verify-compat-compose: re-scanning with the operator .env"
+	render_env_file="$compose_dir/.env"
+	scan_combinations " .env"
+fi
 
 if [[ "$failures" -ne 0 ]]; then
 	printf 'verify-compat-compose: %d check(s) failed\n' "$failures" >&2

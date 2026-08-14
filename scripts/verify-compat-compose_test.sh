@@ -112,6 +112,41 @@ expect_scan_failure() {
 		return
 	fi
 
+	assert_scan_detects "$name" "$dir" "$expected"
+}
+
+# expect_scan_failure_built <name> <builder-fn> <expected-FAIL-substring>
+#
+# Same contract, for tampers that cannot be expressed as one sed over one
+# committed file: an `include:` directive needs the file it includes to exist,
+# and an operator-.env tamper edits no compose file at all. The builder receives
+# the case directory, which already holds a fresh copy of the four committed
+# files, and must create or edit whatever the case needs.
+expect_scan_failure_built() {
+	local name=$1 builder=$2 expected=$3
+	local dir="$workdir/case-$((passed + failed))"
+
+	if [[ -z "$expected" ]]; then
+		printf 'test bug: %s declares no expected failure message\n' "$name" >&2
+		report fail "$name"
+		return
+	fi
+
+	fresh_copy "$dir"
+	if ! "$builder" "$dir"; then
+		printf 'tamper builder failed for %s\n' "$name" >&2
+		report fail "$name"
+		return
+	fi
+
+	assert_scan_detects "$name" "$dir" "$expected"
+}
+
+# assert_scan_detects <name> <case-dir> <expected-FAIL-substring>
+# The shared assertion: the scan must fail, must fail for the named reason, must
+# not have crashed, and must have reached its summary.
+assert_scan_detects() {
+	local name=$1 dir=$2 expected=$3
 	local out status
 	out=$("$verifier" "$dir" 2>&1) && status=0 || status=$?
 	if [[ "$status" -eq 0 ]]; then
@@ -217,7 +252,7 @@ expect_scan_failure \
 	"detects a public image source" \
 	"$abs_file" \
 	"s|ghcr.io/vondel-media/vondel-audiobookshelf:latest|docker.io/library/audiobookshelf:latest|" \
-	"image must default to the private ghcr.io/vondel-media registry"
+	"image must resolve to the private ghcr.io/vondel-media registry"
 
 expect_scan_failure \
 	"detects a non-loopback diagnostic binding" \
@@ -551,7 +586,7 @@ expect_scan_failure \
 	"detects an enrollment secret backed by an arbitrary host file" \
 	"$jf_file" \
 	"s|file: \${VONDEL_JELLYFIN_ENROLLMENT_FILE:-.*}|file: /etc/passwd|" \
-	"enrollment secret must be the committed"
+	"enrollment secret must resolve to the committed"
 
 # The same defeat one level indirect: leave the committed secret alone, add a
 # second host-backed secret and point the companion's source at it.
@@ -562,7 +597,137 @@ expect_scan_failure \
 	 s|^secrets:\$|secrets:\\
   vondel_audiobookshelf_alt:\\
     file: /etc/hosts|" \
-	"enrollment secret must be the committed"
+	"enrollment secret must resolve to the committed"
+
+# --- Default-deny at the TOP LEVEL -------------------------------------------
+#
+# Every case below makes ZERO service-level change. While the overlay delta
+# diffed only `.services`, all of them passed the whole scan.
+
+# The base stack's own network, redefined as external and renamed: postgres,
+# redis, silo and meilisearch are all moved onto an attacker-named bridge that
+# whatever else is attached to it can reach.
+expect_scan_failure \
+	"detects an overlay moving the base stack onto an external network" \
+	"$abs_file" \
+	"/^networks:\$/a\\
+  default:\\
+    external: true\\
+    name: attacker_shared_bridge
+" \
+	"overlay modified base network default"
+
+# The same effect at one remove: the overlay itself looks untouched apart from
+# an `include:` line, and the payload lives in the included file.
+build_include_external_network() {
+	local dir=$1
+	cat >"$dir/compat-extra.yml" <<'YAML'
+networks:
+  default:
+    external: true
+    name: attacker_shared_bridge
+YAML
+	printf '\ninclude:\n  - ./compat-extra.yml\n' >>"$dir/$abs_file"
+	return 0
+}
+expect_scan_failure_built \
+	"detects an external network pulled in by an include directive" \
+	build_include_external_network \
+	"overlay modified base network default"
+
+# vondel-compat is ADDED by the overlay, so the delta has nothing to compare it
+# against; the top-level network key allowlist is what rejects this. macvlan
+# with a parent interface bridges the "internal" companion network straight onto
+# the host LAN.
+expect_scan_failure \
+	"detects a macvlan driver bridging vondel-compat onto the host LAN" \
+	"$jf_file" \
+	"/^  vondel-compat:\$/a\\
+    driver: macvlan\\
+    driver_opts:\\
+      parent: eth0
+" \
+	"top-level network keys outside the allowlist"
+
+# The volumes and secrets sections are diffed the same way. Each addition has to
+# be referenced by a service, because `docker compose config` prunes top-level
+# entries nothing uses — which is also why an unreferenced one is inert.
+expect_scan_failure \
+	"detects an unexpected top-level volume added by an overlay" \
+	"$abs_file" \
+	"/^volumes:\$/a\\
+  attacker-cache:
+s|^      - vondel-audiobookshelf-state:/var/lib/vondel-compat\$|      - vondel-audiobookshelf-state:/var/lib/vondel-compat\\
+      - attacker-cache:/var/cache/attacker|" \
+	"overlay added unexpected volume(s)"
+
+expect_scan_failure \
+	"detects an unexpected top-level secret added by an overlay" \
+	"$jf_file" \
+	"/^secrets:\$/a\\
+  attacker_hosts:\\
+    file: /etc/hosts
+s|^      - source: vondel_jellyfin_enrollment\$|      - source: attacker_hosts\\
+        target: attacker_hosts\\
+      - source: vondel_jellyfin_enrollment|" \
+	"overlay added unexpected secret(s)"
+
+# --- The Vondel service's own network membership -----------------------------
+#
+# silo.networks is the one key an overlay may touch, so both halves of it are
+# pinned. Neither of these adds, removes, or otherwise alters any service.
+
+expect_scan_failure \
+	"detects silo being bridged into another stack's network" \
+	"$jf_file" \
+	"/^networks:\$/a\\
+  lateral:\\
+    external: true\\
+    name: attacker_stack_default
+s|^      default: {}\$|      default: {}\\
+      lateral: {}|" \
+	"top-level networks must be exactly"
+
+expect_scan_failure \
+	"detects silo claiming a base service's alias on vondel-compat" \
+	"$jf_file" \
+	"s|^      vondel-compat: {}\$|      vondel-compat:\\
+        aliases:\\
+          - postgres\\
+          - redis|" \
+	"the Vondel service must declare no network options"
+
+# --- The base file is not a trusted input ------------------------------------
+#
+# The overlay delta uses the base render as its own baseline, so a host escape
+# planted in docker-compose.yml is the baseline rather than a finding. The base
+# service key allowlist is what catches it. (Keys only: base VALUES are not
+# pinned — see the header. A base change that stays inside the allowlisted keys
+# is still invisible here and still needs human review.)
+expect_scan_failure \
+	"detects a host escape planted in the base compose file" \
+	"docker-compose.yml" \
+	"/^  silo:\$/a\\
+    privileged: true\\
+    pid: host
+" \
+	"silo declares keys outside the base service allowlist"
+
+# --- Operator .env interpolation ---------------------------------------------
+#
+# Every value that matters in these contracts is interpolated. Rendering only
+# with --env-file /dev/null judges a configuration nobody deploys: this .env
+# reproduces, invisibly, the exact tamper the arbitrary-host-file case above
+# catches in the committed defaults.
+build_env_redirecting_secret() {
+	local dir=$1
+	printf 'VONDEL_JELLYFIN_ENROLLMENT_FILE=/etc/passwd\n' >"$dir/.env"
+	return 0
+}
+expect_scan_failure_built \
+	"detects an operator .env redirecting the enrollment secret to a host file" \
+	build_env_redirecting_secret \
+	"[jellyfin .env] vondel-jellyfin enrollment secret must resolve to the committed"
 
 # --- Summary -----------------------------------------------------------------
 
