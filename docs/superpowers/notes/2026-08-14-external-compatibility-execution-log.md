@@ -59,7 +59,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 8 committed, closing every finding of the third full review; a fourth full review is next.
+Status: fix round 9 committed, closing every finding of the fourth full review; a fifth full review is next.
 
 Initial implementation commit:
 
@@ -223,6 +223,20 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
 - Deferred, recorded rather than silently dropped: profile-aware collection ownership (visibility and mutation rights per profile) is real product work and is out of Task 1's scope by decision; the routes stay off the direct-profile surface until it exists.
 - Next continuation point: fourth full review of `81047e91..2ff7894e`.
+
+### 2026-08-14 — Foundation Task 1, fourth full review and fix round 9
+
+- Base/head commits: `2ff7894e` → `69a83a35 fix(auth): close the library collection door and finish the device binding`.
+- Fourth full review verdict on `81047e91..2ff7894e`: cannot be accepted, but for the first time no high findings — four important ones, all narrow.
+- Findings and what closed them:
+  1. Personal collections were still readable through the library routes, which the admitted library subtree covered after round 8 removed the /collections routes. A denied-routes check now runs before the subtree fallthrough and both patterns are pinned as refused.
+  2. The stream handler refused the very stream_url the server issues: playback start appends a signed session-bound token because native players cannot attach a bearer to range requests, and the handler rejected claimless requests regardless. The defect predates this task and was verified against the base before touching it. A verified token now satisfies the handler; bare and cross-session requests still refuse, all covered end to end.
+  3. The device requirement lived only in the HTTP handler, so an adapter calling the service directly could mint a device-less session, and the session table accepted one. Service and database now both refuse, with regressions at each layer.
+  4. The device-injection test asserted a status the handler never returns for a settings key that does not exist. It now writes a real device-scoped setting with no header and reads it back on the bound device.
+- RED evidence: all four fixes reverted individually fail their tests — the library reads reach the handlers, tokened delivery 401s, the service and database both accept device-less sessions.
+- Suite note: one pre-existing flake surfaced in the full run (an adminpeople cursor-tampering test whose random tamper occasionally yields a decodable cursor); it passes repeatedly in isolation, was not introduced by this branch, and is left untouched.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes (129 packages). `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes.
+- Next continuation point: fifth full review of `81047e91..69a83a35`.
 
 ## Update template
 
