@@ -68,13 +68,21 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	if peopleService != nil {
 		peopleHandler = handlers.NewV2AdminPeopleHandlerWithWake(peopleService, deps.AdminPeopleWorker)
 	}
+	// Compatibility Applications administration: platform-scoped lifecycle
+	// state and controls for the removable compatibility applications. The
+	// handler consumes the lifecycle service; it never writes application
+	// tables and never touches Docker.
+	var compatibilityHandler *handlers.V2AdminCompatibilityHandler
+	if deps.CompatApplications != nil {
+		compatibilityHandler = handlers.NewV2AdminCompatibilityHandler(deps.CompatApplications, deps.PublicURL)
+	}
 	system := handlers.NewV2SystemHandler(store)
 	// Advertise from the condition that actually mounts /auth/profile-login:
 	// the auth stack builds only with both a database and a config, and a
 	// capability that disagrees with the route table is worse than no
 	// capability at all.
 	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
-	mountV2Routes(r, system, session, authMW, adminMW, platformHandler, peopleHandler, organizationHandler, explainHandler)
+	mountV2Routes(r, system, session, authMW, adminMW, platformHandler, peopleHandler, organizationHandler, explainHandler, compatibilityHandler)
 }
 
 func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *handlers.AdminContextSessionHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware, adminHandlers ...any) {
@@ -82,6 +90,7 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 	var peopleHandler *handlers.V2AdminPeopleHandler
 	var organizationHandler *handlers.V2AdminOrganizationHandler
 	var explainHandler *handlers.V2PolicyExplainHandler
+	var compatibilityHandler *handlers.V2AdminCompatibilityHandler
 	for _, candidate := range adminHandlers {
 		switch handler := candidate.(type) {
 		case *handlers.V2AdminPlatformHandler:
@@ -92,6 +101,8 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 			organizationHandler = handler
 		case *handlers.V2PolicyExplainHandler:
 			explainHandler = handler
+		case *handlers.V2AdminCompatibilityHandler:
+			compatibilityHandler = handler
 		}
 	}
 	r.Route("/api/v2", func(r chi.Router) {
@@ -155,6 +166,19 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 						r.Get("/memberships", platform.HandleListMemberships)
 						r.Post("/memberships", platform.HandleCreateMembership)
 						r.Patch("/memberships/{membership_id}", platform.HandleUpdateMembership)
+					})
+				})
+			}
+			if compatibilityHandler != nil {
+				compatibility := compatibilityHandler
+				r.Route("/platform/compatibility", func(r chi.Router) {
+					r.Get("/applications", compatibility.HandleListApplications)
+					r.Post("/enrollments", compatibility.HandleCreateEnrollment)
+					r.Route("/applications/{instance_id}", func(r chi.Router) {
+						r.Post("/enable", compatibility.HandleEnableApplication)
+						r.Post("/disable", compatibility.HandleDisableApplication)
+						r.Post("/rotate-credential", compatibility.HandleRotateCredential)
+						r.Post("/revoke", compatibility.HandleRevokeApplication)
 					})
 				})
 			}
