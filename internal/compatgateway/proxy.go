@@ -327,6 +327,13 @@ func rewriteRedirect(resp *http.Response, route Route, endpoint *url.URL) error 
 		parsed.Scheme = ""
 		parsed.Host = ""
 	}
+	// A backslash defeats the host check: "/\evil.example/phish" parses with
+	// an empty host, but browsers normalize the backslash to "//" and leave
+	// the origin. Refuse any Location whose path opens with a backslash,
+	// bare or after the leading slash.
+	if strings.HasPrefix(parsed.Path, `\`) || strings.HasPrefix(parsed.Path, `/\`) {
+		return fmt.Errorf("compatgateway: %s redirect escapes the origin", route.App)
+	}
 	if route.StripPrefix && !strings.HasPrefix(parsed.Path, route.Prefix+"/") && parsed.Path != route.Prefix {
 		parsed.Path = route.Prefix + parsed.Path
 	}

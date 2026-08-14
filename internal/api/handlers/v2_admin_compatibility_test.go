@@ -222,6 +222,16 @@ func TestCompatibilityAdminListsReadOnlyState(t *testing.T) {
 			t.Fatalf("%s command %q must be an exact operator compose command", name, command)
 		}
 	}
+	// The state volume is Compose-project-prefixed, so a literal
+	// "docker volume rm vondel-jellyfin-state" fails as typed. The command
+	// must resolve the real name through `docker volume ls` instead.
+	if strings.Contains(row.Commands.Remove, "docker volume rm vondel-jellyfin-state") {
+		t.Fatalf("remove command %q names an unprefixed volume that does not exist", row.Commands.Remove)
+	}
+	if !strings.Contains(row.Commands.Remove, "docker volume ls") ||
+		!strings.Contains(row.Commands.Remove, "vondel-jellyfin-state") {
+		t.Fatalf("remove command %q must resolve the project-prefixed state volume via docker volume ls", row.Commands.Remove)
+	}
 	if service.actorSeen {
 		t.Fatal("a read must not record a mutation actor")
 	}
