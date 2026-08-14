@@ -57,7 +57,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 4 committed; scoped re-review pending. This exceeds the plan's fix rounds 1-3 and needs a maintainer decision if it rejects again.
+Status: fix round 5 committed; a fresh FULL review of the whole task is in progress, replacing the scoped-round cycle by maintainer decision.
 
 Initial implementation commit:
 
@@ -161,6 +161,21 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
 - External side effects: none.
 - Next continuation point: scoped re-review of `16baf555..e9255d41`, which also asks the reviewer whether the accumulated design now warrants a fresh full review rather than another scoped one.
+
+### 2026-08-14 — Foundation Task 1, fix round 5 and move to full review
+
+- Base/head commits: `e9255d41` → `c232350b fix(auth): scope playback sessions to the profile that started them`.
+- Independent review verdict on fix round 4: rejected, one critical and two important, plus an explicit process verdict that the next review should be a fresh full one rather than another scoped round. Database-owned email normalization was accepted, including that the lookup preserves primary-key index use. The round-2 rotation and refresh items remain clean.
+- Decision or ruling: the maintainer chose to close the two mechanical findings and the named authorization sites in one more round, then move to a full review of the whole task. The wider question the critical finding raises — where else account identity is treated as sufficient authorization — is carried into that full review rather than guessed at here.
+- Findings and what closed them:
+  1. A playback session id is a bearer for progress, stop, control, and media delivery, and those handlers compared the caller's account alone. Household profiles share an account, so a bound profile holding a sibling's session id could drive and consume that session. One helper now answers whether a caller may act on a session, narrowing to the profile only when the bearer is direct-profile bound, so players that authenticate by signed delivery URL keep the account check they have always had. Replan already compared the profile and was untouched.
+  2. The plugin asset route resolved identity through a helper that discarded the profile-bound flag, so it stayed open after the route proxy was closed. Both plugin entry points now share one resolver and one refusal, and the two-value helper was deleted rather than left as a trap.
+  3. The route inventory now also mounts the user collection service, so imported-collection routes are pinned instead of admitted invisibly by a prefix.
+- RED evidence: with the ownership helper neutered, all six sibling probes — progress, stop, control socket, stream, subtitles, transcode — reach the sibling's session. The test also asserts the sibling's session still exists after a refused stop.
+- Known gap, recorded rather than hidden: the inventory fixture cannot mount the S3-backed subtitle search, download, upload, and AI routes, which the allowed subtitle prefix admits in production without pinning them. This is stated in the test and handed to the full review.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
+- External side effects: none.
+- Next continuation point: a fresh full review of `81047e91..c232350b`, judging the accumulated design rather than the latest patch, and asked specifically to find remaining places where account identity is treated as sufficient authorization and to name tests that would still pass if the behavior they describe were removed.
 
 ## Update template
 
