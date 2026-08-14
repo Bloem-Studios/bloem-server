@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -183,34 +184,60 @@ func TestRouteTableOwnership(t *testing.T) {
 // route colliding with a family fails here instead of disappearing behind
 // the gateway.
 func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
-	source, err := os.ReadFile(filepath.Join("..", "..", "web", "src", "App.tsx"))
-	if err != nil {
-		t.Fatalf("read SPA route table: %v", err)
-	}
-	matches := regexp.MustCompile(`path="(/[^"]*)"`).FindAllStringSubmatch(string(source), -1)
-	if len(matches) < 20 {
-		t.Fatalf("found only %d SPA routes; the extraction pattern is stale", len(matches))
+	elements, files := spaRouteElements(t)
+	if len(elements) < 20 || files == 0 {
+		t.Fatalf("found %d <Route> elements across %d files; the scan is stale", len(elements), files)
 	}
 	families := map[string]bool{}
 	for _, route := range RouteTable() {
 		families[strings.ToLower(strings.TrimPrefix(route.Prefix, "/"))] = true
 	}
+
+	literal := regexp.MustCompile(`\spath="([^"]*)"`)
 	seen := map[string]bool{}
-	for _, match := range matches {
+	caseSensitive := map[string]bool{}
+	relative := 0
+	for _, element := range elements {
+		// A route whose path this scan cannot read is a failure, not a gap:
+		// path={ROUTE_CONST}, path={"/genres"}, and template literals would
+		// otherwise be swallowed by a family without anyone noticing.
+		if strings.Contains(element, "path={") || strings.Contains(element, "path=`") {
+			t.Fatalf("SPA route declares a non-literal path this pin cannot read: %s", strings.Join(strings.Fields(element), " "))
+		}
+		match := literal.FindStringSubmatch(element)
+		if match == nil {
+			continue
+		}
+		// Only an absolute path contributes a first URL segment. A relative
+		// nested path ("users" under "/admin/*") resolves beneath its
+		// ancestor, so its first segment is the ancestor's — already checked
+		// here in its own right.
+		if !strings.HasPrefix(match[1], "/") {
+			relative++
+			continue
+		}
 		segment := firstSegment(match[1])
 		if segment == "" || segment == "*" || strings.HasPrefix(segment, ":") {
 			continue
 		}
 		seen[segment] = true
-		if !families[strings.ToLower(segment)] {
-			continue
+		if strings.Contains(element, "caseSensitive") {
+			caseSensitive[segment] = true
 		}
-		if !reservedNativeSegments[segment] {
+		if families[strings.ToLower(segment)] && !reservedNativeSegments[segment] {
 			t.Fatalf("SPA route segment %q collides with a gateway family and is not reserved", segment)
 		}
 	}
-	// The reserved set must not grow beyond what the SPA actually serves:
-	// a stale entry silently withholds a family from the gateway.
+
+	// The scan must be seeing the whole tree, nested routes included: the
+	// admin section alone contributes dozens of relative children, and a
+	// scanner that stops at the first container would report none.
+	if relative < 10 {
+		t.Fatalf("scan found only %d relative nested routes; it is not walking the whole tree", relative)
+	}
+
+	// The reserved set must not grow beyond what the SPA actually serves: a
+	// stale entry silently withholds a family from the gateway.
 	for segment := range reservedNativeSegments {
 		if !seen[segment] {
 			t.Fatalf("reserved segment %q is not an SPA route any more", segment)
@@ -218,7 +245,99 @@ func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
 		if !families[strings.ToLower(segment)] {
 			t.Fatalf("reserved segment %q collides with no gateway family; reserving it is pointless", segment)
 		}
+		// Reservation is lowercase-exact, so the SPA route must be too.
+		// React Router matches case-insensitively by default, which would
+		// have the SPA claim /Search while the gateway routes it to Jellyfin
+		// — the two halves of one origin disagreeing about who owns a path.
+		if !caseSensitive[segment] {
+			t.Fatalf("SPA route %q must set caseSensitive: the gateway reserves only the lowercase form", segment)
+		}
 	}
+}
+
+// spaRouteElements returns every <Route …> opening tag in web/src, so a route
+// declared outside App.tsx cannot escape the pin. Brace depth is tracked so
+// an element={<Page />} attribute does not end the tag early.
+func spaRouteElements(t *testing.T) ([]string, int) {
+	t.Helper()
+	var elements []string
+	files := 0
+	root := filepath.Join("..", "..", "web", "src")
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || strings.Contains(entry.Name(), ".test.") {
+			return nil
+		}
+		if ext := filepath.Ext(path); ext != ".tsx" && ext != ".ts" {
+			return nil
+		}
+		source, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		found := routeOpeningTags(string(source))
+		if len(found) > 0 {
+			files++
+			elements = append(elements, found...)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("scan SPA sources: %v", err)
+	}
+	return elements, files
+}
+
+// routeOpeningTags returns the attribute region of every <Route> in one
+// source file, nested routes included. A container route holds its whole
+// child tree inside element={…}, so a region ends at the first "&gt;" outside
+// braces *or* at the first nested route tag, whichever comes first, and the
+// scan resumes just past the tag name rather than past the region — otherwise
+// every child of a container is invisible.
+func routeOpeningTags(source string) []string {
+	var tags []string
+	for idx := 0; idx < len(source); {
+		offset := strings.Index(source[idx:], "<Route")
+		if offset < 0 {
+			break
+		}
+		start := idx + offset
+		next := start + len("<Route")
+		idx = next
+		// "<Routes>" is the container element and "<RouteAnnouncer />" is a
+		// component; neither declares a path.
+		if next < len(source) && isIdentifierByte(source[next]) {
+			continue
+		}
+		depth, end := 0, -1
+		for i := next; i < len(source) && end < 0; i++ {
+			switch source[i] {
+			case '{':
+				depth++
+			case '}':
+				depth--
+			case '>':
+				if depth == 0 {
+					end = i
+				}
+			case '<':
+				if strings.HasPrefix(source[i:], "<Route") {
+					end = i
+				}
+			}
+		}
+		if end < 0 {
+			end = len(source)
+		}
+		tags = append(tags, source[start:end])
+	}
+	return tags
+}
+
+func isIdentifierByte(c byte) bool {
+	return c == '_' || c == '-' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
 // The route table is static configuration: mutating a returned copy must not
@@ -860,5 +979,73 @@ func TestChunkedRequestBodyLimit(t *testing.T) {
 	gateway.ServeHTTP(rec, req)
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("got status %d, want 413", rec.Code)
+	}
+}
+
+// --- Path encoding across the strip ----------------------------------------
+
+// Stripping must operate on the escaped path as well as the decoded one.
+// Rewriting only URL.Path and clearing RawPath re-encodes the request line
+// from the decoded form, which turns an encoded slash into a real separator
+// and hands the companion a path its client never asked for.
+func TestStrippedFamiliesPreservePathEncoding(t *testing.T) {
+	cases := []struct {
+		name string
+		path string
+		want string
+	}{
+		{"legacy emby prefix", "/emby/Items/a%2Fb/Images", "/Items/a%2Fb/Images"},
+		{"legacy jellyfin prefix", "/jellyfin/Items/a%2Fb/Images", "/Items/a%2Fb/Images"},
+		{"audiobookshelf prefix", "/audiobookshelf/api/items/a%2Fb", "/api/items/a%2Fb"},
+		{"unstripped family", "/Items/a%2Fb/Images", "/Items/a%2Fb/Images"},
+		{"plain path keeps working", "/emby/System/Info", "/System/Info"},
+		{"encoded space", "/emby/Items/a%20b", "/Items/a%20b"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			transport := &recordingTransport{}
+			states := &fakeStates{}
+			states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+			states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+			gateway := newTestGateway(t, states, transport)
+
+			rec := httptest.NewRecorder()
+			gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
+			upstream := transport.recorded()
+			if len(upstream) != 1 {
+				t.Fatalf("expected one upstream request, got %d (status %d)", len(upstream), rec.Code)
+			}
+			if got := upstream[0].URL.EscapedPath(); got != tc.want {
+				t.Fatalf("upstream escaped path %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// A path carrying dot segments is refused rather than forwarded: after
+// stripping, "/emby/%2e%2e%2f%2e%2e/etc/passwd" would otherwise reach the
+// companion as "/../../etc/passwd".
+func TestDotSegmentPathsAreRefused(t *testing.T) {
+	for _, path := range []string{
+		"/emby/%2e%2e%2f%2e%2e/etc/passwd",
+		"/emby/../../etc/passwd",
+		"/audiobookshelf/api/%2e%2e/secrets",
+		"/Items/..%2f..%2fetc/passwd",
+		"/jellyfin/Items/./x",
+	} {
+		transport := &recordingTransport{}
+		states := &fakeStates{}
+		states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+		states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+		gateway := newTestGateway(t, states, transport)
+
+		rec := httptest.NewRecorder()
+		gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("path %q answered %d, want 400", path, rec.Code)
+		}
+		if len(transport.recorded()) != 0 {
+			t.Fatalf("path %q was forwarded to a companion", path)
+		}
 	}
 }

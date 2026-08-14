@@ -617,8 +617,12 @@ function AppRoutes() {
                             }
                           />
                           <Route path="/catalog" element={<Catalog />} />
-                          <Route path="/library/:libraryId" element={<LibraryPage />} />
-                          <Route path="/search" element={<LegacySearchRedirect />} />
+                          <Route
+                            path="/library/:libraryId"
+                            caseSensitive
+                            element={<LibraryPage />}
+                          />
+                          <Route path="/search" caseSensitive element={<LegacySearchRedirect />} />
                           <Route path="/browse" element={<LegacyBrowseRedirect />} />
                           <Route path="/item/:id" element={<ItemDetail />} />
                           <Route path="/person/:id" element={<PersonDetail />} />
@@ -693,7 +697,7 @@ function AppRoutes() {
                             element={<RecommendationsSection />}
                           />
                           <Route path="/calendar" element={<Calendar />} />
-                          <Route path="/livetv" element={<LiveTV />} />
+                          <Route path="/livetv" caseSensitive element={<LiveTV />} />
                           <Route path="/notifications" element={<Notifications />} />
                           <Route
                             path="/profile/customize-home"
