@@ -4,10 +4,29 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
 )
+
+// Reasons an episode cannot be described by the contract and is left out of a
+// series document. Each one is logged with the series and episode it cost, so
+// "my episode is missing from the app" is answerable from the server log
+// instead of by guesswork.
+const (
+	dropMissingTitle    = "missing_title"
+	dropNumberBelowOne  = "season_or_episode_number_below_one"
+	dropNoPlayableFile  = "no_playable_file"
+	dropDuplicateRow    = "duplicate_episode_row"
+	dropUnknownSeriesID = "unknown_series_id"
+)
+
+// logDroppedEpisode records one episode that will not reach the client.
+func logDroppedEpisode(ctx context.Context, seriesID, episodeID, reason string) {
+	slog.WarnContext(ctx, "watch document dropped an episode",
+		"component", "watchdoc", "series_id", seriesID, "episode_id", episodeID, "reason", reason)
+}
 
 // ErrItemNotFound is returned when a detail document is asked for a content
 // identifier the profile cannot see — either because it does not exist, or
@@ -33,6 +52,11 @@ type ProfileScope struct {
 	DisabledLibraryIDs []int
 	// MaxContentRating is the profile's content-rating ceiling.
 	MaxContentRating string
+	// MaxPlaybackQuality is the profile's effective quality ceiling. It reaches
+	// the file lookup because a file above the ceiling is one the playback
+	// endpoint will refuse: naming it here would render a Play button that
+	// cannot work.
+	MaxPlaybackQuality string
 }
 
 // Item is a movie or a series the profile may see.
@@ -97,8 +121,10 @@ type Reader interface {
 	Episodes(ctx context.Context, scope ProfileScope, seriesID string) ([]Episode, error)
 	// FilesByContentIDs maps each content identifier that has a playable file
 	// to that file's identifier. Identifiers with no playable file are absent
-	// from the map rather than mapped to zero.
-	FilesByContentIDs(ctx context.Context, contentIDs []string) (map[string]int64, error)
+	// from the map rather than mapped to zero. The scope is passed because
+	// playability is per viewer: a version in a library the profile may not
+	// see, or above its quality ceiling, is not a file this profile can play.
+	FilesByContentIDs(ctx context.Context, scope ProfileScope, contentIDs []string) (map[string]int64, error)
 	// Progress returns the profile's rows for the given identifiers. A row for
 	// an episode of a requested series carries the series' identifier in
 	// ContentID and the episode's in EpisodeID, because the stored row has no
@@ -117,7 +143,7 @@ func ComposeHome(ctx context.Context, reader Reader, scope ProfileScope) (Docume
 	}
 
 	ordered := orderLibraryItems(items)
-	fileIDs, err := resolveFiles(ctx, reader, playableContentIDs(ordered))
+	fileIDs, err := resolveFiles(ctx, reader, scope, playableContentIDs(ordered))
 	if err != nil {
 		return Document{}, err
 	}
@@ -125,7 +151,7 @@ func ComposeHome(ctx context.Context, reader Reader, scope ProfileScope) (Docume
 	claimedFiles := map[int64]bool{}
 	documentItems := make([]DocumentItem, 0, len(ordered))
 	for _, item := range ordered {
-		documentItem, ok := newLibraryDocumentItem(item, fileIDs, claimedFiles)
+		documentItem, ok := newLibraryDocumentItem(item, fileIDs, claimedFiles, requirePlayableFile)
 		if !ok {
 			continue
 		}
@@ -170,15 +196,15 @@ func ComposeItem(ctx context.Context, reader Reader, scope ProfileScope, content
 		if err != nil {
 			return Document{}, fmt.Errorf("watchdoc: reading episodes of %s: %w", item.ContentID, err)
 		}
-		ordered := orderEpisodes(episodes)
-		fileIDs, err := resolveFiles(ctx, reader, episodeContentIDs(ordered))
+		ordered := orderEpisodes(ctx, item.ContentID, episodes)
+		fileIDs, err := resolveFiles(ctx, reader, scope, episodeContentIDs(ordered))
 		if err != nil {
 			return Document{}, err
 		}
 		seasonTitles := map[int]string{}
 		seenSeasons := map[int]bool{}
 		for _, episode := range ordered {
-			documentItem, ok := newEpisodeDocumentItem(episode, item.ContentID, fileIDs, claimedFiles)
+			documentItem, ok := newEpisodeDocumentItem(ctx, episode, item.ContentID, fileIDs, claimedFiles)
 			if !ok {
 				continue
 			}
@@ -199,14 +225,15 @@ func ComposeItem(ctx context.Context, reader Reader, scope ProfileScope, content
 		}
 	}
 
-	// The requested item is subject to the same playability rule as every
-	// other item: a movie with no file is omitted rather than offered with no
-	// way to play it. A series is a container and is not file-gated.
-	fileIDs, err := resolveFiles(ctx, reader, playableContentIDs([]Item{item}))
+	// The requested item is exempt from the home document's playability rule: a
+	// viewer who navigated to a detail screen gets the screen, with Play
+	// unavailable, rather than a blank document. A series whose episodes are
+	// all unplayable already keeps its shell for the same reason.
+	fileIDs, err := resolveFiles(ctx, reader, scope, playableContentIDs([]Item{item}))
 	if err != nil {
 		return Document{}, err
 	}
-	if root, ok := newLibraryDocumentItem(item, fileIDs, claimedFiles); ok {
+	if root, ok := newLibraryDocumentItem(item, fileIDs, claimedFiles, allowMissingFile); ok {
 		root.Seasons = seasons
 		documentItems = append(documentItems, root)
 		documentItems = append(documentItems, episodeItems...)
@@ -357,12 +384,26 @@ func readProgress(ctx context.Context, reader Reader, scope ProfileScope, items 
 // content identifier ascending on ties and on unknown added times.
 func orderLibraryItems(items []Item) []Item {
 	ordered := make([]Item, 0, len(items))
+	// Deduplication is by identifier, not by adjacency: an item can reach this
+	// list twice through two library memberships, and the two rows need not
+	// sort next to each other. A series carries no file identifier, so nothing
+	// downstream would catch a duplicate one — the map is the only guard.
+	position := make(map[string]int, len(items))
 	for _, item := range items {
 		item.ContentID = strings.TrimSpace(item.ContentID)
 		item.Title = strings.TrimSpace(item.Title)
 		if item.ContentID == "" || item.Title == "" || !isLibraryKind(item.Kind) {
 			continue
 		}
+		if index, seen := position[item.ContentID]; seen {
+			// Keep the most recently added row, deterministically, whatever
+			// order the store answered in.
+			if compareAddedAt(item.AddedAt, ordered[index].AddedAt) < 0 {
+				ordered[index] = item
+			}
+			continue
+		}
+		position[item.ContentID] = len(ordered)
 		ordered = append(ordered, item)
 	}
 	sort.SliceStable(ordered, func(i, j int) bool {
@@ -372,17 +413,7 @@ func orderLibraryItems(items []Item) []Item {
 		}
 		return left.ContentID < right.ContentID
 	})
-	// Duplicates are adjacent under the sort, so the survivor is the row with
-	// the most recent added time — deterministic whatever order the store
-	// answered in.
-	deduplicated := ordered[:0]
-	for index, item := range ordered {
-		if index > 0 && item.ContentID == ordered[index-1].ContentID {
-			continue
-		}
-		deduplicated = append(deduplicated, item)
-	}
-	return deduplicated
+	return ordered
 }
 
 // compareAddedAt orders two added times most-recent-first, with an unknown
@@ -405,19 +436,32 @@ func compareAddedAt(left, right *time.Time) int {
 }
 
 // orderEpisodes drops episodes the contract cannot describe and returns them in
-// ascending season, episode, content identifier order.
-func orderEpisodes(episodes []Episode) []Episode {
+// ascending season, episode, content identifier order. Every drop is logged.
+func orderEpisodes(ctx context.Context, seriesID string, episodes []Episode) []Episode {
 	ordered := make([]Episode, 0, len(episodes))
 	seen := map[string]bool{}
 	for _, episode := range episodes {
 		episode.ContentID = strings.TrimSpace(episode.ContentID)
 		episode.Title = strings.TrimSpace(episode.Title)
+		if episode.ContentID == "" {
+			logDroppedEpisode(ctx, seriesID, "", dropUnknownSeriesID)
+			continue
+		}
+		// The contract requires a non-empty title. Inventing one here would be
+		// the server writing the copy the clients own, so the episode is
+		// dropped and the loss is recorded instead.
+		if episode.Title == "" {
+			logDroppedEpisode(ctx, seriesID, episode.ContentID, dropMissingTitle)
+			continue
+		}
 		// season_number and episode_number are required to be at least one, so
 		// specials (season zero) and unnumbered rows are not describable here.
-		if episode.ContentID == "" || episode.Title == "" || episode.SeasonNumber < 1 || episode.EpisodeNumber < 1 {
+		if episode.SeasonNumber < 1 || episode.EpisodeNumber < 1 {
+			logDroppedEpisode(ctx, seriesID, episode.ContentID, dropNumberBelowOne)
 			continue
 		}
 		if seen[episode.ContentID] {
+			logDroppedEpisode(ctx, seriesID, episode.ContentID, dropDuplicateRow)
 			continue
 		}
 		seen[episode.ContentID] = true
@@ -436,10 +480,21 @@ func orderEpisodes(episodes []Episode) []Episode {
 	return ordered
 }
 
+// filePolicy says whether an item may be listed without a playable file.
+type filePolicy bool
+
+const (
+	// requirePlayableFile drops a playable item with no file: a tile that
+	// cannot play is worse than an absent one.
+	requirePlayableFile filePolicy = true
+	// allowMissingFile keeps the item and omits file_id, which the contract
+	// permits. Used for the item a detail document was asked for.
+	allowMissingFile filePolicy = false
+)
+
 // newLibraryDocumentItem converts a movie or series, reporting false when the
-// item cannot be emitted: a movie with no playable file, or one whose file has
-// already been claimed by another item.
-func newLibraryDocumentItem(item Item, fileIDs map[string]int64, claimedFiles map[int64]bool) (DocumentItem, bool) {
+// item cannot be emitted under the given file policy.
+func newLibraryDocumentItem(item Item, fileIDs map[string]int64, claimedFiles map[int64]bool, policy filePolicy) (DocumentItem, bool) {
 	documentItem := DocumentItem{
 		Kind:           item.Kind,
 		ContentID:      strings.TrimSpace(item.ContentID),
@@ -465,7 +520,10 @@ func newLibraryDocumentItem(item Item, fileIDs map[string]int64, claimedFiles ma
 	}
 	fileID, ok := claimFile(fileIDs[documentItem.ContentID], claimedFiles)
 	if !ok {
-		return DocumentItem{}, false
+		if policy == requirePlayableFile {
+			return DocumentItem{}, false
+		}
+		return documentItem, true
 	}
 	documentItem.FileID = fileID
 	return documentItem, true
@@ -473,16 +531,18 @@ func newLibraryDocumentItem(item Item, fileIDs map[string]int64, claimedFiles ma
 
 // newEpisodeDocumentItem converts an episode, reporting false when it cannot
 // carry the full set of fields the clients require of an episode.
-func newEpisodeDocumentItem(episode Episode, seriesID string, fileIDs map[string]int64, claimedFiles map[int64]bool) (DocumentItem, bool) {
+func newEpisodeDocumentItem(ctx context.Context, episode Episode, seriesID string, fileIDs map[string]int64, claimedFiles map[int64]bool) (DocumentItem, bool) {
 	linkedSeriesID := strings.TrimSpace(episode.SeriesID)
 	if linkedSeriesID == "" {
 		linkedSeriesID = seriesID
 	}
 	if linkedSeriesID == "" {
+		logDroppedEpisode(ctx, seriesID, episode.ContentID, dropUnknownSeriesID)
 		return DocumentItem{}, false
 	}
 	fileID, ok := claimFile(fileIDs[episode.ContentID], claimedFiles)
 	if !ok {
+		logDroppedEpisode(ctx, linkedSeriesID, episode.ContentID, dropNoPlayableFile)
 		return DocumentItem{}, false
 	}
 	runtime := episode.RuntimeSeconds
@@ -514,11 +574,11 @@ func claimFile(fileID int64, claimedFiles map[int64]bool) (int64, bool) {
 	return fileID, true
 }
 
-func resolveFiles(ctx context.Context, reader Reader, contentIDs []string) (map[string]int64, error) {
+func resolveFiles(ctx context.Context, reader Reader, scope ProfileScope, contentIDs []string) (map[string]int64, error) {
 	if len(contentIDs) == 0 {
 		return map[string]int64{}, nil
 	}
-	fileIDs, err := reader.FilesByContentIDs(ctx, contentIDs)
+	fileIDs, err := reader.FilesByContentIDs(ctx, scope, contentIDs)
 	if err != nil {
 		return nil, fmt.Errorf("watchdoc: reading media files: %w", err)
 	}

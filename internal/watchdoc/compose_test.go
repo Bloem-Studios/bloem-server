@@ -1,9 +1,11 @@
 package watchdoc_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -151,6 +153,7 @@ type fakeReader struct {
 
 	itemsCalls    int
 	progressCalls [][]string
+	fileScopes    []watchdoc.ProfileScope
 }
 
 func (f *fakeReader) visible(contentID string) bool { return !f.restricted[contentID] }
@@ -188,10 +191,11 @@ func (f *fakeReader) Episodes(_ context.Context, _ watchdoc.ProfileScope, series
 	return f.episodes[seriesID], nil
 }
 
-func (f *fakeReader) FilesByContentIDs(_ context.Context, contentIDs []string) (map[string]int64, error) {
+func (f *fakeReader) FilesByContentIDs(_ context.Context, scope watchdoc.ProfileScope, contentIDs []string) (map[string]int64, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
+	f.fileScopes = append(f.fileScopes, scope)
 	out := map[string]int64{}
 	for _, id := range contentIDs {
 		if fileID, ok := f.files[id]; ok {
@@ -545,15 +549,27 @@ func TestWatchHomeOmitsItemsWithoutAPlayableFile(t *testing.T) {
 func TestWatchHomeDropsDuplicateContentIDsAndFileIDs(t *testing.T) {
 	reader := inventedWorld(t)
 	// A store anomaly must not produce a document every client validator
-	// rejects whole.
-	reader.items = append(reader.items, watchdoc.Item{
-		Kind: watchdoc.KindMovie, ContentID: "4242", Title: "The Invented Crossing (duplicate row)",
-		AddedAt: timePtr(at(t, "2026-08-10T09:00:00Z")),
-	})
-	reader.items = append(reader.items, watchdoc.Item{
-		Kind: watchdoc.KindMovie, ContentID: "5150", Title: "A Second Claim on One File",
-		AddedAt: timePtr(at(t, "2026-08-09T09:00:00Z")),
-	})
+	// rejects whole. The duplicate series rows are the case no other rule can
+	// mask: a series carries no file identifier, so nothing but the
+	// deduplication itself can stop the second row.
+	reader.items = append(reader.items,
+		watchdoc.Item{
+			Kind: watchdoc.KindSeries, ContentID: "8080", Title: "Eight Quiet Rooms (second membership row)",
+			AddedAt: timePtr(at(t, "2026-08-05T09:00:00Z")),
+		},
+		watchdoc.Item{
+			Kind: watchdoc.KindSeries, ContentID: "8080", Title: "Eight Quiet Rooms (third membership row)",
+			AddedAt: timePtr(at(t, "2026-08-14T09:00:00Z")),
+		},
+		watchdoc.Item{
+			Kind: watchdoc.KindMovie, ContentID: "4242", Title: "The Invented Crossing (duplicate row)",
+			AddedAt: timePtr(at(t, "2026-08-10T09:00:00Z")),
+		},
+		watchdoc.Item{
+			Kind: watchdoc.KindMovie, ContentID: "5150", Title: "A Second Claim on One File",
+			AddedAt: timePtr(at(t, "2026-08-09T09:00:00Z")),
+		},
+	)
 	reader.files["5150"] = 4242001 // already claimed by 4242
 
 	document, err := watchdoc.ComposeHome(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"})
@@ -565,11 +581,44 @@ func TestWatchHomeDropsDuplicateContentIDsAndFileIDs(t *testing.T) {
 	for _, id := range contentIDs(t, body) {
 		seen[id]++
 	}
+	if seen["8080"] != 1 {
+		t.Errorf("content_id 8080 appears %d times, want 1", seen["8080"])
+	}
 	if seen["4242"] != 1 {
 		t.Errorf("content_id 4242 appears %d times, want 1", seen["4242"])
 	}
 	if seen["5150"] != 0 {
 		t.Error("an item claiming an already-used file_id is listed")
+	}
+	// The surviving duplicate is the most recently added row, deterministically.
+	for _, raw := range body["items"].([]any) {
+		item, _ := raw.(map[string]any)
+		if item["content_id"] == "8080" && item["title"] != "Eight Quiet Rooms (third membership row)" {
+			t.Errorf("surviving duplicate = %#v, want the most recently added row", item["title"])
+		}
+	}
+}
+
+func TestWatchFileLookupsCarryTheViewerScope(t *testing.T) {
+	reader := inventedWorld(t)
+	scope := watchdoc.ProfileScope{
+		ProfileID:          "profile-restricted",
+		AllowedLibraryIDs:  []int{4},
+		MaxPlaybackQuality: "1080p",
+	}
+	if _, err := watchdoc.ComposeHome(context.Background(), reader, scope); err != nil {
+		t.Fatalf("compose home: %v", err)
+	}
+	if len(reader.fileScopes) == 0 {
+		t.Fatal("no file lookup was made")
+	}
+	// A file identifier the viewer cannot play is worse than none: the client
+	// renders a Play button that the playback endpoint then refuses. The scope
+	// has to reach the file lookup for it to be filtered there.
+	for _, seen := range reader.fileScopes {
+		if seen.MaxPlaybackQuality != "1080p" || len(seen.AllowedLibraryIDs) != 1 {
+			t.Errorf("file lookup scope = %#v, want the viewer's ceiling and libraries", seen)
+		}
 	}
 }
 
@@ -697,6 +746,87 @@ func TestWatchMovieDetailCarriesItsFileIdentifier(t *testing.T) {
 	rows, _ := body["progress"].([]any)
 	if len(rows) != 1 {
 		t.Fatalf("progress rows = %d, want 1", len(rows))
+	}
+}
+
+func TestWatchMovieDetailWithoutAPlayableFileKeepsTheItem(t *testing.T) {
+	reader := inventedWorld(t)
+	delete(reader.files, "4242")
+
+	document, err := watchdoc.ComposeItem(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"}, "4242")
+	if err != nil {
+		t.Fatalf("compose item: %v", err)
+	}
+	body := assertConformsToContract(t, document)
+
+	// A detail screen the viewer navigated to must render, with Play
+	// unavailable — a blank document is the worse answer. The home document
+	// still omits the item; only the detail root is exempt from the file gate.
+	items, _ := body["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("movie detail items = %d, want the movie itself", len(items))
+	}
+	movie, _ := items[0].(map[string]any)
+	if movie["content_id"] != "4242" {
+		t.Fatalf("movie detail item = %#v", movie)
+	}
+	if _, ok := movie["file_id"]; ok {
+		t.Errorf("movie with no playable file carries file_id %#v", movie["file_id"])
+	}
+	if document.FeaturedContentID != "4242" {
+		t.Errorf("featured_content_id = %q, want the requested item", document.FeaturedContentID)
+	}
+}
+
+func TestWatchHomeStillOmitsAMovieWithoutAPlayableFile(t *testing.T) {
+	reader := inventedWorld(t)
+	delete(reader.files, "4242")
+
+	document, err := watchdoc.ComposeHome(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"})
+	if err != nil {
+		t.Fatalf("compose home: %v", err)
+	}
+	body := assertConformsToContract(t, document)
+	for _, id := range contentIDs(t, body) {
+		if id == "4242" {
+			t.Error("home lists a movie with no playable file")
+		}
+	}
+}
+
+func TestWatchSeriesDetailLogsEveryDroppedEpisode(t *testing.T) {
+	reader := inventedWorld(t)
+	reader.episodes["8080"] = append(reader.episodes["8080"],
+		watchdoc.Episode{ContentID: "8080-s00e01", SeriesID: "8080", SeasonNumber: 0, EpisodeNumber: 1, Title: "A Room Before the Building"},
+		watchdoc.Episode{ContentID: "8080-s02e03", SeriesID: "8080", SeasonNumber: 2, EpisodeNumber: 3, Title: "The Ninth Room"},
+		watchdoc.Episode{ContentID: "8080-s02e04", SeriesID: "8080", SeasonNumber: 2, EpisodeNumber: 4},
+	)
+	reader.files["8080-s00e01"] = 8080000
+
+	var captured bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&captured, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	if _, err := watchdoc.ComposeItem(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"}, "8080"); err != nil {
+		t.Fatalf("compose item: %v", err)
+	}
+
+	// An episode that silently vanishes from a series is a support ticket
+	// nobody can answer. Every drop names the series, the episode and why.
+	logged := captured.String()
+	for _, want := range []string{"8080-s00e01", "8080-s02e03", "8080-s02e04"} {
+		if !strings.Contains(logged, want) {
+			t.Errorf("dropped episode %s is not in the log:\n%s", want, logged)
+		}
+	}
+	for _, want := range []string{"season_or_episode_number_below_one", "no_playable_file", "missing_title"} {
+		if !strings.Contains(logged, want) {
+			t.Errorf("drop reason %s is not in the log:\n%s", want, logged)
+		}
+	}
+	if !strings.Contains(logged, "series_id=8080") {
+		t.Errorf("drops do not name the series:\n%s", logged)
 	}
 }
 

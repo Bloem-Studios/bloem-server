@@ -18,6 +18,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/watchdoc"
 )
 
@@ -124,7 +127,7 @@ func (r *watchTestReader) Episodes(_ context.Context, _ watchdoc.ProfileScope, s
 	return r.episodes[seriesID], nil
 }
 
-func (r *watchTestReader) FilesByContentIDs(_ context.Context, contentIDs []string) (map[string]int64, error) {
+func (r *watchTestReader) FilesByContentIDs(_ context.Context, _ watchdoc.ProfileScope, contentIDs []string) (map[string]int64, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
@@ -258,8 +261,11 @@ func TestWatchHomeEndpointRequiresAProfile(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode error body: %v", err)
 	}
-	if body["error"] != "profile_required" {
-		t.Errorf("error = %#v, want profile_required", body["error"])
+	// The same vocabulary apimw.RequireProfile puts on the wire for every other
+	// profile-scoped route, so the handler's own guard cannot answer something
+	// the mounted route never produces.
+	if body["error"] != "bad_request" {
+		t.Errorf("error = %#v, want bad_request", body["error"])
 	}
 }
 
@@ -294,8 +300,11 @@ func TestWatchItemEndpointRequiresAProfile(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode error body: %v", err)
 	}
-	if body["error"] != "profile_required" {
-		t.Errorf("error = %#v, want profile_required", body["error"])
+	// The same vocabulary apimw.RequireProfile puts on the wire for every other
+	// profile-scoped route, so the handler's own guard cannot answer something
+	// the mounted route never produces.
+	if body["error"] != "bad_request" {
+		t.Errorf("error = %#v, want bad_request", body["error"])
 	}
 }
 
@@ -350,5 +359,310 @@ func TestWatchEndpointsWithoutAReaderAreUnavailable(t *testing.T) {
 	handler.HandleWatchHome(rr, newWatchRequest(t, "/api/v1/watch/home", "", "profile-invented"))
 	if rr.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503; body %s", rr.Code, rr.Body.String())
+	}
+}
+
+// --- catalog-backed reader -------------------------------------------------
+//
+// The adapter is where the Watch join meets the real stores. These tests drive
+// it over fakes so the store calls themselves can be asserted; the
+// database-backed test in internal/api proves the SQL those calls become.
+
+type fakeWatchBrowse struct {
+	result  *catalog.BrowseResult
+	filters catalog.BrowseFilters
+}
+
+func (f *fakeWatchBrowse) BrowsePage(_ context.Context, filters catalog.BrowseFilters, _ bool) (*catalog.BrowseResult, error) {
+	f.filters = filters
+	return f.result, nil
+}
+
+type fakeWatchItems struct {
+	items      map[string]*models.MediaItem
+	restricted map[string]bool
+	requested  [][]string
+}
+
+func (f *fakeWatchItems) GetByIDsWithAccess(_ context.Context, contentIDs []string, _ catalog.AccessFilter) ([]*models.MediaItem, error) {
+	f.requested = append(f.requested, append([]string(nil), contentIDs...))
+	found := make([]*models.MediaItem, 0, len(contentIDs))
+	for _, id := range contentIDs {
+		if item, ok := f.items[id]; ok && !f.restricted[id] {
+			found = append(found, item)
+		}
+	}
+	return found, nil
+}
+
+func (f *fakeWatchItems) EnsureAccessibleIDs(_ context.Context, contentIDs []string, _ catalog.AccessFilter) (map[string]bool, error) {
+	accessible := make(map[string]bool, len(contentIDs))
+	for _, id := range contentIDs {
+		accessible[id] = !f.restricted[id]
+	}
+	return accessible, nil
+}
+
+type fakeWatchEpisodes struct {
+	bySeries map[string][]*models.Episode
+	byID     map[string]*models.Episode
+	lookups  [][]string
+}
+
+func (f *fakeWatchEpisodes) ListBySeries(_ context.Context, seriesID string) ([]*models.Episode, error) {
+	return f.bySeries[seriesID], nil
+}
+
+func (f *fakeWatchEpisodes) GetByIDs(_ context.Context, contentIDs []string) ([]*models.Episode, error) {
+	f.lookups = append(f.lookups, append([]string(nil), contentIDs...))
+	found := make([]*models.Episode, 0, len(contentIDs))
+	for _, id := range contentIDs {
+		if episode, ok := f.byID[id]; ok {
+			found = append(found, episode)
+		}
+	}
+	return found, nil
+}
+
+type fakeWatchFiles struct {
+	byContent map[string][]*models.MediaFile
+	byEpisode map[string][]*models.MediaFile
+}
+
+func (f *fakeWatchFiles) ListByContentIDs(_ context.Context, contentIDs []string) (map[string][]*models.MediaFile, error) {
+	out := map[string][]*models.MediaFile{}
+	for _, id := range contentIDs {
+		if files, ok := f.byContent[id]; ok {
+			out[id] = files
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeWatchFiles) ListByEpisodeIDs(_ context.Context, episodeIDs []string) (map[string][]*models.MediaFile, error) {
+	out := map[string][]*models.MediaFile{}
+	for _, id := range episodeIDs {
+		if files, ok := f.byEpisode[id]; ok {
+			out[id] = files
+		}
+	}
+	return out, nil
+}
+
+type filteredProgressCall struct {
+	status    string
+	types     []string
+	libraryID *int
+	limit     int
+	offset    int
+}
+
+// fakeWatchStore implements only the three progress reads the adapter makes;
+// the embedded interface panics on anything else, so a new store call cannot
+// slip in untested.
+type fakeWatchStore struct {
+	userstore.UserStore
+	direct   map[string]userstore.WatchProgress
+	filtered []userstore.WatchProgress
+
+	directCalls     [][]string
+	filteredCalls   []filteredProgressCall
+	unfilteredCalls int
+}
+
+func (s *fakeWatchStore) ListProgressByMediaItems(_ context.Context, _ string, mediaItemIDs []string) (map[string]userstore.WatchProgress, error) {
+	s.directCalls = append(s.directCalls, append([]string(nil), mediaItemIDs...))
+	found := map[string]userstore.WatchProgress{}
+	for _, id := range mediaItemIDs {
+		if row, ok := s.direct[id]; ok {
+			found[id] = row
+		}
+	}
+	return found, nil
+}
+
+func (s *fakeWatchStore) ListProgressFiltered(_ context.Context, _, status string, types []string, libraryID *int, limit, offset int) ([]userstore.WatchProgress, error) {
+	s.filteredCalls = append(s.filteredCalls, filteredProgressCall{
+		status: status, types: append([]string(nil), types...), libraryID: libraryID, limit: limit, offset: offset,
+	})
+	wantEpisodesOnly := len(types) == 1 && types[0] == itemTypeEpisode
+	rows := make([]userstore.WatchProgress, 0, len(s.filtered))
+	for _, row := range s.filtered {
+		if wantEpisodesOnly && !strings.Contains(row.MediaItemID, "-s0") {
+			continue
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
+}
+
+func (s *fakeWatchStore) ListProgress(_ context.Context, _, _ string, _, _ int) ([]userstore.WatchProgress, error) {
+	s.unfilteredCalls++
+	return nil, nil
+}
+
+type fakeWatchStores struct{ store userstore.UserStore }
+
+func (s fakeWatchStores) ForUser(context.Context, int) (userstore.UserStore, error) {
+	return s.store, nil
+}
+func (s fakeWatchStores) Close() error { return nil }
+
+func newWatchReaderFixture(t *testing.T) (*CatalogWatchReader, *fakeWatchBrowse, *fakeWatchItems, *fakeWatchEpisodes, *fakeWatchFiles, *fakeWatchStore) {
+	t.Helper()
+	added := time.Date(2026, 8, 13, 9, 0, 0, 0, time.UTC)
+	browse := &fakeWatchBrowse{result: &catalog.BrowseResult{Items: []*models.MediaItem{
+		{ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", Runtime: 108, AddedAt: &added},
+	}}}
+	items := &fakeWatchItems{items: map[string]*models.MediaItem{
+		"4242": {ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", Runtime: 108, AddedAt: &added},
+		"1717": {ContentID: "1717", Type: itemTypeMovie, Title: "Nine Lanterns Down", Runtime: 90},
+		"8080": {ContentID: "8080", Type: itemTypeSeries, Title: "Eight Quiet Rooms"},
+		"9001": {ContentID: "9001", Type: itemTypeMovie, Title: "The Sealed Wing"},
+	}}
+	episodes := &fakeWatchEpisodes{
+		bySeries: map[string][]*models.Episode{
+			"8080": {{ContentID: "8080-s01e01", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 1, Title: "The First Locked Room", Runtime: 45}},
+		},
+		byID: map[string]*models.Episode{
+			"8080-s01e01": {ContentID: "8080-s01e01", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 1, Title: "The First Locked Room"},
+			"9001-s01e01": {ContentID: "9001-s01e01", SeriesID: "9001-series", SeasonNumber: 1, EpisodeNumber: 1, Title: "A Restricted Room"},
+		},
+	}
+	files := &fakeWatchFiles{byContent: map[string][]*models.MediaFile{}, byEpisode: map[string][]*models.MediaFile{}}
+	store := &fakeWatchStore{direct: map[string]userstore.WatchProgress{}}
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store})
+	return reader, browse, items, episodes, files, store
+}
+
+func TestWatchReaderNeverNamesAFileTheViewerCannotPlay(t *testing.T) {
+	reader, _, _, _, files, _ := newWatchReaderFixture(t)
+	// Three versions of one movie: the lowest identifier is above the viewer's
+	// quality ceiling, the next lives in a library the viewer may not see, and
+	// only the third is playable. Naming either of the first two hands the
+	// client a Play button that /playback/start refuses.
+	files.byContent["4242"] = []*models.MediaFile{
+		{ID: 4241999, MediaFolderID: 4, Resolution: "2160p"},
+		{ID: 4242000, MediaFolderID: 9, Resolution: "1080p"},
+		{ID: 4242001, MediaFolderID: 4, Resolution: "1080p"},
+	}
+
+	restricted := watchdoc.ProfileScope{
+		ProfileID:          "profile-restricted",
+		AllowedLibraryIDs:  []int{4},
+		MaxPlaybackQuality: "1080p",
+	}
+	fileIDs, err := reader.FilesByContentIDs(context.Background(), restricted, []string{"4242"})
+	if err != nil {
+		t.Fatalf("resolve files: %v", err)
+	}
+	if fileIDs["4242"] != 4242001 {
+		t.Errorf("file_id = %d, want 4242001 (the only version the viewer may play)", fileIDs["4242"])
+	}
+
+	// An unrestricted viewer still gets the lowest identifier.
+	fileIDs, err = reader.FilesByContentIDs(context.Background(), watchdoc.ProfileScope{ProfileID: "profile-open"}, []string{"4242"})
+	if err != nil {
+		t.Fatalf("resolve files: %v", err)
+	}
+	if fileIDs["4242"] != 4241999 {
+		t.Errorf("unrestricted file_id = %d, want 4241999", fileIDs["4242"])
+	}
+}
+
+func TestWatchReaderFiltersEpisodeFilesByAccessToo(t *testing.T) {
+	reader, _, _, _, files, _ := newWatchReaderFixture(t)
+	files.byEpisode["8080-s01e01"] = []*models.MediaFile{
+		{ID: 8080000, MediaFolderID: 9, Resolution: "1080p"},
+		{ID: 8080001, MediaFolderID: 4, Resolution: "1080p"},
+	}
+	fileIDs, err := reader.FilesByContentIDs(context.Background(),
+		watchdoc.ProfileScope{ProfileID: "p", AllowedLibraryIDs: []int{4}}, []string{"8080-s01e01"})
+	if err != nil {
+		t.Fatalf("resolve files: %v", err)
+	}
+	if fileIDs["8080-s01e01"] != 8080001 {
+		t.Errorf("episode file_id = %d, want 8080001", fileIDs["8080-s01e01"])
+	}
+}
+
+func TestWatchReaderAsksOnlyForEpisodeProgressRows(t *testing.T) {
+	reader, _, _, _, _, store := newWatchReaderFixture(t)
+	store.direct["4242"] = userstore.WatchProgress{MediaItemID: "4242", PositionSeconds: 10, DurationSeconds: 100, UpdatedAt: "2026-08-13T11:45:00Z"}
+	store.filtered = []userstore.WatchProgress{
+		{MediaItemID: "8080-s01e01", PositionSeconds: 960, DurationSeconds: 2700, UpdatedAt: "2026-08-13T11:50:00Z"},
+	}
+
+	rows, err := reader.Progress(context.Background(), watchdoc.ProfileScope{ProfileID: "p"}, []string{"4242", "8080"})
+	if err != nil {
+		t.Fatalf("read progress: %v", err)
+	}
+	if store.unfilteredCalls != 0 {
+		t.Errorf("the unfiltered progress listing was used %d times; a household that also reads and listens can fill that window with non-video rows", store.unfilteredCalls)
+	}
+	if len(store.filteredCalls) != 1 {
+		t.Fatalf("filtered progress calls = %#v, want one", store.filteredCalls)
+	}
+	call := store.filteredCalls[0]
+	if call.status != "" {
+		t.Errorf("status = %q, want empty so completed episodes still reach the client's merge", call.status)
+	}
+	if len(call.types) != 1 || call.types[0] != itemTypeEpisode {
+		t.Errorf("types = %#v, want [episode]", call.types)
+	}
+	if call.libraryID != nil || call.limit != watchRecentProgressRows || call.offset != 0 {
+		t.Errorf("filtered call = %#v", call)
+	}
+
+	var episodeRow watchdoc.Progress
+	for _, row := range rows {
+		if row.EpisodeID != "" {
+			episodeRow = row
+		}
+	}
+	if episodeRow.ContentID != "8080" || episodeRow.EpisodeID != "8080-s01e01" {
+		t.Errorf("episode row = %#v, want it attributed to its series", episodeRow)
+	}
+}
+
+func TestWatchReaderUnionsInProgressItemsIntoTheHomeSet(t *testing.T) {
+	reader, browse, items, _, _, store := newWatchReaderFixture(t)
+	// The viewer is part-way through a movie and an episode whose titles both
+	// fell outside the recently-added window. Without the union the longest
+	// standing viewer gets no Continue Watching at all.
+	store.filtered = []userstore.WatchProgress{
+		{MediaItemID: "1717", PositionSeconds: 30, DurationSeconds: 300, UpdatedAt: "2026-08-13T10:00:00Z"},
+		{MediaItemID: "8080-s01e01", PositionSeconds: 960, DurationSeconds: 2700, UpdatedAt: "2026-08-13T11:50:00Z"},
+		{MediaItemID: "9001-s01e01", PositionSeconds: 60, DurationSeconds: 600, UpdatedAt: "2026-08-13T11:55:00Z"},
+	}
+	// The series behind that last row is one the profile may not see.
+	items.restricted = map[string]bool{"9001-series": true}
+
+	found, err := reader.Items(context.Background(), watchdoc.ProfileScope{ProfileID: "p"})
+	if err != nil {
+		t.Fatalf("read items: %v", err)
+	}
+	byID := map[string]watchdoc.Item{}
+	for _, item := range found {
+		byID[item.ContentID] = item
+	}
+	if _, ok := byID["4242"]; !ok {
+		t.Error("the recently-added window is missing from the item set")
+	}
+	if _, ok := byID["1717"]; !ok {
+		t.Error("an in-progress movie outside the window is missing from the item set")
+	}
+	if _, ok := byID["8080"]; !ok {
+		t.Error("the series behind an in-progress episode is missing from the item set")
+	}
+	if _, ok := byID["9001-series"]; ok {
+		t.Error("a restricted series was unioned in through its progress row")
+	}
+	// The union is access-checked through the item repository, not assumed.
+	if len(items.requested) == 0 {
+		t.Error("unioned items were not re-resolved with the viewer's access filter")
+	}
+	if browse.filters.Limit != watchHomeItemLimit {
+		t.Errorf("browse limit = %d, want %d", browse.filters.Limit, watchHomeItemLimit)
 	}
 }

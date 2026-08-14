@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -106,22 +105,24 @@ func (h *WatchHandler) requestScope(w http.ResponseWriter, r *http.Request) (wat
 	}
 	profileID := strings.TrimSpace(apimw.GetProfileID(r.Context()))
 	if profileID == "" {
-		writeError(w, http.StatusBadRequest, "profile_required", "A profile is required for Watch documents")
+		// The same vocabulary apimw.RequireProfile puts on the wire ahead of
+		// this handler. Two spellings of one refusal on one surface would leave
+		// a client branching on which route it happened to call.
+		writeError(w, http.StatusBadRequest, "bad_request", "X-Profile-Id header is required")
 		return watchdoc.ProfileScope{}, false
 	}
-	scope := watchdoc.ProfileScope{
-		UserID:    apimw.GetUserID(r.Context()),
-		ProfileID: profileID,
-	}
-	if viewer, ok := access.GetScope(r.Context()); ok {
-		scope.AllowedLibraryIDs = viewer.AllowedLibraryIDs
-		scope.DisabledLibraryIDs = viewer.DisabledLibraryIDs
-		scope.MaxContentRating = viewer.MaxContentRating
-		if viewer.UserID != 0 {
-			scope.UserID = viewer.UserID
-		}
-	}
-	return scope, true
+	// requestAccessFilter is the one place the viewer scope is read into a
+	// catalog filter; deriving from it is how the playback-quality ceiling
+	// reaches the file lookup instead of being quietly dropped here.
+	filter := requestAccessFilter(r)
+	return watchdoc.ProfileScope{
+		UserID:             filter.UserID,
+		ProfileID:          profileID,
+		AllowedLibraryIDs:  filter.AllowedLibraryIDs,
+		DisabledLibraryIDs: filter.DisabledLibraryIDs,
+		MaxContentRating:   filter.MaxContentRating,
+		MaxPlaybackQuality: filter.MaxPlaybackQuality,
+	}, true
 }
 
 func writeWatchDocument(w http.ResponseWriter, document watchdoc.Document) {
@@ -196,7 +197,15 @@ func NewCatalogWatchReader(
 
 var _ watchdoc.Reader = (*CatalogWatchReader)(nil)
 
-// Items returns the most recently added movies and series the profile may see.
+// Items returns the most recently added movies and series the profile may see,
+// unioned with whatever the profile is part-way through.
+//
+// The window alone is not enough: a viewer whose Continue Watching titles are
+// all older than the hundred most recently added items would get a home
+// document with nothing to resume — the longer they have used the server, the
+// worse it gets. The union is resolved through GetByIDsWithAccess, so an item
+// that arrives through a progress row is access-checked exactly like one that
+// arrives through browse.
 //
 // The browse page is re-checked against EnsureAccessibleIDs, which applies the
 // per-item EXISTS / NOT EXISTS library predicates. Browse's own disabled-library
@@ -221,30 +230,130 @@ func (r *CatalogWatchReader) Items(ctx context.Context, scope watchdoc.ProfileSc
 	if err != nil {
 		return nil, err
 	}
-	if result == nil || len(result.Items) == 0 {
-		return nil, nil
-	}
 
-	contentIDs := make([]string, 0, len(result.Items))
-	for _, item := range result.Items {
+	window := []*models.MediaItem{}
+	if result != nil {
+		window = result.Items
+	}
+	contentIDs := make([]string, 0, len(window))
+	listed := make(map[string]bool, len(window))
+	for _, item := range window {
+		if item == nil {
+			continue
+		}
 		contentIDs = append(contentIDs, item.ContentID)
+		listed[item.ContentID] = true
 	}
 	accessible := map[string]bool{}
-	if r.items != nil {
+	if r.items != nil && len(contentIDs) > 0 {
 		accessible, err = r.items.EnsureAccessibleIDs(ctx, contentIDs, filter)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	items := make([]watchdoc.Item, 0, len(result.Items))
-	for _, item := range result.Items {
-		if r.items != nil && !accessible[item.ContentID] {
+	items := make([]watchdoc.Item, 0, len(window))
+	for _, item := range window {
+		if item == nil || (r.items != nil && !accessible[item.ContentID]) {
 			continue
 		}
 		items = append(items, watchItemFromMediaItem(item))
 	}
-	return items, nil
+
+	resumed, err := r.itemsInProgress(ctx, scope, filter, listed)
+	if err != nil {
+		return nil, err
+	}
+	return append(items, resumed...), nil
+}
+
+// itemsInProgress resolves the movies and series behind the profile's recent
+// progress rows that the browse window did not already list. An episode row is
+// resolved to its series, which is what a Watch document can name.
+func (r *CatalogWatchReader) itemsInProgress(
+	ctx context.Context,
+	scope watchdoc.ProfileScope,
+	filter catalog.AccessFilter,
+	listed map[string]bool,
+) ([]watchdoc.Item, error) {
+	if r.stores == nil || r.items == nil {
+		return nil, nil
+	}
+	store, err := r.stores.ForUser(ctx, scope.UserID)
+	if err != nil {
+		return nil, err
+	}
+	// Video only: an audiobook or ebook row cannot become a Watch item, and
+	// letting those rows consume the window would hide the ones that can.
+	rows, err := store.ListProgressFiltered(ctx, scope.ProfileID, "",
+		[]string{itemTypeMovie, itemTypeSeries, itemTypeEpisode}, nil, watchRecentProgressRows, 0)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	progressed := make([]string, 0, len(rows))
+	seen := make(map[string]bool, len(rows))
+	for _, row := range rows {
+		if row.MediaItemID == "" || listed[row.MediaItemID] || seen[row.MediaItemID] {
+			continue
+		}
+		seen[row.MediaItemID] = true
+		progressed = append(progressed, row.MediaItemID)
+	}
+	if len(progressed) == 0 {
+		return nil, nil
+	}
+
+	// An episode row names an episode; the document names its series. The
+	// episode identifiers are then dropped from the catalog lookup rather than
+	// asked about — they are not media_items rows and never will be.
+	isEpisode := make(map[string]bool)
+	candidates := make([]string, 0, len(progressed))
+	if r.episodes != nil {
+		episodes, err := r.episodes.GetByIDs(ctx, progressed)
+		if err != nil {
+			return nil, err
+		}
+		for _, episode := range episodes {
+			if episode == nil || episode.ContentID == "" {
+				continue
+			}
+			isEpisode[episode.ContentID] = true
+			if episode.SeriesID == "" || listed[episode.SeriesID] || seen[episode.SeriesID] {
+				continue
+			}
+			seen[episode.SeriesID] = true
+			candidates = append(candidates, episode.SeriesID)
+		}
+	}
+	for _, id := range progressed {
+		if !isEpisode[id] {
+			candidates = append(candidates, id)
+		}
+	}
+	if len(candidates) == 0 {
+		return nil, nil
+	}
+
+	found, err := r.items.GetByIDsWithAccess(ctx, candidates, filter)
+	if err != nil {
+		return nil, err
+	}
+	resumed := make([]watchdoc.Item, 0, len(found))
+	for _, item := range found {
+		if item == nil || listed[item.ContentID] {
+			continue
+		}
+		if item.Type != itemTypeMovie && item.Type != itemTypeSeries {
+			continue
+		}
+		listed[item.ContentID] = true
+		resumed = append(resumed, watchItemFromMediaItem(item))
+	}
+	return resumed, nil
 }
 
 // Item returns one movie or series, applying the viewer's access predicates.
@@ -314,7 +423,13 @@ func (r *CatalogWatchReader) Episodes(ctx context.Context, _ watchdoc.ProfileSco
 // FilesByContentIDs resolves the playable file for movie and episode
 // identifiers alike. Both stores exclude files marked missing and order by
 // identifier, so the file named for an item is the same one on every request.
-func (r *CatalogWatchReader) FilesByContentIDs(ctx context.Context, contentIDs []string) (map[string]int64, error) {
+//
+// Every version is put through catalog.FilterMediaFilesByAccess first — the
+// same predicate the detail and item surfaces apply, and the one
+// /playback/start enforces before it will mint a plan. Without it a document
+// can name a version in a library the profile may not see, or above its
+// quality ceiling, and the client renders a Play button that answers 404.
+func (r *CatalogWatchReader) FilesByContentIDs(ctx context.Context, scope watchdoc.ProfileScope, contentIDs []string) (map[string]int64, error) {
 	fileIDs := make(map[string]int64, len(contentIDs))
 	if r.files == nil || len(contentIDs) == 0 {
 		return fileIDs, nil
@@ -327,12 +442,13 @@ func (r *CatalogWatchReader) FilesByContentIDs(ctx context.Context, contentIDs [
 	if err != nil {
 		return nil, err
 	}
+	filter := watchAccessFilter(scope)
 	for _, id := range contentIDs {
-		if fileID := firstPlayableFileID(byContent[id]); fileID > 0 {
+		if fileID := firstPlayableFileID(catalog.FilterMediaFilesByAccess(byContent[id], filter)); fileID > 0 {
 			fileIDs[id] = fileID
 			continue
 		}
-		if fileID := firstPlayableFileID(byEpisode[id]); fileID > 0 {
+		if fileID := firstPlayableFileID(catalog.FilterMediaFilesByAccess(byEpisode[id], filter)); fileID > 0 {
 			fileIDs[id] = fileID
 		}
 	}
@@ -375,7 +491,11 @@ func (r *CatalogWatchReader) Progress(ctx context.Context, scope watchdoc.Profil
 	if err != nil {
 		return nil, err
 	}
-	recent, err := store.ListProgress(ctx, scope.ProfileID, "", watchRecentProgressRows, 0)
+	// Episode rows only, and every status: a household that also reads and
+	// listens would otherwise fill this window with rows no Watch document can
+	// use, while an empty status keeps completed episodes in the client's
+	// newest-write-wins merge.
+	recent, err := store.ListProgressFiltered(ctx, scope.ProfileID, "", []string{itemTypeEpisode}, nil, watchRecentProgressRows, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -486,11 +606,16 @@ func firstPlayableFileID(files []*models.MediaFile) int64 {
 	return 0
 }
 
+// watchAccessFilter rebuilds the catalog filter the handler derived the scope
+// from. The round trip through ProfileScope is what keeps the composition
+// package free of catalog types; the fields are the same ones
+// requestAccessFilter read.
 func watchAccessFilter(scope watchdoc.ProfileScope) catalog.AccessFilter {
 	return catalog.AccessFilter{
 		AllowedLibraryIDs:  scope.AllowedLibraryIDs,
 		DisabledLibraryIDs: scope.DisabledLibraryIDs,
 		MaxContentRating:   scope.MaxContentRating,
+		MaxPlaybackQuality: scope.MaxPlaybackQuality,
 		UserID:             scope.UserID,
 		ProfileID:          scope.ProfileID,
 	}

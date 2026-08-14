@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +37,13 @@ const (
 	watchMovieFileID    = 4242001
 	watchEpisodeOneFile = 8080001
 	watchEpisodeTwoFile = 8080002
+
+	// watchFillerCount fills the recently-added window exactly, so the seeded
+	// pair can only reach the document through the in-progress union.
+	watchFillerCount = 100
+	// watchForgottenContentID is the control: old, playable, and never watched,
+	// so it must stay out of the document once the window is full.
+	watchForgottenContentID = "3003"
 )
 
 // TestWatchDocumentsAreServedByTheRealRouter drives the real router end to end:
@@ -97,6 +105,15 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/home", "", token, nil)
 		if response.Code != http.StatusBadRequest {
 			t.Fatalf("home without a profile = %d %s", response.Code, response.Body.String())
+		}
+		// The vocabulary the handler's own guard must agree with: one refusal,
+		// one spelling, whichever layer answers it.
+		var body map[string]any
+		if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode refusal: %v", err)
+		}
+		if body["error"] != "bad_request" {
+			t.Errorf("error = %#v, want bad_request", body["error"])
 		}
 	})
 
@@ -183,6 +200,38 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 		}
 	})
 
+	// A hundred newer titles push the seeded pair out of the recently-added
+	// window. Continue Watching must survive that: the movie has its own
+	// progress row and the series has one through an episode, so both belong in
+	// the document even though neither is in the window. A title that is merely
+	// old, with no progress, must not come back with them.
+	t.Run("continue watching outside the window", func(t *testing.T) {
+		seedWatchFillerLibrary(t, pool)
+
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/home", "", token, profileHeaders)
+		if response.Code != http.StatusOK {
+			t.Fatalf("home = %d %s", response.Code, response.Body.String())
+		}
+		document := assertWatchDocumentConforms(t, response.Body.Bytes())
+		ids := watchContentIDs(document)
+		if len(ids) <= watchFillerCount {
+			t.Fatalf("home items = %d, want more than the %d-item window", len(ids), watchFillerCount)
+		}
+		if !contains(ids, watchMovieContentID) {
+			t.Error("an in-progress movie outside the window is missing from the home document")
+		}
+		if !contains(ids, watchSeriesContentID) {
+			t.Error("the series behind an in-progress episode is missing from the home document")
+		}
+		if contains(ids, watchForgottenContentID) {
+			t.Error("an old title with no progress was pulled back in; the union must be progress-driven")
+		}
+		rows := watchProgressRows(document)
+		if len(rows) != 2 {
+			t.Fatalf("progress rows = %d, want the movie and the episode: %s", len(rows), response.Body.String())
+		}
+	})
+
 	// Restricting the profile to the movie library must remove the series from
 	// both arrays and make its detail document unreachable.
 	t.Run("library restrictions", func(t *testing.T) {
@@ -190,11 +239,26 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 		if err != nil {
 			t.Fatalf("open user store: %v", err)
 		}
+		// Two decoy versions of the permitted movie, both with lower
+		// identifiers than the playable one: a 4K version inside the permitted
+		// library, and a 1080p version in the library the profile loses. A
+		// document naming either hands the client a Play button that
+		// /playback/start refuses.
+		if _, err := pool.Exec(ctx, `INSERT INTO media_files
+			(id, content_id, media_folder_id, file_path, file_size, duration, container, resolution)
+			VALUES (4241999, $1, $2, '/invented/films/the-invented-crossing-2160p.mp4', 4194304, 6480, 'mp4', '2160p'),
+			       (4242000, $1, $3, '/invented/films/the-invented-crossing-other-library.mp4', 1048576, 6480, 'mp4', '1080p')`,
+			watchMovieContentID, watchMovieLibraryID, watchSeriesLibraryID); err != nil {
+			t.Fatalf("seed decoy files: %v", err)
+		}
+
 		restricted := true
 		allowed := []int{watchMovieLibraryID}
+		ceiling := "1080p"
 		if err := store.UpdateProfile(ctx, profileID, userstore.UpdateProfileInput{
 			LibraryRestrictionsEnabled: &restricted,
 			AllowedLibraryIDs:          &allowed,
+			MaxPlaybackQuality:         &ceiling,
 		}); err != nil {
 			t.Fatalf("restrict profile libraries: %v", err)
 		}
@@ -210,6 +274,15 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 		}
 		if !contains(ids, watchMovieContentID) {
 			t.Errorf("restricted home lost the permitted movie: %v", ids)
+		}
+		for _, item := range watchItems(document) {
+			if item["content_id"] != watchMovieContentID {
+				continue
+			}
+			if item["file_id"] != float64(watchMovieFileID) {
+				t.Errorf("restricted movie file_id = %#v, want %d — the only version inside the viewer's libraries and quality ceiling",
+					item["file_id"], watchMovieFileID)
+			}
 		}
 		for _, row := range watchProgressRows(document) {
 			if row["content_id"] == watchSeriesContentID {
@@ -261,17 +334,46 @@ func seedWatchCatalog(t *testing.T, pool *pgxpool.Pool) {
 		{`INSERT INTO episode_libraries (episode_id, media_folder_id, first_seen_at)
 		  VALUES ($1, $3, '2026-08-11T09:00:00Z'), ($2, $3, '2026-08-11T09:00:00Z')`,
 			[]any{watchEpisodeOneID, watchEpisodeTwoID, watchSeriesLibraryID}},
-		{`INSERT INTO media_files (id, content_id, media_folder_id, file_path, file_size, duration, container)
-		  VALUES ($1, $2, $3, '/invented/films/the-invented-crossing.mp4', 1048576, 6480, 'mp4')`,
+		{`INSERT INTO media_files (id, content_id, media_folder_id, file_path, file_size, duration, container, resolution)
+		  VALUES ($1, $2, $3, '/invented/films/the-invented-crossing.mp4', 1048576, 6480, 'mp4', '1080p')`,
 			[]any{watchMovieFileID, watchMovieContentID, watchMovieLibraryID}},
-		{`INSERT INTO media_files (id, content_id, episode_id, media_folder_id, file_path, season_number, episode_number, file_size, duration, container)
-		  VALUES ($1, $5, $3, $4, '/invented/series/eight-quiet-rooms/s01e01.mp4', 1, 1, 524288, 2700, 'mp4'),
-		         ($2, $5, $6, $4, '/invented/series/eight-quiet-rooms/s01e02.mp4', 1, 2, 524288, 2700, 'mp4')`,
+		{`INSERT INTO media_files (id, content_id, episode_id, media_folder_id, file_path, season_number, episode_number, file_size, duration, container, resolution)
+		  VALUES ($1, $5, $3, $4, '/invented/series/eight-quiet-rooms/s01e01.mp4', 1, 1, 524288, 2700, 'mp4', '1080p'),
+		         ($2, $5, $6, $4, '/invented/series/eight-quiet-rooms/s01e02.mp4', 1, 2, 524288, 2700, 'mp4', '1080p')`,
 			[]any{watchEpisodeOneFile, watchEpisodeTwoFile, watchEpisodeOneID, watchSeriesLibraryID, watchSeriesContentID, watchEpisodeTwoID}},
 	}
 	for _, statement := range statements {
 		if _, err := pool.Exec(ctx, statement.sql, statement.args...); err != nil {
 			t.Fatalf("seed catalog (%s): %v", strings.TrimSpace(strings.SplitN(statement.sql, "\n", 2)[0]), err)
+		}
+	}
+}
+
+// seedWatchFillerLibrary adds a hundred titles newer than everything else, plus
+// one older title with no progress.
+func seedWatchFillerLibrary(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
+	statements := []string{
+		`INSERT INTO media_items (content_id, type, title, year, runtime, content_rating, overview)
+		 SELECT 'filler-' || n, 'movie', 'Filler Reel ' || n, 2026, 90, 'PG', 'An invented filler title.'
+		 FROM generate_series(1, ` + strconv.Itoa(watchFillerCount) + `) AS n`,
+		`INSERT INTO media_item_libraries (content_id, media_folder_id, first_seen_at)
+		 SELECT 'filler-' || n, 1, TIMESTAMPTZ '2026-08-20T09:00:00Z' + (n || ' minutes')::interval
+		 FROM generate_series(1, ` + strconv.Itoa(watchFillerCount) + `) AS n`,
+		`INSERT INTO media_files (id, content_id, media_folder_id, file_path, file_size, duration, container, resolution)
+		 SELECT 5000000 + n, 'filler-' || n, 1, '/invented/films/filler-' || n || '.mp4', 1048576, 5400, 'mp4', '1080p'
+		 FROM generate_series(1, ` + strconv.Itoa(watchFillerCount) + `) AS n`,
+		`INSERT INTO media_items (content_id, type, title, year, runtime, content_rating, overview)
+		 VALUES ('` + watchForgottenContentID + `', 'movie', 'The Long Forgotten Hallway', 2019, 95, 'PG', 'Old, playable, and never started.')`,
+		`INSERT INTO media_item_libraries (content_id, media_folder_id, first_seen_at)
+		 VALUES ('` + watchForgottenContentID + `', 1, '2026-08-01T09:00:00Z')`,
+		`INSERT INTO media_files (id, content_id, media_folder_id, file_path, file_size, duration, container, resolution)
+		 VALUES (3003001, '` + watchForgottenContentID + `', 1, '/invented/films/the-long-forgotten-hallway.mp4', 1048576, 5700, 'mp4', '1080p')`,
+	}
+	for _, statement := range statements {
+		if _, err := pool.Exec(ctx, statement); err != nil {
+			t.Fatalf("seed filler library: %v", err)
 		}
 	}
 }
