@@ -322,6 +322,14 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - Also confirmed clean, by probe rather than assertion: seventeen redirect variants all refused, path traversal and double-slash forms resolving to the safe side of the split, the route table matching the embedded router's first-segment closure exactly, and a nil state provider failing closed to unavailable rather than panicking.
 - Follow-ups queued rather than blocking: enrollment atomicity is correct but unpinned by any test, one lifecycle path begins its transaction off the pool instead of the store helper, and the sentinel mapping is exhaustive today with nothing keeping it so.
 
+### 2026-08-14 — Task 6 inverted to default-deny and merged
+
+- The companion scan no longer enumerates forbidden keys. A companion service's rendered key set must be a subset of an explicit allowlist, each entry justified in the commit and the operator guide; the previous privileged, capability, device, namespace, and build denials were deleted rather than extended, because the allowlist subsumes them. Keys that permit a value still carry value checks — the image must be the private registry, the security options must be exactly the no-new-privileges hardening, volumes must be locally defined, the secret must be file-backed.
+- Every evasion the reviewer devised is now refused, and three security-relevant Compose keys nobody had ruled on — a swapped container runtime, overridden resolution, storage options — are refused by the allowlist alone, with no rule naming them. That is the property the change exists for.
+- The implementer corrected its own dishonest test rather than shipping it: its first unknown-future-key case used an invented key that Compose rejects at schema level, so it passed against the old verifier too and proved nothing. It was replaced with real unruled keys. Recording this because it is the same failure mode the campaign has hit repeatedly, caught this time by the author.
+- Split connection settings across innocuous environment names remain a best-effort heuristic, documented as such in the script: a companion has no reason to hold connection settings at all, and the allowlist is what contains the blast radius.
+- Thirty-seven tamper cases pass; independent probes of an unruled runtime key and wholesale mount inheritance were both refused.
+
 ## Update template
 
 Append one section per material transition:
