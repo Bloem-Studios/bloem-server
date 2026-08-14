@@ -67,6 +67,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/scanqueue"
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/sections"
+	"github.com/Silo-Server/silo-server/internal/serverid"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/subtitles"
 	subtitleai "github.com/Silo-Server/silo-server/internal/subtitles/ai"
@@ -1775,7 +1776,15 @@ func NewRouter(deps Dependencies) chi.Router {
 		if authService != nil {
 			setupState = authService
 		}
-		serverIdentityHandler := handlers.NewServerIdentityHandler(settingsRepo, deps.BrandingService, setupState)
+		// One resolver per process, shared by every surface that publishes the
+		// identifier, so they cannot drift apart. A nil settings store (no
+		// database) is allowed: Resolve then reports unavailable and the
+		// endpoint answers 503 rather than inventing a value.
+		serverIdentityHandler := handlers.NewServerIdentityHandler(
+			serverid.NewResolver(settingsRepo),
+			deps.BrandingService,
+			setupState,
+		)
 		r.Get("/server/identity", serverIdentityHandler.HandleGetServerIdentity)
 		r.Get("/capabilities", handlers.NewCapabilitiesHandler().HandleGetCapabilities)
 

@@ -2,50 +2,20 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
-	"sync"
-
-	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/branding"
+	"github.com/Silo-Server/silo-server/internal/serverid"
 )
 
-// SettingServerInstanceID is the server_settings key holding this deployment's
-// stable identity. It is a PLAIN row on purpose: it is not a secret, every
-// client that reaches the server is told the value, and encrypted rows are
-// GCM-bound to their key name (see catalog.SensitiveSettingKeys), which would
-// make the identifier unreadable after any future key rename.
-//
-// The row is never seeded by a migration. It is minted on first read through
-// SetIfAbsent, so a fresh install and an upgraded install follow the identical
-// path, and a restored backup keeps the identifier it already had — correctly,
-// because it is the same server.
-const SettingServerInstanceID = "server.instance_id"
-
-// serverAPIMajorVersions are the API major versions this build serves. Clients
-// use it to decide whether a discovered server is worth connecting to at all;
-// everything finer-grained is feature-detected through GET /api/v1/capabilities
-// rather than inferred from a version.
-var serverAPIMajorVersions = []int{1}
-
-// ServerIdentitySettings is the server_settings surface the identity endpoint
-// needs. catalog.SettingsStore (and the encrypting decorator around it)
-// satisfies it.
-type ServerIdentitySettings interface {
-	Get(ctx context.Context, key string) (string, error)
-	Set(ctx context.Context, key, value string) error
-}
-
-// conditionalSettingsWriter is the optional insert-if-absent surface used to
-// mint the instance identifier without racing a concurrent node. Both
-// catalog.ServerSettingsRepo and catalog.EncryptedSettingsRepo satisfy it; the
-// fallback for a store that does not is a plain Set.
-type conditionalSettingsWriter interface {
-	SetIfAbsent(ctx context.Context, key, value string) (bool, error)
-}
+// serverAPIMajorVersions are the API major versions this build serves. Both are
+// mounted unconditionally: /api/v1 is the client surface, /api/v2 is the
+// admin/tenancy surface. Clients use the list to decide whether a discovered
+// server is worth connecting to at all; everything finer-grained is
+// feature-detected through GET /api/v1/capabilities, never inferred from a
+// version.
+var serverAPIMajorVersions = []int{1, 2}
 
 // SetupStateReporter reports whether the deployment still needs its first
 // account. *auth.Service satisfies it.
@@ -59,34 +29,29 @@ type SetupStateReporter interface {
 // Relationship to GET /api/v1/health: none. Health keeps exactly the fields it
 // has and exactly the source it has — server_name and server_id there come from
 // the Jellyfin-compatibility configuration and stay omitted when that
-// configuration is absent. Nothing reads SettingServerInstanceID into health,
-// because clients (and Jellyfin-protocol clients especially) already depend on
-// the values health returns today, and the v1 rules forbid repurposing them.
-// Scope keying uses this endpoint instead, which is why it exists.
+// configuration is absent. Nothing reads the identity setting into health,
+// because clients (Jellyfin-protocol clients especially) already depend on the
+// values health returns today, and the v1 rules forbid repurposing them. Scope
+// keying uses this endpoint instead, which is why it exists.
 type ServerIdentityHandler struct {
-	settings ServerIdentitySettings
+	identity *serverid.Resolver
 	branding *branding.Service
 	setup    SetupStateReporter
-
-	// mu guards serverID, and is held across the first resolution so
-	// concurrent first requests mint at most one candidate identifier between
-	// them. Every later request is a cached read: this endpoint is
-	// unauthenticated, and a database round trip per call would be a free
-	// amplification vector.
-	mu       sync.Mutex
-	serverID string
 }
 
-// NewServerIdentityHandler constructs the identity handler. settings and setup
-// are required for a truthful answer and are nil only where the database is
-// absent (test and fixture wiring); branding is optional and falls back to the
-// default server name.
+// NewServerIdentityHandler constructs the identity handler around the shared
+// identifier resolver. The resolver is shared rather than owned so that every
+// surface publishing the identifier — this endpoint, the local-network
+// advertisement — resolves the same value from the same place. setup is
+// required for a truthful answer and is nil only where the database is absent
+// (test and fixture wiring); branding is optional and falls back to the default
+// server name.
 func NewServerIdentityHandler(
-	settings ServerIdentitySettings,
+	identity *serverid.Resolver,
 	brandingSvc *branding.Service,
 	setup SetupStateReporter,
 ) *ServerIdentityHandler {
-	return &ServerIdentityHandler{settings: settings, branding: brandingSvc, setup: setup}
+	return &ServerIdentityHandler{identity: identity, branding: brandingSvc, setup: setup}
 }
 
 // serverIdentityResponse is the body of GET /api/v1/server/identity.
@@ -104,18 +69,18 @@ type serverIdentityResponse struct {
 
 // HandleGetServerIdentity answers the public identity probe.
 //
-// It reports 503 rather than inventing a value when the identifier cannot be
-// resolved. A per-process random identifier would be stable within one run and
-// change on restart, which silently re-keys every client's stored state for
-// that server — strictly worse than a client falling back to its origin string.
+// Every way this can fail ends in 503 with no identifier in the body. Inventing
+// one — a per-process value, or a fresh value per request — is strictly worse
+// than a client falling back to its origin string, because it silently re-keys
+// state the client has already stored against this server.
 func (h *ServerIdentityHandler) HandleGetServerIdentity(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if h.settings == nil || h.setup == nil {
+	if h.identity == nil || h.setup == nil {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Server identity is not available")
 		return
 	}
 
-	serverID, err := h.ResolveServerID(ctx)
+	serverID, err := h.identity.Resolve(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to resolve server instance id", "component", "api", "error", err)
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Server identity is not available")
@@ -140,58 +105,6 @@ func (h *ServerIdentityHandler) HandleGetServerIdentity(w http.ResponseWriter, r
 		APIVersions:   append([]int(nil), serverAPIMajorVersions...),
 		SetupComplete: !needsSetup,
 	})
-}
-
-// ResolveServerID returns this deployment's stable identifier, minting and
-// persisting one on first use. It is exported because the identifier is the
-// same value the local-network advertisement publishes, and the two must never
-// disagree.
-//
-// Minting is single-writer across concurrent nodes: SetIfAbsent only lands
-// while the row is absent or empty, and the value is then read back so a node
-// that lost the race adopts the winner instead of serving an identifier that is
-// not in the database.
-func (h *ServerIdentityHandler) ResolveServerID(ctx context.Context) (string, error) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.serverID != "" {
-		return h.serverID, nil
-	}
-
-	existing, err := h.settings.Get(ctx, SettingServerInstanceID)
-	if err != nil {
-		return "", fmt.Errorf("read %s: %w", SettingServerInstanceID, err)
-	}
-	if id := strings.TrimSpace(existing); id != "" {
-		h.serverID = id
-		return id, nil
-	}
-
-	minted := uuid.NewString()
-	writer, ok := h.settings.(conditionalSettingsWriter)
-	if !ok {
-		if err := h.settings.Set(ctx, SettingServerInstanceID, minted); err != nil {
-			return "", fmt.Errorf("write %s: %w", SettingServerInstanceID, err)
-		}
-		h.serverID = minted
-		return minted, nil
-	}
-
-	if _, err := writer.SetIfAbsent(ctx, SettingServerInstanceID, minted); err != nil {
-		return "", fmt.Errorf("write %s: %w", SettingServerInstanceID, err)
-	}
-	winner, err := h.settings.Get(ctx, SettingServerInstanceID)
-	if err != nil {
-		return "", fmt.Errorf("read %s: %w", SettingServerInstanceID, err)
-	}
-	if id := strings.TrimSpace(winner); id != "" {
-		h.serverID = id
-		return id, nil
-	}
-	// The row read back empty despite a successful write — a store that does
-	// not persist. Serve the minted value rather than failing, but do not cache
-	// it: the next request retries the write.
-	return minted, nil
 }
 
 // serverName returns the operator-facing name, which is the branding name the

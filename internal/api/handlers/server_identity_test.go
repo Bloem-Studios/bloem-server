@@ -3,23 +3,28 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"sync"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/Silo-Server/silo-server/internal/branding"
+	"github.com/Silo-Server/silo-server/internal/serverid"
 )
 
 // fakeIdentitySettings stands in for the server_settings store. It reproduces
 // the real repository's SetIfAbsent contract — a value lands only while the key
-// is absent or empty, and the caller is told whether it won the write — so a
-// test can prove the instance identifier is minted exactly once.
+// is absent or empty — and can fail reads, because "answer 503 rather than
+// serve an identifier that might change" is this endpoint's distinguishing
+// behavior. The resolution algorithm itself is tested in internal/serverid.
 type fakeIdentitySettings struct {
 	mu               sync.Mutex
 	values           map[string]string
+	getErr           error
 	setCalls         int
 	setIfAbsentCalls int
 }
@@ -32,6 +37,9 @@ func newFakeSettings(t *testing.T) *fakeIdentitySettings {
 func (f *fakeIdentitySettings) Get(_ context.Context, key string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.getErr != nil {
+		return "", f.getErr
+	}
 	return f.values[key], nil
 }
 
@@ -61,7 +69,7 @@ func (f *fakeIdentitySettings) writes() (setCalls, setIfAbsentCalls int) {
 }
 
 // fakeSetupState reports the initial-setup state the identity endpoint projects
-// as setup_complete.
+// as setup_complete, and can fail the way a database read fails.
 type fakeSetupState struct {
 	needsSetup bool
 	err        error
@@ -89,16 +97,16 @@ func performJSONRequest(t *testing.T, handler http.Handler, method, path string)
 	return response
 }
 
-// routerWith mounts the public identity and capability routes exactly as the
-// real router does: inside /api/v1, ahead of the auth routes, with no auth
-// middleware.
+// routerWith mounts the public identity and capability routes the way the real
+// router does: inside /api/v1, with no auth middleware. That the REAL router
+// mounts them that way is asserted separately, in internal/api.
 func routerWith(t *testing.T, settings *fakeIdentitySettings, setup fakeSetupState) http.Handler {
 	t.Helper()
-	var store ServerIdentitySettings
+	var store serverid.Store
 	if settings != nil {
 		store = settings
 	}
-	identity := NewServerIdentityHandler(store, brandingServiceFor(settings), setup)
+	identity := NewServerIdentityHandler(serverid.NewResolver(store), brandingServiceFor(settings), setup)
 	capabilities := NewCapabilitiesHandler()
 	router := chi.NewRouter()
 	router.Route("/api/v1", func(r chi.Router) {
@@ -131,7 +139,7 @@ func TestServerIdentityIsStableAndPublic(t *testing.T) {
 	if second.Body["server_id"] != first.Body["server_id"] {
 		t.Fatalf("server identity is not stable: %v then %v", first.Body, second.Body)
 	}
-	if stored := settings.values[SettingServerInstanceID]; stored != serverID {
+	if stored := settings.values[serverid.SettingKey]; stored != serverID {
 		t.Fatalf("stored instance id = %q, want the served %q", stored, serverID)
 	}
 	if _, setIfAbsentCalls := settings.writes(); setIfAbsentCalls != 1 {
@@ -141,7 +149,7 @@ func TestServerIdentityIsStableAndPublic(t *testing.T) {
 
 func TestServerIdentityReusesPreExistingInstanceID(t *testing.T) {
 	settings := newFakeSettings(t)
-	settings.values[SettingServerInstanceID] = "pre-existing-instance-id"
+	settings.values[serverid.SettingKey] = "pre-existing-instance-id"
 
 	response := performJSONRequest(t, routerWith(t, settings, fakeSetupState{}), http.MethodGet, "/api/v1/server/identity")
 
@@ -173,17 +181,23 @@ func TestServerIdentityReportsAPIVersionsAndSetupState(t *testing.T) {
 				t.Fatalf("status = %d, want %d", response.Status, http.StatusOK)
 			}
 			versions, ok := response.Body["api_versions"].([]any)
-			if !ok || len(versions) == 0 {
-				t.Fatalf("api_versions = %v, want a non-empty list", response.Body["api_versions"])
+			if !ok {
+				t.Fatalf("api_versions = %v, want a list", response.Body["api_versions"])
 			}
-			found := false
+			served := make([]float64, 0, len(versions))
 			for _, version := range versions {
-				if number, isNumber := version.(float64); isNumber && number == 1 {
-					found = true
+				number, isNumber := version.(float64)
+				if !isNumber {
+					t.Fatalf("api_versions contains a non-number: %v", versions)
 				}
+				served = append(served, number)
 			}
-			if !found {
-				t.Fatalf("api_versions = %v, want it to contain 1", versions)
+			// Both majors are mounted unconditionally: /api/v1 is the client
+			// surface and /api/v2 is the admin/tenancy surface.
+			for _, want := range []float64{1, 2} {
+				if !slices.Contains(served, want) {
+					t.Errorf("api_versions = %v, want it to contain %v", served, want)
+				}
 			}
 			if response.Body["setup_complete"] != tc.setupComplete {
 				t.Fatalf("setup_complete = %v, want %v", response.Body["setup_complete"], tc.setupComplete)
@@ -207,45 +221,44 @@ func TestServerIdentityServesTheOperatorFacingServerName(t *testing.T) {
 	}
 }
 
-func TestServerIdentityIsUnavailableWithoutAStore(t *testing.T) {
-	response := performJSONRequest(t, routerWith(t, nil, fakeSetupState{}), http.MethodGet, "/api/v1/server/identity")
+// The three ways this endpoint can fail all end the same way: 503 unavailable,
+// never a body carrying an identifier the server cannot stand behind.
+func TestServerIdentityRefusesRatherThanGuess(t *testing.T) {
+	failingSettings := newFakeSettings(t)
+	failingSettings.getErr = errors.New("transient read failure")
 
-	if response.Status != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, want %d: an unstable identifier is worse than none", response.Status, http.StatusServiceUnavailable)
-	}
-	if response.Body["error"] != "unavailable" {
-		t.Fatalf("error = %v, want unavailable", response.Body["error"])
+	for _, tc := range []struct {
+		name     string
+		settings *fakeIdentitySettings
+		setup    fakeSetupState
+	}{
+		{name: "no settings store", settings: nil, setup: fakeSetupState{}},
+		{name: "identifier read fails", settings: failingSettings, setup: fakeSetupState{}},
+		{name: "setup state read fails", settings: newFakeSettings(t), setup: fakeSetupState{err: errors.New("transient read failure")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			response := performJSONRequest(t, routerWith(t, tc.settings, tc.setup), http.MethodGet, "/api/v1/server/identity")
+
+			if response.Status != http.StatusServiceUnavailable {
+				t.Fatalf("status = %d, want %d", response.Status, http.StatusServiceUnavailable)
+			}
+			if response.Body["error"] != "unavailable" {
+				t.Fatalf("error = %v, want unavailable", response.Body["error"])
+			}
+			if _, present := response.Body["server_id"]; present {
+				t.Fatalf("failure body carries a server_id: %v", response.Body)
+			}
+		})
 	}
 }
 
-func TestServerIdentityMintsOneIdentifierUnderConcurrency(t *testing.T) {
-	settings := newFakeSettings(t)
-	handler := routerWith(t, settings, fakeSetupState{})
+func TestServerIdentityIsUnavailableWithoutASetupReporter(t *testing.T) {
+	identity := NewServerIdentityHandler(serverid.NewResolver(newFakeSettings(t)), nil, nil)
+	rec := httptest.NewRecorder()
 
-	const callers = 8
-	ids := make([]string, callers)
-	var wg sync.WaitGroup
-	wg.Add(callers)
-	for i := range ids {
-		go func(slot int) {
-			defer wg.Done()
-			rec := httptest.NewRecorder()
-			handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/server/identity", nil))
-			var body struct {
-				ServerID string `json:"server_id"`
-			}
-			_ = json.Unmarshal(rec.Body.Bytes(), &body)
-			ids[slot] = body.ServerID
-		}(i)
-	}
-	wg.Wait()
+	identity.HandleGetServerIdentity(rec, httptest.NewRequest(http.MethodGet, "/api/v1/server/identity", nil))
 
-	for _, id := range ids {
-		if id == "" || id != ids[0] {
-			t.Fatalf("concurrent server_id values disagree: %v", ids)
-		}
-	}
-	if stored := settings.values[SettingServerInstanceID]; stored != ids[0] {
-		t.Fatalf("stored instance id = %q, want the served %q", stored, ids[0])
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
 	}
 }

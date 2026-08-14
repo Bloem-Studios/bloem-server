@@ -3,8 +3,10 @@ package handlers
 import (
 	"net/http"
 	"slices"
+	"strconv"
 	"testing"
 
+	"github.com/Silo-Server/silo-server/internal/downloads"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
@@ -63,7 +65,7 @@ func TestCapabilitiesAdvertiseThisMilestonesFeatureTokens(t *testing.T) {
 	}
 }
 
-func TestCapabilitiesAdvertiseTheExistingPlaybackAndEventsTokens(t *testing.T) {
+func TestCapabilitiesAdvertiseTheExistingPlaybackEventsAndOfflineTokens(t *testing.T) {
 	response := performJSONRequest(t, routerWith(t, newFakeSettings(t), fakeSetupState{}), http.MethodGet, "/api/v1/capabilities")
 
 	features := capabilityStrings(t, response.Body, "features")
@@ -74,6 +76,16 @@ func TestCapabilitiesAdvertiseTheExistingPlaybackAndEventsTokens(t *testing.T) {
 	}
 	if !slices.Contains(features, "declared_event_channels") {
 		t.Errorf("features is missing the events token %q: %v", "declared_event_channels", features)
+	}
+	// The offline token names the manifest version the server actually emits at
+	// GET /downloads/{id}/manifest, so a manifest bump cannot leave the
+	// advertisement behind.
+	offline := "offline_manifest_v" + strconv.Itoa(downloads.ManifestVersion)
+	if offline != "offline_manifest_v2" {
+		t.Fatalf("offline token = %q; the contract's bundle schema pins manifest_version to 2", offline)
+	}
+	if !slices.Contains(features, offline) {
+		t.Errorf("features is missing the offline token %q: %v", offline, features)
 	}
 }
 

@@ -3,7 +3,9 @@ package handlers
 import (
 	"net/http"
 	"slices"
+	"strconv"
 
+	"github.com/Silo-Server/silo-server/internal/downloads"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
@@ -31,15 +33,22 @@ const (
 	// websocket's declared-channel handshake, reported in detail as
 	// declared_channels on /events/capability.
 	featureDeclaredEventChannels = "declared_event_channels"
+	// featureOfflineManifestPrefix names the managed offline manifest by the
+	// version GET /downloads/{id}/manifest actually emits. Composed from
+	// downloads.ManifestVersion rather than written out, so bumping the
+	// manifest DTO cannot leave a stale token advertised here.
+	featureOfflineManifestPrefix = "offline_manifest_v"
 )
 
-// mediaTypesServed are the item types this server serves to clients. The
-// vocabulary is media_items.type, the same set catalog.IsValidMediaScope
-// accepts, minus its "video" grouping scope — that is an internal scope that
-// expands to movie and series, not a media type a client can be handed.
+// mediaTypesServed are the item types this build can serve to clients — a
+// property of the software, not of what the operator happens to have in their
+// libraries. The vocabulary is media_items.type, the same set
+// catalog.IsValidMediaScope accepts, minus its "video" grouping scope, which is
+// an internal scope expanding to movie and series rather than a media type a
+// client can be handed.
 //
-// A type absent here means "this server does not serve it", which is exactly
-// how a client reads an unknown or missing entry.
+// A type absent here means "this build cannot serve it", which is exactly how a
+// client reads an unknown or missing entry.
 var mediaTypesServed = []string{
 	itemTypeMovie,
 	itemTypeSeries,
@@ -84,6 +93,7 @@ func NewCapabilitiesHandler() *CapabilitiesHandler {
 	}
 	add(playbackFeatures...)
 	add(featureDeclaredEventChannels)
+	add(featureOfflineManifestPrefix + strconv.Itoa(downloads.ManifestVersion))
 	add(featureWatchDocumentV1, featureDevicePairingV1, featureProgressSyncV1)
 
 	return &CapabilitiesHandler{
