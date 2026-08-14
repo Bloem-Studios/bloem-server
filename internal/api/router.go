@@ -199,6 +199,11 @@ type Dependencies struct {
 	// clients hitting /login, /api/*, /abs/api/*, and /abs/socket.io/* all
 	// resolve correctly. May be nil; no ABS routes are registered in that case.
 	ABSHandler absHandler
+	// CompatAPIV1 is the private Compatibility Service API v1 handler
+	// (internal/compatapi), consumed exclusively by enrolled compatibility
+	// applications. May be nil; no compat routes are registered in that
+	// case, so the surface fails closed until the trust stack is wired.
+	CompatAPIV1 http.Handler
 	// AdminContextTokens signs the short-lived administrative context JWTs.
 	// It is separate from normal account-session token validation.
 	AdminContextTokens      auth.AdminContextTokenService
@@ -1761,6 +1766,16 @@ func NewRouter(deps Dependencies) chi.Router {
 		tenantMiddleware = apimw.NewTenantMiddleware(tenancy.NewResolver(tenancy.NewStore(deps.DB)))
 	}
 	mountV2(r, deps, authMiddleware, tenantMiddleware)
+
+	// Private Compatibility Service API v1 (internal/compatapi). This is an
+	// internal surface for enrolled compatibility applications only — it is
+	// not part of the public API: the edge gateway must never forward
+	// /api/internal/** from public ingress, and every operation additionally
+	// authenticates the calling application's service credential. Mounted as
+	// its own separated route group; nil fails closed with no routes.
+	if deps.CompatAPIV1 != nil {
+		r.Mount("/api/internal/compat/v1", http.StripPrefix("/api/internal/compat/v1", deps.CompatAPIV1))
+	}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.ServeHTTP)

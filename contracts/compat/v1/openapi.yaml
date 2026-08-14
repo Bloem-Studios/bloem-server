@@ -1,0 +1,1954 @@
+openapi: 3.1.0
+info:
+  title: Vondel Private Compatibility Service API
+  version: 1.0.0
+  description: >
+    Private, capability-scoped API consumed exclusively by enrolled Vondel
+    compatibility applications (vondel-audiobookshelf, vondel-jellyfin). It is
+    served below /api/internal/compat/v1 and is never part of the public route
+    surface: the edge gateway must not forward /api/internal/** from public
+    ingress. Every operation authenticates the calling application, enforces
+    its granted capability, and — when subject-scoped — resolves the acting
+    subject exclusively from the signed, audience-bound subject token. An
+    application can never name the subject it acts for. Mutations require
+    idempotency keys; lists use signed cursors; media and artwork resolve to
+    short-lived, audience-bound, same-origin delivery grants.
+servers:
+  - url: /api/internal/compat/v1
+security:
+  - serviceBearer: []
+
+# Reusable blocks -----------------------------------------------------------
+
+x-vondel-error-responses: &stdErrors
+  "400":
+    $ref: "#/components/responses/BadRequest"
+  "401":
+    $ref: "#/components/responses/Unauthorized"
+  "403":
+    $ref: "#/components/responses/Forbidden"
+  "409":
+    $ref: "#/components/responses/Conflict"
+  "429":
+    $ref: "#/components/responses/RateLimited"
+  "503":
+    $ref: "#/components/responses/Unavailable"
+
+x-vondel-error-responses-with-404: &stdErrorsWith404
+  <<: *stdErrors
+  "404":
+    $ref: "#/components/responses/NotFound"
+
+paths:
+  # --- service --------------------------------------------------------------
+  /enroll:
+    post:
+      operationId: enroll
+      summary: Exchange a one-use enrollment secret for a service credential.
+      x-vondel-capability: service
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollmentRequest"
+      responses:
+        <<: *stdErrors
+        "201":
+          description: Service credential issued; the raw token appears exactly once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceCredential"
+
+  /credentials/renew:
+    post:
+      operationId: renewCredential
+      summary: Renew the short-lived service credential.
+      x-vondel-capability: service
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: Fresh service credential.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceCredential"
+
+  /health:
+    get:
+      operationId: health
+      summary: Server health, API range, and the caller's granted capabilities.
+      x-vondel-capability: service
+      responses:
+        <<: *stdErrors
+        "200":
+          description: Health and negotiation facts. Reading it records a heartbeat.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  # --- identity -------------------------------------------------------------
+  /identity/login:
+    post:
+      operationId: login
+      summary: Exchange an end-user credential for an audience-bound subject token.
+      description: >
+        Supports direct profile login (email and password bound to exactly one
+        profile) and legacy account login (username or email resolving the
+        remembered or default profile). The companion forwards the submitted
+        password transiently and must never persist, hash, cache, or log it.
+      x-vondel-capability: identity
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: Subject token bound to organization, account, profile, and device.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResult"
+
+  /identity/subject:
+    get:
+      operationId: introspectSubject
+      summary: Return the authoritative facts for the presented subject token.
+      x-vondel-capability: identity
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: Current subject facts, revalidated against server state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubjectIntrospection"
+
+  /identity/profiles:
+    get:
+      operationId: listDeviceProfiles
+      summary: Profile tiles authorized for the subject's trusted device.
+      description: >
+        Unknown devices receive an empty list; there is no public profile
+        directory. Only profiles the authenticated account and device grant
+        allow are returned.
+      x-vondel-capability: identity
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: Authorized profile tiles.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileTileList"
+
+  /identity/pin/verify:
+    post:
+      operationId: verifyProfilePin
+      summary: Verify a profile switching PIN on a trusted device.
+      x-vondel-capability: identity
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinVerifyRequest"
+      responses:
+        <<: *stdErrors
+        "204":
+          description: PIN accepted.
+
+  /identity/switch:
+    post:
+      operationId: switchProfile
+      summary: Switch to another authorized profile, minting a new subject token.
+      description: >
+        The target profile must be authorized for the subject's device grant.
+        A PIN-protected profile requires its PIN; an unprotected profile
+        switches without one. The previous subject token is not revoked by the
+        switch itself.
+      x-vondel-capability: identity
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SwitchProfileRequest"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: New subject token for the switched profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResult"
+
+  /identity/logout:
+    post:
+      operationId: logout
+      summary: End the subject's session and revoke the subject token.
+      x-vondel-capability: identity
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+      responses:
+        <<: *stdErrors
+        "204":
+          description: Session ended.
+
+  # --- catalog --------------------------------------------------------------
+  /catalog/libraries:
+    get:
+      operationId: listLibraries
+      summary: Libraries visible to the subject.
+      x-vondel-capability: catalog
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: Libraries after policy filtering.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryList"
+
+  /catalog/items:
+    get:
+      operationId: listItems
+      summary: Browse catalog items with signed cursors.
+      x-vondel-capability: catalog
+      x-vondel-subject: true
+      x-vondel-list: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: library_id
+          in: query
+          schema:
+            type: string
+        - name: kind
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+      responses:
+        <<: *stdErrors
+        "200":
+          description: One page of policy-filtered items.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemPage"
+
+  /catalog/items/{itemID}:
+    get:
+      operationId: getItem
+      summary: Item detail.
+      x-vondel-capability: catalog
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/ItemID"
+      responses:
+        <<: *stdErrorsWith404
+        "200":
+          description: Item detail. Unauthorized subjects receive a non-disclosing 404.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+
+  /catalog/items/{itemID}/children:
+    get:
+      operationId: listItemChildren
+      summary: Seasons, episodes, chapters, or tracks of an item.
+      x-vondel-capability: catalog
+      x-vondel-subject: true
+      x-vondel-list: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/ItemID"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        <<: *stdErrorsWith404
+        "200":
+          description: One page of children.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemPage"
+
+  /catalog/search:
+    get:
+      operationId: searchItems
+      summary: Search the catalog.
+      x-vondel-capability: catalog
+      x-vondel-subject: true
+      x-vondel-list: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        <<: *stdErrors
+        "200":
+          description: Policy-filtered search hits; hidden content is absent from results and counts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemPage"
+
+  /catalog/people/{personID}:
+    get:
+      operationId: getPerson
+      summary: Person detail.
+      x-vondel-capability: catalog
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - name: personID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        <<: *stdErrorsWith404
+        "200":
+          description: Person detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+
+  /catalog/items/{itemID}/artwork/{artworkKind}:
+    get:
+      operationId: resolveArtwork
+      summary: Resolve artwork to a short-lived, audience-bound delivery grant.
+      x-vondel-capability: catalog
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/ItemID"
+        - name: artworkKind
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        <<: *stdErrorsWith404
+        "200":
+          description: Same-origin signed delivery grant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryGrant"
+
+  # --- state ----------------------------------------------------------------
+  /state/progress/{itemID}:
+    get:
+      operationId: getProgress
+      summary: Playback or reading progress for an item.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/ItemID"
+      responses:
+        <<: *stdErrorsWith404
+        "200":
+          description: Current progress.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Progress"
+    put:
+      operationId: setProgress
+      summary: Update progress for an item.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/ItemID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgressUpdate"
+      responses:
+        <<: *stdErrorsWith404
+        "200":
+          description: Progress after the update.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Progress"
+
+  /state/watched/{itemID}:
+    put:
+      operationId: setWatched
+      summary: Mark an item watched or unwatched.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/ItemID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchedUpdate"
+      responses:
+        <<: *stdErrorsWith404
+        "204":
+          description: Watched state applied.
+
+  /state/favorites:
+    get:
+      operationId: listFavorites
+      summary: The subject's favorite items.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      x-vondel-list: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: One page of favorites.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemPage"
+
+  /state/favorites/{itemID}:
+    put:
+      operationId: setFavorite
+      summary: Set or clear an item's favorite flag.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/ItemID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FavoriteUpdate"
+      responses:
+        <<: *stdErrorsWith404
+        "204":
+          description: Favorite state applied.
+
+  /state/bookmarks:
+    get:
+      operationId: listBookmarks
+      summary: Bookmarks, optionally filtered to one item.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - name: item_id
+          in: query
+          schema:
+            type: string
+      responses:
+        <<: *stdErrors
+        "200":
+          description: Bookmarks for the subject.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookmarkList"
+    post:
+      operationId: createBookmark
+      summary: Create a bookmark.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookmarkCreate"
+      responses:
+        <<: *stdErrorsWith404
+        "201":
+          description: Bookmark created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bookmark"
+
+  /state/bookmarks/{bookmarkID}:
+    delete:
+      operationId: deleteBookmark
+      summary: Delete a bookmark.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+        - name: bookmarkID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        <<: *stdErrorsWith404
+        "204":
+          description: Bookmark deleted.
+
+  /state/collections:
+    get:
+      operationId: listCollections
+      summary: Collections visible to the subject.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      x-vondel-list: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: One page of collections.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionPage"
+
+  /state/collections/{collectionID}:
+    get:
+      operationId: getCollection
+      summary: Collection detail.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - name: collectionID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        <<: *stdErrorsWith404
+        "200":
+          description: Collection detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collection"
+
+  /state/playlists:
+    get:
+      operationId: listPlaylists
+      summary: The subject's playlists.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      x-vondel-list: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: One page of playlists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaylistPage"
+    post:
+      operationId: createPlaylist
+      summary: Create a playlist.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaylistWrite"
+      responses:
+        <<: *stdErrors
+        "201":
+          description: Playlist created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+
+  /state/playlists/{playlistID}:
+    put:
+      operationId: updatePlaylist
+      summary: Replace a playlist's name and items.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/PlaylistID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaylistWrite"
+      responses:
+        <<: *stdErrorsWith404
+        "200":
+          description: Playlist after the update.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+    delete:
+      operationId: deletePlaylist
+      summary: Delete a playlist.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/PlaylistID"
+      responses:
+        <<: *stdErrorsWith404
+        "204":
+          description: Playlist deleted.
+
+  /state/downloads:
+    get:
+      operationId: listDownloads
+      summary: The subject's downloads on the bound device.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: Downloads.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadList"
+    post:
+      operationId: createDownload
+      summary: Request a download for offline use.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DownloadCreate"
+      responses:
+        <<: *stdErrorsWith404
+        "201":
+          description: Download requested.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Download"
+
+  /state/downloads/{downloadID}:
+    delete:
+      operationId: deleteDownload
+      summary: Remove a download.
+      x-vondel-capability: state
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+        - name: downloadID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        <<: *stdErrorsWith404
+        "204":
+          description: Download removed.
+
+  # --- playback -------------------------------------------------------------
+  /playback/plan:
+    post:
+      operationId: planPlayback
+      summary: Plan playback for an item and device capabilities.
+      x-vondel-capability: playback
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaybackPlanRequest"
+      responses:
+        <<: *stdErrorsWith404
+        "200":
+          description: Playback plan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Plan"
+
+  /playback/sessions:
+    get:
+      operationId: listPlaybackSessions
+      summary: The subject's live playback sessions.
+      x-vondel-capability: playback
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: Live sessions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackSessionList"
+    post:
+      operationId: startPlaybackSession
+      summary: Start playback, receiving a delivery grant.
+      x-vondel-capability: playback
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaybackStart"
+      responses:
+        <<: *stdErrorsWith404
+        "201":
+          description: Session started; the grant is short-lived, single-purpose, and audience-bound.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackSession"
+
+  /playback/sessions/{sessionID}:
+    get:
+      operationId: getPlaybackSession
+      summary: Session state, for recovery after companion restart.
+      x-vondel-capability: playback
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/SessionID"
+      responses:
+        <<: *stdErrorsWith404
+        "200":
+          description: Session state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackSession"
+
+  /playback/sessions/{sessionID}/progress:
+    post:
+      operationId: reportPlaybackProgress
+      summary: Report playback progress for a session.
+      x-vondel-capability: playback
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/SessionID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaybackProgress"
+      responses:
+        <<: *stdErrorsWith404
+        "204":
+          description: Progress recorded.
+
+  /playback/sessions/{sessionID}/stop:
+    post:
+      operationId: stopPlaybackSession
+      summary: Stop a playback session.
+      x-vondel-capability: playback
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/SessionID"
+      responses:
+        <<: *stdErrorsWith404
+        "204":
+          description: Session stopped.
+
+  # --- livetv ---------------------------------------------------------------
+  /livetv/channels:
+    get:
+      operationId: listLiveTvChannels
+      summary: Live TV channels visible to the subject.
+      x-vondel-capability: livetv
+      x-vondel-subject: true
+      x-vondel-list: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: One page of channels.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelPage"
+
+  /livetv/guide:
+    get:
+      operationId: getLiveTvGuide
+      summary: Guide entries for a time window.
+      x-vondel-capability: livetv
+      x-vondel-subject: true
+      x-vondel-list: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: channel_id
+          in: query
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        <<: *stdErrors
+        "200":
+          description: One page of guide entries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuidePage"
+
+  /livetv/tuners:
+    get:
+      operationId: listLiveTvTuners
+      summary: Tuner availability (never tuner credentials).
+      x-vondel-capability: livetv
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: Tuner availability.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TunerList"
+
+  /livetv/streams:
+    post:
+      operationId: authorizeLiveTvStream
+      summary: Authorize a live stream, receiving a delivery grant.
+      x-vondel-capability: livetv
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LiveStreamRequest"
+      responses:
+        <<: *stdErrorsWith404
+        "201":
+          description: Audience-bound live stream grant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryGrant"
+
+  /livetv/dvr/rules:
+    get:
+      operationId: listDvrRules
+      summary: DVR rules visible to the subject.
+      x-vondel-capability: livetv
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: DVR rules.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DVRRuleList"
+    post:
+      operationId: createDvrRule
+      summary: Create a DVR rule.
+      x-vondel-capability: livetv
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DVRRuleCreate"
+      responses:
+        <<: *stdErrorsWith404
+        "201":
+          description: DVR rule created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DVRRule"
+
+  /livetv/dvr/rules/{ruleID}:
+    delete:
+      operationId: deleteDvrRule
+      summary: Delete a DVR rule.
+      x-vondel-capability: livetv
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+        - name: ruleID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        <<: *stdErrorsWith404
+        "204":
+          description: DVR rule deleted.
+
+  /livetv/recordings:
+    get:
+      operationId: listRecordings
+      summary: Recordings visible to the subject.
+      x-vondel-capability: livetv
+      x-vondel-subject: true
+      x-vondel-list: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: One page of recordings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordingPage"
+
+  /livetv/recordings/{recordingID}:
+    get:
+      operationId: getRecording
+      summary: Recording detail.
+      x-vondel-capability: livetv
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/RecordingID"
+      responses:
+        <<: *stdErrorsWith404
+        "200":
+          description: Recording detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recording"
+    delete:
+      operationId: deleteRecording
+      summary: Delete a recording.
+      x-vondel-capability: livetv
+      x-vondel-subject: true
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/RecordingID"
+      responses:
+        <<: *stdErrorsWith404
+        "204":
+          description: Recording deleted.
+
+  # --- events ---------------------------------------------------------------
+  /events:
+    get:
+      operationId: listEvents
+      summary: Subject-filtered events with a resumable signed cursor.
+      description: >
+        Returns events the subject may observe. When the requested cursor has
+        fallen out of the retained window the batch sets resync and supplies a
+        fresh cursor; the companion must perform a bounded resynchronization.
+      x-vondel-capability: events
+      x-vondel-subject: true
+      x-vondel-list: true
+      parameters:
+        - $ref: "#/components/parameters/SubjectToken"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        <<: *stdErrors
+        "200":
+          description: One event batch.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventBatch"
+
+components:
+  securitySchemes:
+    serviceBearer:
+      type: http
+      scheme: bearer
+      description: Short-lived renewable service credential issued at enrollment.
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: >
+        Caller-chosen key making the mutation safely retryable. A replay with
+        the same key and payload returns the stored response; the same key
+        with a different payload is a conflict.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
+    SubjectToken:
+      name: X-Vondel-Subject-Token
+      in: header
+      required: true
+      description: >
+        Signed, audience-bound subject token minted by login or profile
+        switch. It is the only way a subject is named; the server revalidates
+        the subject on every request.
+      schema:
+        type: string
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Signed opaque cursor from a previous page. Tampering is refused.
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+    ItemID:
+      name: itemID
+      in: path
+      required: true
+      schema:
+        type: string
+    PlaylistID:
+      name: playlistID
+      in: path
+      required: true
+      schema:
+        type: string
+    SessionID:
+      name: sessionID
+      in: path
+      required: true
+      schema:
+        type: string
+    RecordingID:
+      name: recordingID
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Malformed request, missing idempotency key, or invalid cursor.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Unauthorized:
+      description: Missing/invalid service credential or subject token, or revoked subject.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Forbidden:
+      description: Capability not granted, or the operation is refused for this subject.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: Unknown or non-disclosed resource; hidden content is indistinguishable from absent content.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Conflict:
+      description: Idempotency conflict or state conflict.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    RateLimited:
+      description: The application exceeded its request budget.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Unavailable:
+      description: The backing capability is unavailable; retry with backoff.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, trace_id]
+          properties:
+            code:
+              type: string
+              description: Stable machine-readable error code.
+            message:
+              type: string
+            trace_id:
+              type: string
+
+    APIRange:
+      type: object
+      required: [min, max]
+      properties:
+        min:
+          type: integer
+        max:
+          type: integer
+
+    EnrollmentRequest:
+      type: object
+      required: [secret, kind, instance_id, api]
+      properties:
+        secret:
+          type: string
+          description: One-use enrollment secret. Destroyed after this exchange.
+        kind:
+          type: string
+          enum: [audiobookshelf, jellyfin]
+        instance_id:
+          type: string
+        version:
+          type: string
+        api:
+          $ref: "#/components/schemas/APIRange"
+        requested_capabilities:
+          type: array
+          items:
+            type: string
+
+    ServiceCredential:
+      type: object
+      required: [application_id, token, expires_at]
+      properties:
+        application_id:
+          type: string
+        token:
+          type: string
+          description: Raw bearer credential; returned exactly once per issue.
+        expires_at:
+          type: string
+          format: date-time
+        granted_capabilities:
+          type: array
+          items:
+            type: string
+
+    Health:
+      type: object
+      required: [status, version, api, application]
+      properties:
+        status:
+          type: string
+        version:
+          type: string
+        api:
+          $ref: "#/components/schemas/APIRange"
+        application:
+          type: object
+          required: [application_id, kind, instance_id]
+          properties:
+            application_id:
+              type: string
+            kind:
+              type: string
+            instance_id:
+              type: string
+            capabilities:
+              type: array
+              items:
+                type: string
+
+    DeviceClaim:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        platform:
+          type: string
+        ip_address:
+          type: string
+
+    Subject:
+      type: object
+      required:
+        [
+          account_id,
+          profile_id,
+          organization_id,
+          membership_id,
+          policy_revision,
+          security_revision,
+          credential_revision,
+          auth_method,
+          device,
+        ]
+      properties:
+        account_id:
+          type: integer
+        profile_id:
+          type: string
+        organization_id:
+          type: string
+        membership_id:
+          type: string
+        policy_revision:
+          type: integer
+          format: int64
+        security_revision:
+          type: integer
+          format: int64
+        credential_revision:
+          type: integer
+          format: int64
+        auth_method:
+          type: string
+        device:
+          $ref: "#/components/schemas/DeviceClaim"
+
+    LoginRequest:
+      type: object
+      required: [grant_type, password, device]
+      properties:
+        grant_type:
+          type: string
+          enum: [direct_profile, account]
+        email:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        device:
+          $ref: "#/components/schemas/DeviceClaim"
+
+    LoginResult:
+      type: object
+      required: [subject_token, expires_at, subject]
+      properties:
+        subject_token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        subject:
+          $ref: "#/components/schemas/Subject"
+
+    SubjectIntrospection:
+      type: object
+      required: [subject, application_id]
+      properties:
+        subject:
+          $ref: "#/components/schemas/Subject"
+        application_id:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+
+    ProfileTile:
+      type: object
+      required: [profile_id, name]
+      properties:
+        profile_id:
+          type: string
+        name:
+          type: string
+        pin_protected:
+          type: boolean
+
+    ProfileTileList:
+      type: object
+      required: [profiles]
+      properties:
+        profiles:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfileTile"
+
+    PinVerifyRequest:
+      type: object
+      required: [profile_id, pin]
+      properties:
+        profile_id:
+          type: string
+        pin:
+          type: string
+
+    SwitchProfileRequest:
+      type: object
+      required: [profile_id]
+      properties:
+        profile_id:
+          type: string
+        pin:
+          type: string
+
+    Library:
+      type: object
+      required: [id, name, kind]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+
+    LibraryList:
+      type: object
+      required: [libraries]
+      properties:
+        libraries:
+          type: array
+          items:
+            $ref: "#/components/schemas/Library"
+
+    PersonRef:
+      type: object
+      required: [person_id, name]
+      properties:
+        person_id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        type:
+          type: string
+
+    ArtworkRef:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+
+    Item:
+      type: object
+      required: [id, kind, title]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        library_id:
+          type: string
+        title:
+          type: string
+        sort_title:
+          type: string
+        year:
+          type: integer
+        overview:
+          type: string
+        runtime_seconds:
+          type: integer
+          format: int64
+        series_id:
+          type: string
+        season_id:
+          type: string
+        index_number:
+          type: integer
+        parent_index_number:
+          type: integer
+        provider_ids:
+          type: object
+          additionalProperties:
+            type: string
+        official_rating:
+          type: string
+        community_rating:
+          type: number
+        genres:
+          type: array
+          items:
+            type: string
+        people:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonRef"
+        artwork:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtworkRef"
+
+    ItemPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Item"
+        next_cursor:
+          type: string
+
+    Person:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        overview:
+          type: string
+
+    DeliveryGrant:
+      type: object
+      required: [url, method, expires_at, audience]
+      properties:
+        url:
+          type: string
+          description: Same-origin signed URL; never a filesystem location.
+        method:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        audience:
+          type: string
+          description: Application the grant was minted for.
+
+    Progress:
+      type: object
+      required: [item_id]
+      properties:
+        item_id:
+          type: string
+        position_seconds:
+          type: number
+        duration_seconds:
+          type: number
+        watched:
+          type: boolean
+        updated_at:
+          type: string
+          format: date-time
+
+    ProgressUpdate:
+      type: object
+      required: [position_seconds]
+      properties:
+        position_seconds:
+          type: number
+        duration_seconds:
+          type: number
+
+    WatchedUpdate:
+      type: object
+      required: [watched]
+      properties:
+        watched:
+          type: boolean
+
+    FavoriteUpdate:
+      type: object
+      required: [favorite]
+      properties:
+        favorite:
+          type: boolean
+
+    Bookmark:
+      type: object
+      required: [id, item_id, position_seconds]
+      properties:
+        id:
+          type: string
+        item_id:
+          type: string
+        position_seconds:
+          type: number
+        title:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    BookmarkList:
+      type: object
+      required: [bookmarks]
+      properties:
+        bookmarks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Bookmark"
+
+    BookmarkCreate:
+      type: object
+      required: [item_id, position_seconds]
+      properties:
+        item_id:
+          type: string
+        position_seconds:
+          type: number
+        title:
+          type: string
+
+    Collection:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+        item_ids:
+          type: array
+          items:
+            type: string
+
+    CollectionPage:
+      type: object
+      required: [collections]
+      properties:
+        collections:
+          type: array
+          items:
+            $ref: "#/components/schemas/Collection"
+        next_cursor:
+          type: string
+
+    Playlist:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        item_ids:
+          type: array
+          items:
+            type: string
+
+    PlaylistPage:
+      type: object
+      required: [playlists]
+      properties:
+        playlists:
+          type: array
+          items:
+            $ref: "#/components/schemas/Playlist"
+        next_cursor:
+          type: string
+
+    PlaylistWrite:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        item_ids:
+          type: array
+          items:
+            type: string
+
+    Download:
+      type: object
+      required: [id, item_id, state]
+      properties:
+        id:
+          type: string
+        item_id:
+          type: string
+        state:
+          type: string
+        grant:
+          $ref: "#/components/schemas/DeliveryGrant"
+
+    DownloadList:
+      type: object
+      required: [downloads]
+      properties:
+        downloads:
+          type: array
+          items:
+            $ref: "#/components/schemas/Download"
+
+    DownloadCreate:
+      type: object
+      required: [item_id]
+      properties:
+        item_id:
+          type: string
+
+    PlaybackPlanRequest:
+      type: object
+      required: [item_id]
+      properties:
+        item_id:
+          type: string
+        max_bitrate:
+          type: integer
+          format: int64
+        containers:
+          type: array
+          items:
+            type: string
+        video_codecs:
+          type: array
+          items:
+            type: string
+        audio_codecs:
+          type: array
+          items:
+            type: string
+
+    Plan:
+      type: object
+      required: [plan_id, mode]
+      properties:
+        plan_id:
+          type: string
+        mode:
+          type: string
+          enum: [direct, transcode]
+        container:
+          type: string
+        video_codec:
+          type: string
+        audio_codec:
+          type: string
+        reasons:
+          type: array
+          items:
+            type: string
+
+    PlaybackStart:
+      type: object
+      required: [item_id]
+      properties:
+        item_id:
+          type: string
+        plan_id:
+          type: string
+        position_seconds:
+          type: number
+
+    PlaybackSession:
+      type: object
+      required: [session_id, item_id, state]
+      properties:
+        session_id:
+          type: string
+        item_id:
+          type: string
+        state:
+          type: string
+        position_seconds:
+          type: number
+        grant:
+          $ref: "#/components/schemas/DeliveryGrant"
+
+    PlaybackSessionList:
+      type: object
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlaybackSession"
+
+    PlaybackProgress:
+      type: object
+      required: [position_seconds]
+      properties:
+        position_seconds:
+          type: number
+        state:
+          type: string
+
+    Channel:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        number:
+          type: string
+
+    ChannelPage:
+      type: object
+      required: [channels]
+      properties:
+        channels:
+          type: array
+          items:
+            $ref: "#/components/schemas/Channel"
+        next_cursor:
+          type: string
+
+    GuideEntry:
+      type: object
+      required: [channel_id, title, start, end]
+      properties:
+        channel_id:
+          type: string
+        title:
+          type: string
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+
+    GuidePage:
+      type: object
+      required: [entries]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuideEntry"
+        next_cursor:
+          type: string
+
+    Tuner:
+      type: object
+      required: [id, state]
+      properties:
+        id:
+          type: string
+        state:
+          type: string
+
+    TunerList:
+      type: object
+      required: [tuners]
+      properties:
+        tuners:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tuner"
+
+    LiveStreamRequest:
+      type: object
+      required: [channel_id]
+      properties:
+        channel_id:
+          type: string
+
+    DVRRule:
+      type: object
+      required: [id, kind]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        channel_id:
+          type: string
+        item_id:
+          type: string
+
+    DVRRuleList:
+      type: object
+      required: [rules]
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/DVRRule"
+
+    DVRRuleCreate:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+        channel_id:
+          type: string
+        item_id:
+          type: string
+
+    Recording:
+      type: object
+      required: [id, title, state]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        state:
+          type: string
+        channel_id:
+          type: string
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        grant:
+          $ref: "#/components/schemas/DeliveryGrant"
+
+    RecordingPage:
+      type: object
+      required: [recordings]
+      properties:
+        recordings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Recording"
+        next_cursor:
+          type: string
+
+    Event:
+      type: object
+      required: [id, type, occurred_at]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        item_id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        data:
+          type: object
+
+    EventBatch:
+      type: object
+      required: [events, next_cursor]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event"
+        next_cursor:
+          type: string
+        resync:
+          type: boolean
+          description: True when the requested cursor fell out of the retained window.
