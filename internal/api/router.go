@@ -32,6 +32,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/clientip"
+	"github.com/Silo-Server/silo-server/internal/compatgateway"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
 	"github.com/Silo-Server/silo-server/internal/downloads"
@@ -210,6 +211,18 @@ type Dependencies struct {
 	PlatformAdminAuthorizer auth.PlatformAdminAuthorizer
 	AdminPeopleService      *adminpeople.Service
 	AdminPeopleWorker       *adminpeople.Worker
+
+	// CompatApplications is the application lifecycle service behind the
+	// Compatibility Applications admin surface (may be nil; the surface is
+	// not mounted). Handlers call this service to list, enroll, enable,
+	// disable, rotate, and revoke; they never write application state
+	// themselves.
+	CompatApplications handlers.CompatibilityApplicationService
+	// CompatGateway is the fixed-path compatibility edge gateway (may be
+	// nil; no compatibility routes are registered). It is mounted from the
+	// static compatgateway.RouteTable alone — route ownership is
+	// compile-time configuration, never runtime registration.
+	CompatGateway http.Handler
 }
 
 // absHandler is the narrow interface the router needs from the ABS handler.
@@ -3412,6 +3425,19 @@ func NewRouter(deps Dependencies) chi.Router {
 			})
 		}
 	})
+
+	// Fixed-path compatibility gateway. Route ownership comes from the
+	// static, reviewed compatgateway.RouteTable alone: starting a companion
+	// container claims no routes, and nothing can add one at runtime. The
+	// table never contains "/", "/api/**", or "/metrics", so native handlers
+	// — auth above all — are never replaced; the compat gateway route-overlap
+	// tests pin both directions.
+	if deps.CompatGateway != nil {
+		for _, route := range compatgateway.RouteTable() {
+			r.Handle(route.Prefix, deps.CompatGateway)
+			r.Handle(route.Prefix+"/*", deps.CompatGateway)
+		}
+	}
 
 	return r
 }

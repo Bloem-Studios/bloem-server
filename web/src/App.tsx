@@ -77,6 +77,7 @@ import AdminRecommendations from "@/pages/AdminRecommendations";
 import AdminPolicyLayout from "@/pages/admin-policy/AdminPolicyLayout";
 import OrganizationsPage from "@/pages/admin-platform/OrganizationsPage";
 import OrganizationDetailPage from "@/pages/admin-platform/OrganizationDetailPage";
+import CompatibilityApplicationsPage from "@/pages/admin-platform/CompatibilityApplicationsPage";
 import OrganizationOverviewPage from "@/pages/admin-organization/OrganizationOverviewPage";
 import PeoplePage from "@/pages/admin-organization/PeoplePage";
 import LibrariesEntitlementsPage from "@/pages/admin-organization/LibrariesEntitlementsPage";
@@ -503,6 +504,10 @@ function AppRoutes() {
                     <Route index element={<AdminDashboard />} />
                     <Route path="platform/organizations" element={<OrganizationsPage />} />
                     <Route path="platform/organizations/:id" element={<OrganizationDetailPage />} />
+                    <Route
+                      path="platform/compatibility"
+                      element={<CompatibilityApplicationsPage />}
+                    />
                     <Route path="activity" element={<AdminActivity />} />
                     <Route path="logs" element={<AdminLogs />} />
                     <Route path="diagnostics" element={<AdminDiagnostics />} />
