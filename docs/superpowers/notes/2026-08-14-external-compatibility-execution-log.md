@@ -43,6 +43,8 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 - Companions receive no Vondel database, Redis, media filesystem, Docker socket, signing key, provider credential, or tuner credential.
 - Vondel never controls Docker. Administration shows health and exact operator commands but performs no container mutation.
 - A profile is either shared-only or has both a globally unique email and password. Partial direct credentials are invalid.
+- Account owners own profiles, unchanged. A profile's optional email and password are a second front door to that one profile, usable from any client — Jellyfin, the Silo and Vondel clients, Audiobookshelf — and the profile still belongs to its parent account.
+- A direct profile login carries least privilege, not parity with reaching that profile through the account login: it may browse, play, and keep its own progress, settings, devices, and profile record, and nothing else. Household management, account surfaces, and anything that mints a differently scoped credential are refused even when the bound profile is the household primary. The reason is exposure — this password is typed into third-party clients, so it must not be spendable as the account. Confirmed by the maintainer on 2026-08-14.
 - Legacy account login and current PIN-based shared-device profile switching remain supported.
 - Direct profile login binds the session to exactly one organization, account, profile, device, authentication method, audience, capabilities, and current security/policy revisions.
 - Unknown devices receive no public profile directory.
