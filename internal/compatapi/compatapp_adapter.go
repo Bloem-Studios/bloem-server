@@ -49,7 +49,12 @@ func mapCompatAppError(err error) error {
 		// caller cannot distinguish "wrong secret" from "revoked" from
 		// "unknown application".
 		return errors.Join(ErrInvalidCredentials, err)
-	case errors.Is(err, compatapp.ErrInstanceAlreadyEnrolled),
+	// A revision mismatch belongs to the administrative surface rather than
+	// this one, but it is a conflict wherever it surfaces, and mapping it
+	// keeps an unreachable path from degrading into an opaque server error
+	// if the surfaces ever meet.
+	case errors.Is(err, compatapp.ErrRevisionMismatch),
+		errors.Is(err, compatapp.ErrInstanceAlreadyEnrolled),
 		errors.Is(err, compatapp.ErrAPIRangeUnsupported),
 		errors.Is(err, compatapp.ErrKindMismatch):
 		return errors.Join(ErrConflict, err)

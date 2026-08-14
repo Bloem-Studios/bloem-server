@@ -82,3 +82,29 @@ func TestMapCompatAppErrorTranslatesEverySentinel(t *testing.T) {
 		t.Fatalf("an unmapped error must pass through untranslated, got %v", mapped)
 	}
 }
+
+// The adapter's translation table is written by hand beside a sentinel list
+// that is also written by hand. Enumerating the service's own list keeps the
+// two in step: a sentinel added there must gain a mapping here, or it reaches
+// a companion as an opaque server error instead of the contract code the
+// operation documents.
+func TestEveryServiceSentinelIsTranslated(t *testing.T) {
+	contractErrors := map[error]bool{
+		ErrInvalidCredentials: true,
+		ErrConflict:           true,
+		ErrInvalid:            true,
+	}
+	for _, sentinel := range compatapp.Sentinels() {
+		mapped := mapCompatAppError(sentinel)
+		matched := false
+		for contractError := range contractErrors {
+			if errors.Is(mapped, contractError) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			t.Errorf("service sentinel %q maps to %v, which is not one of the contract's translated errors — it would surface as an opaque server error", sentinel, mapped)
+		}
+	}
+}

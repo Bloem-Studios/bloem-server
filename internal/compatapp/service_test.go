@@ -765,3 +765,32 @@ func newCompatAppDisposableDatabase(t *testing.T, ctx context.Context, dsn strin
 	})
 	return pool
 }
+
+// Creating an enrollment writes the secret and its audit row in one
+// transaction. Deleting the audit write fails an existing test, but dropping
+// only the transaction fails nothing — so pin the atomicity itself by making
+// the audit insert fail and requiring the enrollment to be absent afterwards.
+func TestCreateEnrollmentRollsBackWhenTheAuditWriteFails(t *testing.T) {
+	ctx := context.Background()
+	service := newCompatAppService(t)
+
+	if _, err := service.store.pool.Exec(ctx, `
+		ALTER TABLE compat_application_audit
+		ADD CONSTRAINT compat_audit_reject_enrollment_created
+		CHECK (event <> 'enrollment_created')`); err != nil {
+		t.Fatalf("install audit barrier: %v", err)
+	}
+
+	if _, err := service.CreateEnrollment(ctx, KindJellyfin, []Capability{CapabilityIdentity}); err == nil {
+		t.Fatal("CreateEnrollment succeeded while its audit row was refused")
+	}
+
+	var enrollments int
+	if err := service.store.pool.QueryRow(ctx,
+		`SELECT count(*) FROM compat_application_enrollments`).Scan(&enrollments); err != nil {
+		t.Fatalf("count enrollments: %v", err)
+	}
+	if enrollments != 0 {
+		t.Fatalf("enrollment rows = %d, want the failed create to have left none", enrollments)
+	}
+}

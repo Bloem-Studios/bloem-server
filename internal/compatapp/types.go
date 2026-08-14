@@ -255,3 +255,29 @@ var (
 	ErrPeerCertificateMismatch  = errors.New("TLS client certificate does not match the enrolled identity")
 	ErrInvalidHealthStatus      = errors.New("unknown health status")
 )
+
+// Sentinels is every error this package returns as a named value. Callers that
+// translate these onto their own vocabulary — the private API adapter does —
+// assert against this list, so a sentinel added here fails their test rather
+// than silently reaching a caller's default arm as an opaque server error.
+func Sentinels() []error {
+	return []error{
+		ErrRevisionMismatch,
+		ErrUnknownKind,
+		ErrUnknownCapability,
+		ErrNoCapabilities,
+		ErrCapabilityNotGranted,
+		ErrEnrollmentDenied,
+		ErrInvalidEnrollmentRequest,
+		ErrKindMismatch,
+		ErrAPIRangeUnsupported,
+		ErrInstanceAlreadyEnrolled,
+		ErrCredentialInvalid,
+		ErrApplicationDisabled,
+		ErrApplicationRevoked,
+		ErrApplicationNotFound,
+		ErrPeerCertificateRequired,
+		ErrPeerCertificateMismatch,
+		ErrInvalidHealthStatus,
+	}
+}

@@ -75,7 +75,7 @@ func (s *Service) CreateEnrollment(ctx context.Context, kind Kind, requested []C
 	enrollmentID := uuid.NewString()
 	// One transaction: an enrollment must not exist without its audit row,
 	// which is the atomicity every other lifecycle path already has.
-	tx, err := s.store.pool.Begin(ctx)
+	tx, err := s.store.Begin(ctx)
 	if err != nil {
 		return EnrollmentSecret{}, fmt.Errorf("begin enrollment create: %w", err)
 	}
