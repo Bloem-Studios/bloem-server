@@ -259,3 +259,83 @@ func TestReloadWatchSyncPluginProvidersDropsStaleProvidersOnCapabilityReadFailur
 		t.Fatalf("stale provider %q remained registered", provider.Key())
 	}
 }
+
+// --- Public listener composition --------------------------------------------
+
+// markerHandler answers with the name of the layer that received a request,
+// so the composition can be adjudicated by response rather than by reading
+// the wiring.
+type markerHandler struct{ name string }
+
+func (m markerHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("X-Layer", m.name)
+	w.WriteHeader(http.StatusOK)
+}
+
+// publicMux is what the production listener serves. This drives the real
+// function main() uses, so a change to the composition — reverting the
+// gateway ahead of the SPA fallback, say — fails here rather than shipping.
+func TestPublicMuxRoutesEachLayer(t *testing.T) {
+	mux := publicMux(markerHandler{"api"}, markerHandler{"spa"}, markerHandler{"gateway"})
+
+	cases := []struct {
+		path  string
+		layer string
+	}{
+		// Jellyfin protocol families, in every shape real clients emit.
+		{"/System/Info", "gateway"},
+		{"/system/info", "gateway"},
+		{"/emby/System/Info", "gateway"},
+		{"/jellyfin/System/Info", "gateway"},
+		{"/Users/AuthenticateByName", "gateway"},
+		{"/web/index.html", "gateway"},
+		// Audiobookshelf's single family.
+		{"/audiobookshelf/api/ping", "gateway"},
+		// Native surfaces: the API tree, metrics, the SPA shell, and the
+		// reserved SPA routes that share a name with a Jellyfin family.
+		{"/api/v1/health", "api"},
+		{"/api/v1/auth/login", "api"},
+		{"/api/v2/admin/session", "api"},
+		{"/api/internal/compat/v1/identity", "api"},
+		{"/search", "spa"},
+		{"/library/5", "spa"},
+		{"/livetv", "spa"},
+		{"/", "spa"},
+		{"/assets/app.js", "spa"},
+	}
+	for _, tc := range cases {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
+		if got := rec.Header().Get("X-Layer"); got != tc.layer {
+			t.Fatalf("%s reached layer %q, want %q", tc.path, got, tc.layer)
+		}
+	}
+
+	// /metrics is served by the composition itself, not by any of the three.
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	if layer := rec.Header().Get("X-Layer"); layer != "" {
+		t.Fatalf("/metrics reached layer %q; it must stay on the metrics handler", layer)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/metrics answered %d", rec.Code)
+	}
+}
+
+// Without a gateway the composition is byte-identical to the pre-gateway
+// listener: everything outside /api/** and /metrics is the SPA's.
+func TestPublicMuxWithoutGateway(t *testing.T) {
+	mux := publicMux(markerHandler{"api"}, markerHandler{"spa"}, nil)
+	for _, path := range []string{"/", "/System/Info", "/audiobookshelf/api/ping", "/web"} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if got := rec.Header().Get("X-Layer"); got != "spa" {
+			t.Fatalf("%s reached layer %q, want spa", path, got)
+		}
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/health", nil))
+	if got := rec.Header().Get("X-Layer"); got != "api" {
+		t.Fatalf("/api/v1/health reached layer %q, want api", got)
+	}
+}

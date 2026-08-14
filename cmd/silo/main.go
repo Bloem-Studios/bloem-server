@@ -413,6 +413,32 @@ func runCompatWebCommand(ctx context.Context, args []string) error {
 	}
 }
 
+// publicMux composes the public listener: Prometheus metrics, the chi API
+// router for /api/**, the fixed-path compatibility gateway for the reviewed
+// route families, and the Vondel SPA for everything else.
+//
+// The layering matters and is why this is a named function rather than a few
+// lines inside main: only /api/** reaches the chi router, so the gateway's
+// families (/System/**, /emby/**, /audiobookshelf/**, /web/**, …) are claimed
+// here, ahead of the SPA fallback, or public ingress never reaches them at
+// all. TestPublicMuxRoutesEachLayer drives this exact function.
+//
+// ABS-compat is NOT mounted here — see the "ABS compat listener" block in
+// main. It binds its own port so the discovery probes (/ping, /healthcheck,
+// /status, /init, /login, /socket.io) own the URL space without colliding
+// with the SPA fallback. Mirrors how the Jellyfin compat server is set up at
+// :8096.
+//
+// A nil gateway composes to the plain SPA fallback, keeping deployments
+// without the compatibility stack byte-identical to the pre-gateway listener.
+func publicMux(router, frontend, gateway http.Handler) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/api/", router)
+	mux.Handle("/", compatgateway.WithFrontendFallback(gateway, frontend))
+	return mux
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "compat-web" {
 		if err := runCompatWebCommand(context.Background(), os.Args[2:]); err != nil {
@@ -2532,29 +2558,18 @@ func main() {
 
 	router := api.NewRouter(deps)
 
-	// Step 8: Expose Prometheus metrics endpoint (not behind auth).
-	metricsMux := http.NewServeMux()
-	metricsMux.Handle("/metrics", promhttp.Handler())
-	metricsMux.Handle("/api/", router)
-	// ABS-compat is NOT mounted on the main listener — see the "ABS compat
-	// listener" block below. It binds its own port so the discovery probes
-	// (/ping, /healthcheck, /status, /init, /login, /socket.io) own the URL
-	// space without collision with silo's SPA fallback. Mirrors how the
-	// Jellyfin compat server is set up at :8096.
+	// Step 8: Compose the public listener (metrics, API, gateway, SPA).
 	//
-	// The fixed-path compatibility gateway sits here, ahead of the SPA
-	// fallback: this mux hands only /api/** to the chi router, so the
-	// gateway's reviewed route families (/System/**, /audiobookshelf/**,
-	// /web/**, …) must be claimed at the composed-mux layer or public
-	// ingress never reaches them. The application lifecycle backing is not
-	// wired yet, so every owned family answers a protocol-appropriate
-	// compatibility_unavailable — the specified behavior for a missing
-	// application — while every native path falls through to the SPA
-	// untouched. When the backing lands, it plugs into Config.States here.
+	// The fixed-path compatibility gateway. Its lifecycle backing is not
+	// constructed yet, so Config.States is nil and every owned family answers
+	// a protocol-appropriate compatibility_unavailable — the specified
+	// behavior for a missing application — while every native path falls
+	// through to the SPA untouched. Wiring the backing means setting States
+	// here and nothing else.
 	compatGateway := compatgateway.New(compatgateway.Config{
 		IdentitySecret: []byte(cfg.Auth.JWTSecret),
 	})
-	metricsMux.Handle("/", compatgateway.WithFrontendFallback(compatGateway, server.FrontendHandler()))
+	metricsMux := publicMux(router, server.FrontendHandler(), compatGateway)
 
 	// Step 9: Start background workers (if needed).
 	var sessionCleaner *worker.SessionCleaner

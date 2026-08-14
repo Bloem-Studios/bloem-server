@@ -232,6 +232,16 @@ func TestCompatibilityAdminListsReadOnlyState(t *testing.T) {
 		!strings.Contains(row.Commands.Remove, "vondel-jellyfin-state") {
 		t.Fatalf("remove command %q must resolve the project-prefixed state volume via docker volume ls", row.Commands.Remove)
 	}
+	// --filter name= is an unanchored substring match: unanchored it selects
+	// every Compose project's copy, and it yields an empty argument when
+	// nothing matches. The filter must be anchored and the result piped
+	// through xargs -r so no match removes nothing.
+	if !strings.Contains(row.Commands.Remove, "_vondel-jellyfin-state$") {
+		t.Fatalf("remove command %q must anchor the volume filter", row.Commands.Remove)
+	}
+	if !strings.Contains(row.Commands.Remove, "xargs -r docker volume rm") {
+		t.Fatalf("remove command %q must pipe through xargs -r so an empty match is a no-op", row.Commands.Remove)
+	}
 	if service.actorSeen {
 		t.Fatal("a read must not record a mutation actor")
 	}

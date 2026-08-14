@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -44,14 +43,6 @@ func (compatAppsStub) RevokeApplication(context.Context, string, int64) (handler
 	return handlers.CompatibilityApplication{}, nil
 }
 
-// gatewayStub marks routes owned by the gateway so route resolution can be
-// distinguished from native handlers.
-type gatewayStub struct{}
-
-func (gatewayStub) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusServiceUnavailable)
-}
-
 func newCompatWiredRouter(t *testing.T) chi.Routes {
 	t.Helper()
 	pool := newV1TenancyDatabase(t)
@@ -78,7 +69,6 @@ func newCompatWiredRouter(t *testing.T) chi.Routes {
 			nil,
 		),
 		CompatApplications: compatAppsStub{},
-		CompatGateway:      gatewayStub{},
 	})
 	routes, ok := router.(chi.Routes)
 	if !ok {
@@ -100,41 +90,11 @@ func TestCompatGatewayRoutesDoNotOverlapNativeRoutes(t *testing.T) {
 	}
 }
 
-// Mounting the gateway is purely additive: every route it adds is owned by
-// the static table, and every pre-existing native route survives unchanged.
-func TestCompatGatewayMountIsAdditive(t *testing.T) {
-	native := map[string]bool{}
-	for _, pair := range walkRoutes(t, newRouteInventoryRouter(t)) {
-		native[pair] = true
-	}
-
-	wired := newCompatWiredRouter(t)
-	for _, pair := range walkRoutes(t, wired) {
-		if native[pair] {
-			delete(native, pair)
-			continue
-		}
-		_, pattern := splitRoute(pair)
-		if _, owned := compatgateway.MatchPath(pattern); owned {
-			continue
-		}
-		// The admin surface mounts with the lifecycle service; it lives under
-		// the native /api/v2 admin tree, never on a gateway path.
-		if strings.HasPrefix(pattern, "/api/v2/admin/platform/compatibility/") {
-			continue
-		}
-		t.Fatalf("route %q is neither native, gateway-owned, nor the compatibility admin surface", pair)
-	}
-	// The inventory fixture and the wired fixture differ only in the compat
-	// dependencies, so every native route must still be present.
-	for pair := range native {
-		t.Fatalf("native route %q disappeared when the gateway was mounted", pair)
-	}
-}
-
-// The gateway may not replace native authentication: with the gateway
-// mounted, the native auth and profile routes must still resolve to native
-// /api patterns, and requests to them must not answer with the gateway stub.
+// The gateway may not replace native authentication. The composed listener
+// hands every /api/** request to this router before the gateway is ever
+// consulted (cmd/silo publicMux, pinned by TestPublicMuxRoutesEachLayer), so
+// what this router owes is that the native auth routes resolve to native
+// patterns no owned family covers.
 func TestCompatGatewayDoesNotReplaceNativeAuthRoutes(t *testing.T) {
 	wired := newCompatWiredRouter(t)
 	probes := []struct {
@@ -157,25 +117,6 @@ func TestCompatGatewayDoesNotReplaceNativeAuthRoutes(t *testing.T) {
 		}
 		if _, owned := compatgateway.MatchPath(pattern); owned {
 			t.Fatalf("native auth route %s %s is owned by the gateway", probe.method, probe.path)
-		}
-	}
-}
-
-// The full fixed table is registered — each owned family answers through the
-// gateway handler rather than 404ing into the native fallback.
-func TestCompatGatewayOwnsItsFixedFamilies(t *testing.T) {
-	wired := newCompatWiredRouter(t)
-	mux, ok := wired.(chi.Router)
-	if !ok {
-		t.Fatal("router is not a chi.Router")
-	}
-	for _, route := range compatgateway.RouteTable() {
-		for _, path := range []string{route.Prefix, route.Prefix + "/probe"} {
-			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
-			if rec.Code != http.StatusServiceUnavailable {
-				t.Fatalf("gateway path %q answered %d, want the gateway stub's 503", path, rec.Code)
-			}
 		}
 	}
 }
