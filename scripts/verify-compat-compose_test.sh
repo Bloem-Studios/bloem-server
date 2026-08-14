@@ -126,12 +126,35 @@ expect_scan_failure() {
 		report fail "$name"
 		return
 	fi
+	# A crashed scan is not a detection. A jq fault, or an abort before the
+	# summary, can make an unrelated check's message appear while later
+	# combinations never run at all — which is how three cases once reported
+	# success on a run that had already died.
+	if grep -Eq 'jq: error|jq: syntax error' <<<"$out"; then
+		printf '  scan hit a jq fault; the run aborted rather than detecting\n' >&2
+		printf '%s\n' "$out" | sed 's/^/  | /' >&2
+		report fail "$name"
+		return
+	fi
+	if ! grep -Eq 'check\(s\) failed' <<<"$out"; then
+		printf '  scan never reached its summary; it aborted before finishing\n' >&2
+		printf '%s\n' "$out" | sed 's/^/  | /' >&2
+		report fail "$name"
+		return
+	fi
 	report ok "$name"
 }
 
 # Each overlay defines exactly one companion service, and only that service
 # carries `restart: unless-stopped`, so it is a safe insertion anchor.
 service_anchor='restart: unless-stopped'
+
+expect_scan_failure \
+	"detects an overlay removing a base service" \
+	"$jf_file" \
+	"$ a\\
+  meilisearch: !reset null" \
+	"overlay removed base service(s)"
 
 expect_scan_failure \
 	"detects a host port on a companion" \

@@ -216,12 +216,14 @@ verify_overlay_delta() {
 				| "overlay added unexpected service(s): \(. - $allowed_new)"),
 			(($bk - $ck) | select(length > 0)
 				| "overlay removed base service(s): \(.)"),
-			($bk - ($bk - $ck))[]
+			(
+				($bk - ($bk - $ck))[]
 				| . as $s
 				| (if $s == "silo" then ["networks"] else [] end) as $allowed
 				| (changed_keys($base.services[$s]; $combo.services[$s]) - $allowed) as $changed
 				| select($changed | length > 0)
 				| "overlay modified base service \($s): \($changed)"
+			)
 		] | .[]' <<<'{}')
 	if [[ -n "$violations" ]]; then
 		while IFS= read -r line; do
