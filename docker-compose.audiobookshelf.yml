@@ -1,0 +1,76 @@
+# Opt-in overlay: vondel-audiobookshelf, the private Audiobookshelf-protocol
+# compatibility companion.
+#
+# Activate (from the repository root, together with the base file):
+#
+#   docker compose -f docker-compose.yml -f docker-compose.audiobookshelf.yml up -d
+#
+# Deployment contract (docs/operations/compatibility-applications.md):
+#   - The companion runs on the internal vondel-compat network only. It has no
+#     host ports; clients reach it exclusively through Vondel's gateway at the
+#     canonical public address under /audiobookshelf/**.
+#   - It receives NO Vondel database, Redis, media filesystem, Docker socket,
+#     SECRET_KEY, provider credential, or tuner credential. Its only Vondel
+#     contact is the private compatibility API over this network.
+#   - Its persistence is disposable protocol state in a companion-owned named
+#     volume (SQLite with WAL). Removing the volume loses only protocol state;
+#     canonical media state lives in Vondel.
+#   - Enrollment uses a single-use token mounted as a Docker secret file at
+#     /run/secrets/vondel_compat_enrollment — never an environment value.
+#     Create the token in Admin -> Compatibility Applications, write it to the
+#     file below, enroll, then delete the file.
+#   - The image is private. `docker login ghcr.io` with read access to
+#     ghcr.io/vondel-media is required before pulling.
+#
+# Structure is enforced by scripts/verify-compat-compose.sh.
+
+networks:
+  vondel-compat:
+    # Internal: members get no host-port publishing and no outbound access.
+    # The companion talks to Vondel, and nothing else.
+    internal: true
+
+volumes:
+  # Disposable protocol state only (client token correlation, protocol caches,
+  # event cursors). Safe to delete when the companion is uninstalled.
+  vondel-audiobookshelf-state:
+
+secrets:
+  vondel_audiobookshelf_enrollment:
+    # Single-use enrollment token issued by Admin -> Compatibility Applications.
+    # Write it to this file (chmod 600) before `up`, delete it after enrollment
+    # succeeds. The .secrets/ directory is gitignored.
+    file: ${VONDEL_AUDIOBOOKSHELF_ENROLLMENT_FILE:-./.secrets/compat/vondel-audiobookshelf-enrollment.token}
+
+services:
+  silo:
+    # Vondel joins the private companion network (for the gateway and the
+    # private compatibility API) while keeping its normal networking.
+    networks:
+      default: {}
+      vondel-compat: {}
+
+  vondel-audiobookshelf:
+    # Pin a version or digest for deterministic change control, e.g.
+    # VONDEL_AUDIOBOOKSHELF_IMAGE=ghcr.io/vondel-media/vondel-audiobookshelf@sha256:...
+    image: ${VONDEL_AUDIOBOOKSHELF_IMAGE:-ghcr.io/vondel-media/vondel-audiobookshelf:latest}
+    restart: unless-stopped
+    networks:
+      vondel-compat:
+        aliases:
+          - vondel-audiobookshelf
+    environment:
+      # Base URL of Vondel's listener on the private network; the companion
+      # calls /api/internal/compat/v1 beneath it.
+      VONDEL_COMPAT_API_BASE_URL: http://silo:8080
+      # Where the single-use enrollment token is mounted (Docker secret).
+      VONDEL_COMPAT_ENROLLMENT_FILE: /run/secrets/vondel_compat_enrollment
+      # Companion-owned disposable state directory (named volume below).
+      VONDEL_COMPAT_STATE_DIR: /var/lib/vondel-compat
+    secrets:
+      - source: vondel_audiobookshelf_enrollment
+        target: vondel_compat_enrollment
+    volumes:
+      - vondel-audiobookshelf-state:/var/lib/vondel-compat
+    security_opt:
+      - no-new-privileges:true
