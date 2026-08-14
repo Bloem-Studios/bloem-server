@@ -12,6 +12,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/go-chi/chi/v5"
 )
@@ -21,9 +22,18 @@ func newRouteInventoryRouter(t *testing.T) chi.Routes {
 	pool := newV1TenancyDatabase(t)
 	store := tenancy.NewStore(pool)
 	bootstrap := v1TenancyBootstrap{store: store}
-	// The playback and stream routes only mount when a session manager is
-	// present, and they are exactly the surface a bound profile needs most, so
-	// the inventory would be describing a router nobody runs without it.
+	// Conditional routes are the point of this fixture: a route that only
+	// mounts when its dependency is present is still admitted by an allowed
+	// prefix in production, so an inventory taken without it describes a
+	// router nobody runs. Playback and stream need a session manager and the
+	// file and folder repositories; imported collections need the user
+	// collection service.
+	//
+	// Known gap, deliberately recorded rather than hidden: the subtitle
+	// search, download, upload, and AI routes mount only with an S3 client,
+	// which this fixture has no way to supply. They sit under the allowed
+	// "/api/v1/subtitles" prefix and are therefore admitted in production
+	// without appearing in the pinned set below.
 	router := NewRouter(Dependencies{
 		DB:                    pool,
 		Config:                &config.Config{Auth: config.AuthConfig{JWTSecret: "route-inventory", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour}},
@@ -33,6 +43,13 @@ func newRouteInventoryRouter(t *testing.T) chi.Routes {
 		SessionMgr:            playback.NewSessionManager(4, 2),
 		FileRepo:              scanner.NewFileRepository(pool),
 		FolderRepo:            catalog.NewFolderRepository(pool),
+		UserCollectionSync: usercollections.NewService(
+			pgstore.NewPostgresProvider(pool),
+			catalog.NewItemRepository(pool),
+			catalog.NewLibraryItemRepository(pool),
+			nil,
+			nil,
+		),
 	})
 	routes, ok := router.(chi.Routes)
 	if !ok {
@@ -93,14 +110,21 @@ func TestDirectProfileAllowedRoutesAreThisExactSet(t *testing.T) {
 		"/api/v1/collections/groups",
 		"/api/v1/collections/groups/order",
 		"/api/v1/collections/groups/{id}",
+		"/api/v1/collections/import/mdblist",
+		"/api/v1/collections/import/mdblist/search",
+		"/api/v1/collections/import/mdblist/top",
+		"/api/v1/collections/import/tmdb",
+		"/api/v1/collections/import/trakt",
 		"/api/v1/collections/order",
 		"/api/v1/collections/preview",
 		"/api/v1/collections/server",
+		"/api/v1/collections/templates",
 		"/api/v1/collections/{id}",
 		"/api/v1/collections/{id}/image",
 		"/api/v1/collections/{id}/items",
 		"/api/v1/collections/{id}/items/order",
 		"/api/v1/collections/{id}/items/{item_id}",
+		"/api/v1/collections/{id}/sync",
 		"/api/v1/devices/",
 		"/api/v1/devices/{device_id}",
 		"/api/v1/devices/{device_id}/settings",

@@ -118,6 +118,12 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
 		return
 	}
+	// LoadOrReconstructSession authorizes on the account; a direct-profile
+	// bearer is narrower than its account and gets its own session only.
+	if userID != 0 && !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, userID) {
+		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
+		return
+	}
 
 	file, err := h.fileResolver.GetByID(r.Context(), session.MediaFileID)
 	if err != nil {
@@ -220,7 +226,7 @@ func (h *StreamHandler) HandleSubtitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if session.UserID != userID {
+	if !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, userID) {
 		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
 		return
 	}
@@ -486,7 +492,7 @@ func (h *StreamHandler) HandleSubtitleFonts(w http.ResponseWriter, r *http.Reque
 		writePlaybackSessionNotFound(w)
 		return
 	}
-	if session.UserID != userID {
+	if !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, userID) {
 		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
 		return
 	}

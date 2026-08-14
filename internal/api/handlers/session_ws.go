@@ -72,7 +72,7 @@ func (h *PlaybackHandler) HandleSessionWebSocket(w http.ResponseWriter, r *http.
 		writePlaybackSessionNotFound(w)
 		return
 	}
-	if session.UserID != userID {
+	if !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, userID) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}

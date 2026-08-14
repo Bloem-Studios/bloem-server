@@ -1833,7 +1833,16 @@ func NewRouter(deps Dependencies) chi.Router {
 					http.NotFound(w, r)
 					return
 				}
-				authenticated, admin := resolveOptionalPluginAccess(r, jwtService, sessionRepo)
+				authenticated, admin, _, _, profileBound := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, apiKeyRepo, userRepo)
+				if profileBound {
+					// Same boundary as the route proxy above: an asset
+					// descriptor may be marked authenticated, and this entry
+					// point authenticates itself rather than through the
+					// middleware that holds direct-profile sessions to their
+					// allowlist.
+					http.Error(w, "Direct profile sessions cannot use plugin routes", http.StatusForbidden)
+					return
+				}
 				deps.PluginHTTPProxy.ServeAsset(w, r.WithContext(plugins.WithPluginAccess(r.Context(), authenticated, admin)), installationID, assetPath)
 			})
 		}
@@ -3536,18 +3545,13 @@ func (r *pgSubtitleMediaResolver) GetMediaFileWithMetadata(ctx context.Context, 
 // adminRole is the legacy account role that grants server administration.
 const adminRole = "admin"
 
-func resolveOptionalPluginAccess(
-	r *http.Request,
-	jwtService *auth.JWTService,
-	sessionRepo *auth.SessionRepository,
-) (bool, bool) {
-	authenticated, admin, _, _, _ := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, nil, nil)
-	return authenticated, admin
-}
-
-// resolveOptionalPluginAccessUser is like resolveOptionalPluginAccess but also
-// returns the authenticated user's ID, and accepts API-key bearer tokens
-// (sa_*) when apiKeyRepo + userRepo are provided.
+// resolveOptionalPluginAccessUser resolves the optional identity behind a
+// plugin request: whether it is authenticated, whether it is an admin, the
+// account and profile it belongs to, and whether its profile is fixed by the
+// token. It accepts API-key bearer tokens (sa_*) when apiKeyRepo and userRepo
+// are provided. Both plugin entry points authenticate through this rather than
+// the auth middleware, so both must apply the direct-profile boundary
+// themselves.
 func resolveOptionalPluginAccessUser(
 	r *http.Request,
 	jwtService *auth.JWTService,
