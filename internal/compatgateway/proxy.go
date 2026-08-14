@@ -170,6 +170,16 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A dot segment never belongs in a protocol path, and percent-encoding
+	// hides it from the mux's own path cleaning: "%2e%2e%2f%2e%2e" decodes to
+	// "../.." only once URL.Path is read. Refuse rather than forward — the
+	// whole path is checked, since stripping only removes a leading segment
+	// that had to match a family name.
+	if hasDotSegment(r.URL.Path) || hasDotSegment(r.URL.EscapedPath()) {
+		writeGatewayError(w, http.StatusBadRequest, "invalid_path", "The request path is not a valid compatibility path")
+		return
+	}
+
 	if r.ContentLength > g.maxRequestBytes {
 		writeGatewayError(w, http.StatusRequestEntityTooLarge, "request_too_large", "Request body exceeds the compatibility gateway limit")
 		return
@@ -188,8 +198,13 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			out.URL.Scheme = status.Endpoint.Scheme
 			out.URL.Host = status.Endpoint.Host
 			if route.StripPrefix {
+				// Strip the decoded and the escaped path by the same rule and
+				// keep them in step. Rewriting Path alone and clearing
+				// RawPath re-encodes the request line from the decoded form,
+				// so an encoded slash ("a%2Fb") would reach the companion as
+				// a real separator — a path its client never sent.
+				out.URL.RawPath = strippedPath(out.URL.EscapedPath())
 				out.URL.Path = strippedPath(out.URL.Path)
-				out.URL.RawPath = ""
 			}
 			// The internal identity is minted here and only here; whatever the
 			// caller sent was already dropped from pr.Out by SetXForwarded and
@@ -306,6 +321,16 @@ func strippedPath(path string) string {
 		return "/"
 	}
 	return trimmed[idx:]
+}
+
+// hasDotSegment reports whether any whole path segment is "." or "..".
+func hasDotSegment(path string) bool {
+	for _, segment := range strings.Split(path, "/") {
+		if segment == "." || segment == ".." {
+			return true
+		}
+	}
+	return false
 }
 
 // rewriteRedirect keeps companion redirects on the canonical origin. A

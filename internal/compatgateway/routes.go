@@ -61,8 +61,18 @@ var legacyJellyfinPrefixes = []string{embyPrefix, jellyfinPrefix}
 // application keeps even though a compatibility family carries the same
 // name. Ownership is case-insensitive, and these three SPA client routes —
 // /search, /library/:id, /livetv — sit exactly under the /Search, /Library,
-// and /LiveTv families. They are matched lowercase-exact: the SPA serves
-// only the lowercase form, so /Search still reaches Jellyfin.
+// and /LiveTv families.
+//
+// The split is by case: the lowercase form is the SPA's, every other casing
+// is Jellyfin's. That direction is forced, because all three are live
+// protocol families — /Search/Hints, /Library/VirtualFolders, and the whole
+// /LiveTv surface — and reserving them case-insensitively would take them
+// away from every client that does not use an /emby or /jellyfin base path.
+// React Router matches case-insensitively by default, which would have the
+// SPA claim /Search while the gateway routes it to Jellyfin, so the three
+// routes in web/src/App.tsx set caseSensitive; the pin test below requires
+// it, and the cost is that a hand-typed /Search is Jellyfin's, not the
+// search page.
 //
 // The set is pinned against the SPA's real route table by
 // TestReservedNativeSegmentsCoverTheSPARoutes, which fails both when a new

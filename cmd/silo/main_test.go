@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -337,5 +338,58 @@ func TestPublicMuxWithoutGateway(t *testing.T) {
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/health", nil))
 	if got := rec.Header().Get("X-Layer"); got != "api" {
 		t.Fatalf("/api/v1/health reached layer %q, want api", got)
+	}
+}
+
+// publicMux is only worth testing if main actually serves it. Driving the
+// helper proves the helper; it says nothing about whether main still calls
+// it, so reverting main to an inline mux would leave the gateway out of
+// production with every package green. This pins the call site in source,
+// the same way the compatgateway package pins the SPA's route table.
+func TestMainServesThePublicMux(t *testing.T) {
+	source, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("read main.go: %v", err)
+	}
+	text := string(source)
+
+	const composition = "publicMux(router, server.FrontendHandler(), compatGateway)"
+	if !strings.Contains(text, composition) {
+		t.Fatalf("main.go must compose the public listener as %q", composition)
+	}
+
+	// Any other mux in main.go is a second composition that could quietly
+	// bypass the gateway; the only legitimate one is publicMux's own.
+	body := publicMuxBody(t, text)
+	for _, index := range allIndexes(text, "http.NewServeMux()") {
+		if index < body[0] || index >= body[1] {
+			t.Fatalf("main.go builds a ServeMux outside publicMux at offset %d; the public listener has exactly one composition", index)
+		}
+	}
+}
+
+// publicMuxBody returns the [start, end) offsets of publicMux's body.
+func publicMuxBody(t *testing.T, text string) [2]int {
+	t.Helper()
+	start := strings.Index(text, "func publicMux(")
+	if start < 0 {
+		t.Fatal("main.go no longer declares publicMux")
+	}
+	end := strings.Index(text[start:], "\n}\n")
+	if end < 0 {
+		t.Fatal("publicMux body is unterminated")
+	}
+	return [2]int{start, start + end}
+}
+
+func allIndexes(text, needle string) []int {
+	var indexes []int
+	for offset := 0; ; {
+		found := strings.Index(text[offset:], needle)
+		if found < 0 {
+			return indexes
+		}
+		indexes = append(indexes, offset+found)
+		offset += found + len(needle)
 	}
 }
