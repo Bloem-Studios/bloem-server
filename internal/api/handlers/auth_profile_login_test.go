@@ -36,12 +36,38 @@ func TestDirectProfileLoginReturnsOnlyProfileBoundSession(t *testing.T) {
 	if login.email != "reader@example.test" || login.password != "profile-password" || login.device.ID != "tablet-17" || login.device.Name != "Reader Tablet" {
 		t.Fatalf("login input = %#v, want request credentials and device", login)
 	}
-	var response profileLoginResponse
+	// The response is a frozen contract: decode raw and assert the exact key
+	// set with every value. Decoding into the production struct would keep
+	// passing if a field stopped being populated — and could never notice an
+	// account or sibling-profile field being newly exposed.
+	var response map[string]json.RawMessage
 	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if response.AccessToken != "access" || response.RefreshToken != "refresh" || response.ProfileID != "profile-reader" || response.OrganizationID != "organization-reader" || response.MembershipID != "membership-reader" {
-		t.Fatalf("response = %#v, want profile-bound session only", response)
+	want := map[string]string{
+		"access_token":        `"access"`,
+		"refresh_token":       `"refresh"`,
+		"expires_in":          `300`,
+		"profile_id":          `"profile-reader"`,
+		"organization_id":     `"organization-reader"`,
+		"membership_id":       `"membership-reader"`,
+		"policy_revision":     `4`,
+		"security_revision":   `9`,
+		"credential_revision": `3`,
+	}
+	for key, value := range want {
+		got, ok := response[key]
+		if !ok {
+			t.Fatalf("response is missing %q: %v", key, rec.Body.String())
+		}
+		if string(got) != value {
+			t.Fatalf("response[%q] = %s, want %s", key, got, value)
+		}
+	}
+	for key := range response {
+		if _, ok := want[key]; !ok {
+			t.Fatalf("response exposes unexpected field %q — a direct profile login returns the profile-bound session and nothing else", key)
+		}
 	}
 }
 
