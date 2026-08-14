@@ -6,13 +6,17 @@ PIN unlock, token refresh, and administrative projection. The native
 administration surface exposes:
 
 - public `GET /api/v2/capabilities`; and
+- public `GET /api/v2/server/identity`; and
 - authenticated `GET /api/v2/organizations`; and
 - administrative context exchange and management routes under
-  `/api/v2/admin`.
+  `/api/v2/admin`; and
+- the native client surface documented in
+  [v2 client surface](v2-client-surface.md).
 
-The capability response is the source of truth. This increment advertises
-legacy v1 compatibility, organization membership discovery, and tenant-bounded
-media scope. Its exact response is:
+The capability response is the source of truth. It advertises legacy v1
+compatibility, organization membership discovery, and tenant-bounded media
+scope, alongside the media types this build serves and the feature tokens the
+clients match against. Its exact response is:
 
 ```json
 {
@@ -25,9 +29,30 @@ media scope. Its exact response is:
     "direct_profile_login": false,
     "shared_device_pairing": false,
     "delegated_admin_roles": false
-  }
+  },
+  "media_types": ["movie", "series", "episode", "audiobook", "ebook", "manga"],
+  "feature_tokens": [
+    "playback_plan_v3",
+    "neutral_playback_v3_contract_v1",
+    "layout_aware_passthrough",
+    "playback_route_diagnostics",
+    "device_quirks_v1",
+    "seek_reanchor_v1",
+    "output_change_v1",
+    "direct_stream_resume_v1",
+    "plan_source_duration_v1",
+    "declared_event_channels",
+    "watch_document_v1",
+    "device_pairing_v1",
+    "progress_sync_v1"
+  ]
 }
 ```
+
+`features` and `feature_tokens` are not two spellings of one list. `features`
+is the fixed object of identity-model booleans this document has always
+published; `feature_tokens` is the open, versioned allowlist a client matches
+against, and every later capability lands there. Both grow additively.
 
 Direct-profile login, shared-device pairing, and delegated administrative roles
 are not implemented. The initial organization authority is the broad,

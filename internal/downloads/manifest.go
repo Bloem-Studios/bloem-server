@@ -13,11 +13,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/subtitles"
 )
 
-// ManifestVersion is bumped whenever the OfflineManifest DTO shape changes. It
-// is exported because the aggregate capability document advertises the offline
-// manifest by the version served here; deriving that token keeps a bump from
-// leaving the advertisement behind.
-const ManifestVersion = 2
+// manifestVersion is bumped whenever the OfflineManifest DTO shape changes.
+const manifestVersion = 2
 
 const apiDownloadsPrefix = "/api/v1/downloads/"
 
@@ -226,7 +223,7 @@ func (b *ManifestBuilder) build(ctx context.Context, dl *Download, filter catalo
 		Preview:           toMarker(detail.Preview),
 		StableIdentity:    stableIdentity(dl, detail, seriesDetail),
 		Integrity:         buildIntegrity(dl, file),
-		ManifestVersion:   ManifestVersion,
+		ManifestVersion:   manifestVersion,
 		GeneratedAt:       time.Now().UTC().Format(time.RFC3339),
 	}
 

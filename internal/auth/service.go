@@ -326,12 +326,10 @@ func (s *Service) loginWithProvider(
 }
 
 // NeedsSetup reports whether the system still needs its initial user account.
+// The rule lives in needsSetup so the standalone SetupState reporter answers
+// identically.
 func (s *Service) NeedsSetup(ctx context.Context) (bool, error) {
-	count, err := s.users.Count(ctx)
-	if err != nil {
-		return false, fmt.Errorf("counting users: %w", err)
-	}
-	return count == 0, nil
+	return needsSetup(ctx, s.users)
 }
 
 // SetupInitialUser creates the first admin account and signs it in.

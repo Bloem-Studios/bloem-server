@@ -67,7 +67,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/scanqueue"
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/sections"
-	"github.com/Silo-Server/silo-server/internal/serverid"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/subtitles"
 	subtitleai "github.com/Silo-Server/silo-server/internal/subtitles/ai"
@@ -584,8 +583,6 @@ func NewRouter(deps Dependencies) chi.Router {
 	var autoscanHandler *handlers.AutoscanHandler
 	var liveTVHandler *handlers.LiveTVHandler
 	var ebookReaderHandler *handlers.EbookReaderHandler
-	// Watch documents (contracts watch_document_v1) for the TV clients.
-	var watchHandler *handlers.WatchHandler
 	var ebookProgressStore *handlers.PGEbookReaderProgressStore
 	var ebookConfigStore *handlers.PGEbookReaderConfigStore
 	var ebookAnnotationStore *handlers.PGEbookReaderAnnotationStore
@@ -643,21 +640,6 @@ func NewRouter(deps Dependencies) chi.Router {
 		var episodeFileProvider handlers.EpisodeFileProvider
 		if deps.FileRepo != nil {
 			episodeFileProvider = deps.FileRepo
-		}
-
-		// The Watch documents both TV clients consume. They need a catalog, a
-		// media-file repository and a progress store; without any one of them
-		// there is no document to compose, so the routes stay unmounted rather
-		// than answering with an empty library.
-		if deps.FileRepo != nil && deps.UserStoreProvider != nil {
-			watchHandler = handlers.NewWatchHandler(handlers.NewCatalogWatchReader(
-				browseRepo,
-				itemRepo,
-				episodeRepo,
-				seasonRepo,
-				deps.FileRepo,
-				deps.UserStoreProvider,
-			))
 		}
 
 		rootClaimRepo := catalog.NewRootClaimRepository(deps.DB)
@@ -1777,34 +1759,6 @@ func NewRouter(deps Dependencies) chi.Router {
 		r.Get("/health", healthHandler.ServeHTTP)
 		r.Get("/ready", readyHandler.ServeHTTP)
 
-		// Public identity and aggregate capability probes. Both are mounted
-		// here, ahead of the auth routes and outside every auth group, because
-		// a client has to answer "which server is this, and what does it do"
-		// before it has any credentials to present.
-		//
-		// Health is untouched: its server_name/server_id keep coming from the
-		// Jellyfin-compatibility configuration for the clients that already
-		// read them. Scope keying uses /server/identity instead.
-		//
-		// The setup reporter is assigned through the guard rather than passed
-		// directly: authService is a typed pointer, and handing a nil one to an
-		// interface parameter would produce a non-nil interface holding nil.
-		var setupState handlers.SetupStateReporter
-		if authService != nil {
-			setupState = authService
-		}
-		// One resolver per process, shared by every surface that publishes the
-		// identifier, so they cannot drift apart. A nil settings store (no
-		// database) is allowed: Resolve then reports unavailable and the
-		// endpoint answers 503 rather than inventing a value.
-		serverIdentityHandler := handlers.NewServerIdentityHandler(
-			serverid.NewResolver(settingsRepo),
-			deps.BrandingService,
-			setupState,
-		)
-		r.Get("/server/identity", serverIdentityHandler.HandleGetServerIdentity)
-		r.Get("/capabilities", handlers.NewCapabilitiesHandler().HandleGetCapabilities)
-
 		// Branding handler is shared between the public read/serve endpoints
 		// (registered with the theme endpoints below) and the admin
 		// upload/delete endpoints (registered in the admin group).
@@ -2338,21 +2292,6 @@ func NewRouter(deps Dependencies) chi.Router {
 							r.Delete("/{item_id}", ratingsHandler.HandleDeleteRating)
 						})
 					}
-				}
-
-				// Watch documents (profile-scoped). They sit beside the
-				// progress routes because the home document carries the same
-				// profile's progress rows.
-				//
-				// Registered as flat paths rather than a /watch subrouter: the
-				// catalog's own GET /watch/{id} already occupies that prefix,
-				// and mounting a subrouter over it would swallow it. chi
-				// resolves a static segment ahead of a parameter at the same
-				// level, so /watch/home and /watch/items/{content_id} land here
-				// while /watch/{id} keeps serving item detail.
-				if watchHandler != nil {
-					r.With(apimw.RequireProfile).Get("/watch/home", watchHandler.HandleWatchHome)
-					r.With(apimw.RequireProfile).Get("/watch/items/{content_id}", watchHandler.HandleWatchItem)
 				}
 
 				// Progress and sync routes (profile-scoped).

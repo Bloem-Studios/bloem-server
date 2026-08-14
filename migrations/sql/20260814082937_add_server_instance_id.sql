@@ -1,5 +1,5 @@
 -- Reserves the plain server_settings row 'server.instance_id', which holds the
--- stable identifier GET /api/v1/server/identity serves and clients key their
+-- stable identifier GET /api/v2/server/identity serves and clients key their
 -- stored per-server state on.
 --
 -- +goose Up

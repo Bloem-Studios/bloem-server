@@ -46,24 +46,31 @@ const (
 	watchForgottenContentID = "3003"
 )
 
-// TestWatchDocumentsAreServedByTheRealRouter drives the real router end to end:
-// the routes are mounted inside the authenticated, profile-scoped v1 group, the
-// database-backed reader runs its real queries, and both documents conform to
-// the contracts schema. The handler-level tests use a fake reader, so this is
-// the only place the adapter's SQL is exercised.
-func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
+// clientSurfaceFixture is a real router over a disposable database with one
+// account, one profile and a usable access token: the starting point for any
+// test that drives the native client surface end to end.
+type clientSurfaceFixture struct {
+	pool      *pgxpool.Pool
+	provider  userstore.UserStoreProvider
+	router    http.Handler
+	token     string
+	userID    int
+	profileID string
+}
+
+func newClientSurfaceFixture(t *testing.T) clientSurfaceFixture {
+	t.Helper()
 	pool := newWatchDatabase(t)
 	ctx := context.Background()
-	cfg := &config.Config{Auth: config.AuthConfig{
-		JWTSecret:          "watch-document-mount-secret",
-		AccessTokenExpiry:  time.Hour,
-		RefreshTokenExpiry: 24 * time.Hour,
-	}}
 	provider := pgstore.NewPostgresProvider(pool)
 	bootstrap := v1TenancyBootstrap{store: tenancy.NewStore(pool)}
 	router := NewRouter(Dependencies{
-		DB:                    pool,
-		Config:                cfg,
+		DB: pool,
+		Config: &config.Config{Auth: config.AuthConfig{
+			JWTSecret:          "client-surface-mount-secret",
+			AccessTokenExpiry:  time.Hour,
+			RefreshTokenExpiry: 24 * time.Hour,
+		}},
 		UserStoreProvider:     provider,
 		FileRepo:              scanner.NewFileRepository(pool),
 		OwnershipBootstrapper: bootstrap,
@@ -78,31 +85,47 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	if setup.Code != http.StatusCreated {
 		t.Fatalf("setup = %d %s", setup.Code, setup.Body.String())
 	}
-	token := decodeLogin(t, setup).AccessToken
 
-	var userID int
-	if err := pool.QueryRow(ctx, `SELECT id FROM users WHERE username = 'watch.viewer'`).Scan(&userID); err != nil {
+	fixture := clientSurfaceFixture{pool: pool, provider: provider, router: router, token: decodeLogin(t, setup).AccessToken}
+	if err := pool.QueryRow(ctx, `SELECT id FROM users WHERE username = 'watch.viewer'`).Scan(&fixture.userID); err != nil {
 		t.Fatalf("load account: %v", err)
 	}
-	var profileID string
-	if err := pool.QueryRow(ctx, `SELECT id FROM user_profiles WHERE user_id = $1 AND is_primary`, userID).Scan(&profileID); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT id FROM user_profiles WHERE user_id = $1 AND is_primary`, fixture.userID).Scan(&fixture.profileID); err != nil {
 		t.Fatalf("load primary profile: %v", err)
 	}
+	return fixture
+}
+
+func (f clientSurfaceFixture) profileHeaders() map[string]string {
+	return map[string]string{"X-Profile-Id": f.profileID}
+}
+
+// TestWatchDocumentsAreServedByTheRealRouter drives the real router end to end:
+// the routes are mounted inside the authenticated, viewer-scoped,
+// profile-scoped group on /api/v2, the database-backed reader runs its real
+// queries, and both documents conform to the contracts schema. The
+// handler-level tests use a fake reader, so this is the only place the
+// adapter's SQL is exercised.
+func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
+	fixture := newClientSurfaceFixture(t)
+	ctx := context.Background()
+	pool, provider, router := fixture.pool, fixture.provider, fixture.router
+	token, profileID := fixture.token, fixture.profileID
 
 	seedWatchCatalog(t, pool)
-	seedWatchProgress(t, provider, userID, profileID)
+	seedWatchProgress(t, provider, fixture.userID, profileID)
 
-	profileHeaders := map[string]string{"X-Profile-Id": profileID}
+	profileHeaders := fixture.profileHeaders()
 
 	t.Run("unauthenticated", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/home", "", "", profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/home", "", "", profileHeaders)
 		if response.Code != http.StatusUnauthorized {
 			t.Fatalf("home without a token = %d %s", response.Code, response.Body.String())
 		}
 	})
 
 	t.Run("without a profile", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/home", "", token, nil)
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/home", "", token, nil)
 		if response.Code != http.StatusBadRequest {
 			t.Fatalf("home without a profile = %d %s", response.Code, response.Body.String())
 		}
@@ -118,7 +141,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	})
 
 	t.Run("home", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/home", "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/home", "", token, profileHeaders)
 		if response.Code != http.StatusOK {
 			t.Fatalf("home = %d %s", response.Code, response.Body.String())
 		}
@@ -158,7 +181,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	})
 
 	t.Run("series detail", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/items/"+watchSeriesContentID, "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/items/"+watchSeriesContentID, "", token, profileHeaders)
 		if response.Code != http.StatusOK {
 			t.Fatalf("series detail = %d %s", response.Code, response.Body.String())
 		}
@@ -182,7 +205,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	})
 
 	t.Run("movie detail", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/items/"+watchMovieContentID, "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/items/"+watchMovieContentID, "", token, profileHeaders)
 		if response.Code != http.StatusOK {
 			t.Fatalf("movie detail = %d %s", response.Code, response.Body.String())
 		}
@@ -194,9 +217,30 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	})
 
 	t.Run("unknown item", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/items/6003", "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/items/6003", "", token, profileHeaders)
 		if response.Code != http.StatusNotFound {
 			t.Fatalf("unknown item = %d %s", response.Code, response.Body.String())
+		}
+	})
+
+	// The Silo-compatible projection keeps exactly the watch route it had. Its
+	// GET /api/v1/watch/{id} still serves catalog item detail — "home" is just
+	// an identifier to it — and it has grown no items route at all.
+	t.Run("the v1 projection is untouched", func(t *testing.T) {
+		detail := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/"+watchMovieContentID, "", token, profileHeaders)
+		if detail.Code != http.StatusOK {
+			t.Fatalf("v1 watch detail = %d %s", detail.Code, detail.Body.String())
+		}
+		var body map[string]any
+		if err := json.Unmarshal(detail.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode v1 watch detail: %v", err)
+		}
+		if _, isDocument := body["progress"]; isDocument {
+			t.Errorf("GET /api/v1/watch/{id} answered with a watch document: %v", body)
+		}
+		items := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/items/"+watchMovieContentID, "", token, profileHeaders)
+		if items.Code != http.StatusNotFound {
+			t.Errorf("GET /api/v1/watch/items/{id} = %d, want 404: the Watch documents live on /api/v2", items.Code)
 		}
 	})
 
@@ -208,7 +252,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	t.Run("continue watching outside the window", func(t *testing.T) {
 		seedWatchFillerLibrary(t, pool)
 
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/home", "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/home", "", token, profileHeaders)
 		if response.Code != http.StatusOK {
 			t.Fatalf("home = %d %s", response.Code, response.Body.String())
 		}
@@ -235,7 +279,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	// Restricting the profile to the movie library must remove the series from
 	// both arrays and make its detail document unreachable.
 	t.Run("library restrictions", func(t *testing.T) {
-		store, err := provider.ForUser(ctx, userID)
+		store, err := provider.ForUser(ctx, fixture.userID)
 		if err != nil {
 			t.Fatalf("open user store: %v", err)
 		}
@@ -263,7 +307,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 			t.Fatalf("restrict profile libraries: %v", err)
 		}
 
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/home", "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/home", "", token, profileHeaders)
 		if response.Code != http.StatusOK {
 			t.Fatalf("restricted home = %d %s", response.Code, response.Body.String())
 		}
@@ -290,7 +334,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 			}
 		}
 
-		detail := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/items/"+watchSeriesContentID, "", token, profileHeaders)
+		detail := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/items/"+watchSeriesContentID, "", token, profileHeaders)
 		if detail.Code != http.StatusNotFound {
 			t.Fatalf("restricted series detail = %d %s", detail.Code, detail.Body.String())
 		}

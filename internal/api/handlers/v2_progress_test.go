@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// syncProgressStatuses decodes a POST /sync/progress response and returns the
+// syncProgressStatuses decodes a POST /api/v2/sync/progress response and returns the
 // per-item status values in request order.
 func syncProgressStatuses(t *testing.T, body []byte) []string {
 	t.Helper()
@@ -33,15 +33,15 @@ func syncProgressStatuses(t *testing.T, body []byte) []string {
 	return statuses
 }
 
-// postSyncProgress runs one POST /sync/progress request against the handler and
+// postSyncProgress runs one POST /api/v2/sync/progress request against the handler and
 // returns the recorded response.
 func postSyncProgress(t *testing.T, handler *ProgressHandler, body string) *httptest.ResponseRecorder {
 	t.Helper()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/sync/progress", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v2/sync/progress", strings.NewReader(body))
 	req = req.WithContext(newAuthorizedPlaybackContext())
 	rec := httptest.NewRecorder()
-	handler.HandleSyncProgress(rec, req)
+	handler.HandleV2SyncProgress(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
@@ -53,7 +53,7 @@ func postSyncProgress(t *testing.T, handler *ProgressHandler, body string) *http
 // wrote and a row the min-resume floor discarded: the discarded row looks like a
 // landed write, so the client stops resending it and the position is lost. The
 // wire vocabulary is `updated` / `ignored` / `error`.
-func TestSyncProgressUsesContractStatusVocabulary(t *testing.T) {
+func TestV2SyncProgressUsesContractStatusVocabulary(t *testing.T) {
 	store := newPlaybackTestStore(t)
 	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}}
 
@@ -91,8 +91,8 @@ func TestSyncProgressUsesContractStatusVocabulary(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("decode sync response: %v", err)
 	}
-	if resp.Results[2].Error != "media_item_id is required" {
-		t.Fatalf("error = %q, want %q", resp.Results[2].Error, "media_item_id is required")
+	if resp.Results[2].Error != syncErrMissingMediaItemID {
+		t.Fatalf("error = %q, want %q", resp.Results[2].Error, syncErrMissingMediaItemID)
 	}
 
 	// The statuses have to describe what the store actually holds: `updated`
@@ -113,7 +113,7 @@ func TestSyncProgressUsesContractStatusVocabulary(t *testing.T) {
 // The offline-queued path (items carrying `updated_at`) reports the same
 // vocabulary: it is the path that queues events while disconnected, so a client
 // that mistakes a discard for a write there loses positions silently.
-func TestSyncProgressOfflineItemsReportContractStatuses(t *testing.T) {
+func TestV2SyncProgressOfflineItemsReportContractStatuses(t *testing.T) {
 	store := newPlaybackTestStore(t)
 	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}}
 
@@ -140,7 +140,7 @@ func TestSyncProgressOfflineItemsReportContractStatuses(t *testing.T) {
 // An offline event that loses last-write-wins against a newer stored event is
 // not a write either. Reporting it as `updated` is the same lie as reporting a
 // floor discard as a success.
-func TestSyncProgressReportsLastWriteWinsLossAsIgnored(t *testing.T) {
+func TestV2SyncProgressReportsLastWriteWinsLossAsIgnored(t *testing.T) {
 	store := newPlaybackTestStore(t)
 	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}}
 
@@ -164,5 +164,38 @@ func TestSyncProgressReportsLastWriteWinsLossAsIgnored(t *testing.T) {
 	}
 	if row.PositionSeconds != 900 {
 		t.Fatalf("PositionSeconds = %v, want the newer 900 to survive", row.PositionSeconds)
+	}
+}
+
+// The Silo-compatible projection must keep saying "ok". Silo clients parse that
+// value, and the finer vocabulary above is precisely why it is tempting to
+// change here — so the temptation is nailed down by a test rather than by a
+// comment.
+func TestV1SyncProgressKeepsTheSiloStatusVocabulary(t *testing.T) {
+	store := newPlaybackTestStore(t)
+	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}}
+
+	body := `{"items":[
+		{"media_item_id":"movie-below-floor","position":10,"duration":1000},
+		{"media_item_id":"movie-above-floor","position":500,"duration":1000},
+		{"media_item_id":"","position":500,"duration":1000}
+	]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sync/progress", strings.NewReader(body))
+	req = req.WithContext(newAuthorizedPlaybackContext())
+	rec := httptest.NewRecorder()
+	handler.HandleSyncProgress(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+
+	got := syncProgressStatuses(t, rec.Body.Bytes())
+	want := []string{"ok", "ok", "error"}
+	if len(got) != len(want) {
+		t.Fatalf("statuses = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("statuses = %v, want %v", got, want)
+		}
 	}
 }

@@ -19,6 +19,11 @@ import (
 // /api/v1 projection. Organization listing is account-authenticated but occurs
 // before a tenant is selected; future organization-bound routes must add
 // tenantMW.RequireV2.
+//
+// Independently is meant literally: everything mounted here is built from
+// Dependencies inside this file rather than handed down from the v1 tree, so a
+// native route can be added, changed or removed without touching the projection
+// that upstream Silo clients depend on.
 func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware) {
 	var store handlers.V2OrganizationStore
 	var membershipStore handlers.AdminContextSessionStore
@@ -68,15 +73,22 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	if peopleService != nil {
 		peopleHandler = handlers.NewV2AdminPeopleHandlerWithWake(peopleService, deps.AdminPeopleWorker)
 	}
-	mountV2Routes(r, handlers.NewV2SystemHandler(store), session, authMW, adminMW, platformHandler, peopleHandler, organizationHandler, explainHandler)
+	mountV2Routes(r, handlers.NewV2SystemHandler(store), session, authMW, adminMW,
+		newV2ClientSurface(deps, authMW, tenantMW), platformHandler, peopleHandler, organizationHandler, explainHandler)
 }
 
-func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *handlers.AdminContextSessionHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware, adminHandlers ...any) {
+// mountV2Routes registers every /api/v2 route. chi allows one subtree per mount
+// path, so this is the only function that may open /api/v2 and every group
+// below is assembled inside it. Surfaces arrive variadically and are
+// type-switched: one that could not be built is simply not passed, and its
+// routes stay unmounted rather than answering emptily.
+func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *handlers.AdminContextSessionHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware, surfaces ...any) {
 	var platformHandler *handlers.V2AdminPlatformHandler
 	var peopleHandler *handlers.V2AdminPeopleHandler
 	var organizationHandler *handlers.V2AdminOrganizationHandler
 	var explainHandler *handlers.V2PolicyExplainHandler
-	for _, candidate := range adminHandlers {
+	var client v2ClientSurface
+	for _, candidate := range surfaces {
 		switch handler := candidate.(type) {
 		case *handlers.V2AdminPlatformHandler:
 			platformHandler = handler
@@ -86,10 +98,13 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 			organizationHandler = handler
 		case *handlers.V2PolicyExplainHandler:
 			explainHandler = handler
+		case v2ClientSurface:
+			client = handler
 		}
 	}
 	r.Route("/api/v2", func(r chi.Router) {
 		r.Get("/capabilities", system.HandleCapabilities)
+		client.mount(r)
 		if authMW == nil {
 			r.Get("/organizations", func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")

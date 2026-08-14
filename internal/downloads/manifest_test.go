@@ -143,8 +143,8 @@ func TestManifestBuilderAssembles(t *testing.T) {
 	if m.StableIdentity.ProviderIDs["imdb"] != "tt123" || m.StableIdentity.ProviderIDs["tmdb"] != "456" {
 		t.Fatalf("stable identity = %+v", m.StableIdentity)
 	}
-	if m.ManifestVersion != ManifestVersion {
-		t.Fatalf("manifest version = %d, want %d", m.ManifestVersion, ManifestVersion)
+	if m.ManifestVersion != manifestVersion {
+		t.Fatalf("manifest version = %d, want %d", m.ManifestVersion, manifestVersion)
 	}
 
 	// The whole point of the manifest: a stored copy must contain NO presigned

@@ -10,10 +10,10 @@ import (
 )
 
 // serverAPIMajorVersions are the API major versions this build serves. Both are
-// mounted unconditionally: /api/v1 is the client surface, /api/v2 is the
-// admin/tenancy surface. Clients use the list to decide whether a discovered
+// mounted unconditionally: /api/v1 is the Silo-compatible projection, /api/v2 is
+// the native Vondel API. Clients use the list to decide whether a discovered
 // server is worth connecting to at all; everything finer-grained is
-// feature-detected through GET /api/v1/capabilities, never inferred from a
+// feature-detected through GET /api/v2/capabilities, never inferred from a
 // version.
 var serverAPIMajorVersions = []int{1, 2}
 
@@ -23,8 +23,15 @@ type SetupStateReporter interface {
 	NeedsSetup(ctx context.Context) (bool, error)
 }
 
-// ServerIdentityHandler serves GET /api/v1/server/identity: the public,
+// ServerIdentityHandler serves GET /api/v2/server/identity: the public,
 // unauthenticated answer to "which server is this, and can I log into it yet".
+//
+// It is a sibling of GET /api/v2/capabilities rather than a part of it. The
+// capability document is a build constant that must never fail; identity
+// resolves through the database and legitimately answers 503, and its
+// setup_complete flips once, so it is served no-store. Folding one into the
+// other would either make the capability probe fallible or make the identity
+// fields silently absent — the ambiguity this endpoint exists to remove.
 //
 // Relationship to GET /api/v1/health: none. Health keeps exactly the fields it
 // has and exactly the source it has — server_name and server_id there come from
@@ -54,11 +61,11 @@ func NewServerIdentityHandler(
 	return &ServerIdentityHandler{identity: identity, branding: brandingSvc, setup: setup}
 }
 
-// serverIdentityResponse is the body of GET /api/v1/server/identity.
+// serverIdentityResponse is the body of GET /api/v2/server/identity.
 //
 // status is carried so the body also satisfies the client contract's
 // ServerIdentity schema, which requires it; the rest is what scope keying
-// needs. Fields are additive-only from here per the v1 rules.
+// needs. Fields are additive-only from here.
 type serverIdentityResponse struct {
 	Status        string `json:"status"`
 	ServerID      string `json:"server_id"`
