@@ -20,7 +20,19 @@ Commands in this guide assume the repository root is the cwd.
 A companion is a protocol translator, nothing more. Structurally enforced by
 `scripts/verify-compat-compose.sh` (run `bash scripts/verify-compat-compose.sh`
 any time; `scripts/verify-compat-compose_test.sh` proves the scanner detects
-violations):
+violations).
+
+The scan is **default-deny**: a companion service may declare only the Compose
+keys on an explicit allowlist (image, environment, networks, volumes, secrets,
+security_opt, ports, restart, healthcheck, depends_on, labels, read_only, init,
+user, stop_grace_period, pull_policy) and each of those keys has its values
+checked as well. Everything else — `volumes_from`, `devices`, `privileged`,
+namespace sharing, `tmpfs`, `sysctls`, `runtime`, and any key a future Compose
+release introduces — fails the scan by construction. If you have a genuine need
+for a key that is not on the list, it must be added there deliberately and
+reviewed, not worked around.
+
+What that enforces:
 
 - **No host ports.** Companions sit on the internal `vondel-compat` container
   network. All client traffic enters through Vondel's own listener, which

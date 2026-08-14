@@ -3,23 +3,42 @@
 #
 # Renders every supported Compose file combination with `docker compose config`
 # and enforces the deployment rulings from
-# docs/superpowers/specs/2026-08-12-vondel-compatibility-sidecars-design.md:
+# docs/superpowers/specs/2026-08-12-vondel-compatibility-sidecars-design.md.
 #
-#   - companions publish no host ports; the diagnostics override is the sole
-#     exception and may bind loopback (127.0.0.1) only;
-#   - companions receive no Vondel database, Redis, secret-key, provider, or
-#     tuner configuration through the environment, and no credential-shaped
-#     environment values at all;
-#   - companions mount only named volumes for disposable protocol state — no
-#     bind mounts, no media, no Docker socket;
-#   - companions run unprivileged, without added capabilities, are never built
-#     locally, and default to the private ghcr.io/vondel-media images;
-#   - each companion reads exactly one file-backed enrollment secret mounted at
-#     /run/secrets/vondel_compat_enrollment, and the Vondel service never
-#     receives that secret;
-#   - companions attach only to the internal vondel-compat network (plus the
-#     default bridge solely in the diagnostics override, which port publishing
-#     requires).
+# THE SCAN IS DEFAULT-DENY AT THE SERVICE LEVEL.
+#
+# Enumerating forbidden Compose keys does not converge: every Compose key — and
+# every key a future Compose release adds — is permitted until someone thinks
+# to forbid it, and each one is a candidate route to the host. Successive
+# reviews of this scan produced exactly that treadmill (privileged, then
+# cap_add, then devices, then pid/ipc, then volumes_from, then
+# device_cgroup_rules, then uts/sysctls/tmpfs/extra_hosts...).
+#
+# So the primary control is COMPANION_SERVICE_KEYS below: a companion service's
+# rendered key set must be a SUBSET of that allowlist. Anything else — known or
+# not yet invented — fails the scan by construction and is named in the error.
+# Adding a key to the allowlist is a deliberate, reviewable act.
+#
+# Permitting a key is not permitting any value, so each allowed key that can
+# carry risk keeps a value-level check:
+#
+#   - image      — must be a private ghcr.io/vondel-media image, never a build;
+#   - ports      — none at all, except the diagnostics override, which may bind
+#                  127.0.0.1 only;
+#   - networks   — exactly the internal vondel-compat network (plus the default
+#                  bridge in the diagnostics override, which publishing needs);
+#   - volumes    — locally defined named volumes only: no bind mounts, no
+#                  external/aliased volumes, no driver_opts;
+#   - secrets    — exactly one file-backed enrollment secret mounted at
+#                  /run/secrets/vondel_compat_enrollment;
+#   - security_opt — exactly no-new-privileges:true; never unconfined seccomp,
+#                  AppArmor, system paths, or label:disable;
+#   - environment — no Vondel database/Redis/signing/provider/tuner or
+#                  credential-shaped keys, and no DSN-shaped values.
+#
+# The Vondel service is checked separately and only for what it must not gain
+# (the companion enrollment secret) — it legitimately owns media mounts and the
+# database, so a service-key allowlist does not apply to it.
 #
 # Usage: scripts/verify-compat-compose.sh [compose-dir]
 #
@@ -100,7 +119,11 @@ render() {
 check() {
 	local json=$1 label=$2 filter=$3 message=$4
 	local ok
-	if ! ok=$(jq -e --arg forbidden "$forbidden_env_key_re" "$filter" <<<"$json" 2>&1); then
+	if ! ok=$(jq -e \
+		--arg forbidden "$forbidden_env_key_re" \
+		--argjson allowed "$companion_service_keys_json" \
+		--argjson required_security_opt "$required_security_opt_json" \
+		"$filter" <<<"$json" 2>&1); then
 		if [[ "$ok" == "false" || "$ok" == "null" ]]; then
 			fail "[$label] $message"
 		else
@@ -108,6 +131,72 @@ check() {
 		fi
 	fi
 }
+
+# check_service_key_allowlist <rendered-json> <combo-label> <service>
+# The default-deny control: fail on any declared key outside the allowlist, and
+# name the offending keys so the operator learns what to justify or remove.
+check_service_key_allowlist() {
+	local json=$1 label=$2 svc=$3
+	local unknown
+	unknown=$(jq -r \
+		--arg svc "$svc" \
+		--argjson allowed "$companion_service_keys_json" \
+		".services[\$svc] | to_entries
+			| map(select($declared_filter))
+			| map(.key)
+			| map(select(. as \$k | \$allowed | index(\$k) | not))
+			| join(\", \")" <<<"$json")
+	if [[ -n "$unknown" ]]; then
+		fail "[$label] $svc declares keys outside the companion allowlist: $unknown"
+	fi
+}
+
+# ---------------------------------------------------------------------------
+# THE ALLOWLIST. A companion service may declare these keys and nothing else.
+#
+# Derived from what the committed overlays actually render, plus a small
+# reviewed set of operational keys that cannot widen a companion's reach beyond
+# its own container. Every entry carries the reason it is safe; anything absent
+# is denied, including Compose keys that do not exist yet.
+#
+#   image              the private companion image (value-checked: registry)
+#   environment        companion configuration (value-checked: keys + values)
+#   networks           private network membership (value-checked: exact set)
+#   volumes            disposable state (value-checked: local named volumes)
+#   secrets            enrollment token (value-checked: file-backed, one, path)
+#   security_opt       hardening (value-checked: no-new-privileges:true only)
+#   ports              denied outright except loopback diagnostics (value-checked)
+#   restart            restart policy; container lifecycle only
+#   healthcheck        runs a probe INSIDE the container; no host reach
+#   depends_on         start ordering only
+#   labels             metadata only; no runtime capability
+#   read_only          hardening: read-only root filesystem
+#   init               run a pid-1 reaper inside the container
+#   user               drop privileges inside the container; cannot exceed the
+#                      image default, which is already root
+#   stop_grace_period  shutdown timing only
+#   pull_policy        when to pull; the image value check still applies
+#
+# Deliberately NOT allowed, and therefore denied by the allowlist rather than by
+# any named rule: build, privileged, cap_add, devices, device_cgroup_rules,
+# volumes_from, tmpfs, pid, ipc, uts, userns_mode, cgroup, cgroup_parent,
+# network_mode, sysctls, group_add, extra_hosts, command, entrypoint, and
+# everything else.
+companion_service_keys_json='[
+	"image", "environment", "networks", "volumes", "secrets", "security_opt",
+	"ports", "restart", "healthcheck", "depends_on", "labels", "read_only",
+	"init", "user", "stop_grace_period", "pull_policy"
+]'
+
+# Values `docker compose config` renders for keys that were never declared.
+# A key holding one of these is treated as absent, so the renderer's own null
+# padding (command, entrypoint, ...) does not have to be allowlisted.
+declared_filter='.value != null and .value != [] and .value != {}'
+
+# security_opt is allowed as a key, so its value must be pinned: exactly the
+# no-new-privileges hardening flag. Anything else — unconfined seccomp or
+# AppArmor, unconfined system paths, label:disable — turns the sandbox off.
+required_security_opt_json='["no-new-privileges:true"]'
 
 # Environment keys a companion must never receive: Vondel's own service
 # configuration, anything database/connection shaped (DB_*, PG*, CONN*),
@@ -126,6 +215,9 @@ verify_companion() {
 	if ! jq -e "$s != null" <<<"$json" >/dev/null 2>&1; then
 		return
 	fi
+
+	# Primary control: everything not explicitly allowed is denied.
+	check_service_key_allowlist "$json" "$label" "$svc"
 
 	if [[ "$diagnostics" == "yes" ]]; then
 		check "$json" "$label" \
@@ -150,24 +242,19 @@ verify_companion() {
 		"$s.networks[\"vondel-compat\"].aliases == [\"$svc\"]" \
 		"$svc must declare its private network alias"
 
+	# privileged, cap_add, devices, device_cgroup_rules, volumes_from, tmpfs,
+	# pid, ipc, uts, userns_mode, cgroup, cgroup_parent, network_mode, sysctls,
+	# group_add, extra_hosts and build are not enumerated here on purpose: the
+	# allowlist above already denies every one of them, and denies their
+	# not-yet-invented successors too.
+
+	# security_opt IS allowed as a key, so pin its value. An unconfined seccomp
+	# or AppArmor profile, unconfined system paths, or label:disable would
+	# switch the sandbox off while keeping the key legitimate-looking.
 	check "$json" "$label" \
-		"$s.privileged != true" \
-		"$svc must not run privileged"
-	check "$json" "$label" \
-		"($s.cap_add // []) | length == 0" \
-		"$svc must not add capabilities"
-	check "$json" "$label" \
-		"$s.network_mode == null" \
-		"$svc must not set network_mode"
-	check "$json" "$label" \
-		"($s.devices // []) | length == 0" \
-		"$svc must not map host devices"
-	check "$json" "$label" \
-		"$s.pid == null and $s.ipc == null and $s.userns_mode == null and $s.cgroup == null" \
-		"$svc must not share host namespaces (pid/ipc/userns_mode/cgroup)"
-	check "$json" "$label" \
-		"$s | has(\"build\") | not" \
-		"$svc must be pulled from the private registry, never built here"
+		"($s.security_opt // []) == \$required_security_opt" \
+		"$svc security_opt must be exactly no-new-privileges:true (no unconfined seccomp/AppArmor/system paths, no label:disable)"
+
 	check "$json" "$label" \
 		"$s.image | test(\"^ghcr\\\\.io/vondel-media/$svc(:|@|$)\")" \
 		"$svc image must default to the private ghcr.io/vondel-media registry"
@@ -207,6 +294,27 @@ verify_companion() {
 			) | not
 		)" \
 		"$svc environment must not carry database/Redis URLs or keyword-form (libpq) DSNs"
+	# BEST EFFORT, and only that: a DSN split across innocuously named keys
+	# (STORE_HOST / STORE_DBNAME / STORE_USER / STORE_PW) defeats key-prefix and
+	# value-shape matching by construction, because no single key or value looks
+	# like a connection string. Two weak signals are checked — an environment
+	# value that is a bare hostname naming another service in this project, and
+	# several keys whose suffixes together read as connection parameters. Do not
+	# treat this as the control: the key allowlist is what actually contains the
+	# blast radius, since a companion has no reason to hold connection settings
+	# for anything at all.
+	check "$json" "$label" \
+		"[.services | keys[] | select(startswith(\"vondel-\") | not)] as \$svcnames |
+			($s.environment // {}) | [.[]] | all(
+				(tostring) as \$v |
+				((\$v | test(\"^[A-Za-z0-9._-]+$\")) and (\$svcnames | index(\$v))) | not
+			)" \
+		"$svc environment must not name another service as a bare hostname (possible split connection settings)"
+	check "$json" "$label" \
+		"($s.environment // {}) | keys
+			| map(select(ascii_upcase | test(\"(_HOST|_HOSTNAME|_DBNAME|_DATABASE|_USER|_USERNAME|_PW|_PASS|_PORT|_DSN|_SCHEMA)$\")))
+			| length < 2" \
+		"$svc environment keys together look like split connection settings"
 
 	check "$json" "$label" \
 		"($s.secrets // []) | length == 1 and .[0].target == \"vondel_compat_enrollment\"" \
