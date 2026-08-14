@@ -57,7 +57,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 3 committed; scoped re-review pending.
+Status: fix round 4 committed; scoped re-review pending. This exceeds the plan's fix rounds 1-3 and needs a maintainer decision if it rejects again.
 
 Initial implementation commit:
 
@@ -146,6 +146,21 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - GREEN verification: full `make test-go` against real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
 - External side effects: none.
 - Next continuation point: scoped re-review of `d405f821..16baf555`. The review brief asks the reviewer to attack the default-deny design directly, including whether every authenticated path passes through the guard and whether the admitted subtrees are genuinely profile-scoped. Task 1 completes only on approval.
+
+### 2026-08-14 — Foundation Task 1, fix round 4
+
+- Base/head commits: `16baf555` → `e9255d41 fix(auth): restore playback for bound profiles and close the plugin bypass`.
+- Independent review verdict on fix round 3: rejected, one critical and two important. The default-deny design itself was accepted — the reviewer confirmed that re-matching the request against the root router resolves the same pattern dispatch would, for wildcards, method-specific chains, and mounted subrouters — and the previously cleared rotation and refresh items were confirmed undisturbed.
+- Process note: the plan allows fix rounds 1 to 3, and this is round 4. It was taken because round 3 left a functional regression on the branch that could not responsibly be left in place. If round 4 rejects, continuing needs a maintainer decision rather than another implementer round.
+- Findings and what closed them:
+  1. The plugin proxy authenticates itself and never passes the authentication middleware, so the default-deny guard never saw it, while the proxy hands plugin code the owning account's id and role. It now refuses profile-bound tokens outright instead of extending the allowlist to routes a plugin defines at runtime. The profile-bound plugin access path added in round 2 became unreachable and was removed rather than left as dead code.
+  2. The allowlist omitted playback negotiation, start, replan, progress, stop, stream and subtitle delivery, and the client's library bootstrap, so round 3 shipped a 403 on the entire watch path. The root cause was the inventory fixture: it never mounted those handlers, so the exact-set test pinned a partial router as though it were the whole one. The fixture now supplies a session manager and the file and folder repositories, and the acceptance test drives playback and stream through the boundary with a direct-profile token.
+  3. Login email had two normalizations — Go trimming and lowering for the lookup, PostgreSQL lower() for the registry key — which can disagree on Unicode case. Go now trims and passes the value; the database folds case for both storage and lookup.
+- RED evidence: with the fixes reverted, the acceptance test reports 403 for user libraries, playback capability, playback start, progress, stop, and stream, and the plugin proxy proceeds past the boundary instead of refusing. The normalization regression covers mixed case and surrounding whitespace on both storage and lookup.
+- Lesson recorded: a golden inventory test is only as honest as the router it walks. Pinning an exact set proved nothing about routes the fixture never mounted, and it made a shipped regression look verified.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
+- External side effects: none.
+- Next continuation point: scoped re-review of `16baf555..e9255d41`, which also asks the reviewer whether the accumulated design now warrants a fresh full review rather than another scoped one.
 
 ## Update template
 
