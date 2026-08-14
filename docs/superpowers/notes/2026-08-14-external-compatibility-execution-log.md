@@ -59,7 +59,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 7 committed, closing every finding of the second full review; a third full review is in progress.
+Status: fix round 8 committed, closing every finding of the third full review; a fourth full review is next.
 
 Initial implementation commit:
 
@@ -210,6 +210,19 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - Defects found in this round's own work: the subject-change race test held the profile row before the tenancy rows, an order no real writer uses, so it deadlocked rather than testing anything once the lock order was corrected; it now holds only the row it changes. One positive assertion had been posting a field name the handler does not read, so it asserted nothing at all, which only surfaced once the assertion required a real state change. Two allowlist entries named routes the router does not register.
 - GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
 - Next continuation point: third full review of `81047e91..6426a1c2`, asked to check every admitted mutation for whether its handler can tell two profiles of one household apart, to test rather than accept the argument that reads admitted by subtree are profile-scoped, and again to name tests that would pass with their behaviour removed.
+
+### 2026-08-14 — Foundation Task 1, third full review and fix round 8
+
+- Base/head commits: `6426a1c2` → `2ff7894e fix(auth): restore shadowed reads, retire collections, bind the device`.
+- Third full review verdict on `81047e91..6426a1c2`: cannot be accepted. Two high, two important.
+- Findings and what closed them:
+  1. An exact allowlist entry swallowed the reads its subtree already granted: a pattern with a listed PUT denied its own GET, cutting a bound profile off from its favorites, ratings, downloads, and preferences — and the exact-set inventory had codified the loss. Exact entries now add methods; reads fall through to the subtree check.
+  2. Personal collections authorize by account alone at both handler and store level: deletion, item mutation, ordering, and groups affect the whole household, and reads show any account-owned collection. Rather than invent a profile-ownership model mid-task, the entire personal-collection surface — reads included — left the direct-profile surface, with only the server-wide collection views remaining. The routes return when collection ownership is profile-aware, which is product design and belongs to its own task.
+  3. The device binding minted at login was recorded but never enforced; handlers kept trusting the device header. Direct login now requires a device id, and after authentication the header is made canonical — a conflicting value is refused, an absent one is filled from the binding — so downloads, device settings, and policy input all see the authenticated identity.
+  4. The boundary tests never exercised the collection or device surfaces. They now do, state-checked, each confirmed red against the unfixed behavior.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
+- Deferred, recorded rather than silently dropped: profile-aware collection ownership (visibility and mutation rights per profile) is real product work and is out of Task 1's scope by decision; the routes stay off the direct-profile surface until it exists.
+- Next continuation point: fourth full review of `81047e91..2ff7894e`.
 
 ## Update template
 
