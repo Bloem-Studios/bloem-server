@@ -59,7 +59,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 13 committed, closing both findings of the eighth full review; a ninth full review is next.
+Status: ACCEPTED at `3ffc355b`. The eleventh full review returned no findings.
 
 Initial implementation commit:
 
@@ -285,6 +285,13 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - RED evidence: reverting the fail-closed check fails the guardless-refusal case; the round-12 admissions were already red-proven.
 - GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes.
 - Next continuation point: ninth full review of `81047e91..36e53e10`.
+
+### 2026-08-14 — Foundation Task 1 ACCEPTED
+
+- Final head: `3ffc355b`. The eleventh full review of `81047e91..3ffc355b` returned no findings and the verdict "Task 1 can be accepted."
+- The closing rounds, for the record: the ninth review's only finding was a stale comment still describing the pre-round-13 fail-open (fixed in `5f919a9f`); the tenth's only finding was the login-response test decoding into the production type, unable to notice a dropped or newly exposed field (frozen to an exact key-set assertion in `3ffc355b`, red-proven by dropping a field from the handler). Both reviews stated no behavioral authorization issue remained.
+- Totals: one initial implementation commit, fifteen fix rounds across five scoped and eleven full reviews, every finding either implemented or explicitly overruled by the maintainer with the divergence recorded. The durable outcome beyond the feature itself: the least-privilege ruling for direct profile logins, a default-deny method-and-pattern route boundary that fails closed, database-enforced credential rotation, and a test suite whose positive assertions pin exact outcomes.
+- Parallel execution of the remaining foundation tasks began before acceptance, by maintainer decision: Tasks 2, 3, 4, 5, and 6 are being implemented concurrently by independent agents in separate worktrees branched from `5f919a9f`, with merge order 2→3→4→5→6, pre-assigned migration number ranges, and interface seams where Tasks 4 and 5 consume Task 3's service. Each merged task still passes through the independent review gate before it is marked complete.
 
 ## Update template
 
