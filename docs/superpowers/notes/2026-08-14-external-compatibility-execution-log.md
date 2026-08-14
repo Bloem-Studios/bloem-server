@@ -59,7 +59,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 5 committed; a fresh FULL review of the whole task is in progress, replacing the scoped-round cycle by maintainer decision.
+Status: fix round 6 committed, closing every finding of the first full review; a second full review is in progress.
 
 Initial implementation commit:
 
@@ -178,6 +178,23 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
 - External side effects: none.
 - Next continuation point: a fresh full review of `81047e91..c232350b`, judging the accumulated design rather than the latest patch, and asked specifically to find remaining places where account identity is treated as sufficient authorization and to name tests that would still pass if the behavior they describe were removed.
+
+### 2026-08-14 — Foundation Task 1, first full review and fix round 6
+
+- Base/head commits: `c232350b` → `a10e93e7 fix(auth): repair registry writes, tenancy binding and the profile surface`, plus `d28936ff` recording the authorization ruling.
+- Full review verdict on `81047e91..c232350b`: Task 1 cannot be accepted. Six findings, three of them high.
+- Ruling obtained during this round, previously an unstated implementer assumption: a direct profile login carries least privilege rather than parity with reaching that profile through the account login. Account owners still own profiles; the profile's optional email and password are simply a second front door to that one profile from any client. Household management, account surfaces, and anything minting a differently scoped credential are refused even when the bound profile is the household primary, because that password is typed into third-party clients and must not be spendable as the account. This ruling is now in the binding list above.
+- Findings and what closed them:
+  1. Re-saving a record without changing its login identity failed on the registry's own primary key. Both triggers deleted the prior row only when the value changed but always re-inserted, so an ordinary account save that re-supplied the current email errored. This regressed existing account management rather than the new feature, and the whole suite passed over it. Both triggers now return early when the login identity is unchanged, which also leaves the credential revision alone so a no-op write cannot revoke live sessions.
+  2. v1 projected every request into the deployment's default organization, including direct-profile sessions that were bound to a specific organization, membership, and revisions at login. A profile in another organization was evaluated against the wrong tenant and a rotated revision was never noticed. The legacy path now branches for direct-profile sessions and validates the exact binding, sharing one implementation with the v2 path.
+  3. Session creation asserted that the account, organization, and membership were current but locked only the profile row. Those rows are now taken FOR SHARE while the profile is taken FOR UPDATE, deliberately not FOR UPDATE, which would serialize every login in an organization behind one row.
+  4. The boundary was keyed by path alone, so a new verb on an admitted path was allowed automatically. It is now keyed by method and pattern, and the inventory pins method-pattern pairs. The live example was the profile record: a bound profile edits itself and does not delete itself.
+  5. The ebook surface was refused although every ebook route is profile-gated end to end, denying a bound profile its own reading state.
+  6. The positive boundary tests asserted only that a response was not a refusal, so a deleted handler or a failing tenant resolution would have passed. They now pin the status each handler answers, and a profile update is verified in the database.
+- RED evidence: no-op account writes fail three ways without the trigger fix; a stale-revision token reaches the handler without the tenancy branch; all five subject-change races admit a stale session without the widened lock.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes. Frontend gates not run: no frontend file changed.
+- Standing caution: six rounds in, each of the last two closed defects the previous review missed, including one that broke pre-existing behaviour. A green suite has been a weak signal on this branch, so acceptance should rest on review rather than on the gates.
+- Next continuation point: second full review of `81047e91..a10e93e7`, given the least-privilege ruling explicitly and asked again for remaining places where account identity is treated as sufficient authorization, and for tests that would still pass if their behaviour were removed.
 
 ## Update template
 
