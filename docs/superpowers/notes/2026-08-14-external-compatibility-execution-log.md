@@ -59,7 +59,7 @@ An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08
 
 ### Task 1 — Optional direct profile credentials
 
-Status: fix round 10 committed, closing every finding of the fifth full review; a sixth full review is next.
+Status: fix round 11 committed, closing every finding of the sixth full review; a seventh full review is next.
 
 Initial implementation commit:
 
@@ -250,6 +250,17 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - RED evidence: the capability contract test fails with the advertisement removed; the timing regression fails with the dummy comparison removed; the visibility test replaces a blanket refusal that the surface change would have caught in the inventory.
 - GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes.
 - Next continuation point: sixth full review of `81047e91..9d5824a2`.
+
+### 2026-08-14 — Foundation Task 1, sixth full review and fix round 11
+
+- Base/head commits: `9d5824a2` → the round-11 fix commit.
+- Sixth full review verdict on `81047e91..9d5824a2`: not accepted. One medium, two low — the smallest set of any round. The reviewer also ruled on the recorded divergence from round 10: the split progressive-stream tests were judged insufficient because neither pinned the production composition path.
+- Findings and what closed them:
+  1. The capability advertised on the database alone while the auth stack mounts only with database and config together, so a config-less router advertised a route it did not serve. The advertisement now derives from the same condition that mounts the route.
+  2. Keyed settings accept a query-selected scope, and the account scope skips profile binding. Nothing exposes it today, but the first account-scoped definition would have granted direct sessions account-wide access with no inventory change. Direct sessions refuse the account scope ahead of any contract logic.
+  3. The production composition path is pinned: prepareIdentityTransportV3 must emit a token verified against its session. Both new regressions confirmed red.
+- GREEN verification: full `make test-go` against a real PostgreSQL passes. `gofmt` clean. `golangci-lint --new-from-merge-base` clean on changed files. `make verify-local-paths` passes.
+- Next continuation point: seventh full review.
 
 ## Update template
 
