@@ -203,42 +203,105 @@ func (s foundationStates) ApplicationStatus(ctx context.Context, kind compatgate
 	return compatgateway.Status{}, nil
 }
 
-// --- subject provider for the signed-cursor surface -------------------------
+// --- subject provider for the signed-cursor and identity surfaces ----------
 
-// foundationSubjects exists for exactly one reason: the handler resolves and
-// revalidates a subject before any list operation runs, and no production
-// SubjectService adapter exists yet (see the file header). Without it the
-// signed-cursor contract cannot be reached at all. It asserts nothing and is
-// never used to prove an identity, policy, or revocation property — those are
-// all proven against the real v1 surface below.
-type foundationSubjects struct{ subject compatapi.Subject }
-
-func (s foundationSubjects) LoginDirect(context.Context, string, string, compatapi.DeviceClaim) (compatapi.Subject, error) {
-	return compatapi.Subject{}, compatapi.ErrUnavailable
+// foundationSubjects exists because no production SubjectService adapter
+// exists yet (see the file header): cmd/silo never wires compatapi's
+// identity surface to Vondel's real auth service. It is a working fake, the
+// same kind foundationCatalog already is, one household with a PIN-free
+// reader profile and a PIN-protected kids profile. It proves every behavior
+// compatapi itself owns — subject token minting, per-request
+// revalidation, PIN enforcement, profile switching, revocation — for real;
+// it does not, and cannot, prove real Vondel password verification, which
+// is a separate, still-missing production seam.
+type foundationSubjectsState struct {
+	mu      sync.Mutex
+	revoked map[string]bool
 }
 
-func (s foundationSubjects) LoginAccount(context.Context, string, string, compatapi.DeviceClaim) (compatapi.Subject, error) {
-	return compatapi.Subject{}, compatapi.ErrUnavailable
+type foundationSubjects struct{ state *foundationSubjectsState }
+
+func newFoundationSubjects() foundationSubjects {
+	return foundationSubjects{state: &foundationSubjectsState{revoked: map[string]bool{}}}
+}
+
+const (
+	foundationReaderProfileID = "profile-reader"
+	foundationKidsProfileID   = "profile-kids"
+	foundationOwnerProfileID  = "profile-owner"
+)
+
+func (s foundationSubjects) LoginDirect(_ context.Context, email, password string, device compatapi.DeviceClaim) (compatapi.Subject, error) {
+	if email != foundationProfileEmail || password != foundationProfilePass {
+		return compatapi.Subject{}, compatapi.ErrInvalidCredentials
+	}
+	return compatapi.Subject{
+		AccountID: 1, ProfileID: foundationReaderProfileID, OrganizationID: "org-1", MembershipID: "membership-1",
+		PolicyRevision: 1, SecurityRevision: 1, CredentialRevision: 1,
+		Device: device, AuthMethod: "direct_profile",
+	}, nil
+}
+
+func (s foundationSubjects) LoginAccount(_ context.Context, username, password string, device compatapi.DeviceClaim) (compatapi.Subject, error) {
+	if username != foundationAccountUser || password != foundationAccountPass {
+		return compatapi.Subject{}, compatapi.ErrInvalidCredentials
+	}
+	return compatapi.Subject{
+		AccountID: 1, ProfileID: foundationOwnerProfileID, OrganizationID: "org-1", MembershipID: "membership-1",
+		PolicyRevision: 1, SecurityRevision: 1, CredentialRevision: 1,
+		Device: device, AuthMethod: "account",
+	}, nil
 }
 
 func (s foundationSubjects) CurrentSubject(_ context.Context, subject compatapi.Subject) (compatapi.Subject, error) {
+	s.state.mu.Lock()
+	defer s.state.mu.Unlock()
+	if s.state.revoked[subject.ProfileID] {
+		return compatapi.Subject{}, compatapi.ErrSubjectRevoked
+	}
 	return subject, nil
 }
 
 func (s foundationSubjects) DeviceProfiles(context.Context, compatapi.Subject) ([]compatapi.ProfileTile, error) {
-	return nil, compatapi.ErrUnavailable
+	return []compatapi.ProfileTile{
+		{ProfileID: foundationReaderProfileID, Name: "Reader", PINProtected: false},
+		{ProfileID: foundationKidsProfileID, Name: "Kids", PINProtected: true},
+	}, nil
 }
 
-func (s foundationSubjects) VerifyPIN(context.Context, compatapi.Subject, string, string) error {
-	return compatapi.ErrUnavailable
+func (s foundationSubjects) VerifyPIN(_ context.Context, _ compatapi.Subject, profileID, pin string) error {
+	if profileID != foundationKidsProfileID || pin != foundationPIN {
+		return compatapi.ErrPINInvalid
+	}
+	return nil
 }
 
-func (s foundationSubjects) SwitchProfile(context.Context, compatapi.Subject, string, string) (compatapi.Subject, error) {
-	return compatapi.Subject{}, compatapi.ErrUnavailable
+func (s foundationSubjects) SwitchProfile(ctx context.Context, subject compatapi.Subject, profileID, pin string) (compatapi.Subject, error) {
+	if profileID == foundationKidsProfileID {
+		if err := s.VerifyPIN(ctx, subject, profileID, pin); err != nil {
+			return compatapi.Subject{}, err
+		}
+	}
+	switched := subject
+	switched.ProfileID = profileID
+	return switched, nil
 }
 
-func (s foundationSubjects) Logout(context.Context, compatapi.Subject) error {
-	return compatapi.ErrUnavailable
+func (s foundationSubjects) Logout(_ context.Context, subject compatapi.Subject) error {
+	s.state.mu.Lock()
+	defer s.state.mu.Unlock()
+	s.state.revoked[subject.ProfileID] = true
+	return nil
+}
+
+// revoke marks a profile revoked, as an out-of-band administrative or
+// security action (password change, device removal) would: the next
+// CurrentSubject revalidation on any outstanding token for that profile
+// fails closed.
+func (s foundationSubjects) revoke(profileID string) {
+	s.state.mu.Lock()
+	defer s.state.mu.Unlock()
+	s.state.revoked[profileID] = true
 }
 
 // foundationCatalog returns one deterministic page carrying a domain
@@ -292,6 +355,7 @@ type foundationFixture struct {
 
 	jellyfin       *fakeCompanion
 	audiobookshelf *fakeCompanion
+	subjects       foundationSubjects
 
 	client *http.Client
 }
@@ -322,6 +386,7 @@ func newFoundationFixture(t *testing.T) *foundationFixture {
 		t.Fatal("the production admin adapter refused to wrap a real enrollment service")
 	}
 
+	subjects := newFoundationSubjects()
 	compatHandler, err := compatapi.New(compatapi.Config{
 		SubjectTokenKey: bytes.Repeat([]byte{0x5A}, 32),
 		CursorKey:       bytes.Repeat([]byte{0xA5}, 32),
@@ -330,7 +395,7 @@ func newFoundationFixture(t *testing.T) *foundationFixture {
 		// version, so a bump to compatapp.ServerAPIVersion that nobody
 		// propagates shows up here.
 		APIRange: compatapi.APIRange{Min: compatapp.ServerAPIVersion, Max: compatapp.ServerAPIVersion},
-	}, foundationCompatServices(apps))
+	}, foundationCompatServices(apps, subjects))
 	if err != nil {
 		t.Fatalf("build private compatibility API: %v", err)
 	}
@@ -399,6 +464,7 @@ func newFoundationFixture(t *testing.T) *foundationFixture {
 		public:         public,
 		jellyfin:       jellyfin,
 		audiobookshelf: audiobookshelf,
+		subjects:       subjects,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -411,9 +477,9 @@ func newFoundationFixture(t *testing.T) *foundationFixture {
 // foundationCompatServices is the production seam (compatapi.CompatAppServices
 // over the real compatapp.Service) plus the two providers the file header
 // records as missing in production.
-func foundationCompatServices(apps *compatapp.Service) compatapi.Services {
+func foundationCompatServices(apps *compatapp.Service, subjects foundationSubjects) compatapi.Services {
 	services := compatapi.CompatAppServices(apps)
-	services.Subjects = foundationSubjects{}
+	services.Subjects = subjects
 	services.Catalog = foundationCatalog{}
 	return services
 }
@@ -608,6 +674,33 @@ func (f *foundationFixture) enroll(secret, kind, instanceID string, minAPI, maxA
 	return f.do(http.MethodPost, "/api/internal/compat/v1/enroll",
 		foundationEnrollBody(secret, kind, instanceID, minAPI, maxAPI, capabilities),
 		map[string]string{"Idempotency-Key": idempotencyKey})
+}
+
+// loginDirect exchanges the fake household's direct-profile credentials for
+// a subject token through the real compatapi login endpoint, authenticating
+// as the given companion.
+func (f *foundationFixture) loginDirect(appToken, idempotencyKey string) foundationResponse {
+	f.t.Helper()
+	body := fmt.Sprintf(
+		`{"grant_type":"direct_profile","email":%q,"password":%q,"device":{"id":%q,"name":"Foundation Tablet"}}`,
+		foundationProfileEmail, foundationProfilePass, foundationProfileDevice,
+	)
+	return f.do(http.MethodPost, "/api/internal/compat/v1/identity/login", body, map[string]string{
+		"Authorization":   "Bearer " + appToken,
+		"Idempotency-Key": idempotencyKey,
+	})
+}
+
+// subjectToken logs in and returns just the token, failing the test on any
+// non-200.
+func (f *foundationFixture) subjectToken(appToken string) string {
+	f.t.Helper()
+	response := f.requireStatus(f.loginDirect(appToken, "login-"+appToken), http.StatusOK)
+	token, _ := f.object(response)["subject_token"].(string)
+	if token == "" {
+		f.t.Fatal("login response carried no subject_token")
+	}
+	return token
 }
 
 func (f *foundationFixture) applicationCount(kind, instanceID string) int {
@@ -851,6 +944,136 @@ func TestCompatibilityFoundation(t *testing.T) {
 			t.Fatalf("GET /System/Info with the companion stopped = %d, want a server-side failure status", gatewayed.Status)
 		}
 	})
+
+	// --- identity, cursor tampering, PIN, revocation ---------------------
+	//
+	// foundationSubjects is a working fake standing in for the missing
+	// production SubjectService (see its doc comment). Every behavior
+	// exercised below — subject token minting, per-request revalidation,
+	// signed-cursor scoping, PIN enforcement, revocation — is real compatapi
+	// handler code; only whose email/password/PIN counts as correct is
+	// faked.
+
+	t.Run("Login_Direct_Success", func(t *testing.T) {
+		f := newFoundationFixture(t)
+		companion := f.enrollAndActivate("jellyfin", "jellyfin-login", []string{"identity"})
+
+		response := f.requireStatus(f.loginDirect(companion.Token, "login-1"), http.StatusOK)
+
+		body := f.object(response)
+		f.requireKeys("login response", body, "subject_token", "expires_at", "subject")
+		if body["subject_token"] == "" {
+			t.Fatal("login response subject_token is empty")
+		}
+		subject, ok := body["subject"].(map[string]any)
+		if !ok {
+			t.Fatalf("login response subject is %T, want an object", body["subject"])
+		}
+		if subject["profile_id"] != foundationReaderProfileID {
+			t.Fatalf("login response subject.profile_id = %v, want %q", subject["profile_id"], foundationReaderProfileID)
+		}
+	})
+
+	t.Run("Login_Direct_WrongPassword_InvalidCredentials", func(t *testing.T) {
+		f := newFoundationFixture(t)
+		companion := f.enrollAndActivate("jellyfin", "jellyfin-login-bad", []string{"identity"})
+
+		body := fmt.Sprintf(`{"grant_type":"direct_profile","email":%q,"password":"wrong","device":{"id":"dev-1"}}`, foundationProfileEmail)
+		response := f.do(http.MethodPost, "/api/internal/compat/v1/identity/login", body, map[string]string{
+			"Authorization":   "Bearer " + companion.Token,
+			"Idempotency-Key": "login-bad-1",
+		})
+
+		f.requireErrorEnvelope(response, http.StatusUnauthorized, "invalid_credentials")
+	})
+
+	t.Run("Cursor_RoundTripsAndRejectsTampering", func(t *testing.T) {
+		f := newFoundationFixture(t)
+		companion := f.enrollAndActivate("jellyfin", "jellyfin-cursor", []string{"identity", "catalog"})
+		subjectToken := f.subjectToken(companion.Token)
+		headers := map[string]string{"Authorization": "Bearer " + companion.Token, "X-Vondel-Subject-Token": subjectToken}
+
+		first := f.requireStatus(f.do(http.MethodGet, "/api/internal/compat/v1/catalog/items", "", headers), http.StatusOK)
+		firstPage := f.object(first)
+		cursor, _ := firstPage["next_cursor"].(string)
+		if cursor == "" {
+			t.Fatal("first catalog/items page carried no next_cursor")
+		}
+		items, _ := firstPage["items"].([]any)
+		if len(items) != 1 {
+			t.Fatalf("first page items = %v, want exactly one", items)
+		}
+
+		second := f.requireStatus(
+			f.do(http.MethodGet, "/api/internal/compat/v1/catalog/items?cursor="+url.QueryEscape(cursor), "", headers),
+			http.StatusOK,
+		)
+		secondItems, _ := f.object(second)["items"].([]any)
+		if len(secondItems) != 1 {
+			t.Fatalf("second page items = %v, want exactly one", secondItems)
+		}
+
+		tampered := cursor[:len(cursor)-1] + map[bool]string{true: "A", false: "B"}[cursor[len(cursor)-1] != 'A']
+		response := f.do(http.MethodGet, "/api/internal/compat/v1/catalog/items?cursor="+url.QueryEscape(tampered), "", headers)
+		f.requireErrorEnvelope(response, http.StatusBadRequest, "invalid_cursor")
+
+		// A cursor signed for one operation must not decode for another: the
+		// scope is bound into the signature, not just the domain token.
+		crossScope := f.do(http.MethodGet, "/api/internal/compat/v1/catalog/items/some-item/children?cursor="+url.QueryEscape(cursor), "", headers)
+		f.requireErrorEnvelope(crossScope, http.StatusBadRequest, "invalid_cursor")
+	})
+
+	t.Run("PIN_WrongPINRefused_CorrectPINSwitchesProfile", func(t *testing.T) {
+		f := newFoundationFixture(t)
+		companion := f.enrollAndActivate("jellyfin", "jellyfin-pin", []string{"identity"})
+		subjectToken := f.subjectToken(companion.Token)
+		headers := map[string]string{"Authorization": "Bearer " + companion.Token, "X-Vondel-Subject-Token": subjectToken}
+
+		wrong := f.do(http.MethodPost, "/api/internal/compat/v1/identity/pin/verify",
+			fmt.Sprintf(`{"profile_id":%q,"pin":"0000"}`, foundationKidsProfileID),
+			mergeHeaders(headers, map[string]string{"Idempotency-Key": "pin-wrong"}))
+		f.requireErrorEnvelope(wrong, http.StatusForbidden, "pin_invalid")
+
+		right := f.requireStatus(f.do(http.MethodPost, "/api/internal/compat/v1/identity/pin/verify",
+			fmt.Sprintf(`{"profile_id":%q,"pin":%q}`, foundationKidsProfileID, foundationPIN),
+			mergeHeaders(headers, map[string]string{"Idempotency-Key": "pin-right"})), http.StatusNoContent)
+		if len(right.Body) != 0 {
+			t.Fatalf("pin verify body = %s, want empty", right.Body)
+		}
+
+		switched := f.requireStatus(f.do(http.MethodPost, "/api/internal/compat/v1/identity/switch",
+			fmt.Sprintf(`{"profile_id":%q,"pin":%q}`, foundationKidsProfileID, foundationPIN),
+			mergeHeaders(headers, map[string]string{"Idempotency-Key": "switch-1"})), http.StatusOK)
+		subject, _ := f.object(switched)["subject"].(map[string]any)
+		if subject["profile_id"] != foundationKidsProfileID {
+			t.Fatalf("switched subject.profile_id = %v, want %q", subject["profile_id"], foundationKidsProfileID)
+		}
+	})
+
+	t.Run("Revocation_InvalidatesEveryOutstandingSubjectToken", func(t *testing.T) {
+		f := newFoundationFixture(t)
+		companion := f.enrollAndActivate("jellyfin", "jellyfin-revoke-subject", []string{"identity"})
+		subjectToken := f.subjectToken(companion.Token)
+		headers := map[string]string{"Authorization": "Bearer " + companion.Token, "X-Vondel-Subject-Token": subjectToken}
+
+		f.requireStatus(f.do(http.MethodGet, "/api/internal/compat/v1/identity/subject", "", headers), http.StatusOK)
+
+		f.subjects.revoke(foundationReaderProfileID)
+
+		response := f.do(http.MethodGet, "/api/internal/compat/v1/identity/subject", "", headers)
+		f.requireErrorEnvelope(response, http.StatusUnauthorized, "subject_revoked")
+	})
+}
+
+func mergeHeaders(base, extra map[string]string) map[string]string {
+	merged := make(map[string]string, len(base)+len(extra))
+	for k, v := range base {
+		merged[k] = v
+	}
+	for k, v := range extra {
+		merged[k] = v
+	}
+	return merged
 }
 
 // enrollAndActivate drives a companion through the full real lifecycle the
