@@ -68,6 +68,13 @@ type DocumentItem struct {
 	Genres         []string `json:"genres,omitempty"`
 	Keywords       []string `json:"keywords,omitempty"`
 
+	// PosterURL is a resolved, directly fetchable URL — never a stored path or
+	// a plugin-prefixed reference. The Reader resolves it before this package
+	// ever sees the item, the same way it resolves everything else here: this
+	// package composes a document from plain data, and never itself dials a
+	// plugin, a CDN or a database. Omitted when the item has no poster.
+	PosterURL string `json:"poster_url,omitempty"`
+
 	// Series-only.
 	SeasonCount int              `json:"season_count,omitempty"`
 	Seasons     []DocumentSeason `json:"seasons,omitempty"`

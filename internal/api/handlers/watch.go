@@ -173,10 +173,13 @@ type CatalogWatchReader struct {
 	seasons  WatchSeasonSource
 	files    WatchFileSource
 	stores   userstore.UserStoreProvider
+	images   catalog.ImageResolver
 }
 
 // NewCatalogWatchReader wires a reader over the existing repositories. seasons
 // may be nil: season titles are then omitted rather than the document failing.
+// images may be nil: posters are then omitted rather than the document
+// carrying a stored path or a plugin-prefixed reference no client can fetch.
 func NewCatalogWatchReader(
 	browse WatchBrowseSource,
 	items WatchItemSource,
@@ -184,6 +187,7 @@ func NewCatalogWatchReader(
 	seasons WatchSeasonSource,
 	files WatchFileSource,
 	stores userstore.UserStoreProvider,
+	images catalog.ImageResolver,
 ) *CatalogWatchReader {
 	return &CatalogWatchReader{
 		browse:   browse,
@@ -192,7 +196,37 @@ func NewCatalogWatchReader(
 		seasons:  seasons,
 		files:    files,
 		stores:   stores,
+		images:   images,
 	}
+}
+
+// watchPosterVariant is the image size hint Watch documents ask for: cards in
+// a horizontally scrolling rail, never the larger "featured" or "full" crops
+// a detail hero uses.
+const watchPosterVariant = "card"
+
+// resolvePosterURLs resolves every non-empty poster path in one batched call,
+// so a home document with a hundred items costs one round trip through the
+// resolver rather than one per item. A nil resolver, or a path the resolver
+// could not answer for, means the item carries no poster rather than a URL
+// nothing can fetch.
+func (r *CatalogWatchReader) resolvePosterURLs(ctx context.Context, paths []string) map[string]string {
+	if r.images == nil || len(paths) == 0 {
+		return map[string]string{}
+	}
+	unique := make([]string, 0, len(paths))
+	seen := make(map[string]bool, len(paths))
+	for _, path := range paths {
+		if path == "" || seen[path] {
+			continue
+		}
+		seen[path] = true
+		unique = append(unique, path)
+	}
+	if len(unique) == 0 {
+		return map[string]string{}
+	}
+	return r.images.ResolveImageURLs(ctx, unique, watchPosterVariant)
 }
 
 var _ watchdoc.Reader = (*CatalogWatchReader)(nil)
@@ -253,18 +287,33 @@ func (r *CatalogWatchReader) Items(ctx context.Context, scope watchdoc.ProfileSc
 	}
 
 	items := make([]watchdoc.Item, 0, len(window))
+	rawPosterPaths := make(map[string]string, len(window))
 	for _, item := range window {
 		if item == nil || (r.items != nil && !accessible[item.ContentID]) {
 			continue
 		}
 		items = append(items, watchItemFromMediaItem(item))
+		rawPosterPaths[item.ContentID] = item.PosterPath
 	}
 
-	resumed, err := r.itemsInProgress(ctx, scope, filter, listed)
+	resumed, resumedPosterPaths, err := r.itemsInProgress(ctx, scope, filter, listed)
 	if err != nil {
 		return nil, err
 	}
-	return append(items, resumed...), nil
+	for contentID, path := range resumedPosterPaths {
+		rawPosterPaths[contentID] = path
+	}
+
+	all := append(items, resumed...)
+	paths := make([]string, 0, len(rawPosterPaths))
+	for _, path := range rawPosterPaths {
+		paths = append(paths, path)
+	}
+	resolved := r.resolvePosterURLs(ctx, paths)
+	for index := range all {
+		all[index].PosterURL = resolved[rawPosterPaths[all[index].ContentID]]
+	}
+	return all, nil
 }
 
 // itemsInProgress resolves the movies and series behind the profile's recent
@@ -275,23 +324,23 @@ func (r *CatalogWatchReader) itemsInProgress(
 	scope watchdoc.ProfileScope,
 	filter catalog.AccessFilter,
 	listed map[string]bool,
-) ([]watchdoc.Item, error) {
+) ([]watchdoc.Item, map[string]string, error) {
 	if r.stores == nil || r.items == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 	store, err := r.stores.ForUser(ctx, scope.UserID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// Video only: an audiobook or ebook row cannot become a Watch item, and
 	// letting those rows consume the window would hide the ones that can.
 	rows, err := store.ListProgressFiltered(ctx, scope.ProfileID, "",
 		[]string{itemTypeMovie, itemTypeSeries, itemTypeEpisode}, nil, watchRecentProgressRows, 0)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if len(rows) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	progressed := make([]string, 0, len(rows))
@@ -304,7 +353,7 @@ func (r *CatalogWatchReader) itemsInProgress(
 		progressed = append(progressed, row.MediaItemID)
 	}
 	if len(progressed) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// An episode row names an episode; the document names its series. The
@@ -315,7 +364,7 @@ func (r *CatalogWatchReader) itemsInProgress(
 	if r.episodes != nil {
 		episodes, err := r.episodes.GetByIDs(ctx, progressed)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		for _, episode := range episodes {
 			if episode == nil || episode.ContentID == "" {
@@ -335,14 +384,15 @@ func (r *CatalogWatchReader) itemsInProgress(
 		}
 	}
 	if len(candidates) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	found, err := r.items.GetByIDsWithAccess(ctx, candidates, filter)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	resumed := make([]watchdoc.Item, 0, len(found))
+	posterPaths := make(map[string]string, len(found))
 	for _, item := range found {
 		if item == nil || listed[item.ContentID] {
 			continue
@@ -352,8 +402,9 @@ func (r *CatalogWatchReader) itemsInProgress(
 		}
 		listed[item.ContentID] = true
 		resumed = append(resumed, watchItemFromMediaItem(item))
+		posterPaths[item.ContentID] = item.PosterPath
 	}
-	return resumed, nil
+	return resumed, posterPaths, nil
 }
 
 // Item returns one movie or series, applying the viewer's access predicates.
@@ -374,7 +425,10 @@ func (r *CatalogWatchReader) Item(ctx context.Context, scope watchdoc.ProfileSco
 		if item.Type != itemTypeMovie && item.Type != itemTypeSeries {
 			continue
 		}
-		return watchItemFromMediaItem(item), true, nil
+		converted := watchItemFromMediaItem(item)
+		resolved := r.resolvePosterURLs(ctx, []string{item.PosterPath})
+		converted.PosterURL = resolved[item.PosterPath]
+		return converted, true, nil
 	}
 	return watchdoc.Item{}, false, nil
 }

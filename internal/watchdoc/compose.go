@@ -74,6 +74,8 @@ type Item struct {
 	// AddedAt is when the item entered the profile's libraries. It drives the
 	// document order and the featured rule; a nil value sorts last.
 	AddedAt *time.Time
+	// PosterURL is already resolved — see DocumentItem.PosterURL.
+	PosterURL string
 }
 
 // Episode is one episode of a series the profile may see.
@@ -88,6 +90,8 @@ type Episode struct {
 	// SeasonTitle is the season's own title, used to build the series item's
 	// season summaries without a second round trip.
 	SeasonTitle string
+	// PosterURL is already resolved — see DocumentItem.PosterURL.
+	PosterURL string
 }
 
 // Progress is one durable progress row for the requesting profile.
@@ -505,6 +509,7 @@ func newLibraryDocumentItem(item Item, fileIDs map[string]int64, claimedFiles ma
 		Overview:       strings.TrimSpace(item.Overview),
 		Genres:         item.Genres,
 		Keywords:       item.Keywords,
+		PosterURL:      item.PosterURL,
 	}
 	if documentItem.ContentID == "" || documentItem.Title == "" || !isLibraryKind(documentItem.Kind) {
 		return DocumentItem{}, false
@@ -559,6 +564,7 @@ func newEpisodeDocumentItem(ctx context.Context, episode Episode, seriesID strin
 		SeasonNumber:   episode.SeasonNumber,
 		EpisodeNumber:  episode.EpisodeNumber,
 		FileID:         fileID,
+		PosterURL:      episode.PosterURL,
 	}, true
 }
 

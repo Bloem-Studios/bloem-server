@@ -508,14 +508,37 @@ func (s fakeWatchStores) ForUser(context.Context, int) (userstore.UserStore, err
 }
 func (s fakeWatchStores) Close() error { return nil }
 
+// fakeImageResolver stands in for the plugin-backed resolver: a fixed map from
+// the raw stored path this fixture puts on "4242" to a URL a client could
+// actually fetch. An unmapped path resolves to "", matching the real
+// resolver's contract for a path it cannot answer.
+type fakeImageResolver struct{ byPath map[string]string }
+
+func (f fakeImageResolver) ResolveImageURL(_ context.Context, path string, _ string) string {
+	return f.byPath[path]
+}
+
+func (f fakeImageResolver) ResolveImageURLs(_ context.Context, paths []string, variant string) map[string]string {
+	resolved := make(map[string]string, len(paths))
+	for _, path := range paths {
+		if url := f.ResolveImageURL(context.Background(), path, variant); url != "" {
+			resolved[path] = url
+		}
+	}
+	return resolved
+}
+
+const fakeWatchPosterPath = "posters/4242/original.jpg"
+const fakeWatchPosterURL = "https://cdn.example.test/posters/4242/card.jpg"
+
 func newWatchReaderFixture(t *testing.T) (*CatalogWatchReader, *fakeWatchBrowse, *fakeWatchItems, *fakeWatchEpisodes, *fakeWatchFiles, *fakeWatchStore) {
 	t.Helper()
 	added := time.Date(2026, 8, 13, 9, 0, 0, 0, time.UTC)
 	browse := &fakeWatchBrowse{result: &catalog.BrowseResult{Items: []*models.MediaItem{
-		{ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", Runtime: 108, AddedAt: &added},
+		{ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", Runtime: 108, AddedAt: &added, PosterPath: fakeWatchPosterPath},
 	}}}
 	items := &fakeWatchItems{items: map[string]*models.MediaItem{
-		"4242": {ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", Runtime: 108, AddedAt: &added},
+		"4242": {ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", Runtime: 108, AddedAt: &added, PosterPath: fakeWatchPosterPath},
 		"1717": {ContentID: "1717", Type: itemTypeMovie, Title: "Nine Lanterns Down", Runtime: 90},
 		"8080": {ContentID: "8080", Type: itemTypeSeries, Title: "Eight Quiet Rooms"},
 		"9001": {ContentID: "9001", Type: itemTypeMovie, Title: "The Sealed Wing"},
@@ -531,8 +554,69 @@ func newWatchReaderFixture(t *testing.T) (*CatalogWatchReader, *fakeWatchBrowse,
 	}
 	files := &fakeWatchFiles{byContent: map[string][]*models.MediaFile{}, byEpisode: map[string][]*models.MediaFile{}}
 	store := &fakeWatchStore{direct: map[string]userstore.WatchProgress{}}
-	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store})
+	images := fakeImageResolver{byPath: map[string]string{fakeWatchPosterPath: fakeWatchPosterURL}}
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store}, images)
 	return reader, browse, items, episodes, files, store
+}
+
+// TestWatchReaderResolvesPosterURLsThroughTheImageResolver proves the reader
+// itself does the resolving — watchdoc never sees a stored path or dials a
+// resolver — and that both Items and Item convert the same fixture item the
+// same way. "1717" has no PosterPath at all, so it proves the omission case in
+// the same request rather than a separate fixture.
+func TestWatchReaderResolvesPosterURLsThroughTheImageResolver(t *testing.T) {
+	reader, _, _, _, _, _ := newWatchReaderFixture(t)
+	scope := watchdoc.ProfileScope{ProfileID: "profile-open"}
+
+	items, err := reader.Items(context.Background(), scope)
+	if err != nil {
+		t.Fatalf("Items: %v", err)
+	}
+	byContentID := map[string]watchdoc.Item{}
+	for _, item := range items {
+		byContentID[item.ContentID] = item
+	}
+	if got := byContentID["4242"].PosterURL; got != fakeWatchPosterURL {
+		t.Errorf("Items()[4242].PosterURL = %q, want %q", got, fakeWatchPosterURL)
+	}
+
+	detail, found, err := reader.Item(context.Background(), scope, "4242")
+	if err != nil {
+		t.Fatalf("Item: %v", err)
+	}
+	if !found {
+		t.Fatal("Item(4242) not found")
+	}
+	if detail.PosterURL != fakeWatchPosterURL {
+		t.Errorf("Item(4242).PosterURL = %q, want %q", detail.PosterURL, fakeWatchPosterURL)
+	}
+}
+
+// TestWatchReaderOmitsPosterURLWithNoResolver proves the reader fails closed
+// rather than leaking a stored path to the wire when no resolver is
+// configured — the same "posters omitted, not broken" rule a nil seasons
+// source already gets for season titles.
+func TestWatchReaderOmitsPosterURLWithNoResolver(t *testing.T) {
+	added := time.Date(2026, 8, 13, 9, 0, 0, 0, time.UTC)
+	browse := &fakeWatchBrowse{result: &catalog.BrowseResult{Items: []*models.MediaItem{
+		{ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", AddedAt: &added, PosterPath: fakeWatchPosterPath},
+	}}}
+	items := &fakeWatchItems{items: map[string]*models.MediaItem{}}
+	episodes := &fakeWatchEpisodes{}
+	files := &fakeWatchFiles{byContent: map[string][]*models.MediaFile{}, byEpisode: map[string][]*models.MediaFile{}}
+	store := &fakeWatchStore{direct: map[string]userstore.WatchProgress{}}
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store}, nil)
+
+	result, err := reader.Items(context.Background(), watchdoc.ProfileScope{ProfileID: "profile-open"})
+	if err != nil {
+		t.Fatalf("Items: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("Items() = %d items, want 1", len(result))
+	}
+	if result[0].PosterURL != "" {
+		t.Errorf("PosterURL = %q with no resolver configured, want empty", result[0].PosterURL)
+	}
 }
 
 func TestWatchReaderNeverNamesAFileTheViewerCannotPlay(t *testing.T) {
