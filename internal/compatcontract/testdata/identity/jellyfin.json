@@ -1,0 +1,22 @@
+{
+  "name": "jellyfin-identity",
+  "cases": [
+    {"name":"unknown device receives no profile directory","method":"GET","path":"/Users/Public","want_status":200,"want_json":[],"want_json_counts":{"$":0},"absent_strings":["{{account_username}}","{{primary_profile}}","{{reader_profile}}","{{pin_profile}}"]},
+    {"name":"a wrong password is refused","method":"POST","path":"/Users/AuthenticateByName","body_json":{"Username":"{{account_username}}","Pw":"{{wrong_password}}"},"exception":"unauthenticated","absent_strings":["AccessToken"]},
+    {"name":"legacy account login selects the remembered profile","method":"POST","path":"/Users/AuthenticateByName","body_json":{"Username":"{{account_username}}","Pw":"{{account_password}}"},"want_status":200,"capture":{"jf_account_token":"$.AccessToken"},"want_json_fields":{"$.User.Policy.IsAdministrator":false,"$.SessionInfo.UserName":"{{primary_profile}}"},"absent_strings":["{{reader_profile}}","{{pin_profile}}"]},
+    {"name":"an explicit profile selection needs no pin","method":"POST","path":"/Users/AuthenticateByName","body_json":{"Username":"{{account_username}}#{{reader_profile}}","Pw":"{{account_password}}"},"want_status":200,"capture":{"jf_reader_token":"$.AccessToken"},"want_json_fields":{"$.User.Policy.IsAdministrator":false,"$.SessionInfo.UserName":"{{reader_profile}}"},"absent_strings":["{{pin_profile}}"]},
+    {"name":"a pin protected profile refuses a switch without its pin","method":"POST","path":"/Users/AuthenticateByName","body_json":{"Username":"{{account_username}}#{{pin_profile}}","Pw":"{{account_password}}"},"exception":"unauthenticated","absent_strings":["AccessToken"]},
+    {"name":"a wrong pin is refused","method":"POST","path":"/Users/AuthenticateByName","body_json":{"Username":"{{account_username}}#{{pin_profile}}","Pw":"{{account_password}}#{{wrong_pin}}"},"exception":"unauthenticated","absent_strings":["AccessToken"]},
+    {"name":"a pin protected profile switches with its pin","method":"POST","path":"/Users/AuthenticateByName","body_json":{"Username":"{{account_username}}#{{pin_profile}}","Pw":"{{account_password}}#{{profile_pin}}"},"want_status":200,"capture":{"jf_pin_token":"$.AccessToken"},"want_json_fields":{"$.SessionInfo.UserName":"{{pin_profile}}"}},
+    {"name":"an unknown profile is refused","method":"POST","path":"/Users/AuthenticateByName","body_json":{"Username":"{{account_username}}#{{unknown_profile}}","Pw":"{{account_password}}"},"exception":"unauthenticated","absent_strings":["AccessToken"]},
+    {"name":"the session sees itself and nothing more","method":"GET","path":"/Users","headers":{"X-Emby-Token":"{{jf_reader_token}}"},"want_status":200,"want_json_counts":{"$":1},"want_json_fields":{"$.0.Name":"{{account_username}}#{{reader_profile}}"},"absent_strings":["{{pin_profile}}"]},
+    {"name":"a sibling user id is not disclosed","method":"GET","path":"/Users/{{sibling_pseudo_id}}","headers":{"X-Emby-Token":"{{jf_reader_token}}"},"exception":"not_found","absent_strings":["{{primary_profile}}"]},
+    {"name":"another household's user id is not disclosed","method":"GET","path":"/Users/{{foreign_pseudo_id}}","headers":{"X-Emby-Token":"{{jf_reader_token}}"},"exception":"not_found","absent_strings":["{{foreign_profile}}"]},
+    {"name":"the current user endpoint answers the bound session","method":"GET","path":"/Users/Me","headers":{"X-Emby-Token":"{{jf_reader_token}}"},"want_status":200,"want_json_fields":{"$.Name":"{{account_username}}#{{reader_profile}}","$.Policy.IsAdministrator":false}},
+    {"name":"logging out revokes the compat session","method":"POST","path":"/Sessions/Logout","headers":{"X-Emby-Token":"{{jf_pin_token}}"},"want_status":204},
+    {"name":"a logged out session is refused","method":"GET","path":"/Users/Me","headers":{"X-Emby-Token":"{{jf_pin_token}}"},"exception":"unauthenticated"},
+    {"name":"a revoked account session is refused","method":"GET","path":"/Users/Me","headers":{"X-Emby-Token":"{{jf_revoked_token}}"},"exception":"unauthenticated"},
+    {"name":"events omit adult items","method":"GET","path":"/socket","headers":{"X-Emby-Token":"{{jf_reader_token}}"},"want_websocket_filtered":true,"absent_strings":["adult-item-001","Adult title"]},
+    {"name":"missing adult and missing random ids time alike","method":"GET","path":"/Items/{{missing_adult_id}}","headers":{"X-Emby-Token":"{{jf_reader_token}}"},"exception":"not_found","timing":{"control_path":"/Items/{{missing_random_id}}","samples":100,"max_ratio":3}}
+  ]
+}

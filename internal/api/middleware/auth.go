@@ -49,6 +49,29 @@ type AuthMiddleware struct {
 	apiKeyUserLoader APIKeyUserLoader // nil if API keys not configured
 
 	apiKeyLastUsed *auth.APIKeyLastUsedTracker
+
+	// directProfileRoutes decides whether a direct-profile session may reach
+	// the route a request matched. Nil fails closed: every direct-profile
+	// request is refused until a guard is installed. A fixture that wants an
+	// unrestricted middleware installs an explicit allow-all guard.
+	directProfileRoutes DirectProfileRouteGuard
+}
+
+// DirectProfileRouteGuard reports whether a direct-profile session may use the
+// route a request matches.
+type DirectProfileRouteGuard func(r *http.Request) bool
+
+// SetDirectProfileRouteGuard installs the direct-profile route boundary.
+//
+// It hangs off authentication rather than off individual routes because the
+// boundary is default-deny: a direct-profile session authenticates one profile
+// and may use only the routes that serve one profile. Enumerating the routes
+// it may *not* use was tried and does not converge — the API has hundreds of
+// routes, every new one is account-scoped until someone says otherwise, and
+// three review rounds each found more escapes. Putting the decision where
+// claims are resolved means a route is unreachable until it is named.
+func (am *AuthMiddleware) SetDirectProfileRouteGuard(guard DirectProfileRouteGuard) {
+	am.directProfileRoutes = guard
 }
 
 // NewAuthMiddleware creates a new AuthMiddleware with the given token validator
@@ -144,6 +167,29 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), claimsKey, claims)
+		if claims.AuthMethod == auth.AuthMethodDirectProfile {
+			// Fail closed: with no guard installed, a direct-profile session
+			// reaches nothing. The boundary is default-deny, and "the caller
+			// forgot to install the allowlist" must not mean "every endpoint
+			// is open" — a fixture that genuinely wants an unrestricted
+			// middleware installs an allow-all guard on purpose.
+			if am.directProfileRoutes == nil || !am.directProfileRoutes(r) {
+				writeForbidden(w, "Direct profile sessions cannot use this endpoint")
+				return
+			}
+			// The session was bound to one device at login, and device
+			// identity feeds downloads, device settings, and policy input.
+			// Handlers read the X-Silo-Device-Id header, so the header is made
+			// canonical here: a conflicting value is refused rather than
+			// letting the session act as a device it never authenticated, and
+			// an absent one is filled in from the binding so every consumer
+			// sees the same identity.
+			if declared := strings.TrimSpace(r.Header.Get("X-Silo-Device-Id")); declared != "" && declared != claims.DeviceID {
+				writeForbidden(w, "Device does not match this session's binding")
+				return
+			}
+			r.Header.Set("X-Silo-Device-Id", claims.DeviceID)
+		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -236,13 +282,11 @@ func actingAdminAllowed(r *http.Request, userID int, checkPrimary PrimaryProfile
 }
 
 // declaredProfileID returns the active profile the request declares: the
-// profile context when RequireProfile ran earlier in the chain, otherwise
-// the raw X-Profile-Id header.
+// token-bound profile for a direct-profile session, the profile context when
+// RequireProfile ran earlier in the chain, otherwise the raw X-Profile-Id
+// header.
 func declaredProfileID(r *http.Request) string {
-	if id := GetProfileID(r.Context()); id != "" {
-		return id
-	}
-	return r.Header.Get("X-Profile-Id")
+	return ActiveProfileID(r)
 }
 
 // SetClaims stores JWT claims in the context. This is useful for testing

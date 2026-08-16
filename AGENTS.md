@@ -143,3 +143,4 @@ disclosure block and the evidence standard.
 - Avoid repeated polling; use one appropriately bounded wait only when genuinely necessary.
 - Run focused verification during implementation and full suites only at an integration or release gate.
 - After a major milestone or context compaction, recommend a clean continuation containing the objective, repository/worktree, branch and HEAD, dirty state, completed work, verification, risks, and exact next step.
+- In Claude Code, prefer a fresh session after a major milestone instead of repeatedly compacting an extended session.

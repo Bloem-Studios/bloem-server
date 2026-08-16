@@ -175,8 +175,8 @@ func TestV1TenancyCompatibility(t *testing.T) {
 	}
 
 	capabilities := performJSONRequest(t, router, http.MethodGet, "/api/v2/capabilities", "", "", nil)
-	if capabilities.Code != http.StatusOK || strings.Contains(capabilities.Body.String(), `"direct_profile_login":true`) {
-		t.Fatalf("v2 capabilities = %d %s", capabilities.Code, capabilities.Body.String())
+	if capabilities.Code != http.StatusOK || !strings.Contains(capabilities.Body.String(), `"direct_profile_login":true`) {
+		t.Fatalf("v2 capabilities = %d %s, want direct profile login advertised", capabilities.Code, capabilities.Body.String())
 	}
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		response := performJSONRequest(t, router, method, "/api/v2/organizations", `{}`, afterTokens.AccessToken, nil)

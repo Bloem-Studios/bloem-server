@@ -24,7 +24,10 @@ import (
 // files below were generated from origin/main, so any drift — in either
 // direction — fails here with the exact route named.
 //
-// Regenerate deliberately, never to make a failure go away:
+// One deliberate, reviewed exception is already pinned in the golden files:
+// POST /api/v1/auth/profile-login and GET /api/v1/profiles/{id} (see
+// router.go), predating this guard. Regenerate deliberately, never to make a
+// failure go away:
 //
 //	VONDEL_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
 const (

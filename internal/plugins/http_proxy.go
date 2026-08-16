@@ -136,7 +136,8 @@ func (p *HTTPProxy) ServeRoute(w http.ResponseWriter, r *http.Request, installat
 		}
 		// Full-page plugin navigation cannot attach X-Profile-Id. The launch
 		// cookie carries the validated active profile in that case; direct
-		// bearer/API-key calls may still provide the header.
+		// bearer/API-key calls may still provide the header. Profile-bound
+		// tokens never reach here: the proxy refuses them before this point.
 		profileID := strings.TrimSpace(contextProfileID)
 		if profileID == "" {
 			profileID = strings.TrimSpace(r.Header.Get("X-Profile-Id"))

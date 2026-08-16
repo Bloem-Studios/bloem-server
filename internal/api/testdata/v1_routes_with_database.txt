@@ -197,6 +197,7 @@ GET /api/v1/profile/sections/flags
 GET /api/v1/profile/sections/settings
 GET /api/v1/profiles/
 GET /api/v1/profiles/household/sessions
+GET /api/v1/profiles/{id}
 GET /api/v1/progress/
 GET /api/v1/ratings/
 GET /api/v1/ratings/{item_id}
@@ -335,6 +336,7 @@ POST /api/v1/auth/impersonation/end
 POST /api/v1/auth/login
 POST /api/v1/auth/logout
 POST /api/v1/auth/plugin-launch
+POST /api/v1/auth/profile-login
 POST /api/v1/auth/refresh
 POST /api/v1/auth/setup
 POST /api/v1/auth/signup

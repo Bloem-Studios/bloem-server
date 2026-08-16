@@ -27,11 +27,128 @@ func IsSessionNotFound(err error) bool {
 }
 
 // sessionColumns is the list of columns returned by all session SELECT queries.
-const sessionColumns = `id, user_id, device_name, COALESCE(host(ip_address), '') AS ip_address, created_at, expires_at, revoked_at, impersonator_user_id, impersonation_started_at`
+const sessionColumns = `id, user_id, device_name, device_id, COALESCE(host(ip_address), '') AS ip_address, created_at, expires_at, revoked_at, impersonator_user_id, impersonation_started_at, profile_id, profile_credential_revision, auth_method`
 
 // SessionRepository provides CRUD operations for the auth_sessions table.
 type SessionRepository struct {
 	pool *pgxpool.Pool
+}
+
+// CreateProfileSessionIfCurrent serializes direct-profile session creation with
+// credential rotation by locking the profile row and checking the exact subject
+// facts authenticated before the session was minted.
+func (r *SessionRepository) CreateProfileSessionIfCurrent(
+	ctx context.Context,
+	session models.AuthSession,
+	subject SessionSubject,
+) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin direct profile session: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Locking is what closes the window between verifying a subject and
+	// inserting the session it authorizes: this session asserts the account is
+	// enabled and the organization and membership are active at the revisions
+	// it carries, so none of that may change underneath it.
+	//
+	// The rows are taken one statement at a time, in the order organization,
+	// account, membership, profile. That order is the one the tenancy writers
+	// already use — administration locks a membership before the profile it
+	// moves — and taking them in a single joined statement would acquire them
+	// in scan order instead, which is profile-first and deadlocks against
+	// exactly that writer.
+	//
+	// The tenancy rows are taken FOR SHARE rather than FOR UPDATE: this
+	// session only asserts their state, so concurrent logins make no
+	// conflicting claim and must not serialize behind one organization row.
+	// The profile is taken FOR UPDATE because a credential reset contends for
+	// it directly.
+	var (
+		organizationID   string
+		policyRevision   int64
+		organizationStat string
+	)
+	err = tx.QueryRow(ctx, `
+		SELECT id::text, policy_revision, status
+		FROM organizations WHERE id::text = $1
+		FOR SHARE`, subject.OrganizationID).Scan(&organizationID, &policyRevision, &organizationStat)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSessionRevoked
+		}
+		return fmt.Errorf("lock organization for direct profile session: %w", err)
+	}
+
+	var accountID int
+	var enabled bool
+	err = tx.QueryRow(ctx, `
+		SELECT id, enabled FROM users WHERE id = $1
+		FOR SHARE`, subject.AccountID).Scan(&accountID, &enabled)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSessionRevoked
+		}
+		return fmt.Errorf("lock account for direct profile session: %w", err)
+	}
+
+	var (
+		membershipID     string
+		securityRevision int64
+		membershipStat   string
+	)
+	err = tx.QueryRow(ctx, `
+		SELECT id::text, security_revision, status
+		FROM organization_memberships
+		WHERE organization_id::text = $1 AND account_id = $2
+		FOR SHARE`, subject.OrganizationID, subject.AccountID).
+		Scan(&membershipID, &securityRevision, &membershipStat)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSessionRevoked
+		}
+		return fmt.Errorf("lock membership for direct profile session: %w", err)
+	}
+
+	var profileID, profileOrganizationID string
+	var credentialRevision int64
+	err = tx.QueryRow(ctx, `
+		SELECT id, organization_id::text, credential_revision
+		FROM user_profiles WHERE user_id = $1 AND id = $2
+		FOR UPDATE`, subject.AccountID, subject.ProfileID).
+		Scan(&profileID, &profileOrganizationID, &credentialRevision)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSessionRevoked
+		}
+		return fmt.Errorf("lock profile for direct profile session: %w", err)
+	}
+
+	current := SessionSubject{
+		AccountID:          accountID,
+		ProfileID:          profileID,
+		OrganizationID:     profileOrganizationID,
+		MembershipID:       membershipID,
+		PolicyRevision:     policyRevision,
+		SecurityRevision:   securityRevision,
+		CredentialRevision: credentialRevision,
+		Device:             subject.Device,
+		AuthMethod:         subject.AuthMethod,
+	}
+	if current != subject || !enabled ||
+		organizationID != subject.OrganizationID ||
+		organizationStat != statusActive || membershipStat != statusActive {
+		return ErrSessionRevoked
+	}
+
+	if err := r.createWithQuerier(ctx, tx, session); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit direct profile session: %w", err)
+	}
+	return nil
 }
 
 // NewSessionRepository creates a new SessionRepository backed by the given pool.
@@ -46,12 +163,16 @@ func scanSession(row pgx.Row) (*models.AuthSession, error) {
 		&s.ID,
 		&s.UserID,
 		&s.DeviceName,
+		&s.DeviceID,
 		&s.IPAddress,
 		&s.CreatedAt,
 		&s.ExpiresAt,
 		&s.RevokedAt,
 		&s.ImpersonatorUserID,
 		&s.ImpersonationStartedAt,
+		&s.ProfileID,
+		&s.ProfileCredentialRevision,
+		&s.AuthMethod,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -71,12 +192,16 @@ func scanSessions(rows pgx.Rows) ([]*models.AuthSession, error) {
 			&s.ID,
 			&s.UserID,
 			&s.DeviceName,
+			&s.DeviceID,
 			&s.IPAddress,
 			&s.CreatedAt,
 			&s.ExpiresAt,
 			&s.RevokedAt,
 			&s.ImpersonatorUserID,
 			&s.ImpersonationStartedAt,
+			&s.ProfileID,
+			&s.ProfileCredentialRevision,
+			&s.AuthMethod,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning session row: %w", err)
@@ -105,10 +230,13 @@ func (r *SessionRepository) createWithQuerier(
 	if session.ID == "" {
 		session.ID = uuid.New().String()
 	}
+	if session.AuthMethod == "" {
+		session.AuthMethod = "account"
+	}
 
 	query := `INSERT INTO auth_sessions
-		(id, user_id, device_name, ip_address, expires_at, impersonator_user_id, impersonation_started_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`
+		(id, user_id, device_name, device_id, ip_address, expires_at, impersonator_user_id, impersonation_started_at, profile_id, profile_credential_revision, auth_method)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 
 	// ip_address is a Postgres inet column; an empty string fails the
 	// inet input parser (SQLSTATE 22P02). Pass NULL when the caller
@@ -123,10 +251,14 @@ func (r *SessionRepository) createWithQuerier(
 		session.ID,
 		session.UserID,
 		session.DeviceName,
+		session.DeviceID,
 		ipArg,
 		session.ExpiresAt,
 		session.ImpersonatorUserID,
 		session.ImpersonationStartedAt,
+		session.ProfileID,
+		session.ProfileCredentialRevision,
+		session.AuthMethod,
 	)
 	if err != nil {
 		return fmt.Errorf("creating session: %w", err)

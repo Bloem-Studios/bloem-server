@@ -112,6 +112,27 @@ func TestCanManageHousehold(t *testing.T) {
 		}
 	})
 
+	// A direct-profile session authenticates one profile, so the household
+	// boundary must read that binding rather than the self-asserted header.
+	// Otherwise a non-primary profile with its own credential could claim the
+	// primary profile's ID and manage the whole household.
+	t.Run("direct profile session may not assert the primary profile", func(t *testing.T) {
+		store, tokens := setup(t, "")
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("X-Profile-Id", "primary")
+		req = req.WithContext(apimw.SetClaims(req.Context(), &auth.Claims{
+			UserID:     1,
+			SessionID:  "session-1",
+			ProfileID:  "child",
+			AuthMethod: auth.AuthMethodDirectProfile,
+		}))
+
+		ok, err := canManageHousehold(req, store, nil, tokens)
+		if err != nil || ok {
+			t.Fatalf("direct profile = (%v, %v), want (false, nil)", ok, err)
+		}
+	})
+
 	t.Run("no active profile may not", func(t *testing.T) {
 		store, tokens := setup(t, "")
 		ok, err := canManageHousehold(householdRequest("", false, ""), store, nil, tokens)

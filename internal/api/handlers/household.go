@@ -43,13 +43,16 @@ func canManageHousehold(
 	tokens *access.ProfileTokenService,
 ) (bool, error) {
 	ctx := r.Context()
+	// A direct-profile session authenticates one profile and nothing above it,
+	// so it never manages the household — not even when that profile happens
+	// to be the household primary.
+	if apimw.IsDirectProfileSession(r) {
+		return false, nil
+	}
 	if apimw.IsAdmin(ctx) {
 		return true, nil
 	}
-	activeProfileID := apimw.GetProfileID(ctx)
-	if activeProfileID == "" {
-		activeProfileID = r.Header.Get("X-Profile-Id")
-	}
+	activeProfileID := apimw.ActiveProfileID(r)
 	if activeProfileID == "" {
 		return false, nil
 	}

@@ -1,0 +1,227 @@
+-- +goose Up
+-- +goose StatementBegin
+-- Go trims a login email with strings.TrimSpace before it is stored or looked
+-- up, so the database has to agree on what "blank" means or a value the
+-- application would reduce to nothing survives a direct SQL write. btrim's
+-- default set is spaces only, which lets a tab, a newline, or a non-breaking
+-- space through; the set below is the whitespace Go trims.
+CREATE FUNCTION public.vondel_login_whitespace()
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+AS $$
+    SELECT U&' \0009\000A\000B\000C\000D\0085\00A0\1680\2000\2001\2002\2003\2004\2005\2006\2007\2008\2009\200A\2028\2029\202F\205F\3000'
+$$;
+
+CREATE FUNCTION public.vondel_login_text_blank(value text)
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE
+AS $$
+    SELECT value IS NULL OR btrim(value, public.vondel_login_whitespace()) = ''
+$$;
+
+CREATE FUNCTION public.vondel_normalize_login_email(value text)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+AS $$
+    SELECT lower(btrim(value, public.vondel_login_whitespace()))
+$$;
+
+ALTER TABLE public.user_profiles
+    ADD COLUMN login_email text,
+    ADD COLUMN password_hash text,
+    ADD COLUMN credential_revision bigint NOT NULL DEFAULT 1 CHECK (credential_revision > 0),
+    -- A profile is shared-only, or it carries a real email and a real hash.
+    -- Testing nullness alone would let a direct SQL write store an empty
+    -- login_email beside a valid password and register an empty login key.
+    -- Both branches state nullness explicitly. Comparing only the trimmed
+    -- values would leave a half-set pair evaluating to NULL, which a CHECK
+    -- accepts.
+    ADD CONSTRAINT user_profiles_direct_credential_pair_check
+        CHECK (
+            (login_email IS NULL AND password_hash IS NULL)
+            OR (
+                NOT public.vondel_login_text_blank(login_email)
+                AND NOT public.vondel_login_text_blank(password_hash)
+            )
+        );
+
+ALTER TABLE public.auth_sessions
+    ADD COLUMN profile_id text,
+    ADD COLUMN profile_credential_revision bigint,
+    ADD COLUMN device_id text NOT NULL DEFAULT '',
+    ADD COLUMN auth_method text NOT NULL DEFAULT 'account'
+        CHECK (auth_method IN ('account', 'direct_profile')),
+    ADD CONSTRAINT auth_sessions_direct_profile_binding_check CHECK (
+        (auth_method = 'account' AND profile_id IS NULL AND profile_credential_revision IS NULL) OR
+        (auth_method = 'direct_profile' AND profile_id IS NOT NULL AND profile_credential_revision IS NOT NULL
+         AND NOT public.vondel_login_text_blank(device_id))
+    ),
+    ADD CONSTRAINT auth_sessions_user_profile_fkey
+        FOREIGN KEY (user_id, profile_id)
+        REFERENCES public.user_profiles (user_id, id)
+        ON DELETE CASCADE;
+
+CREATE INDEX auth_sessions_direct_profile_idx
+    ON public.auth_sessions (user_id, profile_id)
+    WHERE auth_method = 'direct_profile' AND revoked_at IS NULL;
+
+CREATE TABLE public.login_email_registry (
+    normalized_email text PRIMARY KEY
+        CHECK (normalized_email = public.vondel_normalize_login_email(normalized_email)),
+    account_id integer REFERENCES public.users(id) ON DELETE CASCADE,
+    profile_user_id integer,
+    profile_id text,
+    CONSTRAINT login_email_registry_single_owner_check CHECK (
+        ((account_id IS NOT NULL)::integer + (profile_id IS NOT NULL)::integer) = 1
+        AND ((profile_user_id IS NOT NULL) = (profile_id IS NOT NULL))
+    ),
+    CONSTRAINT login_email_registry_profile_fkey
+        FOREIGN KEY (profile_user_id, profile_id)
+        REFERENCES public.user_profiles (user_id, id)
+        ON DELETE CASCADE,
+    CONSTRAINT login_email_registry_profile_owner_key UNIQUE (profile_user_id, profile_id)
+);
+
+INSERT INTO public.login_email_registry (normalized_email, account_id)
+SELECT public.vondel_normalize_login_email(email), id
+FROM public.users
+WHERE NOT public.vondel_login_text_blank(email);
+
+CREATE FUNCTION public.vondel_sync_account_login_email_registry()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' AND OLD.email IS NOT DISTINCT FROM NEW.email THEN
+        -- Nothing about the registered address changed. Re-inserting the row
+        -- it already owns would fail on its own primary key, and an ordinary
+        -- account update that merely re-supplies the current email is exactly
+        -- what user management does.
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'DELETE' OR TG_OP = 'UPDATE' THEN
+        DELETE FROM public.login_email_registry
+        WHERE account_id = OLD.id;
+    END IF;
+
+    IF TG_OP <> 'DELETE' AND NOT public.vondel_login_text_blank(NEW.email) THEN
+        INSERT INTO public.login_email_registry (normalized_email, account_id)
+        VALUES (public.vondel_normalize_login_email(NEW.email), NEW.id);
+    END IF;
+    RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+CREATE TRIGGER users_login_email_registry_sync
+AFTER INSERT OR UPDATE OF email OR DELETE ON public.users
+FOR EACH ROW EXECUTE FUNCTION public.vondel_sync_account_login_email_registry();
+
+CREATE FUNCTION public.vondel_sync_profile_login_email_registry()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF TG_OP = 'UPDATE'
+       AND (OLD.login_email, OLD.password_hash) IS NOT DISTINCT FROM (NEW.login_email, NEW.password_hash) THEN
+        -- Same reasoning as the account trigger: an update that leaves the
+        -- credential untouched must not re-register it.
+        RETURN NEW;
+    END IF;
+    IF TG_OP = 'DELETE' OR TG_OP = 'UPDATE' THEN
+        DELETE FROM public.login_email_registry
+        WHERE profile_user_id = OLD.user_id AND profile_id = OLD.id;
+    END IF;
+    IF TG_OP <> 'DELETE' AND NEW.login_email IS NOT NULL THEN
+        INSERT INTO public.login_email_registry (normalized_email, profile_user_id, profile_id)
+        VALUES (public.vondel_normalize_login_email(NEW.login_email), NEW.user_id, NEW.id);
+    END IF;
+    RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+CREATE TRIGGER user_profiles_login_email_registry_sync
+AFTER INSERT OR UPDATE OF login_email, password_hash OR DELETE ON public.user_profiles
+FOR EACH ROW EXECUTE FUNCTION public.vondel_sync_profile_login_email_registry();
+
+-- credential_revision is what revokes a direct profile session: a session
+-- carries the revision it authenticated against, and login and refresh both
+-- refuse a revision that is no longer current. Leaving the increment to the
+-- application would mean any write that bypasses the service silently keeps
+-- every old session valid, so the rotation is enforced here instead. The
+-- increment is forced rather than trusted, so a writer that supplies its own
+-- credential_revision cannot hold the revision still.
+CREATE FUNCTION public.vondel_rotate_profile_credential_revision()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF (OLD.login_email, OLD.password_hash) IS DISTINCT FROM (NEW.login_email, NEW.password_hash) THEN
+        NEW.credential_revision := OLD.credential_revision + 1;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER user_profiles_rotate_credential_revision
+BEFORE UPDATE OF login_email, password_hash ON public.user_profiles
+FOR EACH ROW EXECUTE FUNCTION public.vondel_rotate_profile_credential_revision();
+
+-- Rotating a credential also ends the sessions it authenticated, in the same
+-- transaction as the write that rotated it.
+CREATE FUNCTION public.vondel_revoke_rotated_profile_sessions()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF (OLD.login_email, OLD.password_hash) IS DISTINCT FROM (NEW.login_email, NEW.password_hash) THEN
+        UPDATE public.auth_sessions
+        SET revoked_at = now()
+        WHERE user_id = NEW.user_id
+          AND profile_id = NEW.id
+          AND auth_method = 'direct_profile'
+          AND revoked_at IS NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER user_profiles_revoke_rotated_sessions
+AFTER UPDATE OF login_email, password_hash ON public.user_profiles
+FOR EACH ROW EXECUTE FUNCTION public.vondel_revoke_rotated_profile_sessions();
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+DROP TRIGGER IF EXISTS users_login_email_registry_sync ON public.users;
+DROP FUNCTION IF EXISTS public.vondel_sync_account_login_email_registry();
+DROP TRIGGER IF EXISTS user_profiles_login_email_registry_sync ON public.user_profiles;
+DROP FUNCTION IF EXISTS public.vondel_sync_profile_login_email_registry();
+DROP TRIGGER IF EXISTS user_profiles_rotate_credential_revision ON public.user_profiles;
+DROP FUNCTION IF EXISTS public.vondel_rotate_profile_credential_revision();
+DROP TRIGGER IF EXISTS user_profiles_revoke_rotated_sessions ON public.user_profiles;
+DROP FUNCTION IF EXISTS public.vondel_revoke_rotated_profile_sessions();
+DROP TABLE IF EXISTS public.login_email_registry;
+
+DROP INDEX IF EXISTS public.auth_sessions_direct_profile_idx;
+ALTER TABLE public.auth_sessions
+    DROP CONSTRAINT IF EXISTS auth_sessions_user_profile_fkey,
+    DROP CONSTRAINT IF EXISTS auth_sessions_direct_profile_binding_check,
+    DROP COLUMN IF EXISTS auth_method,
+    DROP COLUMN IF EXISTS device_id,
+    DROP COLUMN IF EXISTS profile_credential_revision,
+    DROP COLUMN IF EXISTS profile_id;
+
+ALTER TABLE public.user_profiles
+    DROP CONSTRAINT IF EXISTS user_profiles_direct_credential_pair_check,
+    DROP COLUMN IF EXISTS credential_revision,
+    DROP COLUMN IF EXISTS password_hash,
+    DROP COLUMN IF EXISTS login_email;
+
+DROP FUNCTION IF EXISTS public.vondel_normalize_login_email(text);
+DROP FUNCTION IF EXISTS public.vondel_login_text_blank(text);
+DROP FUNCTION IF EXISTS public.vondel_login_whitespace();
+-- +goose StatementEnd

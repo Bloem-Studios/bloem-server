@@ -21,6 +21,7 @@ type Claims struct {
 	Role               string `json:"role"`
 	SessionID          string `json:"session_id"`
 	ProfileID          string `json:"profile_id,omitempty"`
+	DeviceID           string `json:"device_id,omitempty"`
 	TokenType          string `json:"token_type"`
 	ImpersonatorUserID *int   `json:"impersonator_user_id,omitempty"`
 	APIKeyID           int64  `json:"api_key_id,omitempty"`
@@ -29,6 +30,8 @@ type Claims struct {
 	MembershipID       string `json:"membership_id,omitempty"`
 	PolicyRevision     int64  `json:"policy_revision,omitempty"`
 	SecurityRevision   int64  `json:"security_revision,omitempty"`
+	AuthMethod         string `json:"auth_method,omitempty"`
+	CredentialRevision int64  `json:"credential_revision,omitempty"`
 	jwt.RegisteredClaims
 }
 

@@ -77,6 +77,7 @@ import AdminRecommendations from "@/pages/AdminRecommendations";
 import AdminPolicyLayout from "@/pages/admin-policy/AdminPolicyLayout";
 import OrganizationsPage from "@/pages/admin-platform/OrganizationsPage";
 import OrganizationDetailPage from "@/pages/admin-platform/OrganizationDetailPage";
+import CompatibilityApplicationsPage from "@/pages/admin-platform/CompatibilityApplicationsPage";
 import OrganizationOverviewPage from "@/pages/admin-organization/OrganizationOverviewPage";
 import PeoplePage from "@/pages/admin-organization/PeoplePage";
 import LibrariesEntitlementsPage from "@/pages/admin-organization/LibrariesEntitlementsPage";
@@ -503,6 +504,10 @@ function AppRoutes() {
                     <Route index element={<AdminDashboard />} />
                     <Route path="platform/organizations" element={<OrganizationsPage />} />
                     <Route path="platform/organizations/:id" element={<OrganizationDetailPage />} />
+                    <Route
+                      path="platform/compatibility"
+                      element={<CompatibilityApplicationsPage />}
+                    />
                     <Route path="activity" element={<AdminActivity />} />
                     <Route path="logs" element={<AdminLogs />} />
                     <Route path="diagnostics" element={<AdminDiagnostics />} />
@@ -612,8 +617,12 @@ function AppRoutes() {
                             }
                           />
                           <Route path="/catalog" element={<Catalog />} />
-                          <Route path="/library/:libraryId" element={<LibraryPage />} />
-                          <Route path="/search" element={<LegacySearchRedirect />} />
+                          <Route
+                            path="/library/:libraryId"
+                            caseSensitive
+                            element={<LibraryPage />}
+                          />
+                          <Route path="/search" caseSensitive element={<LegacySearchRedirect />} />
                           <Route path="/browse" element={<LegacyBrowseRedirect />} />
                           <Route path="/item/:id" element={<ItemDetail />} />
                           <Route path="/person/:id" element={<PersonDetail />} />
@@ -688,7 +697,7 @@ function AppRoutes() {
                             element={<RecommendationsSection />}
                           />
                           <Route path="/calendar" element={<Calendar />} />
-                          <Route path="/livetv" element={<LiveTV />} />
+                          <Route path="/livetv" caseSensitive element={<LiveTV />} />
                           <Route path="/notifications" element={<Notifications />} />
                           <Route
                             path="/profile/customize-home"

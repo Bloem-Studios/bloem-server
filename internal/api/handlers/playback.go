@@ -432,7 +432,7 @@ func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID s
 		// Live session: enforce the same ownership rule as LoadOrReconstructSession
 		// (a zero caller is allowed; a non-zero mismatch is refused). No token
 		// verification on this hot path.
-		if requestUserID != 0 && session.UserID != requestUserID {
+		if requestUserID != 0 && !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, requestUserID) {
 			return nil, playback.SessionForbidden, nil
 		}
 		return session, playback.SessionLoaded, nil
@@ -444,6 +444,13 @@ func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID s
 	// decode so the recipe is available for reconstruction.
 	card := h.streamCardFromQuery(r, sessionID)
 	session, status := h.tm.LoadOrReconstructSession(r.Context(), h.sessionMgr.GetSession, sessionID, requestUserID, card)
+	// A reconstructed session is authorized on the account inside
+	// LoadOrReconstructSession; a direct-profile bearer narrows that to its own
+	// profile here, on the same terms as the live-session branch above.
+	if status == playback.SessionLoaded && requestUserID != 0 &&
+		!callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, requestUserID) {
+		return nil, playback.SessionForbidden, nil
+	}
 	return session, status, card
 }
 
@@ -1097,7 +1104,7 @@ func (h *PlaybackHandler) HandleUpdateProgress(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load playback session")
 		return
 	}
-	if session.UserID != userID {
+	if !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, userID) {
 		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
 		return
 	}
@@ -1167,7 +1174,7 @@ func (h *PlaybackHandler) HandleStopPlayback(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load playback session")
 		return
 	}
-	if session.UserID != userID {
+	if !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, userID) {
 		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
 		return
 	}

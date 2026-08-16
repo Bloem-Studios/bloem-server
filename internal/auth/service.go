@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -20,6 +21,10 @@ var (
 	ErrImpersonationNotAllowed = errors.New("impersonation not allowed")
 	ErrAlreadyImpersonating    = errors.New("already impersonating")
 	ErrNotImpersonating        = errors.New("not impersonating")
+	// ErrDeviceRequired refuses a direct profile login that names no device:
+	// the session binds to exactly one, and an empty binding would make every
+	// later device check vacuous.
+	ErrDeviceRequired = errors.New("a device id is required for direct profile login")
 )
 
 // TokenPair holds the access and refresh tokens returned after login or refresh.
@@ -49,10 +54,25 @@ type serviceUserRepository interface {
 
 type serviceSessionRepository interface {
 	Create(ctx context.Context, session models.AuthSession) error
+	// CreateProfileSessionIfCurrent inserts a direct-profile session only if
+	// the subject verified at authentication is still the current one,
+	// serialized against credential rotation.
+	CreateProfileSessionIfCurrent(ctx context.Context, session models.AuthSession, subject SessionSubject) error
 	GetByID(ctx context.Context, id string) (*models.AuthSession, error)
 	ListByUser(ctx context.Context, userID int) ([]*models.AuthSession, error)
 	Revoke(ctx context.Context, id string) error
 	ExtendExpiresAt(ctx context.Context, id string, expiresAt time.Time) error
+}
+
+// directProfileCredentials is the direct-profile half of the auth service's
+// dependencies. It is an interface so refresh's failure handling — which must
+// tell "this binding is gone" apart from "the database was briefly
+// unreachable" — can be exercised without a database.
+type directProfileCredentials interface {
+	Authenticate(ctx context.Context, email, password string, device DeviceClaim) (SessionSubject, error)
+	CurrentSessionSubject(
+		ctx context.Context, accountID int, profileID string, revision int64, device DeviceClaim,
+	) (SessionSubject, error)
 }
 
 type claimsContextKey struct{}
@@ -71,18 +91,85 @@ func ClaimsFromContext(ctx context.Context) *Claims {
 // Service orchestrates authentication operations using an AuthProvider,
 // JWTService, and session/user repositories.
 type Service struct {
-	provider    AuthProvider
-	jwt         *JWTService
-	sessions    serviceSessionRepository
-	users       serviceUserRepository
-	inviteCodes *InviteCodeRepository
-	settings    SettingsGetter
-	providers   map[string]AuthProvider
-	metadata    map[string]LoginProviderInfo
-	defaultID   string
-	accounts    *AccountProvisioner
-	ownership   OwnershipBootstrapper
-	memberships MembershipProvisioner
+	provider           AuthProvider
+	jwt                *JWTService
+	sessions           serviceSessionRepository
+	users              serviceUserRepository
+	inviteCodes        *InviteCodeRepository
+	settings           SettingsGetter
+	providers          map[string]AuthProvider
+	metadata           map[string]LoginProviderInfo
+	defaultID          string
+	accounts           *AccountProvisioner
+	ownership          OwnershipBootstrapper
+	memberships        MembershipProvisioner
+	profileCredentials directProfileCredentials
+}
+
+// SetProfileCredentialService installs the optional direct-profile credential
+// service. Leaving it nil preserves legacy account authentication unchanged.
+func (s *Service) SetProfileCredentialService(credentials *ProfileCredentialService) {
+	if credentials == nil {
+		// Guard the typed-nil trap: assigning a nil *ProfileCredentialService
+		// straight into the interface would leave every nil check false.
+		s.profileCredentials = nil
+		return
+	}
+	s.profileCredentials = credentials
+}
+
+// LoginProfile exchanges a direct profile credential for a profile-bound
+// session. It does not use or alter the legacy account-login path.
+func (s *Service) LoginProfile(ctx context.Context, email, password string, device DeviceClaim) (*TokenPair, SessionSubject, error) {
+	if s.profileCredentials == nil {
+		return nil, SessionSubject{}, ErrInvalidCredentials
+	}
+	// The device binding is enforced on every later request, so a session may
+	// not be minted without one. The HTTP handler checks this too, but any
+	// compatibility adapter calling this service directly must hit the same
+	// wall.
+	device.ID = strings.TrimSpace(device.ID)
+	if device.ID == "" {
+		return nil, SessionSubject{}, ErrDeviceRequired
+	}
+	subject, err := s.profileCredentials.Authenticate(ctx, email, password, device)
+	if err != nil {
+		return nil, SessionSubject{}, err
+	}
+	sessionID := uuid.New().String()
+	profileID := subject.ProfileID
+	credentialRevision := subject.CredentialRevision
+	session := models.AuthSession{
+		ID:                        sessionID,
+		UserID:                    subject.AccountID,
+		DeviceName:                device.Name,
+		DeviceID:                  device.ID,
+		IPAddress:                 device.IPAddress,
+		ExpiresAt:                 time.Now().Add(s.jwt.RefreshExpiry()),
+		ProfileID:                 &profileID,
+		ProfileCredentialRevision: &credentialRevision,
+		AuthMethod:                AuthMethodDirectProfile,
+	}
+	if err := s.sessions.CreateProfileSessionIfCurrent(ctx, session, subject); err != nil {
+		return nil, SessionSubject{}, fmt.Errorf("creating direct profile session: %w", err)
+	}
+	pair, err := s.generateTokenPair(Claims{
+		UserID:             subject.AccountID,
+		Role:               legacyRoleUser,
+		SessionID:          sessionID,
+		ProfileID:          subject.ProfileID,
+		OrganizationID:     subject.OrganizationID,
+		MembershipID:       subject.MembershipID,
+		PolicyRevision:     subject.PolicyRevision,
+		SecurityRevision:   subject.SecurityRevision,
+		AuthMethod:         AuthMethodDirectProfile,
+		DeviceID:           device.ID,
+		CredentialRevision: subject.CredentialRevision,
+	})
+	if err != nil {
+		return nil, SessionSubject{}, err
+	}
+	return pair, subject, nil
 }
 
 // SetOwnershipBootstrapper installs the protected ownership activation used by
@@ -546,6 +633,9 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 	if session.RevokedAt != nil || !session.ExpiresAt.After(time.Now()) {
 		return nil, ErrSessionRevoked
 	}
+	if session.AuthMethod == AuthMethodDirectProfile {
+		return s.refreshDirectProfile(ctx, claims, session)
+	}
 
 	user, err := s.users.GetByID(ctx, session.UserID)
 	if err != nil {
@@ -574,6 +664,82 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		Role:               user.Role,
 		SessionID:          session.ID,
 		ImpersonatorUserID: session.ImpersonatorUserID,
+		ProfileID:          claims.ProfileID,
+		OrganizationID:     claims.OrganizationID,
+		MembershipID:       claims.MembershipID,
+		PolicyRevision:     claims.PolicyRevision,
+		SecurityRevision:   claims.SecurityRevision,
+		AuthMethod:         claims.AuthMethod,
+		DeviceID:           claims.DeviceID,
+		CredentialRevision: claims.CredentialRevision,
+	})
+}
+
+// refreshDirectProfile re-issues a direct-profile token pair. A direct token
+// carries its own tenancy and credential facts, so refresh trusts none of
+// them: the presented claims must match the persisted session binding, and the
+// new pair is minted from the subject as the database currently has it. A
+// session whose binding no longer holds is revoked rather than refreshed.
+func (s *Service) refreshDirectProfile(
+	ctx context.Context,
+	claims *Claims,
+	session *models.AuthSession,
+) (*TokenPair, error) {
+	if s.profileCredentials == nil {
+		// A server that lost its credential service cannot revalidate the
+		// subject, but that is a wiring fault rather than grounds to destroy
+		// the session.
+		return nil, fmt.Errorf("direct profile sessions are unavailable")
+	}
+	bindingHolds := claims.UserID == session.UserID &&
+		claims.AuthMethod == AuthMethodDirectProfile &&
+		session.ProfileID != nil &&
+		session.ProfileCredentialRevision != nil &&
+		claims.ProfileID == *session.ProfileID &&
+		claims.DeviceID == session.DeviceID &&
+		claims.CredentialRevision == *session.ProfileCredentialRevision
+	if !bindingHolds {
+		_ = s.sessions.Revoke(ctx, session.ID)
+		return nil, ErrSessionRevoked
+	}
+
+	subject, err := s.profileCredentials.CurrentSessionSubject(
+		ctx,
+		session.UserID,
+		*session.ProfileID,
+		*session.ProfileCredentialRevision,
+		DeviceClaim{ID: session.DeviceID, Name: session.DeviceName, IPAddress: session.IPAddress},
+	)
+	if err != nil {
+		// Only a subject that is genuinely no longer valid ends the session.
+		// A connection failure, cancellation, or timeout says nothing about
+		// the binding and must not destroy a working session.
+		if !errors.Is(err, ErrSessionRevoked) {
+			return nil, fmt.Errorf("revalidating direct profile subject: %w", err)
+		}
+		_ = s.sessions.Revoke(ctx, session.ID)
+		return nil, ErrSessionRevoked
+	}
+
+	// Slide the session window forward exactly as account refresh does, so an
+	// active direct-profile client never hits the hard expiry set at login.
+	newExpiry := time.Now().Add(s.jwt.RefreshExpiry())
+	if err := s.sessions.ExtendExpiresAt(ctx, session.ID, newExpiry); err != nil && !IsSessionNotFound(err) {
+		return nil, fmt.Errorf("extending session: %w", err)
+	}
+
+	return s.generateTokenPair(Claims{
+		UserID:             subject.AccountID,
+		Role:               legacyRoleUser,
+		SessionID:          session.ID,
+		ProfileID:          subject.ProfileID,
+		DeviceID:           subject.Device.ID,
+		OrganizationID:     subject.OrganizationID,
+		MembershipID:       subject.MembershipID,
+		PolicyRevision:     subject.PolicyRevision,
+		SecurityRevision:   subject.SecurityRevision,
+		AuthMethod:         AuthMethodDirectProfile,
+		CredentialRevision: subject.CredentialRevision,
 	})
 }
 

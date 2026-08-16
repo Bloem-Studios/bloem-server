@@ -1,0 +1,48 @@
+# Diagnostic override for the compatibility companions.
+#
+# This file is the SOLE exception to the "companions expose no host ports"
+# rule: it binds each companion's HTTP listener to loopback only, so an
+# operator on the host can probe a companion directly (curl, protocol tools)
+# while debugging. Direct public companion exposure remains unsupported.
+#
+# Usage — apply it LAST, on top of BOTH companion overlays:
+#
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.audiobookshelf.yml \
+#     -f docker-compose.jellyfin.yml \
+#     -f docker-compose.compat-diagnostics.yml \
+#     up -d
+#
+# Running only one companion? Both overlays must still be listed (this file
+# names both services), so name the services you actually want on `up`, e.g.:
+#
+#   ... up -d silo vondel-audiobookshelf
+#
+# Notes:
+#   - Publishing a port requires a non-internal network, so this override also
+#     attaches each companion to the default bridge network. That temporarily
+#     relaxes the no-egress isolation of vondel-compat; remove the override
+#     (run `up -d --remove-orphans` without this file) as soon as debugging is
+#     done.
+#   - Bindings are loopback-only by construction. Do not change 127.0.0.1;
+#     scripts/verify-compat-compose.sh rejects anything else.
+
+services:
+  vondel-audiobookshelf:
+    networks:
+      vondel-compat:
+        aliases:
+          - vondel-audiobookshelf
+      default: {}
+    ports:
+      - "127.0.0.1:${VONDEL_AUDIOBOOKSHELF_DIAG_PORT:-13379}:8080"
+
+  vondel-jellyfin:
+    networks:
+      vondel-compat:
+        aliases:
+          - vondel-jellyfin
+      default: {}
+    ports:
+      - "127.0.0.1:${VONDEL_JELLYFIN_DIAG_PORT:-8098}:8080"

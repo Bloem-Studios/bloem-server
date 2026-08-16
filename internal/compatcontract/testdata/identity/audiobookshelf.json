@@ -1,0 +1,15 @@
+{
+  "name": "audiobookshelf-identity",
+  "cases": [
+    {"name":"an unknown caller is refused","method":"GET","path":"/api/me","exception":"unauthenticated","absent_strings":["{{account_username}}","{{primary_profile}}","{{reader_profile}}"]},
+    {"name":"a wrong password is refused","method":"POST","path":"/login","body_json":{"username":"{{account_username}}","password":"{{wrong_password}}"},"exception":"unauthenticated","absent_strings":["accessToken"]},
+    {"name":"legacy account login resolves the remembered profile","method":"POST","path":"/login","body_json":{"username":"{{account_username}}","password":"{{account_password}}"},"want_status":200,"capture":{"abs_account_token":"$.user.accessToken"},"want_json_fields":{"$.user.id":"{{account_id}}","$.user.type":"user","$.user.username":"{{primary_profile}}"},"absent_strings":["{{reader_profile}}"]},
+    {"name":"an explicit profile selection uses the account password","method":"POST","path":"/login","body_json":{"username":"{{account_username}}#{{reader_profile}}","password":"{{account_password}}"},"want_status":200,"capture":{"abs_reader_token":"$.user.accessToken"},"want_json_fields":{"$.user.id":"{{account_id}}","$.user.type":"user","$.user.username":"{{reader_profile}}"}},
+    {"name":"an unknown profile is indistinguishable from bad credentials","method":"POST","path":"/login","body_json":{"username":"{{account_username}}#{{unknown_profile}}","password":"{{account_password}}"},"exception":"unauthenticated","absent_strings":["accessToken","{{unknown_profile}}"]},
+    {"name":"the token answers for its own principal","method":"GET","path":"/api/me","headers":{"Authorization":"Bearer {{abs_reader_token}}"},"want_status":200,"want_json_fields":{"$.id":"{{account_id}}","$.username":"{{reader_profile}}","$.type":"user"}},
+    {"name":"a malformed token is refused","method":"GET","path":"/api/me","headers":{"Authorization":"Bearer fixture-not-a-real-token"},"exception":"unauthenticated"},
+    {"name":"logging out revokes the token","method":"POST","path":"/logout","headers":{"Authorization":"Bearer {{abs_reader_token}}"},"want_status":200},
+    {"name":"a revoked token is refused","method":"GET","path":"/api/me","headers":{"Authorization":"Bearer {{abs_reader_token}}"},"exception":"unauthenticated"},
+    {"name":"missing adult and missing random ids time alike","method":"GET","path":"/api/items/{{missing_adult_id}}","headers":{"Authorization":"Bearer {{abs_account_token}}"},"exception":"not_found","timing":{"control_path":"/api/items/{{missing_random_id}}","samples":100,"max_ratio":3}}
+  ]
+}

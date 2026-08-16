@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -50,6 +51,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/chapterthumbs"
 	"github.com/Silo-Server/silo-server/internal/clientip"
+	"github.com/Silo-Server/silo-server/internal/compatapp"
+	"github.com/Silo-Server/silo-server/internal/compatgateway"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
@@ -409,6 +412,148 @@ func runCompatWebCommand(ctx context.Context, args []string) error {
 		return jellycompat.RemoveWebComponent(*root)
 	default:
 		return fmt.Errorf("unknown compat-web command %q", command)
+	}
+}
+
+// publicMux composes the public listener: Prometheus metrics, the chi API
+// router for /api/**, the fixed-path compatibility gateway for the reviewed
+// route families, and the Vondel SPA for everything else.
+//
+// The layering matters and is why this is a named function rather than a few
+// lines inside main: only /api/** reaches the chi router, so the gateway's
+// families (/System/**, /emby/**, /audiobookshelf/**, /web/**, …) are claimed
+// here, ahead of the SPA fallback, or public ingress never reaches them at
+// all. TestPublicMuxRoutesEachLayer drives this exact function.
+//
+// ABS-compat is NOT mounted here — see the "ABS compat listener" block in
+// main. It binds its own port so the discovery probes (/ping, /healthcheck,
+// /status, /init, /login, /socket.io) own the URL space without colliding
+// with the SPA fallback. Mirrors how the Jellyfin compat server is set up at
+// :8096.
+//
+// A nil gateway composes to the plain SPA fallback, keeping deployments
+// without the compatibility stack byte-identical to the pre-gateway listener.
+// publicServer builds the public listener: the composed handler from
+// publicMux plus the timeouts the public port runs with. It exists so the
+// thing production serves is a value a test can construct and drive, rather
+// than a shape assembled inline in main — TestPublicServerRoutesEachLayer
+// exercises this exact function.
+//
+// It is called from exactly one place, servePublic, and the guard tests in
+// main_test.go fail if that stops being true.
+func publicServer(addr string, router, frontend, gateway http.Handler) *http.Server {
+	return &http.Server{
+		Addr:         addr,
+		Handler:      publicMux(router, frontend, gateway),
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 120 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+}
+
+func publicMux(router, frontend, gateway http.Handler) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/api/", router)
+	mux.Handle("/", compatgateway.WithFrontendFallback(gateway, frontend))
+	return mux
+}
+
+// publicPort is a bound, serving public listener. Only servePublic can build
+// one, and the composed *http.Server never escapes it: what a caller holds is
+// a handle that can stop the port and do nothing else. That is deliberate —
+// every previous shape of this code handed main a *http.Server, and a
+// *http.Server in main's scope is a handler that a later statement can
+// replace, discard, or serve a second time.
+type publicPort struct {
+	srv  *http.Server
+	addr string
+}
+
+// shutdown stops the public port gracefully, refusing new connections and
+// draining the in-flight ones until ctx expires.
+func (p *publicPort) shutdown(ctx context.Context) error {
+	return p.srv.Shutdown(ctx)
+}
+
+// listenPublic binds the canonical public address. It is the only listener
+// this package opens: everything else that answers on a port either receives
+// an already-bound address from configuration through its own constructor, or
+// does not exist. TestConfiguredPublicAddressIsBoundOnlyByTheBlessedListener
+// pins that.
+func listenPublic(addr string) (net.Listener, error) {
+	return net.Listen("tcp", addr)
+}
+
+// servePublic is the composition root of the public port: it composes the
+// public handler with publicServer and starts serving it on ln, reporting any
+// non-graceful serve failure on errCh exactly as the inline goroutine it
+// replaces did.
+//
+// The gateway is the concrete *compatgateway.Gateway rather than an
+// http.Handler on purpose. Every argument here is an http.Handler otherwise,
+// so a swapped pair — the frontend where the gateway belongs, or the reverse —
+// used to be a silent behavioral change that still type-checked. With one
+// concrete parameter the swap is a compile error.
+//
+// It returns a handle rather than blocking and returning an error, because
+// main still owns the ordered shutdown sequence: the public port stops
+// accepting first, then the compat listeners, then sessions are cleaned. A
+// blocking servePublic would have to either own that ordering or hand back the
+// server, and handing back the server is the escape hatch this whole shape
+// exists to remove.
+func servePublic(
+	ln net.Listener,
+	router, frontend http.Handler,
+	gateway *compatgateway.Gateway,
+	errCh chan<- error,
+) *publicPort {
+	// A typed-nil *Gateway satisfies http.Handler as a non-nil interface,
+	// which is not the same composition as "no gateway": publicMux's nil case
+	// is the pre-gateway listener byte for byte, and a typed nil would route
+	// the owned families into a nil receiver instead.
+	var gatewayHandler http.Handler
+	if gateway != nil {
+		gatewayHandler = gateway
+	}
+
+	addr := ln.Addr().String()
+	port := &publicPort{srv: publicServer(addr, router, frontend, gatewayHandler), addr: addr}
+	go func() {
+		slog.Info("HTTP server listening", "addr", port.addr)
+		if listenErr := port.srv.Serve(ln); listenErr != nil && listenErr != http.ErrServerClosed {
+			errCh <- fmt.Errorf("HTTP server error: %w", listenErr)
+		}
+	}()
+	return port
+}
+
+// serveAux starts an auxiliary listener — a compatibility protocol server on
+// its own port, never the public one — and reports a non-graceful failure on
+// errCh. It exists so main holds no Serve call of its own: the guard tests
+// allow ListenAndServe only in the handful of named functions that own a
+// listener, and "somewhere in main()" is precisely the place that must not
+// count as one.
+func serveAux(name string, srv *http.Server, errCh chan<- error) {
+	go func() {
+		slog.Info("compat server listening", "server", name, "addr", srv.Addr)
+		if listenErr := srv.ListenAndServe(); listenErr != nil && listenErr != http.ErrServerClosed {
+			errCh <- fmt.Errorf("%s server error: %w", name, listenErr)
+		}
+	}()
+}
+
+// absCompatServer builds the Audiobookshelf-compat listener: its own port,
+// its own root URL space, no SPA fallback. Named rather than inline for the
+// same reason as serveAux — main composes no http.Server itself.
+func absCompatServer(addr string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      0,
+		IdleTimeout:       120 * time.Second,
 	}
 }
 
@@ -884,6 +1029,11 @@ func main() {
 	deps.AdminContextTokens = auth.NewAdminContextTokenService(cfg.Auth.JWTSecret)
 	if pool != nil {
 		deps.PlatformAdminAuthorizer = auth.NewPlatformAdminAuthorizer(auth.NewUserRepository(pool))
+		// Companion enrollment and revocable service trust, behind the
+		// Compatibility Applications admin surface. Without a database the
+		// adapter is nil and the surface stays unmounted rather than half
+		// wired.
+		deps.CompatApplications = handlers.NewCompatApplicationService(compatapp.NewService(pool))
 	}
 	if deps.DB != nil {
 		bootstrapper := tenancyOwnershipBootstrapper{store: tenancy.NewStore(deps.DB)}
@@ -2531,16 +2681,31 @@ func main() {
 
 	router := api.NewRouter(deps)
 
-	// Step 8: Expose Prometheus metrics endpoint (not behind auth).
-	metricsMux := http.NewServeMux()
-	metricsMux.Handle("/metrics", promhttp.Handler())
-	metricsMux.Handle("/api/", router)
-	// ABS-compat is NOT mounted on the main listener — see the "ABS compat
-	// listener" block below. It binds its own port so the discovery probes
-	// (/ping, /healthcheck, /status, /init, /login, /socket.io) own the URL
-	// space without collision with silo's SPA fallback. Mirrors how the
-	// Jellyfin compat server is set up at :8096.
-	metricsMux.Handle("/", server.FrontendHandler())
+	// Step 8: Build the compatibility gateway the public listener composes.
+	// The composition and the bind both live in servePublic (step 10); this
+	// step only constructs the gateway it takes.
+	//
+	// The fixed-path compatibility gateway sits here, ahead of the SPA
+	// fallback: this mux hands only /api/** to the chi router, so the
+	// gateway's reviewed route families (/System/**, /audiobookshelf/**,
+	// /web/**, …) must be claimed at the composed-mux layer or public
+	// ingress never reaches them. The application lifecycle backing is not
+	// wired yet, so every owned family answers a protocol-appropriate
+	// compatibility_unavailable — the specified behavior for a missing
+	// application — while every native path falls through to the SPA
+	// untouched. When the backing lands, it plugs into Config.States here.
+	//
+	// The lifecycle service wired into deps.CompatApplications above already
+	// answers every field of compatgateway.Status except one: Endpoint.
+	// Nothing records where a companion listens — enrollment does not ask,
+	// the application row has no column for it, and there is no
+	// configuration key — and Status.Routable() requires an endpoint. A
+	// provider built from the trust store alone would refuse every request
+	// while looking wired, so States stays nil until a companion address
+	// exists.
+	compatGateway := compatgateway.New(compatgateway.Config{
+		IdentitySecret: []byte(cfg.Auth.JWTSecret),
+	})
 
 	// Step 9: Start background workers (if needed).
 	var sessionCleaner *worker.SessionCleaner
@@ -2627,14 +2792,10 @@ func main() {
 		slog.Info("background workers started")
 	}
 
-	// Step 10: Create and start the HTTP server.
-	srv := &http.Server{
-		Addr:         cfg.Server.Listen,
-		Handler:      metricsMux,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 120 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
+	// Step 10: Start the listeners. The public port is bound and composed by
+	// listenPublic/servePublic below; main composes no handler and holds no
+	// http.Server of its own, so there is no second wiring here that could
+	// drift from the one the tests drive.
 
 	var compatSrv *http.Server
 	if (mode == "integrated" || mode == "api") && cfg.JellyfinCompat.Enabled && cfg.JellyfinCompat.Listen != "" {
@@ -2795,14 +2956,7 @@ func main() {
 		absRouter.Use(chimiddleware.Recoverer)
 		absRouter.Use(chimiddleware.Compress(5))
 		deps.ABSHandler.Mount(absRouter)
-		absSrv = &http.Server{
-			Addr:              cfg.AudiobookshelfCompat.Listen,
-			Handler:           absRouter,
-			ReadHeaderTimeout: 10 * time.Second,
-			ReadTimeout:       60 * time.Second,
-			WriteTimeout:      0,
-			IdleTimeout:       120 * time.Second,
-		}
+		absSrv = absCompatServer(cfg.AudiobookshelfCompat.Listen, absRouter)
 	}
 
 	// Run non-critical startup work in the background so it doesn't delay the
@@ -2830,27 +2984,24 @@ func main() {
 	}
 
 	errCh := make(chan error, 3)
-	go func() {
-		slog.Info("HTTP server listening", "addr", cfg.Server.Listen)
-		if listenErr := srv.ListenAndServe(); listenErr != nil && listenErr != http.ErrServerClosed {
-			errCh <- fmt.Errorf("HTTP server error: %w", listenErr)
-		}
-	}()
+
+	// The public port. One statement binds cfg.Server.Listen and one composes
+	// and serves it; main never holds the server, so there is nothing here to
+	// rewire, discard, or shadow with a second listener on the same address.
+	// A bind failure travels the same path a serve failure always did — onto
+	// errCh, into the graceful shutdown below — rather than aborting past the
+	// deferred cleanup.
+	var public *publicPort
+	if publicLn, bindErr := listenPublic(cfg.Server.Listen); bindErr != nil {
+		errCh <- fmt.Errorf("HTTP server error: %w", bindErr)
+	} else {
+		public = servePublic(publicLn, router, server.FrontendHandler(), compatGateway, errCh)
+	}
 	if compatSrv != nil {
-		go func() {
-			slog.Info("Jellyfin compat server listening", "addr", compatSrv.Addr)
-			if listenErr := compatSrv.ListenAndServe(); listenErr != nil && listenErr != http.ErrServerClosed {
-				errCh <- fmt.Errorf("jellyfin compat server error: %w", listenErr)
-			}
-		}()
+		serveAux("jellyfin compat", compatSrv, errCh)
 	}
 	if absSrv != nil {
-		go func() {
-			slog.Info("ABS compat server listening", "addr", absSrv.Addr)
-			if listenErr := absSrv.ListenAndServe(); listenErr != nil && listenErr != http.ErrServerClosed {
-				errCh <- fmt.Errorf("abs compat server error: %w", listenErr)
-			}
-		}()
+		serveAux("abs compat", absSrv, errCh)
 	}
 
 	// Step 11: Wait for termination signal.
@@ -2876,8 +3027,10 @@ func main() {
 	defer shutdownCancel()
 
 	// 1. Stop accepting new requests.
-	if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
-		slog.Error("HTTP shutdown error", "error", shutdownErr)
+	if public != nil {
+		if shutdownErr := public.shutdown(shutdownCtx); shutdownErr != nil {
+			slog.Error("HTTP shutdown error", "error", shutdownErr)
+		}
 	}
 	if compatSrv != nil {
 		if shutdownErr := compatSrv.Shutdown(shutdownCtx); shutdownErr != nil {

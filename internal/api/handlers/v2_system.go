@@ -19,10 +19,19 @@ type V2OrganizationStore interface {
 
 type V2SystemHandler struct {
 	organizations V2OrganizationStore
+	// directProfileLogin reports whether /auth/profile-login is wired. Clients
+	// follow capability discovery rather than version sniffing, so this must
+	// track the actual route.
+	directProfileLogin bool
 }
 
 func NewV2SystemHandler(organizations V2OrganizationStore) *V2SystemHandler {
 	return &V2SystemHandler{organizations: organizations}
+}
+
+// SetDirectProfileLoginAvailable records that direct profile login is served.
+func (h *V2SystemHandler) SetDirectProfileLoginAvailable(available bool) {
+	h.directProfileLogin = available
 }
 
 // Aggregate feature tokens. Each names a client-visible capability of this
@@ -127,6 +136,7 @@ func (h *V2SystemHandler) HandleCapabilities(w http.ResponseWriter, _ *http.Requ
 			LegacySiloV1:            true,
 			OrganizationMemberships: true,
 			TenantBoundedMediaScope: true,
+			DirectProfileLogin:      h.directProfileLogin,
 		},
 		MediaTypes:    slices.Clone(mediaTypesServed),
 		FeatureTokens: slices.Clone(v2CapabilityTokens),
