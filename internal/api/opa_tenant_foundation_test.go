@@ -341,10 +341,35 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 		t.Fatalf("router catalog scope = %v, want %v; foreign=%d non-entitled=%d must be absent", gotVisibleFolderIDs, wantVisibleFolderIDs, foreignFolderID, nonEntitledFolderID)
 	}
 
+	// The identity-model half of the capability document, which is what this
+	// test owns: exactly these six booleans, exactly these values. The
+	// byte-exact whole document — media types and feature tokens included — is
+	// asserted in handlers.TestV2CapabilitiesExactContract, so the literal is
+	// not carried in two places where one copy would rot.
 	capabilities := performJSONRequest(t, router, http.MethodGet, "/api/v2/capabilities", "", "", nil)
-	const wantCapabilities = `{"api":"v2","identity_schema":1,"features":{"legacy_silo_v1":true,"organization_memberships":true,"tenant_bounded_media_scope":true,"direct_profile_login":false,"shared_device_pairing":false,"delegated_admin_roles":false}}`
-	if capabilities.Code != http.StatusOK || strings.TrimSpace(capabilities.Body.String()) != wantCapabilities {
-		t.Errorf("v2 capabilities = %d %s, want exact implemented contract %s", capabilities.Code, strings.TrimSpace(capabilities.Body.String()), wantCapabilities)
+	if capabilities.Code != http.StatusOK {
+		t.Fatalf("v2 capabilities = %d %s", capabilities.Code, capabilities.Body.String())
+	}
+	var advertised struct {
+		API            string          `json:"api"`
+		IdentitySchema int             `json:"identity_schema"`
+		Features       map[string]bool `json:"features"`
+	}
+	if err := json.Unmarshal(capabilities.Body.Bytes(), &advertised); err != nil {
+		t.Fatalf("decode v2 capabilities %s: %v", capabilities.Body.String(), err)
+	}
+	wantFeatures := map[string]bool{
+		"legacy_silo_v1": true, "organization_memberships": true, "tenant_bounded_media_scope": true,
+		"direct_profile_login": false, "shared_device_pairing": false, "delegated_admin_roles": false,
+	}
+	featuresMatch := advertised.API == "v2" && advertised.IdentitySchema == 1 && len(advertised.Features) == len(wantFeatures)
+	for name, want := range wantFeatures {
+		if got, present := advertised.Features[name]; !present || got != want {
+			featuresMatch = false
+		}
+	}
+	if !featuresMatch {
+		t.Errorf("v2 capabilities = %s, want api v2, identity_schema 1 and features %v", capabilities.Body.String(), wantFeatures)
 	}
 	for _, path := range []string{"/api/v10/capabilities", "/api/v10/organizations"} {
 		response := performJSONRequest(t, router, http.MethodGet, path, "", loginTokens.AccessToken, nil)
