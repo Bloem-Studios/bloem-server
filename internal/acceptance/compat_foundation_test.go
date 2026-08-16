@@ -737,4 +737,164 @@ func TestCompatibilityFoundation(t *testing.T) {
 			t.Fatalf("applicationCount(jellyfin, instance-key-reuse-b) = %d, want 0: the conflicting body must never enroll", got)
 		}
 	})
+
+	// --- routing, isolation, revocation ---------------------------------
+	//
+	// These drive the real compatgateway.Gateway composed exactly as
+	// cmd/silo composes the public port (see newFoundationFixture), through
+	// enrolled, healthy, admin-enabled applications backed by the real
+	// compatapp.Service and the real admin adapter.
+
+	t.Run("Routing_JellyfinPathReachesJellyfinCompanion", func(t *testing.T) {
+		f := newFoundationFixture(t)
+		f.enrollAndActivate("jellyfin", "jellyfin-routing", []string{"identity", "catalog"})
+
+		response := f.requireStatus(f.do(http.MethodGet, "/System/Info", "", nil), http.StatusOK)
+
+		seen := f.jellyfin.last(t)
+		if seen.Method != http.MethodGet || seen.Path != "/System/Info" {
+			t.Fatalf("jellyfin companion saw %s %s, want GET /System/Info", seen.Method, seen.Path)
+		}
+		if seen.Identity == "" {
+			t.Fatal("forwarded request is missing the gateway-signed internal identity header")
+		}
+		if seen.Trace == "" {
+			t.Fatal("forwarded request is missing the trace header")
+		}
+		if got := f.object(response)["companion"]; got != "jellyfin" {
+			t.Fatalf("response body companion = %v, want jellyfin", got)
+		}
+		if f.audiobookshelf.count() != 0 {
+			t.Fatalf("audiobookshelf companion received %d requests for a jellyfin-owned path, want 0", f.audiobookshelf.count())
+		}
+	})
+
+	t.Run("Routing_AudiobookshelfPathStripsPrefixAndReachesItsCompanion", func(t *testing.T) {
+		f := newFoundationFixture(t)
+		f.enrollAndActivate("audiobookshelf", "abs-routing", []string{"identity", "catalog"})
+
+		f.requireStatus(f.do(http.MethodGet, "/audiobookshelf/api/libraries", "", nil), http.StatusOK)
+
+		seen := f.audiobookshelf.last(t)
+		if seen.Path != "/api/libraries" {
+			t.Fatalf("audiobookshelf companion saw path %q, want the /audiobookshelf prefix stripped to /api/libraries", seen.Path)
+		}
+		if f.jellyfin.count() != 0 {
+			t.Fatalf("jellyfin companion received %d requests for an audiobookshelf-owned path, want 0", f.jellyfin.count())
+		}
+	})
+
+	t.Run("Routing_NativeRouteNeverReachesEitherCompanion", func(t *testing.T) {
+		f := newFoundationFixture(t)
+		f.enrollAndActivate("jellyfin", "jellyfin-native-check", []string{"identity"})
+		f.enrollAndActivate("audiobookshelf", "abs-native-check", []string{"identity"})
+
+		response := f.requireStatus(f.do(http.MethodGet, "/", "", nil), http.StatusOK)
+
+		if !strings.Contains(string(response.Body), "vondel") {
+			t.Fatalf("GET / body = %s, want the native frontend fallback", response.Body)
+		}
+		if f.jellyfin.count() != 0 || f.audiobookshelf.count() != 0 {
+			t.Fatalf("native route reached a companion: jellyfin=%d audiobookshelf=%d, want 0/0",
+				f.jellyfin.count(), f.audiobookshelf.count())
+		}
+	})
+
+	t.Run("Routing_RevokedApplicationIsUnavailableAndNeverForwarded", func(t *testing.T) {
+		f := newFoundationFixture(t)
+		f.enrollAndActivate("jellyfin", "jellyfin-revoked", []string{"identity"})
+
+		revision := f.applicationRevision("jellyfin-revoked")
+		if _, err := f.admin.RevokeApplication(f.ctx, "jellyfin-revoked", revision); err != nil {
+			t.Fatalf("revoke jellyfin-revoked: %v", err)
+		}
+
+		response := f.do(http.MethodGet, "/System/Info", "", nil)
+
+		f.requireGatewayError(response, http.StatusServiceUnavailable, "compatibility_unavailable")
+		if f.jellyfin.count() != 0 {
+			t.Fatalf("jellyfin companion received %d requests after revocation, want 0: a revoked application must never be forwarded to", f.jellyfin.count())
+		}
+	})
+
+	t.Run("Routing_DisabledApplicationIsUnavailable", func(t *testing.T) {
+		f := newFoundationFixture(t)
+		f.enrollAndActivate("audiobookshelf", "abs-disabled", []string{"identity"})
+
+		revision := f.applicationRevision("abs-disabled")
+		if _, err := f.admin.SetApplicationEnabled(f.ctx, "abs-disabled", false, revision); err != nil {
+			t.Fatalf("disable abs-disabled: %v", err)
+		}
+
+		response := f.do(http.MethodGet, "/audiobookshelf/api/libraries", "", nil)
+
+		f.requireGatewayError(response, http.StatusServiceUnavailable, "compatibility_unavailable")
+		if f.audiobookshelf.count() != 0 {
+			t.Fatalf("audiobookshelf companion received %d requests while disabled, want 0", f.audiobookshelf.count())
+		}
+	})
+
+	t.Run("Health_BothCompanionsStopped_NativeSurfaceStillAnswers", func(t *testing.T) {
+		f := newFoundationFixture(t)
+		f.enrollAndActivate("jellyfin", "jellyfin-both-down", []string{"identity"})
+		f.enrollAndActivate("audiobookshelf", "abs-both-down", []string{"identity"})
+		f.jellyfin.stop()
+		f.audiobookshelf.stop()
+
+		native := f.requireStatus(f.do(http.MethodGet, "/", "", nil), http.StatusOK)
+		if !strings.Contains(string(native.Body), "vondel") {
+			t.Fatalf("GET / body = %s, want the native frontend fallback even with both companions stopped", native.Body)
+		}
+
+		gatewayed := f.do(http.MethodGet, "/System/Info", "", nil)
+		if gatewayed.Status < 500 {
+			t.Fatalf("GET /System/Info with the companion stopped = %d, want a server-side failure status", gatewayed.Status)
+		}
+	})
+}
+
+// enrollAndActivate drives a companion through the full real lifecycle the
+// gateway requires before it will route to it: enrollment, a healthy
+// self-report through the private API, and an administrator enabling it
+// through the real admin adapter. Every step is production code; only the
+// two fake companions and the gateway's state provider are test doubles (see
+// the file header).
+func (f *foundationFixture) enrollAndActivate(kind, instanceID string, capabilities []string) enrolledCompanion {
+	f.t.Helper()
+	secret := f.enrollmentSecret(kind, capabilities)
+	response := f.requireStatus(
+		f.enroll(secret, kind, instanceID, 1, 1, capabilities, "enroll-"+instanceID),
+		http.StatusCreated,
+	)
+	credential := f.object(response)
+	token, _ := credential["token"].(string)
+	if token == "" {
+		f.t.Fatalf("enroll(%s, %s) returned no token", kind, instanceID)
+	}
+	companion := enrolledCompanion{Kind: kind, InstanceID: instanceID, Token: token, Capabilities: capabilities}
+	f.reportHealthy(companion)
+
+	revision := f.applicationRevision(instanceID)
+	if _, err := f.admin.SetApplicationEnabled(f.ctx, instanceID, true, revision); err != nil {
+		f.t.Fatalf("enable %s: %v", instanceID, err)
+	}
+	return companion
+}
+
+// requireGatewayError asserts the compatgateway error shape, which is
+// deliberately not the compatapi error envelope: the gateway answers for
+// companions that never got to speak Vondel's private API at all.
+func (f *foundationFixture) requireGatewayError(response foundationResponse, wantStatus int, wantCode string) {
+	f.t.Helper()
+	f.requireStatus(response, wantStatus)
+	var decoded struct {
+		Error   string `json:"error"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(response.Body, &decoded); err != nil {
+		f.t.Fatalf("%s gateway error body is not valid JSON: %v (%s)", response.Request, err, response.Body)
+	}
+	if decoded.Error != wantCode {
+		f.t.Fatalf("%s gateway error = %q, want %q (%s)", response.Request, decoded.Error, wantCode, response.Body)
+	}
 }
