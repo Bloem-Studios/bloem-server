@@ -204,7 +204,7 @@ func newWatchRequest(t *testing.T, target, contentID, profileID string) *http.Re
 // --- tests -----------------------------------------------------------------
 
 func TestWatchHomeEndpointServesAContractDocument(t *testing.T) {
-	handler := NewWatchHandler(newWatchTestReader(t))
+	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
 	handler.HandleWatchHome(rr, newWatchRequest(t, "/api/v2/watch/home", "", "profile-invented"))
 
@@ -228,7 +228,7 @@ func TestWatchHomeEndpointServesAContractDocument(t *testing.T) {
 
 func TestWatchHomeEndpointPassesTheViewerScopeToTheReader(t *testing.T) {
 	reader := newWatchTestReader(t)
-	handler := NewWatchHandler(reader)
+	handler := NewWatchHandler(reader, nil)
 	rr := httptest.NewRecorder()
 	handler.HandleWatchHome(rr, newWatchRequest(t, "/api/v2/watch/home", "", "profile-restricted"))
 
@@ -250,7 +250,7 @@ func TestWatchHomeEndpointPassesTheViewerScopeToTheReader(t *testing.T) {
 }
 
 func TestWatchHomeEndpointRequiresAProfile(t *testing.T) {
-	handler := NewWatchHandler(newWatchTestReader(t))
+	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
 	handler.HandleWatchHome(rr, newWatchRequest(t, "/api/v2/watch/home", "", ""))
 
@@ -270,7 +270,7 @@ func TestWatchHomeEndpointRequiresAProfile(t *testing.T) {
 }
 
 func TestWatchItemEndpointServesASeriesDetailDocument(t *testing.T) {
-	handler := NewWatchHandler(newWatchTestReader(t))
+	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
 	handler.HandleWatchItem(rr, newWatchRequest(t, "/api/v2/watch/items/8080", "8080", "profile-invented"))
 
@@ -289,7 +289,7 @@ func TestWatchItemEndpointServesASeriesDetailDocument(t *testing.T) {
 }
 
 func TestWatchItemEndpointRequiresAProfile(t *testing.T) {
-	handler := NewWatchHandler(newWatchTestReader(t))
+	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
 	handler.HandleWatchItem(rr, newWatchRequest(t, "/api/v2/watch/items/8080", "8080", ""))
 
@@ -309,7 +309,7 @@ func TestWatchItemEndpointRequiresAProfile(t *testing.T) {
 }
 
 func TestWatchItemEndpointAnswersNotFoundForAnUnknownContentID(t *testing.T) {
-	handler := NewWatchHandler(newWatchTestReader(t))
+	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
 	handler.HandleWatchItem(rr, newWatchRequest(t, "/api/v2/watch/items/3030", "3030", "profile-invented"))
 
@@ -326,7 +326,7 @@ func TestWatchItemEndpointAnswersNotFoundForAnUnknownContentID(t *testing.T) {
 }
 
 func TestWatchItemEndpointRejectsAnEmptyContentID(t *testing.T) {
-	handler := NewWatchHandler(newWatchTestReader(t))
+	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
 	handler.HandleWatchItem(rr, newWatchRequest(t, "/api/v2/watch/items/", "", "profile-invented"))
 
@@ -338,7 +338,7 @@ func TestWatchItemEndpointRejectsAnEmptyContentID(t *testing.T) {
 func TestWatchEndpointsReportAFailingReader(t *testing.T) {
 	reader := newWatchTestReader(t)
 	reader.err = errors.New("catalog unavailable")
-	handler := NewWatchHandler(reader)
+	handler := NewWatchHandler(reader, nil)
 
 	home := httptest.NewRecorder()
 	handler.HandleWatchHome(home, newWatchRequest(t, "/api/v2/watch/home", "", "profile-invented"))
@@ -354,7 +354,7 @@ func TestWatchEndpointsReportAFailingReader(t *testing.T) {
 }
 
 func TestWatchEndpointsWithoutAReaderAreUnavailable(t *testing.T) {
-	handler := NewWatchHandler(nil)
+	handler := NewWatchHandler(nil, nil)
 	rr := httptest.NewRecorder()
 	handler.HandleWatchHome(rr, newWatchRequest(t, "/api/v2/watch/home", "", "profile-invented"))
 	if rr.Code != http.StatusServiceUnavailable {
@@ -555,7 +555,7 @@ func newWatchReaderFixture(t *testing.T) (*CatalogWatchReader, *fakeWatchBrowse,
 	files := &fakeWatchFiles{byContent: map[string][]*models.MediaFile{}, byEpisode: map[string][]*models.MediaFile{}}
 	store := &fakeWatchStore{direct: map[string]userstore.WatchProgress{}}
 	images := fakeImageResolver{byPath: map[string]string{fakeWatchPosterPath: fakeWatchPosterURL}}
-	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store}, images)
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store}, images, nil)
 	return reader, browse, items, episodes, files, store
 }
 
@@ -605,7 +605,7 @@ func TestWatchReaderOmitsPosterURLWithNoResolver(t *testing.T) {
 	episodes := &fakeWatchEpisodes{}
 	files := &fakeWatchFiles{byContent: map[string][]*models.MediaFile{}, byEpisode: map[string][]*models.MediaFile{}}
 	store := &fakeWatchStore{direct: map[string]userstore.WatchProgress{}}
-	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store}, nil)
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store}, nil, nil)
 
 	result, err := reader.Items(context.Background(), watchdoc.ProfileScope{ProfileID: "profile-open"})
 	if err != nil {
@@ -748,5 +748,145 @@ func TestWatchReaderUnionsInProgressItemsIntoTheHomeSet(t *testing.T) {
 	}
 	if browse.filters.Limit != watchHomeItemLimit {
 		t.Errorf("browse limit = %d, want %d", browse.filters.Limit, watchHomeItemLimit)
+	}
+}
+
+// --- search -----------------------------------------------------------------
+
+// fakeSearchProvider stands in for catalog.CatalogSearchProvider: it records
+// the request it was asked with and returns a fixed, ordered result list —
+// the ordering is the point, since Search must preserve the provider's
+// relevance ranking rather than re-sorting it.
+type fakeSearchProvider struct {
+	result      *catalog.CatalogSearchResult
+	err         error
+	lastRequest catalog.CatalogSearchRequest
+	calls       int
+}
+
+func (f *fakeSearchProvider) Search(_ context.Context, req catalog.CatalogSearchRequest) (*catalog.CatalogSearchResult, error) {
+	f.calls++
+	f.lastRequest = req
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.result, nil
+}
+
+func TestCatalogWatchReaderSearchPreservesProviderOrderAndResolvesPosters(t *testing.T) {
+	added := time.Date(2026, 8, 13, 9, 0, 0, 0, time.UTC)
+	browse := &fakeWatchBrowse{result: &catalog.BrowseResult{}}
+	items := &fakeWatchItems{items: map[string]*models.MediaItem{}}
+	episodes := &fakeWatchEpisodes{}
+	files := &fakeWatchFiles{byContent: map[string][]*models.MediaFile{}, byEpisode: map[string][]*models.MediaFile{}}
+	store := &fakeWatchStore{direct: map[string]userstore.WatchProgress{}}
+	search := &fakeSearchProvider{result: &catalog.CatalogSearchResult{Items: []*models.MediaItem{
+		// Deliberately not alphabetical and not by AddedAt: a relevance order
+		// ComposeHome's own ordering would scramble if Search reused it.
+		{ContentID: "9001", Type: itemTypeMovie, Title: "The Sealed Wing", AddedAt: &added, PosterPath: fakeWatchPosterPath},
+		{ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", AddedAt: &added},
+	}}}
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store}, fakeImageResolver{byPath: map[string]string{fakeWatchPosterPath: fakeWatchPosterURL}}, search)
+
+	scope := watchdoc.ProfileScope{ProfileID: "profile-open", MaxContentRating: "PG-13"}
+	results, err := reader.Search(context.Background(), scope, "sealed")
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if got := []string{results[0].ContentID, results[1].ContentID}; got[0] != "9001" || got[1] != "4242" {
+		t.Fatalf("Search() content ids = %v, want [9001 4242] (provider order preserved)", got)
+	}
+	if results[0].PosterURL != fakeWatchPosterURL {
+		t.Errorf("results[0].PosterURL = %q, want %q", results[0].PosterURL, fakeWatchPosterURL)
+	}
+	if results[1].PosterURL != "" {
+		t.Errorf("results[1].PosterURL = %q, want empty (no poster path)", results[1].PosterURL)
+	}
+
+	if search.lastRequest.Query != "sealed" {
+		t.Errorf("request query = %q, want %q", search.lastRequest.Query, "sealed")
+	}
+	if got := search.lastRequest.ItemTypes; len(got) != 2 || got[0] != itemTypeMovie || got[1] != itemTypeSeries {
+		t.Errorf("request item types = %v, want [movie series] — Watch search is video-only", got)
+	}
+	if search.lastRequest.Access.MaxContentRating != "PG-13" {
+		t.Errorf("request access = %+v, want the caller's own scope threaded through", search.lastRequest.Access)
+	}
+}
+
+func TestCatalogWatchReaderSearchWithNoProviderAnswersEmptyNotError(t *testing.T) {
+	reader := NewCatalogWatchReader(nil, nil, nil, nil, nil, nil, nil, nil)
+	results, err := reader.Search(context.Background(), watchdoc.ProfileScope{ProfileID: "p"}, "anything")
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if results != nil {
+		t.Errorf("results = %v, want nil", results)
+	}
+}
+
+func TestWatchSearchEndpointServesAContractDocumentInProviderOrder(t *testing.T) {
+	added := time.Date(2026, 8, 13, 9, 0, 0, 0, time.UTC)
+	items := &fakeWatchItems{items: map[string]*models.MediaItem{}}
+	files := &fakeWatchFiles{
+		byContent: map[string][]*models.MediaFile{
+			"9001": {{ID: 9001001, MediaFolderID: 4}},
+			"4242": {{ID: 4242001, MediaFolderID: 4}},
+		},
+		byEpisode: map[string][]*models.MediaFile{},
+	}
+	store := &fakeWatchStore{direct: map[string]userstore.WatchProgress{}}
+	search := &fakeSearchProvider{result: &catalog.CatalogSearchResult{Items: []*models.MediaItem{
+		{ContentID: "9001", Type: itemTypeMovie, Title: "The Sealed Wing", AddedAt: &added},
+		{ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", AddedAt: &added},
+	}}}
+	reader := NewCatalogWatchReader(&fakeWatchBrowse{result: &catalog.BrowseResult{}}, items, &fakeWatchEpisodes{}, nil, files, fakeWatchStores{store: store}, nil, search)
+	handler := NewWatchHandler(reader, reader)
+
+	rr := httptest.NewRecorder()
+	handler.HandleWatchSearch(rr, newWatchRequest(t, "/api/v2/watch/search?q=sealed", "", "profile-invented"))
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, body %s", rr.Code, rr.Body.String())
+	}
+	var document watchdoc.Document
+	if err := json.Unmarshal(rr.Body.Bytes(), &document); err != nil {
+		t.Fatalf("decode: %v (%s)", err, rr.Body.String())
+	}
+	if len(document.Items) != 2 || document.Items[0].ContentID != "9001" || document.Items[1].ContentID != "4242" {
+		t.Fatalf("document items = %+v, want [9001 4242] in that order", document.Items)
+	}
+	if document.Progress == nil || len(document.Progress) != 0 {
+		t.Errorf("document.Progress = %v, want an empty (not nil) slice", document.Progress)
+	}
+	if document.FeaturedContentID != "" {
+		t.Errorf("document.FeaturedContentID = %q, want empty — search has no featured item", document.FeaturedContentID)
+	}
+}
+
+// stubWatchSearcher is a WatchSearcher that is never actually asked to search
+// — it exists so a test can prove the empty-query guard rejects the request
+// before reaching the searcher at all.
+type stubWatchSearcher struct{}
+
+func (stubWatchSearcher) Search(context.Context, watchdoc.ProfileScope, string) ([]watchdoc.Item, error) {
+	return nil, nil
+}
+
+func TestWatchSearchEndpointRequiresANonEmptyQuery(t *testing.T) {
+	handler := NewWatchHandler(newWatchTestReader(t), stubWatchSearcher{})
+	rr := httptest.NewRecorder()
+	handler.HandleWatchSearch(rr, newWatchRequest(t, "/api/v2/watch/search", "", "profile-invented"))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
+func TestWatchSearchEndpointWithNoSearcherAnswersUnavailable(t *testing.T) {
+	handler := NewWatchHandler(newWatchTestReader(t), nil)
+	rr := httptest.NewRecorder()
+	handler.HandleWatchSearch(rr, newWatchRequest(t, "/api/v2/watch/search?q=x", "", "profile-invented"))
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", rr.Code)
 	}
 }

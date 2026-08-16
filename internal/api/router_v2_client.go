@@ -42,7 +42,7 @@ type v2ClientSurface struct {
 // newV2ClientSurface assembles the client surface from Dependencies. Every
 // member is optional: a missing dependency leaves its routes unmounted rather
 // than mounting a route that answers with an empty library.
-func newV2ClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware) v2ClientSurface {
+func newV2ClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider) v2ClientSurface {
 	surface := v2ClientSurface{auth: authMW, tenant: tenantMW, rateLimit: deps.RateLimitMW}
 
 	// The same encrypting decorator the rest of the server reads settings
@@ -75,9 +75,11 @@ func newV2ClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantM
 
 	// The Watch documents both TV clients consume. They need a catalog, a
 	// media-file repository and a progress store; without any one of them there
-	// is no document to compose.
+	// is no document to compose. Search reuses the exact same reader — see
+	// CatalogWatchReader.Search — so a nil searchProvider only narrows what one
+	// method on it can do, never whether Watch mounts at all.
 	if deps.FileRepo != nil {
-		surface.watch = handlers.NewWatchHandler(handlers.NewCatalogWatchReader(
+		watchReader := handlers.NewCatalogWatchReader(
 			catalog.NewBrowseRepository(deps.DB),
 			catalog.NewItemRepository(deps.DB),
 			catalog.NewEpisodeRepository(deps.DB),
@@ -85,7 +87,9 @@ func newV2ClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantM
 			deps.FileRepo,
 			deps.UserStoreProvider,
 			deps.ImageResolver,
-		))
+			searchProvider,
+		)
+		surface.watch = handlers.NewWatchHandler(watchReader, watchReader)
 	}
 
 	progress := handlers.NewProgressHandler(deps.UserStoreProvider)
@@ -165,6 +169,7 @@ func (s v2ClientSurface) mount(r chi.Router) {
 			r.Route("/watch", func(r chi.Router) {
 				r.Get("/home", s.watch.HandleWatchHome)
 				r.Get("/items/{content_id}", s.watch.HandleWatchItem)
+				r.Get("/search", s.watch.HandleWatchSearch)
 			})
 		}
 		if s.progress != nil {

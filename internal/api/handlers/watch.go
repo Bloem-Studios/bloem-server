@@ -23,6 +23,12 @@ import (
 // repository's own default page size.
 const watchHomeItemLimit = 100
 
+// watchSearchResultLimit bounds a single search response. A client that wants
+// more is a client that wants scroll pagination, which this endpoint does not
+// offer yet — this is the same "first frame" tradeoff watchHomeItemLimit
+// makes, not an oversight.
+const watchSearchResultLimit = 50
+
 // secondsPerMinute converts the catalog's minute-grained runtimes to the
 // contract's seconds.
 const secondsPerMinute = 60
@@ -38,20 +44,31 @@ const watchRecentProgressRows = 200
 // order is the same total order, so the two never disagree.
 const watchRecentlyAddedSort = "recently_added"
 
+// WatchSearcher answers a server-side title search over the movies and series
+// a profile may see. Separate from watchdoc.Reader because search is not a
+// document composition — no progress, no featured item, no seasons or
+// episodes — so it never had a reason to grow that interface.
+type WatchSearcher interface {
+	Search(ctx context.Context, scope watchdoc.ProfileScope, query string) ([]watchdoc.Item, error)
+}
+
 // WatchHandler serves the contracts' watch_document_v1 documents.
 //
 // Both endpoints are profile-scoped: the document names what one profile may
 // watch and carries that profile's progress, so a request without a profile is
 // refused rather than answered for the account.
 type WatchHandler struct {
-	reader watchdoc.Reader
+	reader   watchdoc.Reader
+	searcher WatchSearcher
 }
 
-// NewWatchHandler creates a WatchHandler over a composition reader. A nil
-// reader leaves the endpoints mounted but unavailable, which is honest about a
-// deployment with no catalog rather than pretending the library is empty.
-func NewWatchHandler(reader watchdoc.Reader) *WatchHandler {
-	return &WatchHandler{reader: reader}
+// NewWatchHandler creates a WatchHandler over a composition reader and a
+// searcher. Either may be nil, in which case its endpoints stay mounted but
+// answer unavailable — honest about a deployment with no catalog or no search
+// provider rather than pretending the library is empty or search found
+// nothing.
+func NewWatchHandler(reader watchdoc.Reader, searcher WatchSearcher) *WatchHandler {
+	return &WatchHandler{reader: reader, searcher: searcher}
 }
 
 // HandleWatchHome handles GET /watch/home.
@@ -92,6 +109,38 @@ func (h *WatchHandler) HandleWatchItem(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(r.Context(), "composing watch item document failed",
 			"component", "api", "profile_id", scope.ProfileID, "content_id", contentID, "error", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to compose the Watch item document")
+		return
+	}
+	writeWatchDocument(w, document)
+}
+
+// HandleWatchSearch handles GET /watch/search?q=.
+func (h *WatchHandler) HandleWatchSearch(w http.ResponseWriter, r *http.Request) {
+	scope, ok := h.requestScope(w, r)
+	if !ok {
+		return
+	}
+	if h.searcher == nil {
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "Search is not available")
+		return
+	}
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	if query == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "q is required")
+		return
+	}
+	items, err := h.searcher.Search(r.Context(), scope, query)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "watch search failed",
+			"component", "api", "profile_id", scope.ProfileID, "error", err)
+		writeError(w, http.StatusInternalServerError, "internal_error", "Search failed")
+		return
+	}
+	document, err := watchdoc.ComposeSearchResults(r.Context(), h.reader, scope, items)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "composing watch search document failed",
+			"component", "api", "profile_id", scope.ProfileID, "error", err)
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to compose the Watch search document")
 		return
 	}
 	writeWatchDocument(w, document)
@@ -174,12 +223,15 @@ type CatalogWatchReader struct {
 	files    WatchFileSource
 	stores   userstore.UserStoreProvider
 	images   catalog.ImageResolver
+	search   catalog.CatalogSearchProvider
 }
 
 // NewCatalogWatchReader wires a reader over the existing repositories. seasons
 // may be nil: season titles are then omitted rather than the document failing.
 // images may be nil: posters are then omitted rather than the document
 // carrying a stored path or a plugin-prefixed reference no client can fetch.
+// search may be nil: HandleWatchSearch answers unavailable rather than
+// searching nothing when no provider is configured.
 func NewCatalogWatchReader(
 	browse WatchBrowseSource,
 	items WatchItemSource,
@@ -188,6 +240,7 @@ func NewCatalogWatchReader(
 	files WatchFileSource,
 	stores userstore.UserStoreProvider,
 	images catalog.ImageResolver,
+	search catalog.CatalogSearchProvider,
 ) *CatalogWatchReader {
 	return &CatalogWatchReader{
 		browse:   browse,
@@ -197,6 +250,7 @@ func NewCatalogWatchReader(
 		files:    files,
 		stores:   stores,
 		images:   images,
+		search:   search,
 	}
 }
 
@@ -431,6 +485,48 @@ func (r *CatalogWatchReader) Item(ctx context.Context, scope watchdoc.ProfileSco
 		return converted, true, nil
 	}
 	return watchdoc.Item{}, false, nil
+}
+
+// Search answers a server-side title search over the movies and series the
+// profile may see, in the search provider's own relevance order. watchdoc.
+// ComposeSearchResults is the one place that order is preserved rather than
+// re-sorted, so this method does not reorder its input either.
+func (r *CatalogWatchReader) Search(ctx context.Context, scope watchdoc.ProfileScope, query string) ([]watchdoc.Item, error) {
+	if r.search == nil {
+		return nil, nil
+	}
+	result, err := r.search.Search(ctx, catalog.CatalogSearchRequest{
+		Query:     query,
+		ItemTypes: []string{itemTypeMovie, itemTypeSeries},
+		Limit:     watchSearchResultLimit,
+		Access:    watchAccessFilter(scope),
+		SkipTotal: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, nil
+	}
+
+	items := make([]watchdoc.Item, 0, len(result.Items))
+	posterPaths := make(map[string]string, len(result.Items))
+	for _, item := range result.Items {
+		if item == nil {
+			continue
+		}
+		items = append(items, watchItemFromMediaItem(item))
+		posterPaths[item.ContentID] = item.PosterPath
+	}
+	paths := make([]string, 0, len(posterPaths))
+	for _, path := range posterPaths {
+		paths = append(paths, path)
+	}
+	resolved := r.resolvePosterURLs(ctx, paths)
+	for index := range items {
+		items[index].PosterURL = resolved[posterPaths[items[index].ContentID]]
+	}
+	return items, nil
 }
 
 // Episodes returns one series' episodes, with their season titles attached.

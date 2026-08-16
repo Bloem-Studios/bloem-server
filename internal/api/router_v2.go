@@ -8,6 +8,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/invitations"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
@@ -24,7 +25,14 @@ import (
 // Dependencies inside this file rather than handed down from the v1 tree, so a
 // native route can be added, changed or removed without touching the projection
 // that upstream Silo clients depend on.
-func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware) {
+//
+// searchProvider is threaded in explicitly rather than through Dependencies: the
+// real *catalog.CatalogSearchService it comes from is itself built inside
+// NewRouter from Dependencies plus local state (the settings store, the search
+// index event repo), not received from the caller, so there is nothing for
+// Dependencies to carry. May be nil, in which case Watch search answers
+// unavailable rather than searching nothing.
+func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider) {
 	var store handlers.V2OrganizationStore
 	var membershipStore handlers.AdminContextSessionStore
 	var resolver handlers.AdminContextSessionResolver
@@ -88,7 +96,7 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	// capability at all.
 	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
 	mountV2Routes(r, system, session, authMW, adminMW,
-		newV2ClientSurface(deps, authMW, tenantMW), platformHandler, peopleHandler, organizationHandler, explainHandler, compatibilityHandler)
+		newV2ClientSurface(deps, authMW, tenantMW, searchProvider), platformHandler, peopleHandler, organizationHandler, explainHandler, compatibilityHandler)
 }
 
 // mountV2Routes registers every /api/v2 route. chi allows one subtree per mount

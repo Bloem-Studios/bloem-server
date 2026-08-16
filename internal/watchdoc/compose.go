@@ -165,6 +165,53 @@ func ComposeHome(ctx context.Context, reader Reader, scope ProfileScope) (Docume
 	return finishDocument(ctx, reader, scope, documentItems, "")
 }
 
+// ComposeSearchResults builds a Watch document from a caller-supplied list of
+// items — the search provider's own ranking, not the library's added-time
+// order ComposeHome imposes. It is otherwise held to the same rules as any
+// other document: an unplayable movie is dropped rather than emitted with no
+// file, and a duplicate content identifier is collapsed, keeping the first
+// (best-ranked) occurrence. There is no progress and no featured item —
+// search is a results list, not a home screen — so both are empty on the
+// returned Document.
+func ComposeSearchResults(ctx context.Context, reader Reader, scope ProfileScope, items []Item) (Document, error) {
+	if reader == nil {
+		return Document{}, ErrNoReader
+	}
+
+	deduped := make([]Item, 0, len(items))
+	seen := make(map[string]bool, len(items))
+	for _, item := range items {
+		item.ContentID = strings.TrimSpace(item.ContentID)
+		if item.ContentID == "" || seen[item.ContentID] {
+			continue
+		}
+		seen[item.ContentID] = true
+		deduped = append(deduped, item)
+	}
+
+	fileIDs, err := resolveFiles(ctx, reader, scope, playableContentIDs(deduped))
+	if err != nil {
+		return Document{}, err
+	}
+
+	claimedFiles := map[int64]bool{}
+	documentItems := make([]DocumentItem, 0, len(deduped))
+	for _, item := range deduped {
+		documentItem, ok := newLibraryDocumentItem(item, fileIDs, claimedFiles, requirePlayableFile)
+		if !ok {
+			continue
+		}
+		documentItems = append(documentItems, documentItem)
+	}
+
+	return Document{
+		Schema:   SchemaWatchDocumentV1,
+		Snapshot: time.Now().UTC().Format(time.RFC3339),
+		Items:    documentItems,
+		Progress: []DocumentProgress{},
+	}, nil
+}
+
 // ComposeItem builds the detail document for one movie or series.
 //
 // A series carries its seasons and its episodes in ascending season then
