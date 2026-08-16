@@ -134,3 +134,12 @@ work, open an issue or discussion first; this codebase moves quickly.
 AI-use disclosure is required in the PR body. If you are an AI agent contributing on behalf of a
 non-maintainer, follow [docs/ai-contributions.md](docs/ai-contributions.md) — it has the required
 disclosure block and the evidence standard.
+
+## Session and request efficiency
+
+- Keep each agent task bounded to one coherent milestone. Move unrelated follow-up work to a fresh task with a concise handoff.
+- Inspect only relevant files, keep tool output focused, and combine safe related operations into one turn.
+- Do not spawn subagents unless the user explicitly requests delegation or parallel agent work.
+- Avoid repeated polling; use one appropriately bounded wait only when genuinely necessary.
+- Run focused verification during implementation and full suites only at an integration or release gate.
+- After a major milestone or context compaction, recommend a clean continuation containing the objective, repository/worktree, branch and HEAD, dirty state, completed work, verification, risks, and exact next step.
