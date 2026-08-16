@@ -276,6 +276,46 @@ Additional structural gates prove:
 - uninstalling a companion loses only disposable protocol state;
 - source, image, log, and redirect scans do not leak credentials or signed resources.
 
+### Foundation gate status
+
+The foundation (Tasks 1-6 plus the required CI gate in Task 7 of
+`docs/superpowers/plans/2026-08-13-vondel-compatibility-1-foundation.md`) is
+implemented. Extraction itself — the two companion repositories, the actual
+route cutover, and everything else in Extraction and Cutover above — remains
+not started. `internal/acceptance/compat_foundation_test.go`
+(`TestCompatibilityFoundation`, required in CI as the `compat-foundation`
+job) proves, against one disposable PostgreSQL database and the real
+enrollment service, private API, gateway, and admin adapter:
+
+- enrollment, incompatible-API-range rejection, and idempotent replay
+  (including same-key/different-body conflict);
+- fixed-path routing to the owning companion with prefix stripping and
+  signed-identity/trace header propagation, cross-companion isolation, and
+  native routes never reaching the gateway;
+- revoked and disabled applications answering unavailable without ever
+  forwarding a request, and the native surface answering with both
+  companions stopped;
+- direct-profile login, per-request subject revalidation, signed-cursor
+  round-trip plus rejection of bit-tampering and cross-operation reuse, PIN
+  verification, profile switching, and revocation invalidating every
+  outstanding subject token.
+
+The `compat-compose-structural-scan` CI job runs the default-deny
+`scripts/verify-compat-compose.sh` scan (and its own violation-detection
+self-test) on every PR, which it did not before Task 7.
+
+Two production seams the foundation still lacks, both already recorded at
+their call sites and in the acceptance file's header, are unaffected by this
+gate and remain open follow-up work: `cmd/silo` never sets
+`api.Dependencies.CompatAPIV1`, so the private compatibility API is
+unreachable in a running server; and no production `SubjectService` or
+`CatalogService` adapter exists, so login/profile/catalog behavior is proven
+against the real `compatapi` handler code with a working test-double
+identity and catalog provider, not against Vondel's real password
+verification or adult-content policy. Adult-content non-disclosure and the
+private API's own disabled-route behavior are not yet covered for the same
+reason and remain open.
+
 ## Documentation Deliverables
 
 - Operator guide for enabling, enrolling, updating, rolling back, disabling, and uninstalling each companion.
