@@ -2915,6 +2915,7 @@ func NewRouter(deps Dependencies) chi.Router {
 						r.Get("/for-you/rows", recsHandler.HandleForYouRows)
 						r.Get("/because-watched/{item_id}", recsHandler.HandleBecauseWatched)
 						r.Get("/similar/{item_id}", recsHandler.HandleSimilar)
+						r.Get("/similar/{item_id}/resolved", recsHandler.HandleSimilarResolved)
 						r.Get("/similar-users", recsHandler.HandleSimilarUsers)
 						r.Get("/taste-profile", recsHandler.HandleTasteProfile)
 						r.Get("/popular", recsHandler.HandlePopular)
