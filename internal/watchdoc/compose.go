@@ -118,6 +118,21 @@ type CrewMember struct {
 	PhotoURL string
 }
 
+// Edition is one playable version of an item's file — a resolution, an HDR master, a director's
+// cut — distinguishable enough for a client to offer as a choice instead of the single file
+// FilesByContentIDs alone would name.
+type Edition struct {
+	FileID          int64
+	Resolution      string
+	CodecVideo      string
+	CodecAudio      string
+	HDR             bool
+	Container       string
+	DurationSeconds float64
+	EditionKey      string
+	EditionLabel    string
+}
+
 // FileMarkers is the chapter and skip-intro data known about one media file.
 // Both are independently optional: a file can carry chapters with no detected
 // intro range, an intro range with no chapter breakdown, or neither.
@@ -179,6 +194,12 @@ type Reader interface {
 	// document was asked for — see DocumentItem.Cast's own documentation for
 	// why an episode does not carry its own.
 	Credits(ctx context.Context, scope ProfileScope, contentID string) ([]CastMember, []CrewMember, error)
+	// Editions returns every playable file for each of the given content
+	// identifiers — not just the one FilesByContentIDs would pick — keyed by
+	// content identifier. Called only by ComposeItem, for every item a detail
+	// document names (root and, for a series, every episode): see
+	// DocumentItem.Editions' own documentation for why this is unlike Credits.
+	Editions(ctx context.Context, scope ProfileScope, contentIDs []string) (map[string][]Edition, error)
 }
 
 // ComposeHome builds the Watch home document for one profile.
@@ -345,6 +366,11 @@ func ComposeItem(ctx context.Context, reader Reader, scope ProfileScope, content
 		return Document{}, err
 	}
 
+	documentItems, err = attachEditions(ctx, reader, scope, documentItems)
+	if err != nil {
+		return Document{}, err
+	}
+
 	return finishDocument(ctx, reader, scope, documentItems, item.ContentID)
 }
 
@@ -436,6 +462,80 @@ func documentCrew(crew []CrewMember) []DocumentCrewMember {
 		})
 	}
 	return converted
+}
+
+// attachEditions fetches every playable file for each item a detail document named — root and,
+// for a series, every episode — and attaches the ones worth offering as a choice: an item with
+// only one file has nothing to pick, so its editions list stays empty rather than duplicating
+// FileID under a different name.
+func attachEditions(ctx context.Context, reader Reader, scope ProfileScope, items []DocumentItem) ([]DocumentItem, error) {
+	contentIDs := make([]string, 0, len(items))
+	for _, item := range items {
+		if item.FileID > 0 {
+			contentIDs = append(contentIDs, item.ContentID)
+		}
+	}
+	if len(contentIDs) == 0 {
+		return items, nil
+	}
+
+	editionsByID, err := reader.Editions(ctx, scope, contentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("watchdoc: reading editions: %w", err)
+	}
+	for index := range items {
+		editions := editionsByID[items[index].ContentID]
+		if len(editions) < 2 {
+			continue
+		}
+		items[index].Editions = documentEditions(editions)
+	}
+	return items, nil
+}
+
+func documentEditions(editions []Edition) []DocumentEdition {
+	ordered := make([]Edition, len(editions))
+	copy(ordered, editions)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		if left, right := resolutionHeight(ordered[i].Resolution), resolutionHeight(ordered[j].Resolution); left != right {
+			return left > right
+		}
+		return ordered[i].FileID < ordered[j].FileID
+	})
+	converted := make([]DocumentEdition, 0, len(ordered))
+	for _, edition := range ordered {
+		converted = append(converted, DocumentEdition{
+			FileID:          edition.FileID,
+			Resolution:      strings.TrimSpace(edition.Resolution),
+			CodecVideo:      strings.TrimSpace(edition.CodecVideo),
+			CodecAudio:      strings.TrimSpace(edition.CodecAudio),
+			HDR:             edition.HDR,
+			Container:       strings.TrimSpace(edition.Container),
+			DurationSeconds: edition.DurationSeconds,
+			EditionKey:      strings.TrimSpace(edition.EditionKey),
+			EditionLabel:    strings.TrimSpace(edition.EditionLabel),
+		})
+	}
+	return converted
+}
+
+// resolutionHeight extracts the leading digits of a resolution label ("1080p" -> 1080, "2160p" ->
+// 2160) so editions sort by actual quality rather than lexically, where "720p" would otherwise
+// outrank "1080p". Unparseable or empty labels sort last.
+func resolutionHeight(resolution string) int {
+	digits := 0
+	found := false
+	for _, r := range resolution {
+		if r < '0' || r > '9' {
+			break
+		}
+		found = true
+		digits = digits*10 + int(r-'0')
+	}
+	if !found {
+		return -1
+	}
+	return digits
 }
 
 func documentChapters(chapters []Chapter) []DocumentChapter {

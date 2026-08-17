@@ -718,6 +718,55 @@ func (r *CatalogWatchReader) Credits(ctx context.Context, _ watchdoc.ProfileScop
 	return cast, crew, nil
 }
 
+// Editions returns every playable file for each of the given content
+// identifiers, access-filtered the same way FilesByContentIDs is: a version in
+// a library the profile may not see, or above its quality ceiling, is not a
+// file this profile can choose between.
+func (r *CatalogWatchReader) Editions(ctx context.Context, scope watchdoc.ProfileScope, contentIDs []string) (map[string][]watchdoc.Edition, error) {
+	out := make(map[string][]watchdoc.Edition, len(contentIDs))
+	if r.files == nil || len(contentIDs) == 0 {
+		return out, nil
+	}
+	byContent, err := r.files.ListByContentIDs(ctx, contentIDs)
+	if err != nil {
+		return nil, err
+	}
+	byEpisode, err := r.files.ListByEpisodeIDs(ctx, contentIDs)
+	if err != nil {
+		return nil, err
+	}
+	filter := watchAccessFilter(scope)
+	for _, id := range contentIDs {
+		files := catalog.FilterMediaFilesByAccess(byContent[id], filter)
+		if len(files) == 0 {
+			files = catalog.FilterMediaFilesByAccess(byEpisode[id], filter)
+		}
+		out[id] = editionsFromMediaFiles(files)
+	}
+	return out, nil
+}
+
+func editionsFromMediaFiles(files []*models.MediaFile) []watchdoc.Edition {
+	editions := make([]watchdoc.Edition, 0, len(files))
+	for _, file := range files {
+		if file == nil || file.ID <= 0 {
+			continue
+		}
+		editions = append(editions, watchdoc.Edition{
+			FileID:          int64(file.ID),
+			Resolution:      file.Resolution,
+			CodecVideo:      file.CodecVideo,
+			CodecAudio:      file.CodecAudio,
+			HDR:             file.HDR,
+			Container:       file.Container,
+			DurationSeconds: float64(file.Duration),
+			EditionKey:      file.EditionKey,
+			EditionLabel:    file.EditionRaw,
+		})
+	}
+	return editions
+}
+
 // Progress returns the profile's rows for the requested items.
 //
 // It runs two bounded reads instead of one unbounded one:

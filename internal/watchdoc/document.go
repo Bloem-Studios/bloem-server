@@ -114,6 +114,27 @@ type DocumentItem struct {
 	// pays for per-item data nothing on that screen renders.
 	Cast []DocumentCastMember `json:"cast,omitempty"`
 	Crew []DocumentCrewMember `json:"crew,omitempty"`
+
+	// Editions lists every playable file for the item, when there is more than one to choose
+	// between — a resolution, an HDR master, a director's cut. Omitted whenever the item has only
+	// FileID and nothing else to offer: a one-entry list would only restate FileID under a
+	// different name. Populated only on a detail document (ComposeItem), for every item it names
+	// (root and, for a series, every episode) — unlike Cast and Crew, an edition choice belongs to
+	// the file an item plays, and a series' episodes each have their own.
+	Editions []DocumentEdition `json:"editions,omitempty"`
+}
+
+// DocumentEdition is one playable version of the file a DocumentItem names.
+type DocumentEdition struct {
+	FileID          int64   `json:"file_id"`
+	Resolution      string  `json:"resolution,omitempty"`
+	CodecVideo      string  `json:"codec_video,omitempty"`
+	CodecAudio      string  `json:"codec_audio,omitempty"`
+	HDR             bool    `json:"hdr,omitempty"`
+	Container       string  `json:"container,omitempty"`
+	DurationSeconds float64 `json:"duration_seconds,omitempty"`
+	EditionKey      string  `json:"edition_key,omitempty"`
+	EditionLabel    string  `json:"edition_label,omitempty"`
 }
 
 // DocumentCastMember is one acting credit on a DocumentItem.

@@ -171,6 +171,13 @@ func (r *watchTestReader) Credits(_ context.Context, _ watchdoc.ProfileScope, _ 
 	return nil, nil, nil
 }
 
+func (r *watchTestReader) Editions(_ context.Context, _ watchdoc.ProfileScope, _ []string) (map[string][]watchdoc.Edition, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	return map[string][]watchdoc.Edition{}, nil
+}
+
 func newWatchTestReader(t *testing.T) *watchTestReader {
 	t.Helper()
 	added, err := time.Parse(time.RFC3339, "2026-08-13T09:00:00Z")

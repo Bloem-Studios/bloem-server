@@ -150,6 +150,7 @@ type fakeReader struct {
 	markers    map[int64]watchdoc.FileMarkers
 	cast       map[string][]watchdoc.CastMember
 	crew       map[string][]watchdoc.CrewMember
+	editions   map[string][]watchdoc.Edition
 	restricted map[string]bool // content IDs this profile may not see
 
 	err error
@@ -159,6 +160,7 @@ type fakeReader struct {
 	fileScopes    []watchdoc.ProfileScope
 	markersCalls  [][]int64
 	creditsCalls  []string
+	editionsCalls [][]string
 }
 
 func (f *fakeReader) visible(contentID string) bool { return !f.restricted[contentID] }
@@ -248,6 +250,20 @@ func (f *fakeReader) Credits(_ context.Context, _ watchdoc.ProfileScope, content
 	}
 	f.creditsCalls = append(f.creditsCalls, contentID)
 	return f.cast[contentID], f.crew[contentID], nil
+}
+
+func (f *fakeReader) Editions(_ context.Context, _ watchdoc.ProfileScope, contentIDs []string) (map[string][]watchdoc.Edition, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.editionsCalls = append(f.editionsCalls, append([]string(nil), contentIDs...))
+	out := map[string][]watchdoc.Edition{}
+	for _, id := range contentIDs {
+		if editions, ok := f.editions[id]; ok {
+			out[id] = editions
+		}
+	}
+	return out, nil
 }
 
 // --- invented fixture world ------------------------------------------------
@@ -883,6 +899,103 @@ func TestWatchMovieDetailWithNoKnownCreditsOmitsTheFields(t *testing.T) {
 	}
 	if _, present := movie["crew"]; present {
 		t.Errorf("crew present with nothing known: %#v", movie["crew"])
+	}
+}
+
+func TestWatchMovieDetailCarriesEditionsWhenMoreThanOneFileExists(t *testing.T) {
+	reader := inventedWorld(t)
+	reader.editions = map[string][]watchdoc.Edition{
+		"4242": {
+			{FileID: 4242001, Resolution: "1080p"},
+			{FileID: 4242002, Resolution: "2160p", HDR: true},
+			{FileID: 4242003, Resolution: "720p"},
+		},
+	}
+
+	document, err := watchdoc.ComposeItem(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"}, "4242")
+	if err != nil {
+		t.Fatalf("compose item: %v", err)
+	}
+	body := assertConformsToContract(t, document)
+
+	items, _ := body["items"].([]any)
+	movie, _ := items[0].(map[string]any)
+	editions, _ := movie["editions"].([]any)
+	if len(editions) != 3 {
+		t.Fatalf("editions = %d, want 3", len(editions))
+	}
+	// Highest resolution first — "2160p" must outrank "1080p" despite "7" > "2" lexically, which
+	// is exactly the bug a naive string sort would have.
+	resolutions := make([]string, len(editions))
+	for i, raw := range editions {
+		entry, _ := raw.(map[string]any)
+		resolutions[i] = entry["resolution"].(string)
+	}
+	if resolutions[0] != "2160p" || resolutions[1] != "1080p" || resolutions[2] != "720p" {
+		t.Errorf("editions in resolution order = %v, want [2160p 1080p 720p]", resolutions)
+	}
+}
+
+func TestWatchMovieDetailWithOnlyOneFileOmitsEditions(t *testing.T) {
+	reader := inventedWorld(t)
+	reader.editions = map[string][]watchdoc.Edition{
+		"4242": {{FileID: 4242001, Resolution: "1080p"}},
+	}
+
+	document, err := watchdoc.ComposeItem(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"}, "4242")
+	if err != nil {
+		t.Fatalf("compose item: %v", err)
+	}
+	body := assertConformsToContract(t, document)
+
+	items, _ := body["items"].([]any)
+	movie, _ := items[0].(map[string]any)
+	if _, present := movie["editions"]; present {
+		t.Errorf("editions present with only one file: %#v", movie["editions"])
+	}
+}
+
+func TestWatchSeriesDetailCarriesEditionsPerEpisodeNotJustTheRoot(t *testing.T) {
+	reader := inventedWorld(t)
+	reader.editions = map[string][]watchdoc.Edition{
+		"8080-s01e01": {
+			{FileID: 8080001, Resolution: "1080p"},
+			{FileID: 8080101, Resolution: "2160p"},
+		},
+	}
+
+	document, err := watchdoc.ComposeItem(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"}, "8080")
+	if err != nil {
+		t.Fatalf("compose item: %v", err)
+	}
+	body := assertConformsToContract(t, document)
+
+	items, _ := body["items"].([]any)
+	var episode map[string]any
+	for _, raw := range items {
+		candidate, _ := raw.(map[string]any)
+		if candidate["content_id"] == "8080-s01e01" {
+			episode = candidate
+		}
+	}
+	if episode == nil {
+		t.Fatalf("episode 8080-s01e01 not found in %#v", items)
+	}
+	editions, _ := episode["editions"].([]any)
+	if len(editions) != 2 {
+		t.Fatalf("episode editions = %d, want 2", len(editions))
+	}
+}
+
+func TestWatchHomeDocumentNeverAsksForEditions(t *testing.T) {
+	reader := inventedWorld(t)
+	scope := watchdoc.ProfileScope{UserID: 7, ProfileID: "profile-invented"}
+
+	if _, err := watchdoc.ComposeHome(context.Background(), reader, scope); err != nil {
+		t.Fatalf("compose home: %v", err)
+	}
+	if len(reader.editionsCalls) != 0 {
+		t.Errorf("home document called Editions %d times, want 0", len(reader.editionsCalls))
 	}
 }
 
