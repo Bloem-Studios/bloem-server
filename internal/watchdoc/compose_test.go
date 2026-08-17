@@ -148,6 +148,8 @@ type fakeReader struct {
 	files      map[string]int64
 	progress   []watchdoc.Progress
 	markers    map[int64]watchdoc.FileMarkers
+	cast       map[string][]watchdoc.CastMember
+	crew       map[string][]watchdoc.CrewMember
 	restricted map[string]bool // content IDs this profile may not see
 
 	err error
@@ -156,6 +158,7 @@ type fakeReader struct {
 	progressCalls [][]string
 	fileScopes    []watchdoc.ProfileScope
 	markersCalls  [][]int64
+	creditsCalls  []string
 }
 
 func (f *fakeReader) visible(contentID string) bool { return !f.restricted[contentID] }
@@ -237,6 +240,14 @@ func (f *fakeReader) Markers(_ context.Context, _ watchdoc.ProfileScope, fileIDs
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeReader) Credits(_ context.Context, _ watchdoc.ProfileScope, contentID string) ([]watchdoc.CastMember, []watchdoc.CrewMember, error) {
+	if f.err != nil {
+		return nil, nil, f.err
+	}
+	f.creditsCalls = append(f.creditsCalls, contentID)
+	return f.cast[contentID], f.crew[contentID], nil
 }
 
 // --- invented fixture world ------------------------------------------------
@@ -819,6 +830,71 @@ func TestWatchMovieDetailWithNoKnownMarkersOmitsTheFields(t *testing.T) {
 	}
 	if _, present := movie["intro_start_seconds"]; present {
 		t.Errorf("intro_start_seconds present with nothing known: %#v", movie["intro_start_seconds"])
+	}
+}
+
+func TestWatchMovieDetailCarriesCastAndCrew(t *testing.T) {
+	reader := inventedWorld(t)
+	reader.cast = map[string][]watchdoc.CastMember{
+		"4242": {{PersonID: "1", Name: "Invented Actor", Character: "The Surveyor", PhotoURL: "https://example/a.jpg"}},
+	}
+	reader.crew = map[string][]watchdoc.CrewMember{
+		"4242": {{PersonID: "2", Name: "Invented Director", Job: "Director"}},
+	}
+
+	document, err := watchdoc.ComposeItem(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"}, "4242")
+	if err != nil {
+		t.Fatalf("compose item: %v", err)
+	}
+	body := assertConformsToContract(t, document)
+
+	items, _ := body["items"].([]any)
+	movie, _ := items[0].(map[string]any)
+	cast, _ := movie["cast"].([]any)
+	if len(cast) != 1 {
+		t.Fatalf("cast = %d, want 1", len(cast))
+	}
+	member, _ := cast[0].(map[string]any)
+	if member["name"] != "Invented Actor" || member["character"] != "The Surveyor" {
+		t.Errorf("cast member = %#v", member)
+	}
+	crew, _ := movie["crew"].([]any)
+	if len(crew) != 1 {
+		t.Fatalf("crew = %d, want 1", len(crew))
+	}
+	if reader.creditsCalls[0] != "4242" {
+		t.Errorf("credits requested for %v, want [4242]", reader.creditsCalls)
+	}
+}
+
+func TestWatchMovieDetailWithNoKnownCreditsOmitsTheFields(t *testing.T) {
+	reader := inventedWorld(t)
+
+	document, err := watchdoc.ComposeItem(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"}, "4242")
+	if err != nil {
+		t.Fatalf("compose item: %v", err)
+	}
+	body := assertConformsToContract(t, document)
+
+	items, _ := body["items"].([]any)
+	movie, _ := items[0].(map[string]any)
+	if _, present := movie["cast"]; present {
+		t.Errorf("cast present with nothing known: %#v", movie["cast"])
+	}
+	if _, present := movie["crew"]; present {
+		t.Errorf("crew present with nothing known: %#v", movie["crew"])
+	}
+}
+
+func TestWatchHomeDocumentNeverAsksForCredits(t *testing.T) {
+	reader := inventedWorld(t)
+	scope := watchdoc.ProfileScope{UserID: 7, ProfileID: "profile-invented"}
+
+	if _, err := watchdoc.ComposeHome(context.Background(), reader, scope); err != nil {
+		t.Fatalf("compose home: %v", err)
+	}
+	if len(reader.creditsCalls) != 0 {
+		t.Errorf("home document called Credits %d times, want 0", len(reader.creditsCalls))
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -219,6 +220,11 @@ type WatchMarkerSource interface {
 	GetByIDs(ctx context.Context, ids []int) ([]*models.MediaFile, error)
 }
 
+// WatchPeopleSource resolves the cast and crew credited on one item.
+type WatchPeopleSource interface {
+	ListForItem(ctx context.Context, contentID string) ([]models.ItemPerson, error)
+}
+
 // CatalogWatchReader is the database-backed watchdoc.Reader: the one place the
 // Watch join between the catalog, episode, media-file and progress stores
 // lives.
@@ -229,6 +235,7 @@ type CatalogWatchReader struct {
 	seasons  WatchSeasonSource
 	files    WatchFileSource
 	markers  WatchMarkerSource
+	people   WatchPeopleSource
 	stores   userstore.UserStoreProvider
 	images   catalog.ImageResolver
 	search   catalog.CatalogSearchProvider
@@ -241,7 +248,8 @@ type CatalogWatchReader struct {
 // search may be nil: HandleWatchSearch answers unavailable rather than
 // searching nothing when no provider is configured. markers may be nil: a
 // detail document then carries no chapters or skip-intro range rather than
-// failing to compose.
+// failing to compose. people may be nil: a detail document then carries no
+// cast or crew rather than failing to compose.
 func NewCatalogWatchReader(
 	browse WatchBrowseSource,
 	items WatchItemSource,
@@ -249,6 +257,7 @@ func NewCatalogWatchReader(
 	seasons WatchSeasonSource,
 	files WatchFileSource,
 	markers WatchMarkerSource,
+	people WatchPeopleSource,
 	stores userstore.UserStoreProvider,
 	images catalog.ImageResolver,
 	search catalog.CatalogSearchProvider,
@@ -260,6 +269,7 @@ func NewCatalogWatchReader(
 		seasons:  seasons,
 		files:    files,
 		markers:  markers,
+		people:   people,
 		stores:   stores,
 		images:   images,
 		search:   search,
@@ -666,6 +676,46 @@ func mediaChapters(chapters []models.MediaChapter) []watchdoc.Chapter {
 		})
 	}
 	return converted
+}
+
+// Credits returns the cast and crew credited on contentID. A person's photo is
+// resolved through the same catalog.ImageResolver poster resolution already
+// uses, at "featured" size — the same crop the detail screens across this
+// server already ask for a person's photo at.
+func (r *CatalogWatchReader) Credits(ctx context.Context, _ watchdoc.ProfileScope, contentID string) ([]watchdoc.CastMember, []watchdoc.CrewMember, error) {
+	if r.people == nil {
+		return nil, nil, nil
+	}
+	people, err := r.people.ListForItem(ctx, contentID)
+	if err != nil {
+		return nil, nil, err
+	}
+	var cast []watchdoc.CastMember
+	var crew []watchdoc.CrewMember
+	for _, person := range people {
+		photoURL := ""
+		if r.images != nil && person.PhotoPath != "" && person.PhotoPath != "-" {
+			photoURL = r.images.ResolveImageURL(ctx, person.PhotoPath, "featured")
+		}
+		personID := strconv.FormatInt(person.ID, 10)
+		switch person.Kind {
+		case models.PersonKindActor, models.PersonKindGuestStar:
+			cast = append(cast, watchdoc.CastMember{
+				PersonID:  personID,
+				Name:      person.Name,
+				Character: person.Character,
+				PhotoURL:  photoURL,
+			})
+		default:
+			crew = append(crew, watchdoc.CrewMember{
+				PersonID: personID,
+				Name:     person.Name,
+				Job:      person.Kind.String(),
+				PhotoURL: photoURL,
+			})
+		}
+	}
+	return cast, crew, nil
 }
 
 // Progress returns the profile's rows for the requested items.

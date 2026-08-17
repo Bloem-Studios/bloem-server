@@ -102,6 +102,22 @@ type Chapter struct {
 	EndSeconds   float64
 }
 
+// CastMember is one actor credited on an item.
+type CastMember struct {
+	PersonID  string
+	Name      string
+	Character string
+	PhotoURL  string
+}
+
+// CrewMember is one non-acting credit on an item.
+type CrewMember struct {
+	PersonID string
+	Name     string
+	Job      string
+	PhotoURL string
+}
+
 // FileMarkers is the chapter and skip-intro data known about one media file.
 // Both are independently optional: a file can carry chapters with no detected
 // intro range, an intro range with no chapter breakdown, or neither.
@@ -158,6 +174,11 @@ type Reader interface {
 	// to an empty FileMarkers, so ComposeItem can tell "nothing known" apart
 	// from "known and empty" without inspecting both slice and pointer fields.
 	Markers(ctx context.Context, scope ProfileScope, fileIDs []int64) (map[int64]FileMarkers, error)
+	// Credits returns the cast and crew credited on one item, in the store's
+	// own order. Called only by ComposeItem, and only for the item the
+	// document was asked for — see DocumentItem.Cast's own documentation for
+	// why an episode does not carry its own.
+	Credits(ctx context.Context, scope ProfileScope, contentID string) ([]CastMember, []CrewMember, error)
 }
 
 // ComposeHome builds the Watch home document for one profile.
@@ -319,6 +340,11 @@ func ComposeItem(ctx context.Context, reader Reader, scope ProfileScope, content
 		return Document{}, err
 	}
 
+	documentItems, err = attachCredits(ctx, reader, scope, documentItems, item.ContentID)
+	if err != nil {
+		return Document{}, err
+	}
+
 	return finishDocument(ctx, reader, scope, documentItems, item.ContentID)
 }
 
@@ -355,6 +381,61 @@ func attachMarkers(ctx context.Context, reader Reader, scope ProfileScope, items
 		}
 	}
 	return items, nil
+}
+
+// attachCredits fetches the cast and crew for the requested item and copies it
+// onto the matching document item — the root item only, the same restriction
+// FileMarkers holds and for the same reason: only ComposeItem asks about one
+// title at a time, so only ComposeItem pays for it.
+func attachCredits(ctx context.Context, reader Reader, scope ProfileScope, items []DocumentItem, contentID string) ([]DocumentItem, error) {
+	cast, crew, err := reader.Credits(ctx, scope, contentID)
+	if err != nil {
+		return nil, fmt.Errorf("watchdoc: reading credits: %w", err)
+	}
+	if len(cast) == 0 && len(crew) == 0 {
+		return items, nil
+	}
+	for index := range items {
+		if items[index].ContentID != contentID {
+			continue
+		}
+		items[index].Cast = documentCast(cast)
+		items[index].Crew = documentCrew(crew)
+		break
+	}
+	return items, nil
+}
+
+func documentCast(cast []CastMember) []DocumentCastMember {
+	if len(cast) == 0 {
+		return nil
+	}
+	converted := make([]DocumentCastMember, 0, len(cast))
+	for _, member := range cast {
+		converted = append(converted, DocumentCastMember{
+			PersonID:  member.PersonID,
+			Name:      strings.TrimSpace(member.Name),
+			Character: strings.TrimSpace(member.Character),
+			PhotoURL:  member.PhotoURL,
+		})
+	}
+	return converted
+}
+
+func documentCrew(crew []CrewMember) []DocumentCrewMember {
+	if len(crew) == 0 {
+		return nil
+	}
+	converted := make([]DocumentCrewMember, 0, len(crew))
+	for _, member := range crew {
+		converted = append(converted, DocumentCrewMember{
+			PersonID: member.PersonID,
+			Name:     strings.TrimSpace(member.Name),
+			Job:      strings.TrimSpace(member.Job),
+			PhotoURL: member.PhotoURL,
+		})
+	}
+	return converted
 }
 
 func documentChapters(chapters []Chapter) []DocumentChapter {

@@ -106,6 +106,30 @@ type DocumentItem struct {
 	// jump to.
 	IntroStartSeconds *float64 `json:"intro_start_seconds,omitempty"`
 	IntroEndSeconds   *float64 `json:"intro_end_seconds,omitempty"`
+
+	// Cast and Crew are the people credited on the item. Root item only, same
+	// as Chapters: credits belong to the title as a whole, and an episode does
+	// not carry its own. Populated only on a detail document (ComposeItem) —
+	// see Chapters' own documentation for why a home or search document never
+	// pays for per-item data nothing on that screen renders.
+	Cast []DocumentCastMember `json:"cast,omitempty"`
+	Crew []DocumentCrewMember `json:"crew,omitempty"`
+}
+
+// DocumentCastMember is one acting credit on a DocumentItem.
+type DocumentCastMember struct {
+	PersonID  string `json:"person_id,omitempty"`
+	Name      string `json:"name"`
+	Character string `json:"character,omitempty"`
+	PhotoURL  string `json:"photo_url,omitempty"`
+}
+
+// DocumentCrewMember is one non-acting credit on a DocumentItem.
+type DocumentCrewMember struct {
+	PersonID string `json:"person_id,omitempty"`
+	Name     string `json:"name"`
+	Job      string `json:"job,omitempty"`
+	PhotoURL string `json:"photo_url,omitempty"`
 }
 
 // DocumentChapter is one chapter marker on the file a DocumentItem names.

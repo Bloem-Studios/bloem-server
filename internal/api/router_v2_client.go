@@ -79,6 +79,15 @@ func newV2ClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantM
 	// CatalogWatchReader.Search — so a nil searchProvider only narrows what one
 	// method on it can do, never whether Watch mounts at all.
 	if deps.FileRepo != nil {
+		// deps.PersonRepo is a concrete *catalog.PersonRepository, and it may be
+		// nil (people features disabled). Assigning a nil pointer straight into
+		// an interface-typed constructor parameter would produce a non-nil
+		// interface holding a nil receiver — Credits' own "people == nil" guard
+		// would then miss it, and the first call would panic dereferencing it.
+		var people handlers.WatchPeopleSource
+		if deps.PersonRepo != nil {
+			people = deps.PersonRepo
+		}
 		watchReader := handlers.NewCatalogWatchReader(
 			catalog.NewBrowseRepository(deps.DB),
 			catalog.NewItemRepository(deps.DB),
@@ -86,6 +95,7 @@ func newV2ClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantM
 			catalog.NewSeasonRepository(deps.DB),
 			deps.FileRepo,
 			deps.FileRepo,
+			people,
 			deps.UserStoreProvider,
 			deps.ImageResolver,
 			searchProvider,

@@ -164,6 +164,13 @@ func (r *watchTestReader) Markers(_ context.Context, _ watchdoc.ProfileScope, _ 
 	return map[int64]watchdoc.FileMarkers{}, nil
 }
 
+func (r *watchTestReader) Credits(_ context.Context, _ watchdoc.ProfileScope, _ string) ([]watchdoc.CastMember, []watchdoc.CrewMember, error) {
+	if r.err != nil {
+		return nil, nil, r.err
+	}
+	return nil, nil, nil
+}
+
 func newWatchTestReader(t *testing.T) *watchTestReader {
 	t.Helper()
 	added, err := time.Parse(time.RFC3339, "2026-08-13T09:00:00Z")
@@ -573,7 +580,7 @@ func newWatchReaderFixture(t *testing.T) (*CatalogWatchReader, *fakeWatchBrowse,
 	files := &fakeWatchFiles{byContent: map[string][]*models.MediaFile{}, byEpisode: map[string][]*models.MediaFile{}}
 	store := &fakeWatchStore{direct: map[string]userstore.WatchProgress{}}
 	images := fakeImageResolver{byPath: map[string]string{fakeWatchPosterPath: fakeWatchPosterURL}}
-	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, files, fakeWatchStores{store: store}, images, nil)
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, files, nil, fakeWatchStores{store: store}, images, nil)
 	return reader, browse, items, episodes, files, store
 }
 
@@ -623,7 +630,7 @@ func TestWatchReaderOmitsPosterURLWithNoResolver(t *testing.T) {
 	episodes := &fakeWatchEpisodes{}
 	files := &fakeWatchFiles{byContent: map[string][]*models.MediaFile{}, byEpisode: map[string][]*models.MediaFile{}}
 	store := &fakeWatchStore{direct: map[string]userstore.WatchProgress{}}
-	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, files, fakeWatchStores{store: store}, nil, nil)
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, files, nil, fakeWatchStores{store: store}, nil, nil)
 
 	result, err := reader.Items(context.Background(), watchdoc.ProfileScope{ProfileID: "profile-open"})
 	if err != nil {
@@ -843,7 +850,7 @@ func TestCatalogWatchReaderSearchPreservesProviderOrderAndResolvesPosters(t *tes
 		{ContentID: "9001", Type: itemTypeMovie, Title: "The Sealed Wing", AddedAt: &added, PosterPath: fakeWatchPosterPath},
 		{ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", AddedAt: &added},
 	}}}
-	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, files, fakeWatchStores{store: store}, fakeImageResolver{byPath: map[string]string{fakeWatchPosterPath: fakeWatchPosterURL}}, search)
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, files, nil, fakeWatchStores{store: store}, fakeImageResolver{byPath: map[string]string{fakeWatchPosterPath: fakeWatchPosterURL}}, search)
 
 	scope := watchdoc.ProfileScope{ProfileID: "profile-open", MaxContentRating: "PG-13"}
 	results, err := reader.Search(context.Background(), scope, "sealed")
@@ -872,7 +879,7 @@ func TestCatalogWatchReaderSearchPreservesProviderOrderAndResolvesPosters(t *tes
 }
 
 func TestCatalogWatchReaderSearchWithNoProviderAnswersEmptyNotError(t *testing.T) {
-	reader := NewCatalogWatchReader(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	reader := NewCatalogWatchReader(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	results, err := reader.Search(context.Background(), watchdoc.ProfileScope{ProfileID: "p"}, "anything")
 	if err != nil {
 		t.Fatalf("Search: %v", err)
@@ -897,7 +904,7 @@ func TestWatchSearchEndpointServesAContractDocumentInProviderOrder(t *testing.T)
 		{ContentID: "9001", Type: itemTypeMovie, Title: "The Sealed Wing", AddedAt: &added},
 		{ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", AddedAt: &added},
 	}}}
-	reader := NewCatalogWatchReader(&fakeWatchBrowse{result: &catalog.BrowseResult{}}, items, &fakeWatchEpisodes{}, nil, files, files, fakeWatchStores{store: store}, nil, search)
+	reader := NewCatalogWatchReader(&fakeWatchBrowse{result: &catalog.BrowseResult{}}, items, &fakeWatchEpisodes{}, nil, files, files, nil, fakeWatchStores{store: store}, nil, search)
 	handler := NewWatchHandler(reader, reader)
 
 	rr := httptest.NewRecorder()
