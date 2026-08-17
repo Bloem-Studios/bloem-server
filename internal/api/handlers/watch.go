@@ -212,6 +212,13 @@ type WatchFileSource interface {
 	ListByEpisodeIDs(ctx context.Context, episodeIDs []string) (map[string][]*models.MediaFile, error)
 }
 
+// WatchMarkerSource resolves chapter and skip-intro data for files already
+// named by identifier — never a second content- or episode-keyed lookup, the
+// same files WatchFileSource already found.
+type WatchMarkerSource interface {
+	GetByIDs(ctx context.Context, ids []int) ([]*models.MediaFile, error)
+}
+
 // CatalogWatchReader is the database-backed watchdoc.Reader: the one place the
 // Watch join between the catalog, episode, media-file and progress stores
 // lives.
@@ -221,6 +228,7 @@ type CatalogWatchReader struct {
 	episodes WatchEpisodeSource
 	seasons  WatchSeasonSource
 	files    WatchFileSource
+	markers  WatchMarkerSource
 	stores   userstore.UserStoreProvider
 	images   catalog.ImageResolver
 	search   catalog.CatalogSearchProvider
@@ -231,13 +239,16 @@ type CatalogWatchReader struct {
 // images may be nil: posters are then omitted rather than the document
 // carrying a stored path or a plugin-prefixed reference no client can fetch.
 // search may be nil: HandleWatchSearch answers unavailable rather than
-// searching nothing when no provider is configured.
+// searching nothing when no provider is configured. markers may be nil: a
+// detail document then carries no chapters or skip-intro range rather than
+// failing to compose.
 func NewCatalogWatchReader(
 	browse WatchBrowseSource,
 	items WatchItemSource,
 	episodes WatchEpisodeSource,
 	seasons WatchSeasonSource,
 	files WatchFileSource,
+	markers WatchMarkerSource,
 	stores userstore.UserStoreProvider,
 	images catalog.ImageResolver,
 	search catalog.CatalogSearchProvider,
@@ -248,6 +259,7 @@ func NewCatalogWatchReader(
 		episodes: episodes,
 		seasons:  seasons,
 		files:    files,
+		markers:  markers,
 		stores:   stores,
 		images:   images,
 		search:   search,
@@ -603,6 +615,57 @@ func (r *CatalogWatchReader) FilesByContentIDs(ctx context.Context, scope watchd
 		}
 	}
 	return fileIDs, nil
+}
+
+// Markers resolves chapter and skip-intro data for the given file
+// identifiers, unfiltered by profile scope: a file this document already
+// named is a file the profile's access predicates already cleared, so a
+// second access check here would only reject files FilesByContentIDs already
+// approved.
+func (r *CatalogWatchReader) Markers(ctx context.Context, _ watchdoc.ProfileScope, fileIDs []int64) (map[int64]watchdoc.FileMarkers, error) {
+	found := make(map[int64]watchdoc.FileMarkers, len(fileIDs))
+	if r.markers == nil || len(fileIDs) == 0 {
+		return found, nil
+	}
+	ids := make([]int, 0, len(fileIDs))
+	for _, id := range fileIDs {
+		ids = append(ids, int(id))
+	}
+	files, err := r.markers.GetByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		if file == nil {
+			continue
+		}
+		markers := watchdoc.FileMarkers{
+			Chapters:   mediaChapters(file.Chapters),
+			IntroStart: file.IntroStart,
+			IntroEnd:   file.IntroEnd,
+		}
+		if len(markers.Chapters) == 0 && markers.IntroStart == nil && markers.IntroEnd == nil {
+			continue
+		}
+		found[int64(file.ID)] = markers
+	}
+	return found, nil
+}
+
+func mediaChapters(chapters []models.MediaChapter) []watchdoc.Chapter {
+	if len(chapters) == 0 {
+		return nil
+	}
+	converted := make([]watchdoc.Chapter, 0, len(chapters))
+	for _, chapter := range chapters {
+		converted = append(converted, watchdoc.Chapter{
+			Index:        chapter.Index,
+			Title:        chapter.Title,
+			StartSeconds: chapter.StartSeconds,
+			EndSeconds:   chapter.EndSeconds,
+		})
+	}
+	return converted
 }
 
 // Progress returns the profile's rows for the requested items.

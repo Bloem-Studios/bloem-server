@@ -85,6 +85,7 @@ func newV2ClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantM
 			catalog.NewEpisodeRepository(deps.DB),
 			catalog.NewSeasonRepository(deps.DB),
 			deps.FileRepo,
+			deps.FileRepo,
 			deps.UserStoreProvider,
 			deps.ImageResolver,
 			searchProvider,

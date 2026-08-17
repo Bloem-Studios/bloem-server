@@ -94,6 +94,23 @@ type Episode struct {
 	PosterURL string
 }
 
+// Chapter is one chapter marker on a media file.
+type Chapter struct {
+	Index        int
+	Title        string
+	StartSeconds float64
+	EndSeconds   float64
+}
+
+// FileMarkers is the chapter and skip-intro data known about one media file.
+// Both are independently optional: a file can carry chapters with no detected
+// intro range, an intro range with no chapter breakdown, or neither.
+type FileMarkers struct {
+	Chapters   []Chapter
+	IntroStart *float64
+	IntroEnd   *float64
+}
+
 // Progress is one durable progress row for the requesting profile.
 type Progress struct {
 	// ContentID is the identifier the caller asked about: the movie, or the
@@ -134,6 +151,13 @@ type Reader interface {
 	// ContentID and the episode's in EpisodeID, because the stored row has no
 	// series linkage of its own.
 	Progress(ctx context.Context, scope ProfileScope, contentIDs []string) ([]Progress, error)
+	// Markers returns chapter and skip-intro data for the given file
+	// identifiers — the exact set a detail document already resolved through
+	// FilesByContentIDs, never a second, independent file lookup. An
+	// identifier with nothing known is absent from the map rather than mapped
+	// to an empty FileMarkers, so ComposeItem can tell "nothing known" apart
+	// from "known and empty" without inspecting both slice and pointer fields.
+	Markers(ctx context.Context, scope ProfileScope, fileIDs []int64) (map[int64]FileMarkers, error)
 }
 
 // ComposeHome builds the Watch home document for one profile.
@@ -290,7 +314,63 @@ func ComposeItem(ctx context.Context, reader Reader, scope ProfileScope, content
 		documentItems = append(documentItems, episodeItems...)
 	}
 
+	documentItems, err = attachMarkers(ctx, reader, scope, documentItems)
+	if err != nil {
+		return Document{}, err
+	}
+
 	return finishDocument(ctx, reader, scope, documentItems, item.ContentID)
+}
+
+// attachMarkers fetches chapter and skip-intro data for every file a detail
+// document named and copies it onto the matching item. Only ComposeItem calls
+// this — see FileMarkers' own documentation for why a home or search document
+// never does.
+func attachMarkers(ctx context.Context, reader Reader, scope ProfileScope, items []DocumentItem) ([]DocumentItem, error) {
+	fileIDs := make([]int64, 0, len(items))
+	seen := map[int64]bool{}
+	for _, item := range items {
+		if item.FileID > 0 && !seen[item.FileID] {
+			seen[item.FileID] = true
+			fileIDs = append(fileIDs, item.FileID)
+		}
+	}
+	if len(fileIDs) == 0 {
+		return items, nil
+	}
+
+	markers, err := reader.Markers(ctx, scope, fileIDs)
+	if err != nil {
+		return nil, fmt.Errorf("watchdoc: reading markers: %w", err)
+	}
+	for index := range items {
+		found, ok := markers[items[index].FileID]
+		if !ok {
+			continue
+		}
+		items[index].Chapters = documentChapters(found.Chapters)
+		if found.IntroStart != nil && found.IntroEnd != nil {
+			items[index].IntroStartSeconds = found.IntroStart
+			items[index].IntroEndSeconds = found.IntroEnd
+		}
+	}
+	return items, nil
+}
+
+func documentChapters(chapters []Chapter) []DocumentChapter {
+	if len(chapters) == 0 {
+		return nil
+	}
+	converted := make([]DocumentChapter, 0, len(chapters))
+	for _, chapter := range chapters {
+		converted = append(converted, DocumentChapter{
+			Index:        chapter.Index,
+			Title:        strings.TrimSpace(chapter.Title),
+			StartSeconds: chapter.StartSeconds,
+			EndSeconds:   chapter.EndSeconds,
+		})
+	}
+	return converted
 }
 
 // finishDocument attaches the profile's progress rows, chooses the featured

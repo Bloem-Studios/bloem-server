@@ -157,6 +157,13 @@ func (r *watchTestReader) Progress(_ context.Context, _ watchdoc.ProfileScope, c
 	return out, nil
 }
 
+func (r *watchTestReader) Markers(_ context.Context, _ watchdoc.ProfileScope, _ []int64) (map[int64]watchdoc.FileMarkers, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	return map[int64]watchdoc.FileMarkers{}, nil
+}
+
 func newWatchTestReader(t *testing.T) *watchTestReader {
 	t.Helper()
 	added, err := time.Parse(time.RFC3339, "2026-08-13T09:00:00Z")
@@ -427,6 +434,7 @@ func (f *fakeWatchEpisodes) GetByIDs(_ context.Context, contentIDs []string) ([]
 type fakeWatchFiles struct {
 	byContent map[string][]*models.MediaFile
 	byEpisode map[string][]*models.MediaFile
+	byID      map[int]*models.MediaFile
 }
 
 func (f *fakeWatchFiles) ListByContentIDs(_ context.Context, contentIDs []string) (map[string][]*models.MediaFile, error) {
@@ -447,6 +455,16 @@ func (f *fakeWatchFiles) ListByEpisodeIDs(_ context.Context, episodeIDs []string
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeWatchFiles) GetByIDs(_ context.Context, ids []int) ([]*models.MediaFile, error) {
+	found := make([]*models.MediaFile, 0, len(ids))
+	for _, id := range ids {
+		if file, ok := f.byID[id]; ok {
+			found = append(found, file)
+		}
+	}
+	return found, nil
 }
 
 type filteredProgressCall struct {
@@ -555,7 +573,7 @@ func newWatchReaderFixture(t *testing.T) (*CatalogWatchReader, *fakeWatchBrowse,
 	files := &fakeWatchFiles{byContent: map[string][]*models.MediaFile{}, byEpisode: map[string][]*models.MediaFile{}}
 	store := &fakeWatchStore{direct: map[string]userstore.WatchProgress{}}
 	images := fakeImageResolver{byPath: map[string]string{fakeWatchPosterPath: fakeWatchPosterURL}}
-	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store}, images, nil)
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, files, fakeWatchStores{store: store}, images, nil)
 	return reader, browse, items, episodes, files, store
 }
 
@@ -605,7 +623,7 @@ func TestWatchReaderOmitsPosterURLWithNoResolver(t *testing.T) {
 	episodes := &fakeWatchEpisodes{}
 	files := &fakeWatchFiles{byContent: map[string][]*models.MediaFile{}, byEpisode: map[string][]*models.MediaFile{}}
 	store := &fakeWatchStore{direct: map[string]userstore.WatchProgress{}}
-	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store}, nil, nil)
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, files, fakeWatchStores{store: store}, nil, nil)
 
 	result, err := reader.Items(context.Background(), watchdoc.ProfileScope{ProfileID: "profile-open"})
 	if err != nil {
@@ -667,6 +685,45 @@ func TestWatchReaderFiltersEpisodeFilesByAccessToo(t *testing.T) {
 	}
 	if fileIDs["8080-s01e01"] != 8080001 {
 		t.Errorf("episode file_id = %d, want 8080001", fileIDs["8080-s01e01"])
+	}
+}
+
+func TestWatchReaderMarkersResolvesChaptersAndSkipIntroFromMediaFiles(t *testing.T) {
+	reader, _, _, _, files, _ := newWatchReaderFixture(t)
+	introStart, introEnd := 0.0, 45.0
+	files.byID = map[int]*models.MediaFile{
+		4242001: {
+			ID: 4242001,
+			Chapters: []models.MediaChapter{
+				{Index: 0, Title: "Opening", StartSeconds: 0, EndSeconds: 45},
+			},
+			IntroStart: &introStart,
+			IntroEnd:   &introEnd,
+		},
+		// No markers known for this file: absent from the map the reader
+		// returns, not present with an empty FileMarkers.
+		4242002: {ID: 4242002},
+	}
+
+	found, err := reader.Markers(context.Background(), watchdoc.ProfileScope{ProfileID: "p"}, []int64{4242001, 4242002, 4242003})
+	if err != nil {
+		t.Fatalf("Markers: %v", err)
+	}
+	if _, ok := found[4242002]; ok {
+		t.Error("a file with nothing known is present in the result")
+	}
+	if _, ok := found[4242003]; ok {
+		t.Error("a file the fixture never named is present in the result")
+	}
+	markers, ok := found[4242001]
+	if !ok {
+		t.Fatal("4242001 is missing from the result")
+	}
+	if len(markers.Chapters) != 1 || markers.Chapters[0].Title != "Opening" {
+		t.Errorf("chapters = %#v", markers.Chapters)
+	}
+	if markers.IntroStart == nil || *markers.IntroStart != 0 || markers.IntroEnd == nil || *markers.IntroEnd != 45 {
+		t.Errorf("intro range = %v..%v, want 0..45", markers.IntroStart, markers.IntroEnd)
 	}
 }
 
@@ -786,7 +843,7 @@ func TestCatalogWatchReaderSearchPreservesProviderOrderAndResolvesPosters(t *tes
 		{ContentID: "9001", Type: itemTypeMovie, Title: "The Sealed Wing", AddedAt: &added, PosterPath: fakeWatchPosterPath},
 		{ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", AddedAt: &added},
 	}}}
-	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, fakeWatchStores{store: store}, fakeImageResolver{byPath: map[string]string{fakeWatchPosterPath: fakeWatchPosterURL}}, search)
+	reader := NewCatalogWatchReader(browse, items, episodes, nil, files, files, fakeWatchStores{store: store}, fakeImageResolver{byPath: map[string]string{fakeWatchPosterPath: fakeWatchPosterURL}}, search)
 
 	scope := watchdoc.ProfileScope{ProfileID: "profile-open", MaxContentRating: "PG-13"}
 	results, err := reader.Search(context.Background(), scope, "sealed")
@@ -815,7 +872,7 @@ func TestCatalogWatchReaderSearchPreservesProviderOrderAndResolvesPosters(t *tes
 }
 
 func TestCatalogWatchReaderSearchWithNoProviderAnswersEmptyNotError(t *testing.T) {
-	reader := NewCatalogWatchReader(nil, nil, nil, nil, nil, nil, nil, nil)
+	reader := NewCatalogWatchReader(nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	results, err := reader.Search(context.Background(), watchdoc.ProfileScope{ProfileID: "p"}, "anything")
 	if err != nil {
 		t.Fatalf("Search: %v", err)
@@ -840,7 +897,7 @@ func TestWatchSearchEndpointServesAContractDocumentInProviderOrder(t *testing.T)
 		{ContentID: "9001", Type: itemTypeMovie, Title: "The Sealed Wing", AddedAt: &added},
 		{ContentID: "4242", Type: itemTypeMovie, Title: "The Invented Crossing", AddedAt: &added},
 	}}}
-	reader := NewCatalogWatchReader(&fakeWatchBrowse{result: &catalog.BrowseResult{}}, items, &fakeWatchEpisodes{}, nil, files, fakeWatchStores{store: store}, nil, search)
+	reader := NewCatalogWatchReader(&fakeWatchBrowse{result: &catalog.BrowseResult{}}, items, &fakeWatchEpisodes{}, nil, files, files, fakeWatchStores{store: store}, nil, search)
 	handler := NewWatchHandler(reader, reader)
 
 	rr := httptest.NewRecorder()

@@ -93,6 +93,27 @@ type DocumentItem struct {
 	// client that renders the array without cross-referencing still agrees with
 	// the server's choice.
 	Featured bool `json:"featured,omitempty"`
+
+	// Chapters and the skip-intro range both describe the file FileID names, so
+	// both are empty whenever FileID is — a detail item with nothing playable
+	// has nothing to mark. Populated only on a detail document (ComposeItem):
+	// a home or search document lists up to a hundred items and never plays one
+	// directly, so fetching per-file marker data for it would be a home-screen
+	// request paying for data nothing on that screen uses.
+	Chapters []DocumentChapter `json:"chapters,omitempty"`
+	// IntroStartSeconds and IntroEndSeconds are emitted together or not at all:
+	// a skip-intro affordance needs both ends of the range or it has nothing to
+	// jump to.
+	IntroStartSeconds *float64 `json:"intro_start_seconds,omitempty"`
+	IntroEndSeconds   *float64 `json:"intro_end_seconds,omitempty"`
+}
+
+// DocumentChapter is one chapter marker on the file a DocumentItem names.
+type DocumentChapter struct {
+	Index        int     `json:"index"`
+	Title        string  `json:"title,omitempty"`
+	StartSeconds float64 `json:"start_seconds"`
+	EndSeconds   float64 `json:"end_seconds"`
 }
 
 // DocumentSeason is a season summary on a series item.

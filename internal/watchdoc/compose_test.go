@@ -147,6 +147,7 @@ type fakeReader struct {
 	episodes   map[string][]watchdoc.Episode
 	files      map[string]int64
 	progress   []watchdoc.Progress
+	markers    map[int64]watchdoc.FileMarkers
 	restricted map[string]bool // content IDs this profile may not see
 
 	err error
@@ -154,6 +155,7 @@ type fakeReader struct {
 	itemsCalls    int
 	progressCalls [][]string
 	fileScopes    []watchdoc.ProfileScope
+	markersCalls  [][]int64
 }
 
 func (f *fakeReader) visible(contentID string) bool { return !f.restricted[contentID] }
@@ -218,6 +220,20 @@ func (f *fakeReader) Progress(_ context.Context, _ watchdoc.ProfileScope, conten
 	for _, row := range f.progress {
 		if wanted[row.ContentID] {
 			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeReader) Markers(_ context.Context, _ watchdoc.ProfileScope, fileIDs []int64) (map[int64]watchdoc.FileMarkers, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.markersCalls = append(f.markersCalls, append([]int64(nil), fileIDs...))
+	out := map[int64]watchdoc.FileMarkers{}
+	for _, id := range fileIDs {
+		if markers, ok := f.markers[id]; ok {
+			out[id] = markers
 		}
 	}
 	return out, nil
@@ -746,6 +762,75 @@ func TestWatchMovieDetailCarriesItsFileIdentifier(t *testing.T) {
 	rows, _ := body["progress"].([]any)
 	if len(rows) != 1 {
 		t.Fatalf("progress rows = %d, want 1", len(rows))
+	}
+}
+
+func TestWatchMovieDetailCarriesChaptersAndSkipIntroForItsFile(t *testing.T) {
+	reader := inventedWorld(t)
+	introStart, introEnd := 0.0, 62.5
+	reader.markers = map[int64]watchdoc.FileMarkers{
+		4242001: {
+			Chapters: []watchdoc.Chapter{
+				{Index: 0, Title: "Opening", StartSeconds: 0, EndSeconds: 62.5},
+				{Index: 1, Title: "Arrival", StartSeconds: 62.5, EndSeconds: 610},
+			},
+			IntroStart: &introStart,
+			IntroEnd:   &introEnd,
+		},
+	}
+
+	document, err := watchdoc.ComposeItem(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"}, "4242")
+	if err != nil {
+		t.Fatalf("compose item: %v", err)
+	}
+	body := assertConformsToContract(t, document)
+
+	items, _ := body["items"].([]any)
+	movie, _ := items[0].(map[string]any)
+	chapters, _ := movie["chapters"].([]any)
+	if len(chapters) != 2 {
+		t.Fatalf("chapters = %d, want 2", len(chapters))
+	}
+	first, _ := chapters[0].(map[string]any)
+	if first["title"] != "Opening" || first["end_seconds"] != 62.5 {
+		t.Errorf("first chapter = %#v", first)
+	}
+	if movie["intro_start_seconds"] != 0.0 || movie["intro_end_seconds"] != 62.5 {
+		t.Errorf("intro range = %#v..%#v, want 0..62.5", movie["intro_start_seconds"], movie["intro_end_seconds"])
+	}
+	if len(reader.markersCalls) != 1 || len(reader.markersCalls[0]) != 1 || reader.markersCalls[0][0] != 4242001 {
+		t.Errorf("markers requested = %v, want exactly [4242001]", reader.markersCalls)
+	}
+}
+
+func TestWatchMovieDetailWithNoKnownMarkersOmitsTheFields(t *testing.T) {
+	reader := inventedWorld(t)
+
+	document, err := watchdoc.ComposeItem(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"}, "4242")
+	if err != nil {
+		t.Fatalf("compose item: %v", err)
+	}
+	body := assertConformsToContract(t, document)
+
+	items, _ := body["items"].([]any)
+	movie, _ := items[0].(map[string]any)
+	if _, present := movie["chapters"]; present {
+		t.Errorf("chapters present with nothing known: %#v", movie["chapters"])
+	}
+	if _, present := movie["intro_start_seconds"]; present {
+		t.Errorf("intro_start_seconds present with nothing known: %#v", movie["intro_start_seconds"])
+	}
+}
+
+func TestWatchHomeDocumentNeverAsksForMarkers(t *testing.T) {
+	reader := inventedWorld(t)
+	scope := watchdoc.ProfileScope{UserID: 7, ProfileID: "profile-invented"}
+
+	if _, err := watchdoc.ComposeHome(context.Background(), reader, scope); err != nil {
+		t.Fatalf("compose home: %v", err)
+	}
+	if len(reader.markersCalls) != 0 {
+		t.Errorf("home document called Markers %d times, want 0 — see FileMarkers' own doc for why", len(reader.markersCalls))
 	}
 }
 
