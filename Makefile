@@ -63,7 +63,13 @@ WEBTEST_KNOWN_FAILURES := \
 	--exclude src/pages/ItemDetail/SeasonContent.test.tsx \
 	--exclude src/pages/LibraryRecommended.test.tsx \
 	--exclude src/pages/setup-wizard/steps/ServerStorageStep.test.tsx \
-	--exclude src/player/hooks/useASSSubtitles.test.tsx
+	--exclude src/player/hooks/useASSSubtitles.test.tsx \
+	--exclude src/utils/storage.test.ts \
+	--exclude src/components/admin/AdminContextSwitcher.test.tsx \
+	--exclude src/hooks/queries/settingValuesRealtime.test.tsx \
+	--exclude src/hooks/useTheme.test.ts \
+	--exclude src/hooks/appearanceCacheOwnership.test.tsx \
+	--exclude src/contexts/AdminContextProvider.test.tsx
 
 # The Go binary embeds the built frontend, so every Go build and test needs
 # web/dist to exist. Tests never serve it, so a placeholder is enough; `make

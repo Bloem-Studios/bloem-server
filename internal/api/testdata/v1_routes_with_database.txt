@@ -21,6 +21,7 @@ DELETE /api/v1/api-keys/{id}
 DELETE /api/v1/audio-prefs/{series_id}
 DELETE /api/v1/auth/sessions/{id}
 DELETE /api/v1/collections/groups/{id}
+DELETE /api/v1/collections/sort-preference
 DELETE /api/v1/collections/{id}
 DELETE /api/v1/collections/{id}/image
 DELETE /api/v1/collections/{id}/items/{item_id}
@@ -212,6 +213,7 @@ GET /api/v1/recommendations/section/{kind}
 GET /api/v1/recommendations/section/{kind}/{key}
 GET /api/v1/recommendations/similar-users
 GET /api/v1/recommendations/similar/{item_id}
+GET /api/v1/recommendations/similar/{item_id}/resolved
 GET /api/v1/recommendations/taste-profile
 GET /api/v1/recommendations/taste-seed/items
 GET /api/v1/recommendations/watch-tonight
@@ -414,6 +416,7 @@ PUT /api/v1/audio-prefs/{series_id}
 PUT /api/v1/collections/groups/order
 PUT /api/v1/collections/groups/{id}
 PUT /api/v1/collections/order
+PUT /api/v1/collections/sort-preference
 PUT /api/v1/collections/{id}
 PUT /api/v1/collections/{id}/items/order
 PUT /api/v1/collections/{id}/items/{item_id}

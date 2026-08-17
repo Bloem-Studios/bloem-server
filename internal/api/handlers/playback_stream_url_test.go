@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
 )
@@ -65,7 +67,12 @@ func TestPrepareIdentityTransportV3EmitsASignedStreamURL(t *testing.T) {
 		PlayMethod: playback.PlayDirect,
 	}
 
-	transport := handler.prepareIdentityTransportV3(session, result, preparedTimelineV3{})
+	r := httptest.NewRequest("GET", "/", nil)
+	file := &models.MediaFile{ID: 42}
+	transport, transportErr := handler.prepareIdentityTransportV3(r, session, file, result, preparedTimelineV3{})
+	if transportErr != nil {
+		t.Fatalf("prepareIdentityTransportV3: %v", transportErr)
+	}
 	defer transport.rollback()
 
 	if !strings.HasPrefix(transport.url, "/stream/compose-session?st=") {

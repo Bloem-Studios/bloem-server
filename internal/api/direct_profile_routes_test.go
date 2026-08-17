@@ -102,6 +102,7 @@ func TestDirectProfileAllowedRoutesAreThisExactSet(t *testing.T) {
 
 	want := []string{
 		"DELETE /api/v1/audio-prefs/{series_id}",
+		"DELETE /api/v1/collections/sort-preference",
 		"DELETE /api/v1/devices/{device_id}",
 		"DELETE /api/v1/devices/{device_id}/settings",
 		"DELETE /api/v1/downloads/subscriptions/{id}",
@@ -191,6 +192,7 @@ func TestDirectProfileAllowedRoutesAreThisExactSet(t *testing.T) {
 		"GET /api/v1/recommendations/section/{kind}/{key}",
 		"GET /api/v1/recommendations/similar-users",
 		"GET /api/v1/recommendations/similar/{item_id}",
+		"GET /api/v1/recommendations/similar/{item_id}/resolved",
 		"GET /api/v1/recommendations/taste-profile",
 		"GET /api/v1/recommendations/taste-seed/items",
 		"GET /api/v1/recommendations/watch-tonight",
@@ -243,6 +245,7 @@ func TestDirectProfileAllowedRoutesAreThisExactSet(t *testing.T) {
 		"POST /api/v1/sync/progress",
 		"POST /api/v1/watched/{id}",
 		"PUT /api/v1/audio-prefs/{series_id}",
+		"PUT /api/v1/collections/sort-preference",
 		"PUT /api/v1/ebooks/{content_id}/progress",
 		"PUT /api/v1/ebooks/{content_id}/reader-config",
 		"PUT /api/v1/favorites/{item_id}",

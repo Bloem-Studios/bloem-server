@@ -171,6 +171,12 @@ var directProfileAllowedRoutes = map[string][]string{
 	// views carry no household state and stay.
 	"/api/v1/collections/server":       {http.MethodGet},
 	"/api/v1/collections/capabilities": {http.MethodGet},
+
+	// Unlike the personal-collection routes above, the sort preference a
+	// profile sets for a collection view is stored keyed by profileID, not
+	// account alone (see CollectionHandler.HandleSetCollectionSortPreference),
+	// so a bound profile changing it cannot reach another profile's state.
+	"/api/v1/collections/sort-preference": {http.MethodPut, http.MethodDelete},
 }
 
 // directProfileDeniedRoutes are routes inside an admitted read subtree that

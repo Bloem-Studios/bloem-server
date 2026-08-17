@@ -72,6 +72,17 @@ func seedSortTestUser(t *testing.T, pool *pgxpool.Pool) int {
 	`).Scan(&userID); err != nil {
 		t.Fatalf("seed fixture user: %v", err)
 	}
+	// CreateProfile resolves the profile's organization from the account's
+	// default-organization membership; a bare user row with none fails with
+	// tenant not found or hidden.
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		SELECT id, $1, 'active', 'user'
+		FROM organizations
+		WHERE is_default
+		ON CONFLICT (organization_id, account_id) DO NOTHING`, userID); err != nil {
+		t.Fatalf("provision test membership: %v", err)
+	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, userID)
 	})

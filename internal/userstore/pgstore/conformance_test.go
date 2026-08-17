@@ -84,6 +84,7 @@ func TestPostgresMarkWatchedBatch(t *testing.T) {
 		).Scan(&userID); err != nil {
 			t.Fatalf("seed user: %v", err)
 		}
+		provisionTestMembership(t, pool, userID)
 		t.Cleanup(func() {
 			_, _ = pool.Exec(ctx, `DELETE FROM user_watch_history WHERE user_id = $1`, userID)
 			_, _ = pool.Exec(ctx, `DELETE FROM user_history_hidden_items WHERE user_id = $1`, userID)
@@ -240,6 +241,7 @@ func TestPostgresCollectionSortPreferences(t *testing.T) {
 		).Scan(&userID); err != nil {
 			t.Fatalf("seed user: %v", err)
 		}
+		provisionTestMembership(t, pool, userID)
 		t.Cleanup(func() {
 			deleteUserAssertingCascade(t, pool, userID,
 				"user_collection_sort_preferences", "user_profiles")
