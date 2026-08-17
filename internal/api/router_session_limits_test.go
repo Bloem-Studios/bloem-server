@@ -36,6 +36,7 @@ func TestPlaybackSessionLimitProviderResolvesCanonicalProfileGroup(t *testing.T)
 		}},
 		groups,
 		sessionLimitTenantResolverStub{tenant: tenancy.Context{OrganizationID: organizationID, AccountID: 7}},
+		nil,
 	)
 
 	limits, err := provider(ctx, 7, "profile-v2")
@@ -51,6 +52,7 @@ func TestPlaybackSessionLimitProviderFailsClosedWithoutTenantResolver(t *testing
 	provider := playbackSessionLimitProvider(
 		sessionLimitUserRepositoryStub{user: &models.User{ID: 7}},
 		&profileSessionLimitGroupProvider{},
+		nil,
 		nil,
 	)
 	if _, err := provider(context.Background(), 7, "profile-v2"); !errors.Is(err, tenancy.ErrTenantUnavailable) {

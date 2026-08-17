@@ -16,8 +16,11 @@ import (
 
 // Session represents an active playback session.
 type Session struct {
-	ID                   string
-	UserID               int
+	ID     string
+	UserID int
+	// TenantID scopes this session's transcode to its tenant organization's
+	// shared pool (vondel-park growth G2); "" for an account with no tenant.
+	TenantID             string
 	ProfileID            string
 	MediaFileID          int
 	RequestedMediaFileID int
@@ -258,6 +261,13 @@ type SessionLimits struct {
 	MaxTranscodes            int
 	TranscodingDisabled      bool
 	AudioTranscodingDisabled bool
+	// Tenant organization entitlements (vondel-park growth G2). TenantID ""
+	// means the account belongs to no park tenant and none of it applies.
+	// TenantMaxTranscodes is a pool SHARED by every account in the tenant;
+	// TenantFrozen denies all playback outright.
+	TenantID            string
+	TenantMaxTranscodes int
+	TenantFrozen        bool
 }
 
 // SessionLimitProvider returns the current admission limits for a playback
@@ -296,6 +306,8 @@ type AdmissionDecision struct {
 const (
 	AdmissionReasonMaxStreamsExceeded       = "max_streams_exceeded"
 	AdmissionReasonMaxTranscodesExceeded    = "max_transcodes_exceeded"
+	AdmissionReasonTenantTranscodesExceeded = "tenant_transcodes_exceeded"
+	AdmissionReasonTenantFrozen             = "tenant_frozen"
 	AdmissionReasonTranscodingDisabled      = "transcoding_disabled"
 	AdmissionReasonAudioTranscodingDisabled = "audio_transcoding_disabled"
 )
@@ -501,6 +513,7 @@ func (m *SessionManager) StartSessionWithFilesContext(
 				return nil, err
 			}
 			s := newSession(ctx, userID, profileID, effectiveFileID, requestedFileID, method, transcodeAudio)
+			s.TenantID = limits.TenantID
 			m.sessions[s.ID] = s
 			m.mu.Unlock()
 			return s, nil
@@ -534,7 +547,14 @@ func (m *SessionManager) StartSessionWithFilesContext(
 			m.mu.Unlock()
 			continue
 		}
+		// The tenant gate runs even on the decider path: the shared pool
+		// and the frozen flag are sold entitlements, not per-account policy.
+		if err := m.tenantAdmissionErrorLocked(method, limits); err != nil {
+			m.mu.Unlock()
+			return nil, err
+		}
 		s := newSession(ctx, userID, profileID, effectiveFileID, requestedFileID, method, transcodeAudio)
+		s.TenantID = limits.TenantID
 		m.sessions[s.ID] = s
 		m.mu.Unlock()
 		return s, nil
@@ -552,6 +572,44 @@ func (m *SessionManager) inlineAdmissionErrorLocked(userID int, method PlayMetho
 
 	if method == PlayTranscode && limits.MaxTranscodes > 0 && m.transcodeCountLocked(userID) >= limits.MaxTranscodes {
 		return ErrTooManyTranscodes
+	}
+	return m.tenantAdmissionErrorLocked(method, limits)
+}
+
+// tenantTranscodeCountLocked counts live transcoding sessions across every
+// account of a park tenant organization — the shared pool the tenant's plan
+// reserved. Callers hold m.mu.
+func (m *SessionManager) tenantTranscodeCountLocked(tenantID string) int {
+	if tenantID == "" {
+		return 0
+	}
+	now := time.Now()
+	count := 0
+	for _, s := range m.sessions {
+		if s.TenantID == tenantID &&
+			(s.PlayMethod == PlayTranscode || s.replacementPlayMethod == PlayTranscode) &&
+			m.countsTowardLimitsLocked(s, now) {
+			count++
+		}
+	}
+	return count
+}
+
+// tenantAdmissionErrorLocked is the park tenant gate, applied
+// UNCONDITIONALLY — the inline path and the policy-decider path alike,
+// because the tenant organization's transcode pool and frozen flag are the
+// operator's sold entitlement, not a per-account policy the engine may
+// overrule. Callers hold m.mu.
+func (m *SessionManager) tenantAdmissionErrorLocked(method PlayMethod, limits SessionLimits) error {
+	if limits.TenantID == "" {
+		return nil
+	}
+	if limits.TenantFrozen {
+		return ErrTenantFrozen
+	}
+	if method == PlayTranscode && limits.TenantMaxTranscodes > 0 &&
+		m.tenantTranscodeCountLocked(limits.TenantID) >= limits.TenantMaxTranscodes {
+		return ErrTenantTranscodesExceeded
 	}
 	return nil
 }
@@ -602,6 +660,10 @@ func admissionDenyError(reasonCode string) error {
 		return ErrTooManyStreams
 	case AdmissionReasonMaxTranscodesExceeded:
 		return ErrTooManyTranscodes
+	case AdmissionReasonTenantTranscodesExceeded:
+		return ErrTenantTranscodesExceeded
+	case AdmissionReasonTenantFrozen:
+		return ErrTenantFrozen
 	case AdmissionReasonTranscodingDisabled:
 		return ErrTranscodingDisabled
 	case AdmissionReasonAudioTranscodingDisabled:
@@ -686,6 +748,10 @@ func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s 
 		m.transcodeCountLocked(s.UserID) >= limits.MaxTranscodes {
 		return nil, ErrTooManyTranscodes
 	}
+	if err := m.tenantAdmissionErrorLocked(s.PlayMethod, limits); err != nil {
+		return nil, err
+	}
+	s.TenantID = limits.TenantID
 
 	now := time.Now()
 	if s.StartedAt.IsZero() {
@@ -780,6 +846,10 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 				m.mu.Unlock()
 				return ErrTooManyTranscodes
 			}
+			if err := m.tenantAdmissionErrorLocked(method, limits); err != nil {
+				m.mu.Unlock()
+				return err
+			}
 			stillCurrent.replacementPlayMethod = method
 			m.mu.Unlock()
 			return nil
@@ -799,6 +869,10 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 		stillCurrent, stillExists := m.sessions[sessionID]
 		countsStable := stillExists && stillCurrent.PlayMethod == currentMethod && otherStreams == m.activeCountExcludingLocked(userID, sessionID) && otherTranscodes == m.transcodeCountExcludingLocked(userID, sessionID)
 		if countsStable {
+			if err := m.tenantAdmissionErrorLocked(method, limits); err != nil {
+				m.mu.Unlock()
+				return err
+			}
 			stillCurrent.replacementPlayMethod = method
 			m.mu.Unlock()
 			return nil

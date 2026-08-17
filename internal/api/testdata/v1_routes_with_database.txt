@@ -15,6 +15,7 @@ DELETE /api/v1/admin/notifications/push/relay
 DELETE /api/v1/admin/request-integrations/{id}
 DELETE /api/v1/admin/sections/{id}
 DELETE /api/v1/admin/subtitles/{id}/
+DELETE /api/v1/admin/tenants/{id}
 DELETE /api/v1/admin/users/{id}
 DELETE /api/v1/admin/users/{id}/settings/values/{key}
 DELETE /api/v1/api-keys/{id}
@@ -107,6 +108,8 @@ GET /api/v1/admin/subtitles/
 GET /api/v1/admin/subtitles/{id}/download
 GET /api/v1/admin/system/build
 GET /api/v1/admin/system/hw-accel
+GET /api/v1/admin/tenants
+GET /api/v1/admin/tenants/{id}
 GET /api/v1/admin/unmatched
 GET /api/v1/admin/users
 GET /api/v1/admin/users/{id}
@@ -267,6 +270,7 @@ HEAD /api/v1/livetv/sessions/{sessionId}/stream
 PATCH /api/v1/admin/items/{id}/metadata
 PATCH /api/v1/admin/jellyfin-compat/settings
 PATCH /api/v1/admin/subtitles/{id}/
+PATCH /api/v1/admin/tenants/{id}/limits
 PATCH /api/v1/downloads/subscriptions/{id}
 PATCH /api/v1/downloads/{id}
 PATCH /api/v1/ebooks/{content_id}/annotations/{annotation_id}
@@ -326,6 +330,9 @@ POST /api/v1/admin/sections/restore-defaults
 POST /api/v1/admin/server/restart
 POST /api/v1/admin/settings/check/{kind}
 POST /api/v1/admin/subtitle-providers/{provider}/test
+POST /api/v1/admin/tenants
+POST /api/v1/admin/tenants/{id}/freeze
+POST /api/v1/admin/tenants/{id}/thaw
 POST /api/v1/admin/users
 POST /api/v1/admin/users/{id}/impersonate
 POST /api/v1/api-keys/

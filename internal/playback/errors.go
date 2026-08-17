@@ -4,9 +4,17 @@ import "errors"
 
 // Sentinel errors for playback operations.
 var (
-	ErrSessionNotFound          = errors.New("playback session not found")
-	ErrTooManyStreams           = errors.New("too many concurrent streams")
-	ErrTooManyTranscodes        = errors.New("too many concurrent transcodes")
+	ErrSessionNotFound   = errors.New("playback session not found")
+	ErrTooManyStreams    = errors.New("too many concurrent streams")
+	ErrTooManyTranscodes = errors.New("too many concurrent transcodes")
+	// ErrTenantTranscodesExceeded is the TENANT organization's shared
+	// transcode pool running dry (vondel-park growth G2) — distinct from
+	// the per-user cap so a member can tell "you hit your limit" from
+	// "your server is busy".
+	ErrTenantTranscodesExceeded = errors.New("tenant transcode capacity exhausted")
+	// ErrTenantFrozen blocks every playback start for a frozen tenant
+	// organization (dunning, or a plan downgrade below the accounts in use).
+	ErrTenantFrozen             = errors.New("tenant is frozen")
 	ErrTranscodingDisabled      = errors.New("transcoding is disabled for this user")
 	ErrAudioTranscodingDisabled = errors.New("audio transcoding is disabled for this user")
 	// ErrPlaybackNotAllowed is the generic policy admission denial: a denial

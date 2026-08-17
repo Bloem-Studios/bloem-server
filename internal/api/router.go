@@ -513,14 +513,20 @@ func NewRouter(deps Dependencies) chi.Router {
 	}
 	if deps.SessionMgr != nil && userRepo != nil {
 		var sessionTenants policy.SubjectTenantResolver
+		var tenantOrgStore *tenancy.Store
 		if deps.DB != nil {
 			tenantStore := tenancy.NewStore(deps.DB)
 			sessionTenants = tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore)
+			// The SAME store also answers the park tenant quota/freeze lookup
+			// (vondel-park growth G2) — a different question from the OPA
+			// policy subject resolution above, but the same organizations
+			// table, so one Store instance answers both.
+			tenantOrgStore = tenantStore
 		}
 		if sessionTenants != nil {
 			deps.SessionMgr.SetContextProvider(playbackSessionContextProvider(sessionTenants))
 		}
-		deps.SessionMgr.SetLimitProvider(playbackSessionLimitProvider(userRepo, accessGroupStore, sessionTenants))
+		deps.SessionMgr.SetLimitProvider(playbackSessionLimitProvider(userRepo, accessGroupStore, sessionTenants, tenantOrgStore))
 		if deps.PolicySystem != nil {
 			deps.SessionMgr.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(deps.PolicySystem.PDP()))
 		}
@@ -1145,12 +1151,21 @@ func NewRouter(deps Dependencies) chi.Router {
 
 	// Build admin handler if we have a user repo.
 	var adminHandler *handlers.AdminHandler
+	var adminTenantsHandler *handlers.AdminTenantsHandler
 	var accessGroupHandler *handlers.AccessGroupHandler
 	var catalogSeedHandler *handlers.CatalogSeedHandler
 	var adminJobsHandler *handlers.AdminJobsHandler
 	if userRepo != nil {
 		adminHandler = handlers.NewAdminHandler(userRepo, deps.DB, deps.UserStoreProvider)
 		adminHandler.SetMembershipProvisioner(deps.MembershipProvisioner)
+		if deps.DB != nil {
+			// The tenant admin API (vondel-park growth G2): a park tenant is
+			// an organization, so the same tenancy.Store the OPA subject
+			// resolution above uses also answers this.
+			tenantOrgStore := tenancy.NewStore(deps.DB)
+			adminHandler.SetTenantStore(tenantOrgStore)
+			adminTenantsHandler = handlers.NewAdminTenantsHandler(tenantOrgStore, userRepo)
+		}
 		adminHandler.SessionsLoader = playbackSessionsLoader
 		adminHandler.DetailSvc = detailSvc
 		adminHandler.EventBus = deps.EventBus
@@ -2978,6 +2993,17 @@ func NewRouter(deps Dependencies) chi.Router {
 						r.Group(func(r chi.Router) {
 							r.Use(requireActingAdmin)
 
+							if adminTenantsHandler != nil {
+								// Tenants (vondel-park growth G2): the
+								// contract park's media adapter speaks.
+								r.Post("/tenants", adminTenantsHandler.HandleCreate)
+								r.Get("/tenants", adminTenantsHandler.HandleList)
+								r.Get("/tenants/{id}", adminTenantsHandler.HandleGet)
+								r.Patch("/tenants/{id}/limits", adminTenantsHandler.HandleUpdateLimits)
+								r.Post("/tenants/{id}/freeze", adminTenantsHandler.HandleFreeze)
+								r.Post("/tenants/{id}/thaw", adminTenantsHandler.HandleThaw)
+								r.Delete("/tenants/{id}", adminTenantsHandler.HandleDelete)
+							}
 							r.Get("/users", adminHandler.HandleListUsers)
 							r.Post("/users", adminHandler.HandleCreateUser)
 							r.Get("/users/{id}", adminHandler.HandleGetUser)
@@ -3465,6 +3491,7 @@ func playbackSessionLimitProvider(
 	users access.UserRepository,
 	groups access.GroupPolicyProvider,
 	tenants policy.SubjectTenantResolver,
+	tenantOrgs *tenancy.Store,
 ) playback.SessionLimitProvider {
 	return func(ctx context.Context, userID int, profileID string) (playback.SessionLimits, error) {
 		if groups != nil {
@@ -3492,12 +3519,26 @@ func playbackSessionLimitProvider(
 		if err != nil {
 			return playback.SessionLimits{}, err
 		}
-		return playback.SessionLimits{
+		limits := playback.SessionLimits{
 			MaxStreams:               effective.MaxStreams,
 			MaxTranscodes:            effective.MaxTranscodes,
 			TranscodingDisabled:      !effective.TranscodeAllowed,
 			AudioTranscodingDisabled: !effective.AudioTranscodeAllowed,
-		}, nil
+		}
+		// Park tenant entitlements (vondel-park growth G2): the shared
+		// transcode pool and the frozen flag ride the same lookup, keyed by
+		// account rather than by the active-profile policy subject above —
+		// a park tenant's quota is sold per account, not per profile.
+		if tenantOrgs != nil {
+			tenantLimits, err := tenantOrgs.TenantLimitsForUser(ctx, userID)
+			if err != nil {
+				return playback.SessionLimits{}, err
+			}
+			limits.TenantID = tenantLimits.TenantID
+			limits.TenantMaxTranscodes = tenantLimits.MaxTranscodes
+			limits.TenantFrozen = tenantLimits.Frozen
+		}
+		return limits, nil
 	}
 }
 

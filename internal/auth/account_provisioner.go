@@ -30,6 +30,17 @@ type CreateAccountInput struct {
 	DefaultProfile DefaultProfileOptions
 }
 
+// CreateDefaultProfile is createDefaultProfile, exported for
+// AdminHandler.HandleCreateUser's park-tenant branch (vondel-park growth
+// G2): that path provisions its own membership directly against a specific
+// organization instead of going through CreateAccount's default-membership
+// step, but still wants the identical default-profile creation (and the
+// identical cleanup-on-failure) CreateAccount already implements — so it
+// calls this rather than duplicate it.
+func (p *AccountProvisioner) CreateDefaultProfile(ctx context.Context, userID int, input CreateAccountInput) error {
+	return p.createDefaultProfile(ctx, userID, input)
+}
+
 type AccountProvisioner struct {
 	users         AccountUserRepository
 	storeProvider userstore.UserStoreProvider
@@ -67,7 +78,7 @@ func (p *AccountProvisioner) CreateAccount(
 	}
 
 	if p.memberships != nil {
-		if err := p.memberships.ProvisionDefaultMembership(ctx, user.ID, membershipLegacyRole(input.User.Role)); err != nil {
+		if err := p.memberships.ProvisionDefaultMembership(ctx, user.ID, MembershipLegacyRole(input.User.Role)); err != nil {
 			if deleteErr := p.users.Delete(ctx, user.ID); deleteErr != nil {
 				return nil, fmt.Errorf(
 					"provision default membership: %w (cleanup user: %w)",
@@ -97,9 +108,9 @@ func (p *AccountProvisioner) CreateAccount(
 	return user, nil
 }
 
-// membershipLegacyRole preserves the legacy migration's two-value membership
+// MembershipLegacyRole preserves the legacy migration's two-value membership
 // contract without changing the account's stored role.
-func membershipLegacyRole(role string) string {
+func MembershipLegacyRole(role string) string {
 	if role == legacyRoleAdmin {
 		return legacyRoleAdmin
 	}

@@ -140,7 +140,14 @@ type AdminHandler struct {
 	OnServerSettingUpdated       func(ctx context.Context, key, value string)
 	RestartStatus                *ServerRestartStatusTracker
 	CatalogSearchStatus          catalog.CatalogSearchStatusProvider
+	// tenantStore gates tenant-scoped account creation (vondel-park growth
+	// G2); nil means tenants are not wired and an organization_id request
+	// is refused.
+	tenantStore *tenancy.Store
 }
+
+// SetTenantStore wires the park tenant slot gate into user creation.
+func (h *AdminHandler) SetTenantStore(store *tenancy.Store) { h.tenantStore = store }
 
 // NewAdminHandler creates a new AdminHandler backed by the given
 // user repository and database pool.
@@ -183,6 +190,11 @@ type createUserRequest struct {
 	MaxProfiles              *int                   `json:"max_profiles,omitempty"`
 	DownloadAllowed          *bool                  `json:"download_allowed,omitempty"`
 	DownloadTranscodeAllowed *bool                  `json:"download_transcode_allowed,omitempty"`
+	// OrganizationID provisions this account into a specific tenant
+	// organization (vondel-park growth G2) instead of the deployment's
+	// default one. The tenant's slot quota is enforced here: a full or
+	// frozen tenant refuses.
+	OrganizationID *uuid.UUID `json:"organization_id,omitempty"`
 }
 
 type createStringSliceField struct {
@@ -503,7 +515,7 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	user, err := h.accountProvisioner.CreateAccount(r.Context(), auth.CreateAccountInput{
+	accountInput := auth.CreateAccountInput{
 		User: models.CreateUserInput{
 			Username:                 req.Username,
 			Email:                    req.Email,
@@ -524,14 +536,97 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 			Enabled: req.CreateDefaultProfile,
 			Name:    req.DefaultProfileName,
 		},
-	})
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
-		return
+	}
+
+	var user *models.User
+	if req.OrganizationID != nil {
+		user = h.createTenantUser(r.Context(), w, *req.OrganizationID, accountInput)
+		if user == nil {
+			return // createTenantUser already wrote the response.
+		}
+	} else {
+		user, err = h.accountProvisioner.CreateAccount(r.Context(), accountInput)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
+			return
+		}
 	}
 	h.invalidateStats(r.Context(), cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(user.ID))
 
 	writeJSON(w, http.StatusCreated, toAdminUserResponse(user))
+}
+
+// createTenantUser creates an account inside a specific tenant organization
+// (vondel-park growth G2) rather than the deployment's default one —
+// AccountProvisioner.CreateAccount always provisions the default
+// organization, so this replicates its steps against tenancy.Store's
+// tenant-specific ones instead, with the same cleanup-on-failure shape.
+//
+// Creating an account is a multi-step application operation that cannot run
+// inside a tenancy transaction, so the slot quota is checked before AND
+// recounted after: two racing creates both pass the pre-check at the
+// boundary, and the recount removes the account that broke the quota — the
+// breach self-heals instead of standing.
+//
+// Returns nil once it has already written the HTTP response itself, so the
+// caller's own error-writing path is not duplicated for this branch.
+func (h *AdminHandler) createTenantUser(ctx context.Context, w http.ResponseWriter, organizationID uuid.UUID, input auth.CreateAccountInput) *models.User {
+	if h.tenantStore == nil {
+		writeError(w, http.StatusUnprocessableEntity, "validation", "Tenants are not enabled on this server")
+		return nil
+	}
+	if err := h.tenantStore.TenantSlotFree(ctx, organizationID); err != nil {
+		switch {
+		case errors.Is(err, tenancy.ErrTenantOrganizationNotFound):
+			writeError(w, http.StatusUnprocessableEntity, "validation", "No such tenant")
+		case errors.Is(err, tenancy.ErrTenantSlotsExhausted):
+			writeError(w, http.StatusConflict, "tenant_slots_exhausted",
+				"This tenant has no free account slots (or is frozen)")
+		default:
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to check tenant capacity")
+		}
+		return nil
+	}
+
+	user, err := h.userRepo.Create(ctx, input.User)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
+		return nil
+	}
+
+	legacyRole := auth.MembershipLegacyRole(input.User.Role)
+	if _, err := h.tenantStore.ProvisionTenantMembership(ctx, organizationID, user.ID, legacyRole); err != nil {
+		if deleteErr := h.userRepo.Delete(ctx, user.ID); deleteErr != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to enforce tenant capacity")
+			return nil
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to provision tenant membership")
+		return nil
+	}
+
+	if input.DefaultProfile.Enabled {
+		if err := h.accountProvisioner.CreateDefaultProfile(ctx, user.ID, input); err != nil {
+			if deleteErr := h.userRepo.Delete(ctx, user.ID); deleteErr != nil {
+				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to enforce tenant capacity")
+				return nil
+			}
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create default profile")
+			return nil
+		}
+	}
+
+	// The recount half of the gate: this create may have lost a race with
+	// another create against the same tenant.
+	if over, err := h.tenantStore.TenantOverQuota(ctx, organizationID); err == nil && over {
+		if deleteErr := h.userRepo.Delete(ctx, user.ID); deleteErr != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to enforce tenant capacity")
+			return nil
+		}
+		writeError(w, http.StatusConflict, "tenant_slots_exhausted", "This tenant has no free account slots")
+		return nil
+	}
+
+	return user
 }
 
 // HandleUpdateUser handles PUT /admin/users/{id}.
