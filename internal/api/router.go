@@ -1489,6 +1489,14 @@ func NewRouter(deps Dependencies) chi.Router {
 		}
 
 		libraryCollectionRepo := catalog.NewLibraryCollectionRepository(deps.DB)
+		var collectionSortCleaner *userstore.CollectionSortPreferenceCleaner
+		if userRepo != nil && deps.UserStoreProvider != nil {
+			collectionSortCleaner = userstore.NewCollectionSortPreferenceCleaner(userRepo, deps.UserStoreProvider)
+		}
+		if collectionHandler != nil {
+			collectionHandler.LibraryCollections = libraryCollectionRepo
+		}
+		sectionHandler.SortPreferenceCleaner = collectionSortCleaner
 		if libraryCollectionService == nil {
 			libraryCollectionService = catalog.NewLibraryCollectionService(
 				libraryCollectionRepo,
@@ -1588,6 +1596,7 @@ func NewRouter(deps Dependencies) chi.Router {
 		libraryCollectionHandler.SectionRepo = sectionRepo
 		libraryCollectionHandler.UserCollectionPool = deps.DB
 		libraryCollectionHandler.EventsHub = deps.EventsHub
+		libraryCollectionHandler.SortPreferenceCleaner = collectionSortCleaner
 		if deps.FolderRepo != nil {
 			libraryCollectionHandler.FolderRepo = deps.FolderRepo
 		} else {
@@ -2420,6 +2429,8 @@ func NewRouter(deps Dependencies) chi.Router {
 						r.Use(apimw.RequireProfile)
 						r.Get("/", collectionHandler.HandleListCollections)
 						r.Get("/capabilities", collectionHandler.HandleCapabilities)
+						r.Put("/sort-preference", collectionHandler.HandleSetCollectionSortPreference)
+						r.Delete("/sort-preference", collectionHandler.HandleClearCollectionSortPreference)
 						if libraryCollectionHandler != nil {
 							// Aggregated server (admin-curated) collections across
 							// every accessible library. Separate from "/" (personal,
