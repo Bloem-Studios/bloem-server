@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"sort"
 	"strings"
@@ -12,10 +13,20 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/dblock"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// idleRoomSweepLockKey guards the database portion of sweepIdleRooms (the
+// ListIdleRoomIDs query and subsequent CloseRoom calls) so only one replica
+// performs the fleet-wide idle-room sweep per janitorInterval tick. Every
+// replica still evicts its own dead in-memory rooms first (s.rooms is
+// per-process state, not shared), which is why only the database sweep,
+// not the whole method, needs the lock.
+var idleRoomSweepLockKey = dblock.Key("watchtogether.idle_room_sweep")
 
 var (
 	ErrRoomClosed            = errors.New("watch together room is closed")
@@ -163,6 +174,13 @@ type Service struct {
 	profileNames      ProfileNameResolver
 	hostDisconnectTTL time.Duration
 	now               func() time.Time
+	// pool backs the advisory lock guarding the idle-room database sweep
+	// (see idleRoomSweepLockKey). May be nil in tests that never exercise
+	// sweepIdleRooms's database path.
+	pool *pgxpool.Pool
+	// tryLockFunc overrides advisory-lock acquisition in tests. Nil in
+	// production, where sweepIdleRooms falls back to dblock.TryLock.
+	tryLockFunc func(ctx context.Context, key int64) (*dblock.Lock, bool, error)
 
 	janitorStop chan struct{}
 
@@ -211,6 +229,17 @@ func NewService(
 	}
 	go s.runJanitor()
 	return s
+}
+
+// SetPool wires the database pool used by the idle-room sweep's advisory
+// lock. Called once by the router after NewService, kept as a setter rather
+// than a constructor parameter so existing NewService call sites (including
+// tests) are unaffected.
+func (s *Service) SetPool(pool *pgxpool.Pool) {
+	if s == nil {
+		return
+	}
+	s.pool = pool
 }
 
 // Close stops the service's background maintenance loop.
@@ -1247,6 +1276,18 @@ func (s *Service) sweepIdleRooms() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	lock, locked, err := s.acquireIdleSweepLock(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "watch together: idle room sweep advisory lock error, skipping sweep", "error", err)
+		return
+	}
+	if !locked {
+		slog.InfoContext(ctx, "watch together: another replica holds the idle room sweep lock, skipping sweep")
+		return
+	}
+	defer s.releaseIdleSweepLock(lock)
+
 	cutoff := s.now().Add(-roomIdleTTL)
 	roomIDs, err := s.repo.ListIdleRoomIDs(ctx, cutoff, 100)
 	if err != nil {
@@ -1262,6 +1303,26 @@ func (s *Service) sweepIdleRooms() {
 			continue
 		}
 		_, _ = s.repo.CloseRoom(ctx, roomID, closedAt)
+	}
+}
+
+func (s *Service) acquireIdleSweepLock(ctx context.Context) (*dblock.Lock, bool, error) {
+	if s.tryLockFunc != nil {
+		return s.tryLockFunc(ctx, idleRoomSweepLockKey)
+	}
+	if s.pool == nil {
+		// No pool wired (e.g. a test service): treat as always-uncontended
+		// rather than blocking the sweep, matching pre-lock behavior.
+		return nil, true, nil
+	}
+	return dblock.TryLock(ctx, s.pool, idleRoomSweepLockKey)
+}
+
+func (s *Service) releaseIdleSweepLock(lock *dblock.Lock) {
+	unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := lock.Unlock(unlockCtx); err != nil {
+		slog.ErrorContext(unlockCtx, "watch together: failed to release idle room sweep advisory lock", "error", err)
 	}
 }
 

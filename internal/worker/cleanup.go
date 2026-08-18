@@ -10,8 +10,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/cache"
+	"github.com/Silo-Server/silo-server/internal/dblock"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 )
+
+// sessionCleanupLockKey guards SessionCleaner.CleanStale. Unlike
+// Reconciler.tick (in reconciler.go), which syncs each replica's own
+// node-scoped session rows and therefore MUST run on every replica,
+// CleanStale purges globally-stale rows (dead-node sessions, expired
+// heartbeats, and the hourly abandoned-audiobook-session sweep) that are
+// not scoped to the running replica at all — any replica can perform this
+// cleanup, so having all of them run it on every 15s tick is pure
+// redundant work, not a correctness requirement.
+var sessionCleanupLockKey = dblock.Key("worker.session_cleanup")
 
 const (
 	// nodeDeadTimeout is how long a node can go without a heartbeat before
@@ -57,6 +68,10 @@ type SessionCleaner struct {
 	// shutdown path while the ticker goroutine is still running.
 	absPruneMu          sync.Mutex
 	lastABSSessionPrune time.Time
+
+	// tryLockFunc overrides advisory-lock acquisition in tests. Nil in
+	// production, where CleanStale falls back to dblock.TryLock.
+	tryLockFunc func(ctx context.Context, key int64) (*dblock.Lock, bool, error)
 }
 
 // NewSessionCleaner creates a SessionCleaner. The graceSeconds parameter is
@@ -103,6 +118,16 @@ func (c *SessionCleaner) Stop() {
 // 3. Remove stale active sessions (last_sync_at > 45s)
 // 4. Remove stale paused sessions (last_sync_at > 2 minutes)
 func (c *SessionCleaner) CleanStale(ctx context.Context) (int, error) {
+	lock, locked, err := c.acquireCleanupLock(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("session cleanup: advisory lock: %w", err)
+	}
+	if !locked {
+		slog.DebugContext(ctx, "session cleanup: another replica holds the lock, skipping run")
+		return 0, nil
+	}
+	defer c.releaseCleanupLock(lock)
+
 	var totalDeleted int64
 
 	// 1. Purge sessions belonging to dead nodes.
@@ -193,6 +218,24 @@ func (c *SessionCleaner) CleanStale(ctx context.Context) (int, error) {
 	}
 
 	return int(totalDeleted), nil
+}
+
+func (c *SessionCleaner) acquireCleanupLock(ctx context.Context) (*dblock.Lock, bool, error) {
+	if c.tryLockFunc != nil {
+		return c.tryLockFunc(ctx, sessionCleanupLockKey)
+	}
+	if c.pool == nil {
+		return nil, false, fmt.Errorf("session cleaner has no database pool")
+	}
+	return dblock.TryLock(ctx, c.pool, sessionCleanupLockKey)
+}
+
+func (c *SessionCleaner) releaseCleanupLock(lock *dblock.Lock) {
+	unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := lock.Unlock(unlockCtx); err != nil {
+		slog.ErrorContext(unlockCtx, "session cleanup: failed to release advisory lock", "error", err)
+	}
 }
 
 // closeAbandonedABSSessions closes abandoned audiobook playback sessions (no

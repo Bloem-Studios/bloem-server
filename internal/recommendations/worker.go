@@ -8,6 +8,20 @@ import (
 	"time"
 
 	"github.com/robfig/cron/v3"
+
+	"github.com/Silo-Server/silo-server/internal/dblock"
+)
+
+// Advisory-lock keys for the cron jobs below. On a single-replica deployment
+// these locks are always uncontended and add one Acquire/Release round trip
+// per scheduled run; on multiple replicas they ensure only one replica
+// actually executes a given tick instead of every replica redundantly
+// recomputing embeddings/taste-profiles/co-watch/recommendation caches.
+var (
+	embeddingsLockKey      = dblock.Key("recommendations.embeddings")
+	tasteProfilesLockKey   = dblock.Key("recommendations.taste_profiles")
+	cowatchLockKey         = dblock.Key("recommendations.cowatch")
+	recommendationsLockKey = dblock.Key("recommendations.recommendations_cache")
 )
 
 // JobName identifies a recommendation background job.
@@ -30,6 +44,9 @@ type Worker struct {
 	profileRefreshPending map[string]struct{}
 	cancelFunc            context.CancelFunc
 	embeddingsJobTimeout  time.Duration
+	// tryLockFunc overrides advisory-lock acquisition in tests. Nil in
+	// production, where acquireJobLock falls back to dblock.TryLock.
+	tryLockFunc func(ctx context.Context, key int64) (*dblock.Lock, bool, error)
 }
 
 const tasteProfileRefreshSubjectsQuery = `
@@ -243,6 +260,18 @@ func (w *Worker) runEmbeddings() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.embeddingsJobTimeout)
 	defer cancel()
+
+	lock, locked, err := w.acquireJobLock(ctx, embeddingsLockKey)
+	if err != nil {
+		slog.ErrorContext(ctx, "embedding job: advisory lock error, skipping run", "error", err)
+		return
+	}
+	if !locked {
+		slog.InfoContext(ctx, "embedding job: another replica holds the lock, skipping scheduled run")
+		return
+	}
+	defer w.releaseJobLock(lock)
+
 	slog.Info("starting embedding job", "timeout", w.embeddingsJobTimeout)
 	count, err := w.engine.EmbedAll(ctx)
 	if err != nil {
@@ -258,6 +287,19 @@ func (w *Worker) runTasteProfiles() {
 		return
 	}
 	defer w.setRunning(JobTasteProfiles, false)
+
+	ctx := context.Background()
+	lock, locked, err := w.acquireJobLock(ctx, tasteProfilesLockKey)
+	if err != nil {
+		slog.ErrorContext(ctx, "taste profile job: advisory lock error, skipping run", "error", err)
+		return
+	}
+	if !locked {
+		slog.InfoContext(ctx, "taste profile job: another replica holds the lock, skipping scheduled run")
+		return
+	}
+	defer w.releaseJobLock(lock)
+
 	w.doTasteProfiles()
 }
 
@@ -267,6 +309,19 @@ func (w *Worker) runCowatch() {
 		return
 	}
 	defer w.setRunning(JobCowatch, false)
+
+	ctx := context.Background()
+	lock, locked, err := w.acquireJobLock(ctx, cowatchLockKey)
+	if err != nil {
+		slog.ErrorContext(ctx, "cowatch job: advisory lock error, skipping run", "error", err)
+		return
+	}
+	if !locked {
+		slog.InfoContext(ctx, "cowatch job: another replica holds the lock, skipping scheduled run")
+		return
+	}
+	defer w.releaseJobLock(lock)
+
 	w.doCowatch()
 }
 
@@ -276,7 +331,39 @@ func (w *Worker) runRecommendations() {
 		return
 	}
 	defer w.setRunning(JobRecommendations, false)
+
+	ctx := context.Background()
+	lock, locked, err := w.acquireJobLock(ctx, recommendationsLockKey)
+	if err != nil {
+		slog.ErrorContext(ctx, "recommendations job: advisory lock error, skipping run", "error", err)
+		return
+	}
+	if !locked {
+		slog.InfoContext(ctx, "recommendations job: another replica holds the lock, skipping scheduled run")
+		return
+	}
+	defer w.releaseJobLock(lock)
+
 	w.doRecommendations()
+}
+
+// acquireJobLock tries to claim the given advisory-lock key on the engine's
+// pool. Extracted as a var-backed method (rather than a package-level call)
+// so tests can stub it to simulate a lock already held by another replica
+// without needing a second real Postgres connection.
+func (w *Worker) acquireJobLock(ctx context.Context, key int64) (*dblock.Lock, bool, error) {
+	if w.tryLockFunc != nil {
+		return w.tryLockFunc(ctx, key)
+	}
+	return dblock.TryLock(ctx, w.engine.pool, key)
+}
+
+func (w *Worker) releaseJobLock(lock *dblock.Lock) {
+	unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := lock.Unlock(unlockCtx); err != nil {
+		slog.ErrorContext(unlockCtx, "recommendations: failed to release advisory lock", "error", err)
+	}
 }
 
 func (w *Worker) doTasteProfiles() {

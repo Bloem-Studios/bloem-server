@@ -1113,15 +1113,17 @@ func NewRouter(deps Dependencies) chi.Router {
 
 		if deps.DB != nil && deps.FileRepo != nil && viewerResolver != nil && deps.Config != nil && detailSvc != nil {
 			roomTokenService := watchtogether.NewRoomTokenService(deps.Config.Auth.JWTSecret, 24*time.Hour)
+			watchTogetherService := watchtogether.NewService(
+				watchtogether.NewRepository(deps.DB),
+				deps.SessionMgr,
+				deps.FileRepo,
+				watchtogether.NewCatalogSelectionResolver(detailSvc),
+				watchtogether.NewSuggestionRepository(deps.DB),
+				watchtogether.NewProfileNameResolver(deps.UserStoreProvider),
+			)
+			watchTogetherService.SetPool(deps.DB)
 			watchTogetherHandler = handlers.NewWatchTogetherHandler(
-				watchtogether.NewService(
-					watchtogether.NewRepository(deps.DB),
-					deps.SessionMgr,
-					deps.FileRepo,
-					watchtogether.NewCatalogSelectionResolver(detailSvc),
-					watchtogether.NewSuggestionRepository(deps.DB),
-					watchtogether.NewProfileNameResolver(deps.UserStoreProvider),
-				),
+				watchTogetherService,
 				viewerResolver,
 				roomTokenService,
 			)

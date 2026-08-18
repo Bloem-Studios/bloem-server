@@ -9,7 +9,20 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/Silo-Server/silo-server/internal/dblock"
 )
+
+// cleanupLockKey guards CleanupOnce so only one replica performs the
+// operational-log retention pass per tick; every replica's RunCleanup
+// ticker fires independently, so without this lock N replicas would all
+// prune (and drop/create partitions for) the same operational_logs table
+// concurrently.
+var cleanupLockKey = dblock.Key("opslog.cleanup")
+
+// tryLockFunc overrides advisory-lock acquisition in tests. Nil in
+// production, where CleanupOnce falls back to dblock.TryLock.
+var tryLockFunc func(ctx context.Context, pool *pgxpool.Pool, key int64) (*dblock.Lock, bool, error)
 
 const (
 	keyEnabled                = "opslog.enabled"
@@ -182,8 +195,22 @@ func LoadCleanupInterval(ctx context.Context, store SettingsStore) time.Duration
 	return time.Duration(minutes) * time.Minute
 }
 
-// CleanupOnce runs a single operational log retention pass.
+// CleanupOnce runs a single operational log retention pass. Guarded by a
+// Postgres advisory lock (try-and-skip, not held for the run's duration
+// beyond its own execution): a replica that loses the race logs and returns
+// 0 rather than duplicating the prune/partition work.
 func CleanupOnce(ctx context.Context, pool *pgxpool.Pool, store SettingsStore, pm PartitionManager) int64 {
+	lock, locked, err := acquireCleanupLock(ctx, pool)
+	if err != nil {
+		slog.WarnContext(ctx, "opslog cleanup advisory lock error, skipping run", "component", "opslog", "error", err)
+		return 0
+	}
+	if !locked {
+		slog.DebugContext(ctx, "opslog cleanup: another replica holds the lock, skipping run", "component", "opslog")
+		return 0
+	}
+	defer releaseCleanupLock(lock)
+
 	policy, err := LoadRetentionPolicy(ctx, store)
 	if err != nil {
 		slog.WarnContext(ctx, "opslog cleanup policy error", "component", "opslog", "error", err)
@@ -240,6 +267,24 @@ func CleanupOnce(ctx context.Context, pool *pgxpool.Pool, store SettingsStore, p
 		)
 	}
 	return totalDeleted
+}
+
+func acquireCleanupLock(ctx context.Context, pool *pgxpool.Pool) (*dblock.Lock, bool, error) {
+	if tryLockFunc != nil {
+		return tryLockFunc(ctx, pool, cleanupLockKey)
+	}
+	if pool == nil {
+		return nil, false, fmt.Errorf("opslog cleanup has no database pool")
+	}
+	return dblock.TryLock(ctx, pool, cleanupLockKey)
+}
+
+func releaseCleanupLock(lock *dblock.Lock) {
+	unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := lock.Unlock(unlockCtx); err != nil {
+		slog.ErrorContext(unlockCtx, "opslog cleanup: failed to release advisory lock", "component", "opslog", "error", err)
+	}
 }
 
 func pruneByAge(ctx context.Context, pool *pgxpool.Pool, days int, component, level string) int64 {
