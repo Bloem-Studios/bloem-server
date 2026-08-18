@@ -741,6 +741,48 @@ func TestWatchReaderMarkersResolvesChaptersAndSkipIntroFromMediaFiles(t *testing
 	}
 }
 
+func TestWatchReaderMarkersResolvesCreditsRecapAndPreviewFromMediaFiles(t *testing.T) {
+	reader, _, _, _, files, _ := newWatchReaderFixture(t)
+	creditsStart, creditsEnd := 2400.0, 2500.0
+	recapStart, recapEnd := 0.0, 30.0
+	previewStart, previewEnd := 2500.0, 2550.0
+	files.byID = map[int]*models.MediaFile{
+		4242001: {
+			ID:           4242001,
+			CreditsStart: &creditsStart,
+			CreditsEnd:   &creditsEnd,
+			RecapStart:   &recapStart,
+			RecapEnd:     &recapEnd,
+			PreviewStart: &previewStart,
+			PreviewEnd:   &previewEnd,
+		},
+		// Nothing known for this file: absent from the result, same as the
+		// intro/chapters case.
+		4242002: {ID: 4242002},
+	}
+
+	found, err := reader.Markers(context.Background(), watchdoc.ProfileScope{ProfileID: "p"}, []int64{4242001, 4242002})
+	if err != nil {
+		t.Fatalf("Markers: %v", err)
+	}
+	if _, ok := found[4242002]; ok {
+		t.Error("a file with nothing known is present in the result")
+	}
+	markers, ok := found[4242001]
+	if !ok {
+		t.Fatal("4242001 is missing from the result")
+	}
+	if markers.CreditsStart == nil || *markers.CreditsStart != 2400 || markers.CreditsEnd == nil || *markers.CreditsEnd != 2500 {
+		t.Errorf("credits range = %v..%v, want 2400..2500", markers.CreditsStart, markers.CreditsEnd)
+	}
+	if markers.RecapStart == nil || *markers.RecapStart != 0 || markers.RecapEnd == nil || *markers.RecapEnd != 30 {
+		t.Errorf("recap range = %v..%v, want 0..30", markers.RecapStart, markers.RecapEnd)
+	}
+	if markers.PreviewStart == nil || *markers.PreviewStart != 2500 || markers.PreviewEnd == nil || *markers.PreviewEnd != 2550 {
+		t.Errorf("preview range = %v..%v, want 2500..2550", markers.PreviewStart, markers.PreviewEnd)
+	}
+}
+
 func TestWatchReaderAsksOnlyForEpisodeProgressRows(t *testing.T) {
 	reader, _, _, _, _, store := newWatchReaderFixture(t)
 	store.direct["4242"] = userstore.WatchProgress{MediaItemID: "4242", PositionSeconds: 10, DurationSeconds: 100, UpdatedAt: "2026-08-13T11:45:00Z"}

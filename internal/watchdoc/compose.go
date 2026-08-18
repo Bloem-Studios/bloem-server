@@ -133,13 +133,21 @@ type Edition struct {
 	EditionLabel    string
 }
 
-// FileMarkers is the chapter and skip-intro data known about one media file.
-// Both are independently optional: a file can carry chapters with no detected
-// intro range, an intro range with no chapter breakdown, or neither.
+// FileMarkers is the chapter, skip-intro, skip-credits, skip-recap, and
+// preview-segment data known about one media file. Each is independently
+// optional: a file can carry chapters with no detected intro range, an intro
+// range with no chapter breakdown, a credits range with no intro range, or
+// none of them.
 type FileMarkers struct {
-	Chapters   []Chapter
-	IntroStart *float64
-	IntroEnd   *float64
+	Chapters     []Chapter
+	IntroStart   *float64
+	IntroEnd     *float64
+	CreditsStart *float64
+	CreditsEnd   *float64
+	RecapStart   *float64
+	RecapEnd     *float64
+	PreviewStart *float64
+	PreviewEnd   *float64
 }
 
 // Progress is one durable progress row for the requesting profile.
@@ -404,6 +412,18 @@ func attachMarkers(ctx context.Context, reader Reader, scope ProfileScope, items
 		if found.IntroStart != nil && found.IntroEnd != nil {
 			items[index].IntroStartSeconds = found.IntroStart
 			items[index].IntroEndSeconds = found.IntroEnd
+		}
+		if found.CreditsStart != nil && found.CreditsEnd != nil {
+			items[index].CreditsStartSeconds = found.CreditsStart
+			items[index].CreditsEndSeconds = found.CreditsEnd
+		}
+		if found.RecapStart != nil && found.RecapEnd != nil {
+			items[index].RecapStartSeconds = found.RecapStart
+			items[index].RecapEndSeconds = found.RecapEnd
+		}
+		if found.PreviewStart != nil && found.PreviewEnd != nil {
+			items[index].PreviewStartSeconds = found.PreviewStart
+			items[index].PreviewEndSeconds = found.PreviewEnd
 		}
 	}
 	return items, nil

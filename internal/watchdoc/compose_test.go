@@ -830,6 +830,41 @@ func TestWatchMovieDetailCarriesChaptersAndSkipIntroForItsFile(t *testing.T) {
 	}
 }
 
+func TestWatchMovieDetailCarriesCreditsRecapAndPreviewForItsFile(t *testing.T) {
+	reader := inventedWorld(t)
+	creditsStart, creditsEnd := 2400.0, 2500.0
+	recapStart, recapEnd := 0.0, 45.0
+	previewStart, previewEnd := 2500.0, 2550.0
+	reader.markers = map[int64]watchdoc.FileMarkers{
+		4242001: {
+			CreditsStart: &creditsStart,
+			CreditsEnd:   &creditsEnd,
+			RecapStart:   &recapStart,
+			RecapEnd:     &recapEnd,
+			PreviewStart: &previewStart,
+			PreviewEnd:   &previewEnd,
+		},
+	}
+
+	document, err := watchdoc.ComposeItem(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-invented"}, "4242")
+	if err != nil {
+		t.Fatalf("compose item: %v", err)
+	}
+	body := assertConformsToContract(t, document)
+
+	items, _ := body["items"].([]any)
+	movie, _ := items[0].(map[string]any)
+	if movie["credits_start_seconds"] != 2400.0 || movie["credits_end_seconds"] != 2500.0 {
+		t.Errorf("credits range = %#v..%#v, want 2400..2500", movie["credits_start_seconds"], movie["credits_end_seconds"])
+	}
+	if movie["recap_start_seconds"] != 0.0 || movie["recap_end_seconds"] != 45.0 {
+		t.Errorf("recap range = %#v..%#v, want 0..45", movie["recap_start_seconds"], movie["recap_end_seconds"])
+	}
+	if movie["preview_start_seconds"] != 2500.0 || movie["preview_end_seconds"] != 2550.0 {
+		t.Errorf("preview range = %#v..%#v, want 2500..2550", movie["preview_start_seconds"], movie["preview_end_seconds"])
+	}
+}
+
 func TestWatchMovieDetailWithNoKnownMarkersOmitsTheFields(t *testing.T) {
 	reader := inventedWorld(t)
 
@@ -846,6 +881,15 @@ func TestWatchMovieDetailWithNoKnownMarkersOmitsTheFields(t *testing.T) {
 	}
 	if _, present := movie["intro_start_seconds"]; present {
 		t.Errorf("intro_start_seconds present with nothing known: %#v", movie["intro_start_seconds"])
+	}
+	for _, field := range []string{
+		"credits_start_seconds", "credits_end_seconds",
+		"recap_start_seconds", "recap_end_seconds",
+		"preview_start_seconds", "preview_end_seconds",
+	} {
+		if _, present := movie[field]; present {
+			t.Errorf("%s present with nothing known: %#v", field, movie[field])
+		}
 	}
 }
 

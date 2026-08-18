@@ -650,11 +650,21 @@ func (r *CatalogWatchReader) Markers(ctx context.Context, _ watchdoc.ProfileScop
 			continue
 		}
 		markers := watchdoc.FileMarkers{
-			Chapters:   mediaChapters(file.Chapters),
-			IntroStart: file.IntroStart,
-			IntroEnd:   file.IntroEnd,
+			Chapters:     mediaChapters(file.Chapters),
+			IntroStart:   file.IntroStart,
+			IntroEnd:     file.IntroEnd,
+			CreditsStart: file.CreditsStart,
+			CreditsEnd:   file.CreditsEnd,
+			RecapStart:   file.RecapStart,
+			RecapEnd:     file.RecapEnd,
+			PreviewStart: file.PreviewStart,
+			PreviewEnd:   file.PreviewEnd,
 		}
-		if len(markers.Chapters) == 0 && markers.IntroStart == nil && markers.IntroEnd == nil {
+		if len(markers.Chapters) == 0 &&
+			markers.IntroStart == nil && markers.IntroEnd == nil &&
+			markers.CreditsStart == nil && markers.CreditsEnd == nil &&
+			markers.RecapStart == nil && markers.RecapEnd == nil &&
+			markers.PreviewStart == nil && markers.PreviewEnd == nil {
 			continue
 		}
 		found[int64(file.ID)] = markers

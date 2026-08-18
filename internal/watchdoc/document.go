@@ -106,6 +106,16 @@ type DocumentItem struct {
 	// jump to.
 	IntroStartSeconds *float64 `json:"intro_start_seconds,omitempty"`
 	IntroEndSeconds   *float64 `json:"intro_end_seconds,omitempty"`
+	// CreditsStartSeconds/CreditsEndSeconds, RecapStartSeconds/RecapEndSeconds,
+	// and PreviewStartSeconds/PreviewEndSeconds follow the same
+	// emitted-together-or-not-at-all rule as the intro range, for the same
+	// reason: a skip affordance needs both ends of the range it jumps across.
+	CreditsStartSeconds *float64 `json:"credits_start_seconds,omitempty"`
+	CreditsEndSeconds   *float64 `json:"credits_end_seconds,omitempty"`
+	RecapStartSeconds   *float64 `json:"recap_start_seconds,omitempty"`
+	RecapEndSeconds     *float64 `json:"recap_end_seconds,omitempty"`
+	PreviewStartSeconds *float64 `json:"preview_start_seconds,omitempty"`
+	PreviewEndSeconds   *float64 `json:"preview_end_seconds,omitempty"`
 
 	// Cast and Crew are the people credited on the item. Root item only, same
 	// as Chapters: credits belong to the title as a whole, and an episode does
