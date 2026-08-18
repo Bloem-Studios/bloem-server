@@ -32,6 +32,7 @@ type v2ClientSurface struct {
 	identity *handlers.ServerIdentityHandler
 	watch    *handlers.WatchHandler
 	progress *handlers.ProgressHandler
+	persons  *handlers.PersonDetailHandler
 
 	auth      *apimw.AuthMiddleware
 	tenant    *apimw.TenantMiddleware
@@ -103,6 +104,17 @@ func newV2ClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantM
 		surface.watch = handlers.NewWatchHandler(watchReader, watchReader)
 	}
 
+	// The person-detail document needs only the people repository; it does not
+	// share Watch's FileRepo dependency, so it mounts independently of it.
+	if deps.PersonRepo != nil {
+		surface.persons = handlers.NewPersonDetailHandler(
+			deps.PersonRepo,
+			catalog.NewBrowseRepository(deps.DB),
+			deps.PersonRepo,
+			deps.ImageResolver,
+		)
+	}
+
 	progress := handlers.NewProgressHandler(deps.UserStoreProvider)
 	progress.EventsHub = deps.EventsHub
 	progress.SettingsRepo = settings
@@ -150,7 +162,7 @@ func (s v2ClientSurface) mount(r chi.Router) {
 	if s.identity != nil {
 		r.Get("/server/identity", s.identity.HandleGetServerIdentity)
 	}
-	if s.auth == nil || (s.watch == nil && s.progress == nil) {
+	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil) {
 		return
 	}
 
@@ -185,6 +197,9 @@ func (s v2ClientSurface) mount(r chi.Router) {
 		}
 		if s.progress != nil {
 			r.Post("/sync/progress", s.progress.HandleV2SyncProgress)
+		}
+		if s.persons != nil {
+			r.Get("/persons/{person_id}", s.persons.HandleGetPersonDetail)
 		}
 	})
 }
