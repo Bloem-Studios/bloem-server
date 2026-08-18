@@ -1,6 +1,13 @@
-# Contributing to Silo
+# Contributing to Vondel Server
 
 Hey, thanks for wanting to contribute!
+
+Vondel Server is a public tracking fork of [Silo Server](https://github.com/Silo-Server/silo-server)
+(see [FORK.md](FORK.md)) — this file covers contributing to Vondel-specific
+work in *this* repository. A change that belongs in Silo's own scanner,
+catalog, playback, or plugin runtime is generally better sent upstream to
+Silo directly, where it benefits every downstream project rather than just
+this fork.
 
 Let's be real: this project is built almost entirely with AI assistance. Claude, Codex, whatever you've got — we're not pretending otherwise. But there's a big difference between *using AI well* and *submitting AI slop*. We care a lot about the first one, and we'll push back hard on the second.
 
@@ -11,7 +18,7 @@ Let's be real: this project is built almost entirely with AI assistance. Claude,
 
 ## Things Are Moving Fast
 
-Silo is in heavy active development. Features get rewritten, APIs shift, whole sections get reworked — sometimes day to day. **If you want to work on something, reach out first.** Open an issue or drop a message so:
+Vondel is in heavy active development. Features get rewritten, APIs shift, whole sections get reworked — sometimes day to day. **If you want to work on something, reach out first.** Open an issue or drop a message so:
 
 - You don't build on something that's already been rewritten locally but not pushed yet.
 - I can avoid breaking something you're actively working on.
@@ -78,7 +85,7 @@ cd web && bun run lint               # Frontend lint
 cd web && bun run format:check       # Frontend formatting
 ```
 
-If your change spans `Silo` and `silo-plugin-sdk`, local iteration through [`go.work`](go.work) is expected. Do not rely on that workspace in repo-tracked config or release pipelines. CI validates this repo with `GOWORK=off`, and any new SDK package or symbol must come from a pushed, tagged `github.com/Silo-Server/silo-plugin-sdk` release before the change is ready to merge.
+If your change spans this server and Vondel's own private plugin SDK, local iteration through [`go.work`](go.work) is expected. Do not rely on that workspace in repo-tracked config or release pipelines. CI validates this repo with `GOWORK=off`, and any new SDK package or symbol must come from a pushed, tagged release of the SDK before the change is ready to merge — same discipline Silo's own `silo-plugin-sdk` workflow uses, applied to Vondel's separate, private SDK.
 
 ## Style
 

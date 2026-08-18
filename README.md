@@ -1,15 +1,56 @@
 # Vondel Server
 
-Vondel Server is a private tracking fork of
-[Silo Server](https://github.com/Silo-Server/silo-server). It retains upstream
-Git history, module paths, protocol identifiers, and environment-variable names
-so upstream commits remain mergeable and existing Silo clients remain
-compatible. See [FORK.md](FORK.md) for provenance, deliberate divergence, and
-the protected-upstream remote setup.
+Vondel Server is a public tracking fork of
+[Silo Server](https://github.com/Silo-Server/silo-server), maintained by
+Vondel Media. It retains upstream Git history, module paths, protocol
+identifiers, and environment-variable names so upstream commits remain
+mergeable and existing Silo-compatible clients keep working against it. See
+[FORK.md](FORK.md) for provenance, deliberate divergence, and the
+protected-upstream remote setup.
 
-The operational documentation below follows upstream closely. Technical names
-such as `SILO_DATA_ROOT` remain compatibility contracts; the distributed web
-application and visual assets identify the product as Vondel.
+The operational documentation below follows upstream closely, since most of
+it — deployment, configuration, self-hosting — applies identically to both
+projects. Technical names such as `SILO_DATA_ROOT` remain compatibility
+contracts; the distributed web application and visual assets identify the
+product as Vondel, per [TRADEMARK.md](TRADEMARK.md)'s rebranding requirement
+for forks.
+
+## Credit where it's due
+
+Vondel Server exists because [Silo Server](https://github.com/Silo-Server/silo-server)
+does. The scanner, catalog, playback pipeline, plugin runtime, and the large
+majority of this codebase's day-to-day behavior are Silo's own design and
+implementation, licensed AGPL-3.0-or-later, carried forward here with its
+license and copyright notices intact — see [LICENSE](LICENSE) and
+[FORK.md](FORK.md). If you find this project useful, the credit — and any
+support you'd like to give — belongs first to the people building Silo
+itself: <https://github.com/sponsors/quick104>.
+
+Live TV, OTA/DVR, and EPG support is a separate attributed AGPL adaptation of
+the [Prairie Server](https://github.com/Prairie-Server/prairie-server)
+subsystem; see `docs/livetv/prairie-source-manifest.tsv` for the pinned
+source this was adapted from.
+
+## What Vondel adds on top of Silo
+
+This fork stays close to upstream deliberately (see FORK.md for why), and
+adds a focused set of its own capabilities alongside it:
+
+- A tenant and identity foundation under `/api/v2` — membership discovery,
+  organization-scoped profile groups, and policy-bounded visibility of
+  organization-owned or explicitly entitled media folders — while `/api/v1`
+  remains the unmodified Silo-compatible surface every existing client
+  already speaks. See
+  [the operator runbook](docs/architecture/opa-tenant-authorization.md).
+- A private plugin SDK, catalog, and first-party plugin set.
+- Client contract conformance tests (`internal/clientcontract`) and an
+  install/scan acceptance test suite (`internal/acceptance`), used to keep
+  Vondel's own native clients honest against this server's real contract.
+- Product identity: Vondel naming and branding in user-facing copy, applied
+  at build time so upstream source stays mergeable (see FORK.md).
+
+Everything else — the feature list below, deployment, and configuration — is
+Silo's own work, unchanged.
 
 ## Highlights
 
@@ -306,19 +347,18 @@ Technical notes:
 
 ## Contributing & Development
 
-Silo is open source and contributions are welcome. See [DEVELOPMENT.md](DEVELOPMENT.md) for building from source in a dev workflow, running tests, database migrations, and project layout, and [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations, merge request guidance, and the policy for AI-assisted submissions.
+Vondel Server is open source under the same terms as Silo. See
+[DEVELOPMENT.md](DEVELOPMENT.md) for building from source in a dev workflow,
+running tests, database migrations, and project layout, and
+[CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations and merge
+request guidance.
 
-## Supporting Silo
-
-Silo is an open-source hobby project, developed in spare time and funded out of pocket. If you'd like to support development, you can sponsor via [GitHub Sponsors](https://github.com/sponsors/quick104).
-
-Donations go directly toward the costs of building and running the project:
-
-- AI development tooling subscriptions (Claude, Codex) used to build and maintain Silo
-- Push notification relay infrastructure
-- Future development costs
-
-Sponsoring is entirely optional — Silo is and will remain free and open source. Bug reports, contributions, and feedback are just as valuable.
+Since this is a tracking fork (see FORK.md), a change that belongs in Silo's
+own scanner, catalog, playback, or plugin runtime is generally better
+contributed upstream to [Silo Server](https://github.com/Silo-Server/silo-server)
+directly, where it benefits every downstream project, not just this one.
+Contributions to Vondel-specific areas — the `/api/v2` tenant foundation, the
+plugin SDK/catalog, or the client-contract test suites — belong here.
 
 ## License & Trademarks
 
