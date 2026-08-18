@@ -461,6 +461,10 @@ func NewRouter(deps Dependencies) chi.Router {
 			profileTokenService,
 		)
 		authHandler = handlers.NewAuthHandler(authService, jwtService, deviceLoginService)
+		// Same api-key/user sources AuthMiddleware.RequireAuth uses below —
+		// an "sa_" key must authenticate identically whether a request goes
+		// through the middleware or straight to /auth/me and friends.
+		authHandler.SetAPIKeyAuth(apiKeyRepo, userRepo)
 		authMiddleware = apimw.NewAuthMiddleware(jwtService, sessionRepo, apiKeyRepo, userRepo)
 		// Default-deny for direct-profile sessions. Installed here, at the one
 		// place claims are resolved, so a route is out of reach until

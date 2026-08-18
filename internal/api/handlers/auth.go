@@ -23,6 +23,8 @@ type AuthHandler struct {
 	jwt                  *auth.JWTService
 	device               *auth.DeviceLoginService
 	oauthRoutesAvailable bool
+	apiKeyValidator      apimw.APIKeyValidator  // nil if API keys not configured
+	apiKeyUserLoader     apimw.APIKeyUserLoader // nil if API keys not configured
 }
 
 type profileLoginService interface {
@@ -41,6 +43,19 @@ func NewAuthHandler(service *auth.Service, jwt *auth.JWTService, device *auth.De
 		handler.profileLogin = service
 	}
 	return handler
+}
+
+// SetAPIKeyAuth wires API-key authentication into the handlers whose own
+// extractClaims previously only accepted a JWT — the same asymmetry
+// AuthMiddleware.RequireAuth already closed for the rest of the API. Without
+// this, a long-lived "sa_" API key authenticates against every other
+// endpoint but is silently rejected by /auth/me, /auth/sessions, and
+// friends, which is exactly backwards for a key whose whole purpose is to
+// outlive a login session. Nil validator/loader (the zero value) preserves
+// today's JWT-only behavior.
+func (h *AuthHandler) SetAPIKeyAuth(validator apimw.APIKeyValidator, loader apimw.APIKeyUserLoader) {
+	h.apiKeyValidator = validator
+	h.apiKeyUserLoader = loader
 }
 
 // SetOAuthRoutesAvailable controls whether OAuth login providers are
@@ -645,7 +660,11 @@ func (h *AuthHandler) loadImpersonator(ctx context.Context, claims *auth.Claims)
 	return h.service.GetCurrentUser(ctx, &auth.Claims{UserID: *claims.ImpersonatorUserID})
 }
 
-// extractClaims extracts JWT claims from the Authorization header.
+// extractClaims extracts claims from the Authorization header: a JWT
+// access token, or — when SetAPIKeyAuth has wired one in — a long-lived
+// "sa_"-prefixed API key, validated the same way AuthMiddleware.RequireAuth
+// validates one for the rest of the API. Without that parity, an API key
+// works everywhere except here.
 func (h *AuthHandler) extractClaims(r *http.Request) (*auth.Claims, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
@@ -656,8 +675,37 @@ func (h *AuthHandler) extractClaims(r *http.Request) (*auth.Claims, error) {
 	if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
 		return nil, auth.ErrInvalidToken
 	}
+	token := parts[1]
 
-	return h.jwt.ValidateToken(parts[1])
+	if strings.HasPrefix(token, "sa_") {
+		if h.apiKeyValidator == nil || h.apiKeyUserLoader == nil {
+			return nil, auth.ErrInvalidToken
+		}
+		apiKey, err := h.apiKeyValidator.GetByKey(r.Context(), token)
+		if err != nil {
+			return nil, auth.ErrInvalidToken
+		}
+		user, err := h.apiKeyUserLoader.GetByID(r.Context(), apiKey.UserID)
+		if err != nil {
+			return nil, auth.ErrInvalidToken
+		}
+		if !user.Enabled {
+			return nil, auth.ErrInvalidToken
+		}
+		go func(id int64) {
+			_ = h.apiKeyValidator.UpdateLastUsed(context.Background(), id)
+		}(apiKey.ID)
+		return &auth.Claims{
+			UserID:    user.ID,
+			Role:      user.Role,
+			SessionID: "",
+			TokenType: auth.TokenTypeAPIKey,
+			APIKeyID:  apiKey.ID,
+			RateTier:  apiKey.RateTier,
+		}, nil
+	}
+
+	return h.jwt.ValidateToken(token)
 }
 
 // writeJSON marshals the given value as JSON and writes it to the response.
