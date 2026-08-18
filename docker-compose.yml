@@ -56,10 +56,16 @@ services:
     restart: unless-stopped
     environment:
       MODE: integrated
-      # Keep the container listeners fixed. PORT and JF_PORT in .env are
-      # host-side published-port overrides.
+      # Keep the container listener fixed. PORT in .env is a host-side
+      # published-port override.
+      #
+      # No JF_PORT/ABS_PORT here: the Jellyfin- and Audiobookshelf-compatible
+      # APIs are reached through the compatibility gateway on this same PORT
+      # by default — no extra listener, no extra published port. Setting
+      # JF_PORT (and uncommenting the matching port mapping below) opts a
+      # deployment back into a dedicated Jellyfin listener on :8096, e.g. for
+      # a reverse-proxy setup built around that port; same for ABS_PORT/:13378.
       PORT: "8080"
-      JF_PORT: "8096"
       # Master key for at-rest credential encryption. Required — the server
       # refuses to start without it. Generate with: openssl rand -base64 48
       # Back it up SEPARATELY from your database dumps; losing it makes encrypted
@@ -71,8 +77,13 @@ services:
       POSTGRES_TUNE: ${POSTGRES_TUNE:-auto}
     ports:
       - "${PORT:-8090}:8080"
-      - "${JF_PORT:-8096}:8096"
-      - "${ABS_PORT:-13378}:13378"
+      # Only needed if you explicitly re-enable a dedicated Jellyfin/ABS
+      # listener via admin settings (jellyfin_compat.listen /
+      # audiobookshelf_compat.listen) — both APIs are reached through the
+      # compatibility gateway on the port above by default. Uncomment and
+      # set JF_PORT/ABS_PORT in .env if you opt into a dedicated listener.
+      # - "${JF_PORT:-8096}:8096"
+      # - "${ABS_PORT:-13378}:13378"
     volumes:
       - ${MEDIA_ROOT:?Set MEDIA_ROOT in .env to the host media path}:${MEDIA_CONTAINER_ROOT:-/mnt/media}:ro
       - ${SILO_DATA_ROOT:-/opt/silo}/plugins:/var/lib/silo/plugins

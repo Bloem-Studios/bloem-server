@@ -383,13 +383,16 @@ func WebComponentStatusForConfig(cfg *config.Config, settings map[string]string)
 	status.PublicURL = stringSetting(settings, "jellyfin_compat.public_url", status.PublicURL)
 	status.EmulatedVersion = stringSetting(settings, "jellyfin_compat.emulated_server_version", status.EmulatedVersion)
 	status.ServerName = stringSetting(settings, "jellyfin_compat.server_name", status.ServerName)
+	// An empty Listen no longer means the API is unreachable: by default the
+	// Jellyfin-compatible API is served same-origin through the
+	// compatibility gateway (cmd/silo/main.go wires the in-process handler
+	// as compatgateway.Config.LocalHandlers[KindJellyfin]), and a dedicated
+	// listener on Listen is now an explicit opt-in rather than a
+	// requirement. So this used to treat an empty Listen as an error state;
+	// it no longer does.
 	status.APIState = "disabled"
 	if enabled {
 		status.APIState = "enabled"
-		if status.Listen == "" {
-			status.APIState = "error"
-			status.LastError = appendStatusError(status.LastError, "jellyfin compatibility listen address is empty")
-		}
 	}
 	if cfg != nil {
 		status.RestartRequired = enabled != cfg.JellyfinCompat.Enabled ||

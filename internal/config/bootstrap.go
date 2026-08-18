@@ -51,9 +51,15 @@ func LoadBootstrap(envFile string) (*BootstrapConfig, error) {
 		port = "8080"
 	}
 
-	jfPort := os.Getenv("JF_PORT")
-	if jfPort == "" {
-		jfPort = "8096"
+	// JF_PORT is an explicit opt-in to a dedicated Jellyfin-compatibility
+	// listener. Unset by default: the Jellyfin-compatible API is reached
+	// through the compatibility gateway on the server's own address, and an
+	// empty JFListen here means "no bootstrap override" (see its use in
+	// cmd/silo/main.go), leaving the DB-configured jellyfin_compat.listen
+	// value — itself empty by default — in place.
+	jfListen := ""
+	if jfPort := os.Getenv("JF_PORT"); jfPort != "" {
+		jfListen = ":" + jfPort
 	}
 
 	mode := os.Getenv("MODE")
@@ -67,7 +73,7 @@ func LoadBootstrap(envFile string) (*BootstrapConfig, error) {
 		DatabaseURL: dbURL,
 		RedisURL:    redisURL,
 		Listen:      ":" + port,
-		JFListen:    ":" + jfPort,
+		JFListen:    jfListen,
 		Mode:        mode,
 		SecretKey:   []byte(secretKey),
 	}, nil

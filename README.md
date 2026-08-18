@@ -67,7 +67,7 @@ Silo's own work, unchanged.
 
 - **Plays your media, your way** — direct play when the device supports it, remux or hardware-accelerated transcode (including NVENC) when it doesn't.
 - **Web app included** — a full-featured web client and admin interface ship with the server.
-- **Works with apps you already use** — optional Jellyfin/Emby-compatible API supports clients such as VidHub, Findroid, and Infuse.
+- **Works with apps you already use** — a Jellyfin/Emby-compatible API supports clients such as VidHub, Findroid, and Infuse, and an Audiobookshelf-compatible API supports Audiobookshelf-protocol clients for audiobook/podcast playback, progress sync, bookmarks, and RSS feeds. Both are enabled by default and reachable on Silo's own address — no extra ports to open. Both can be turned off in Admin > Settings, and an operator who wants a dedicated listener on a fixed port (`JF_PORT`/`ABS_PORT`, `8096`/`13378`) can still opt into one there.
 - **Household profiles** — multiple profiles per account, with per-profile watch state and parental controls.
 - **Plugin-driven metadata** — match and enrich your libraries with providers like TMDB and TVDB, installed as plugins.
 - **Fast setup** — one `docker compose up -d` brings up the whole stack; everything else is configured in the admin UI.
@@ -106,7 +106,7 @@ application for a one-command start.
    docker compose up -d
    ```
 
-   This starts PostgreSQL, Redis, and the integrated Silo server. The app is available at `http://localhost:8090`. Jellyfin-compatible app support is disabled until an administrator enables it in onboarding or admin settings.
+   This starts PostgreSQL, Redis, and the integrated Silo server. The app is available at `http://localhost:8090`. Jellyfin/Emby-compatible app support and Audiobookshelf-compatible app support are both enabled by default, reachable on that same address — no extra ports needed. Either can be turned off from Admin > Settings if you don't need it, and an operator who wants a dedicated listener on a fixed port instead can opt into one there too.
 
    If you already have PostgreSQL and Redis available, omit those bundled service examples from compose and point Silo at your existing `DATABASE_URL` and `REDIS_URL` instead.
 

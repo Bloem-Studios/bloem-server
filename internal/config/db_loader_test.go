@@ -94,13 +94,18 @@ func TestLoadFromDBPolicyEditorEnabledDefaultsFalse(t *testing.T) {
 	}
 }
 
+// The Audiobookshelf-compatible API is reached through the compatibility
+// gateway on the server's own address by default now, so the dedicated
+// :13378 listener is no longer implied by the feature being enabled — it
+// stays empty unless an operator opts in with an explicit
+// audiobookshelf_compat.listen value.
 func TestLoadFromDBAudiobookshelfCompatFlagGatesCompatListener(t *testing.T) {
 	cfg, err := LoadFromDB(map[string]string{})
 	if err != nil {
 		t.Fatalf("LoadFromDB() returned error: %v", err)
 	}
-	if cfg.AudiobookshelfCompat.Listen != ":13378" {
-		t.Fatalf("default audiobooks listener = %q, want default :13378", cfg.AudiobookshelfCompat.Listen)
+	if cfg.AudiobookshelfCompat.Listen != "" {
+		t.Fatalf("default audiobooks listener = %q, want empty (gateway-served by default)", cfg.AudiobookshelfCompat.Listen)
 	}
 
 	cfg, err = LoadFromDB(map[string]string{"audiobookshelf_compat.enabled": "false"})
@@ -115,21 +120,38 @@ func TestLoadFromDBAudiobookshelfCompatFlagGatesCompatListener(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadFromDB() returned error: %v", err)
 	}
+	if cfg.AudiobookshelfCompat.Listen != "" {
+		t.Fatalf("enabled audiobooks listener = %q, want empty unless a dedicated listener is explicitly configured", cfg.AudiobookshelfCompat.Listen)
+	}
+
+	cfg, err = LoadFromDB(map[string]string{
+		"audiobookshelf_compat.enabled": "true",
+		"audiobookshelf_compat.listen":  ":13378",
+	})
+	if err != nil {
+		t.Fatalf("LoadFromDB() returned error: %v", err)
+	}
 	if cfg.AudiobookshelfCompat.Listen != ":13378" {
-		t.Fatalf("enabled audiobooks listener = %q, want default :13378", cfg.AudiobookshelfCompat.Listen)
+		t.Fatalf("explicitly configured audiobooks listener = %q, want :13378 opt-in honored", cfg.AudiobookshelfCompat.Listen)
 	}
 }
 
-func TestLoadFromDBJellyfinCompatEnabledPreservesLegacyListenerDefault(t *testing.T) {
+// The Jellyfin-compatible API is reached through the compatibility gateway
+// on the server's own address by default now, so the dedicated :8096
+// listener is no longer implied by the feature being enabled — Enabled
+// still legacy-defaults to true (the compat API itself is on), but Listen
+// stays empty unless an operator opts in with an explicit
+// jellyfin_compat.listen value.
+func TestLoadFromDBJellyfinCompatEnabledDefaultsToEmptyListener(t *testing.T) {
 	cfg, err := LoadFromDB(map[string]string{})
 	if err != nil {
 		t.Fatalf("LoadFromDB() returned error: %v", err)
 	}
 	if !cfg.JellyfinCompat.Enabled {
-		t.Fatal("JellyfinCompat.Enabled = false, want legacy default true when listener would bind")
+		t.Fatal("JellyfinCompat.Enabled = false, want legacy default true")
 	}
-	if cfg.JellyfinCompat.Listen == "" {
-		t.Fatal("JellyfinCompat.Listen is empty, want default listener")
+	if cfg.JellyfinCompat.Listen != "" {
+		t.Fatalf("default JellyfinCompat.Listen = %q, want empty (gateway-served by default)", cfg.JellyfinCompat.Listen)
 	}
 
 	cfg, err = LoadFromDB(map[string]string{"jellyfin_compat.listen": ":19096"})
@@ -137,7 +159,7 @@ func TestLoadFromDBJellyfinCompatEnabledPreservesLegacyListenerDefault(t *testin
 		t.Fatalf("LoadFromDB() returned error: %v", err)
 	}
 	if !cfg.JellyfinCompat.Enabled {
-		t.Fatal("JellyfinCompat.Enabled = false, want true when legacy listener is configured")
+		t.Fatal("JellyfinCompat.Enabled = false, want true when an explicit listener is configured")
 	}
 	if cfg.JellyfinCompat.Listen != ":19096" {
 		t.Fatalf("JellyfinCompat.Listen = %q, want configured listener", cfg.JellyfinCompat.Listen)

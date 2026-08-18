@@ -379,14 +379,18 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 	}
 	cfg.Auth.RefreshTokenExpiry = refreshTokenExpiry
 
-	// AudiobookshelfCompat — dedicated listener for ABS client apps. Docker
-	// deployments publish :13378, so listen by default unless disabled.
+	// AudiobookshelfCompat — dedicated listener for ABS client apps. The
+	// Audiobookshelf-compatible API is reached through the compatibility
+	// gateway on the server's own address by default; a dedicated listener
+	// is an explicit opt-in (jellyfin_compat.listen equivalent below), so
+	// this defaults to empty rather than :13378 even when the feature itself
+	// is enabled.
 	absCompatEnabled, err := boolOr(m, "audiobookshelf_compat.enabled", true)
 	if err != nil {
 		return nil, err
 	}
 	if absCompatEnabled {
-		cfg.AudiobookshelfCompat.Listen = ":13378"
+		cfg.AudiobookshelfCompat.Listen = stringOr(m, "audiobookshelf_compat.listen", "")
 	}
 
 	// JellyfinCompat
@@ -395,7 +399,11 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 		return nil, err
 	}
 	cfg.JellyfinCompat.Enabled = compatEnabled
-	cfg.JellyfinCompat.Listen = stringOr(m, "jellyfin_compat.listen", ":8096")
+	// The Jellyfin-compatible API is reached through the compatibility
+	// gateway on the server's own address by default. A dedicated listener
+	// on :8096 is still available, but is now an explicit opt-in via
+	// jellyfin_compat.listen rather than the default.
+	cfg.JellyfinCompat.Listen = stringOr(m, "jellyfin_compat.listen", "")
 	cfg.JellyfinCompat.PublicURL = stringOr(m, "jellyfin_compat.public_url", "http://127.0.0.1:8096")
 	cfg.JellyfinCompat.EmulatedServerVersion = stringOr(m, "jellyfin_compat.emulated_server_version", DefaultJellyfinCompatEmulatedServerVersion)
 	cfg.JellyfinCompat.ServerID = stringOr(m, "jellyfin_compat.server_id", defaultJellyfinCompatServerIDFromDB)

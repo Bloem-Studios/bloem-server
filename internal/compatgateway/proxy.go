@@ -70,8 +70,18 @@ const (
 
 // Config configures the gateway.
 type Config struct {
-	// States resolves application lifecycle state. Required.
+	// States resolves application lifecycle state. Required for any route
+	// family not served by a LocalHandler.
 	States StateProvider
+	// LocalHandlers dispatches a route family straight to an in-process
+	// http.Handler instead of proxying to an enrolled companion's Endpoint.
+	// It exists for first-party services that already run in this process
+	// (the embedded Jellyfin-compatibility server, the Audiobookshelf
+	// handler) and have no separate trust/enrollment lifecycle: there is no
+	// Endpoint to negotiate, so the States/Routable machinery does not apply
+	// to them at all. A route family with no entry here keeps the existing
+	// enrolled-companion proxy behavior, States included, unchanged.
+	LocalHandlers map[AppKind]http.Handler
 	// Transport dials companions. Defaults to http.DefaultTransport.
 	Transport http.RoundTripper
 	// IdentitySecret signs the internal request identity header. Required.
@@ -95,6 +105,7 @@ type Config struct {
 // runtime route state: the table is package-level, compile-time data.
 type Gateway struct {
 	states           StateProvider
+	localHandlers    map[AppKind]http.Handler
 	transport        http.RoundTripper
 	identitySecret   []byte
 	maxRequestBytes  int64
@@ -114,8 +125,19 @@ type breaker struct {
 
 // New builds a Gateway.
 func New(cfg Config) *Gateway {
+	var localHandlers map[AppKind]http.Handler
+	if len(cfg.LocalHandlers) > 0 {
+		localHandlers = make(map[AppKind]http.Handler, len(cfg.LocalHandlers))
+		for kind, handler := range cfg.LocalHandlers {
+			if handler == nil {
+				continue
+			}
+			localHandlers[kind] = handler
+		}
+	}
 	gateway := &Gateway{
 		states:           cfg.States,
+		localHandlers:    localHandlers,
 		transport:        cfg.Transport,
 		identitySecret:   cfg.IdentitySecret,
 		maxRequestBytes:  cfg.MaxRequestBytes,
@@ -159,22 +181,13 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	traceID := requestTraceID(r)
 	w.Header().Set(traceHeader, traceID)
 
-	status, err := g.applicationStatus(r.Context(), route.App)
-	if err != nil || !status.Routable() {
-		writeUnavailable(w, route.App)
-		return
-	}
-
-	if g.circuitOpen(route.App) {
-		writeUnavailable(w, route.App)
-		return
-	}
-
 	// A dot segment never belongs in a protocol path, and percent-encoding
 	// hides it from the mux's own path cleaning: "%2e%2e%2f%2e%2e" decodes to
 	// "../.." only once URL.Path is read. Refuse rather than forward — the
 	// whole path is checked, since stripping only removes a leading segment
-	// that had to match a family name.
+	// that had to match a family name. This applies to both dispatch paths
+	// below: a local, in-process handler deserves the same hardening a
+	// proxied one gets.
 	if hasDotSegment(r.URL.Path) || hasDotSegment(r.URL.EscapedPath()) {
 		writeGatewayError(w, http.StatusBadRequest, "invalid_path", "The request path is not a valid compatibility path")
 		return
@@ -196,6 +209,30 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Body != nil {
 		r.Body = http.MaxBytesReader(w, r.Body, g.maxRequestBytes)
+	}
+
+	// First-party, in-process services (the embedded Jellyfin-compatibility
+	// server, the Audiobookshelf handler) are dispatched directly here,
+	// ahead of any States lookup: they have no Endpoint, no enrollment
+	// record, and no health/circuit lifecycle to consult, so the
+	// States-based proxy path below never runs for them. A route family
+	// with no registered local handler falls through unchanged to that
+	// path, so an unenrolled/unregistered companion still answers
+	// compatibility_unavailable exactly as before.
+	if handler, ok := g.localHandlers[route.App]; ok && handler != nil {
+		g.serveLocal(w, r, route, handler)
+		return
+	}
+
+	status, err := g.applicationStatus(r.Context(), route.App)
+	if err != nil || !status.Routable() {
+		writeUnavailable(w, route.App)
+		return
+	}
+
+	if g.circuitOpen(route.App) {
+		writeUnavailable(w, route.App)
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), g.upstreamTimeout)
@@ -245,6 +282,27 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	proxy.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// serveLocal dispatches a request the fixed table owns straight to a
+// first-party in-process handler, applying the same prefix-stripping rule
+// the proxy path applies for a StripPrefix route so the handler sees the
+// same path shape either way. jellycompat's own router re-derives the
+// original path from context for the families that need it, so the request
+// otherwise reaches the handler unmodified — no signed identity header, no
+// X-Forwarded-* rewrite, no circuit breaker: those all exist for the
+// network hop to a companion process, which this dispatch never makes.
+func (g *Gateway) serveLocal(w http.ResponseWriter, r *http.Request, route Route, handler http.Handler) {
+	if !route.StripPrefix {
+		handler.ServeHTTP(w, r)
+		return
+	}
+	clone := r.Clone(r.Context())
+	urlCopy := *r.URL
+	urlCopy.RawPath = strippedPath(r.URL.EscapedPath())
+	urlCopy.Path = strippedPath(r.URL.Path)
+	clone.URL = &urlCopy
+	handler.ServeHTTP(w, clone)
 }
 
 func (g *Gateway) applicationStatus(ctx context.Context, kind AppKind) (Status, error) {

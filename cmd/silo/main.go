@@ -749,7 +749,13 @@ func main() {
 	cfg.Server.Listen = bc.Listen
 	cfg.Server.Mode = bc.Mode
 	cfg.Database.URL = bc.DatabaseURL
-	cfg.JellyfinCompat.Listen = bc.JFListen
+	// bc.JFListen is only non-empty when JF_PORT was set explicitly: that is
+	// an operator opt-in to a dedicated listener and should win over the
+	// DB-configured value. An empty bc.JFListen means no such opt-in, so the
+	// DB-configured jellyfin_compat.listen (empty by default) stands.
+	if bc.JFListen != "" {
+		cfg.JellyfinCompat.Listen = bc.JFListen
+	}
 	if bc.RedisURL != "" {
 		cfg.Redis.URL = bc.RedisURL
 	}
@@ -2681,31 +2687,10 @@ func main() {
 
 	router := api.NewRouter(deps)
 
-	// Step 8: Build the compatibility gateway the public listener composes.
-	// The composition and the bind both live in servePublic (step 10); this
-	// step only constructs the gateway it takes.
-	//
-	// The fixed-path compatibility gateway sits here, ahead of the SPA
-	// fallback: this mux hands only /api/** to the chi router, so the
-	// gateway's reviewed route families (/System/**, /audiobookshelf/**,
-	// /web/**, …) must be claimed at the composed-mux layer or public
-	// ingress never reaches them. The application lifecycle backing is not
-	// wired yet, so every owned family answers a protocol-appropriate
-	// compatibility_unavailable — the specified behavior for a missing
-	// application — while every native path falls through to the SPA
-	// untouched. When the backing lands, it plugs into Config.States here.
-	//
-	// The lifecycle service wired into deps.CompatApplications above already
-	// answers every field of compatgateway.Status except one: Endpoint.
-	// Nothing records where a companion listens — enrollment does not ask,
-	// the application row has no column for it, and there is no
-	// configuration key — and Status.Routable() requires an endpoint. A
-	// provider built from the trust store alone would refuse every request
-	// while looking wired, so States stays nil until a companion address
-	// exists.
-	compatGateway := compatgateway.New(compatgateway.Config{
-		IdentitySecret: []byte(cfg.Auth.JWTSecret),
-	})
+	// Step 8: The compatibility gateway the public listener composes is
+	// constructed in Step 10 below, once the in-process Jellyfin- and
+	// Audiobookshelf-compatible handlers it dispatches to locally exist.
+	// See the compatgateway.New call there for the full rationale.
 
 	// Step 9: Start background workers (if needed).
 	var sessionCleaner *worker.SessionCleaner
@@ -2797,8 +2782,15 @@ func main() {
 	// http.Server of its own, so there is no second wiring here that could
 	// drift from the one the tests drive.
 
+	// jellyfinLocalHandler is the in-process Jellyfin-compatibility handler
+	// the compatibility gateway dispatches to directly, same-origin, with no
+	// extra port. It is built whenever Jellyfin compat is enabled at all;
+	// compatSrv, the dedicated :8096-style listener below, is a separate,
+	// optional opt-in gated on cfg.JellyfinCompat.Listen being explicitly
+	// set — an operator who relies on that dedicated port keeps it.
 	var compatSrv *http.Server
-	if (mode == "integrated" || mode == "api") && cfg.JellyfinCompat.Enabled && cfg.JellyfinCompat.Listen != "" {
+	var jellyfinLocalHandler http.Handler
+	if (mode == "integrated" || mode == "api") && cfg.JellyfinCompat.Enabled {
 		compatDeps := jellycompat.Dependencies{
 			Config:           cfg,
 			AppContext:       appCtx,
@@ -2938,26 +2930,74 @@ func main() {
 		compat := jellycompat.NewServerWithDependencies(compatDeps)
 		compatServer = compat
 		compatTerminalRecoveryReady = compat.StartBackgroundTasks(context.Background())
-		compatSrv = compat.HTTPServer()
-		compatSrv.ReadTimeout = 30 * time.Second
-		compatSrv.WriteTimeout = 0
-		compatSrv.IdleTimeout = 120 * time.Second
+		jellyfinLocalHandler = compat.Handler()
+
+		if cfg.JellyfinCompat.Listen != "" {
+			compatSrv = compat.HTTPServer()
+			compatSrv.ReadTimeout = 30 * time.Second
+			compatSrv.WriteTimeout = 0
+			compatSrv.IdleTimeout = 120 * time.Second
+		}
 	}
 
-	// ABS-compat listener — dedicated http.Server bound to its own port
-	// (default :13378) that hosts the Audiobookshelf-compatible API.
-	// Mirrors the Jellyfin compat layout above. The ABS handler mounts
-	// onto a fresh chi router here so /ping, /healthcheck, /status, /login,
-	// /socket.io, etc. own the URL space at the root — no SPA fallback,
-	// no collision with silo's /api/v1.
-	var absSrv *http.Server
-	if (mode == "integrated" || mode == "api") && deps.ABSHandler != nil && cfg.AudiobookshelfCompat.Listen != "" {
+	// absLocalHandler is the in-process Audiobookshelf-compatible handler
+	// the compatibility gateway dispatches to directly, same-origin, with no
+	// extra port. The ABS handler mounts onto a fresh chi router here so
+	// /ping, /healthcheck, /status, /login, /socket.io, etc. own the URL
+	// space at the handler's root — no SPA fallback, no collision with
+	// silo's /api/v1 — exactly as the dedicated listener mounted it before.
+	// absSrv, the dedicated :13378-style listener below, is a separate,
+	// optional opt-in gated on cfg.AudiobookshelfCompat.Listen being
+	// explicitly set — an operator who relies on that dedicated port keeps
+	// it.
+	var absLocalHandler http.Handler
+	if (mode == "integrated" || mode == "api") && deps.ABSHandler != nil {
 		absRouter := chi.NewRouter()
 		absRouter.Use(chimiddleware.Recoverer)
 		absRouter.Use(chimiddleware.Compress(5))
 		deps.ABSHandler.Mount(absRouter)
-		absSrv = absCompatServer(cfg.AudiobookshelfCompat.Listen, absRouter)
+		absLocalHandler = absRouter
 	}
+
+	var absSrv *http.Server
+	if absLocalHandler != nil && cfg.AudiobookshelfCompat.Listen != "" {
+		absSrv = absCompatServer(cfg.AudiobookshelfCompat.Listen, absLocalHandler)
+	}
+
+	// Step 10b: Build the compatibility gateway the public listener composes
+	// (deferred from Step 8 until the in-process handlers above exist).
+	//
+	// The fixed-path compatibility gateway sits ahead of the SPA fallback:
+	// the public mux hands only /api/** to the chi router, so the gateway's
+	// reviewed route families (/System/**, /audiobookshelf/**, /web/**, …)
+	// must be claimed at the composed-mux layer or public ingress never
+	// reaches them.
+	//
+	// Two dispatch paths exist. LocalHandlers routes the Jellyfin and
+	// Audiobookshelf route families straight to the first-party, in-process
+	// handlers built above — no Endpoint, no enrollment, no States lookup:
+	// this is the default, same-origin experience, and it is what makes
+	// those two route families answer at all when neither dedicated
+	// listener is configured. Any other route family this table might ever
+	// claim (there are none today — see internal/compatgateway/routes.go)
+	// falls through to States, which stays nil here for the same reason it
+	// always has: the enrolled-companion lifecycle service does not record
+	// an Endpoint, and a provider built from it alone would refuse every
+	// request while looking wired. That family would answer the
+	// protocol-appropriate compatibility_unavailable — the same default-deny
+	// behavior this gateway has always had for anything it hasn't been
+	// given a way to reach.
+	compatLocalHandlers := map[compatgateway.AppKind]http.Handler{}
+	if jellyfinLocalHandler != nil {
+		compatLocalHandlers[compatgateway.KindJellyfin] = jellyfinLocalHandler
+	}
+	if absLocalHandler != nil {
+		compatLocalHandlers[compatgateway.KindAudiobookshelf] = absLocalHandler
+	}
+	compatGateway := compatgateway.New(compatgateway.Config{
+		IdentitySecret: []byte(cfg.Auth.JWTSecret),
+		LocalHandlers:  compatLocalHandlers,
+	})
 
 	// Run non-critical startup work in the background so it doesn't delay the
 	// HTTP listener from accepting connections. Steps run sequentially and stop

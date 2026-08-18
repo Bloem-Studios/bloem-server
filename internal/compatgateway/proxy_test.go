@@ -1191,3 +1191,181 @@ func TestObfuscatedDotSegmentsAreRefused(t *testing.T) {
 		}
 	}
 }
+
+// --- Local (first-party, in-process) dispatch -------------------------------
+
+// recordingHandler is a stand-in for the in-process jellycompat/ABS handlers:
+// it records the request it received and answers a fixed body, so a test can
+// assert the gateway actually reached it (not the States-based proxy path)
+// and can inspect exactly what path/prefix it saw.
+type recordingHandler struct {
+	mu       sync.Mutex
+	requests []*http.Request
+	body     string
+}
+
+func (h *recordingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.mu.Lock()
+	h.requests = append(h.requests, r)
+	h.mu.Unlock()
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(h.body))
+}
+
+func (h *recordingHandler) received() []*http.Request {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	out := make([]*http.Request, len(h.requests))
+	copy(out, h.requests)
+	return out
+}
+
+// A route family with a registered local handler is answered by that
+// handler directly — not proxied — even when States has no record of the
+// application at all (no enrollment, no endpoint). This is the behavior the
+// in-process Jellyfin/ABS wiring in cmd/silo/main.go depends on: those two
+// services have no Endpoint and no enrollment record, ever.
+func TestLocalHandlerServesWithoutStates(t *testing.T) {
+	transport := &recordingTransport{}
+	jf := &recordingHandler{body: "jellyfin-local"}
+	gateway := New(Config{
+		States:         &fakeStates{}, // no record of KindJellyfin at all
+		Transport:      transport,
+		IdentitySecret: []byte("gateway-test-secret"),
+		LocalHandlers:  map[AppKind]http.Handler{KindJellyfin: jf},
+	})
+
+	rec := httptest.NewRecorder()
+	gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/System/Info", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got status %d, want 200 (local handler answer)", rec.Code)
+	}
+	if rec.Body.String() != "jellyfin-local" {
+		t.Fatalf("got body %q, want the local handler's own response", rec.Body.String())
+	}
+	if len(transport.recorded()) != 0 {
+		t.Fatal("a locally-dispatched request must never reach the upstream transport")
+	}
+	if got := jf.received(); len(got) != 1 || got[0].URL.Path != "/System/Info" {
+		t.Fatalf("local handler saw %v, want exactly one request for /System/Info", got)
+	}
+}
+
+// The legacy /emby and /jellyfin base paths are still handed to the local
+// Jellyfin handler with their prefix stripped, exactly as the proxy path
+// strips it before forwarding to a real companion endpoint.
+func TestLocalHandlerStripsPrefixForLegacyJellyfinBasePaths(t *testing.T) {
+	jf := &recordingHandler{body: "ok"}
+	gateway := New(Config{
+		States:         &fakeStates{},
+		IdentitySecret: []byte("gateway-test-secret"),
+		LocalHandlers:  map[AppKind]http.Handler{KindJellyfin: jf},
+	})
+
+	rec := httptest.NewRecorder()
+	gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/emby/Items/42", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got status %d, want 200", rec.Code)
+	}
+	got := jf.received()
+	if len(got) != 1 {
+		t.Fatalf("got %d requests, want 1", len(got))
+	}
+	if got[0].URL.Path != "/Items/42" {
+		t.Fatalf("local handler saw path %q, want /emby stripped to /Items/42", got[0].URL.Path)
+	}
+}
+
+// The Audiobookshelf route family strips its public prefix before reaching
+// the local handler, matching what the dedicated ABS listener has always
+// received (protocol-native paths, no /audiobookshelf prefix).
+func TestLocalHandlerStripsPrefixForAudiobookshelf(t *testing.T) {
+	abs := &recordingHandler{body: "ok"}
+	gateway := New(Config{
+		States:         &fakeStates{},
+		IdentitySecret: []byte("gateway-test-secret"),
+		LocalHandlers:  map[AppKind]http.Handler{KindAudiobookshelf: abs},
+	})
+
+	rec := httptest.NewRecorder()
+	gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/audiobookshelf/api/ping", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got status %d, want 200", rec.Code)
+	}
+	got := abs.received()
+	if len(got) != 1 {
+		t.Fatalf("got %d requests, want 1", len(got))
+	}
+	if got[0].URL.Path != "/api/ping" {
+		t.Fatalf("local handler saw path %q, want /audiobookshelf stripped to /api/ping", got[0].URL.Path)
+	}
+}
+
+// This is the default-deny pin: registering a local handler for one
+// application must not open up routing for the other, unrelated one. A
+// route family whose application has no local handler AND no routable
+// States entry keeps answering compatibility_unavailable exactly as an
+// unenrolled companion always has — a local handler is opt-in per
+// application, not a gateway-wide bypass.
+func TestUnregisteredLocalHandlerStillFailsClosed(t *testing.T) {
+	transport := &recordingTransport{}
+	jf := &recordingHandler{body: "jellyfin-local"}
+	// Jellyfin has a local handler and no States record; Audiobookshelf has
+	// neither a local handler nor a States record.
+	gateway := New(Config{
+		States:         &fakeStates{},
+		Transport:      transport,
+		IdentitySecret: []byte("gateway-test-secret"),
+		LocalHandlers:  map[AppKind]http.Handler{KindJellyfin: jf},
+	})
+
+	rec := httptest.NewRecorder()
+	gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/audiobookshelf/api/ping", nil))
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("got status %d, want 503 compatibility_unavailable", rec.Code)
+	}
+	var body struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil || body.Error != "compatibility_unavailable" {
+		t.Fatalf("body %q must carry compatibility_unavailable", rec.Body.String())
+	}
+	if len(transport.recorded()) != 0 {
+		t.Fatal("an unregistered, unrouteable application must not be dialed")
+	}
+	if len(jf.received()) != 0 {
+		t.Fatal("a request for a different application family must never reach an unrelated local handler")
+	}
+
+	// Jellyfin's own family, meanwhile, still resolves locally.
+	rec2 := httptest.NewRecorder()
+	gateway.ServeHTTP(rec2, httptest.NewRequest(http.MethodGet, "/System/Info", nil))
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("jellyfin local dispatch got status %d, want 200", rec2.Code)
+	}
+}
+
+// A local handler takes priority over an enrolled companion's States entry:
+// first-party in-process services are never proxied even if an operator
+// somehow also has a routable enrollment record for the same AppKind.
+func TestLocalHandlerTakesPriorityOverRoutableStates(t *testing.T) {
+	transport := &recordingTransport{}
+	states := &fakeStates{}
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	jf := &recordingHandler{body: "jellyfin-local"}
+	gateway := New(Config{
+		States:         states,
+		Transport:      transport,
+		IdentitySecret: []byte("gateway-test-secret"),
+		LocalHandlers:  map[AppKind]http.Handler{KindJellyfin: jf},
+	})
+
+	rec := httptest.NewRecorder()
+	gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/System/Info", nil))
+	if rec.Code != http.StatusOK || rec.Body.String() != "jellyfin-local" {
+		t.Fatalf("got status %d body %q, want the local handler's own 200 response", rec.Code, rec.Body.String())
+	}
+	if len(transport.recorded()) != 0 {
+		t.Fatal("a request must not be proxied when a local handler is registered for the same AppKind")
+	}
+}
