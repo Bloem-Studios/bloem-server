@@ -36,16 +36,27 @@ source this was adapted from.
 This fork stays close to upstream deliberately (see FORK.md for why), and
 adds a focused set of its own capabilities alongside it:
 
-- A tenant and identity foundation under `/api/v2` — membership discovery,
-  organization-scoped profile groups, and policy-bounded visibility of
+- A tenant and identity foundation under `/api/v2` — organization lifecycle
+  and membership management (with an admin UI for people/security
+  administration), organization-scoped profile groups, a separate
+  administrative-context session system, and policy-bounded visibility of
   organization-owned or explicitly entitled media folders — while `/api/v1`
   remains the unmodified Silo-compatible surface every existing client
   already speaks. See
   [the operator runbook](docs/architecture/opa-tenant-authorization.md).
+- A companion-deployment gateway: enrollment, trust, and administration for
+  companion instances running behind this server, with its own hardened
+  default-deny posture.
+- Optional direct profile login and shared-device pairing, for households
+  that want a profile to sign in without a full account credential each
+  time.
+- A native client API surface — richer Watch documents (cast/crew, chapter
+  and skip-intro markers, file editions, server-side search, poster
+  resolution), a person-detail endpoint, and a batch-resolved
+  similar-items endpoint — built to serve Vondel's own native Android/Apple
+  clients, verified against real contract-conformance and install/scan
+  acceptance test suites (`internal/clientcontract`, `internal/acceptance`).
 - A private plugin SDK, catalog, and first-party plugin set.
-- Client contract conformance tests (`internal/clientcontract`) and an
-  install/scan acceptance test suite (`internal/acceptance`), used to keep
-  Vondel's own native clients honest against this server's real contract.
 - Product identity: Vondel naming and branding in user-facing copy, applied
   at build time so upstream source stays mergeable (see FORK.md).
 

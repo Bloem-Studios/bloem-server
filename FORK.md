@@ -54,18 +54,28 @@ public compatibility surface and reapply the smallest Vondel delta.
 
 ## What Vondel adds
 
-- A private plugin SDK, catalog and first-party plugin set.
-- Client contract conformance tests (`internal/clientcontract`) and an install
-  and scan acceptance test (`internal/acceptance`).
 - A tenant and identity foundation under `/api/v2`, while `/api/v1` remains
-  the Silo-compatible surface. The shipped boundary includes membership
-  discovery, organization-scoped profile groups, and OPA-bounded visibility of
+  the Silo-compatible surface. The shipped boundary includes organization
+  lifecycle and membership management (with an admin UI for people and
+  security administration), organization-scoped profile groups, a separate
+  administrative-context session system, and OPA-bounded visibility of
   organization-owned or explicitly entitled media folders; see
   [the operator runbook](docs/architecture/opa-tenant-authorization.md).
+- A companion-deployment gateway: enrollment, trust, and administration for
+  companion instances running behind this server, with a hardened
+  default-deny posture (details deliberately kept out of this document).
+- Direct-profile login and shared-device pairing, letting a profile sign in
+  without a full account credential each time.
+- A native client API surface built for Vondel's own Android/Apple clients:
+  richer Watch documents (cast/crew, chapter and skip-intro markers, file
+  editions, server-side search, poster resolution), a person-detail
+  endpoint, and a batch-resolved similar-items endpoint. Verified by client
+  contract conformance tests (`internal/clientcontract`) and an install/scan
+  acceptance test suite (`internal/acceptance`).
+- A private plugin SDK, catalog and first-party plugin set.
 - Product identity: Vondel naming in user-facing copy.
 
-Administrative roles and mutation routes, direct-profile login, shared-device
-pairing, plugin authorization, and adult-scene policy are separate increments.
+Plugin authorization and adult-scene policy are separate increments.
 Live TV, OTA/DVR, and EPG are supplied by an attributed AGPL adaptation of the
 Prairie Server subsystem pinned in `docs/livetv/prairie-source-manifest.tsv`.
 
