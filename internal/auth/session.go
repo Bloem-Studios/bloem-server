@@ -319,6 +319,21 @@ func (r *SessionRepository) RevokeAllByUser(ctx context.Context, userID int) err
 	return revokeAllByUserWithQuerier(ctx, r.pool, userID)
 }
 
+// RevokeAllByUserAndProfiles atomically revokes every active direct-profile
+// session belonging to userID and one of the caller-validated profile IDs.
+// Account sessions and sessions for other users or profiles are preserved.
+func (r *SessionRepository) RevokeAllByUserAndProfiles(ctx context.Context, userID int, profileIDs []string) error {
+	query := `UPDATE auth_sessions
+		SET revoked_at = NOW()
+		WHERE user_id = $1
+		  AND profile_id = ANY($2::text[])
+		  AND revoked_at IS NULL`
+	if _, err := r.pool.Exec(ctx, query, userID, profileIDs); err != nil {
+		return fmt.Errorf("revoking sessions for user %d and selected profiles: %w", userID, err)
+	}
+	return nil
+}
+
 // RevokeAllByUserInTransaction revokes account sessions in the same commit as
 // the credential or membership state that invalidates them.
 func (r *SessionRepository) RevokeAllByUserInTransaction(ctx context.Context, tx pgx.Tx, userID int) error {

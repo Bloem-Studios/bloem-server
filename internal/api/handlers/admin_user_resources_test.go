@@ -21,8 +21,10 @@ import (
 )
 
 type adminUserResourceSessions struct {
-	sessions          map[string]*models.AuthSession
-	cancelAfterRevoke func()
+	sessions                map[string]*models.AuthSession
+	cancelAfterRevoke       func()
+	perSessionRevokeCalls   int
+	scopedAtomicRevokeCalls int
 }
 
 type adminOrganizationUserStore struct {
@@ -124,20 +126,27 @@ func (s *adminUserResourceSessions) ListByUser(_ context.Context, userID int) ([
 	return out, nil
 }
 
-func (s *adminUserResourceSessions) RevokeByUserAndSession(_ context.Context, userID int, sessionID string) error {
+func (s *adminUserResourceSessions) RevokeByUserAndSession(ctx context.Context, userID int, sessionID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	session, ok := s.sessions[sessionID]
 	if !ok || session.UserID != userID {
 		return auth.ErrSessionNotFound
 	}
 	now := time.Now()
 	session.RevokedAt = &now
+	s.perSessionRevokeCalls++
 	if s.cancelAfterRevoke != nil {
 		s.cancelAfterRevoke()
 	}
 	return nil
 }
 
-func (s *adminUserResourceSessions) RevokeAllByUser(_ context.Context, userID int) error {
+func (s *adminUserResourceSessions) RevokeAllByUser(ctx context.Context, userID int) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	now := time.Now()
 	for _, session := range s.sessions {
 		if session.UserID == userID && session.RevokedAt == nil {
@@ -148,6 +157,30 @@ func (s *adminUserResourceSessions) RevokeAllByUser(_ context.Context, userID in
 		s.cancelAfterRevoke()
 	}
 	return nil
+}
+
+func (s *adminUserResourceSessions) RevokeAllByUserAndProfiles(ctx context.Context, userID int, profileIDs []string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	selected := make(map[string]struct{}, len(profileIDs))
+	s.scopedAtomicRevokeCalls++
+	for _, profileID := range profileIDs {
+		selected[profileID] = struct{}{}
+	}
+	now := time.Now()
+	for _, session := range s.sessions {
+		if session.UserID != userID || session.ProfileID == nil || session.RevokedAt != nil {
+			continue
+		}
+		if _, ok := selected[*session.ProfileID]; ok {
+			session.RevokedAt = &now
+		}
+	}
+	if s.cancelAfterRevoke != nil {
+		s.cancelAfterRevoke()
+	}
+	return ctx.Err()
 }
 
 func (s *adminUserResourceSessions) RevokeAllByImpersonator(ctx context.Context, _ int) error {
@@ -613,6 +646,57 @@ func TestAdminUserAuthSessions_CompatInvalidationSurvivesRequestCancellation(t *
 				t.Fatalf("global compat sessions remain: persistent=%v memory=%v", state.persistent, state.memory)
 			}
 		})
+	}
+}
+
+func TestAdminUserAuthSessions_ProfileScopedRevokeAllIsAtomicAcrossRequestCancellation(t *testing.T) {
+	tenantID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	handler, stores, sessions := newAdminUserResourceHandler(t)
+	stores[1] = &adminOrganizationUserStore{UserStore: stores[1], organizationID: tenantID.String()}
+	profileA := "profile-a-secondary"
+	profileB := "profile-other-tenant"
+	sessions.sessions = map[string]*models.AuthSession{
+		"tenant-a-1": {ID: "tenant-a-1", UserID: 1, ProfileID: &profileA, ExpiresAt: time.Now().Add(time.Hour)},
+		"tenant-a-2": {ID: "tenant-a-2", UserID: 1, ProfileID: &profileA, ExpiresAt: time.Now().Add(time.Hour)},
+		"tenant-b":   {ID: "tenant-b", UserID: 1, ProfileID: &profileB, ExpiresAt: time.Now().Add(time.Hour)},
+		"account":    {ID: "account", UserID: 1, ExpiresAt: time.Now().Add(time.Hour)},
+	}
+	state := newCancellationCompatState()
+	handler.OnUserProfileSessionsRevoked = state.invalidateProfiles
+	requestCtx, cancelRequest := context.WithCancel(withAdminResourceOrganization(context.Background(), tenantID))
+	sessions.cancelAfterRevoke = cancelRequest
+
+	recorder := adminUserResourceRequestWithContext(t, routeAdminUserResources(handler), requestCtx, http.MethodDelete,
+		"/api/v1/admin/users/1/auth-sessions")
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status = %d: %s, want 204", recorder.Code, recorder.Body.String())
+	}
+	for _, sessionID := range []string{"tenant-a-1", "tenant-a-2"} {
+		if sessions.sessions[sessionID].RevokedAt == nil {
+			t.Fatalf("in-scope native session %q remains active", sessionID)
+		}
+	}
+	for _, sessionID := range []string{"tenant-b", "account"} {
+		if sessions.sessions[sessionID].RevokedAt != nil {
+			t.Fatalf("out-of-scope native session %q was revoked", sessionID)
+		}
+	}
+	if _, ok := state.persistent["profile-a"]; ok {
+		t.Fatal("in-scope durable compat session remains")
+	}
+	if _, ok := state.memory["profile-a"]; ok {
+		t.Fatal("in-scope memory compat session remains")
+	}
+	for _, token := range []string{"profile-b", "account"} {
+		if _, ok := state.persistent[token]; !ok {
+			t.Fatalf("out-of-scope durable compat session %q was removed", token)
+		}
+		if _, ok := state.memory[token]; !ok {
+			t.Fatalf("out-of-scope memory compat session %q was removed", token)
+		}
+	}
+	if sessions.scopedAtomicRevokeCalls != 1 || sessions.perSessionRevokeCalls != 0 {
+		t.Fatalf("scoped revoke calls: atomic=%d per-session=%d, want one atomic boundary", sessions.scopedAtomicRevokeCalls, sessions.perSessionRevokeCalls)
 	}
 }
 
