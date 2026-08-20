@@ -16,6 +16,11 @@ DELETE /api/v1/admin/request-integrations/{id}
 DELETE /api/v1/admin/sections/{id}
 DELETE /api/v1/admin/subtitles/{id}/
 DELETE /api/v1/admin/tenants/{id}
+DELETE /api/v1/admin/tenants/{tenant_id}/members/{user_id}
+DELETE /api/v1/admin/tenants/{tenant_id}/members/{user_id}/auth-sessions
+DELETE /api/v1/admin/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}
+DELETE /api/v1/admin/tenants/{tenant_id}/members/{user_id}/devices/{device_id}
+DELETE /api/v1/admin/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}
 DELETE /api/v1/admin/users/{id}
 DELETE /api/v1/admin/users/{id}/settings/values/{key}
 DELETE /api/v1/admin/users/{user_id}/auth-sessions
@@ -114,6 +119,11 @@ GET /api/v1/admin/system/build
 GET /api/v1/admin/system/hw-accel
 GET /api/v1/admin/tenants
 GET /api/v1/admin/tenants/{id}
+GET /api/v1/admin/tenants/{tenant_id}/members
+GET /api/v1/admin/tenants/{tenant_id}/members/{user_id}
+GET /api/v1/admin/tenants/{tenant_id}/members/{user_id}/auth-sessions
+GET /api/v1/admin/tenants/{tenant_id}/members/{user_id}/devices
+GET /api/v1/admin/tenants/{tenant_id}/members/{user_id}/profiles
 GET /api/v1/admin/unmatched
 GET /api/v1/admin/users
 GET /api/v1/admin/users/{id}
@@ -339,6 +349,11 @@ POST /api/v1/admin/subtitle-providers/{provider}/test
 POST /api/v1/admin/tenants
 POST /api/v1/admin/tenants/{id}/freeze
 POST /api/v1/admin/tenants/{id}/thaw
+POST /api/v1/admin/tenants/{tenant_id}/members
+POST /api/v1/admin/tenants/{tenant_id}/members/{user_id}/profiles
+POST /api/v1/admin/tenants/{tenant_id}/members/{user_id}/reset-password
+POST /api/v1/admin/tenants/{tenant_id}/members/{user_id}/resume
+POST /api/v1/admin/tenants/{tenant_id}/members/{user_id}/suspend
 POST /api/v1/admin/users
 POST /api/v1/admin/users/{id}/impersonate
 POST /api/v1/admin/users/{user_id}/profiles
@@ -424,6 +439,8 @@ PUT /api/v1/admin/settings
 PUT /api/v1/admin/settings/sections
 PUT /api/v1/admin/settings/{key}
 PUT /api/v1/admin/subtitle-providers/{provider}/
+PUT /api/v1/admin/tenants/{tenant_id}/members/{user_id}
+PUT /api/v1/admin/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}
 PUT /api/v1/admin/users/{id}
 PUT /api/v1/admin/users/{id}/settings/values/{key}
 PUT /api/v1/admin/users/{user_id}/profiles/{profile_id}

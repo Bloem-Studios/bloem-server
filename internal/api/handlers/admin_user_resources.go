@@ -22,6 +22,17 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
+type adminResourceOrganizationKey struct{}
+
+func withAdminResourceOrganization(ctx context.Context, organizationID uuid.UUID) context.Context {
+	return context.WithValue(ctx, adminResourceOrganizationKey{}, organizationID)
+}
+
+func adminResourceOrganization(ctx context.Context) uuid.UUID {
+	organizationID, _ := ctx.Value(adminResourceOrganizationKey{}).(uuid.UUID)
+	return organizationID
+}
+
 type adminUserSessionRepository interface {
 	GetByID(ctx context.Context, id string) (*models.AuthSession, error)
 	ListByUser(ctx context.Context, userID int) ([]*models.AuthSession, error)
@@ -184,6 +195,9 @@ func (h *AdminHandler) HandleCreateUserProfile(w http.ResponseWriter, r *http.Re
 		LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
 		AllowedLibraryIDs:          req.AllowedLibraryIDs,
 		MaxPlaybackQuality:         maxPlaybackQuality,
+	}
+	if organizationID := adminResourceOrganization(r.Context()); organizationID != uuid.Nil {
+		profile.OrganizationID = organizationID.String()
 	}
 	profileHandler := h.adminResourceProfileHandler()
 	if err := profileHandler.createProfileWithSettingsSync(

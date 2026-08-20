@@ -1,0 +1,178 @@
+package api
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/Silo-Server/silo-server/internal/config"
+	"github.com/Silo-Server/silo-server/internal/database"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
+	"github.com/Silo-Server/silo-server/migrations"
+)
+
+var adminTenantMemberRouteContract = []struct {
+	method string
+	path   string
+}{
+	{http.MethodGet, "/api/v1/admin/tenants/{tenant_id}/members"},
+	{http.MethodPost, "/api/v1/admin/tenants/{tenant_id}/members"},
+	{http.MethodGet, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}"},
+	{http.MethodPut, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}"},
+	{http.MethodDelete, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}"},
+	{http.MethodPost, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/suspend"},
+	{http.MethodPost, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/resume"},
+	{http.MethodPost, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/reset-password"},
+	{http.MethodGet, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/profiles"},
+	{http.MethodPost, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/profiles"},
+	{http.MethodPut, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}"},
+	{http.MethodDelete, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}"},
+	{http.MethodGet, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/devices"},
+	{http.MethodDelete, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/devices/{device_id}"},
+	{http.MethodGet, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/auth-sessions"},
+	{http.MethodDelete, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}"},
+	{http.MethodDelete, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}/auth-sessions"},
+}
+
+func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
+	pool := newDisposableAPIDatabase(t, "vondel_admin_tenant_members_", true)
+	if err := database.RunMigrations(context.Background(), pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate disposable database: %v", err)
+	}
+	cfg := &config.Config{Auth: config.AuthConfig{
+		JWTSecret: "admin-tenant-member-route-secret", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour,
+	}}
+	bootstrap := v1TenancyBootstrap{store: tenancy.NewStore(pool)}
+	router := NewRouter(Dependencies{
+		DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
+		OwnershipBootstrapper: bootstrap, MembershipProvisioner: bootstrap,
+	})
+
+	routes := walkV1Routes(t, router)
+	present := make(map[string]bool, len(routes))
+	for _, route := range routes {
+		present[route] = true
+	}
+	for _, route := range adminTenantMemberRouteContract {
+		if pair := route.method + " " + route.path; !present[pair] {
+			t.Errorf("production router omitted %s", pair)
+		}
+	}
+
+	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{
+		"username":"tenant-route-admin","email":"tenant-route-admin@example.test","password":"correct horse battery staple"
+	}`, "", nil)
+	if setup.Code != http.StatusCreated {
+		t.Fatalf("setup = %d %s", setup.Code, setup.Body.String())
+	}
+	var adminLogin v1LoginEnvelope
+	if err := json.Unmarshal(setup.Body.Bytes(), &adminLogin); err != nil || adminLogin.AccessToken == "" {
+		t.Fatalf("decode setup token: token present=%v err=%v", adminLogin.AccessToken != "", err)
+	}
+	createdUser := performJSONRequest(t, router, http.MethodPost, "/api/v1/admin/users", `{
+		"username":"tenant-route-user","email":"tenant-route-user@example.test","password":"correct horse battery staple","role":"user"
+	}`, adminLogin.AccessToken, nil)
+	if createdUser.Code != http.StatusCreated {
+		t.Fatalf("create non-admin user = %d %s", createdUser.Code, createdUser.Body.String())
+	}
+	userLoginResponse := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/login", `{
+		"username":"tenant-route-user","password":"correct horse battery staple"
+	}`, "", nil)
+	if userLoginResponse.Code != http.StatusOK {
+		t.Fatalf("login non-admin user = %d %s", userLoginResponse.Code, userLoginResponse.Body.String())
+	}
+	var userLogin v1LoginEnvelope
+	if err := json.Unmarshal(userLoginResponse.Body.Bytes(), &userLogin); err != nil || userLogin.AccessToken == "" {
+		t.Fatalf("decode non-admin token: token present=%v err=%v", userLogin.AccessToken != "", err)
+	}
+
+	requestPath := func(pattern string) string {
+		path := strings.ReplaceAll(pattern, "{tenant_id}", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+		path = strings.ReplaceAll(path, "{user_id}", "999999")
+		path = strings.ReplaceAll(path, "{profile_id}", "missing-profile")
+		path = strings.ReplaceAll(path, "{device_id}", "missing-device")
+		return strings.ReplaceAll(path, "{session_id}", "missing-session")
+	}
+	for _, route := range adminTenantMemberRouteContract {
+		path := requestPath(route.path)
+		headers := map[string]string{"Idempotency-Key": "route-command"}
+		body := `{}`
+		if route.method == http.MethodPost && route.path == "/api/v1/admin/tenants/{tenant_id}/members" {
+			body = `{"username":"route-member","email":"route-member@example.test","password":"private-route-password"}`
+		}
+		unauthenticated := performJSONRequest(t, router, route.method, path, body, "", headers)
+		if unauthenticated.Code != http.StatusUnauthorized {
+			t.Errorf("unauthenticated %s %s = %d %s, want 401", route.method, path, unauthenticated.Code, unauthenticated.Body.String())
+		}
+		nonAdmin := performJSONRequest(t, router, route.method, path, body, userLogin.AccessToken, headers)
+		if nonAdmin.Code != http.StatusForbidden {
+			t.Errorf("non-admin %s %s = %d %s, want 403", route.method, path, nonAdmin.Code, nonAdmin.Body.String())
+		}
+		authorized := performJSONRequest(t, router, route.method, path, body, adminLogin.AccessToken, headers)
+		if authorized.Code != http.StatusNotFound || !strings.Contains(authorized.Body.String(), `"error":"not_found"`) {
+			t.Errorf("authorized %s %s = %d %s, want handler not_found", route.method, path, authorized.Code, authorized.Body.String())
+		}
+	}
+
+	t.Run("authorized admin reaches member service and nested Task 4 handlers", func(t *testing.T) {
+		createdTenant := performJSONRequest(t, router, http.MethodPost, "/api/v1/admin/tenants", `{
+			"name":"Production route tenant",
+			"external_ref":{"operator_id":"route-operator","service_id":"route-service"},
+			"limits":{"slots":2,"transcodes":1}
+		}`, adminLogin.AccessToken, nil)
+		if createdTenant.Code != http.StatusCreated {
+			t.Fatalf("create tenant = %d %s", createdTenant.Code, createdTenant.Body.String())
+		}
+		var tenant struct {
+			TenantID string `json:"tenant_id"`
+		}
+		if err := json.Unmarshal(createdTenant.Body.Bytes(), &tenant); err != nil || tenant.TenantID == "" {
+			t.Fatalf("decode tenant: id=%q err=%v body=%s", tenant.TenantID, err, createdTenant.Body.String())
+		}
+
+		memberBody := `{
+			"username":"production-route-member",
+			"email":"production-route-member@example.test",
+			"password":"correct horse battery staple"
+		}`
+		memberPath := "/api/v1/admin/tenants/" + tenant.TenantID + "/members"
+		memberHeaders := map[string]string{"Idempotency-Key": "production-route-member-command"}
+		createdMember := performJSONRequest(t, router, http.MethodPost, memberPath, memberBody, adminLogin.AccessToken, memberHeaders)
+		if createdMember.Code != http.StatusCreated {
+			t.Fatalf("create member = %d %s", createdMember.Code, createdMember.Body.String())
+		}
+		var member struct {
+			UserID   int    `json:"user_id"`
+			Username string `json:"username"`
+			Status   string `json:"status"`
+		}
+		if err := json.Unmarshal(createdMember.Body.Bytes(), &member); err != nil || member.UserID <= 0 ||
+			member.Username != "production-route-member" || member.Status != "active" {
+			t.Fatalf("decode member: member=%+v err=%v body=%s", member, err, createdMember.Body.String())
+		}
+		if strings.Contains(createdMember.Body.String(), "correct horse") || strings.Contains(createdMember.Body.String(), "password_hash") {
+			t.Fatalf("member response disclosed a password secret: %s", createdMember.Body.String())
+		}
+
+		replayed := performJSONRequest(t, router, http.MethodPost, memberPath, memberBody, adminLogin.AccessToken, memberHeaders)
+		if replayed.Code != http.StatusOK || !strings.Contains(replayed.Body.String(), `"user_id":`+strconv.Itoa(member.UserID)) {
+			t.Fatalf("replay member = %d %s, want 200 and the original user", replayed.Code, replayed.Body.String())
+		}
+
+		profilesPath := memberPath + "/" + strconv.Itoa(member.UserID) + "/profiles"
+		profiles := performJSONRequest(t, router, http.MethodGet, profilesPath, "", adminLogin.AccessToken, nil)
+		if profiles.Code != http.StatusOK {
+			t.Fatalf("list nested profiles = %d %s", profiles.Code, profiles.Body.String())
+		}
+		createdProfile := performJSONRequest(t, router, http.MethodPost, profilesPath,
+			`{"name":"Production Member Profile"}`, adminLogin.AccessToken, nil)
+		if createdProfile.Code != http.StatusCreated {
+			t.Fatalf("create nested profile = %d %s", createdProfile.Code, createdProfile.Body.String())
+		}
+	})
+}

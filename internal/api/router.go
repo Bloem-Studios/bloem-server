@@ -1163,6 +1163,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	// Build admin handler if we have a user repo.
 	var adminHandler *handlers.AdminHandler
 	var adminTenantsHandler *handlers.AdminTenantsHandler
+	var adminTenantMembersHandler *handlers.AdminTenantMembersHandler
 	var accessGroupHandler *handlers.AccessGroupHandler
 	var catalogSeedHandler *handlers.CatalogSeedHandler
 	var adminJobsHandler *handlers.AdminJobsHandler
@@ -1177,6 +1178,14 @@ func NewRouter(deps Dependencies) chi.Router {
 			tenantOrgStore := tenancy.NewStore(deps.DB)
 			adminHandler.SetTenantStore(tenantOrgStore)
 			adminTenantsHandler = handlers.NewAdminTenantsHandler(tenantOrgStore, userRepo)
+			memberAccounts := auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider)
+			memberService := tenancy.NewMemberService(
+				deps.DB,
+				memberAccounts,
+				userRepo,
+				auth.NewSessionRepository(deps.DB),
+			)
+			adminTenantMembersHandler = handlers.NewAdminTenantMembersHandler(memberService, adminHandler)
 		}
 		adminHandler.SessionsLoader = playbackSessionsLoader
 		adminHandler.DetailSvc = detailSvc
@@ -3015,6 +3024,25 @@ func NewRouter(deps Dependencies) chi.Router {
 								r.Post("/tenants/{id}/freeze", adminTenantsHandler.HandleFreeze)
 								r.Post("/tenants/{id}/thaw", adminTenantsHandler.HandleThaw)
 								r.Delete("/tenants/{id}", adminTenantsHandler.HandleDelete)
+							}
+							if adminTenantMembersHandler != nil {
+								r.Get("/tenants/{tenant_id}/members", adminTenantMembersHandler.HandleList)
+								r.Post("/tenants/{tenant_id}/members", adminTenantMembersHandler.HandleCreate)
+								r.Get("/tenants/{tenant_id}/members/{user_id}", adminTenantMembersHandler.HandleGet)
+								r.Put("/tenants/{tenant_id}/members/{user_id}", adminTenantMembersHandler.HandleUpdate)
+								r.Delete("/tenants/{tenant_id}/members/{user_id}", adminTenantMembersHandler.HandleDelete)
+								r.Post("/tenants/{tenant_id}/members/{user_id}/suspend", adminTenantMembersHandler.HandleSuspend)
+								r.Post("/tenants/{tenant_id}/members/{user_id}/resume", adminTenantMembersHandler.HandleResume)
+								r.Post("/tenants/{tenant_id}/members/{user_id}/reset-password", adminTenantMembersHandler.HandleResetPassword)
+								r.Get("/tenants/{tenant_id}/members/{user_id}/profiles", adminTenantMembersHandler.HandleListProfiles)
+								r.Post("/tenants/{tenant_id}/members/{user_id}/profiles", adminTenantMembersHandler.HandleCreateProfile)
+								r.Put("/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}", adminTenantMembersHandler.HandleUpdateProfile)
+								r.Delete("/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}", adminTenantMembersHandler.HandleDeleteProfile)
+								r.Get("/tenants/{tenant_id}/members/{user_id}/devices", adminTenantMembersHandler.HandleListDevices)
+								r.Delete("/tenants/{tenant_id}/members/{user_id}/devices/{device_id}", adminTenantMembersHandler.HandleDeleteDevice)
+								r.Get("/tenants/{tenant_id}/members/{user_id}/auth-sessions", adminTenantMembersHandler.HandleListAuthSessions)
+								r.Delete("/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}", adminTenantMembersHandler.HandleRevokeAuthSession)
+								r.Delete("/tenants/{tenant_id}/members/{user_id}/auth-sessions", adminTenantMembersHandler.HandleRevokeAllAuthSessions)
 							}
 							r.Get("/users", adminHandler.HandleListUsers)
 							r.Post("/users", adminHandler.HandleCreateUser)

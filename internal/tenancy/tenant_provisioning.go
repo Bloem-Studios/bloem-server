@@ -136,8 +136,14 @@ func (s *Store) CreateTenantOrganization(ctx context.Context, input CreateTenant
 	if name == "" || externalServiceID == "" || input.Slots < 1 || input.Transcodes < 0 {
 		return TenantOrganization{}, ErrTenantOrganizationInvalid
 	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return TenantOrganization{}, fmt.Errorf("tenancy: begin tenant organization creation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	slug := tenantSlug(name, externalServiceID)
-	organization, err := scanTenantOrganization(s.pool.QueryRow(ctx, `
+	organization, err := scanTenantOrganization(tx.QueryRow(ctx, `
 		INSERT INTO organizations (slug, name, status, external_operator_id, external_service_id, slots, transcodes)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (external_service_id) DO UPDATE SET updated_at = organizations.updated_at
@@ -147,7 +153,35 @@ func (s *Store) CreateTenantOrganization(ctx context.Context, input CreateTenant
 	if err != nil {
 		return TenantOrganization{}, fmt.Errorf("tenancy: create tenant organization: %w", err)
 	}
+	if err := ensureTenantDefaultAccessGroup(ctx, tx, organization.ID); err != nil {
+		return TenantOrganization{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return TenantOrganization{}, fmt.Errorf("tenancy: commit tenant organization creation: %w", err)
+	}
 	return s.withTenantUsage(ctx, organization)
+}
+
+// ensureTenantDefaultAccessGroup establishes the same safe fallback policy
+// used by the profile access-group migration. Tenant creation and the
+// fallback are committed together so the first member can immediately use
+// the native profile lifecycle without an unassigned-profile window.
+func ensureTenantDefaultAccessGroup(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID) error {
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO access_groups (
+			organization_id, name, description, is_default, library_ids,
+			max_playback_quality, download_allowed, download_transcode_allowed,
+			max_streams, max_transcodes, allowed_permissions, requests_allowed
+		)
+		SELECT $1, 'Default Group', 'Applied automatically to newly created users.', true, NULL,
+		       '', true, false, 5, 5, ARRAY['marker_edit'], true
+		WHERE NOT EXISTS (
+			SELECT 1 FROM access_groups
+			WHERE organization_id = $1 AND is_default
+		)`, organizationID); err != nil {
+		return fmt.Errorf("tenancy: ensure tenant default access group: %w", err)
+	}
+	return nil
 }
 
 // GetTenantOrganization loads one tenant organization with usage. Refuses a

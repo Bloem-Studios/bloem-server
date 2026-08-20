@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
@@ -12,6 +14,14 @@ import (
 type AccountUserRepository interface {
 	Create(ctx context.Context, input models.CreateUserInput) (*models.User, error)
 	Delete(ctx context.Context, id int) error
+}
+
+type accountUserUpdater interface {
+	Update(ctx context.Context, id int, input models.UpdateUserInput) error
+}
+
+type transactionalAccountUserRepository interface {
+	CreateInTransaction(ctx context.Context, tx pgx.Tx, input models.CreateUserInput) (*models.User, error)
 }
 
 // MembershipProvisioner assigns an account to the deployment's default
@@ -106,6 +116,47 @@ func (p *AccountProvisioner) CreateAccount(
 	}
 
 	return user, nil
+}
+
+// CreateUserInTransaction creates a user through the same validation,
+// normalization, defaults, and password hashing as CreateAccount while using
+// the caller's transaction. Membership is intentionally left to that caller:
+// it is the tenant service's quota-bearing write in the same transaction. The
+// boolean distinguishes a uniqueness conflict without coupling the tenant
+// package back to auth's repository sentinels.
+func (p *AccountProvisioner) CreateUserInTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	input models.CreateUserInput,
+) (*models.User, bool, error) {
+	users, ok := p.users.(transactionalAccountUserRepository)
+	if !ok {
+		return nil, false, fmt.Errorf("account repository does not support transactional creation")
+	}
+	user, err := users.CreateInTransaction(ctx, tx, input)
+	if IsDuplicate(err) {
+		return nil, true, nil
+	}
+	return user, false, err
+}
+
+// UpdateUser applies the native repository update and reports uniqueness
+// conflicts without exposing repository-specific errors to tenant services.
+func (p *AccountProvisioner) UpdateUser(ctx context.Context, userID int, input models.UpdateUserInput) (bool, error) {
+	users, ok := p.users.(accountUserUpdater)
+	if !ok {
+		return false, fmt.Errorf("account repository does not support updates")
+	}
+	err := users.Update(ctx, userID, input)
+	if IsDuplicate(err) {
+		return true, nil
+	}
+	return false, err
+}
+
+// DeleteUser applies the native account deletion path.
+func (p *AccountProvisioner) DeleteUser(ctx context.Context, userID int) error {
+	return p.users.Delete(ctx, userID)
 }
 
 // MembershipLegacyRole preserves the legacy migration's two-value membership

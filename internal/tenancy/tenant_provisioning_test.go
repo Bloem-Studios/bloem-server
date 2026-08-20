@@ -74,6 +74,15 @@ func TestTenantOrganizationLifecycle(t *testing.T) {
 	if created.Frozen {
 		t.Fatalf("a fresh tenant organization must not be frozen: %+v", created)
 	}
+	var defaultAccessGroups int
+	if err := pool.QueryRow(ctx, `
+		SELECT count(*) FROM access_groups
+		WHERE organization_id = $1 AND is_default`, created.ID).Scan(&defaultAccessGroups); err != nil {
+		t.Fatalf("count fresh tenant default access groups: %v", err)
+	}
+	if defaultAccessGroups != 1 {
+		t.Fatalf("fresh tenant default access groups = %d, want 1", defaultAccessGroups)
+	}
 
 	// Idempotent on the park claim: a replayed fulfill job adopts, never mints.
 	again, err := store.CreateTenantOrganization(ctx, tenancy.CreateTenantOrganizationInput{

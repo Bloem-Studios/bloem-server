@@ -25,9 +25,11 @@ import (
 // direction — fails here with the exact route named.
 //
 // Deliberate, reviewed exceptions are pinned in the golden files: direct
-// profile login, direct profile lookup, and the nine account-administration
-// profile/device/session methods in adminUserResourceRouteContract. Regenerate
-// deliberately, never to make a failure go away:
+// profile login, direct profile lookup, the nine account-administration
+// profile/device/session methods in adminUserResourceRouteContract, and the
+// 17 tenant-member lifecycle/resource methods in
+// adminTenantMemberRouteContract. Regenerate deliberately, never merely to
+// make a failure go away:
 //
 //	VONDEL_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
 const (

@@ -130,6 +130,21 @@ func scanUsers(rows pgx.Rows) ([]*models.User, error) {
 
 // Create inserts a new user with a bcrypt-hashed password and returns the created user.
 func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInput) (*models.User, error) {
+	return r.createWithQuerier(ctx, r.pool, input)
+}
+
+type userCreateQuerier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// CreateInTransaction applies the canonical user creation path on an existing
+// transaction. Tenant member provisioning uses this so the account and its
+// quota-bearing membership commit, or roll back, as one unit.
+func (r *UserRepository) CreateInTransaction(ctx context.Context, tx pgx.Tx, input models.CreateUserInput) (*models.User, error) {
+	return r.createWithQuerier(ctx, tx, input)
+}
+
+func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCreateQuerier, input models.CreateUserInput) (*models.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("hashing password: %w", err)
@@ -219,7 +234,7 @@ func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInpu
 		allColumns,
 	)
 
-	row := r.pool.QueryRow(ctx, query, args...)
+	row := querier.QueryRow(ctx, query, args...)
 
 	user, err := scanUser(row)
 	if err != nil {
