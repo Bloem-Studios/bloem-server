@@ -26,7 +26,7 @@ func TestPolicyActionDeciderMatchesLegacyCapability(t *testing.T) {
 				for _, downloadTranscodeAllowed := range []bool{false, true} {
 					for _, artifactsAvailable := range []bool{false, true} {
 						cfg := config.DownloadConfig{Enabled: downloadsEnabled, TranscodeEnabled: transcodeEnabled}
-						user := &models.User{ID: 9, DownloadAllowed: downloadAllowed, DownloadTranscodeAllowed: downloadTranscodeAllowed}
+						user := &models.User{ID: 9, DownloadAllowed: ptrBool(downloadAllowed), DownloadTranscodeAllowed: ptrBool(downloadTranscodeAllowed)}
 						legacy := newPolicyActionTestService(user, cfg, artifactsAvailable, nil)
 						withPolicy := newPolicyActionTestService(user, cfg, artifactsAvailable, pdp)
 
@@ -59,7 +59,7 @@ func TestPolicyActionDeciderMatchesLegacyCreateGate(t *testing.T) {
 				for _, downloadTranscodeAllowed := range []bool{false, true} {
 					for _, artifactsAvailable := range []bool{false, true} {
 						cfg := config.DownloadConfig{Enabled: downloadsEnabled, TranscodeEnabled: transcodeEnabled}
-						user := &models.User{ID: 9, DownloadAllowed: downloadAllowed, DownloadTranscodeAllowed: downloadTranscodeAllowed}
+						user := &models.User{ID: 9, DownloadAllowed: ptrBool(downloadAllowed), DownloadTranscodeAllowed: ptrBool(downloadTranscodeAllowed)}
 						legacy := newPolicyActionTestService(user, cfg, artifactsAvailable, nil)
 						withPolicy := newPolicyActionTestService(user, cfg, artifactsAvailable, pdp)
 
@@ -82,7 +82,9 @@ func TestPolicyActionDeciderUsesGroupDownloadFlags(t *testing.T) {
 		AccountID:      9,
 		Legacy:         true,
 	})
-	user := &models.User{ID: 9, DownloadAllowed: true, DownloadTranscodeAllowed: true}
+	// Grouped account: the group policy layer only applies to a member.
+	groupID := int64(4)
+	user := &models.User{ID: 9, AccessGroupID: &groupID, DownloadTranscodeAllowed: ptrBool(true)}
 	svc := newPolicyActionTestService(
 		user,
 		config.DownloadConfig{Enabled: true, TranscodeEnabled: true},
@@ -107,7 +109,7 @@ func TestDownloadCapabilityResolvesV2ProfileGroup(t *testing.T) {
 		OrganizationID: organizationID,
 		AccountID:      9,
 	})
-	user := &models.User{ID: 9, DownloadAllowed: true, DownloadTranscodeAllowed: true}
+	user := &models.User{ID: 9}
 	svc := newPolicyActionTestService(user, config.DownloadConfig{Enabled: true, TranscodeEnabled: true}, true, nil)
 	svc.SetGroupPolicyProvider(profileDownloadGroupProvider{
 		profileID: "profile-v2",
@@ -138,7 +140,7 @@ func TestDownloadCreateUsesProfileGroupTranscodeDenial(t *testing.T) {
 		AccountID:      9,
 		Legacy:         true,
 	})
-	user := &models.User{ID: 9, DownloadAllowed: true, DownloadTranscodeAllowed: true}
+	user := &models.User{ID: 9}
 	cfg := config.DownloadConfig{Enabled: true, TranscodeEnabled: true}
 	svc := NewService(
 		nil, nil, nil,
@@ -176,7 +178,7 @@ func TestResolveDirectFileUsesProfileGroupDownloadDenial(t *testing.T) {
 		AccountID:      9,
 		Legacy:         true,
 	})
-	user := &models.User{ID: 9, DownloadAllowed: true, DownloadTranscodeAllowed: true}
+	user := &models.User{ID: 9}
 	cfg := config.DownloadConfig{Enabled: true}
 	svc := NewService(nil, nil, nil, nil, nil, nil, fakeUserRepo{user}, nil, nil, &cfg)
 	svc.SetGroupPolicyProvider(profileDownloadGroupProvider{
@@ -203,7 +205,7 @@ func TestDownloadServePathsUseProfileGroupDownloadDenial(t *testing.T) {
 		AccountID:      9,
 		Legacy:         true,
 	})
-	user := &models.User{ID: 9, DownloadAllowed: true, DownloadTranscodeAllowed: true}
+	user := &models.User{ID: 9}
 	cfg := config.DownloadConfig{Enabled: true}
 	svc := NewService(nil, nil, nil, nil, nil, nil, fakeUserRepo{user}, nil, nil, &cfg)
 	svc.SetGroupPolicyProvider(profileDownloadGroupProvider{
@@ -235,7 +237,7 @@ func TestDownloadServePathsUseProfileGroupDownloadDenial(t *testing.T) {
 func TestResolveTranscodePassesDeviceQualityFactsAndAppliesCeiling(t *testing.T) {
 	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true, QualityCeiling: "1080p"}}
 	resolver := DownloadQualityResolver{actionDecider: decider}
-	user := &models.User{ID: 9, DownloadAllowed: true, DownloadTranscodeAllowed: true}
+	user := &PolicyUser{ID: 9, Policy: access.EffectiveUserPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true}}
 	cfg := config.DownloadConfig{Enabled: true, TranscodeEnabled: true}
 	file := &models.MediaFile{ID: 3, Resolution: "2160p"}
 
@@ -268,7 +270,7 @@ func TestResolveTranscodePassesDeviceQualityFactsAndAppliesCeiling(t *testing.T)
 func TestResolveTranscodeCeilingKeepsCompliantTarget(t *testing.T) {
 	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true, QualityCeiling: "2160p"}}
 	resolver := DownloadQualityResolver{actionDecider: decider}
-	user := &models.User{ID: 9, DownloadAllowed: true, DownloadTranscodeAllowed: true}
+	user := &PolicyUser{ID: 9, Policy: access.EffectiveUserPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true}}
 	cfg := config.DownloadConfig{Enabled: true, TranscodeEnabled: true}
 	file := &models.MediaFile{ID: 3, Resolution: "1080p"}
 
@@ -375,7 +377,7 @@ func TestResolveOriginalAssertsServedQuality(t *testing.T) {
 	pdp := newDownloadPolicyPDP(t)
 	resolver := DownloadQualityResolver{actionDecider: pdp}
 	cfg := config.DownloadConfig{Enabled: true, TranscodeEnabled: true}
-	user := &models.User{ID: 9, DownloadAllowed: true, DownloadTranscodeAllowed: true, MaxPlaybackQuality: "1080p"}
+	user := &PolicyUser{ID: 9, Policy: access.EffectiveUserPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true, MaxPlaybackQuality: "1080p"}}
 	overCeiling := &models.MediaFile{ID: 3, Resolution: "2160p"}
 
 	_, err := resolver.Resolve(ctx, QualityOriginal, user, cfg, overCeiling, playback.ClientCapabilities{}, true, "")
@@ -404,7 +406,7 @@ func TestResolveOriginalAssertsServedQuality(t *testing.T) {
 func TestResolveOriginalPopulatesFileQualityFact(t *testing.T) {
 	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true}}
 	resolver := DownloadQualityResolver{actionDecider: decider}
-	user := &models.User{ID: 9, DownloadAllowed: true, MaxPlaybackQuality: "2160p"}
+	user := &PolicyUser{ID: 9, Policy: access.EffectiveUserPolicy{DownloadAllowed: true, MaxPlaybackQuality: "2160p"}}
 	cfg := config.DownloadConfig{Enabled: true}
 	file := &models.MediaFile{ID: 3, Resolution: "1080p"}
 
@@ -429,7 +431,7 @@ func TestResolveOriginalPopulatesFileQualityFact(t *testing.T) {
 func TestDownloadPolicyRejectsMissingTenantFactsBeforeEvaluation(t *testing.T) {
 	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true}}
 	resolver := DownloadQualityResolver{actionDecider: decider}
-	user := &models.User{ID: 9, DownloadAllowed: true}
+	user := &PolicyUser{ID: 9, Policy: access.EffectiveUserPolicy{DownloadAllowed: true}}
 	cfg := config.DownloadConfig{Enabled: true}
 	file := &models.MediaFile{ID: 3, Resolution: "1080p"}
 
@@ -445,7 +447,7 @@ func TestDownloadPolicyRejectsMissingTenantFactsBeforeEvaluation(t *testing.T) {
 func TestDownloadPolicyRejectsTenantForDifferentAccount(t *testing.T) {
 	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true}}
 	resolver := DownloadQualityResolver{actionDecider: decider}
-	user := &models.User{ID: 9, DownloadAllowed: true}
+	user := &PolicyUser{ID: 9, Policy: access.EffectiveUserPolicy{DownloadAllowed: true}}
 	cfg := config.DownloadConfig{Enabled: true}
 	file := &models.MediaFile{ID: 3, Resolution: "1080p"}
 

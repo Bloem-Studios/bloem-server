@@ -24,6 +24,8 @@ type Group struct {
 	MaxPlaybackQuality       string
 	DownloadAllowed          bool
 	DownloadTranscodeAllowed bool
+	TranscodeAllowed         bool
+	AudioTranscodeAllowed    bool
 	MaxStreams               int
 	MaxTranscodes            int
 	AllowedPermissions       []string
@@ -34,6 +36,23 @@ type Group struct {
 	UpdatedAt                time.Time
 }
 
+// Policy returns the group's policy layer as consumed by ApplyGroupPolicy.
+func (g Group) Policy() GroupPolicy {
+	return GroupPolicy{
+		ID:                       g.ID,
+		LibraryIDs:               cloneInts(g.LibraryIDs),
+		MaxPlaybackQuality:       g.MaxPlaybackQuality,
+		DownloadAllowed:          g.DownloadAllowed,
+		DownloadTranscodeAllowed: g.DownloadTranscodeAllowed,
+		TranscodeAllowed:         g.TranscodeAllowed,
+		AudioTranscodeAllowed:    g.AudioTranscodeAllowed,
+		MaxStreams:               g.MaxStreams,
+		MaxTranscodes:            g.MaxTranscodes,
+		AllowedPermissions:       cloneStrings(g.AllowedPermissions),
+		RequestsAllowed:          g.RequestsAllowed,
+	}
+}
+
 // CreateGroupInput contains the required fields for creating an access group.
 type CreateGroupInput struct {
 	Name                     string
@@ -42,6 +61,8 @@ type CreateGroupInput struct {
 	MaxPlaybackQuality       string
 	DownloadAllowed          bool
 	DownloadTranscodeAllowed bool
+	TranscodeAllowed         bool
+	AudioTranscodeAllowed    bool
 	MaxStreams               int
 	MaxTranscodes            int
 	AllowedPermissions       []string
@@ -57,6 +78,8 @@ type UpdateGroupInput struct {
 	MaxPlaybackQuality       *string
 	DownloadAllowed          *bool
 	DownloadTranscodeAllowed *bool
+	TranscodeAllowed         *bool
+	AudioTranscodeAllowed    *bool
 	MaxStreams               *int
 	MaxTranscodes            *int
 	AllowedPermissions       *[]string
@@ -94,7 +117,8 @@ func NewGroupStore(pool *pgxpool.Pool) *GroupStore {
 }
 
 const accessGroupSelectColumns = `g.id, g.organization_id, g.name, g.description, g.library_ids, g.max_playback_quality,
-	g.download_allowed, g.download_transcode_allowed, g.max_streams, g.max_transcodes,
+	g.download_allowed, g.download_transcode_allowed, g.transcode_allowed, g.audio_transcode_allowed,
+	g.max_streams, g.max_transcodes,
 	g.allowed_permissions, g.requests_allowed, g.is_default, g.created_at, g.updated_at`
 
 type groupScanner interface {
@@ -112,6 +136,8 @@ func scanGroup(row groupScanner) (*Group, error) {
 		&g.MaxPlaybackQuality,
 		&g.DownloadAllowed,
 		&g.DownloadTranscodeAllowed,
+		&g.TranscodeAllowed,
+		&g.AudioTranscodeAllowed,
 		&g.MaxStreams,
 		&g.MaxTranscodes,
 		&g.AllowedPermissions,
@@ -206,10 +232,11 @@ func (s *GroupStore) Create(ctx context.Context, organizationID uuid.UUID, input
 	err = tx.QueryRow(ctx, `
 		INSERT INTO access_groups (
 			organization_id, name, description, library_ids, max_playback_quality,
-			download_allowed, download_transcode_allowed, max_streams, max_transcodes,
+			download_allowed, download_transcode_allowed, transcode_allowed, audio_transcode_allowed,
+			max_streams, max_transcodes,
 			allowed_permissions, requests_allowed, is_default
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id`,
 		organizationID,
 		name,
@@ -218,6 +245,8 @@ func (s *GroupStore) Create(ctx context.Context, organizationID uuid.UUID, input
 		NormalizePlaybackQuality(input.MaxPlaybackQuality),
 		input.DownloadAllowed,
 		input.DownloadTranscodeAllowed,
+		input.TranscodeAllowed,
+		input.AudioTranscodeAllowed,
 		input.MaxStreams,
 		input.MaxTranscodes,
 		input.AllowedPermissions,
@@ -274,6 +303,16 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 	if input.DownloadTranscodeAllowed != nil {
 		sets = append(sets, fmt.Sprintf("download_transcode_allowed = $%d", arg))
 		args = append(args, *input.DownloadTranscodeAllowed)
+		arg++
+	}
+	if input.TranscodeAllowed != nil {
+		sets = append(sets, fmt.Sprintf("transcode_allowed = $%d", arg))
+		args = append(args, *input.TranscodeAllowed)
+		arg++
+	}
+	if input.AudioTranscodeAllowed != nil {
+		sets = append(sets, fmt.Sprintf("audio_transcode_allowed = $%d", arg))
+		args = append(args, *input.AudioTranscodeAllowed)
 		arg++
 	}
 	if input.MaxStreams != nil {
@@ -486,8 +525,8 @@ func (s *GroupStore) ResolvePolicy(ctx context.Context, subject GroupSubject) (*
 	if subject.ProfileID != "" {
 		return nullableGroupPolicy(s.pool.QueryRow(ctx, `
 			SELECT p.access_group_id, g.id, g.library_ids, g.max_playback_quality,
-				g.download_allowed, g.download_transcode_allowed, g.max_streams,
-				g.max_transcodes, g.allowed_permissions, g.requests_allowed
+				g.download_allowed, g.download_transcode_allowed, g.transcode_allowed, g.audio_transcode_allowed,
+				g.max_streams, g.max_transcodes, g.allowed_permissions, g.requests_allowed
 			FROM user_profiles p
 			LEFT JOIN access_groups g
 			  ON g.organization_id = p.organization_id
@@ -501,8 +540,8 @@ func (s *GroupStore) ResolvePolicy(ctx context.Context, subject GroupSubject) (*
 	}
 	return nullableGroupPolicy(s.pool.QueryRow(ctx, `
 		SELECT u.access_group_id, g.id, g.library_ids, g.max_playback_quality,
-			g.download_allowed, g.download_transcode_allowed, g.max_streams,
-			g.max_transcodes, g.allowed_permissions, g.requests_allowed
+			g.download_allowed, g.download_transcode_allowed, g.transcode_allowed, g.audio_transcode_allowed,
+			g.max_streams, g.max_transcodes, g.allowed_permissions, g.requests_allowed
 		FROM users u
 		JOIN organizations o
 		  ON o.id = $1
@@ -521,6 +560,8 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 		maxQuality      *string
 		downloadAllowed *bool
 		downloadTx      *bool
+		transcodeTx     *bool
+		audioTx         *bool
 		maxStreams      *int
 		maxTranscodes   *int
 		permissions     []string
@@ -533,6 +574,8 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 		&maxQuality,
 		&downloadAllowed,
 		&downloadTx,
+		&transcodeTx,
+		&audioTx,
 		&maxStreams,
 		&maxTranscodes,
 		&permissions,
@@ -546,7 +589,7 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 	if assignedGroupID == nil {
 		return nil, nil
 	}
-	if groupID == nil || maxQuality == nil || downloadAllowed == nil || downloadTx == nil || maxStreams == nil || maxTranscodes == nil || requestsAllowed == nil {
+	if groupID == nil || maxQuality == nil || downloadAllowed == nil || downloadTx == nil || transcodeTx == nil || audioTx == nil || maxStreams == nil || maxTranscodes == nil || requestsAllowed == nil {
 		return nil, ErrGroupNotFound
 	}
 	return &GroupPolicy{
@@ -555,6 +598,8 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 		MaxPlaybackQuality:       *maxQuality,
 		DownloadAllowed:          *downloadAllowed,
 		DownloadTranscodeAllowed: *downloadTx,
+		TranscodeAllowed:         *transcodeTx,
+		AudioTranscodeAllowed:    *audioTx,
 		MaxStreams:               *maxStreams,
 		MaxTranscodes:            *maxTranscodes,
 		AllowedPermissions:       permissions,

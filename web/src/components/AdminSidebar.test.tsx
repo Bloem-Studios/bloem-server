@@ -20,6 +20,8 @@ const defaultBuildInfo: BuildInfo = {
   revision: "b4c5aae18aa653725ac697b29a05eac797576008",
   dirty: true,
   vcs_time: "2026-04-05T22:24:40Z",
+  build_number: 411,
+  built_at: "2026-08-19T19:45:00Z",
   available: true,
 };
 const mockUseBuildInfo = vi.fn<(_enabled?: boolean) => MockBuildInfoResult>(() => ({
@@ -207,7 +209,8 @@ describe("AdminSidebar", () => {
     const markup = renderSidebar();
 
     expect(markup).toContain(">Build<");
-    expect(markup).toContain(">b4c5aae1+dirty<");
+    expect(markup).toContain(">411 · b4c5aae1+dirty<");
+    expect(markup).toContain('title="Built 2026-08-19T19:45:00Z"');
   });
 
   it("renders dev build when build metadata is missing", () => {
@@ -218,6 +221,8 @@ describe("AdminSidebar", () => {
         revision: "",
         dirty: false,
         vcs_time: "",
+        build_number: 0,
+        built_at: "",
         available: false,
       },
       isPending: false,
@@ -227,6 +232,21 @@ describe("AdminSidebar", () => {
     const markup = renderSidebar();
 
     expect(markup).toContain(">dev build<");
+  });
+
+  it("falls back to the revision for builds without an ordered number", () => {
+    const legacyBuildInfo = { ...defaultBuildInfo };
+    delete legacyBuildInfo.build_number;
+    delete legacyBuildInfo.built_at;
+    mockUseBuildInfo.mockReturnValueOnce({
+      data: legacyBuildInfo,
+      isPending: false,
+      isError: false,
+    });
+
+    const markup = renderSidebar();
+
+    expect(markup).toContain(">b4c5aae1+dirty<");
   });
 
   it("renders load failed when the build info query errors", () => {

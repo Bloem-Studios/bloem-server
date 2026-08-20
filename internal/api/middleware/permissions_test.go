@@ -2,14 +2,18 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/google/uuid"
 )
 
 type fakePermissionUserLoader struct {
@@ -143,5 +147,68 @@ func TestRequireMetadataCurationForItem_NotFoundWhenTargetHasNoLibraries(t *test
 	code := runMetadataCurationMiddleware(user, nil, "user")
 	if code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", code, http.StatusNotFound)
+	}
+}
+
+// runMetadataCurationMiddlewareWithGroup exercises the legacy gate with an
+// access-group provider wired, which is how an inherited (NULL) library list
+// resolves to the group's list.
+func runMetadataCurationMiddlewareWithGroup(user *models.User, targetIDs []int, groups access.GroupPolicyProvider) int {
+	mw := NewPermissionMiddleware(
+		fakePermissionUserLoader{user: user},
+		fakeTargetLibraryResolver{ids: targetIDs},
+		nil,
+		groups,
+	)
+	next := mw.RequireMetadataCurationForItem(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	rec := httptest.NewRecorder()
+	// In production, tenancy middleware always resolves a tenant before
+	// permission middleware runs; simulate that ordering here so
+	// EffectivePolicyForUser can actually reach the group provider instead
+	// of silently falling back to "no tenant, no group" permissive.
+	req := requestWithItemID("user")
+	ctx := tenancy.WithContext(req.Context(), tenancy.Context{
+		OrganizationID: uuid.New(),
+		AccountID:      user.ID,
+		Legacy:         true,
+	})
+	next.ServeHTTP(rec, req.WithContext(ctx))
+	return rec.Code
+}
+
+func TestRequireMetadataCurationForItem_InheritedGroupLibrariesApply(t *testing.T) {
+	groupID := int64(3)
+	user := &models.User{
+		ID:            7,
+		Role:          "user",
+		Enabled:       true,
+		AccessGroupID: &groupID,
+		Permissions:   []string{string(auth.PermissionMetadataCuration)},
+	}
+	groups := middlewareGroupProvider{group: &access.GroupPolicy{LibraryIDs: []int{1}}}
+
+	if code := runMetadataCurationMiddlewareWithGroup(user, []int{9}, groups); code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d for a target outside the inherited group libraries", code, http.StatusForbidden)
+	}
+	if code := runMetadataCurationMiddlewareWithGroup(user, []int{1}, groups); code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d for a target inside the inherited group libraries", code, http.StatusNoContent)
+	}
+}
+
+func TestRequireMetadataCurationForItem_GroupLookupFailureIsForbidden(t *testing.T) {
+	groupID := int64(3)
+	user := &models.User{
+		ID:            7,
+		Role:          "user",
+		Enabled:       true,
+		AccessGroupID: &groupID,
+		Permissions:   []string{string(auth.PermissionMetadataCuration)},
+	}
+	groups := middlewareGroupProvider{err: errors.New("group store down")}
+
+	if code := runMetadataCurationMiddlewareWithGroup(user, []int{1}, groups); code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d when the group policy cannot be resolved", code, http.StatusForbidden)
 	}
 }

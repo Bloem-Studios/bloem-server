@@ -27,13 +27,7 @@ func TestPlaybackSessionLimitProviderResolvesCanonicalProfileGroup(t *testing.T)
 		},
 	}
 	provider := playbackSessionLimitProvider(
-		sessionLimitUserRepositoryStub{user: &models.User{
-			ID:                    7,
-			MaxStreams:            8,
-			MaxTranscodes:         4,
-			TranscodeAllowed:      true,
-			AudioTranscodeAllowed: true,
-		}},
+		sessionLimitUserRepositoryStub{user: &models.User{ID: 7}},
 		groups,
 		sessionLimitTenantResolverStub{tenant: tenancy.Context{OrganizationID: organizationID, AccountID: 7}},
 		nil,

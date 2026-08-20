@@ -22,7 +22,7 @@ exports[`multitenant administration responsive release snapshots > captures Acce
           <p
             class="page-subtitle text-sm sm:text-base"
           >
-            North Sea Media: Shared access defaults for a set of users. A member's own restrictions still apply on top — a group grants the most a member can do, never more.
+            North Sea Media: The shared policy layer for a set of users. A group supplies the value for every field its members leave on Inherit; a per-user override replaces the group value in either direction.
           </p>
         </div>
         <button
@@ -193,7 +193,7 @@ exports[`multitenant administration responsive release snapshots > captures Acce
           <p
             class="page-subtitle text-sm sm:text-base"
           >
-            North Sea Media: Shared access defaults for a set of users. A member's own restrictions still apply on top — a group grants the most a member can do, never more.
+            North Sea Media: The shared policy layer for a set of users. A group supplies the value for every field its members leave on Inherit; a per-user override replaces the group value in either direction.
           </p>
         </div>
         <button
