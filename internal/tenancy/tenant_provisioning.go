@@ -168,6 +168,23 @@ func (s *Store) CreateTenantOrganization(ctx context.Context, input CreateTenant
 // the native profile lifecycle without an unassigned-profile window.
 func ensureTenantDefaultAccessGroup(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID) error {
 	if _, err := tx.Exec(ctx, `
+		WITH candidate AS (
+			SELECT id
+			FROM access_groups
+			WHERE organization_id = $1
+			  AND NOT EXISTS (
+				SELECT 1 FROM access_groups
+				WHERE organization_id = $1 AND is_default
+			  )
+			ORDER BY id
+			LIMIT 1
+		)
+		UPDATE access_groups
+		SET is_default = true, updated_at = now()
+		WHERE id = (SELECT id FROM candidate)`, organizationID); err != nil {
+		return fmt.Errorf("tenancy: promote tenant default access group: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO access_groups (
 			organization_id, name, description, is_default, library_ids,
 			max_playback_quality, download_allowed, download_transcode_allowed,
@@ -177,7 +194,7 @@ func ensureTenantDefaultAccessGroup(ctx context.Context, tx pgx.Tx, organization
 		       '', true, false, 5, 5, ARRAY['marker_edit'], true
 		WHERE NOT EXISTS (
 			SELECT 1 FROM access_groups
-			WHERE organization_id = $1 AND is_default
+			WHERE organization_id = $1
 		)`, organizationID); err != nil {
 		return fmt.Errorf("tenancy: ensure tenant default access group: %w", err)
 	}

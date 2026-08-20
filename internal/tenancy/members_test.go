@@ -434,6 +434,86 @@ func TestMemberServiceIdentityAndSessionRevocationAreAtomic(t *testing.T) {
 	}
 }
 
+func TestMemberServiceCompatInvalidationRunsAfterCommittedSecurityMutation(t *testing.T) {
+	ctx, pool, store, service, sessions := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 2)
+	input := memberInput(fmt.Sprintf("compat-lifecycle-%d", time.Now().UnixNano()))
+	member, _, err := service.Create(ctx, tenant.ID, "compat-lifecycle-command", input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	compatErr := errors.New("compat eviction failed")
+	assertCommittedCallback := func(check func(context.Context) bool) func(context.Context, int) error {
+		return func(callbackCtx context.Context, userID int) error {
+			if userID != member.ID {
+				t.Errorf("compat invalidation user = %d, want %d", userID, member.ID)
+			}
+			queryCtx, cancel := context.WithTimeout(callbackCtx, time.Second)
+			defer cancel()
+			if !check(queryCtx) {
+				t.Error("compat invalidation ran before the durable mutation was visible")
+			}
+			return compatErr
+		}
+	}
+
+	newUsername := input.Username + "-renamed"
+	newEmail := "renamed-" + input.Email
+	updateSessionID := uuid.NewString()
+	if err := sessions.Create(ctx, models.AuthSession{ID: updateSessionID, UserID: member.ID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
+	service.SetCompatSessionInvalidator(assertCommittedCallback(func(queryCtx context.Context) bool {
+		var username, email string
+		var revoked bool
+		err := pool.QueryRow(queryCtx, `SELECT username,email FROM users WHERE id=$1`, member.ID).Scan(&username, &email)
+		if err != nil || username != newUsername || email != newEmail {
+			return false
+		}
+		err = pool.QueryRow(queryCtx, `SELECT revoked_at IS NOT NULL FROM auth_sessions WHERE id=$1`, updateSessionID).Scan(&revoked)
+		return err == nil && revoked
+	}))
+	if _, err := service.Update(ctx, tenant.ID, member.ID, tenancy.UpdateMemberInput{Username: &newUsername, Email: &newEmail}); !errors.Is(err, compatErr) {
+		t.Fatalf("update error = %v, want committed compat failure", err)
+	}
+	stored, err := service.Get(ctx, tenant.ID, member.ID)
+	if err != nil || stored.Username != newUsername || stored.Email != newEmail {
+		t.Fatalf("identity did not remain committed after compat failure: user=%+v err=%v", stored, err)
+	}
+
+	resetPassword := "replacement-compat-password"
+	service.SetCompatSessionInvalidator(assertCommittedCallback(func(queryCtx context.Context) bool {
+		var passwordHash string
+		if err := pool.QueryRow(queryCtx, `SELECT password_hash FROM users WHERE id=$1`, member.ID).Scan(&passwordHash); err != nil {
+			return false
+		}
+		return auth.CheckPassword(&models.User{PasswordHash: passwordHash}, resetPassword)
+	}))
+	if _, err := service.ResetPassword(ctx, tenant.ID, member.ID, resetPassword); !errors.Is(err, compatErr) {
+		t.Fatalf("reset error = %v, want committed compat failure", err)
+	}
+	stored, err = service.Get(ctx, tenant.ID, member.ID)
+	if err != nil || !auth.CheckPassword(&stored, resetPassword) {
+		t.Fatalf("password did not remain committed after compat failure: user=%+v err=%v", stored, err)
+	}
+
+	service.SetCompatSessionInvalidator(assertCommittedCallback(func(queryCtx context.Context) bool {
+		var enabled bool
+		var status string
+		err := pool.QueryRow(queryCtx, `SELECT u.enabled,m.status FROM users u
+			JOIN organization_memberships m ON m.account_id=u.id AND m.organization_id=$1
+			WHERE u.id=$2`, tenant.ID, member.ID).Scan(&enabled, &status)
+		return err == nil && !enabled && status == "suspended"
+	}))
+	if _, err := service.Suspend(ctx, tenant.ID, member.ID); !errors.Is(err, compatErr) {
+		t.Fatalf("suspend error = %v, want committed compat failure", err)
+	}
+	stored, err = service.Get(ctx, tenant.ID, member.ID)
+	if err != nil || stored.Enabled {
+		t.Fatalf("suspend did not remain committed after compat failure: user=%+v err=%v", stored, err)
+	}
+}
+
 func TestMemberServiceCreateLazilyEnsuresLegacyTenantDefaultGroup(t *testing.T) {
 	ctx, pool, store, service, _ := newMemberService(t)
 	tenant := createMemberTenant(t, ctx, store, 1)
@@ -443,6 +523,48 @@ func TestMemberServiceCreateLazilyEnsuresLegacyTenantDefaultGroup(t *testing.T) 
 	member, replay, err := service.Create(ctx, tenant.ID, "legacy-group-command", memberInput(fmt.Sprintf("legacy-group-%d", time.Now().UnixNano())))
 	if err != nil || replay || member.AccessGroupID == nil {
 		t.Fatalf("create with legacy tenant = (%+v, replay=%v, %v)", member, replay, err)
+	}
+}
+
+func TestMemberServiceCreateLazilyPromotesExistingNamedDefaultGroup(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 1)
+	var existingGroupID int64
+	if err := pool.QueryRow(ctx, `UPDATE access_groups SET is_default=false
+		WHERE organization_id=$1 RETURNING id`, tenant.ID).Scan(&existingGroupID); err != nil {
+		t.Fatalf("make named default group legacy non-default: %v", err)
+	}
+	member, replay, err := service.Create(ctx, tenant.ID, "named-group-command", memberInput(fmt.Sprintf("named-group-%d", time.Now().UnixNano())))
+	if err != nil || replay {
+		t.Fatalf("create with existing named group = (%+v, replay=%v, %v)", member, replay, err)
+	}
+	if member.AccessGroupID == nil || *member.AccessGroupID != existingGroupID {
+		t.Fatalf("member group = %v, want promoted existing group %d", member.AccessGroupID, existingGroupID)
+	}
+}
+
+func TestMemberServiceCreateLazilyPromotesLowestExistingGroup(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 1)
+	var firstGroupID int64
+	if err := pool.QueryRow(ctx, `UPDATE access_groups SET name='First policy',is_default=false
+		WHERE organization_id=$1 RETURNING id`, tenant.ID).Scan(&firstGroupID); err != nil {
+		t.Fatalf("make first group non-default: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO access_groups (organization_id,name,is_default)
+		VALUES ($1,'Second policy',false)`, tenant.ID); err != nil {
+		t.Fatalf("seed second group: %v", err)
+	}
+	member, replay, err := service.Create(ctx, tenant.ID, "multiple-group-command", memberInput(fmt.Sprintf("multiple-group-%d", time.Now().UnixNano())))
+	if err != nil || replay {
+		t.Fatalf("create with existing policy groups = (%+v, replay=%v, %v)", member, replay, err)
+	}
+	if member.AccessGroupID == nil || *member.AccessGroupID != firstGroupID {
+		t.Fatalf("member group = %v, want lowest existing group %d", member.AccessGroupID, firstGroupID)
+	}
+	var groups int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM access_groups WHERE organization_id=$1`, tenant.ID).Scan(&groups); err != nil || groups != 2 {
+		t.Fatalf("group count = %d, %v; want existing two groups only", groups, err)
 	}
 }
 

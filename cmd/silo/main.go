@@ -2667,10 +2667,17 @@ func main() {
 	// compatServer is populated after the compat server is constructed below;
 	// the closure captures the pointer so revocation calls reach the live instance.
 	var compatServer *jellycompat.Server
-	deps.OnUserSessionsRevoked = func(ctx context.Context, userID int) {
+	deps.OnUserSessionsRevoked = func(ctx context.Context, userID int) error {
 		if compatServer != nil {
-			compatServer.SessionStore().DeleteByUserID(userID)
+			return compatServer.SessionStore().DeleteByUserIDContext(ctx, userID)
 		}
+		return nil
+	}
+	deps.OnUserProfileSessionsRevoked = func(ctx context.Context, userID int, profileIDs []string) error {
+		if compatServer != nil {
+			return compatServer.SessionStore().DeleteByUserAndProfileIDs(ctx, userID, profileIDs)
+		}
+		return nil
 	}
 
 	distFS, fsErr := fs.Sub(siloweb.DistFS, "dist")

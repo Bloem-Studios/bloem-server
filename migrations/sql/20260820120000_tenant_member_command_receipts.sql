@@ -20,9 +20,39 @@ CREATE TABLE public.tenant_member_command_receipts (
 CREATE INDEX tenant_member_command_receipts_result_idx
     ON public.tenant_member_command_receipts (organization_id, result_account_id);
 
--- Backfill the policy row every tenant needs. This is idempotent and covers
--- organizations created by older binaries before member administration was
--- deployed.
+-- Backfill the policy row every live tenant needs. Prefer an existing policy
+-- row, deterministically choosing its lowest id, so an administrator's
+-- existing policy is preserved and a non-default group named Default Group
+-- cannot collide with the fallback insert.
+WITH live_organizations AS (
+    SELECT id
+    FROM public.organizations
+    WHERE external_service_id IS NOT NULL OR is_default
+), missing_defaults AS (
+    SELECT organizations.id AS organization_id
+    FROM live_organizations AS organizations
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM public.access_groups
+        WHERE access_groups.organization_id = organizations.id
+          AND access_groups.is_default
+    )
+), candidates AS (
+    SELECT DISTINCT ON (groups.organization_id)
+        groups.organization_id,
+        groups.id
+    FROM public.access_groups AS groups
+    JOIN missing_defaults
+      ON missing_defaults.organization_id = groups.organization_id
+    ORDER BY groups.organization_id, groups.id
+)
+UPDATE public.access_groups AS groups
+SET is_default = true,
+    updated_at = now()
+FROM candidates
+WHERE groups.organization_id = candidates.organization_id
+  AND groups.id = candidates.id;
+
 INSERT INTO public.access_groups (
     organization_id, name, description, is_default, library_ids,
     max_playback_quality, download_allowed, download_transcode_allowed,
@@ -34,7 +64,7 @@ FROM public.organizations o
 WHERE (o.external_service_id IS NOT NULL OR o.is_default)
   AND NOT EXISTS (
       SELECT 1 FROM public.access_groups g
-      WHERE g.organization_id = o.id AND g.is_default
+      WHERE g.organization_id = o.id
   );
 -- +goose StatementEnd
 

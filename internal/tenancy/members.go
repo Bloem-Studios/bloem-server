@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/mail"
 	"strings"
 	"time"
@@ -67,12 +68,13 @@ type UpdateMemberInput struct {
 
 // MemberService owns the tenant-scoped account lifecycle.
 type MemberService struct {
-	pool      *pgxpool.Pool
-	store     *Store
-	accounts  memberAccountProvisioner
-	users     memberUserRepository
-	sessions  memberSessionRepository
-	resources memberResourcePurger
+	pool           *pgxpool.Pool
+	store          *Store
+	accounts       memberAccountProvisioner
+	users          memberUserRepository
+	sessions       memberSessionRepository
+	resources      memberResourcePurger
+	compatSessions func(context.Context, int) error
 }
 
 // SetResourcePurger installs the Task 4 profile/device lifecycle adapter used
@@ -81,6 +83,29 @@ func (s *MemberService) SetResourcePurger(purger memberResourcePurger) {
 	if s != nil {
 		s.resources = purger
 	}
+}
+
+// SetCompatSessionInvalidator installs the volatile compatibility-session
+// eviction hook. Security mutations call it only after their native database
+// transaction has committed.
+func (s *MemberService) SetCompatSessionInvalidator(invalidator func(context.Context, int) error) {
+	if s != nil {
+		s.compatSessions = invalidator
+	}
+}
+
+func (s *MemberService) invalidateCompatSessionsAfterCommit(ctx context.Context, userID int, operation string) error {
+	if s == nil || s.compatSessions == nil {
+		return nil
+	}
+	if err := s.compatSessions(ctx, userID); err != nil {
+		// The callback may wrap infrastructure details. Keep them in the returned
+		// error chain for operators while avoiding credential-bearing log output.
+		slog.ErrorContext(ctx, "compat session invalidation failed after committed member mutation",
+			"operation", operation, "user_id", userID)
+		return fmt.Errorf("tenancy: invalidate compat sessions after committed %s: %w", operation, err)
+	}
+	return nil
 }
 
 // NewMemberService builds a tenant-member service from the native account and
@@ -403,6 +428,9 @@ func (s *MemberService) Update(ctx context.Context, tenantID uuid.UUID, userID i
 	if err != nil {
 		return models.User{}, fmt.Errorf("tenancy: load updated member: %w", err)
 	}
+	if err := s.invalidateCompatSessionsAfterCommit(ctx, userID, "identity update"); err != nil {
+		return *updated, err
+	}
 	return *updated, nil
 }
 
@@ -478,6 +506,11 @@ func (s *MemberService) setSuspended(ctx context.Context, tenantID uuid.UUID, us
 	if err != nil {
 		return models.User{}, fmt.Errorf("tenancy: load member state: %w", err)
 	}
+	if suspended {
+		if err := s.invalidateCompatSessionsAfterCommit(ctx, userID, "suspension"); err != nil {
+			return *updated, err
+		}
+	}
 	return *updated, nil
 }
 
@@ -508,6 +541,9 @@ func (s *MemberService) ResetPassword(ctx context.Context, tenantID uuid.UUID, u
 	updated, err := s.users.GetByID(ctx, userID)
 	if err != nil {
 		return models.User{}, fmt.Errorf("tenancy: load reset member: %w", err)
+	}
+	if err := s.invalidateCompatSessionsAfterCommit(ctx, userID, "password reset"); err != nil {
+		return *updated, err
 	}
 	return *updated, nil
 }

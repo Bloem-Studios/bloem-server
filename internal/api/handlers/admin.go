@@ -138,7 +138,8 @@ type AdminHandler struct {
 	BootstrapSensitiveConfigured map[string]bool
 	BootstrapSensitiveValues     map[string]string
 	RedisBootstrapAvailable      bool
-	OnUserSessionsRevoked        func(ctx context.Context, userID int)
+	OnUserSessionsRevoked        func(ctx context.Context, userID int) error
+	OnUserProfileSessionsRevoked func(ctx context.Context, userID int, profileIDs []string) error
 	OnServerSettingUpdated       func(ctx context.Context, key, value string)
 	RestartStatus                *ServerRestartStatusTracker
 	CatalogSearchStatus          catalog.CatalogSearchStatusProvider
@@ -1027,7 +1028,9 @@ func (h *AdminHandler) revokeUserSessions(ctx context.Context, userID int) error
 		return err
 	}
 	if h.OnUserSessionsRevoked != nil {
-		h.OnUserSessionsRevoked(ctx, userID)
+		if err := h.OnUserSessionsRevoked(ctx, userID); err != nil {
+			return err
+		}
 	}
 	return nil
 }

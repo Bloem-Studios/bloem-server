@@ -167,17 +167,18 @@ type Dependencies struct {
 	// PublicURL is the externally-reachable origin (scheme + host) for this
 	// silo instance. Used to build redirect_uri values handed to OAuth
 	// IdPs. Empty disables the /oauth/{install_id}/{init,callback} routes.
-	PublicURL              string
-	ImageResolver          catalog.ImageResolver             // plugin-based image URL resolver (may be nil)
-	PluginImageResolver    *metadata.PluginImageResolver     // concrete resolver for runtime source registration (may be nil)
-	MetadataService        handlers.MatchMetadataService     // metadata search+process (may be nil)
-	CollectionService      *catalog.LibraryCollectionService // collection service (may be nil)
-	ChapterThumbnailQueuer catalog.ChapterThumbnailQueuer
-	PlaybackRealtimeHub    *playback.RealtimeHub
-	OnUserSessionsRevoked  func(ctx context.Context, userID int)
-	OnServerSettingUpdated func(ctx context.Context, key, value string)
-	RequestServerRestart   func(ctx context.Context) error
-	ServerRestartStatus    *handlers.ServerRestartStatusTracker
+	PublicURL                    string
+	ImageResolver                catalog.ImageResolver             // plugin-based image URL resolver (may be nil)
+	PluginImageResolver          *metadata.PluginImageResolver     // concrete resolver for runtime source registration (may be nil)
+	MetadataService              handlers.MatchMetadataService     // metadata search+process (may be nil)
+	CollectionService            *catalog.LibraryCollectionService // collection service (may be nil)
+	ChapterThumbnailQueuer       catalog.ChapterThumbnailQueuer
+	PlaybackRealtimeHub          *playback.RealtimeHub
+	OnUserSessionsRevoked        func(ctx context.Context, userID int) error
+	OnUserProfileSessionsRevoked func(ctx context.Context, userID int, profileIDs []string) error
+	OnServerSettingUpdated       func(ctx context.Context, key, value string)
+	RequestServerRestart         func(ctx context.Context) error
+	ServerRestartStatus          *handlers.ServerRestartStatusTracker
 
 	// UserCollectionSync handles per-profile imported collections (TMDB /
 	// Trakt / MDBList) — the user-facing analogue of CollectionService.
@@ -1190,6 +1191,7 @@ func NewRouter(deps Dependencies) chi.Router {
 				userRepo,
 				auth.NewSessionRepository(deps.DB),
 			)
+			memberService.SetCompatSessionInvalidator(deps.OnUserSessionsRevoked)
 			adminTenantMembersHandler = handlers.NewAdminTenantMembersHandler(memberService, adminHandler)
 			memberService.SetResourcePurger(adminTenantMembersHandler)
 		}
@@ -1213,6 +1215,9 @@ func NewRouter(deps Dependencies) chi.Router {
 		adminHandler.Config = deps.Config
 		if deps.OnUserSessionsRevoked != nil {
 			adminHandler.OnUserSessionsRevoked = deps.OnUserSessionsRevoked
+		}
+		if deps.OnUserProfileSessionsRevoked != nil {
+			adminHandler.OnUserProfileSessionsRevoked = deps.OnUserProfileSessionsRevoked
 		}
 		if deps.OnServerSettingUpdated != nil {
 			adminHandler.OnServerSettingUpdated = deps.OnServerSettingUpdated

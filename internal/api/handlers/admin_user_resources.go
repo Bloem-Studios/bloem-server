@@ -671,7 +671,9 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
 		return
 	}
-	if adminResourceOrganization(r.Context()) != uuid.Nil {
+	organizationID := adminResourceOrganization(r.Context())
+	var scopedProfileID string
+	if organizationID != uuid.Nil {
 		organizationProfiles, scopeErr := adminResourceOrganizationProfiles(r.Context(), resources.store)
 		if scopeErr != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to look up authentication session")
@@ -685,6 +687,7 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 			writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
 			return
 		}
+		scopedProfileID = *session.ProfileID
 	}
 	if err := h.sessionRepo.RevokeByUserAndSession(r.Context(), resources.user.ID, sessionID); err != nil {
 		if errors.Is(err, auth.ErrSessionNotFound) {
@@ -694,8 +697,18 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke authentication session")
 		return
 	}
-	if h.OnUserSessionsRevoked != nil {
-		h.OnUserSessionsRevoked(r.Context(), resources.user.ID)
+	if organizationID != uuid.Nil {
+		if h.OnUserProfileSessionsRevoked != nil {
+			if err := h.OnUserProfileSessionsRevoked(r.Context(), resources.user.ID, []string{scopedProfileID}); err != nil {
+				writeError(w, http.StatusInternalServerError, "internal_error", "Authentication session was revoked but compatibility-session invalidation failed")
+				return
+			}
+		}
+	} else if h.OnUserSessionsRevoked != nil {
+		if err := h.OnUserSessionsRevoked(r.Context(), resources.user.ID); err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication session was revoked but compatibility-session invalidation failed")
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -711,7 +724,9 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 		writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions are not configured")
 		return
 	}
-	if adminResourceOrganization(r.Context()) == uuid.Nil {
+	organizationID := adminResourceOrganization(r.Context())
+	var scopedProfileIDs []string
+	if organizationID == uuid.Nil {
 		if err := h.sessionRepo.RevokeAllByUser(r.Context(), resources.user.ID); err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke authentication sessions")
 			return
@@ -721,6 +736,10 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke authentication sessions")
 			return
+		}
+		scopedProfileIDs = make([]string, 0, len(organizationProfiles))
+		for profileID := range organizationProfiles {
+			scopedProfileIDs = append(scopedProfileIDs, profileID)
 		}
 		sessions, err := h.sessionRepo.ListByUser(r.Context(), resources.user.ID)
 		if err != nil {
@@ -740,8 +759,18 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 			}
 		}
 	}
-	if h.OnUserSessionsRevoked != nil {
-		h.OnUserSessionsRevoked(r.Context(), resources.user.ID)
+	if organizationID != uuid.Nil {
+		if h.OnUserProfileSessionsRevoked != nil {
+			if err := h.OnUserProfileSessionsRevoked(r.Context(), resources.user.ID, scopedProfileIDs); err != nil {
+				writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
+				return
+			}
+		}
+	} else if h.OnUserSessionsRevoked != nil {
+		if err := h.OnUserSessionsRevoked(r.Context(), resources.user.ID); err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
