@@ -298,6 +298,22 @@ func (r *SessionRepository) Revoke(ctx context.Context, id string) error {
 	return nil
 }
 
+// RevokeByUserAndSession revokes a session only when it belongs to userID.
+// A missing session and a session owned by another user deliberately return
+// the same sentinel so callers cannot accidentally perform an unscoped
+// mutation after resolving an account from the request URL.
+func (r *SessionRepository) RevokeByUserAndSession(ctx context.Context, userID int, sessionID string) error {
+	query := `UPDATE auth_sessions SET revoked_at = NOW() WHERE user_id = $1 AND id = $2`
+	tag, err := r.pool.Exec(ctx, query, userID, sessionID)
+	if err != nil {
+		return fmt.Errorf("revoking session for user %d: %w", userID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrSessionNotFound
+	}
+	return nil
+}
+
 // RevokeAllByUser sets revoked_at to NOW() for all active sessions owned by a user.
 func (r *SessionRepository) RevokeAllByUser(ctx context.Context, userID int) error {
 	query := `UPDATE auth_sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`

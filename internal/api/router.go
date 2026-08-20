@@ -3016,7 +3016,15 @@ func NewRouter(deps Dependencies) chi.Router {
 							r.Put("/users/{id}", adminHandler.HandleUpdateUser)
 							r.Delete("/users/{id}", adminHandler.HandleDeleteUser)
 							r.Post("/users/{id}/impersonate", adminHandler.HandleImpersonateUser)
-							r.Get("/users/{id}/profiles", adminHandler.HandleListUserProfiles)
+							r.Get("/users/{user_id}/profiles", adminHandler.HandleListUserProfiles)
+							r.Post("/users/{user_id}/profiles", adminHandler.HandleCreateUserProfile)
+							r.Put("/users/{user_id}/profiles/{profile_id}", adminHandler.HandleUpdateUserProfile)
+							r.Delete("/users/{user_id}/profiles/{profile_id}", adminHandler.HandleDeleteUserProfile)
+							r.Get("/users/{user_id}/devices", adminHandler.HandleListUserDevices)
+							r.Delete("/users/{user_id}/devices/{device_id}", adminHandler.HandleDeleteUserDevice)
+							r.Get("/users/{user_id}/auth-sessions", adminHandler.HandleListUserAuthSessions)
+							r.Delete("/users/{user_id}/auth-sessions/{session_id}", adminHandler.HandleRevokeUserAuthSession)
+							r.Delete("/users/{user_id}/auth-sessions", adminHandler.HandleRevokeAllUserAuthSessions)
 							// The canonical settings API's admin projection. It
 							// replaced the string-registry /users/{id}/settings*
 							// and device-settings* routes (see the pre-lock

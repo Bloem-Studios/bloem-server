@@ -120,6 +120,7 @@ type AdminHandler struct {
 	pool                         *pgxpool.Pool
 	SessionsLoader               *PlaybackSessionsLoader
 	storeProv                    userstore.UserStoreProvider
+	sessionRepo                  adminUserSessionRepository
 	accountProvisioner           *auth.AccountProvisioner
 	DetailSvc                    *catalog.DetailService
 	StatsSource                  AdminStatsSource
@@ -156,12 +157,16 @@ func NewAdminHandler(
 	pool *pgxpool.Pool,
 	storeProv userstore.UserStoreProvider,
 ) *AdminHandler {
-	return &AdminHandler{
+	handler := &AdminHandler{
 		userRepo:           userRepo,
 		pool:               pool,
 		storeProv:          storeProv,
 		accountProvisioner: auth.NewAccountProvisioner(userRepo, storeProv),
 	}
+	if pool != nil {
+		handler.sessionRepo = auth.NewSessionRepository(pool)
+	}
+	return handler
 }
 
 // SetMembershipProvisioner configures default-organization provisioning for
@@ -333,11 +338,6 @@ type adminPlaybackHistoryRow struct {
 	WatchedSeconds  float64   `json:"watched_seconds"`
 	DurationSeconds *float64  `json:"duration_seconds"`
 	Completed       bool      `json:"completed"`
-}
-
-type adminUserProfileRow struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
 }
 
 // unmatchedFileRow represents a media file with no content_id.
@@ -963,43 +963,6 @@ func (h *AdminHandler) HandleListPlaybackHistory(w http.ResponseWriter, r *http.
 	}
 
 	writeJSON(w, http.StatusOK, history)
-}
-
-// HandleListUserProfiles handles GET /admin/users/{id}/profiles.
-func (h *AdminHandler) HandleListUserProfiles(w http.ResponseWriter, r *http.Request) {
-	if h.storeProv == nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "User store not configured")
-		return
-	}
-
-	idStr := chi.URLParam(r, "id")
-	userID, err := strconv.Atoi(idStr)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user ID")
-		return
-	}
-
-	store, ok := h.adminUserStore(w, r, userID)
-	if !ok {
-		return
-	}
-	if store == nil {
-		writeError(w, http.StatusNotFound, "not_found", "User store not found")
-		return
-	}
-
-	profiles, err := store.ListProfiles(r.Context())
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list profiles")
-		return
-	}
-
-	resp := make([]adminUserProfileRow, 0, len(profiles))
-	for _, profile := range profiles {
-		resp = append(resp, adminUserProfileRow{ID: profile.ID, Name: profile.Name})
-	}
-
-	writeJSON(w, http.StatusOK, resp)
 }
 
 func updateMayRequireSessionRevocation(input models.UpdateUserInput) bool {
