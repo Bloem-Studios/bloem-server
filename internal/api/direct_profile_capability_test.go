@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -30,25 +31,35 @@ func TestDirectProfileCapabilityMatchesRouteWiring(t *testing.T) {
 		return pool
 	}
 
-	for name, deps := range map[string]func() Dependencies{
-		"db and config": func() Dependencies {
+	testCases := map[string]struct {
+		requiresDatabase bool
+		dependencies     func() Dependencies
+	}{
+		"db and config": {requiresDatabase: true, dependencies: func() Dependencies {
 			p := withDB()
 			b := v1TenancyBootstrap{store: tenancy.NewStore(p)}
 			return Dependencies{DB: p, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(p),
 				OwnershipBootstrapper: b, MembershipProvisioner: b}
-		},
-		"db without config": func() Dependencies {
+		}},
+		"db without config": {requiresDatabase: true, dependencies: func() Dependencies {
 			return Dependencies{DB: withDB()}
-		},
-		"config without db": func() Dependencies {
+		}},
+		"config without db": {dependencies: func() Dependencies {
 			return Dependencies{Config: cfg}
-		},
-		"neither": func() Dependencies {
+		}},
+		"neither": {dependencies: func() Dependencies {
 			return Dependencies{}
-		},
-	} {
+		}},
+	}
+	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			router := NewRouter(deps())
+			if testCase.requiresDatabase && strings.TrimSpace(os.Getenv("SILO_TEST_DATABASE_URL")) == "" {
+				if os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
+					t.Fatal("SILO_TEST_DATABASE_URL is required")
+				}
+				t.Skip("SILO_TEST_DATABASE_URL is not set")
+			}
+			router := NewRouter(testCase.dependencies())
 
 			login := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/profile-login",
 				`{"email":"probe@example.test","password":"probe","device_id":"probe"}`, "", nil)
