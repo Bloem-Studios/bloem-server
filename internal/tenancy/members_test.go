@@ -17,6 +17,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type observingMemberUserRepository struct {
+	base   *auth.UserRepository
+	before func()
+}
+
+func (r *observingMemberUserRepository) GetByID(ctx context.Context, userID int) (*models.User, error) {
+	if r.before != nil {
+		r.before()
+	}
+	return r.base.GetByID(ctx, userID)
+}
+
 func newMemberService(t *testing.T) (context.Context, *pgxpool.Pool, *tenancy.Store, *tenancy.MemberService, *auth.SessionRepository) {
 	t.Helper()
 	ctx, pool, store := testTenantPool(t)
@@ -511,6 +523,81 @@ func TestMemberServiceCompatInvalidationRunsAfterCommittedSecurityMutation(t *te
 	stored, err = service.Get(ctx, tenant.ID, member.ID)
 	if err != nil || stored.Enabled {
 		t.Fatalf("suspend did not remain committed after compat failure: user=%+v err=%v", stored, err)
+	}
+}
+
+func TestMemberServiceCompatInvalidationSurvivesRequestCancellationAndPrecedesReload(t *testing.T) {
+	for _, operation := range []string{"identity update", "password reset", "suspend"} {
+		t.Run(operation, func(t *testing.T) {
+			ctx, pool, store := testTenantPool(t)
+			users := auth.NewUserRepository(pool)
+			accounts := auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(pool))
+			observingUsers := &observingMemberUserRepository{base: users}
+			service := tenancy.NewMemberService(pool, accounts, observingUsers, auth.NewSessionRepository(pool))
+			tenant := createMemberTenant(t, ctx, store, 1)
+			input := memberInput(fmt.Sprintf("cancel-member-%s-%d", strings.ReplaceAll(operation, " ", "-"), time.Now().UnixNano()))
+			member, _, err := service.Create(ctx, tenant.ID, "cancel-command-"+operation, input)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			requestCtx, cancelRequest := context.WithCancel(ctx)
+			durableCompatSession := true
+			memoryCompatSession := true
+			reloadObservedPurged := false
+			observingUsers.before = func() {
+				reloadObservedPurged = !durableCompatSession && !memoryCompatSession
+			}
+			service.SetCompatSessionInvalidator(func(callbackCtx context.Context, userID int) error {
+				if userID != member.ID {
+					t.Errorf("compat invalidation user = %d, want %d", userID, member.ID)
+				}
+				cancelRequest()
+				if err := callbackCtx.Err(); err != nil {
+					return err
+				}
+				durableCompatSession = false
+				memoryCompatSession = false
+				return nil
+			})
+
+			switch operation {
+			case "identity update":
+				username := input.Username + "-changed"
+				_, _ = service.Update(requestCtx, tenant.ID, member.ID, tenancy.UpdateMemberInput{Username: &username})
+			case "password reset":
+				_, _ = service.ResetPassword(requestCtx, tenant.ID, member.ID, "replacement-password")
+			case "suspend":
+				_, _ = service.Suspend(requestCtx, tenant.ID, member.ID)
+			}
+			if durableCompatSession || memoryCompatSession {
+				t.Fatalf("compat sessions remain: durable=%v memory=%v", durableCompatSession, memoryCompatSession)
+			}
+			if !reloadObservedPurged {
+				t.Fatal("response reload ran before mandatory compat invalidation")
+			}
+			if !errors.Is(requestCtx.Err(), context.Canceled) {
+				t.Fatalf("request context error = %v, want canceled by post-commit callback", requestCtx.Err())
+			}
+			switch operation {
+			case "identity update":
+				var username string
+				if err := pool.QueryRow(context.Background(), `SELECT username FROM users WHERE id=$1`, member.ID).Scan(&username); err != nil || username != input.Username+"-changed" {
+					t.Fatalf("committed username = %q, %v", username, err)
+				}
+			case "password reset":
+				var passwordHash string
+				if err := pool.QueryRow(context.Background(), `SELECT password_hash FROM users WHERE id=$1`, member.ID).Scan(&passwordHash); err != nil || !auth.CheckPassword(&models.User{PasswordHash: passwordHash}, "replacement-password") {
+					t.Fatalf("committed password reset missing: %v", err)
+				}
+			case "suspend":
+				var enabled bool
+				var status string
+				if err := pool.QueryRow(context.Background(), `SELECT u.enabled,m.status FROM users u JOIN organization_memberships m ON m.account_id=u.id AND m.organization_id=$1 WHERE u.id=$2`, tenant.ID, member.ID).Scan(&enabled, &status); err != nil || enabled || status != "suspended" {
+					t.Fatalf("committed suspension = enabled %v status %q, %v", enabled, status, err)
+				}
+			}
+		})
 	}
 }
 

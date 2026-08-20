@@ -18,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
@@ -61,6 +62,7 @@ type adminUserSessionRepository interface {
 	ListByUser(ctx context.Context, userID int) ([]*models.AuthSession, error)
 	RevokeByUserAndSession(ctx context.Context, userID int, sessionID string) error
 	RevokeAllByUser(ctx context.Context, userID int) error
+	RevokeAllByImpersonator(ctx context.Context, impersonatorUserID int) error
 }
 
 type adminUserResources struct {
@@ -699,13 +701,17 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 	}
 	if organizationID != uuid.Nil {
 		if h.OnUserProfileSessionsRevoked != nil {
-			if err := h.OnUserProfileSessionsRevoked(r.Context(), resources.user.ID, []string{scopedProfileID}); err != nil {
+			if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
+				return h.OnUserProfileSessionsRevoked(callbackCtx, resources.user.ID, []string{scopedProfileID})
+			}); err != nil {
 				writeError(w, http.StatusInternalServerError, "internal_error", "Authentication session was revoked but compatibility-session invalidation failed")
 				return
 			}
 		}
 	} else if h.OnUserSessionsRevoked != nil {
-		if err := h.OnUserSessionsRevoked(r.Context(), resources.user.ID); err != nil {
+		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
+			return h.OnUserSessionsRevoked(callbackCtx, resources.user.ID)
+		}); err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication session was revoked but compatibility-session invalidation failed")
 			return
 		}
@@ -761,13 +767,17 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 	}
 	if organizationID != uuid.Nil {
 		if h.OnUserProfileSessionsRevoked != nil {
-			if err := h.OnUserProfileSessionsRevoked(r.Context(), resources.user.ID, scopedProfileIDs); err != nil {
+			if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
+				return h.OnUserProfileSessionsRevoked(callbackCtx, resources.user.ID, scopedProfileIDs)
+			}); err != nil {
 				writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
 				return
 			}
 		}
 	} else if h.OnUserSessionsRevoked != nil {
-		if err := h.OnUserSessionsRevoked(r.Context(), resources.user.ID); err != nil {
+		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
+			return h.OnUserSessionsRevoked(callbackCtx, resources.user.ID)
+		}); err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
 			return
 		}

@@ -38,6 +38,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/policy"
+	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingsmigrate"
 	subtitleai "github.com/Silo-Server/silo-server/internal/subtitles/ai"
@@ -1017,22 +1018,22 @@ func accessGroupIDEqual(a, b *int64) bool {
 }
 
 func (h *AdminHandler) revokeUserSessions(ctx context.Context, userID int) error {
-	if h.pool == nil {
-		return nil
-	}
-	sessionRepo := auth.NewSessionRepository(h.pool)
-	if err := sessionRepo.RevokeAllByUser(ctx, userID); err != nil {
-		return err
-	}
-	if err := sessionRepo.RevokeAllByImpersonator(ctx, userID); err != nil {
-		return err
-	}
-	if h.OnUserSessionsRevoked != nil {
-		if err := h.OnUserSessionsRevoked(ctx, userID); err != nil {
-			return err
+	return sessioninvalidation.Run(ctx, func(invalidationCtx context.Context) error {
+		if h.sessionRepo != nil {
+			if err := h.sessionRepo.RevokeAllByUser(invalidationCtx, userID); err != nil {
+				return err
+			}
+			if err := h.sessionRepo.RevokeAllByImpersonator(invalidationCtx, userID); err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		if h.OnUserSessionsRevoked != nil {
+			if err := h.OnUserSessionsRevoked(invalidationCtx, userID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // HandleListUnmatched handles GET /admin/unmatched.

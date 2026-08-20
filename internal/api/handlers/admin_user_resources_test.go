@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -20,7 +21,45 @@ import (
 )
 
 type adminUserResourceSessions struct {
-	sessions map[string]*models.AuthSession
+	sessions          map[string]*models.AuthSession
+	cancelAfterRevoke func()
+}
+
+type adminOrganizationUserStore struct {
+	userstore.UserStore
+	organizationID string
+}
+
+func (s *adminOrganizationUserStore) GetProfile(ctx context.Context, profileID string) (*userstore.Profile, error) {
+	profile, err := s.UserStore.GetProfile(ctx, profileID)
+	if profile != nil {
+		profile.OrganizationID = s.organizationID
+	}
+	return profile, err
+}
+
+func (s *adminOrganizationUserStore) ListProfiles(ctx context.Context) ([]userstore.Profile, error) {
+	profiles, err := s.UserStore.ListProfiles(ctx)
+	for i := range profiles {
+		profiles[i].OrganizationID = s.organizationID
+	}
+	return profiles, err
+}
+
+func (s *adminOrganizationUserStore) RegisterDevice(ctx context.Context, entry userstore.DeviceEntry) error {
+	return s.UserStore.(userstore.DeviceRegistry).RegisterDevice(ctx, entry)
+}
+
+func (s *adminOrganizationUserStore) ListDevices(ctx context.Context) ([]userstore.DeviceEntry, error) {
+	return s.UserStore.(userstore.DeviceRegistry).ListDevices(ctx)
+}
+
+func (s *adminOrganizationUserStore) DeviceExists(ctx context.Context, profileID, deviceID string) (bool, error) {
+	return s.UserStore.(userstore.DeviceRegistry).DeviceExists(ctx, profileID, deviceID)
+}
+
+func (s *adminOrganizationUserStore) ForgetDevice(ctx context.Context, profileID, deviceID string) error {
+	return s.UserStore.(userstore.DeviceRegistry).ForgetDevice(ctx, profileID, deviceID)
 }
 
 type adminUserResourceAvatarStore struct {
@@ -92,6 +131,9 @@ func (s *adminUserResourceSessions) RevokeByUserAndSession(_ context.Context, us
 	}
 	now := time.Now()
 	session.RevokedAt = &now
+	if s.cancelAfterRevoke != nil {
+		s.cancelAfterRevoke()
+	}
 	return nil
 }
 
@@ -102,7 +144,42 @@ func (s *adminUserResourceSessions) RevokeAllByUser(_ context.Context, userID in
 			session.RevokedAt = &now
 		}
 	}
+	if s.cancelAfterRevoke != nil {
+		s.cancelAfterRevoke()
+	}
 	return nil
+}
+
+func (s *adminUserResourceSessions) RevokeAllByImpersonator(ctx context.Context, _ int) error {
+	return ctx.Err()
+}
+
+type cancellationAdminUserRepo struct {
+	user   *models.User
+	cancel func()
+}
+
+func (r *cancellationAdminUserRepo) List(context.Context) ([]*models.User, error) {
+	return []*models.User{r.user}, nil
+}
+
+func (r *cancellationAdminUserRepo) Create(context.Context, models.CreateUserInput) (*models.User, error) {
+	return nil, errors.New("unexpected create")
+}
+
+func (r *cancellationAdminUserRepo) Update(_ context.Context, _ int, _ models.UpdateUserInput) error {
+	r.cancel()
+	return nil
+}
+
+func (r *cancellationAdminUserRepo) Delete(_ context.Context, _ int) error {
+	r.cancel()
+	return nil
+}
+
+func (r *cancellationAdminUserRepo) GetByID(_ context.Context, _ int) (*models.User, error) {
+	copy := *r.user
+	return &copy, nil
 }
 
 func newAdminUserResourceHandler(t *testing.T) (*AdminHandler, map[int]userstore.UserStore, *adminUserResourceSessions) {
@@ -128,8 +205,9 @@ func newAdminUserResourceHandler(t *testing.T) (*AdminHandler, map[int]userstore
 		1: {ID: 1, Username: "account-a", MaxProfiles: 4},
 		2: {ID: 2, Username: "account-b", MaxProfiles: 4},
 	}}
+	profileA := "profile-a-secondary"
 	sessions := &adminUserResourceSessions{sessions: map[string]*models.AuthSession{
-		"session-a": {ID: "session-a", UserID: 1, DeviceName: "A browser", ExpiresAt: time.Now().Add(time.Hour)},
+		"session-a": {ID: "session-a", UserID: 1, DeviceName: "A browser", ProfileID: &profileA, ExpiresAt: time.Now().Add(time.Hour)},
 		"session-b": {ID: "session-b", UserID: 2, DeviceName: "B browser", ExpiresAt: time.Now().Add(time.Hour)},
 	}}
 	handler := NewAdminHandler(users, nil, mappedTestUserStoreProvider{stores: stores})
@@ -171,6 +249,56 @@ func adminUserResourceRequest(t *testing.T, router http.Handler, method, path, b
 	t.Helper()
 	request := httptest.NewRequest(method, path, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	return recorder
+}
+
+type cancellationCompatState struct {
+	persistent map[string]string
+	memory     map[string]string
+}
+
+func newCancellationCompatState() *cancellationCompatState {
+	return &cancellationCompatState{
+		persistent: map[string]string{"profile-a": "profile-a-secondary", "profile-b": "profile-b", "account": ""},
+		memory:     map[string]string{"profile-a": "profile-a-secondary", "profile-b": "profile-b", "account": ""},
+	}
+}
+
+func (s *cancellationCompatState) invalidateUser(ctx context.Context, _ int) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	clear(s.persistent)
+	clear(s.memory)
+	return nil
+}
+
+func (s *cancellationCompatState) invalidateProfiles(ctx context.Context, _ int, profileIDs []string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	selected := make(map[string]struct{}, len(profileIDs))
+	for _, profileID := range profileIDs {
+		selected[profileID] = struct{}{}
+	}
+	for token, profileID := range s.persistent {
+		if _, ok := selected[profileID]; ok {
+			delete(s.persistent, token)
+		}
+	}
+	for token, profileID := range s.memory {
+		if _, ok := selected[profileID]; ok {
+			delete(s.memory, token)
+		}
+	}
+	return nil
+}
+
+func adminUserResourceRequestWithContext(t *testing.T, router http.Handler, ctx context.Context, method, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	request := httptest.NewRequest(method, path, nil).WithContext(ctx)
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, request)
 	return recorder
@@ -435,6 +563,94 @@ func TestAdminUserAuthSessions_RevokeAllOnlyTouchesSelectedUser(t *testing.T) {
 	}
 	if sessions.sessions["session-b"].RevokedAt != nil {
 		t.Fatal("another user's session was revoked")
+	}
+}
+
+func TestAdminUserAuthSessions_CompatInvalidationSurvivesRequestCancellation(t *testing.T) {
+	tenantID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	for _, test := range []struct {
+		name   string
+		path   string
+		scoped bool
+	}{
+		{name: "global single", path: "/api/v1/admin/users/1/auth-sessions/session-a"},
+		{name: "global all", path: "/api/v1/admin/users/1/auth-sessions"},
+		{name: "profile scoped single", path: "/api/v1/admin/users/1/auth-sessions/session-a", scoped: true},
+		{name: "profile scoped all", path: "/api/v1/admin/users/1/auth-sessions", scoped: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			handler, stores, sessions := newAdminUserResourceHandler(t)
+			state := newCancellationCompatState()
+			handler.OnUserSessionsRevoked = state.invalidateUser
+			handler.OnUserProfileSessionsRevoked = state.invalidateProfiles
+			ctx, cancel := context.WithCancel(context.Background())
+			sessions.cancelAfterRevoke = cancel
+			if test.scoped {
+				stores[1] = &adminOrganizationUserStore{UserStore: stores[1], organizationID: tenantID.String()}
+				ctx = withAdminResourceOrganization(ctx, tenantID)
+			}
+
+			recorder := adminUserResourceRequestWithContext(t, routeAdminUserResources(handler), ctx, http.MethodDelete, test.path)
+			if recorder.Code != http.StatusNoContent {
+				t.Fatalf("status = %d: %s, want 204", recorder.Code, recorder.Body.String())
+			}
+			if test.scoped {
+				if _, ok := state.persistent["profile-a"]; ok {
+					t.Fatal("profile-scoped durable compat session remains")
+				}
+				if _, ok := state.memory["profile-a"]; ok {
+					t.Fatal("profile-scoped in-memory compat session remains")
+				}
+				for _, token := range []string{"profile-b", "account"} {
+					if _, ok := state.persistent[token]; !ok {
+						t.Fatalf("unrelated durable compat session %q was removed", token)
+					}
+					if _, ok := state.memory[token]; !ok {
+						t.Fatalf("unrelated in-memory compat session %q was removed", token)
+					}
+				}
+			} else if len(state.persistent) != 0 || len(state.memory) != 0 {
+				t.Fatalf("global compat sessions remain: persistent=%v memory=%v", state.persistent, state.memory)
+			}
+		})
+	}
+}
+
+func TestAdminUserSecurityMutations_CompatInvalidationSurvivesRequestCancellation(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		method string
+		path   string
+		body   string
+		want   int
+	}{
+		{name: "update", method: http.MethodPut, path: "/api/v1/admin/users/1", body: `{"password":"new-password"}`, want: http.StatusOK},
+		{name: "delete", method: http.MethodDelete, path: "/api/v1/admin/users/1", want: http.StatusNoContent},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			repo := &cancellationAdminUserRepo{user: &models.User{ID: 1, Username: "account-a", Enabled: true}, cancel: cancel}
+			handler := NewAdminHandler(repo, nil, nil)
+			handler.sessionRepo = &adminUserResourceSessions{sessions: map[string]*models.AuthSession{
+				"session-a": {ID: "session-a", UserID: 1, ExpiresAt: time.Now().Add(time.Hour)},
+			}}
+			state := newCancellationCompatState()
+			handler.OnUserSessionsRevoked = state.invalidateUser
+			router := chi.NewRouter()
+			router.Put("/api/v1/admin/users/{id}", handler.HandleUpdateUser)
+			router.Delete("/api/v1/admin/users/{id}", handler.HandleDeleteUser)
+
+			request := httptest.NewRequest(test.method, test.path, strings.NewReader(test.body)).WithContext(ctx)
+			request.Header.Set("Content-Type", "application/json")
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, request)
+			if recorder.Code != test.want {
+				t.Fatalf("status = %d: %s, want %d", recorder.Code, recorder.Body.String(), test.want)
+			}
+			if len(state.persistent) != 0 || len(state.memory) != 0 {
+				t.Fatalf("compat sessions remain: persistent=%v memory=%v", state.persistent, state.memory)
+			}
+		})
 	}
 }
 

@@ -18,6 +18,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 )
 
 var (
@@ -98,7 +99,9 @@ func (s *MemberService) invalidateCompatSessionsAfterCommit(ctx context.Context,
 	if s == nil || s.compatSessions == nil {
 		return nil
 	}
-	if err := s.compatSessions(ctx, userID); err != nil {
+	if err := sessioninvalidation.Run(ctx, func(callbackCtx context.Context) error {
+		return s.compatSessions(callbackCtx, userID)
+	}); err != nil {
 		// The callback may wrap infrastructure details. Keep them in the returned
 		// error chain for operators while avoiding credential-bearing log output.
 		slog.ErrorContext(ctx, "compat session invalidation failed after committed member mutation",
@@ -424,12 +427,12 @@ func (s *MemberService) Update(ctx context.Context, tenantID uuid.UUID, userID i
 	if err := tx.Commit(ctx); err != nil {
 		return models.User{}, fmt.Errorf("tenancy: commit member update: %w", err)
 	}
+	if err := s.invalidateCompatSessionsAfterCommit(ctx, userID, "identity update"); err != nil {
+		return models.User{}, err
+	}
 	updated, err := s.users.GetByID(ctx, userID)
 	if err != nil {
 		return models.User{}, fmt.Errorf("tenancy: load updated member: %w", err)
-	}
-	if err := s.invalidateCompatSessionsAfterCommit(ctx, userID, "identity update"); err != nil {
-		return *updated, err
 	}
 	return *updated, nil
 }
@@ -502,14 +505,14 @@ func (s *MemberService) setSuspended(ctx context.Context, tenantID uuid.UUID, us
 	if err := tx.Commit(ctx); err != nil {
 		return models.User{}, fmt.Errorf("tenancy: commit member state: %w", err)
 	}
+	if suspended {
+		if err := s.invalidateCompatSessionsAfterCommit(ctx, userID, "suspension"); err != nil {
+			return models.User{}, err
+		}
+	}
 	updated, err := s.users.GetByID(ctx, userID)
 	if err != nil {
 		return models.User{}, fmt.Errorf("tenancy: load member state: %w", err)
-	}
-	if suspended {
-		if err := s.invalidateCompatSessionsAfterCommit(ctx, userID, "suspension"); err != nil {
-			return *updated, err
-		}
 	}
 	return *updated, nil
 }
@@ -538,12 +541,12 @@ func (s *MemberService) ResetPassword(ctx context.Context, tenantID uuid.UUID, u
 	if err := tx.Commit(ctx); err != nil {
 		return models.User{}, fmt.Errorf("tenancy: commit member password reset: %w", err)
 	}
+	if err := s.invalidateCompatSessionsAfterCommit(ctx, userID, "password reset"); err != nil {
+		return models.User{}, err
+	}
 	updated, err := s.users.GetByID(ctx, userID)
 	if err != nil {
 		return models.User{}, fmt.Errorf("tenancy: load reset member: %w", err)
-	}
-	if err := s.invalidateCompatSessionsAfterCommit(ctx, userID, "password reset"); err != nil {
-		return *updated, err
 	}
 	return *updated, nil
 }
