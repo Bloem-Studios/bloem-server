@@ -121,6 +121,7 @@ type AdminHandler struct {
 	SessionsLoader               *PlaybackSessionsLoader
 	storeProv                    userstore.UserStoreProvider
 	sessionRepo                  adminUserSessionRepository
+	profileHandler               *ProfileHandler
 	accountProvisioner           *auth.AccountProvisioner
 	DetailSvc                    *catalog.DetailService
 	StatsSource                  AdminStatsSource
@@ -145,6 +146,13 @@ type AdminHandler struct {
 	// G2); nil means tenants are not wired and an organization_id request
 	// is refused.
 	tenantStore *tenancy.Store
+}
+
+// SetProfileHandler wires the same fully configured profile handler used by
+// the native profile routes. Admin profile mutations delegate to its shared
+// lifecycle so avatar and shared device/download cleanup cannot drift.
+func (h *AdminHandler) SetProfileHandler(profileHandler *ProfileHandler) {
+	h.profileHandler = profileHandler
 }
 
 // SetTenantStore wires the park tenant slot gate into user creation.

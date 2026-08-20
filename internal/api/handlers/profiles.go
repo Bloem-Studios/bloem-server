@@ -599,18 +599,13 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 	// The profile columns and their canonical projections commit together. A
 	// failure cannot leave a 500 response whose legacy values look saved while
 	// canonical readers continue serving the previous preference.
-	if err := h.applyProfileUpdateSettingsSync(
-		r.Context(), store, userID, profileID, input, settingsSync,
+	if err := h.updateProfileWithLifecycle(
+		r.Context(), store, userID, currentProfile, input, settingsSync,
 	); err != nil {
 		slog.ErrorContext(r.Context(), "profile update failed to sync canonical settings",
 			"component", "api", "user_id", userID, "profile_id", profileID, "error", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to store profile preferences")
 		return
-	}
-	if currentProfile.Avatar != "" && avatarRef != nil && avatarRefReplacesUpload(currentProfile.Avatar, *avatarRef) {
-		if cleanupErr := deleteUploadedAvatarObjects(r.Context(), h.AvatarStore, userID, profileID); cleanupErr != nil {
-			slog.WarnContext(r.Context(), "profile avatar cleanup failed after update", "component", "api", "user_id", userID, "profile_id", profileID, "error", cleanupErr)
-		}
 	}
 
 	// Re-read the profile to return the updated state.
@@ -666,21 +661,9 @@ func (h *ProfileHandler) HandleDeleteProfile(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := store.DeleteProfile(r.Context(), profileID); err != nil {
+	if err := h.deleteProfileWithLifecycle(r.Context(), store, userID, profile); err != nil {
 		writeError(w, http.StatusNotFound, "not_found", "Profile not found")
 		return
-	}
-	if isUploadedAvatarRef(profile.Avatar) {
-		if cleanupErr := deleteUploadedAvatarObjects(r.Context(), h.AvatarStore, userID, profileID); cleanupErr != nil {
-			slog.WarnContext(r.Context(), "profile avatar cleanup failed after delete", "component", "api", "user_id", userID, "profile_id", profileID, "error", cleanupErr)
-		}
-	}
-	if h.DeviceLibraryPurger != nil {
-		purgeCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 30*time.Second)
-		defer cancel()
-		if purgeErr := h.DeviceLibraryPurger.PurgeProfileDevices(purgeCtx, userID, profileID); purgeErr != nil {
-			slog.WarnContext(r.Context(), "profile device-library purge failed after delete", "component", "api", "user_id", userID, "profile_id", profileID, "error", purgeErr)
-		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)

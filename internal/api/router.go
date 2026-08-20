@@ -1163,6 +1163,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	var adminJobsHandler *handlers.AdminJobsHandler
 	if userRepo != nil {
 		adminHandler = handlers.NewAdminHandler(userRepo, deps.DB, deps.UserStoreProvider)
+		adminHandler.SetProfileHandler(profileHandler)
 		adminHandler.SetMembershipProvisioner(deps.MembershipProvisioner)
 		if deps.DB != nil {
 			// The tenant admin API (vondel-park growth G2): a park tenant is

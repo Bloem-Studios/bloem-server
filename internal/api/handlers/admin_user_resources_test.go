@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -20,6 +21,48 @@ import (
 
 type adminUserResourceSessions struct {
 	sessions map[string]*models.AuthSession
+}
+
+type adminUserResourceAvatarStore struct {
+	keys      []string
+	deleted   []string
+	listErr   error
+	deleteErr error
+}
+
+func (s *adminUserResourceAvatarStore) PutObject(context.Context, string, string, []byte) error {
+	return nil
+}
+
+func (s *adminUserResourceAvatarStore) DeleteObject(_ context.Context, _ string, key string) error {
+	s.deleted = append(s.deleted, key)
+	return s.deleteErr
+}
+
+func (s *adminUserResourceAvatarStore) ListObjects(context.Context, string, string) ([]string, error) {
+	return append([]string(nil), s.keys...), s.listErr
+}
+
+func (s *adminUserResourceAvatarStore) PresignGetURL(context.Context, string, string, time.Duration) (string, error) {
+	return "", nil
+}
+
+func (s *adminUserResourceAvatarStore) Bucket() string { return "profiles" }
+
+type adminUserResourceProfilePurger struct {
+	calls []struct {
+		userID    int
+		profileID string
+	}
+	err error
+}
+
+func (p *adminUserResourceProfilePurger) PurgeProfileDevices(_ context.Context, userID int, profileID string) error {
+	p.calls = append(p.calls, struct {
+		userID    int
+		profileID string
+	}{userID: userID, profileID: profileID})
+	return p.err
 }
 
 func (s *adminUserResourceSessions) GetByID(_ context.Context, id string) (*models.AuthSession, error) {
@@ -238,6 +281,104 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 			"/api/v1/admin/users/1/profiles/profile-a-primary", "")
 		if recorder.Code != http.StatusConflict {
 			t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+		}
+	})
+}
+
+func TestAdminUserProfiles_UpdateRemovesReplacedUploadedAvatar(t *testing.T) {
+	handler, stores, _ := newAdminUserResourceHandler(t)
+	avatar := "upload:profile-avatars/1/profile-a-secondary/original.webp"
+	if err := stores[1].UpdateProfile(context.Background(), "profile-a-secondary", userstore.UpdateProfileInput{Avatar: &avatar}); err != nil {
+		t.Fatalf("seed uploaded avatar: %v", err)
+	}
+	avatarStore := &adminUserResourceAvatarStore{keys: []string{
+		"profile-avatars/1/profile-a-secondary/original.webp",
+		"profile-avatars/1/profile-a-secondary/w256.webp",
+	}}
+	profileHandler := NewProfileHandler(handler.storeProv)
+	profileHandler.AvatarStore = avatarStore
+	handler.SetProfileHandler(profileHandler)
+
+	recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodPut,
+		"/api/v1/admin/users/1/profiles/profile-a-secondary", `{"avatar":"avatar-1"}`)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if len(avatarStore.deleted) != 2 {
+		t.Fatalf("deleted avatar objects = %v, want both uploaded variants", avatarStore.deleted)
+	}
+}
+
+func TestAdminUserProfiles_DeleteRemovesUploadedAvatarAndPurgesProfileDevices(t *testing.T) {
+	handler, stores, _ := newAdminUserResourceHandler(t)
+	avatar := "upload:profile-avatars/1/profile-a-secondary/original.webp"
+	if err := stores[1].UpdateProfile(context.Background(), "profile-a-secondary", userstore.UpdateProfileInput{Avatar: &avatar}); err != nil {
+		t.Fatalf("seed uploaded avatar: %v", err)
+	}
+	avatarStore := &adminUserResourceAvatarStore{keys: []string{
+		"profile-avatars/1/profile-a-secondary/original.webp",
+		"profile-avatars/1/profile-a-secondary/w256.webp",
+	}}
+	purger := &adminUserResourceProfilePurger{}
+	profileHandler := NewProfileHandler(handler.storeProv)
+	profileHandler.AvatarStore = avatarStore
+	profileHandler.DeviceLibraryPurger = purger
+	handler.SetProfileHandler(profileHandler)
+
+	recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodDelete,
+		"/api/v1/admin/users/1/profiles/profile-a-secondary", "")
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if len(avatarStore.deleted) != 2 {
+		t.Fatalf("deleted avatar objects = %v, want both uploaded variants", avatarStore.deleted)
+	}
+	if len(purger.calls) != 1 || purger.calls[0].userID != 1 || purger.calls[0].profileID != "profile-a-secondary" {
+		t.Fatalf("purge calls = %+v, want selected user and profile", purger.calls)
+	}
+}
+
+func TestAdminUserProfiles_CleanupFailuresFollowNativeMutationSemantics(t *testing.T) {
+	t.Run("update commits even when avatar cleanup fails", func(t *testing.T) {
+		handler, stores, _ := newAdminUserResourceHandler(t)
+		avatar := "upload:profile-avatars/1/profile-a-secondary/original.webp"
+		if err := stores[1].UpdateProfile(context.Background(), "profile-a-secondary", userstore.UpdateProfileInput{Avatar: &avatar}); err != nil {
+			t.Fatalf("seed uploaded avatar: %v", err)
+		}
+		profileHandler := NewProfileHandler(handler.storeProv)
+		profileHandler.AvatarStore = &adminUserResourceAvatarStore{listErr: errors.New("storage unavailable")}
+		handler.SetProfileHandler(profileHandler)
+
+		recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodPut,
+			"/api/v1/admin/users/1/profiles/profile-a-secondary", `{"avatar":"avatar-1"}`)
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+		}
+		profile, err := stores[1].GetProfile(context.Background(), "profile-a-secondary")
+		if err != nil || profile == nil || profile.Avatar != "preset:avatar-1" {
+			t.Fatalf("updated profile = %+v, %v", profile, err)
+		}
+	})
+
+	t.Run("delete commits even when cleanup and purge fail", func(t *testing.T) {
+		handler, stores, _ := newAdminUserResourceHandler(t)
+		avatar := "upload:profile-avatars/1/profile-a-secondary/original.webp"
+		if err := stores[1].UpdateProfile(context.Background(), "profile-a-secondary", userstore.UpdateProfileInput{Avatar: &avatar}); err != nil {
+			t.Fatalf("seed uploaded avatar: %v", err)
+		}
+		profileHandler := NewProfileHandler(handler.storeProv)
+		profileHandler.AvatarStore = &adminUserResourceAvatarStore{listErr: errors.New("storage unavailable")}
+		profileHandler.DeviceLibraryPurger = &adminUserResourceProfilePurger{err: errors.New("database unavailable")}
+		handler.SetProfileHandler(profileHandler)
+
+		recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodDelete,
+			"/api/v1/admin/users/1/profiles/profile-a-secondary", "")
+		if recorder.Code != http.StatusNoContent {
+			t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+		}
+		profile, err := stores[1].GetProfile(context.Background(), "profile-a-secondary")
+		if err != nil || profile != nil {
+			t.Fatalf("profile after delete = %+v, %v; want deleted", profile, err)
 		}
 	})
 }

@@ -91,6 +91,9 @@ func (h *AdminHandler) loadAdminUserResources(w http.ResponseWriter, r *http.Req
 }
 
 func (h *AdminHandler) adminResourceProfileHandler() *ProfileHandler {
+	if h.profileHandler != nil {
+		return h.profileHandler
+	}
 	profileHandler := NewProfileHandler(h.storeProv)
 	profileHandler.UserRepo = h.userRepo
 	profileHandler.EventsHub = h.EventsHub
@@ -294,8 +297,8 @@ func (h *AdminHandler) HandleUpdateUserProfile(w http.ResponseWriter, r *http.Re
 		MaxPlaybackQuality:         maxPlaybackQuality,
 	}
 	profileHandler := h.adminResourceProfileHandler()
-	if err := profileHandler.applyProfileUpdateSettingsSync(
-		r.Context(), resources.store, resources.user.ID, profileID, input, settingsSync,
+	if err := profileHandler.updateProfileWithLifecycle(
+		r.Context(), resources.store, resources.user.ID, current, input, settingsSync,
 	); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update profile")
 		return
@@ -330,7 +333,9 @@ func (h *AdminHandler) HandleDeleteUserProfile(w http.ResponseWriter, r *http.Re
 			"The primary profile cannot be deleted. Delete the user account instead.")
 		return
 	}
-	if err := resources.store.DeleteProfile(r.Context(), profileID); err != nil {
+	if err := h.adminResourceProfileHandler().deleteProfileWithLifecycle(
+		r.Context(), resources.store, resources.user.ID, profile,
+	); err != nil {
 		writeError(w, http.StatusNotFound, "not_found", "Profile not found")
 		return
 	}
