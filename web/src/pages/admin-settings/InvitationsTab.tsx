@@ -435,6 +435,8 @@ function CreateInvitationForm({
         value={libraryIDs}
         onChange={setLibraryIDs}
         scopeLabel={organization ? context?.name : "available"}
+        allLabel="Inherit from access group"
+        emptyHint="The account created at accept follows the selected group's library scope."
       />
 
       <div className="space-y-2">

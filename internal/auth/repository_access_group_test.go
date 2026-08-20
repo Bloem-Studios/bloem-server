@@ -30,8 +30,7 @@ func TestUserRepositoryUpdateAccessGroupIDDB(t *testing.T) {
 	}
 
 	if err := users.Update(ctx, userID, models.UpdateUserInput{
-		AccessGroupIDSet: true,
-		AccessGroupID:    &groupID,
+		AccessGroupID: models.SetValue(groupID),
 	}); err != nil {
 		t.Fatalf("Update(access_group_id) error: %v", err)
 	}
@@ -49,8 +48,7 @@ func TestUserRepositoryUpdateAccessGroupIDDB(t *testing.T) {
 
 	// Re-asserting the same group is a no-op for the policy revision.
 	if err := users.Update(ctx, userID, models.UpdateUserInput{
-		AccessGroupIDSet: true,
-		AccessGroupID:    &groupID,
+		AccessGroupID: models.SetValue(groupID),
 	}); err != nil {
 		t.Fatalf("Update(same access_group_id) error: %v", err)
 	}
@@ -63,7 +61,7 @@ func TestUserRepositoryUpdateAccessGroupIDDB(t *testing.T) {
 			unchanged.AccessPolicyRevision, user.AccessPolicyRevision)
 	}
 
-	if err := users.Update(ctx, userID, models.UpdateUserInput{AccessGroupIDSet: true}); err != nil {
+	if err := users.Update(ctx, userID, models.UpdateUserInput{AccessGroupID: models.ClearValue[int64]()}); err != nil {
 		t.Fatalf("Update(access_group_id null) error: %v", err)
 	}
 	user, err = users.GetByID(ctx, userID)

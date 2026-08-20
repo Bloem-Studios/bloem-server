@@ -32,6 +32,10 @@ type Claims struct {
 	SecurityRevision   int64  `json:"security_revision,omitempty"`
 	AuthMethod         string `json:"auth_method,omitempty"`
 	CredentialRevision int64  `json:"credential_revision,omitempty"`
+	// APIKeyScopes carries the authenticating API key's scopes; empty for
+	// JWT sessions and unscoped keys. Never serialized into issued JWTs —
+	// it only exists on claims built for API-key requests.
+	APIKeyScopes []string `json:"-"`
 	jwt.RegisteredClaims
 }
 

@@ -162,7 +162,7 @@ func TestCapabilityQualityPresetsGating(t *testing.T) {
 		cfg := config.DownloadConfig{Enabled: true, TranscodeEnabled: transcodeEnabled}
 		return NewService(nil, nil, nil, nil, nil, nil, fakeUserRepo{user}, nil, nil, &cfg)
 	}
-	allowAll := &models.User{DownloadAllowed: true, DownloadTranscodeAllowed: true}
+	allowAll := &models.User{DownloadAllowed: ptrBool(true), DownloadTranscodeAllowed: ptrBool(true)}
 
 	// No artifact pipeline wired → only original is fulfillable.
 	svc := newSvc(allowAll, true)
@@ -183,7 +183,7 @@ func TestCapabilityQualityPresetsGating(t *testing.T) {
 	}
 
 	// Transcode gated off (user flag) → original only.
-	svc = newSvc(&models.User{DownloadAllowed: true, DownloadTranscodeAllowed: false}, true)
+	svc = newSvc(&models.User{DownloadAllowed: ptrBool(true), DownloadTranscodeAllowed: ptrBool(false)}, true)
 	svc.SetArtifactManager(&ArtifactManager{})
 	capInfo, _ = svc.Capability(context.Background(), 1, "")
 	if got := strings.Join(capInfo.QualityPresets, ","); got != "original" {
@@ -193,7 +193,7 @@ func TestCapabilityQualityPresetsGating(t *testing.T) {
 	// Download permission revoked → an EMPTY array, never nil: the capability
 	// contract documents quality_presets as an array, and a nil slice would
 	// serialize as JSON null and break typed clients.
-	svc = newSvc(&models.User{DownloadAllowed: false}, true)
+	svc = newSvc(&models.User{DownloadAllowed: ptrBool(false)}, true)
 	capInfo, _ = svc.Capability(context.Background(), 1, "")
 	if capInfo.QualityPresets == nil {
 		t.Fatal("quality presets for a denied user must be an empty array, not nil")
@@ -235,3 +235,5 @@ func TestTriggerDrainDoesNotBlockCaller(t *testing.T) {
 	}
 	close(release)
 }
+
+func ptrBool(value bool) *bool { return &value }

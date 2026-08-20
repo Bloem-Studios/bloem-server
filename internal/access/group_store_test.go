@@ -153,6 +153,27 @@ func TestGroupStoreResolvePolicyDB(t *testing.T) {
 	if policy == nil || policy.ID != group.ID || !reflect.DeepEqual(policy.LibraryIDs, []int{1, 3}) {
 		t.Fatalf("policy = %#v, want group policy", policy)
 	}
+	if policy.TranscodeAllowed || !policy.AudioTranscodeAllowed {
+		t.Fatalf("policy transcode gates = %t/%t, want false/true", policy.TranscodeAllowed, policy.AudioTranscodeAllowed)
+	}
+	if !reflect.DeepEqual(group.Policy(), *policy) {
+		t.Fatalf("Group.Policy() = %#v, want ResolvePolicy %#v", group.Policy(), *policy)
+	}
+	transcodeAllowed := true
+	if _, err := store.Update(ctx, organizationID, group.ID, UpdateGroupInput{TranscodeAllowed: &transcodeAllowed}); err != nil {
+		t.Fatalf("Update(transcode_allowed) error: %v", err)
+	}
+	policy, err = store.ResolvePolicy(ctx, GroupSubject{
+		OrganizationID: organizationID,
+		AccountID:      memberID,
+		ProfileID:      memberProfileID,
+	})
+	if err != nil {
+		t.Fatalf("ResolvePolicy(after update) error: %v", err)
+	}
+	if policy == nil || !policy.TranscodeAllowed {
+		t.Fatalf("policy after update = %#v, want transcode_allowed true", policy)
+	}
 	policy, err = store.ResolvePolicy(ctx, GroupSubject{
 		OrganizationID: organizationID,
 		AccountID:      noGroupID,
@@ -493,6 +514,24 @@ func newGroupStoreDBTest(t *testing.T) (context.Context, *pgxpool.Pool, *GroupSt
 	}
 	t.Cleanup(pool.Close)
 
+	var tableName *string
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.access_groups')::text`).Scan(&tableName); err != nil {
+		t.Fatalf("check access_groups table: %v", err)
+	}
+	if tableName == nil || *tableName == "" {
+		t.Skip("test database has not applied access groups migration")
+	}
+	if !accessGroupColumnExists(t, ctx, pool, "is_default") {
+		t.Skip("test database has not applied default access group migration")
+	}
+	// The store reads and writes the group transcode gates on every path,
+	// so a database without them cannot run any of these tests.
+	for _, column := range []string{"transcode_allowed", "audio_transcode_allowed"} {
+		if !accessGroupColumnExists(t, ctx, pool, column) {
+			t.Skipf("test database has not applied the user policy inherit/override migration (access_groups.%s missing)", column)
+		}
+	}
+
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	organizationID := defaultAccessGroupOrganizationID(t, ctx, pool)
 	t.Cleanup(func() {
@@ -500,6 +539,22 @@ func newGroupStoreDBTest(t *testing.T) (context.Context, *pgxpool.Pool, *GroupSt
 		_, _ = pool.Exec(ctx, `DELETE FROM access_groups WHERE name LIKE $1`, "Access Group Test "+suffix+"%")
 	})
 	return ctx, pool, NewGroupStore(pool), suffix, organizationID
+}
+
+func accessGroupColumnExists(t *testing.T, ctx context.Context, pool *pgxpool.Pool, column string) bool {
+	t.Helper()
+	var exists bool
+	if err := pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.columns
+			WHERE table_schema = 'public'
+			  AND table_name = 'access_groups'
+			  AND column_name = $1
+		)`, column).Scan(&exists); err != nil {
+		t.Fatalf("check access_groups.%s column: %v", column, err)
+	}
+	return exists
 }
 
 func prepareAccessGroupTestDatabase(ctx context.Context, dsn string) (*pgxpool.Config, func() error, error) {
@@ -697,6 +752,8 @@ func createTestGroup(t *testing.T, ctx context.Context, store *GroupStore, organ
 		MaxPlaybackQuality:       PlaybackQuality4K,
 		DownloadAllowed:          true,
 		DownloadTranscodeAllowed: true,
+		TranscodeAllowed:         false,
+		AudioTranscodeAllowed:    true,
 		MaxStreams:               3,
 		MaxTranscodes:            2,
 		AllowedPermissions:       []string{"marker_edit"},

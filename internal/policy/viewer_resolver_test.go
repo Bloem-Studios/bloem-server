@@ -48,7 +48,7 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 			name: "profile unrestricted",
 			user: &models.User{
 				ID:                   1,
-				MaxPlaybackQuality:   "any",
+				MaxPlaybackQuality:   ptr("any"),
 				AccessPolicyRevision: 5,
 			},
 			profile: &userstore.Profile{
@@ -155,7 +155,7 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 			name: "quality and rating ceilings use policy normalization",
 			user: &models.User{
 				ID:                   1,
-				MaxPlaybackQuality:   "2160P",
+				MaxPlaybackQuality:   ptr("2160P"),
 				AccessPolicyRevision: 5,
 			},
 			profile: &userstore.Profile{
@@ -234,8 +234,8 @@ func TestViewerResolverParityWithLegacyResolver(t *testing.T) {
 			if decision.ProfileVerified != policyScope.ProfileVerified {
 				t.Fatalf("decision ProfileVerified = %t, scope ProfileVerified = %t", decision.ProfileVerified, policyScope.ProfileVerified)
 			}
-			if decisionInput.AccountMaxQuality != tt.user.MaxPlaybackQuality {
-				t.Fatalf("AccountMaxQuality = %q, want raw %q", decisionInput.AccountMaxQuality, tt.user.MaxPlaybackQuality)
+			if want := access.ApplyGroupPolicy(tt.user, nil).MaxPlaybackQuality; decisionInput.AccountMaxQuality != want {
+				t.Fatalf("AccountMaxQuality = %q, want resolved %q", decisionInput.AccountMaxQuality, want)
 			}
 			if decisionInput.IsAPIKey {
 				t.Fatal("IsAPIKey = true, want false because ResolveInput cannot truthfully distinguish API keys")
@@ -418,7 +418,7 @@ override(_, request) := {"max_playback_quality": "720p"} if {
 		t.Fatalf("NewEngineWithCustom() error: %v", err)
 	}
 	resolver := NewViewerResolver(
-		viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5, MaxPlaybackQuality: "2160p"}},
+		viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5, MaxPlaybackQuality: ptr("2160p")}},
 		viewerResolverStoreProvider{store: viewerResolverTestStore{}},
 		nil,
 		NewPDP(engine),
@@ -635,10 +635,10 @@ func TestViewerResolverAppliesGroupPolicy(t *testing.T) {
 	tenant := resolvedTenantForPolicyTest()
 	tenant.OrganizationID = organizationID
 	ctx := tenancy.WithContext(context.Background(), tenant)
+	groupID := int64(2)
 	user := &models.User{
 		ID:                   1,
-		LibraryIDs:           []int{1, 2, 3},
-		MaxPlaybackQuality:   access.PlaybackQuality4K,
+		AccessGroupID:        &groupID,
 		AccessPolicyRevision: 5,
 	}
 	group := &access.GroupPolicy{
@@ -646,6 +646,8 @@ func TestViewerResolverAppliesGroupPolicy(t *testing.T) {
 		MaxPlaybackQuality:       access.PlaybackQualityStandard,
 		DownloadAllowed:          true,
 		DownloadTranscodeAllowed: true,
+		TranscodeAllowed:         true,
+		AudioTranscodeAllowed:    true,
 		RequestsAllowed:          true,
 	}
 	users := viewerResolverUserRepo{user: user}
@@ -666,8 +668,8 @@ func TestViewerResolverAppliesGroupPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Resolve() error: %v", err)
 	}
-	if !scope.LibrariesRestricted || !reflect.DeepEqual(scope.AllowedLibraryIDs, []int{2}) {
-		t.Fatalf("scope libraries = restricted %t ids %#v, want [2]", scope.LibrariesRestricted, scope.AllowedLibraryIDs)
+	if !scope.LibrariesRestricted || !reflect.DeepEqual(scope.AllowedLibraryIDs, []int{2, 4}) {
+		t.Fatalf("scope libraries = restricted %t ids %#v, want [2 4]", scope.LibrariesRestricted, scope.AllowedLibraryIDs)
 	}
 	if scope.MaxPlaybackQuality != access.PlaybackQualityStandard {
 		t.Fatalf("MaxPlaybackQuality = %q, want %q", scope.MaxPlaybackQuality, access.PlaybackQualityStandard)
@@ -903,7 +905,7 @@ func viewerResolverExpectedInput(
 		ProfileID:            input.ProfileID,
 		AccountLibraryIDs:    cloneViewerResolverInts(user.LibraryIDs),
 		AccountRestricted:    user.LibraryIDs != nil,
-		AccountMaxQuality:    user.MaxPlaybackQuality,
+		AccountMaxQuality:    access.ApplyGroupPolicy(user, nil).MaxPlaybackQuality,
 		AccessPolicyRevision: user.AccessPolicyRevision,
 		DisabledLibraryIDs:   cloneViewerResolverInts(disabled),
 		ProfileVerified:      profileVerified,
@@ -958,3 +960,5 @@ func assertZeroScope(t *testing.T, scope access.Scope) {
 		t.Fatalf("scope = %#v, want zero Scope", scope)
 	}
 }
+
+func ptr[T any](value T) *T { return &value }

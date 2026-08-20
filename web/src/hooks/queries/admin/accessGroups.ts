@@ -73,6 +73,9 @@ export function useUpdateAccessGroup(context?: AdminContextSummary | null) {
       if (context?.scope !== "organization") {
         queryClient.invalidateQueries({ queryKey: adminKeys.accessGroup(variables.id) });
       }
+      // User views render group-derived data (effective_policy, inherit
+      // hints), so a group change must refresh them too.
+      queryClient.invalidateQueries({ queryKey: adminKeys.users() });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to update access group");
