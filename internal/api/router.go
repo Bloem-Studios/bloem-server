@@ -878,6 +878,11 @@ func NewRouter(deps Dependencies) chi.Router {
 			profileHandler.AvatarStore = deps.S3Private
 		}
 		profileHandler.SessionsReader = playbackSessionsLoader
+		if deps.DB != nil {
+			// Profile deletion always owns the shared device/download cleanup,
+			// even when the optional download HTTP subsystem is not configured.
+			profileHandler.DeviceLibraryPurger = downloads.NewRepository(deps.DB)
+		}
 		personalDataHandler = handlers.NewPersonalDataHandler(deps.UserStoreProvider, itemRepo)
 		if detailSvc != nil {
 			personalDataHandler.SetDetailService(detailSvc)
@@ -1186,6 +1191,7 @@ func NewRouter(deps Dependencies) chi.Router {
 				auth.NewSessionRepository(deps.DB),
 			)
 			adminTenantMembersHandler = handlers.NewAdminTenantMembersHandler(memberService, adminHandler)
+			memberService.SetResourcePurger(adminTenantMembersHandler)
 		}
 		adminHandler.SessionsLoader = playbackSessionsLoader
 		adminHandler.DetailSvc = detailSvc

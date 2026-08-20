@@ -33,6 +33,29 @@ func adminResourceOrganization(ctx context.Context) uuid.UUID {
 	return organizationID
 }
 
+func profileInAdminResourceOrganization(ctx context.Context, profile *userstore.Profile) bool {
+	if profile == nil {
+		return false
+	}
+	organizationID := adminResourceOrganization(ctx)
+	return organizationID == uuid.Nil || profile.OrganizationID == organizationID.String()
+}
+
+func adminResourceOrganizationProfiles(ctx context.Context, store userstore.UserStore) (map[string]userstore.Profile, error) {
+	profiles, err := store.ListProfiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	organizationID := adminResourceOrganization(ctx)
+	out := make(map[string]userstore.Profile, len(profiles))
+	for _, profile := range profiles {
+		if organizationID == uuid.Nil || profile.OrganizationID == organizationID.String() {
+			out[profile.ID] = profile
+		}
+	}
+	return out, nil
+}
+
 type adminUserSessionRepository interface {
 	GetByID(ctx context.Context, id string) (*models.AuthSession, error)
 	ListByUser(ctx context.Context, userID int) ([]*models.AuthSession, error)
@@ -122,8 +145,16 @@ func (h *AdminHandler) HandleListUserProfiles(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list profiles")
 		return
 	}
-	writeJSON(w, http.StatusOK,
-		h.adminResourceProfileHandler().toProfileResponses(r.Context(), resources.store, profiles))
+	if organizationID := adminResourceOrganization(r.Context()); organizationID != uuid.Nil {
+		filtered := profiles[:0]
+		for _, profile := range profiles {
+			if profile.OrganizationID == organizationID.String() {
+				filtered = append(filtered, profile)
+			}
+		}
+		profiles = filtered
+	}
+	writeJSON(w, http.StatusOK, h.adminResourceProfileHandler().toProfileResponses(r.Context(), resources.store, profiles))
 }
 
 // HandleCreateUserProfile handles POST /admin/users/{user_id}/profiles.
@@ -241,7 +272,7 @@ func (h *AdminHandler) HandleUpdateUserProfile(w http.ResponseWriter, r *http.Re
 		return
 	}
 	current, err := resources.store.GetProfile(r.Context(), profileID)
-	if err != nil || current == nil {
+	if err != nil || !profileInAdminResourceOrganization(r.Context(), current) {
 		writeError(w, http.StatusNotFound, "not_found", "Profile not found")
 		return
 	}
@@ -338,7 +369,7 @@ func (h *AdminHandler) HandleDeleteUserProfile(w http.ResponseWriter, r *http.Re
 		return
 	}
 	profile, err := resources.store.GetProfile(r.Context(), profileID)
-	if err != nil || profile == nil {
+	if err != nil || !profileInAdminResourceOrganization(r.Context(), profile) {
 		writeError(w, http.StatusNotFound, "not_found", "Profile not found")
 		return
 	}
@@ -383,7 +414,17 @@ func (h *AdminHandler) HandleListUserDevices(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	response := make([]deviceResponse, 0, len(devices))
+	organizationProfiles, err := adminResourceOrganizationProfiles(r.Context(), resources.store)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list profiles")
+		return
+	}
 	for _, device := range devices {
+		if adminResourceOrganization(r.Context()) != uuid.Nil {
+			if _, ok := organizationProfiles[device.ProfileID]; !ok {
+				continue
+			}
+		}
 		response = append(response, deviceResponse{
 			DeviceID:       device.DeviceID,
 			DeviceName:     device.DeviceName,
@@ -500,6 +541,30 @@ func (h *AdminHandler) HandleDeleteUserDevice(w http.ResponseWriter, r *http.Req
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+	if organizationID := adminResourceOrganization(r.Context()); organizationID != uuid.Nil {
+		organizationProfiles, err := adminResourceOrganizationProfiles(r.Context(), resources.store)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to look up device")
+			return
+		}
+		filtered := profileIDs[:0]
+		allowedChanges := changedKeys[:0]
+		for _, profileID := range profileIDs {
+			if _, ok := organizationProfiles[profileID]; ok {
+				filtered = append(filtered, profileID)
+			}
+		}
+		for _, changed := range changedKeys {
+			if _, ok := organizationProfiles[changed.profileID]; ok {
+				allowedChanges = append(allowedChanges, changed)
+			}
+		}
+		profileIDs, changedKeys = filtered, allowedChanges
+		if len(profileIDs) == 0 {
+			writeError(w, http.StatusNotFound, "not_found", "Device not found")
+			return
+		}
+	}
 	registry, _ := resources.store.(userstore.DeviceRegistry)
 	for _, profileID := range profileIDs {
 		if _, err := resources.store.DeleteSettingValuesForDevice(r.Context(), profileID, deviceID); err != nil {
@@ -540,9 +605,22 @@ func (h *AdminHandler) HandleListUserAuthSessions(w http.ResponseWriter, r *http
 		return
 	}
 	response := make([]adminUserAuthSessionResponse, 0, len(sessions))
+	organizationProfiles, err := adminResourceOrganizationProfiles(r.Context(), resources.store)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list authentication sessions")
+		return
+	}
 	for _, session := range sessions {
 		if session == nil || session.UserID != resources.user.ID {
 			continue
+		}
+		if adminResourceOrganization(r.Context()) != uuid.Nil {
+			if session.ProfileID == nil {
+				continue
+			}
+			if _, ok := organizationProfiles[*session.ProfileID]; !ok {
+				continue
+			}
 		}
 		response = append(response, adminUserAuthSessionResponse{
 			ID:                     session.ID,
@@ -593,6 +671,21 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
 		return
 	}
+	if adminResourceOrganization(r.Context()) != uuid.Nil {
+		organizationProfiles, scopeErr := adminResourceOrganizationProfiles(r.Context(), resources.store)
+		if scopeErr != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to look up authentication session")
+			return
+		}
+		if session.ProfileID == nil {
+			writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
+			return
+		}
+		if _, ok := organizationProfiles[*session.ProfileID]; !ok {
+			writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
+			return
+		}
+	}
 	if err := h.sessionRepo.RevokeByUserAndSession(r.Context(), resources.user.ID, sessionID); err != nil {
 		if errors.Is(err, auth.ErrSessionNotFound) {
 			w.WriteHeader(http.StatusNoContent)
@@ -618,9 +711,34 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 		writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions are not configured")
 		return
 	}
-	if err := h.sessionRepo.RevokeAllByUser(r.Context(), resources.user.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke authentication sessions")
-		return
+	if adminResourceOrganization(r.Context()) == uuid.Nil {
+		if err := h.sessionRepo.RevokeAllByUser(r.Context(), resources.user.ID); err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke authentication sessions")
+			return
+		}
+	} else {
+		organizationProfiles, err := adminResourceOrganizationProfiles(r.Context(), resources.store)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke authentication sessions")
+			return
+		}
+		sessions, err := h.sessionRepo.ListByUser(r.Context(), resources.user.ID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke authentication sessions")
+			return
+		}
+		for _, session := range sessions {
+			if session == nil || session.UserID != resources.user.ID || session.ProfileID == nil {
+				continue
+			}
+			if _, ok := organizationProfiles[*session.ProfileID]; !ok {
+				continue
+			}
+			if err := h.sessionRepo.RevokeByUserAndSession(r.Context(), resources.user.ID, session.ID); err != nil && !errors.Is(err, auth.ErrSessionNotFound) {
+				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke authentication sessions")
+				return
+			}
+		}
 	}
 	if h.OnUserSessionsRevoked != nil {
 		h.OnUserSessionsRevoked(r.Context(), resources.user.ID)

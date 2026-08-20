@@ -137,6 +137,11 @@ type userCreateQuerier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
+type userMutationQuerier interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
 // CreateInTransaction applies the canonical user creation path on an existing
 // transaction. Tenant member provisioning uses this so the account and its
 // quota-bearing membership commit, or roll back, as one unit.
@@ -268,6 +273,16 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 // Update modifies a user's fields. Only non-nil fields in the input are updated.
 // If the input contains a Password, it is bcrypt-hashed before storage.
 func (r *UserRepository) Update(ctx context.Context, id int, input models.UpdateUserInput) error {
+	return r.updateWithQuerier(ctx, r.pool, id, input)
+}
+
+// UpdateInTransaction applies the canonical normalization, hashing and access
+// revision behavior while participating in the caller's transaction.
+func (r *UserRepository) UpdateInTransaction(ctx context.Context, tx pgx.Tx, id int, input models.UpdateUserInput) error {
+	return r.updateWithQuerier(ctx, tx, id, input)
+}
+
+func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMutationQuerier, id int, input models.UpdateUserInput) error {
 	setClauses := []string{}
 	accessPolicyPredicates := []string{}
 	args := []any{}
@@ -376,7 +391,7 @@ func (r *UserRepository) Update(ctx context.Context, id int, input models.Update
 
 	if len(setClauses) == 0 {
 		// Nothing to update; still verify the user exists.
-		_, err := r.GetByID(ctx, id)
+		_, err := scanUser(querier.QueryRow(ctx, `SELECT `+allColumns+` FROM users WHERE id = $1`, id))
 		return err
 	}
 
@@ -394,7 +409,7 @@ func (r *UserRepository) Update(ctx context.Context, id int, input models.Update
 		strings.Join(setClauses, ", "), argIndex)
 	args = append(args, id)
 
-	tag, err := r.pool.Exec(ctx, query, args...)
+	tag, err := querier.Exec(ctx, query, args...)
 	if err != nil {
 		if isDuplicateKeyError(err) {
 			return fmt.Errorf("%w: %s", ErrDuplicate, extractConstraint(err))
@@ -411,7 +426,16 @@ func (r *UserRepository) Update(ctx context.Context, id int, input models.Update
 
 // Delete removes a user by their ID.
 func (r *UserRepository) Delete(ctx context.Context, id int) error {
-	tag, err := r.pool.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
+	return r.deleteWithQuerier(ctx, r.pool, id)
+}
+
+// DeleteInTransaction removes a user as part of a larger lifecycle change.
+func (r *UserRepository) DeleteInTransaction(ctx context.Context, tx pgx.Tx, id int) error {
+	return r.deleteWithQuerier(ctx, tx, id)
+}
+
+func (r *UserRepository) deleteWithQuerier(ctx context.Context, querier userMutationQuerier, id int) error {
+	tag, err := querier.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
 	if err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}

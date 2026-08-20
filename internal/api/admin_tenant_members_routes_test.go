@@ -174,5 +174,137 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		if createdProfile.Code != http.StatusCreated {
 			t.Fatalf("create nested profile = %d %s", createdProfile.Code, createdProfile.Body.String())
 		}
+		var profileA struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(createdProfile.Body.Bytes(), &profileA); err != nil || profileA.ID == "" {
+			t.Fatalf("decode tenant A profile: %+v %v", profileA, err)
+		}
+
+		createdTenantB := performJSONRequest(t, router, http.MethodPost, "/api/v1/admin/tenants", `{
+			"name":"Production route tenant B",
+			"external_ref":{"operator_id":"route-operator","service_id":"route-service-b"},
+			"limits":{"slots":2,"transcodes":1}
+		}`, adminLogin.AccessToken, nil)
+		if createdTenantB.Code != http.StatusCreated {
+			t.Fatalf("create tenant B = %d %s", createdTenantB.Code, createdTenantB.Body.String())
+		}
+		var tenantB struct {
+			TenantID string `json:"tenant_id"`
+		}
+		if err := json.Unmarshal(createdTenantB.Body.Bytes(), &tenantB); err != nil || tenantB.TenantID == "" {
+			t.Fatalf("decode tenant B: %+v %v", tenantB, err)
+		}
+		if _, err := pool.Exec(context.Background(), `INSERT INTO organization_memberships
+			(organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','user')`, tenantB.TenantID, member.UserID); err != nil {
+			t.Fatalf("seed shared tenant membership: %v", err)
+		}
+		profilesPathB := "/api/v1/admin/tenants/" + tenantB.TenantID + "/members/" + strconv.Itoa(member.UserID) + "/profiles"
+		createdProfileB := performJSONRequest(t, router, http.MethodPost, profilesPathB,
+			`{"name":"Production Member Profile B"}`, adminLogin.AccessToken, nil)
+		if createdProfileB.Code != http.StatusCreated {
+			t.Fatalf("create tenant B profile = %d %s", createdProfileB.Code, createdProfileB.Body.String())
+		}
+		var profileB struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(createdProfileB.Body.Bytes(), &profileB); err != nil || profileB.ID == "" {
+			t.Fatalf("decode tenant B profile: %+v %v", profileB, err)
+		}
+
+		listedA := performJSONRequest(t, router, http.MethodGet, profilesPath, "", adminLogin.AccessToken, nil)
+		if listedA.Code != http.StatusOK || !strings.Contains(listedA.Body.String(), profileA.ID) || strings.Contains(listedA.Body.String(), profileB.ID) {
+			t.Fatalf("tenant A profiles leaked tenant B: %d %s", listedA.Code, listedA.Body.String())
+		}
+		foreignProfileUpdate := performJSONRequest(t, router, http.MethodPut, profilesPath+"/"+profileB.ID,
+			`{"name":"Cross tenant"}`, adminLogin.AccessToken, nil)
+		if foreignProfileUpdate.Code != http.StatusNotFound {
+			t.Fatalf("cross-tenant profile update = %d %s, want 404", foreignProfileUpdate.Code, foreignProfileUpdate.Body.String())
+		}
+
+		if _, err := pool.Exec(context.Background(), `INSERT INTO user_devices
+			(user_id,profile_id,device_id,device_name,device_platform) VALUES
+			($1,$2,'tenant-device-a','A device','test'),($1,$3,'tenant-device-b','B device','test')`, member.UserID, profileA.ID, profileB.ID); err != nil {
+			t.Fatalf("seed tenant devices: %v", err)
+		}
+		devicesAPath := memberPath + "/" + strconv.Itoa(member.UserID) + "/devices"
+		devicesA := performJSONRequest(t, router, http.MethodGet, devicesAPath, "", adminLogin.AccessToken, nil)
+		if devicesA.Code != http.StatusOK || !strings.Contains(devicesA.Body.String(), "tenant-device-a") || strings.Contains(devicesA.Body.String(), "tenant-device-b") {
+			t.Fatalf("tenant A devices leaked tenant B: %d %s", devicesA.Code, devicesA.Body.String())
+		}
+		foreignDeviceDelete := performJSONRequest(t, router, http.MethodDelete, devicesAPath+"/tenant-device-b", "", adminLogin.AccessToken, nil)
+		if foreignDeviceDelete.Code != http.StatusNotFound {
+			t.Fatalf("cross-tenant device delete = %d %s, want 404", foreignDeviceDelete.Code, foreignDeviceDelete.Body.String())
+		}
+
+		expires := time.Now().Add(time.Hour)
+		if _, err := pool.Exec(context.Background(), `INSERT INTO auth_sessions
+			(id,user_id,device_name,expires_at,profile_id,profile_credential_revision,device_id,auth_method) VALUES
+			('tenant-session-a',$1,'A session',$2,$3,1,'tenant-device-a','direct_profile'),
+			('tenant-session-b',$1,'B session',$2,$4,1,'tenant-device-b','direct_profile'),
+			('tenant-account-session',$1,'Account session',$2,NULL,NULL,'','account')`, member.UserID, expires, profileA.ID, profileB.ID); err != nil {
+			t.Fatalf("seed tenant sessions: %v", err)
+		}
+		sessionsAPath := memberPath + "/" + strconv.Itoa(member.UserID) + "/auth-sessions"
+		sessionsA := performJSONRequest(t, router, http.MethodGet, sessionsAPath, "", adminLogin.AccessToken, nil)
+		if sessionsA.Code != http.StatusOK || !strings.Contains(sessionsA.Body.String(), "tenant-session-a") ||
+			strings.Contains(sessionsA.Body.String(), "tenant-session-b") || strings.Contains(sessionsA.Body.String(), "tenant-account-session") {
+			t.Fatalf("tenant A sessions leaked unattributed sessions: %d %s", sessionsA.Code, sessionsA.Body.String())
+		}
+		for _, foreignSession := range []string{"tenant-session-b", "tenant-account-session"} {
+			response := performJSONRequest(t, router, http.MethodDelete, sessionsAPath+"/"+foreignSession, "", adminLogin.AccessToken, nil)
+			if response.Code != http.StatusNotFound {
+				t.Fatalf("cross-tenant session %s delete = %d %s, want 404", foreignSession, response.Code, response.Body.String())
+			}
+		}
+		revokeAllA := performJSONRequest(t, router, http.MethodDelete, sessionsAPath, "", adminLogin.AccessToken, nil)
+		if revokeAllA.Code != http.StatusNoContent {
+			t.Fatalf("tenant revoke all = %d %s", revokeAllA.Code, revokeAllA.Body.String())
+		}
+		var revokedA, revokedB, revokedAccount bool
+		if err := pool.QueryRow(context.Background(), `SELECT revoked_at IS NOT NULL FROM auth_sessions WHERE id='tenant-session-a'`).Scan(&revokedA); err != nil {
+			t.Fatal(err)
+		}
+		if err := pool.QueryRow(context.Background(), `SELECT revoked_at IS NOT NULL FROM auth_sessions WHERE id='tenant-session-b'`).Scan(&revokedB); err != nil {
+			t.Fatal(err)
+		}
+		if err := pool.QueryRow(context.Background(), `SELECT revoked_at IS NOT NULL FROM auth_sessions WHERE id='tenant-account-session'`).Scan(&revokedAccount); err != nil {
+			t.Fatal(err)
+		}
+		if !revokedA || revokedB || revokedAccount {
+			t.Fatalf("tenant revoke-all scope: a=%v b=%v account=%v", revokedA, revokedB, revokedAccount)
+		}
+
+		memberAPath := memberPath + "/" + strconv.Itoa(member.UserID)
+		deletedA := performJSONRequest(t, router, http.MethodDelete, memberAPath, "", adminLogin.AccessToken, nil)
+		if deletedA.Code != http.StatusNoContent {
+			t.Fatalf("delete tenant A membership = %d %s", deletedA.Code, deletedA.Body.String())
+		}
+		repeatedDeleteA := performJSONRequest(t, router, http.MethodDelete, memberAPath, "", adminLogin.AccessToken, nil)
+		if repeatedDeleteA.Code != http.StatusNoContent {
+			t.Fatalf("repeat delete tenant A membership = %d %s", repeatedDeleteA.Code, repeatedDeleteA.Body.String())
+		}
+		var userPresent, membershipBPresent, profileAPresent, profileBPresent, deviceAPresent, deviceBPresent bool
+		checks := []struct {
+			query string
+			args  []any
+			out   *bool
+		}{
+			{`SELECT EXISTS(SELECT 1 FROM users WHERE id=$1)`, []any{member.UserID}, &userPresent},
+			{`SELECT EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=$1 AND account_id=$2)`, []any{tenantB.TenantID, member.UserID}, &membershipBPresent},
+			{`SELECT EXISTS(SELECT 1 FROM user_profiles WHERE user_id=$1 AND id=$2)`, []any{member.UserID, profileA.ID}, &profileAPresent},
+			{`SELECT EXISTS(SELECT 1 FROM user_profiles WHERE user_id=$1 AND id=$2)`, []any{member.UserID, profileB.ID}, &profileBPresent},
+			{`SELECT EXISTS(SELECT 1 FROM user_devices WHERE user_id=$1 AND profile_id=$2)`, []any{member.UserID, profileA.ID}, &deviceAPresent},
+			{`SELECT EXISTS(SELECT 1 FROM user_devices WHERE user_id=$1 AND profile_id=$2)`, []any{member.UserID, profileB.ID}, &deviceBPresent},
+		}
+		for _, check := range checks {
+			if err := pool.QueryRow(context.Background(), check.query, check.args...).Scan(check.out); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if !userPresent || !membershipBPresent || profileAPresent || !profileBPresent || deviceAPresent || !deviceBPresent {
+			t.Fatalf("scoped delete state user=%v membership_b=%v profile_a=%v profile_b=%v device_a=%v device_b=%v",
+				userPresent, membershipBPresent, profileAPresent, profileBPresent, deviceAPresent, deviceBPresent)
+		}
 	})
 }

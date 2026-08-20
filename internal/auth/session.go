@@ -316,8 +316,18 @@ func (r *SessionRepository) RevokeByUserAndSession(ctx context.Context, userID i
 
 // RevokeAllByUser sets revoked_at to NOW() for all active sessions owned by a user.
 func (r *SessionRepository) RevokeAllByUser(ctx context.Context, userID int) error {
+	return revokeAllByUserWithQuerier(ctx, r.pool, userID)
+}
+
+// RevokeAllByUserInTransaction revokes account sessions in the same commit as
+// the credential or membership state that invalidates them.
+func (r *SessionRepository) RevokeAllByUserInTransaction(ctx context.Context, tx pgx.Tx, userID int) error {
+	return revokeAllByUserWithQuerier(ctx, tx, userID)
+}
+
+func revokeAllByUserWithQuerier(ctx context.Context, querier sessionExecQuerier, userID int) error {
 	query := `UPDATE auth_sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`
-	if _, err := r.pool.Exec(ctx, query, userID); err != nil {
+	if _, err := querier.Exec(ctx, query, userID); err != nil {
 		return fmt.Errorf("revoking sessions for user %d: %w", userID, err)
 	}
 	return nil

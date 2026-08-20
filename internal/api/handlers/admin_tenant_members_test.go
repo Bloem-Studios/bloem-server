@@ -152,6 +152,7 @@ func TestAdminTenantMemberCreateMapsQuotaAndCommandConflicts(t *testing.T) {
 		{"quota", tenancy.ErrSlotQuotaExceeded, http.StatusUnprocessableEntity},
 		{"username", tenancy.ErrUsernameConflict, http.StatusConflict},
 		{"idempotency", tenancy.ErrIdempotencyConflict, http.StatusConflict},
+		{"validation", tenancy.ErrInvalidMemberCommand, http.StatusBadRequest},
 		{"tenant", tenancy.ErrMemberNotFound, http.StatusNotFound},
 	}
 	for _, tc := range cases {

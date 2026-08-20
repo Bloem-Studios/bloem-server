@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -134,6 +136,338 @@ func TestMemberServiceCreateReplaysSameCommandAndRejectsChangedCommand(t *testin
 	}
 }
 
+func TestMemberServiceConcurrentSameCommandCreatesOneDurableReceipt(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 2)
+	input := memberInput(fmt.Sprintf("same-command-%d", time.Now().UnixNano()))
+	type result struct {
+		user   models.User
+		replay bool
+		err    error
+	}
+	start := make(chan struct{})
+	results := make(chan result, 2)
+	for range 2 {
+		go func() {
+			<-start
+			user, replay, err := service.Create(ctx, tenant.ID, "same-race-command", input)
+			results <- result{user: user, replay: replay, err: err}
+		}()
+	}
+	close(start)
+	first, second := <-results, <-results
+	if first.err != nil || second.err != nil || first.user.ID == 0 || first.user.ID != second.user.ID || first.replay == second.replay {
+		t.Fatalf("same command race = first(%d,%v,%v) second(%d,%v,%v)", first.user.ID, first.replay, first.err, second.user.ID, second.replay, second.err)
+	}
+	var memberships, receipts int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM organization_memberships WHERE organization_id=$1`, tenant.ID).Scan(&memberships); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM tenant_member_command_receipts WHERE organization_id=$1`, tenant.ID).Scan(&receipts); err != nil {
+		t.Fatal(err)
+	}
+	if memberships != 1 || receipts != 1 {
+		t.Fatalf("same command race rows: memberships=%d receipts=%d", memberships, receipts)
+	}
+}
+
+func TestMemberServiceIdempotencyReceiptSurvivesMutationAndDeletion(t *testing.T) {
+	ctx, _, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 2)
+	input := memberInput(fmt.Sprintf("durable-replay-%d", time.Now().UnixNano()))
+	created, replay, err := service.Create(ctx, tenant.ID, "durable-command", input)
+	if err != nil || replay {
+		t.Fatalf("create = (%+v, replay=%v, %v)", created, replay, err)
+	}
+
+	renamed := input.Username + "-renamed"
+	if _, err := service.Update(ctx, tenant.ID, created.ID, tenancy.UpdateMemberInput{Username: &renamed}); err != nil {
+		t.Fatalf("rename member: %v", err)
+	}
+	replayed, replay, err := service.Create(ctx, tenant.ID, "durable-command", input)
+	if err != nil || !replay || replayed.ID != created.ID || replayed.Username != input.Username {
+		t.Fatalf("replay after mutation = (%+v, replay=%v, %v), want immutable result for %d", replayed, replay, err, created.ID)
+	}
+	if err := service.Delete(ctx, tenant.ID, created.ID); err != nil {
+		t.Fatalf("delete member: %v", err)
+	}
+	if err := service.Delete(ctx, tenant.ID, created.ID); err != nil {
+		t.Fatalf("repeat delete must be idempotent: %v", err)
+	}
+	replayed, replay, err = service.Create(ctx, tenant.ID, "durable-command", input)
+	if err != nil || !replay || replayed.ID != created.ID || replayed.Username != input.Username {
+		t.Fatalf("replay after deletion = (%+v, replay=%v, %v), want tombstoned result for %d", replayed, replay, err, created.ID)
+	}
+}
+
+func TestMemberServiceDeleteRetryIsDurableForPreReceiptMember(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 2)
+	username := fmt.Sprintf("pre-receipt-%d", time.Now().UnixNano())
+	var userID int
+	if err := pool.QueryRow(ctx, `INSERT INTO users
+		(username,email,password_hash,role,enabled)
+		VALUES ($1,$2,'legacy-hash','user',true) RETURNING id`, username, username+"@members.test").Scan(&userID); err != nil {
+		t.Fatalf("seed pre-receipt user: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships
+		(organization_id,account_id,status,legacy_role)
+		VALUES ($1,$2,'active','user')`, tenant.ID, userID); err != nil {
+		t.Fatalf("seed pre-receipt membership: %v", err)
+	}
+
+	if err := service.Delete(ctx, tenant.ID, userID); err != nil {
+		t.Fatalf("delete pre-receipt member: %v", err)
+	}
+	if err := service.Delete(ctx, tenant.ID, userID); err != nil {
+		t.Fatalf("retry pre-receipt member delete: %v", err)
+	}
+	var tombstoned bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM tenant_member_command_receipts
+		WHERE organization_id=$1 AND result_account_id=$2 AND deleted_at IS NOT NULL)`, tenant.ID, userID).Scan(&tombstoned); err != nil || !tombstoned {
+		t.Fatalf("pre-receipt delete tombstone = %v, %v", tombstoned, err)
+	}
+}
+
+func TestMemberServiceDeletePreservesGlobalUserWithAnotherMembership(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenantA := createMemberTenant(t, ctx, store, 2)
+	tenantB := createMemberTenant(t, ctx, store, 2)
+	input := memberInput(fmt.Sprintf("shared-member-%d", time.Now().UnixNano()))
+	member, _, err := service.Create(ctx, tenantA.ID, "shared-command", input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		VALUES ($1, $2, 'active', 'user')`, tenantB.ID, member.ID); err != nil {
+		t.Fatalf("seed second membership: %v", err)
+	}
+	var groupB int64
+	if err := pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, tenantB.ID).Scan(&groupB); err != nil {
+		t.Fatal(err)
+	}
+	profileB := uuid.NewString()
+	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,'Tenant B',$3,$4)`, profileB, member.ID, tenantB.ID, groupB); err != nil {
+		t.Fatalf("seed tenant B profile: %v", err)
+	}
+
+	if err := service.Delete(ctx, tenantA.ID, member.ID); err != nil {
+		t.Fatalf("delete tenant A membership: %v", err)
+	}
+	var userPresent, membershipBPresent, profileBPresent bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id=$1)`, member.ID).Scan(&userPresent); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=$1 AND account_id=$2)`, tenantB.ID, member.ID).Scan(&membershipBPresent); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM user_profiles WHERE organization_id=$1 AND user_id=$2 AND id=$3)`, tenantB.ID, member.ID, profileB).Scan(&profileBPresent); err != nil {
+		t.Fatal(err)
+	}
+	if !userPresent || !membershipBPresent || !profileBPresent {
+		t.Fatalf("cross-tenant data was deleted: user=%v membership_b=%v profile_b=%v", userPresent, membershipBPresent, profileBPresent)
+	}
+}
+
+func TestMemberServiceDeleteOwnerPreservesAdminFreezeAndChoosesActiveReplacement(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 3)
+	owner, _, err := service.Create(ctx, tenant.ID, "owner-command", memberInput(fmt.Sprintf("owner-%d", time.Now().UnixNano())))
+	if err != nil {
+		t.Fatal(err)
+	}
+	suspended, _, err := service.Create(ctx, tenant.ID, "suspended-command", memberInput(fmt.Sprintf("suspended-%d", time.Now().UnixNano())))
+	if err != nil {
+		t.Fatal(err)
+	}
+	active, _, err := service.Create(ctx, tenant.ID, "active-command", memberInput(fmt.Sprintf("active-%d", time.Now().UnixNano())))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Suspend(ctx, tenant.ID, suspended.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.SetTenantOrganizationFrozen(ctx, tenant.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Delete(ctx, tenant.ID, owner.ID); err != nil {
+		t.Fatal(err)
+	}
+	var replacement *int
+	var status, reason string
+	if err := pool.QueryRow(ctx, `SELECT owner_account_id,status,suspension_reason FROM organizations WHERE id=$1`, tenant.ID).Scan(&replacement, &status, &reason); err != nil {
+		t.Fatal(err)
+	}
+	if replacement == nil || *replacement != active.ID || status != "suspended" || reason != "admin" {
+		t.Fatalf("tenant after owner delete = owner=%v status=%q reason=%q, want active owner %d with admin freeze", replacement, status, reason, active.ID)
+	}
+}
+
+func TestMemberServiceDeletePreservesPlatformAdminObligations(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 1)
+	member, _, err := service.Create(ctx, tenant.ID, "admin-obligation-command", memberInput(fmt.Sprintf("admin-obligation-%d", time.Now().UnixNano())))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET role='admin' WHERE id=$1`, member.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE platform_security SET owner_account_id=$1,ownership_resolution_required=false`, member.ID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `UPDATE platform_security SET owner_account_id=NULL,ownership_resolution_required=true WHERE owner_account_id=$1`, member.ID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, member.ID)
+	})
+	if err := service.Delete(ctx, tenant.ID, member.ID); err != nil {
+		t.Fatal(err)
+	}
+	var userPresent, membershipPresent bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id=$1)`, member.ID).Scan(&userPresent); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=$1 AND account_id=$2)`, tenant.ID, member.ID).Scan(&membershipPresent); err != nil {
+		t.Fatal(err)
+	}
+	if !userPresent || membershipPresent {
+		t.Fatalf("platform admin delete state: user=%v membership=%v", userPresent, membershipPresent)
+	}
+}
+
+func TestMemberServiceDeleteRollsBackOwnershipWhenMembershipRemovalFails(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 2)
+	owner, _, err := service.Create(ctx, tenant.ID, "rollback-owner", memberInput(fmt.Sprintf("rollback-owner-%d", time.Now().UnixNano())))
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement, _, err := service.Create(ctx, tenant.ID, "rollback-replacement", memberInput(fmt.Sprintf("rollback-replacement-%d", time.Now().UnixNano())))
+	if err != nil {
+		t.Fatal(err)
+	}
+	triggerName := fmt.Sprintf("fail_member_delete_%d", time.Now().UnixNano())
+	functionName := triggerName + "_fn"
+	if _, err := pool.Exec(ctx, fmt.Sprintf(`
+		CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected membership delete failure'; END $$;
+		CREATE TRIGGER %s BEFORE DELETE ON organization_memberships FOR EACH ROW WHEN (OLD.account_id = %d) EXECUTE FUNCTION %s()`, functionName, triggerName, owner.ID, functionName)); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), fmt.Sprintf("DROP TRIGGER IF EXISTS %s ON organization_memberships", triggerName))
+		_, _ = pool.Exec(context.Background(), fmt.Sprintf("DROP FUNCTION IF EXISTS %s()", functionName))
+	})
+	if err := service.Delete(ctx, tenant.ID, owner.ID); err == nil {
+		t.Fatal("delete unexpectedly succeeded through injected membership failure")
+	}
+	var ownerAfter *int
+	var membershipPresent, userPresent bool
+	if err := pool.QueryRow(ctx, `SELECT owner_account_id FROM organizations WHERE id=$1`, tenant.ID).Scan(&ownerAfter); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=$1 AND account_id=$2)`, tenant.ID, owner.ID).Scan(&membershipPresent); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id=$1)`, owner.ID).Scan(&userPresent); err != nil {
+		t.Fatal(err)
+	}
+	if ownerAfter == nil || *ownerAfter != owner.ID || !membershipPresent || !userPresent {
+		t.Fatalf("failed delete committed partial state: owner=%v membership=%v user=%v replacement=%d", ownerAfter, membershipPresent, userPresent, replacement.ID)
+	}
+}
+
+func TestMemberServiceIdentityAndSessionRevocationAreAtomic(t *testing.T) {
+	ctx, pool, store, service, sessions := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 2)
+	input := memberInput(fmt.Sprintf("atomic-member-%d", time.Now().UnixNano()))
+	member, _, err := service.Create(ctx, tenant.ID, "atomic-command", input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessionID := uuid.NewString()
+	if err := sessions.Create(ctx, models.AuthSession{ID: sessionID, UserID: member.ID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
+	triggerName := fmt.Sprintf("fail_revoke_%d", time.Now().UnixNano())
+	functionName := triggerName + "_fn"
+	if _, err := pool.Exec(ctx, fmt.Sprintf(`
+		CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected revoke failure'; END $$;
+		CREATE TRIGGER %s BEFORE UPDATE ON auth_sessions FOR EACH ROW EXECUTE FUNCTION %s()`, functionName, triggerName, functionName)); err != nil {
+		t.Fatalf("install failure trigger: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), fmt.Sprintf("DROP TRIGGER IF EXISTS %s ON auth_sessions", triggerName))
+		_, _ = pool.Exec(context.Background(), fmt.Sprintf("DROP FUNCTION IF EXISTS %s()", functionName))
+	})
+	updatedEmail := "changed-" + input.Email
+	if _, err := service.Update(ctx, tenant.ID, member.ID, tenancy.UpdateMemberInput{Email: &updatedEmail}); err == nil {
+		t.Fatal("email update unexpectedly succeeded despite revoke failure")
+	}
+	stored, err := service.Get(ctx, tenant.ID, member.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Email != input.Email {
+		t.Fatalf("email committed despite revoke failure: got %q want %q", stored.Email, input.Email)
+	}
+	if _, err := service.ResetPassword(ctx, tenant.ID, member.ID, "replacement-password"); err == nil {
+		t.Fatal("password reset unexpectedly succeeded despite revoke failure")
+	}
+	stored, err = service.Get(ctx, tenant.ID, member.ID)
+	if err != nil || !auth.CheckPassword(&stored, input.Password) {
+		t.Fatalf("password committed despite revoke failure: user=%+v err=%v", stored, err)
+	}
+	if _, err := service.Suspend(ctx, tenant.ID, member.ID); err == nil {
+		t.Fatal("suspend unexpectedly succeeded despite revoke failure")
+	}
+	stored, err = service.Get(ctx, tenant.ID, member.ID)
+	if err != nil || !stored.Enabled {
+		t.Fatalf("account disable committed despite revoke failure: user=%+v err=%v", stored, err)
+	}
+	var membershipStatus string
+	if err := pool.QueryRow(ctx, `SELECT status FROM organization_memberships WHERE organization_id=$1 AND account_id=$2`, tenant.ID, member.ID).Scan(&membershipStatus); err != nil {
+		t.Fatal(err)
+	}
+	if membershipStatus != "active" {
+		t.Fatalf("membership status committed despite revoke failure: %q", membershipStatus)
+	}
+}
+
+func TestMemberServiceCreateLazilyEnsuresLegacyTenantDefaultGroup(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 1)
+	if _, err := pool.Exec(ctx, `DELETE FROM access_groups WHERE organization_id=$1`, tenant.ID); err != nil {
+		t.Fatalf("remove default group to model legacy tenant: %v", err)
+	}
+	member, replay, err := service.Create(ctx, tenant.ID, "legacy-group-command", memberInput(fmt.Sprintf("legacy-group-%d", time.Now().UnixNano())))
+	if err != nil || replay || member.AccessGroupID == nil {
+		t.Fatalf("create with legacy tenant = (%+v, replay=%v, %v)", member, replay, err)
+	}
+}
+
+func TestMemberServiceValidatesCanonicalCreateCommand(t *testing.T) {
+	ctx, _, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 2)
+	cases := []struct {
+		name string
+		key  string
+		in   tenancy.CreateMemberInput
+	}{
+		{name: "malformed email", key: "bad-email", in: tenancy.CreateMemberInput{Username: "valid-user", Email: "not-an-email", Password: "valid-password"}},
+		{name: "short password", key: "short-password", in: tenancy.CreateMemberInput{Username: "valid-user", Email: "valid@example.test", Password: "short"}},
+		{name: "bcrypt overflow", key: "long-password", in: tenancy.CreateMemberInput{Username: "valid-user", Email: "valid@example.test", Password: strings.Repeat("x", 73)}},
+		{name: "overlong key", key: strings.Repeat("k", 256), in: tenancy.CreateMemberInput{Username: "valid-user", Email: "valid@example.test", Password: "valid-password"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, _, err := service.Create(ctx, tenant.ID, tc.key, tc.in); !errors.Is(err, tenancy.ErrInvalidMemberCommand) {
+				t.Fatalf("Create error = %v, want ErrInvalidMemberCommand", err)
+			}
+		})
+	}
+}
+
 func TestMemberServiceCreateRejectsFrozenAndRetiredTenant(t *testing.T) {
 	ctx, _, store, service, _ := newMemberService(t)
 	tenant := createMemberTenant(t, ctx, store, 2)
@@ -182,6 +516,12 @@ func TestMemberServiceLifecycleIsTenantScopedAndRevokesResetSessions(t *testing.
 		t.Fatalf("cross-tenant delete = %v", err)
 	}
 
+	updateSessionID := uuid.NewString()
+	if err := sessions.Create(ctx, models.AuthSession{
+		ID: updateSessionID, UserID: member.ID, ExpiresAt: time.Now().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("create pre-update session: %v", err)
+	}
 	updatedEmail := "renamed-" + input.Email
 	updated, err := service.Update(ctx, tenant.ID, member.ID, tenancy.UpdateMemberInput{
 		Username: &newUsername,
@@ -189,6 +529,10 @@ func TestMemberServiceLifecycleIsTenantScopedAndRevokesResetSessions(t *testing.
 	})
 	if err != nil || updated.Username != newUsername || updated.Email != updatedEmail {
 		t.Fatalf("update = (%+v, %v)", updated, err)
+	}
+	updatedSession, err := sessions.GetByID(ctx, updateSessionID)
+	if err != nil || updatedSession.RevokedAt == nil {
+		t.Fatalf("session after identity update = (%+v, %v)", updatedSession, err)
 	}
 
 	sessionID := fmt.Sprintf("11f41546-c67e-4c14-8c3d-%012d", member.ID)
@@ -206,9 +550,19 @@ func TestMemberServiceLifecycleIsTenantScopedAndRevokesResetSessions(t *testing.
 		t.Fatalf("session after reset = (%+v, %v)", storedSession, err)
 	}
 
+	suspendSessionID := uuid.NewString()
+	if err := sessions.Create(ctx, models.AuthSession{
+		ID: suspendSessionID, UserID: member.ID, ExpiresAt: time.Now().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("create pre-suspend session: %v", err)
+	}
 	suspended, err := service.Suspend(ctx, tenant.ID, member.ID)
 	if err != nil || suspended.Enabled {
 		t.Fatalf("suspend = (%+v, %v)", suspended, err)
+	}
+	suspendedSession, err := sessions.GetByID(ctx, suspendSessionID)
+	if err != nil || suspendedSession.RevokedAt == nil {
+		t.Fatalf("session after suspend = (%+v, %v)", suspendedSession, err)
 	}
 	resumed, err := service.Resume(ctx, tenant.ID, member.ID)
 	if err != nil || !resumed.Enabled {

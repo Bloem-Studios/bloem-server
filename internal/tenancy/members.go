@@ -2,9 +2,14 @@ package tenancy
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/mail"
 	"strings"
+	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -37,12 +42,19 @@ type memberUserRepository interface {
 
 type memberSessionRepository interface {
 	RevokeAllByUser(context.Context, int) error
+	RevokeAllByUserInTransaction(context.Context, pgx.Tx, int) error
 }
 
 type memberAccountProvisioner interface {
 	CreateUserInTransaction(context.Context, pgx.Tx, models.CreateUserInput) (*models.User, bool, error)
 	UpdateUser(context.Context, int, models.UpdateUserInput) (bool, error)
+	UpdateUserInTransaction(context.Context, pgx.Tx, int, models.UpdateUserInput) (bool, error)
 	DeleteUser(context.Context, int) error
+	DeleteUserInTransaction(context.Context, pgx.Tx, int) error
+}
+
+type memberResourcePurger interface {
+	PurgeOrganizationResources(context.Context, uuid.UUID, int) error
 }
 
 // UpdateMemberInput contains the display-safe identity metadata a reseller may
@@ -55,11 +67,20 @@ type UpdateMemberInput struct {
 
 // MemberService owns the tenant-scoped account lifecycle.
 type MemberService struct {
-	pool     *pgxpool.Pool
-	store    *Store
-	accounts memberAccountProvisioner
-	users    memberUserRepository
-	sessions memberSessionRepository
+	pool      *pgxpool.Pool
+	store     *Store
+	accounts  memberAccountProvisioner
+	users     memberUserRepository
+	sessions  memberSessionRepository
+	resources memberResourcePurger
+}
+
+// SetResourcePurger installs the Task 4 profile/device lifecycle adapter used
+// when a tenant membership is removed while the global account survives.
+func (s *MemberService) SetResourcePurger(purger memberResourcePurger) {
+	if s != nil {
+		s.resources = purger
+	}
 }
 
 // NewMemberService builds a tenant-member service from the native account and
@@ -80,6 +101,36 @@ func memberCommandID(tenantID uuid.UUID, key string) uuid.UUID {
 	return uuid.NewSHA1(memberCommandNamespace, []byte(tenantID.String()+"\x00"+key))
 }
 
+func validMemberIdentity(username, email, password string) bool {
+	if username == "" || len(username) > 255 || email == "" || len(email) > 320 || len(password) < 8 || len(password) > 72 {
+		return false
+	}
+	for _, value := range []string{username, email} {
+		if strings.IndexFunc(value, unicode.IsControl) >= 0 {
+			return false
+		}
+	}
+	parsed, err := mail.ParseAddress(email)
+	return err == nil && parsed.Address == email && strings.Contains(email, "@")
+}
+
+func validIdempotencyKey(key string) bool {
+	return key != "" && len(key) <= 255 && strings.IndexFunc(key, unicode.IsControl) < 0
+}
+
+func memberCommandDigest(input CreateMemberInput) ([]byte, error) {
+	canonical, err := json.Marshal(struct {
+		Username string `json:"username"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}{input.Username, input.Email, input.Password})
+	if err != nil {
+		return nil, err
+	}
+	digest := sha256.Sum256(canonical)
+	return digest[:], nil
+}
+
 // Create atomically claims the idempotency command, enforces the live member
 // quota, creates the native account, and adds its tenant membership.
 func (s *MemberService) Create(
@@ -92,7 +143,11 @@ func (s *MemberService) Create(
 	input.Username = strings.TrimSpace(input.Username)
 	input.Email = strings.TrimSpace(input.Email)
 	if s == nil || s.pool == nil || s.accounts == nil || s.users == nil || tenantID == uuid.Nil ||
-		key == "" || len(key) > 256 || input.Username == "" || input.Email == "" || input.Password == "" {
+		!validIdempotencyKey(key) || !validMemberIdentity(input.Username, input.Email, input.Password) {
+		return models.User{}, false, ErrInvalidMemberCommand
+	}
+	digest, err := memberCommandDigest(input)
+	if err != nil {
 		return models.User{}, false, ErrInvalidMemberCommand
 	}
 
@@ -110,24 +165,56 @@ func (s *MemberService) Create(
 		return models.User{}, false, err
 	}
 
-	commandID := memberCommandID(tenantID, key)
-	var existingAccountID int
+	var (
+		requestHash                     string
+		existingAccountID               int
+		existingUsername, existingEmail string
+		deletedAt                       *time.Time
+	)
 	err = tx.QueryRow(ctx, `
-		SELECT account_id FROM organization_memberships
-		WHERE id = $1 AND organization_id = $2`, commandID, tenantID).Scan(&existingAccountID)
+		SELECT request_hash, result_account_id, result_username, result_email, deleted_at
+		FROM tenant_member_command_receipts
+		WHERE organization_id = $1 AND idempotency_key = $2`, tenantID, key).
+		Scan(&requestHash, &existingAccountID, &existingUsername, &existingEmail, &deletedAt)
 	switch {
 	case err == nil:
-		existing, loadErr := s.users.GetByID(ctx, existingAccountID)
-		if loadErr != nil {
-			return models.User{}, false, fmt.Errorf("tenancy: load replayed member: %w", loadErr)
-		}
-		if existing.Username != input.Username || existing.Email != input.Email ||
-			bcrypt.CompareHashAndPassword([]byte(existing.PasswordHash), []byte(input.Password)) != nil {
+		if bcrypt.CompareHashAndPassword([]byte(requestHash), digest) != nil {
 			return models.User{}, false, ErrIdempotencyConflict
 		}
-		return *existing, true, nil
+		return models.User{ID: existingAccountID, Username: existingUsername, Email: existingEmail, Enabled: true}, true, nil
 	case !errors.Is(err, pgx.ErrNoRows):
 		return models.User{}, false, fmt.Errorf("tenancy: read member command: %w", err)
+	}
+
+	// Rolling compatibility for commands claimed by the pre-receipt binary.
+	// The deterministic membership id lets the first replay adopt the old
+	// claim; from then on the immutable receipt is authoritative.
+	commandID := memberCommandID(tenantID, key)
+	err = tx.QueryRow(ctx, `SELECT account_id FROM organization_memberships WHERE id=$1 AND organization_id=$2`, commandID, tenantID).Scan(&existingAccountID)
+	if err == nil {
+		existing, loadErr := s.users.GetByID(ctx, existingAccountID)
+		if loadErr != nil {
+			return models.User{}, false, fmt.Errorf("tenancy: load legacy replayed member: %w", loadErr)
+		}
+		if existing.Username != input.Username || existing.Email != input.Email || bcrypt.CompareHashAndPassword([]byte(existing.PasswordHash), []byte(input.Password)) != nil {
+			return models.User{}, false, ErrIdempotencyConflict
+		}
+		requestHashBytes, hashErr := bcrypt.GenerateFromPassword(digest, bcrypt.DefaultCost)
+		if hashErr != nil {
+			return models.User{}, false, fmt.Errorf("tenancy: hash legacy member command: %w", hashErr)
+		}
+		if _, err = tx.Exec(ctx, `INSERT INTO tenant_member_command_receipts
+			(organization_id,idempotency_key,request_hash,result_account_id,result_username,result_email)
+			VALUES ($1,$2,$3,$4,$5,$6)`, tenantID, key, string(requestHashBytes), existing.ID, existing.Username, existing.Email); err != nil {
+			return models.User{}, false, fmt.Errorf("tenancy: adopt legacy member command: %w", err)
+		}
+		if err = tx.Commit(ctx); err != nil {
+			return models.User{}, false, fmt.Errorf("tenancy: commit legacy member replay: %w", err)
+		}
+		return *existing, true, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return models.User{}, false, fmt.Errorf("tenancy: read legacy member command: %w", err)
 	}
 
 	if tenant.Frozen {
@@ -139,6 +226,9 @@ func (s *MemberService) Create(
 	}
 	if used >= tenant.Slots {
 		return models.User{}, false, ErrSlotQuotaExceeded
+	}
+	if err := ensureTenantDefaultAccessGroup(ctx, tx, tenantID); err != nil {
+		return models.User{}, false, err
 	}
 	var accessGroupID int64
 	if err := tx.QueryRow(ctx, `
@@ -163,8 +253,17 @@ func (s *MemberService) Create(
 
 	if _, err = tx.Exec(ctx, `
 		INSERT INTO organization_memberships (id, organization_id, account_id, status, legacy_role)
-		VALUES ($1, $2, $3, $4, $5)`, commandID, tenantID, created.ID, MembershipActive, legacyRoleUser); err != nil {
+		VALUES ($1, $2, $3, $4, $5)`, uuid.New(), tenantID, created.ID, MembershipActive, legacyRoleUser); err != nil {
 		return models.User{}, false, fmt.Errorf("tenancy: create member membership: %w", err)
+	}
+	requestHashBytes, err := bcrypt.GenerateFromPassword(digest, bcrypt.DefaultCost)
+	if err != nil {
+		return models.User{}, false, fmt.Errorf("tenancy: hash member command: %w", err)
+	}
+	if _, err = tx.Exec(ctx, `INSERT INTO tenant_member_command_receipts
+		(organization_id,idempotency_key,request_hash,result_account_id,result_username,result_email)
+		VALUES ($1,$2,$3,$4,$5,$6)`, tenantID, key, string(requestHashBytes), created.ID, created.Username, created.Email); err != nil {
+		return models.User{}, false, fmt.Errorf("tenancy: record member command: %w", err)
 	}
 	if tenant.ownerAccountID == nil {
 		if _, err = tx.Exec(ctx, `
@@ -264,14 +363,15 @@ func (s *MemberService) Update(ctx context.Context, tenantID uuid.UUID, userID i
 	update := models.UpdateUserInput{}
 	if input.Username != nil {
 		username := strings.TrimSpace(*input.Username)
-		if username == "" {
+		if username == "" || len(username) > 255 || strings.IndexFunc(username, unicode.IsControl) >= 0 {
 			return models.User{}, ErrInvalidMemberCommand
 		}
 		update.Username = &username
 	}
 	if input.Email != nil {
 		email := strings.TrimSpace(*input.Email)
-		if email == "" {
+		parsed, err := mail.ParseAddress(email)
+		if err != nil || parsed.Address != email || !strings.Contains(email, "@") || len(email) > 320 {
 			return models.User{}, ErrInvalidMemberCommand
 		}
 		update.Email = &email
@@ -279,19 +379,57 @@ func (s *MemberService) Update(ctx context.Context, tenantID uuid.UUID, userID i
 	if update.Username == nil && update.Email == nil {
 		return models.User{}, ErrInvalidMemberCommand
 	}
-	conflict, err := s.accounts.UpdateUser(ctx, userID, update)
+	tx, err := s.beginMemberMutation(ctx, tenantID, userID)
+	if err != nil {
+		return models.User{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	conflict, err := s.accounts.UpdateUserInTransaction(ctx, tx, userID, update)
 	if conflict {
 		return models.User{}, ErrUsernameConflict
 	}
 	if err != nil {
 		return models.User{}, fmt.Errorf("tenancy: update member: %w", err)
 	}
-	if update.Username != nil && s.sessions != nil {
-		if err := s.sessions.RevokeAllByUser(ctx, userID); err != nil {
-			return models.User{}, fmt.Errorf("tenancy: revoke renamed member sessions: %w", err)
+	if s.sessions != nil {
+		if err := s.sessions.RevokeAllByUserInTransaction(ctx, tx, userID); err != nil {
+			return models.User{}, fmt.Errorf("tenancy: revoke changed member sessions: %w", err)
 		}
 	}
-	return s.Get(ctx, tenantID, userID)
+	if err := tx.Commit(ctx); err != nil {
+		return models.User{}, fmt.Errorf("tenancy: commit member update: %w", err)
+	}
+	updated, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return models.User{}, fmt.Errorf("tenancy: load updated member: %w", err)
+	}
+	return *updated, nil
+}
+
+func (s *MemberService) beginMemberMutation(ctx context.Context, tenantID uuid.UUID, userID int) (pgx.Tx, error) {
+	if s == nil || s.pool == nil || tenantID == uuid.Nil || userID <= 0 {
+		return nil, ErrMemberNotFound
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("tenancy: begin member mutation: %w", err)
+	}
+	if _, err := s.store.lockTenantOrganization(ctx, tx, tenantID); err != nil {
+		_ = tx.Rollback(ctx)
+		if errors.Is(err, ErrTenantOrganizationNotFound) {
+			return nil, ErrMemberNotFound
+		}
+		return nil, err
+	}
+	var present int
+	if err := tx.QueryRow(ctx, `SELECT 1 FROM organization_memberships WHERE organization_id=$1 AND account_id=$2 FOR UPDATE`, tenantID, userID).Scan(&present); err != nil {
+		_ = tx.Rollback(ctx)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrMemberNotFound
+		}
+		return nil, fmt.Errorf("tenancy: lock member: %w", err)
+	}
+	return tx, nil
 }
 
 // Suspend disables the account and its membership, retaining all data.
@@ -305,18 +443,20 @@ func (s *MemberService) Resume(ctx context.Context, tenantID uuid.UUID, userID i
 }
 
 func (s *MemberService) setSuspended(ctx context.Context, tenantID uuid.UUID, userID int, suspended bool) (models.User, error) {
-	if err := s.RequireMembership(ctx, tenantID, userID); err != nil {
+	tx, err := s.beginMemberMutation(ctx, tenantID, userID)
+	if err != nil {
 		return models.User{}, err
 	}
+	defer func() { _ = tx.Rollback(ctx) }()
 	enabled := !suspended
-	if _, err := s.accounts.UpdateUser(ctx, userID, models.UpdateUserInput{Enabled: &enabled}); err != nil {
+	if _, err := s.accounts.UpdateUserInTransaction(ctx, tx, userID, models.UpdateUserInput{Enabled: &enabled}); err != nil {
 		return models.User{}, fmt.Errorf("tenancy: update member enabled state: %w", err)
 	}
 	status := MembershipActive
 	if suspended {
 		status = MembershipSuspended
 	}
-	tag, err := s.pool.Exec(ctx, `
+	tag, err := tx.Exec(ctx, `
 		UPDATE organization_memberships
 		SET status = $3, security_revision = security_revision + 1, updated_at = now()
 		WHERE organization_id = $1 AND account_id = $2`, tenantID, userID, status)
@@ -327,11 +467,18 @@ func (s *MemberService) setSuspended(ctx context.Context, tenantID uuid.UUID, us
 		return models.User{}, ErrMemberNotFound
 	}
 	if suspended && s.sessions != nil {
-		if err := s.sessions.RevokeAllByUser(ctx, userID); err != nil {
+		if err := s.sessions.RevokeAllByUserInTransaction(ctx, tx, userID); err != nil {
 			return models.User{}, fmt.Errorf("tenancy: revoke suspended member sessions: %w", err)
 		}
 	}
-	return s.Get(ctx, tenantID, userID)
+	if err := tx.Commit(ctx); err != nil {
+		return models.User{}, fmt.Errorf("tenancy: commit member state: %w", err)
+	}
+	updated, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return models.User{}, fmt.Errorf("tenancy: load member state: %w", err)
+	}
+	return *updated, nil
 }
 
 // ResetPassword replaces the native password and revokes all login sessions.
@@ -339,54 +486,171 @@ func (s *MemberService) ResetPassword(ctx context.Context, tenantID uuid.UUID, u
 	if err := s.RequireMembership(ctx, tenantID, userID); err != nil {
 		return models.User{}, err
 	}
-	if password == "" {
+	if len(password) < 8 || len(password) > 72 {
 		return models.User{}, ErrInvalidMemberCommand
 	}
-	if _, err := s.accounts.UpdateUser(ctx, userID, models.UpdateUserInput{Password: &password}); err != nil {
+	tx, err := s.beginMemberMutation(ctx, tenantID, userID)
+	if err != nil {
+		return models.User{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := s.accounts.UpdateUserInTransaction(ctx, tx, userID, models.UpdateUserInput{Password: &password}); err != nil {
 		return models.User{}, fmt.Errorf("tenancy: reset member password: %w", err)
 	}
 	if s.sessions != nil {
-		if err := s.sessions.RevokeAllByUser(ctx, userID); err != nil {
+		if err := s.sessions.RevokeAllByUserInTransaction(ctx, tx, userID); err != nil {
 			return models.User{}, fmt.Errorf("tenancy: revoke reset member sessions: %w", err)
 		}
 	}
-	return s.Get(ctx, tenantID, userID)
+	if err := tx.Commit(ctx); err != nil {
+		return models.User{}, fmt.Errorf("tenancy: commit member password reset: %w", err)
+	}
+	updated, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return models.User{}, fmt.Errorf("tenancy: load reset member: %w", err)
+	}
+	return *updated, nil
 }
 
-// Delete removes the native account after resolving membership in the URL
-// tenant. If it owned the organization, ownership is transferred first so the
-// existing RESTRICT foreign key cannot turn a scoped delete into a 500.
+// Delete removes the tenant membership and only removes the global account
+// when it has no other membership, ownership, or platform-admin obligation.
+// Ownership, freeze recomputation, membership removal/account deletion, and
+// the durable tombstone share one tenant-row-locked transaction.
 func (s *MemberService) Delete(ctx context.Context, tenantID uuid.UUID, userID int) error {
-	if err := s.RequireMembership(ctx, tenantID, userID); err != nil {
+	if s == nil || s.pool == nil || tenantID == uuid.Nil || userID <= 0 {
+		return ErrMemberNotFound
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("tenancy: begin member delete: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	tenant, err := s.store.lockTenantOrganization(ctx, tx, tenantID)
+	if errors.Is(err, ErrTenantOrganizationNotFound) {
+		return ErrMemberNotFound
+	}
+	if err != nil {
 		return err
 	}
-	var ownerID *int
-	if err := s.pool.QueryRow(ctx, `SELECT owner_account_id FROM organizations WHERE id = $1`, tenantID).Scan(&ownerID); err != nil {
-		return fmt.Errorf("tenancy: load member tenant owner: %w", err)
+	var membershipStatus MembershipStatus
+	err = tx.QueryRow(ctx, `SELECT status FROM organization_memberships WHERE organization_id=$1 AND account_id=$2 FOR UPDATE`, tenantID, userID).Scan(&membershipStatus)
+	if errors.Is(err, pgx.ErrNoRows) {
+		var tombstoned bool
+		if receiptErr := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM tenant_member_command_receipts WHERE organization_id=$1 AND result_account_id=$2 AND deleted_at IS NOT NULL)`, tenantID, userID).Scan(&tombstoned); receiptErr != nil {
+			return fmt.Errorf("tenancy: check member delete receipt: %w", receiptErr)
+		}
+		if !tombstoned {
+			return ErrMemberNotFound
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return fmt.Errorf("tenancy: commit repeated member delete: %w", err)
+		}
+		if s.resources != nil {
+			return s.resources.PurgeOrganizationResources(ctx, tenantID, userID)
+		}
+		return nil
 	}
-	if ownerID != nil && *ownerID == userID {
-		var replacement int
-		err := s.pool.QueryRow(ctx, `
-			SELECT account_id FROM organization_memberships
-			WHERE organization_id = $1 AND account_id <> $2
-			ORDER BY account_id LIMIT 1`, tenantID, userID).Scan(&replacement)
-		var replacementArg any
-		status := OrganizationInitializing
+	if err != nil {
+		return fmt.Errorf("tenancy: lock member delete: %w", err)
+	}
+
+	var (
+		role            string
+		username        string
+		email           string
+		membershipCount int
+		otherOwnerCount int
+		platformOwner   bool
+	)
+	if err := tx.QueryRow(ctx, `SELECT role,username,email FROM users WHERE id=$1 FOR UPDATE`, userID).Scan(&role, &username, &email); err != nil {
+		return fmt.Errorf("tenancy: lock member account: %w", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM organization_memberships WHERE account_id=$1`, userID).Scan(&membershipCount); err != nil {
+		return fmt.Errorf("tenancy: count member obligations: %w", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM organizations WHERE owner_account_id=$1 AND id<>$2`, userID, tenantID).Scan(&otherOwnerCount); err != nil {
+		return fmt.Errorf("tenancy: count member ownerships: %w", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM platform_security WHERE owner_account_id=$1)`, userID).Scan(&platformOwner); err != nil {
+		return fmt.Errorf("tenancy: check platform ownership: %w", err)
+	}
+
+	deletingOwner := tenant.ownerAccountID != nil && *tenant.ownerAccountID == userID
+	var replacement *int
+	if deletingOwner {
+		var candidate int
+		err := tx.QueryRow(ctx, `
+			SELECT m.account_id
+			FROM organization_memberships m
+			JOIN users u ON u.id=m.account_id
+			WHERE m.organization_id=$1 AND m.account_id<>$2
+			  AND m.status='active' AND u.enabled
+			ORDER BY m.account_id LIMIT 1`, tenantID, userID).Scan(&candidate)
 		if err == nil {
-			replacementArg = replacement
-			status = OrganizationActive
+			replacement = &candidate
 		} else if !errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("tenancy: choose replacement owner: %w", err)
-		}
-		if _, err := s.pool.Exec(ctx, `
-			UPDATE organizations SET owner_account_id = $2, status = $3, updated_at = now()
-			WHERE id = $1`, tenantID, replacementArg, status); err != nil {
-			return fmt.Errorf("tenancy: transfer member tenant ownership: %w", err)
+			return fmt.Errorf("tenancy: choose eligible replacement owner: %w", err)
 		}
 	}
-	if err := s.accounts.DeleteUser(ctx, userID); err != nil {
-		return fmt.Errorf("tenancy: delete member: %w", err)
+	ownerAfter := tenant.ownerAccountID
+	if deletingOwner {
+		ownerAfter = replacement
+	}
+	usedBefore, err := tenantMembershipCount(ctx, tx, tenantID)
+	if err != nil {
+		return err
+	}
+	usedAfter := usedBefore - 1
+	status, reason := OrganizationActive, ""
+	switch {
+	case tenant.FrozenReason == TenantFrozenReasonAdmin:
+		status, reason = OrganizationSuspended, TenantFrozenReasonAdmin
+	case usedAfter > tenant.Slots:
+		status, reason = OrganizationSuspended, TenantFrozenReasonQuota
+	case ownerAfter == nil:
+		status = OrganizationInitializing
+	}
+	if _, err := tx.Exec(ctx, `UPDATE organizations SET owner_account_id=$2,status=$3,suspension_reason=$4,updated_at=now() WHERE id=$1`, tenantID, ownerAfter, status, reason); err != nil {
+		return fmt.Errorf("tenancy: update tenant after member delete: %w", err)
+	}
+
+	deleteGlobal := membershipCount == 1 && otherOwnerCount == 0 && !platformOwner && role != legacyRoleAdmin
+	if deleteGlobal {
+		if err := s.accounts.DeleteUserInTransaction(ctx, tx, userID); err != nil {
+			return fmt.Errorf("tenancy: delete unowned member account: %w", err)
+		}
+	} else {
+		if _, err := tx.Exec(ctx, `DELETE FROM organization_memberships WHERE organization_id=$1 AND account_id=$2`, tenantID, userID); err != nil {
+			return fmt.Errorf("tenancy: delete scoped member membership: %w", err)
+		}
+	}
+	receiptTag, err := tx.Exec(ctx, `UPDATE tenant_member_command_receipts SET deleted_at=COALESCE(deleted_at,now()) WHERE organization_id=$1 AND result_account_id=$2`, tenantID, userID)
+	if err != nil {
+		return fmt.Errorf("tenancy: tombstone member command: %w", err)
+	}
+	if receiptTag.RowsAffected() == 0 {
+		// Imported and pre-receipt members have no create command to mark. Keep a
+		// reserved (control-prefixed, therefore API-invalid) deletion tombstone so
+		// their DELETE retry is just as durable and idempotent.
+		tombstoneDigest := sha256.Sum256([]byte("tenant-member-delete-tombstone-v1"))
+		tombstoneHash, hashErr := bcrypt.GenerateFromPassword(tombstoneDigest[:], bcrypt.DefaultCost)
+		if hashErr != nil {
+			return fmt.Errorf("tenancy: hash member delete tombstone: %w", hashErr)
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO tenant_member_command_receipts
+			(organization_id,idempotency_key,request_hash,result_account_id,result_username,result_email,deleted_at)
+			VALUES ($1,$2,$3,$4,$5,$6,now())`, tenantID, fmt.Sprintf("\x1fdelete:%d", userID), string(tombstoneHash), userID, username, email); err != nil {
+			return fmt.Errorf("tenancy: record member delete tombstone: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("tenancy: commit member delete: %w", err)
 	}
 	s.store.invalidateTenantLimitsCache()
+	if !deleteGlobal && s.resources != nil {
+		if err := s.resources.PurgeOrganizationResources(ctx, tenantID, userID); err != nil {
+			return fmt.Errorf("tenancy: purge scoped member resources: %w", err)
+		}
+	}
 	return nil
 }

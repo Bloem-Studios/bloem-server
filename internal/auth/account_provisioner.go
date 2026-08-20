@@ -24,6 +24,14 @@ type transactionalAccountUserRepository interface {
 	CreateInTransaction(ctx context.Context, tx pgx.Tx, input models.CreateUserInput) (*models.User, error)
 }
 
+type transactionalAccountUserUpdater interface {
+	UpdateInTransaction(ctx context.Context, tx pgx.Tx, id int, input models.UpdateUserInput) error
+}
+
+type transactionalAccountUserDeleter interface {
+	DeleteInTransaction(ctx context.Context, tx pgx.Tx, id int) error
+}
+
 // MembershipProvisioner assigns an account to the deployment's default
 // organization immediately after account creation.
 type MembershipProvisioner interface {
@@ -154,9 +162,34 @@ func (p *AccountProvisioner) UpdateUser(ctx context.Context, userID int, input m
 	return false, err
 }
 
+// UpdateUserInTransaction is the native update path on a caller-owned
+// transaction, allowing security-sensitive identity changes and session
+// revocation to commit or roll back together.
+func (p *AccountProvisioner) UpdateUserInTransaction(ctx context.Context, tx pgx.Tx, userID int, input models.UpdateUserInput) (bool, error) {
+	users, ok := p.users.(transactionalAccountUserUpdater)
+	if !ok {
+		return false, fmt.Errorf("account repository does not support transactional updates")
+	}
+	err := users.UpdateInTransaction(ctx, tx, userID, input)
+	if IsDuplicate(err) {
+		return true, nil
+	}
+	return false, err
+}
+
 // DeleteUser applies the native account deletion path.
 func (p *AccountProvisioner) DeleteUser(ctx context.Context, userID int) error {
 	return p.users.Delete(ctx, userID)
+}
+
+// DeleteUserInTransaction is the native account deletion path on the
+// tenant-member lifecycle transaction.
+func (p *AccountProvisioner) DeleteUserInTransaction(ctx context.Context, tx pgx.Tx, userID int) error {
+	users, ok := p.users.(transactionalAccountUserDeleter)
+	if !ok {
+		return fmt.Errorf("account repository does not support transactional deletion")
+	}
+	return users.DeleteInTransaction(ctx, tx, userID)
 }
 
 // MembershipLegacyRole preserves the legacy migration's two-value membership

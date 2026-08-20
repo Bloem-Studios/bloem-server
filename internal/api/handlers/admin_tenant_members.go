@@ -38,6 +38,35 @@ func NewAdminTenantMembersHandler(members tenantMemberService, adminUsers *Admin
 	return &AdminTenantMembersHandler{members: members, adminUsers: adminUsers}
 }
 
+// PurgeOrganizationResources adapts the full Task 4 profile lifecycle for a
+// membership delete whose global account survives. It removes only profiles
+// in the asserted organization; each deletion retains avatar cleanup, device
+// library purging, settings cleanup, and native lifecycle events.
+func (h *AdminTenantMembersHandler) PurgeOrganizationResources(ctx context.Context, organizationID uuid.UUID, userID int) error {
+	if h == nil || h.adminUsers == nil || h.adminUsers.storeProv == nil {
+		return errors.New("tenant member resource lifecycle is not configured")
+	}
+	store, err := h.adminUsers.storeProv.ForUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	profiles, err := store.ListProfiles(ctx)
+	if err != nil {
+		return err
+	}
+	profileHandler := h.adminUsers.adminResourceProfileHandler()
+	for i := range profiles {
+		profile := profiles[i]
+		if profile.OrganizationID != organizationID.String() {
+			continue
+		}
+		if err := profileHandler.deleteProfileWithLifecycle(ctx, store, userID, &profile); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type tenantMemberResponse struct {
 	UserID   int    `json:"user_id"`
 	Username string `json:"username"`
