@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -105,4 +106,143 @@ func TestAdminUserResourceRoutesUseProductionAdminBoundary(t *testing.T) {
 			t.Errorf("authorized %s %s = %d %s, want handler not_found", route.method, path, authorized.Code, authorized.Body.String())
 		}
 	}
+}
+
+func TestProfileRoutesWithoutS3PreserveNilAvatarStore(t *testing.T) {
+	ctx := context.Background()
+	pool := newDisposableAPIDatabase(t, "vondel_no_s3_profiles_", true)
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate disposable database: %v", err)
+	}
+	cfg := &config.Config{Auth: config.AuthConfig{
+		JWTSecret: "no-s3-profile-lifecycle-secret", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour,
+	}}
+	store := tenancy.NewStore(pool)
+	bootstrap := v1TenancyBootstrap{store: store}
+	// S3Private is deliberately nil: this is the production configuration for
+	// servers that do not enable uploaded-avatar object storage.
+	router := NewRouter(Dependencies{
+		DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
+		OwnershipBootstrapper: bootstrap, MembershipProvisioner: bootstrap,
+	})
+	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{
+		"username":"no-s3-admin","email":"no-s3-admin@example.test","password":"correct horse battery staple",
+		"create_default_profile":true,"default_profile_name":"Owner"
+	}`, "", nil)
+	if setup.Code != http.StatusCreated {
+		t.Fatalf("setup = %d %s", setup.Code, setup.Body.String())
+	}
+	adminToken := decodeLogin(t, setup).AccessToken
+	var userID int
+	if err := pool.QueryRow(ctx, `SELECT id FROM users WHERE username = 'no-s3-admin'`).Scan(&userID); err != nil {
+		t.Fatalf("load account id: %v", err)
+	}
+	var primaryProfileID string
+	if err := pool.QueryRow(ctx, `SELECT id FROM user_profiles WHERE user_id=$1 AND is_primary`, userID).Scan(&primaryProfileID); err != nil {
+		t.Fatalf("load primary profile: %v", err)
+	}
+
+	createProfile := func(name string) string {
+		t.Helper()
+		created := performJSONRequest(t, router, http.MethodPost, "/api/v1/profiles/", `{"name":"`+name+`"}`, adminToken, nil)
+		if created.Code != http.StatusCreated {
+			t.Fatalf("create profile %q = %d %s", name, created.Code, created.Body.String())
+		}
+		var body struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(created.Body.Bytes(), &body); err != nil || body.ID == "" {
+			t.Fatalf("decode created profile %q: id=%q err=%v", name, body.ID, err)
+		}
+		return body.ID
+	}
+	setUploadedAvatar := func(profileID string) {
+		t.Helper()
+		ref := "upload:profile-avatars/" + strconv.Itoa(userID) + "/" + profileID + "/original.webp"
+		if _, err := pool.Exec(ctx, `UPDATE user_profiles SET avatar=$1 WHERE user_id=$2 AND id=$3`, ref, userID, profileID); err != nil {
+			t.Fatalf("persist upload avatar for %q: %v", profileID, err)
+		}
+	}
+	assertProfileAvatar := func(profileID, want string) {
+		t.Helper()
+		var got string
+		if err := pool.QueryRow(ctx, `SELECT avatar FROM user_profiles WHERE user_id=$1 AND id=$2`, userID, profileID).Scan(&got); err != nil {
+			t.Fatalf("load avatar for %q: %v", profileID, err)
+		}
+		if got != want {
+			t.Fatalf("avatar for %q = %q, want %q", profileID, got, want)
+		}
+	}
+	assertProfileDeleted := func(profileID string) {
+		t.Helper()
+		var count int
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM user_profiles WHERE user_id=$1 AND id=$2`, userID, profileID).Scan(&count); err != nil || count != 0 {
+			t.Fatalf("profile %q rows = %d (%v), want deleted", profileID, count, err)
+		}
+	}
+
+	setUploadedAvatar(primaryProfileID)
+	nativeDeleteID := createProfile("Native Delete")
+	adminUpdateID := createProfile("Admin Update")
+	adminDeleteID := createProfile("Admin Delete")
+	setUploadedAvatar(nativeDeleteID)
+	setUploadedAvatar(adminUpdateID)
+	setUploadedAvatar(adminDeleteID)
+
+	t.Run("native list omits upload URL and reports uploads disabled", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet, "/api/v1/profiles/", "", adminToken, nil)
+		if response.Code != http.StatusOK {
+			t.Fatalf("native list = %d %s", response.Code, response.Body.String())
+		}
+		if strings.Contains(response.Body.String(), `"avatar_url"`) || !strings.Contains(response.Body.String(), `"avatar_upload_enabled":false`) {
+			t.Fatalf("native list exposed no-S3 avatar capability incorrectly: %s", response.Body.String())
+		}
+	})
+
+	t.Run("admin list omits upload URL", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodGet,
+			"/api/v1/admin/users/"+strconv.Itoa(userID)+"/profiles", "", adminToken, nil)
+		if response.Code != http.StatusOK {
+			t.Fatalf("admin list = %d %s", response.Code, response.Body.String())
+		}
+		if strings.Contains(response.Body.String(), `"avatar_url"`) {
+			t.Fatalf("admin list exposed an upload URL without S3: %s", response.Body.String())
+		}
+	})
+
+	t.Run("native update treats upload cleanup as a no-op", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodPut, "/api/v1/profiles/"+primaryProfileID,
+			`{"avatar":"avatar-1"}`, adminToken, nil)
+		if response.Code != http.StatusOK {
+			t.Fatalf("native update = %d %s", response.Code, response.Body.String())
+		}
+		assertProfileAvatar(primaryProfileID, "preset:avatar-1")
+	})
+
+	t.Run("admin update treats upload cleanup as a no-op", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodPut,
+			"/api/v1/admin/users/"+strconv.Itoa(userID)+"/profiles/"+adminUpdateID,
+			`{"avatar":"avatar-1"}`, adminToken, nil)
+		if response.Code != http.StatusOK {
+			t.Fatalf("admin update = %d %s", response.Code, response.Body.String())
+		}
+		assertProfileAvatar(adminUpdateID, "preset:avatar-1")
+	})
+
+	t.Run("native delete treats upload cleanup as a no-op", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodDelete, "/api/v1/profiles/"+nativeDeleteID, "", adminToken, nil)
+		if response.Code != http.StatusNoContent {
+			t.Fatalf("native delete = %d %s", response.Code, response.Body.String())
+		}
+		assertProfileDeleted(nativeDeleteID)
+	})
+
+	t.Run("admin delete treats upload cleanup as a no-op", func(t *testing.T) {
+		response := performJSONRequest(t, router, http.MethodDelete,
+			"/api/v1/admin/users/"+strconv.Itoa(userID)+"/profiles/"+adminDeleteID, "", adminToken, nil)
+		if response.Code != http.StatusNoContent {
+			t.Fatalf("admin delete = %d %s", response.Code, response.Body.String())
+		}
+		assertProfileDeleted(adminDeleteID)
+	})
 }

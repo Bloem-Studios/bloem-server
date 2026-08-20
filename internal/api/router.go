@@ -871,7 +871,12 @@ func NewRouter(deps Dependencies) chi.Router {
 		profileHandler.UserRepo = userRepo
 		profileHandler.EventsHub = deps.EventsHub
 		profileHandler.ProfileTokens = profileTokenService
-		profileHandler.AvatarStore = deps.S3Private
+		// Preserve genuine nil in the interface. Assigning a nil *s3client.Client
+		// would produce a non-nil typed interface and panic when an existing
+		// upload: reference tries to resolve or clean up objects.
+		if deps.S3Private != nil {
+			profileHandler.AvatarStore = deps.S3Private
+		}
 		profileHandler.SessionsReader = playbackSessionsLoader
 		personalDataHandler = handlers.NewPersonalDataHandler(deps.UserStoreProvider, itemRepo)
 		if detailSvc != nil {
