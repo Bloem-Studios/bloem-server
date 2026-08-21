@@ -341,6 +341,52 @@ func TestGroupStoreMemberCountsUseProfilesNotLegacyAccounts(t *testing.T) {
 	}
 }
 
+func TestGroupStoreRejectsCohortManagedMutationAndDeletion(t *testing.T) {
+	ctx, fixture := newOrganizationGroupStoreDBTest(t)
+	group := fixture.createGroup(fixture.orgA, "Cohort managed")
+	actorID := fixture.createUser(&group.ID, 1)
+	cohortID := uuid.New()
+	cohortRevisionID := uuid.New()
+	_, err := fixture.pool.Exec(ctx, `
+		INSERT INTO entitlement_policy_cohorts (id,organization_id,name)
+		VALUES ($1,$2,'Cohort managed')`, cohortID, fixture.orgA)
+	if err != nil {
+		t.Fatalf("insert cohort identity: %v", err)
+	}
+	_, err = fixture.pool.Exec(ctx, `
+		INSERT INTO entitlement_policy_cohort_revisions (
+			id,cohort_id,organization_id,name,revision,access_group_id,
+			source_template_key,source_template_revision,derivation_kind,
+			library_ids,playback_allowed,max_streams,max_profiles,
+			transcode_allowed,max_transcodes,download_allowed,
+			download_transcode_allowed,max_playback_quality,
+			allowed_permissions,requests_allowed,policy_digest,created_by_account_id
+		) VALUES (
+			$1,$2,$3,'Cohort managed',1,$4,
+			'standard',1,'exact_template',
+			ARRAY[]::integer[],true,2,2,true,1,true,true,'1080p',
+			ARRAY['marker_edit']::text[],true,repeat('a',64),$5
+		)`, cohortRevisionID, cohortID, fixture.orgA, group.ID, actorID)
+	if err != nil {
+		t.Fatalf("insert cohort revision: %v", err)
+	}
+	_, err = fixture.pool.Exec(ctx, `
+		UPDATE access_groups
+		SET managed_template_key='standard',managed_template_revision=1,managed_cohort_id=$2
+		WHERE id=$1`, group.ID, cohortRevisionID)
+	if err != nil {
+		t.Fatalf("mark cohort group: %v", err)
+	}
+
+	name := "mutated"
+	if _, err := fixture.store.Update(ctx, fixture.orgA, group.ID, UpdateGroupInput{Name: &name}); !errors.Is(err, ErrManagedGroup) {
+		t.Fatalf("Update() error = %v, want ErrManagedGroup", err)
+	}
+	if err := fixture.store.Delete(ctx, fixture.orgA, group.ID); !errors.Is(err, ErrManagedGroup) {
+		t.Fatalf("Delete() error = %v, want ErrManagedGroup", err)
+	}
+}
+
 func TestGroupStoreResolvePolicyRejectsForeignOrMismatchedProfile(t *testing.T) {
 	ctx, fixture := newOrganizationGroupStoreDBTest(t)
 	groupA := fixture.createGroup(fixture.orgA, "Policy A")

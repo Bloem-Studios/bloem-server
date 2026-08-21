@@ -35,6 +35,7 @@ type Group struct {
 	IsDefault                bool
 	ManagedTemplateKey       *string
 	ManagedTemplateRevision  *int64
+	ManagedCohortID          uuid.UUID
 	MemberCount              int
 	CreatedAt                time.Time
 	UpdatedAt                time.Time
@@ -115,9 +116,9 @@ var (
 	// uncapped (the legacy per-user column defaults were retired).
 	ErrDefaultGroupRequired = errors.New("a default access group is required")
 	// ErrManagedGroup reports a generic mutation against a group owned by the
-	// entitlement materializer. Managed groups change only through template
-	// application so their source metadata and effective policy cannot diverge.
-	ErrManagedGroup = errors.New("managed access groups can only be changed by applying an entitlement template")
+	// entitlement materializer. Managed groups change only through entitlement
+	// operations so their source metadata and effective policy cannot diverge.
+	ErrManagedGroup = errors.New("managed access groups can only be changed through entitlement policy operations")
 )
 
 // GroupStore persists access groups in Postgres.
@@ -134,7 +135,7 @@ const accessGroupSelectColumns = `g.id, g.organization_id, g.name, g.description
 	g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 	g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
 	g.max_transcodes, g.allowed_permissions, g.requests_allowed, g.is_default,
-	g.managed_template_key, g.managed_template_revision, g.created_at, g.updated_at`
+	g.managed_template_key, g.managed_template_revision, g.managed_cohort_id, g.created_at, g.updated_at`
 
 type groupScanner interface {
 	Scan(dest ...any) error
@@ -142,6 +143,7 @@ type groupScanner interface {
 
 func scanGroup(row groupScanner) (*Group, error) {
 	var g Group
+	var managedCohortID *uuid.UUID
 	if err := row.Scan(
 		&g.ID,
 		&g.OrganizationID,
@@ -162,11 +164,15 @@ func scanGroup(row groupScanner) (*Group, error) {
 		&g.IsDefault,
 		&g.ManagedTemplateKey,
 		&g.ManagedTemplateRevision,
+		&managedCohortID,
 		&g.CreatedAt,
 		&g.UpdatedAt,
 		&g.MemberCount,
 	); err != nil {
 		return nil, err
+	}
+	if managedCohortID != nil {
+		g.ManagedCohortID = *managedCohortID
 	}
 	return &g, nil
 }
@@ -430,11 +436,12 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	var current Group
+	var managedCohortID *uuid.UUID
 	if err := tx.QueryRow(ctx, `
 			SELECT library_ids, max_playback_quality, playback_allowed,
 				download_allowed, download_transcode_allowed, transcode_allowed,
 				audio_transcode_allowed, max_streams, max_profiles, max_transcodes, allowed_permissions,
-				requests_allowed, is_default, managed_template_key
+				requests_allowed, is_default, managed_template_key, managed_cohort_id
 			FROM access_groups
 			WHERE organization_id = $1
 			  AND id = $2
@@ -453,13 +460,17 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 		&current.RequestsAllowed,
 		&current.IsDefault,
 		&current.ManagedTemplateKey,
+		&managedCohortID,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrGroupNotFound
 		}
 		return nil, fmt.Errorf("loading access group for update: %w", err)
 	}
-	if current.ManagedTemplateKey != nil {
+	if managedCohortID != nil {
+		current.ManagedCohortID = *managedCohortID
+	}
+	if current.ManagedTemplateKey != nil || current.ManagedCohortID != uuid.Nil {
 		return nil, ErrManagedGroup
 	}
 	authorizationChanged := groupAuthorizationChanged(current, input)
@@ -517,17 +528,18 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 func protectManagedDefault(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, replacementID int64) error {
 	var currentID int64
 	var managedKey *string
+	var managedCohortID *uuid.UUID
 	err := tx.QueryRow(ctx, `
-		SELECT id,managed_template_key FROM access_groups
+		SELECT id,managed_template_key,managed_cohort_id FROM access_groups
 		WHERE organization_id=$1 AND is_default
-		FOR UPDATE`, organizationID).Scan(&currentID, &managedKey)
+		FOR UPDATE`, organizationID).Scan(&currentID, &managedKey, &managedCohortID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("locking current default access group: %w", err)
 	}
-	if managedKey != nil && currentID != replacementID {
+	if (managedKey != nil || managedCohortID != nil) && currentID != replacementID {
 		return ErrManagedGroup
 	}
 	return nil
@@ -553,19 +565,20 @@ func (s *GroupStore) DeleteWithImpact(ctx context.Context, organizationID uuid.U
 	var (
 		isDefault          bool
 		managedTemplateKey *string
+		managedCohortID    *uuid.UUID
 	)
 	err = tx.QueryRow(ctx, `
-		SELECT is_default, managed_template_key
+		SELECT is_default, managed_template_key, managed_cohort_id
 		FROM access_groups
 		WHERE organization_id = $1
 		  AND id = $2
-		FOR UPDATE`, organizationID, id).Scan(&isDefault, &managedTemplateKey)
+		FOR UPDATE`, organizationID, id).Scan(&isDefault, &managedTemplateKey, &managedCohortID)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return GroupDeletionImpact{}, ErrGroupNotFound
 	case err != nil:
 		return GroupDeletionImpact{}, fmt.Errorf("checking access group default flag: %w", err)
-	case managedTemplateKey != nil:
+	case managedTemplateKey != nil || managedCohortID != nil:
 		return GroupDeletionImpact{}, ErrManagedGroup
 	case isDefault:
 		return GroupDeletionImpact{}, ErrDefaultGroupRequired
