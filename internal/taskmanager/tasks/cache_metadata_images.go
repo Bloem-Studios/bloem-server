@@ -21,8 +21,8 @@ const (
 	// existing backlog faster; database.max_connections was raised alongside
 	// it (see server_settings) since this alone would otherwise exceed the
 	// default pool.
-	cacheMetadataImagesClaimLimit = 24
-	cacheMetadataImagesWorkers    = 24
+	cacheMetadataImagesClaimLimit = 48
+	cacheMetadataImagesWorkers    = 48
 	cacheMetadataImagesMaxRuntime = 10 * time.Minute
 )
 
