@@ -27,7 +27,7 @@ function safeAuditHref(organizationID: string, href: string | null) {
   if (!href || href.startsWith("//")) return fallback;
   try {
     const url = new URL(href, window.location.origin);
-    if (url.origin !== window.location.origin) return fallback;
+    if (url.origin !== window.location.origin || url.pathname.startsWith("/api/")) return fallback;
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
     return fallback;
@@ -116,9 +116,11 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
             <div>
               <p className="text-muted-foreground text-xs">Effective libraries</p>
               <p className="font-medium">
-                {detail.data.library_ids.length > 0
-                  ? `Libraries ${detail.data.library_ids.join(", ")}`
-                  : "No libraries"}
+                {detail.data.library_ids === null
+                  ? "All enabled libraries"
+                  : detail.data.library_ids.length > 0
+                    ? `Libraries ${detail.data.library_ids.join(", ")}`
+                    : "No libraries"}
               </p>
             </div>
             <div>

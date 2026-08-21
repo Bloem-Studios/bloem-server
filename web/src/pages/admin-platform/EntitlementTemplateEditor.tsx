@@ -60,12 +60,14 @@ function NumberField({
   hint,
   value,
   onChange,
+  disabled = false,
 }: {
   id: string;
   label: string;
   hint: string;
   value: number;
   onChange(value: number): void;
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
@@ -75,6 +77,7 @@ function NumberField({
         type="number"
         min={0}
         value={value}
+        disabled={disabled}
         onChange={(event) => {
           const next = Number.parseInt(event.target.value, 10);
           onChange(Number.isFinite(next) && next >= 0 ? next : 0);
@@ -158,16 +161,20 @@ function EntitlementTemplateEditorForm({
   }
 
   async function save() {
+    const playbackAllowed = !browseOnly && policy.playback_allowed;
     await onSave({
       key: template?.key ?? key.trim(),
       name: name.trim(),
       enabled,
       policy: {
         ...policy,
-        playback_allowed: browseOnly ? false : policy.playback_allowed,
-        download_allowed: browseOnly ? false : policy.download_allowed,
+        playback_allowed: playbackAllowed,
+        max_streams: playbackAllowed ? policy.max_streams : 0,
+        transcode_allowed: playbackAllowed && policy.transcode_allowed,
+        max_transcodes: playbackAllowed ? policy.max_transcodes : 0,
+        download_allowed: playbackAllowed && policy.download_allowed,
         download_transcode_allowed:
-          !browseOnly && policy.download_allowed && policy.download_transcode_allowed,
+          playbackAllowed && policy.download_allowed && policy.download_transcode_allowed,
       },
     });
   }
@@ -279,7 +286,20 @@ function EntitlementTemplateEditorForm({
           label="Allow playback"
           description="Members can start playback from selected libraries."
           checked={policy.playback_allowed}
-          onChange={(playback_allowed) => updatePolicy({ playback_allowed })}
+          onChange={(playback_allowed) =>
+            updatePolicy(
+              playback_allowed
+                ? { playback_allowed }
+                : {
+                    playback_allowed,
+                    max_streams: 0,
+                    transcode_allowed: false,
+                    max_transcodes: 0,
+                    download_allowed: false,
+                    download_transcode_allowed: false,
+                  },
+            )
+          }
           disabled={browseOnly}
         />
         <div className="space-y-1.5">
@@ -303,6 +323,7 @@ function EntitlementTemplateEditorForm({
             hint="0 = no stream limit"
             value={policy.max_streams}
             onChange={(max_streams) => updatePolicy({ max_streams })}
+            disabled={!policy.playback_allowed}
           />
           <NumberField
             id="max-profiles"
@@ -317,6 +338,7 @@ function EntitlementTemplateEditorForm({
             hint="0 = no transcode limit"
             value={policy.max_transcodes}
             onChange={(max_transcodes) => updatePolicy({ max_transcodes })}
+            disabled={!policy.playback_allowed}
           />
         </div>
         <PolicyCheckbox
@@ -325,7 +347,7 @@ function EntitlementTemplateEditorForm({
           description="Members may play media that requires server-side conversion."
           checked={policy.transcode_allowed}
           onChange={(transcode_allowed) => updatePolicy({ transcode_allowed })}
-          disabled={browseOnly}
+          disabled={browseOnly || !policy.playback_allowed}
         />
       </section>
 
@@ -342,7 +364,7 @@ function EntitlementTemplateEditorForm({
               download_transcode_allowed: download_allowed && policy.download_transcode_allowed,
             })
           }
-          disabled={browseOnly}
+          disabled={browseOnly || !policy.playback_allowed}
         />
         <PolicyCheckbox
           id="download-transcode-allowed"
@@ -350,7 +372,7 @@ function EntitlementTemplateEditorForm({
           description="Members may download converted versions when supported."
           checked={policy.download_transcode_allowed}
           onChange={(download_transcode_allowed) => updatePolicy({ download_transcode_allowed })}
-          disabled={browseOnly || !policy.download_allowed}
+          disabled={browseOnly || !policy.playback_allowed || !policy.download_allowed}
         />
         <PolicyCheckbox
           id="requests-allowed"

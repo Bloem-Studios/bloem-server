@@ -113,6 +113,33 @@ describe("EntitlementTemplateEditor", () => {
     expect(screen.getByRole("checkbox", { name: "Allow transcoded downloads" })).not.toBeChecked();
   });
 
+  it("clears playback-dependent capabilities when playback is disabled", async () => {
+    const user = userEvent.setup();
+    const save = vi.fn();
+    render(<EntitlementTemplateEditor libraries={[]} onSave={save} />);
+
+    await user.type(screen.getByLabelText("Key"), "view-only");
+    await user.click(screen.getByRole("checkbox", { name: "Allow playback" }));
+
+    expect(screen.getByLabelText("Max streams")).toHaveValue(0);
+    expect(screen.getByLabelText("Max transcodes")).toHaveValue(0);
+    expect(screen.getByRole("checkbox", { name: "Allow playback transcoding" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Allow downloads" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Save template" }));
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        policy: expect.objectContaining({
+          playback_allowed: false,
+          max_streams: 0,
+          transcode_allowed: false,
+          max_transcodes: 0,
+          download_allowed: false,
+          download_transcode_allowed: false,
+        }),
+      }),
+    );
+  });
+
   it("keeps Browse-only restricted while allowing a metadata revision", async () => {
     const user = userEvent.setup();
     const save = vi.fn();
@@ -254,6 +281,24 @@ describe("EntitlementTemplatesPage", () => {
     ).toBe(true);
   });
 
+  it("omits the immutable key from revision requests", async () => {
+    const user = userEvent.setup();
+    vi.mocked(adminV2Api).mockImplementation(async (_path, init) => {
+      if (init?.method === "POST") return { template: { ...standard, revision: 4 } } as never;
+      return { templates: [standard] } as never;
+    });
+    renderWithQuery(<EntitlementTemplatesPage />);
+
+    await user.click(await screen.findByRole("button", { name: "Edit Standard" }));
+    await user.click(screen.getByRole("button", { name: "Save template" }));
+
+    const revision = vi
+      .mocked(adminV2Api)
+      .mock.calls.find(([path]) => String(path).endsWith("/standard/revisions"));
+    expect(revision).toBeDefined();
+    expect(JSON.parse(String(revision?.[1]?.body))).not.toHaveProperty("key");
+  });
+
   it("collects the new key and name before cloning a pinned revision", async () => {
     const user = userEvent.setup();
     vi.mocked(adminV2Api).mockImplementation(async (_path, init) => {
@@ -370,9 +415,9 @@ describe("OrganizationEntitlementPanel", () => {
             policy: { ...standard.policy, max_streams: 2 },
           },
           tenant_limits: { slots: 25, transcodes: 4 },
-          library_ids: [8, 9],
+          library_ids: null,
           last_reconciled_at: "2026-08-21T14:15:00Z",
-          audit_history_href: "https://attacker.example/audit",
+          audit_history_href: "/api/v2/admin/platform/organizations/org-1/entitlement/audit",
         } as never;
       }
       if (init?.method === "GET" || !init) return { templates: [premium, standard] } as never;
@@ -383,7 +428,7 @@ describe("OrganizationEntitlementPanel", () => {
     expect(await screen.findByText("standard · revision 2")).toBeInTheDocument();
     expect(screen.getByLabelText("Template")).toHaveValue("standard");
     expect(screen.getByText("25 slots · 4 transcodes")).toBeInTheDocument();
-    expect(screen.getByText("Libraries 8, 9")).toBeInTheDocument();
+    expect(screen.getByText("All enabled libraries")).toBeInTheDocument();
     expect(screen.getByText(/2 streams · 5 profiles/)).toBeInTheDocument();
     expect(screen.getByText(/Aug 21/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View apply history" })).toHaveAttribute(
@@ -442,7 +487,7 @@ describe("AccountEntitlementPanel", () => {
           template_key: "standard",
           template_revision: 2,
           managed_default_group: { id: "group-1", name: "Direct members", policy: standard.policy },
-          library_ids: [8],
+          library_ids: null,
           last_reconciled_at: "2026-08-21T14:15:00Z",
         } as never;
       }
@@ -457,6 +502,7 @@ describe("AccountEntitlementPanel", () => {
     expect(screen.getByText("Playback allowed")).toBeInTheDocument();
     expect(screen.getByText("Transcoded downloads allowed")).toBeInTheDocument();
     expect(screen.getByText("Permissions unrestricted")).toBeInTheDocument();
+    expect(screen.getByText("All enabled libraries")).toBeInTheDocument();
     expect(screen.getByText(/Aug 21/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Preview account changes" }));
     await user.click(await screen.findByRole("checkbox", { name: /managed account group/i }));

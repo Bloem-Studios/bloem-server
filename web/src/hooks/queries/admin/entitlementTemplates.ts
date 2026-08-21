@@ -36,7 +36,9 @@ export function useEntitlementTemplates(includeArchived = true) {
   return useQuery({
     queryKey: entitlementTemplateKeys.list(includeArchived),
     queryFn: () =>
-      adminV2Api<TemplateListResponse>(`${templatesPath}${search}`).then((data) => data.templates),
+      adminV2Api<TemplateListResponse>(`${templatesPath}${search}`).then(
+        (data) => data.templates ?? [],
+      ),
   });
 }
 
@@ -45,7 +47,7 @@ export function useEntitlementTemplateHistory(key: string | undefined) {
     queryKey: entitlementTemplateKeys.history(key ?? ""),
     queryFn: () =>
       adminV2Api<TemplateHistoryResponse>(templatePath(key!, "/history")).then(
-        (data) => data.revisions,
+        (data) => data.revisions ?? [],
       ),
     enabled: Boolean(key),
   });
@@ -80,7 +82,12 @@ export function useReviseEntitlementTemplate() {
     }) =>
       adminV2Api<TemplateResponse>(templatePath(key, "/revisions"), {
         method: "POST",
-        body: JSON.stringify({ ...input, expected_revision }),
+        body: JSON.stringify({
+          expected_revision,
+          name: input.name,
+          enabled: input.enabled,
+          policy: input.policy,
+        }),
       }),
   );
 }
@@ -156,7 +163,7 @@ export interface OrganizationEntitlementDetail {
     policy: EntitlementTemplate["policy"];
   } | null;
   tenant_limits: { slots: number; transcodes: number };
-  library_ids: number[];
+  library_ids: number[] | null;
   last_reconciled_at: string | null;
   audit_history_href: string | null;
 }
@@ -169,7 +176,7 @@ export interface AccountEntitlementDetail {
     name: string;
     policy: EntitlementTemplate["policy"];
   } | null;
-  library_ids: number[];
+  library_ids: number[] | null;
   last_reconciled_at: string | null;
 }
 

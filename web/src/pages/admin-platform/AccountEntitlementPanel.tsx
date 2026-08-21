@@ -107,9 +107,11 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
               <p>No managed account group</p>
             )}
             <p>
-              {detail.data.library_ids.length > 0
-                ? `Libraries ${detail.data.library_ids.join(", ")}`
-                : "No libraries"}
+              {detail.data.library_ids === null
+                ? "All enabled libraries"
+                : detail.data.library_ids.length > 0
+                  ? `Libraries ${detail.data.library_ids.join(", ")}`
+                  : "No libraries"}
             </p>
             <p>Last reconciliation: {formatTimestamp(detail.data.last_reconciled_at)}</p>
           </div>

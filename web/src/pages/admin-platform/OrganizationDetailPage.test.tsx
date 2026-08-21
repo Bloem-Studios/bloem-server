@@ -50,6 +50,25 @@ const memberships = [
   },
 ];
 
+function entitlementRead(path: unknown) {
+  const url = String(path);
+  if (url.endsWith("/platform/entitlement-templates?status=enabled")) {
+    return { templates: [] };
+  }
+  if (url.endsWith(`/organizations/${organization.id}/entitlement`)) {
+    return {
+      template_key: null,
+      template_revision: 0,
+      managed_default_group: null,
+      tenant_limits: { slots: 0, transcodes: 0 },
+      library_ids: null,
+      last_reconciled_at: null,
+      audit_history_href: null,
+    };
+  }
+  return null;
+}
+
 function renderPage() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -72,11 +91,13 @@ describe("OrganizationDetailPage", () => {
   });
 
   it("names the organization and active membership impact before suspension", async () => {
-    vi.mocked(adminV2Api).mockImplementation(async (path) =>
-      String(path).endsWith("/memberships")
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      const entitlement = entitlementRead(path);
+      if (entitlement) return entitlement as never;
+      return String(path).endsWith("/memberships")
         ? ({ memberships } as never)
-        : ({ organization } as never),
-    );
+        : ({ organization } as never);
+    });
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "North Sea Media" })).toBeInTheDocument();
@@ -88,11 +109,13 @@ describe("OrganizationDetailPage", () => {
   });
 
   it("requires typed organization name and password before transferring ownership", async () => {
-    vi.mocked(adminV2Api).mockImplementation(async (path) =>
-      String(path).endsWith("/memberships")
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      const entitlement = entitlementRead(path);
+      if (entitlement) return entitlement as never;
+      return String(path).endsWith("/memberships")
         ? ({ memberships } as never)
-        : ({ organization } as never),
-    );
+        : ({ organization } as never);
+    });
     renderPage();
     await screen.findByRole("heading", { name: "North Sea Media" });
 
@@ -122,6 +145,8 @@ describe("OrganizationDetailPage", () => {
 
   it("renders ownership eligibility validation beside the new owner field", async () => {
     vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
+      const entitlement = entitlementRead(path);
+      if (entitlement) return entitlement as never;
       if (String(path).endsWith("/memberships")) return { memberships } as never;
       if (String(path).endsWith("/transfer-ownership") && init?.method === "POST") {
         throw new AdminV2ClientError(422, "validation_failed", "Invalid fields", {
@@ -147,6 +172,8 @@ describe("OrganizationDetailPage", () => {
   it("reloads current revisions after a stale lifecycle mutation", async () => {
     let detailLoads = 0;
     vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      const entitlement = entitlementRead(path);
+      if (entitlement) return entitlement as never;
       if (String(path).endsWith("/memberships")) return { memberships } as never;
       if (String(path).endsWith("/suspend"))
         throw new AdminV2ClientError(
@@ -171,6 +198,8 @@ describe("OrganizationDetailPage", () => {
   it("preserves unsaved identity edits while reloading a stale revision", async () => {
     let detailLoads = 0;
     vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      const entitlement = entitlementRead(path);
+      if (entitlement) return entitlement as never;
       if (String(path).endsWith("/memberships")) return { memberships } as never;
       if (String(path).endsWith("/suspend"))
         throw new AdminV2ClientError(409, "authorization_state_changed", "stale");
@@ -191,6 +220,8 @@ describe("OrganizationDetailPage", () => {
 
   it("paginates memberships and uses the exact active count for suspension impact", async () => {
     vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      const entitlement = entitlementRead(path);
+      if (entitlement) return entitlement as never;
       if (String(path).includes("/memberships?cursor=page-2")) {
         return {
           memberships: [{ ...memberships[1], id: "m3", username: "Next page" }],
