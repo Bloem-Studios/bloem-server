@@ -153,6 +153,9 @@ type fakeReader struct {
 	editions   map[string][]watchdoc.Edition
 	restricted map[string]bool // content IDs this profile may not see
 
+	dismissals    []watchdoc.Dismissal
+	dismissalsErr error
+
 	err error
 
 	itemsCalls    int
@@ -264,6 +267,16 @@ func (f *fakeReader) Editions(_ context.Context, _ watchdoc.ProfileScope, conten
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeReader) Dismissals(_ context.Context, _ watchdoc.ProfileScope) ([]watchdoc.Dismissal, error) {
+	if f.dismissalsErr != nil {
+		return nil, f.dismissalsErr
+	}
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.dismissals, nil
 }
 
 // --- invented fixture world ------------------------------------------------
@@ -1162,5 +1175,86 @@ func TestWatchDetailForARestrictedItemIsNotFound(t *testing.T) {
 	_, err := watchdoc.ComposeItem(context.Background(), reader, watchdoc.ProfileScope{ProfileID: "profile-restricted"}, "9001")
 	if !errors.Is(err, watchdoc.ErrItemNotFound) {
 		t.Fatalf("error = %v, want ErrItemNotFound for a restricted item", err)
+	}
+}
+
+// --- dismissals --------------------------------------------------------
+
+func TestComposeHomeFiltersADismissedItem(t *testing.T) {
+	reader := &fakeReader{
+		items: []watchdoc.Item{{Kind: watchdoc.KindMovie, ContentID: "movie-1", Title: "Solaris"}},
+		files: map[string]int64{"movie-1": 42},
+		progress: []watchdoc.Progress{{
+			ContentID: "movie-1", PositionSeconds: 1200, DurationSeconds: 10020,
+			UpdatedAt: time.Date(2026, 8, 20, 9, 30, 0, 0, time.UTC),
+		}},
+		dismissals: []watchdoc.Dismissal{{
+			ContentID: "movie-1", ProgressUpdatedAt: "2026-08-20T09:30:00Z",
+		}},
+	}
+
+	doc, err := watchdoc.ComposeHome(context.Background(), reader, watchdoc.ProfileScope{UserID: 1, ProfileID: "profile-1"})
+	if err != nil {
+		t.Fatalf("ComposeHome: %v", err)
+	}
+	for _, row := range doc.Progress {
+		if row.ContentID == "movie-1" {
+			t.Fatalf("expected movie-1's progress to be filtered by its dismissal, found: %+v", row)
+		}
+	}
+}
+
+func TestComposeHomeDoesNotFilterProgressNewerThanTheDismissal(t *testing.T) {
+	reader := &fakeReader{
+		items: []watchdoc.Item{{Kind: watchdoc.KindMovie, ContentID: "movie-1", Title: "Solaris"}},
+		files: map[string]int64{"movie-1": 42},
+		progress: []watchdoc.Progress{{
+			ContentID: "movie-1", PositionSeconds: 1800, DurationSeconds: 10020,
+			// Resumed after the dismissal — a newer UpdatedAt than what was dismissed.
+			UpdatedAt: time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC),
+		}},
+		dismissals: []watchdoc.Dismissal{{
+			ContentID: "movie-1", ProgressUpdatedAt: "2026-08-20T09:30:00Z",
+		}},
+	}
+
+	doc, err := watchdoc.ComposeHome(context.Background(), reader, watchdoc.ProfileScope{UserID: 1, ProfileID: "profile-1"})
+	if err != nil {
+		t.Fatalf("ComposeHome: %v", err)
+	}
+	found := false
+	for _, row := range doc.Progress {
+		if row.ContentID == "movie-1" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected movie-1's progress to re-surface: its UpdatedAt is newer than the dismissal")
+	}
+}
+
+func TestComposeHomeDegradesToUnfilteredWhenDismissalsFails(t *testing.T) {
+	reader := &fakeReader{
+		items: []watchdoc.Item{{Kind: watchdoc.KindMovie, ContentID: "movie-1", Title: "Solaris"}},
+		files: map[string]int64{"movie-1": 42},
+		progress: []watchdoc.Progress{{
+			ContentID: "movie-1", PositionSeconds: 1200, DurationSeconds: 10020,
+			UpdatedAt: time.Date(2026, 8, 20, 9, 30, 0, 0, time.UTC),
+		}},
+		dismissalsErr: errors.New("dismissal store unavailable"),
+	}
+
+	doc, err := watchdoc.ComposeHome(context.Background(), reader, watchdoc.ProfileScope{UserID: 1, ProfileID: "profile-1"})
+	if err != nil {
+		t.Fatalf("ComposeHome must not fail when dismissal lookup fails, got: %v", err)
+	}
+	found := false
+	for _, row := range doc.Progress {
+		if row.ContentID == "movie-1" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected progress to remain unfiltered when the dismissal lookup itself failed")
 	}
 }

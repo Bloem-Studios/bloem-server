@@ -893,6 +893,34 @@ func (r *CatalogWatchReader) Progress(ctx context.Context, scope watchdoc.Profil
 	return progress, nil
 }
 
+// Dismissals returns the profile's active Continue-Watching dismissals,
+// reusing the same userstore.ListHomeDismissals primitive the row-based Home
+// feed (internal/sections) already uses.
+func (r *CatalogWatchReader) Dismissals(ctx context.Context, scope watchdoc.ProfileScope) ([]watchdoc.Dismissal, error) {
+	if r.stores == nil {
+		return nil, nil
+	}
+	store, err := r.stores.ForUser(ctx, scope.UserID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := store.ListHomeDismissals(ctx, scope.ProfileID, userstore.HomeSurfaceContinueWatching)
+	if err != nil {
+		return nil, err
+	}
+	dismissals := make([]watchdoc.Dismissal, 0, len(rows))
+	for _, row := range rows {
+		if row.ProgressUpdatedAt == nil {
+			continue
+		}
+		dismissals = append(dismissals, watchdoc.Dismissal{
+			ContentID:         row.MediaItemID,
+			ProgressUpdatedAt: *row.ProgressUpdatedAt,
+		})
+	}
+	return dismissals, nil
+}
+
 func watchItemFromMediaItem(item *models.MediaItem) watchdoc.Item {
 	if item == nil {
 		return watchdoc.Item{}

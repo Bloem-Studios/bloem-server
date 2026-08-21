@@ -163,6 +163,16 @@ type Progress struct {
 	UpdatedAt       time.Time
 }
 
+// Dismissal is one active Continue-Watching dismissal for the requesting
+// profile. ProgressUpdatedAt is the raw progress timestamp captured at the
+// moment of dismissal — a dismissal only holds while the item's current
+// progress carries that same instant; a later update (the item was resumed)
+// means the dismissal no longer applies.
+type Dismissal struct {
+	ContentID         string
+	ProgressUpdatedAt string
+}
+
 // Reader is the composition's whole view of the server's stores. It is a
 // narrow interface rather than the concrete catalog, episode, media-file and
 // progress repositories so composition stays unit-testable without a database,
@@ -190,6 +200,10 @@ type Reader interface {
 	// ContentID and the episode's in EpisodeID, because the stored row has no
 	// series linkage of its own.
 	Progress(ctx context.Context, scope ProfileScope, contentIDs []string) ([]Progress, error)
+	// Dismissals returns the profile's active Continue-Watching dismissals.
+	// Called only by ComposeHome — a detail document (ComposeItem) never
+	// filters by dismissal, since dismissal is a Home-surface concept.
+	Dismissals(ctx context.Context, scope ProfileScope) ([]Dismissal, error)
 	// Markers returns chapter and skip-intro data for the given file
 	// identifiers — the exact set a detail document already resolved through
 	// FilesByContentIDs, never a second, independent file lookup. An
@@ -236,7 +250,12 @@ func ComposeHome(ctx context.Context, reader Reader, scope ProfileScope) (Docume
 		documentItems = append(documentItems, documentItem)
 	}
 
-	return finishDocument(ctx, reader, scope, documentItems, "")
+	doc, err := finishDocument(ctx, reader, scope, documentItems, "")
+	if err != nil {
+		return Document{}, err
+	}
+	doc.Progress = filterDismissedProgress(ctx, reader, scope, doc.Progress)
+	return doc, nil
 }
 
 // ComposeSearchResults builds a Watch document from a caller-supplied list of
@@ -709,6 +728,49 @@ func readProgress(ctx context.Context, reader Reader, scope ProfileScope, items 
 		return rows[i].EpisodeID < rows[j].EpisodeID
 	})
 	return rows, nil
+}
+
+// filterDismissedProgress drops progress rows still covered by an active
+// dismissal. A dismissal lookup failure degrades to no filtering — a server
+// this client cannot reach for one thing is not fatal to the rest of Home.
+func filterDismissedProgress(ctx context.Context, reader Reader, scope ProfileScope, rows []DocumentProgress) []DocumentProgress {
+	dismissals, err := reader.Dismissals(ctx, scope)
+	if err != nil {
+		slog.WarnContext(ctx, "watch document: dismissal lookup failed, showing unfiltered progress",
+			"component", "watchdoc", "error", err)
+		return rows
+	}
+	if len(dismissals) == 0 {
+		return rows
+	}
+
+	byContentID := make(map[string]time.Time, len(dismissals))
+	for _, dismissal := range dismissals {
+		parsed, err := time.Parse(time.RFC3339, dismissal.ProgressUpdatedAt)
+		if err != nil {
+			continue
+		}
+		byContentID[dismissal.ContentID] = parsed
+	}
+	if len(byContentID) == 0 {
+		return rows
+	}
+
+	filtered := make([]DocumentProgress, 0, len(rows))
+	for _, row := range rows {
+		dismissedAt, dismissed := byContentID[row.ContentID]
+		if !dismissed {
+			filtered = append(filtered, row)
+			continue
+		}
+		rowUpdatedAt, err := time.Parse(time.RFC3339Nano, row.UpdatedAt)
+		if err != nil || !rowUpdatedAt.Equal(dismissedAt) {
+			// Unparseable, or the progress moved past what was dismissed —
+			// either way, the item stays visible.
+			filtered = append(filtered, row)
+		}
+	}
+	return filtered
 }
 
 // orderLibraryItems drops what cannot be emitted, collapses duplicate content

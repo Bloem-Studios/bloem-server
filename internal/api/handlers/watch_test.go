@@ -157,6 +157,13 @@ func (r *watchTestReader) Progress(_ context.Context, _ watchdoc.ProfileScope, c
 	return out, nil
 }
 
+func (r *watchTestReader) Dismissals(_ context.Context, _ watchdoc.ProfileScope) ([]watchdoc.Dismissal, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	return nil, nil
+}
+
 func (r *watchTestReader) Markers(_ context.Context, _ watchdoc.ProfileScope, _ []int64) (map[int64]watchdoc.FileMarkers, error) {
 	if r.err != nil {
 		return nil, r.err
