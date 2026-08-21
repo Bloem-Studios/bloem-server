@@ -813,6 +813,8 @@ func (h *EntitlementTemplatesHandler) writeError(w http.ResponseWriter, err erro
 		writeAdminValidation(w, map[string]string{"policy": err.Error()})
 	case errors.Is(err, entitlements.ErrProtectedTemplate):
 		writeError(w, http.StatusConflict, "protected_template", "The Browse-only authorization boundary cannot be weakened or archived")
+	case errors.Is(err, entitlements.ErrManagedCohortImmutable):
+		writeError(w, http.StatusConflict, "managed_cohort_immutable", "Managed cohort access groups are immutable")
 	case errors.Is(err, errEntitlementConfirmationStale), errors.Is(err, entitlements.ErrConfirmationStale):
 		writeError(w, http.StatusConflict, "confirmation_stale", "Entitlement state changed; dry-run again")
 	default:

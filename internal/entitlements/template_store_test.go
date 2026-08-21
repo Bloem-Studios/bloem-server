@@ -458,7 +458,7 @@ func TestApplyAccountTemplateKeepsDirectAccountsIndependentAndPreservesCustomPro
 	require.Equal(t, second.GroupID, secondDefaultGroup, "reconcile must not move another direct account")
 }
 
-func TestSharedDynamicDirectGroupInvalidatesEveryAccountOnLibraryChange(t *testing.T) {
+func TestSharedDynamicDirectExactCohortRemainsImmutableOnLibraryChange(t *testing.T) {
 	ctx, pool, store := entitlementTestStore(t)
 	var organizationID uuid.UUID
 	var defaultGroupID int64
@@ -478,20 +478,18 @@ func TestSharedDynamicDirectGroupInvalidatesEveryAccountOnLibraryChange(t *testi
 	require.NoError(t, err)
 	var invalidatedRevision int64
 	require.NoError(t, pool.QueryRow(ctx, `SELECT access_policy_revision FROM users WHERE id=$1`, firstID).Scan(&invalidatedRevision))
-	if invalidatedRevision <= firstRevision {
-		t.Fatalf("shared account revision = %d, want > %d after dynamic policy changed", invalidatedRevision, firstRevision)
-	}
+	require.Equal(t, firstRevision, invalidatedRevision, "exact cohort members must not be invalidated by later library discovery")
 	var attributed int
 	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM entitlement_audit_events WHERE action='account.entitlement_shared_policy_changed' AND target_account_id=$1 AND template_key=$2`, firstID, template.Key).Scan(&attributed))
-	require.Equal(t, 1, attributed, "shared policy change must be durably attributable to each affected account")
+	require.Equal(t, 0, attributed, "immutable exact cohorts must not emit shared-policy mutation audits")
 	var libraries []int
 	require.NoError(t, pool.QueryRow(ctx, `SELECT g.library_ids FROM access_groups g JOIN users u ON u.access_group_id=g.id WHERE u.id=$1`, firstID).Scan(&libraries))
-	if !slices.Contains(libraries, newLibraryID) {
-		t.Fatalf("shared group libraries = %v, want newly enabled %d", libraries, newLibraryID)
+	if slices.Contains(libraries, newLibraryID) {
+		t.Fatalf("shared exact cohort libraries = %v, unexpectedly includes later library %d", libraries, newLibraryID)
 	}
 }
 
-func TestTenantApplyDoesNotReuseDirectAccountManagedGroup(t *testing.T) {
+func TestTenantApplyReusesDirectAccountExactCohort(t *testing.T) {
 	ctx, pool, store := entitlementTestStore(t)
 	tenantStore := tenancy.NewStore(pool)
 	suffix := entitlementTestKey(t, "tenant-direct-separation")
@@ -512,12 +510,10 @@ func TestTenantApplyDoesNotReuseDirectAccountManagedGroup(t *testing.T) {
 
 	managedDefault, err := store.ApplyTemplate(ctx, tenant.ID, template.Key, template.Revision, false)
 	require.NoError(t, err)
-	if direct.GroupID == managedDefault.GroupID {
-		t.Fatal("tenant managed-default and direct account groups must be distinct")
-	}
+	require.Equal(t, direct.GroupID, managedDefault.GroupID)
 	var directIsDefault bool
 	require.NoError(t, pool.QueryRow(ctx, `SELECT is_default FROM access_groups WHERE id=$1`, direct.GroupID).Scan(&directIsDefault))
-	require.False(t, directIsDefault, "tenant apply must not promote a direct account group")
+	require.True(t, directIsDefault, "tenant apply must select the existing exact cohort as its managed default")
 }
 
 func TestProfileEntitlementLimitIsOrganizationScopedAndConcurrentSafe(t *testing.T) {

@@ -317,7 +317,7 @@ func TestDeriveCohortPolicyPatchMatrix(t *testing.T) {
 	require.Equal(t, "2160p", limitPolicy.Policy.MaxPlaybackQuality)
 }
 
-func TestApplyAccountTemplateDoesNotReuseOrMutateDerivedCohortGroup(t *testing.T) {
+func TestApplyAccountTemplateReusesExactCohortWithoutMutatingDerivedCohort(t *testing.T) {
 	fixture := newCohortFixture(t)
 	parent, _ := fixture.ensureExact(t)
 	maxStreams := parent.Policy.MaxStreams + 1
@@ -335,29 +335,49 @@ func TestApplyAccountTemplateDoesNotReuseOrMutateDerivedCohortGroup(t *testing.T
 		false,
 	)
 	require.NoError(t, err)
+	require.Equal(t, parent.AccessGroupID, result.GroupID)
 	if result.GroupID == derived.AccessGroupID {
 		t.Fatalf("template apply reused derived cohort group %d", derived.AccessGroupID)
 	}
 	require.Equal(t, before, fixture.snapshotGroup(derived.AccessGroupID))
+	var duplicateGroups int
+	require.NoError(t, fixture.pool.QueryRow(fixture.ctx, `
+		SELECT count(*)::int
+		FROM access_groups
+		WHERE organization_id=$1
+		  AND managed_template_key=$2
+		  AND managed_template_revision=$3
+		  AND managed_cohort_id IS NULL`, fixture.organizationID, parent.SourceTemplateKey, parent.SourceTemplateRevision).Scan(&duplicateGroups))
+	require.Equal(t, 0, duplicateGroups)
 }
 
-func TestApplyTenantTemplateRefusesToMutateCohortManagedDefault(t *testing.T) {
+func TestApplyTenantTemplateReusesExactCohortWithoutPolicyDrift(t *testing.T) {
 	fixture := newCohortFixture(t)
 	cohort, _ := fixture.ensureExact(t)
 	before := fixture.snapshotGroup(cohort.AccessGroupID)
 	insertEntitlementLibrary(t, fixture.ctx, fixture.pool, "cohort-apply-guard-"+uuid.NewString(), true)
 
-	_, err := fixture.store.ApplyTemplate(
+	result, err := fixture.store.ApplyTemplate(
 		fixture.ctx,
 		fixture.organizationID,
 		cohort.SourceTemplateKey,
 		cohort.SourceTemplateRevision,
 		false,
 	)
-	if err == nil {
-		t.Fatal("tenant template apply succeeded, want protected cohort-group rejection")
-	}
+	require.NoError(t, err)
+	require.Equal(t, cohort.AccessGroupID, result.GroupID)
+	require.Equal(t, cohort.Policy, result.Policy)
+	require.False(t, result.Changed)
 	require.Equal(t, before, fixture.snapshotGroup(cohort.AccessGroupID))
+	var duplicateGroups int
+	require.NoError(t, fixture.pool.QueryRow(fixture.ctx, `
+		SELECT count(*)::int
+		FROM access_groups
+		WHERE organization_id=$1
+		  AND managed_template_key=$2
+		  AND managed_template_revision=$3
+		  AND managed_cohort_id IS NULL`, fixture.organizationID, cohort.SourceTemplateKey, cohort.SourceTemplateRevision).Scan(&duplicateGroups))
+	require.Equal(t, 0, duplicateGroups)
 }
 
 func TestCohortLookupIsOrganizationScopedAndArchiveAware(t *testing.T) {

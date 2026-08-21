@@ -22,6 +22,7 @@ type entitlementHandlerStoreStub struct {
 	lastTenantID uuid.UUID
 	lastDryRun   bool
 	changed      *bool
+	applyErr     error
 }
 
 func (s *entitlementHandlerStoreStub) List(context.Context, bool) ([]entitlements.Template, error) {
@@ -51,6 +52,9 @@ func (s *entitlementHandlerStoreStub) Archive(context.Context, string, int64) (e
 func (s *entitlementHandlerStoreStub) ApplyTemplate(_ context.Context, tenantID uuid.UUID, key string, revision int64, dryRun bool) (entitlements.ApplyResult, error) {
 	s.applyCalls++
 	s.lastTenantID, s.lastDryRun = tenantID, dryRun
+	if s.applyErr != nil {
+		return entitlements.ApplyResult{}, s.applyErr
+	}
 	changed := true
 	if s.changed != nil {
 		changed = *s.changed
@@ -106,6 +110,24 @@ func TestEntitlementApplyRequiresPlatformAuthority(t *testing.T) {
 	platformEntitlementRouter(handler, false).ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusForbidden)
+	}
+}
+
+func TestEntitlementDryRunMapsManagedCohortImmutabilityConflict(t *testing.T) {
+	store := &entitlementHandlerStoreStub{applyErr: entitlements.ErrManagedCohortImmutable}
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/organizations/"+uuid.NewString()+"/entitlement/dry-run", strings.NewReader(`{"template_key":"premium","template_revision":1}`))
+	platformEntitlementRouter(NewEntitlementTemplatesHandler(store, []byte("test-secret")), true).ServeHTTP(response, request)
+
+	if response.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d; body=%s", response.Code, http.StatusConflict, response.Body.String())
+	}
+	var payload struct {
+		Error string `json:"error"`
+	}
+	requireJSONDecode(t, response.Body, &payload)
+	if payload.Error != "managed_cohort_immutable" {
+		t.Fatalf("error = %q, want managed_cohort_immutable", payload.Error)
 	}
 }
 

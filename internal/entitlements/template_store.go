@@ -40,9 +40,12 @@ var (
 	ErrTenantNotFound = errors.New("entitlements: tenant not found")
 	// ErrAccountNotFound reports an account outside the asserted organization.
 	ErrAccountNotFound = errors.New("entitlements: account not found")
-	// ErrCohortManagedGroup reports an attempt by a legacy template apply path
-	// to rewrite an access group owned by an immutable cohort revision.
-	ErrCohortManagedGroup = errors.New("entitlements: access group is managed by an immutable cohort")
+	// ErrManagedCohortImmutable reports an operation that would change a cohort-
+	// backed access group rather than selecting an immutable cohort revision.
+	ErrManagedCohortImmutable = errors.New("entitlements: managed cohort is immutable")
+	// ErrCohortManagedGroup is retained for callers compiled against the first
+	// cohort-store revision.
+	ErrCohortManagedGroup = ErrManagedCohortImmutable
 )
 
 var templateKeyPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,127}$`)
@@ -212,7 +215,7 @@ func PreviewHash(result ApplyResult) string {
 func (s *Store) ApplyTemplateWithReceipt(ctx context.Context, actorAccountID int, organizationID uuid.UUID, idempotencyKey, templateKey string, templateRevision int64, previewHash string) (ApplyResult, bool, error) {
 	return s.applyWithReceipt(ctx, actorAccountID, "organization", organizationID.String(), idempotencyKey, templateKey, templateRevision, previewHash,
 		func(tx pgx.Tx, dryRun bool) (ApplyResult, error) {
-			return ApplyTemplateInTx(ctx, tx, organizationID, templateKey, templateRevision, dryRun)
+			return s.applyTemplateInTx(ctx, tx, organizationID, templateKey, templateRevision, actorAccountID, dryRun)
 		})
 }
 
@@ -228,7 +231,7 @@ func (s *Store) ApplyDefaultAccountTemplateWithReceipt(ctx context.Context, acto
 			} else if err != nil {
 				return ApplyResult{}, fmt.Errorf("entitlements: resolve direct account organization: %w", err)
 			}
-			return applyAccountTemplateInTx(ctx, tx, organizationID, accountID, templateKey, templateRevision, dryRun)
+			return s.applyAccountTemplateInTx(ctx, tx, organizationID, accountID, templateKey, templateRevision, actorAccountID, dryRun)
 		})
 }
 
@@ -408,7 +411,7 @@ func (s *Store) ApplyAccountTemplate(ctx context.Context, organizationID uuid.UU
 		return ApplyResult{}, fmt.Errorf("entitlements: begin account template apply: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	result, err = applyAccountTemplateInTx(ctx, tx, organizationID, accountID, key, revision, dryRun)
+	result, err = s.applyAccountTemplateInTx(ctx, tx, organizationID, accountID, key, revision, accountID, dryRun)
 	if err != nil || dryRun {
 		return result, err
 	}
@@ -418,7 +421,7 @@ func (s *Store) ApplyAccountTemplate(ctx context.Context, organizationID uuid.UU
 	return result, nil
 }
 
-func applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, key string, revision int64, dryRun bool) (result ApplyResult, err error) {
+func (s *Store) applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, key string, revision int64, actorID int, dryRun bool) (result ApplyResult, err error) {
 
 	if err := tx.QueryRow(ctx, `SELECT id FROM organizations WHERE id=$1 FOR UPDATE`, organizationID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
 		return ApplyResult{}, ErrAccountNotFound
@@ -443,9 +446,16 @@ func applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organizationID uui
 	if !template.Enabled || template.Archived {
 		return ApplyResult{}, ErrTemplateUnavailable
 	}
-	effectivePolicy, err := resolveMaterializedPolicy(ctx, tx, template.Policy)
+	exact, exactFound, err := s.resolveExactCohortForApply(ctx, tx, organizationID, template.Key, template.Revision, actorID, !dryRun)
 	if err != nil {
 		return ApplyResult{}, err
+	}
+	effectivePolicy := exact.Policy
+	if !exactFound {
+		effectivePolicy, err = resolveMaterializedPolicy(ctx, tx, template.Policy)
+		if err != nil {
+			return ApplyResult{}, err
+		}
 	}
 
 	result = ApplyResult{
@@ -453,7 +463,12 @@ func applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organizationID uui
 		TemplateRevision: template.Revision, DryRun: dryRun, Policy: effectivePolicy,
 	}
 	var targetPolicy Policy
-	err = tx.QueryRow(ctx, `
+	groupExists := exactFound
+	if exactFound {
+		result.GroupID = exact.AccessGroupID
+		targetPolicy = exact.Policy
+	} else {
+		err = tx.QueryRow(ctx, `
 		SELECT id, library_ids, playback_allowed, max_streams, max_profiles,
 		       transcode_allowed, max_transcodes, download_allowed,
 		       download_transcode_allowed, max_playback_quality,
@@ -463,22 +478,26 @@ func applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organizationID uui
 		  AND managed_cohort_id IS NULL
 		  AND NOT is_default
 		FOR UPDATE`, organizationID, template.Key, template.Revision).Scan(
-		&result.GroupID, &targetPolicy.LibraryIDs, &targetPolicy.PlaybackAllowed,
-		&targetPolicy.MaxStreams, &targetPolicy.MaxProfiles, &targetPolicy.TranscodeAllowed,
-		&targetPolicy.MaxTranscodes, &targetPolicy.DownloadAllowed,
-		&targetPolicy.DownloadTranscodeAllowed, &targetPolicy.MaxPlaybackQuality,
-		&targetPolicy.AllowedPermissions, &targetPolicy.RequestsAllowed,
-	)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return ApplyResult{}, fmt.Errorf("entitlements: load direct template group: %w", err)
+			&result.GroupID, &targetPolicy.LibraryIDs, &targetPolicy.PlaybackAllowed,
+			&targetPolicy.MaxStreams, &targetPolicy.MaxProfiles, &targetPolicy.TranscodeAllowed,
+			&targetPolicy.MaxTranscodes, &targetPolicy.DownloadAllowed,
+			&targetPolicy.DownloadTranscodeAllowed, &targetPolicy.MaxPlaybackQuality,
+			&targetPolicy.AllowedPermissions, &targetPolicy.RequestsAllowed,
+		)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return ApplyResult{}, fmt.Errorf("entitlements: load direct template group: %w", err)
+		}
+		groupExists = err == nil
 	}
-	groupExists := err == nil
 
 	var defaultGroupID int64
 	if err := tx.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, organizationID).Scan(&defaultGroupID); err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: load organization default group: %w", err)
 	}
-	moveGroupIDs := []int64{defaultGroupID}
+	moveGroupIDs := []int64{}
+	if !groupExists || defaultGroupID != result.GroupID {
+		moveGroupIDs = append(moveGroupIDs, defaultGroupID)
+	}
 	if priorGroupID != nil {
 		var priorDefault bool
 		var priorKey *string
@@ -905,7 +924,7 @@ func (s *Store) ApplyTemplate(ctx context.Context, tenantID uuid.UUID, key strin
 		return ApplyResult{}, fmt.Errorf("entitlements: begin template apply: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	result, err = ApplyTemplateInTx(ctx, tx, tenantID, key, revision, dryRun)
+	result, err = s.applyTemplateInTx(ctx, tx, tenantID, key, revision, 0, dryRun)
 	if err != nil {
 		return ApplyResult{}, err
 	}
@@ -922,6 +941,10 @@ func (s *Store) ApplyTemplate(ctx context.Context, tenantID uuid.UUID, key strin
 // the transaction and must commit only after their surrounding operation is
 // complete.
 func ApplyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, key string, revision int64, dryRun bool) (ApplyResult, error) {
+	return new(Store).applyTemplateInTx(ctx, tx, tenantID, key, revision, 0, dryRun)
+}
+
+func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, key string, revision int64, actorID int, dryRun bool) (ApplyResult, error) {
 	if tenantID == uuid.Nil || revision <= 0 {
 		return ApplyResult{}, fmt.Errorf("%w: tenant and revision are required", ErrInvalidPolicy)
 	}
@@ -941,31 +964,26 @@ func ApplyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, key s
 	if !template.Enabled || template.Archived {
 		return ApplyResult{}, ErrTemplateUnavailable
 	}
-	effectivePolicy := template.Policy
-	if effectivePolicy.LibraryIDs == nil {
-		rows, err := tx.Query(ctx, `SELECT id FROM media_folders WHERE enabled ORDER BY id`)
-		if err != nil {
-			return ApplyResult{}, fmt.Errorf("entitlements: resolve enabled libraries: %w", err)
-		}
-		for rows.Next() {
-			var id int
-			if err := rows.Scan(&id); err != nil {
-				rows.Close()
-				return ApplyResult{}, fmt.Errorf("entitlements: scan enabled library: %w", err)
-			}
-			effectivePolicy.LibraryIDs = append(effectivePolicy.LibraryIDs, id)
-		}
-		if err := rows.Err(); err != nil {
-			rows.Close()
-			return ApplyResult{}, fmt.Errorf("entitlements: iterate enabled libraries: %w", err)
-		}
-		rows.Close()
-		if effectivePolicy.LibraryIDs == nil {
-			effectivePolicy.LibraryIDs = []int{}
+	// Resolve first without creating. If no exact cohort exists, the legacy
+	// tenant default is materialized before adoption so cohort creation never
+	// produces a second, non-default group for the same exact template.
+	exact, exactFound, err := s.resolveExactCohortForApply(ctx, tx, tenantID, template.Key, template.Revision, actorID, false)
+	if err != nil {
+		return ApplyResult{}, err
+	}
+	var (
+		effectivePolicy Policy
+		group           *materializationGroup
+	)
+	if exactFound {
+		effectivePolicy = exact.Policy
+		group, err = loadMaterializationGroupByID(ctx, tx, tenantID, exact.AccessGroupID)
+	} else {
+		effectivePolicy, err = resolveMaterializedPolicy(ctx, tx, template.Policy)
+		if err == nil {
+			group, err = loadMaterializationGroup(ctx, tx, tenantID)
 		}
 	}
-
-	group, err := loadMaterializationGroup(ctx, tx, tenantID)
 	if err != nil {
 		return ApplyResult{}, err
 	}
@@ -981,11 +999,30 @@ func ApplyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, key s
 	} else {
 		result.Changed = true
 	}
-	if group != nil && group.ManagedCohortID != nil && result.Changed {
-		return ApplyResult{}, ErrCohortManagedGroup
+	if group != nil && group.ManagedCohortID != nil &&
+		(group.TemplateKey != template.Key || group.TemplateRevision != template.Revision || !policiesEqual(group.Policy, effectivePolicy)) {
+		return ApplyResult{}, ErrManagedCohortImmutable
 	}
 	if dryRun || !result.Changed {
+		if !dryRun && actorID > 0 && !exactFound {
+			if _, _, err := s.EnsureExactCohortInTx(ctx, tx, tenantID, template.Key, template.Revision, actorID); err != nil {
+				return ApplyResult{}, err
+			}
+		}
 		return result, nil
+	}
+	if exactFound && !group.IsDefault {
+		var protectedDefault bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1 FROM access_groups
+				WHERE organization_id=$1 AND is_default AND managed_cohort_id IS NOT NULL AND id<>$2
+			)`, tenantID, group.ID).Scan(&protectedDefault); err != nil {
+			return ApplyResult{}, fmt.Errorf("entitlements: inspect protected tenant default: %w", err)
+		}
+		if protectedDefault {
+			return ApplyResult{}, ErrManagedCohortImmutable
+		}
 	}
 
 	if _, err := tx.Exec(ctx, `
@@ -1016,6 +1053,12 @@ func ApplyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, key s
 			Scan(&result.GroupID); err != nil {
 			return ApplyResult{}, fmt.Errorf("entitlements: create managed default group: %w", err)
 		}
+	} else if group.ManagedCohortID != nil {
+		if _, err := tx.Exec(ctx, `
+			UPDATE access_groups SET is_default=true,updated_at=now()
+			WHERE organization_id=$1 AND id=$2`, tenantID, group.ID); err != nil {
+			return ApplyResult{}, fmt.Errorf("entitlements: select exact cohort as managed default: %w", err)
+		}
 	} else {
 		if _, err := tx.Exec(ctx, `
 			UPDATE access_groups
@@ -1036,6 +1079,15 @@ func ApplyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, key s
 			effectivePolicy.AllowedPermissions, effectivePolicy.RequestsAllowed,
 			template.Key, template.Revision); err != nil {
 			return ApplyResult{}, fmt.Errorf("entitlements: update managed default group: %w", err)
+		}
+	}
+	if actorID > 0 && !exactFound {
+		adopted, _, err := s.EnsureExactCohortInTx(ctx, tx, tenantID, template.Key, template.Revision, actorID)
+		if err != nil {
+			return ApplyResult{}, err
+		}
+		if adopted.AccessGroupID != result.GroupID {
+			return ApplyResult{}, fmt.Errorf("entitlements: exact cohort adopted group %d, want materialized group %d", adopted.AccessGroupID, result.GroupID)
 		}
 	}
 	if _, err := tx.Exec(ctx, `
@@ -1154,13 +1206,22 @@ type materializationGroup struct {
 	Policy           Policy
 }
 
+func (s *Store) resolveExactCohortForApply(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, key string, revision int64, actorID int, create bool) (CohortRevision, bool, error) {
+	if !create {
+		actorID = 0
+	}
+	cohort, _, err := s.EnsureExactCohortInTx(ctx, tx, organizationID, key, revision, actorID)
+	if err == nil {
+		return cohort, true, nil
+	}
+	if !create && errors.Is(err, ErrInvalidPolicy) {
+		return CohortRevision{}, false, nil
+	}
+	return CohortRevision{}, false, err
+}
+
 func loadMaterializationGroup(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID) (*materializationGroup, error) {
-	var (
-		group       materializationGroup
-		templateKey *string
-		revision    *int64
-	)
-	err := tx.QueryRow(ctx, `
+	return scanMaterializationGroup(tx.QueryRow(ctx, `
 		SELECT id, is_default, managed_template_key, managed_template_revision,
 		       managed_cohort_id,
 		       library_ids, playback_allowed, max_streams, max_profiles,
@@ -1169,13 +1230,36 @@ func loadMaterializationGroup(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID
 		       allowed_permissions, requests_allowed
 		FROM access_groups
 		WHERE organization_id=$1
+		  AND managed_cohort_id IS NULL
 		  AND (
 			(is_default AND managed_template_key IS NOT NULL) OR
 			(is_default AND name='Default Group' AND description='Applied automatically to newly created users.')
 		  )
 		ORDER BY (managed_template_key IS NOT NULL) DESC, id
 		LIMIT 1
-		FOR UPDATE`, tenantID).Scan(
+		FOR UPDATE`, tenantID), "managed default")
+}
+
+func loadMaterializationGroupByID(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, groupID int64) (*materializationGroup, error) {
+	return scanMaterializationGroup(tx.QueryRow(ctx, `
+		SELECT id, is_default, managed_template_key, managed_template_revision,
+		       managed_cohort_id,
+		       library_ids, playback_allowed, max_streams, max_profiles,
+		       transcode_allowed, max_transcodes, download_allowed,
+		       download_transcode_allowed, max_playback_quality,
+		       allowed_permissions, requests_allowed
+		FROM access_groups
+		WHERE organization_id=$1 AND id=$2
+		FOR UPDATE`, tenantID, groupID), "exact cohort")
+}
+
+func scanMaterializationGroup(row pgx.Row, description string) (*materializationGroup, error) {
+	var (
+		group       materializationGroup
+		templateKey *string
+		revision    *int64
+	)
+	err := row.Scan(
 		&group.ID, &group.IsDefault, &templateKey, &revision, &group.ManagedCohortID,
 		&group.Policy.LibraryIDs, &group.Policy.PlaybackAllowed, &group.Policy.MaxStreams,
 		&group.Policy.MaxProfiles, &group.Policy.TranscodeAllowed, &group.Policy.MaxTranscodes,
@@ -1187,7 +1271,7 @@ func loadMaterializationGroup(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("entitlements: load managed default group: %w", err)
+		return nil, fmt.Errorf("entitlements: load %s group: %w", description, err)
 	}
 	if templateKey != nil {
 		group.TemplateKey = *templateKey

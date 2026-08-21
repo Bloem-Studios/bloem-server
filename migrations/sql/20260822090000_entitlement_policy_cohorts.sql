@@ -150,13 +150,22 @@ CREATE FUNCTION public.enforce_access_group_cohort_revision_coherence()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    current_group public.access_groups%ROWTYPE;
 BEGIN
-    IF NEW.managed_cohort_id IS NULL THEN
+	-- A deferred row trigger may have multiple queued versions of the same
+	-- group while an existing materialization is adopted. Validate the final
+	-- row, not the historical NEW tuple from an earlier statement.
+	SELECT * INTO current_group
+	FROM public.access_groups
+	WHERE id = NEW.id;
+
+	IF current_group.managed_cohort_id IS NULL THEN
         IF EXISTS (
             SELECT 1
             FROM public.entitlement_policy_cohort_revisions r
-            WHERE r.organization_id = NEW.organization_id
-              AND r.access_group_id = NEW.id
+			WHERE r.organization_id = current_group.organization_id
+			  AND r.access_group_id = current_group.id
         ) THEN
             RAISE EXCEPTION 'cohort revision access group must retain its managed marker'
                 USING ERRCODE = '23514';
@@ -167,32 +176,32 @@ BEGIN
     IF NOT EXISTS (
         SELECT 1
         FROM public.entitlement_policy_cohort_revisions r
-        WHERE r.id = NEW.managed_cohort_id
-          AND r.organization_id = NEW.organization_id
-          AND r.access_group_id = NEW.id
-          AND r.source_template_key = NEW.managed_template_key
-          AND r.source_template_revision = NEW.managed_template_revision
-          AND r.library_ids <@ NEW.library_ids
-          AND r.library_ids @> NEW.library_ids
-          AND r.playback_allowed IS NOT DISTINCT FROM NEW.playback_allowed
-          AND r.max_streams IS NOT DISTINCT FROM NEW.max_streams
-          AND r.max_profiles IS NOT DISTINCT FROM NEW.max_profiles
-          AND r.transcode_allowed IS NOT DISTINCT FROM NEW.transcode_allowed
-          AND r.max_transcodes IS NOT DISTINCT FROM NEW.max_transcodes
-          AND r.download_allowed IS NOT DISTINCT FROM NEW.download_allowed
-          AND r.download_transcode_allowed IS NOT DISTINCT FROM NEW.download_transcode_allowed
+		WHERE r.id = current_group.managed_cohort_id
+		  AND r.organization_id = current_group.organization_id
+		  AND r.access_group_id = current_group.id
+		  AND r.source_template_key = current_group.managed_template_key
+		  AND r.source_template_revision = current_group.managed_template_revision
+		  AND r.library_ids <@ current_group.library_ids
+		  AND r.library_ids @> current_group.library_ids
+		  AND r.playback_allowed IS NOT DISTINCT FROM current_group.playback_allowed
+		  AND r.max_streams IS NOT DISTINCT FROM current_group.max_streams
+		  AND r.max_profiles IS NOT DISTINCT FROM current_group.max_profiles
+		  AND r.transcode_allowed IS NOT DISTINCT FROM current_group.transcode_allowed
+		  AND r.max_transcodes IS NOT DISTINCT FROM current_group.max_transcodes
+		  AND r.download_allowed IS NOT DISTINCT FROM current_group.download_allowed
+		  AND r.download_transcode_allowed IS NOT DISTINCT FROM current_group.download_transcode_allowed
           AND public.normalize_entitlement_policy_playback_quality(r.max_playback_quality) =
-              public.normalize_entitlement_policy_playback_quality(NEW.max_playback_quality)
+			  public.normalize_entitlement_policy_playback_quality(current_group.max_playback_quality)
           AND (
-              (r.allowed_permissions IS NULL AND NEW.allowed_permissions IS NULL) OR
+			  (r.allowed_permissions IS NULL AND current_group.allowed_permissions IS NULL) OR
               (
                   r.allowed_permissions IS NOT NULL AND
-                  NEW.allowed_permissions IS NOT NULL AND
-                  r.allowed_permissions <@ NEW.allowed_permissions AND
-                  r.allowed_permissions @> NEW.allowed_permissions
+				  current_group.allowed_permissions IS NOT NULL AND
+				  r.allowed_permissions <@ current_group.allowed_permissions AND
+				  r.allowed_permissions @> current_group.allowed_permissions
               )
           )
-          AND r.requests_allowed IS NOT DISTINCT FROM NEW.requests_allowed
+		  AND r.requests_allowed IS NOT DISTINCT FROM current_group.requests_allowed
     ) THEN
         RAISE EXCEPTION 'managed cohort marker must match its immutable revision and policy'
             USING ERRCODE = '23514';

@@ -85,8 +85,8 @@ type CohortRevision struct {
 // group's policy, default state, and assignments are never rewritten.
 func (s *Store) EnsureExactCohortInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, key string, revision int64, actorID int) (CohortRevision, bool, error) {
 	key = strings.TrimSpace(key)
-	if organizationID == uuid.Nil || key == "" || revision <= 0 || actorID <= 0 {
-		return CohortRevision{}, false, fmt.Errorf("%w: organization, template revision, and actor are required", ErrInvalidPolicy)
+	if organizationID == uuid.Nil || key == "" || revision <= 0 {
+		return CohortRevision{}, false, fmt.Errorf("%w: organization and template revision are required", ErrInvalidPolicy)
 	}
 	if err := lockCohortOrganization(ctx, tx, organizationID); err != nil {
 		return CohortRevision{}, false, err
@@ -95,6 +95,9 @@ func (s *Store) EnsureExactCohortInTx(ctx context.Context, tx pgx.Tx, organizati
 		return CohortRevision{}, false, err
 	} else if found {
 		return existing, false, nil
+	}
+	if actorID <= 0 {
+		return CohortRevision{}, false, fmt.Errorf("%w: actor is required to create an exact cohort", ErrInvalidPolicy)
 	}
 
 	template, err := getTemplate(ctx, tx, key, revision, false)
