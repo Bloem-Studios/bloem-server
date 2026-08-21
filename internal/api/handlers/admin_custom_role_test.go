@@ -10,6 +10,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/go-chi/chi/v5"
 )
 
 type customRoleAdminUserRepo struct {
@@ -26,8 +27,13 @@ func (r *customRoleAdminUserRepo) Create(_ context.Context, input models.CreateU
 func (*customRoleAdminUserRepo) Update(context.Context, int, models.UpdateUserInput) error {
 	return nil
 }
-func (*customRoleAdminUserRepo) Delete(context.Context, int) error                  { return nil }
-func (*customRoleAdminUserRepo) GetByID(context.Context, int) (*models.User, error) { return nil, nil }
+func (*customRoleAdminUserRepo) Delete(context.Context, int) error { return nil }
+func (r *customRoleAdminUserRepo) GetByID(context.Context, int) (*models.User, error) {
+	if r.created == nil {
+		r.created = &models.User{ID: 88, Username: "direct-user", Email: "direct@example.test", Role: "user", Enabled: true}
+	}
+	return r.created, nil
+}
 
 type strictLegacyRoleProvisioner struct {
 	legacyRole string
@@ -106,5 +112,35 @@ func TestAdminHandlerCreateUser_AppliesDirectEntitlementRevision(t *testing.T) {
 	}
 	if users.created.AccessGroupID == nil || *users.created.AccessGroupID != 44 {
 		t.Fatalf("created user access group = %v, want 44", users.created.AccessGroupID)
+	}
+	if !strings.Contains(response.Body.String(), `"applied_entitlement_revision":3`) {
+		t.Fatalf("response body = %s, want applied entitlement revision", response.Body.String())
+	}
+}
+
+func TestAdminHandlerUpdateUser_AdoptsExactDirectEntitlementRevision(t *testing.T) {
+	users := &customRoleAdminUserRepo{}
+	direct := &recordingDirectEntitlements{}
+	handler := NewAdminHandler(users, nil, nil)
+	handler.SetDirectEntitlements(direct)
+
+	request := httptest.NewRequest(http.MethodPut, "/admin/users/88", strings.NewReader(`{
+		"entitlement_template_key":"standard",
+		"entitlement_template_revision":7
+	}`))
+	routeCtx := chi.NewRouteContext()
+	routeCtx.URLParams.Add("id", "88")
+	request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, routeCtx))
+	response := httptest.NewRecorder()
+	handler.HandleUpdateUser(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", response.Code, http.StatusOK, response.Body.String())
+	}
+	if direct.accountID != 88 || direct.key != "standard" || direct.revision != 7 || direct.dryRun {
+		t.Fatalf("direct entitlement call = %+v", direct)
+	}
+	if !strings.Contains(response.Body.String(), `"applied_entitlement_revision":7`) {
+		t.Fatalf("response body = %s, want applied entitlement revision", response.Body.String())
 	}
 }

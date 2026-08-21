@@ -33,6 +33,10 @@ type AccessFilter struct {
 	// deliberately not a catalog predicate: browse-only members can still see
 	// the catalog, but cannot advertise or enter a playback transport.
 	PlaybackDenied bool
+	// DownloadDenied is separate from playback: Jelly's Download transport is
+	// also used by some direct-play clients, but may not bypass offline-download
+	// policy when a custom template permits playback and forbids downloads.
+	DownloadDenied bool
 	SelectedFileID int
 	UserID         int
 	ProfileID      string

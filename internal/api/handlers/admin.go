@@ -296,23 +296,25 @@ func (f updateStringSliceField) Ptr() *[]string {
 
 // updateUserRequest represents the JSON body for PUT /admin/users/{id}.
 type updateUserRequest struct {
-	Username                 *string                `json:"username,omitempty"`
-	Email                    *string                `json:"email,omitempty"`
-	Password                 *string                `json:"password,omitempty"`
-	Role                     *string                `json:"role,omitempty"`
-	Permissions              updateStringSliceField `json:"permissions,omitempty"`
-	Enabled                  *bool                  `json:"enabled,omitempty"`
-	LibraryIDs               optionalField[[]int]   `json:"library_ids,omitempty"`
-	MaxPlaybackQuality       optionalField[string]  `json:"max_playback_quality,omitempty"`
-	MaxStreams               optionalField[int]     `json:"max_streams,omitempty"`
-	MaxTranscodes            optionalField[int]     `json:"max_transcodes,omitempty"`
-	TranscodeAllowed         optionalField[bool]    `json:"transcode_allowed,omitempty"`
-	AudioTranscodeAllowed    optionalField[bool]    `json:"audio_transcode_allowed,omitempty"`
-	MaxProfiles              *int                   `json:"max_profiles,omitempty"`
-	DownloadAllowed          optionalField[bool]    `json:"download_allowed,omitempty"`
-	DownloadTranscodeAllowed optionalField[bool]    `json:"download_transcode_allowed,omitempty"`
-	RequestsAllowed          optionalField[bool]    `json:"requests_allowed,omitempty"`
-	AccessGroupID            optionalField[int64]   `json:"access_group_id,omitempty"`
+	EntitlementTemplateKey      string                 `json:"entitlement_template_key,omitempty"`
+	EntitlementTemplateRevision int64                  `json:"entitlement_template_revision,omitempty"`
+	Username                    *string                `json:"username,omitempty"`
+	Email                       *string                `json:"email,omitempty"`
+	Password                    *string                `json:"password,omitempty"`
+	Role                        *string                `json:"role,omitempty"`
+	Permissions                 updateStringSliceField `json:"permissions,omitempty"`
+	Enabled                     *bool                  `json:"enabled,omitempty"`
+	LibraryIDs                  optionalField[[]int]   `json:"library_ids,omitempty"`
+	MaxPlaybackQuality          optionalField[string]  `json:"max_playback_quality,omitempty"`
+	MaxStreams                  optionalField[int]     `json:"max_streams,omitempty"`
+	MaxTranscodes               optionalField[int]     `json:"max_transcodes,omitempty"`
+	TranscodeAllowed            optionalField[bool]    `json:"transcode_allowed,omitempty"`
+	AudioTranscodeAllowed       optionalField[bool]    `json:"audio_transcode_allowed,omitempty"`
+	MaxProfiles                 *int                   `json:"max_profiles,omitempty"`
+	DownloadAllowed             optionalField[bool]    `json:"download_allowed,omitempty"`
+	DownloadTranscodeAllowed    optionalField[bool]    `json:"download_transcode_allowed,omitempty"`
+	RequestsAllowed             optionalField[bool]    `json:"requests_allowed,omitempty"`
+	AccessGroupID               optionalField[int64]   `json:"access_group_id,omitempty"`
 }
 
 // libraryIDsOptional maps library_ids to the repository tri-state: null (or
@@ -335,34 +337,37 @@ func (r *updateUserRequest) libraryIDsOptional() models.Optional[[]int] {
 // value the server enforces (override when set, otherwise the group's value,
 // otherwise the permissive no-group default).
 type adminUserResponse struct {
-	ID                       int                 `json:"id"`
-	Username                 string              `json:"username"`
-	Email                    string              `json:"email"`
-	Role                     string              `json:"role"`
-	Permissions              []string            `json:"permissions"`
-	Enabled                  bool                `json:"enabled"`
-	LibraryIDs               []int               `json:"library_ids"`
-	MaxPlaybackQuality       *string             `json:"max_playback_quality"`
-	MaxStreams               *int                `json:"max_streams"`
-	MaxTranscodes            *int                `json:"max_transcodes"`
-	TranscodeAllowed         *bool               `json:"transcode_allowed"`
-	AudioTranscodeAllowed    *bool               `json:"audio_transcode_allowed"`
-	MaxProfiles              int                 `json:"max_profiles"`
-	DownloadAllowed          *bool               `json:"download_allowed"`
-	DownloadTranscodeAllowed *bool               `json:"download_transcode_allowed"`
-	RequestsAllowed          *bool               `json:"requests_allowed"`
-	AccessGroupID            *int64              `json:"access_group_id"`
-	EffectivePolicy          effectivePolicyResp `json:"effective_policy"`
-	CreatedAt                time.Time           `json:"created_at"`
-	UpdatedAt                time.Time           `json:"updated_at"`
-	LastActiveAt             *time.Time          `json:"last_active_at,omitempty"`
+	ID                         int                 `json:"id"`
+	Username                   string              `json:"username"`
+	Email                      string              `json:"email"`
+	Role                       string              `json:"role"`
+	Permissions                []string            `json:"permissions"`
+	Enabled                    bool                `json:"enabled"`
+	LibraryIDs                 []int               `json:"library_ids"`
+	MaxPlaybackQuality         *string             `json:"max_playback_quality"`
+	MaxStreams                 *int                `json:"max_streams"`
+	MaxTranscodes              *int                `json:"max_transcodes"`
+	TranscodeAllowed           *bool               `json:"transcode_allowed"`
+	AudioTranscodeAllowed      *bool               `json:"audio_transcode_allowed"`
+	MaxProfiles                int                 `json:"max_profiles"`
+	DownloadAllowed            *bool               `json:"download_allowed"`
+	DownloadTranscodeAllowed   *bool               `json:"download_transcode_allowed"`
+	RequestsAllowed            *bool               `json:"requests_allowed"`
+	AccessGroupID              *int64              `json:"access_group_id"`
+	EffectivePolicy            effectivePolicyResp `json:"effective_policy"`
+	CreatedAt                  time.Time           `json:"created_at"`
+	UpdatedAt                  time.Time           `json:"updated_at"`
+	LastActiveAt               *time.Time          `json:"last_active_at,omitempty"`
+	AppliedEntitlementRevision int64               `json:"applied_entitlement_revision,omitempty"`
 }
 
 // effectivePolicyResp is the resolved policy block on admin user responses.
 type effectivePolicyResp struct {
 	LibraryIDs               []int    `json:"library_ids"`
 	MaxPlaybackQuality       string   `json:"max_playback_quality"`
+	PlaybackAllowed          bool     `json:"playback_allowed"`
 	MaxStreams               int      `json:"max_streams"`
+	MaxProfiles              int      `json:"max_profiles"`
 	MaxTranscodes            int      `json:"max_transcodes"`
 	TranscodeAllowed         bool     `json:"transcode_allowed"`
 	AudioTranscodeAllowed    bool     `json:"audio_transcode_allowed"`
@@ -435,7 +440,9 @@ func toAdminUserResponse(u *models.User, group *access.GroupPolicy) adminUserRes
 		EffectivePolicy: effectivePolicyResp{
 			LibraryIDs:               effective.LibraryIDs,
 			MaxPlaybackQuality:       effective.MaxPlaybackQuality,
+			PlaybackAllowed:          effective.PlaybackAllowed,
 			MaxStreams:               effective.MaxStreams,
+			MaxProfiles:              effective.MaxProfiles,
 			MaxTranscodes:            effective.MaxTranscodes,
 			TranscodeAllowed:         effective.TranscodeAllowed,
 			AudioTranscodeAllowed:    effective.AudioTranscodeAllowed,
@@ -888,6 +895,7 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var user *models.User
+	var appliedEntitlementRevision int64
 	if req.OrganizationID != nil {
 		user = h.createTenantUser(r.Context(), w, *req.OrganizationID, accountInput)
 		if user == nil {
@@ -925,6 +933,7 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		user.AccessGroupID = &applied.GroupID
+		appliedEntitlementRevision = applied.TemplateRevision
 		if defaultProfile.Enabled {
 			accountInput.DefaultProfile = defaultProfile
 			if err := h.accountProvisioner.CreateDefaultProfile(r.Context(), user.ID, accountInput); err != nil {
@@ -941,7 +950,9 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve effective policy")
 		return
 	}
-	writeJSON(w, http.StatusCreated, toAdminUserResponse(user, createdGroupPolicy))
+	resp := toAdminUserResponse(user, createdGroupPolicy)
+	resp.AppliedEntitlementRevision = appliedEntitlementRevision
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // createTenantUser creates an account inside a specific tenant organization
@@ -1029,6 +1040,16 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 	var req updateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
+	req.EntitlementTemplateKey = strings.TrimSpace(req.EntitlementTemplateKey)
+	directEntitlementRequested := req.EntitlementTemplateKey != "" || req.EntitlementTemplateRevision != 0
+	if directEntitlementRequested && (req.EntitlementTemplateKey == "" || req.EntitlementTemplateRevision <= 0) {
+		writeError(w, http.StatusBadRequest, "bad_request", "entitlement_template_key and a positive entitlement_template_revision are required together")
+		return
+	}
+	if directEntitlementRequested && h.directEntitlements == nil {
+		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are not configured")
 		return
 	}
 
@@ -1128,6 +1149,20 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update user")
 		return
 	}
+	var appliedEntitlementRevision int64
+	if directEntitlementRequested {
+		applied, applyErr := h.directEntitlements.ApplyDefaultAccountTemplate(r.Context(), id, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
+		if applyErr != nil {
+			switch {
+			case errors.Is(applyErr, entitlements.ErrTemplateNotFound), errors.Is(applyErr, entitlements.ErrTemplateUnavailable):
+				writeError(w, http.StatusUnprocessableEntity, "entitlement_template_unavailable", "Entitlement template revision is unavailable")
+			default:
+				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to apply entitlement template")
+			}
+			return
+		}
+		appliedEntitlementRevision = applied.TemplateRevision
+	}
 	if updateRequiresSessionRevocation(currentUser, updateInput) {
 		if err := h.revokeUserSessions(r.Context(), id); err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke updated user sessions")
@@ -1146,7 +1181,9 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve effective policy")
 		return
 	}
-	writeJSON(w, http.StatusOK, toAdminUserResponse(user, updatedGroupPolicy))
+	resp := toAdminUserResponse(user, updatedGroupPolicy)
+	resp.AppliedEntitlementRevision = appliedEntitlementRevision
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleDeleteUser handles DELETE /admin/users/{id}.

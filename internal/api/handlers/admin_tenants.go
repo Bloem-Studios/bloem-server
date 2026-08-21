@@ -53,8 +53,9 @@ type tenantResponse struct {
 	Usage struct {
 		SlotsUsed int `json:"slots_used"`
 	} `json:"usage"`
-	Frozen       bool   `json:"frozen"`
-	FrozenReason string `json:"frozen_reason,omitempty"`
+	Frozen                     bool   `json:"frozen"`
+	FrozenReason               string `json:"frozen_reason,omitempty"`
+	AppliedEntitlementRevision int64  `json:"applied_entitlement_revision,omitempty"`
 }
 
 func toTenantResponse(t tenancy.TenantOrganization) tenantResponse {
@@ -68,6 +69,7 @@ func toTenantResponse(t tenancy.TenantOrganization) tenantResponse {
 	resp.Usage.SlotsUsed = t.SlotsUsed
 	resp.Frozen = t.Frozen
 	resp.FrozenReason = t.FrozenReason
+	resp.AppliedEntitlementRevision = t.AppliedEntitlementRevision
 	return resp
 }
 
@@ -97,17 +99,21 @@ func (h *AdminTenantsHandler) HandleCreate(w http.ResponseWriter, r *http.Reques
 			Slots      int `json:"slots"`
 			Transcodes int `json:"transcodes"`
 		} `json:"limits"`
+		EntitlementTemplateKey      string `json:"entitlement_template_key"`
+		EntitlementTemplateRevision int64  `json:"entitlement_template_revision"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_json", "Invalid request body")
 		return
 	}
 	tenant, err := h.store.CreateTenantOrganization(r.Context(), tenancy.CreateTenantOrganizationInput{
-		Name:               req.Name,
-		ExternalOperatorID: req.ExternalRef.OperatorID,
-		ExternalServiceID:  req.ExternalRef.ServiceID,
-		Slots:              req.Limits.Slots,
-		Transcodes:         req.Limits.Transcodes,
+		Name:                        req.Name,
+		ExternalOperatorID:          req.ExternalRef.OperatorID,
+		ExternalServiceID:           req.ExternalRef.ServiceID,
+		Slots:                       req.Limits.Slots,
+		Transcodes:                  req.Limits.Transcodes,
+		EntitlementTemplateKey:      req.EntitlementTemplateKey,
+		EntitlementTemplateRevision: req.EntitlementTemplateRevision,
 	})
 	if err != nil {
 		if errors.Is(err, tenancy.ErrTenantOrganizationInvalid) {

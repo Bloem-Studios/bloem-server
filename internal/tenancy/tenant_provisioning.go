@@ -55,17 +55,18 @@ const (
 
 // TenantOrganization is one park-sold organization plus its live usage.
 type TenantOrganization struct {
-	ID                 uuid.UUID
-	Name               string
-	ExternalOperatorID string
-	ExternalServiceID  string
-	Slots              int
-	Transcodes         int
-	SlotsUsed          int
-	Frozen             bool
-	FrozenReason       string
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	ID                         uuid.UUID
+	Name                       string
+	ExternalOperatorID         string
+	ExternalServiceID          string
+	Slots                      int
+	Transcodes                 int
+	SlotsUsed                  int
+	Frozen                     bool
+	FrozenReason               string
+	CreatedAt                  time.Time
+	UpdatedAt                  time.Time
+	AppliedEntitlementRevision int64
 }
 
 // CreateTenantOrganizationInput is the park-facing create request.
@@ -163,6 +164,7 @@ func (s *Store) CreateTenantOrganization(ctx context.Context, input CreateTenant
 		if _, err := entitlements.ApplyTemplateInTx(ctx, tx, organization.ID, templateKey, input.EntitlementTemplateRevision, false); err != nil {
 			return TenantOrganization{}, fmt.Errorf("tenancy: apply tenant entitlement template: %w", err)
 		}
+		organization.AppliedEntitlementRevision = input.EntitlementTemplateRevision
 	} else if err := ensureTenantDefaultAccessGroup(ctx, tx, organization.ID); err != nil {
 		return TenantOrganization{}, err
 	}

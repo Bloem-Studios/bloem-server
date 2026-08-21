@@ -442,24 +442,12 @@ func (m *TranscodeManager) ReconstructSession(ctx context.Context, sessionID str
 	// replay is rejected.
 	session, err := m.Sessions.RegisterReconstructedWithLimits(ctx, s)
 	if err != nil {
-		// Admission denials must still refuse: a replayed token cannot reconstruct
-		// past a current cap or after transcoding has been disabled for the user.
-		if errors.Is(err, ErrPlaybackNotAllowed) || errors.Is(err, ErrTooManyStreams) || errors.Is(err, ErrTooManyTranscodes) || errors.Is(err, ErrTranscodingDisabled) || errors.Is(err, ErrAudioTranscodingDisabled) {
-			slog.WarnContext(ctx, "playback session reconstruct refused by admission policy", "component", "playback",
-				"session", sessionID, "playback_session_id", sessionID,
-				"user", card.UserID, "method", method, "error", err)
-			return nil
-		}
-		// Otherwise the limit provider itself could not be evaluated (e.g. a
-		// transient Postgres error during a post-restart reconstruct wave). Fail
-		// open and admit the session WITHOUT the limit gate: denying here would
-		// collapse a recoverable dependency error into a permanent 404 and stop
-		// playback for a user who is within their limits. The cap will re-apply on
-		// the next fresh StartSession once the provider recovers.
-		slog.WarnContext(ctx, "playback session reconstruct admitting despite unevaluated limits (degraded; limit provider unavailable)", "component", "playback",
+		// A persisted recipe is only a transport credential. Current entitlement
+		// resolution and admission must both succeed before it can become live.
+		slog.WarnContext(ctx, "playback session reconstruct refused because admission policy could not be confirmed", "component", "playback",
 			"session", sessionID, "playback_session_id", sessionID,
 			"user", card.UserID, "method", method, "error", err)
-		session = m.Sessions.RegisterReconstructed(s)
+		return nil
 	}
 	slog.InfoContext(ctx, "playback session reconstructed from recipe card", "component", "playback",
 		"session", sessionID, "playback_session_id", sessionID, "user", card.UserID, "method", method)

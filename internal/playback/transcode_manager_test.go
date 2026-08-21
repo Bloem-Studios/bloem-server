@@ -281,7 +281,7 @@ func TestReconstructSession_AdmissionCap(t *testing.T) {
 // A transient limit-PROVIDER failure during reconstruct (e.g. a Postgres error
 // in the post-restart wave) must NOT collapse into a permanent 404. The session
 // must be admitted (fail open) so a user within their limits keeps playing.
-func TestReconstructSession_ProviderErrorFailsOpen(t *testing.T) {
+func TestReconstructSession_ProviderErrorFailsClosed(t *testing.T) {
 	ctx := context.Background()
 	reg := &fakeSessionRegistry{
 		limitsErr: fmt.Errorf("load session limits for user 7: %w",
@@ -292,22 +292,17 @@ func TestReconstructSession_ProviderErrorFailsOpen(t *testing.T) {
 
 	card := NewDirectRecipeCard("a", 7, "p", 100)
 	got := m.ReconstructSession(ctx, "a", 7, card)
-	if got == nil {
-		t.Fatal("limit-provider error must fail open and admit the reconstructed session, not refuse")
+	if got != nil {
+		t.Fatalf("limit-provider error must fail closed, got session %+v", got)
 	}
-	if got.ID != "a" || got.UserID != 7 {
-		t.Fatalf("admitted session wrong: %+v", got)
-	}
-	// The fail-open path must register the session so LoadOrReconstructSession
-	// yields SessionLoaded, not SessionMissing.
-	if _, err := reg.GetSession("a"); err != nil {
-		t.Fatalf("failed-open session not registered: %v", err)
+	if _, err := reg.GetSession("a"); err == nil {
+		t.Fatal("failed-closed session was unexpectedly registered")
 	}
 }
 
 // LoadOrReconstructSession must surface the fail-open admission as SessionLoaded
 // (not SessionMissing -> 404) when the limit provider is transiently unavailable.
-func TestLoadOrReconstructSession_ProviderErrorFailsOpen(t *testing.T) {
+func TestLoadOrReconstructSession_ProviderErrorFailsClosed(t *testing.T) {
 	ctx := context.Background()
 	reg := &fakeSessionRegistry{
 		limitsErr: errors.Join(ErrLimitProviderUnavailable, errors.New("db timeout")),
@@ -317,8 +312,8 @@ func TestLoadOrReconstructSession_ProviderErrorFailsOpen(t *testing.T) {
 
 	card := NewDirectRecipeCard("s", 5, "p", 77)
 	got, status := m.LoadOrReconstructSession(ctx, reg.GetSession, "s", 5, &card)
-	if status != SessionLoaded || got == nil {
-		t.Fatalf("provider error must yield SessionLoaded, got status=%v session=%+v", status, got)
+	if status != SessionMissing || got != nil {
+		t.Fatalf("provider error must yield SessionMissing, got status=%v session=%+v", status, got)
 	}
 }
 

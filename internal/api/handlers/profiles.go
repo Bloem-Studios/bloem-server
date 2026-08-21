@@ -499,7 +499,7 @@ func (h *ProfileHandler) effectiveProfileLimit(ctx context.Context, user *models
 		if err != nil {
 			return 0, nil, err
 		}
-		return strictestProfileLimit(limit, group.MaxProfiles), cloneGroupID(&group.ID), nil
+		return strictestProfileLimit(limit, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
 	}
 	var group *access.Group
 	var err error
@@ -514,7 +514,7 @@ func (h *ProfileHandler) effectiveProfileLimit(ctx context.Context, user *models
 	if err != nil {
 		return 0, nil, err
 	}
-	return strictestProfileLimit(limit, group.MaxProfiles), cloneGroupID(&group.ID), nil
+	return strictestProfileLimit(limit, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
 }
 
 func cloneGroupID(id *int64) *int64 {
@@ -525,7 +525,13 @@ func cloneGroupID(id *int64) *int64 {
 	return &copy
 }
 
-func strictestProfileLimit(accountLimit, groupLimit int) int {
+func strictestProfileLimit(accountLimit, groupLimit int, managed bool) int {
+	// Managed template max_profiles=0 means no secondary profiles; the primary
+	// profile provisioned with an account still occupies the single allowed row.
+	// Legacy unmanaged groups retain their historical 0=unlimited semantics.
+	if managed && groupLimit == 0 {
+		groupLimit = 1
+	}
 	if groupLimit <= 0 || accountLimit > 0 && accountLimit <= groupLimit {
 		return accountLimit
 	}

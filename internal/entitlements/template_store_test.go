@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -480,6 +481,9 @@ func TestSharedDynamicDirectGroupInvalidatesEveryAccountOnLibraryChange(t *testi
 	if invalidatedRevision <= firstRevision {
 		t.Fatalf("shared account revision = %d, want > %d after dynamic policy changed", invalidatedRevision, firstRevision)
 	}
+	var attributed int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM entitlement_audit_events WHERE action='account.entitlement_shared_policy_changed' AND target_account_id=$1 AND template_key=$2`, firstID, template.Key).Scan(&attributed))
+	require.Equal(t, 1, attributed, "shared policy change must be durably attributable to each affected account")
 	var libraries []int
 	require.NoError(t, pool.QueryRow(ctx, `SELECT g.library_ids FROM access_groups g JOIN users u ON u.access_group_id=g.id WHERE u.id=$1`, firstID).Scan(&libraries))
 	if !slices.Contains(libraries, newLibraryID) {
@@ -555,6 +559,26 @@ func TestProfileEntitlementLimitIsOrganizationScopedAndConcurrentSafe(t *testing
 	require.NoError(t, err, "a profile in another organization must not consume this organization's cap")
 }
 
+func TestManagedZeroProfileLimitAllowsPrimaryAndRejectsAdditional(t *testing.T) {
+	ctx, pool, store := entitlementTestStore(t)
+	var organizationID uuid.UUID
+	var defaultGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT o.id,g.id FROM organizations o JOIN access_groups g ON g.organization_id=o.id AND g.is_default WHERE o.is_default`).Scan(&organizationID, &defaultGroupID))
+	accountID := insertDirectEntitlementAccount(t, ctx, pool, organizationID, defaultGroupID, "managed-zero-cap")
+	policy := standardPolicy([]int{})
+	policy.MaxProfiles = 0
+	template, err := store.Create(ctx, entitlements.CreateTemplateInput{Key: entitlementTestKey(t, "managed-zero-cap"), Name: "Managed zero cap " + uuid.NewString(), Enabled: true, Policy: policy})
+	require.NoError(t, err)
+	applied, err := store.ApplyAccountTemplate(ctx, organizationID, accountID, template.Key, template.Revision, false)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,'Primary',$3,$4)`, uuid.NewString(), accountID, organizationID, applied.GroupID)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,'Additional',$3,$4)`, uuid.NewString(), accountID, organizationID, applied.GroupID)
+	if err == nil {
+		t.Fatal("managed max_profiles=0 allowed an additional profile")
+	}
+}
+
 func TestEntitlementAuditAndApplyReceiptAreDurable(t *testing.T) {
 	ctx, pool, store := entitlementTestStore(t)
 	var organizationID uuid.UUID
@@ -575,6 +599,60 @@ func TestEntitlementAuditAndApplyReceiptAreDurable(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, found)
 	require.Equal(t, result, receipt.Result)
+}
+
+func TestApplyTemplateWithReceiptIsAtomicAndReplicaSafe(t *testing.T) {
+	ctx, pool, store := entitlementTestStore(t)
+	template, err := store.Create(ctx, entitlements.CreateTemplateInput{Key: entitlementTestKey(t, "atomic-receipt"), Name: "Atomic receipt " + uuid.NewString(), Enabled: true, Policy: standardPolicy([]int{})})
+	require.NoError(t, err)
+	tenant, err := tenancy.NewStore(pool).CreateTenantOrganization(ctx, tenancy.CreateTenantOrganizationInput{Name: "Atomic receipt tenant", ExternalServiceID: uuid.NewString(), Slots: 2, Transcodes: 1})
+	require.NoError(t, err)
+	preview, err := store.ApplyTemplate(ctx, tenant.ID, template.Key, template.Revision, true)
+	require.NoError(t, err)
+
+	type outcome struct {
+		result   entitlements.ApplyResult
+		repeated bool
+		err      error
+	}
+	results := make(chan outcome, 2)
+	for range 2 {
+		go func() {
+			result, repeated, err := store.ApplyTemplateWithReceipt(ctx, 1, tenant.ID, "same-command", template.Key, template.Revision, entitlements.PreviewHash(preview))
+			results <- outcome{result, repeated, err}
+		}()
+	}
+	first, second := <-results, <-results
+	require.NoError(t, first.err)
+	require.NoError(t, second.err)
+	require.Equal(t, first.result, second.result)
+	if first.repeated == second.repeated {
+		t.Fatalf("repeated flags = %v/%v, want exactly one original and one receipt replay", first.repeated, second.repeated)
+	}
+	var receipts int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM entitlement_apply_receipts WHERE target_type='organization' AND target_id=$1 AND idempotency_key='same-command'`, tenant.ID.String()).Scan(&receipts))
+	require.Equal(t, 1, receipts)
+}
+
+func TestConfirmedDynamicPreviewAndApplyUseOneSnapshot(t *testing.T) {
+	ctx, pool, store := entitlementTestStore(t)
+	template, err := store.Create(ctx, entitlements.CreateTemplateInput{Key: entitlementTestKey(t, "snapshot-preview"), Name: "Snapshot preview " + uuid.NewString(), Enabled: true, Policy: standardPolicy(nil)})
+	require.NoError(t, err)
+	tenant, err := tenancy.NewStore(pool).CreateTenantOrganization(ctx, tenancy.CreateTenantOrganizationInput{Name: "Snapshot tenant", ExternalServiceID: uuid.NewString(), Slots: 2, Transcodes: 1})
+	require.NoError(t, err)
+	tx, err := pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback(ctx) }()
+	preview, err := entitlements.ApplyTemplateInTx(ctx, tx, tenant.ID, template.Key, template.Revision, true)
+	require.NoError(t, err)
+	newLibraryID := insertEntitlementLibrary(t, ctx, pool, "snapshot-added-"+uuid.NewString(), true)
+	applied, err := entitlements.ApplyTemplateInTx(ctx, tx, tenant.ID, template.Key, template.Revision, false)
+	require.NoError(t, err)
+	require.Equal(t, entitlements.PreviewHash(preview), entitlements.PreviewHash(applied), "apply must use the confirmed preview snapshot")
+	if slices.Contains(applied.Policy.LibraryIDs, newLibraryID) {
+		t.Fatalf("applied policy unexpectedly observed concurrently enabled library %d", newLibraryID)
+	}
+	require.NoError(t, tx.Commit(ctx))
 }
 
 func insertDirectEntitlementAccount(t *testing.T, ctx context.Context, pool *pgxpool.Pool, organizationID uuid.UUID, defaultGroupID int64, label string) int {

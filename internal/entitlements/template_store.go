@@ -4,6 +4,8 @@ package entitlements
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,7 +29,8 @@ var (
 	// ErrTemplateDuplicate reports a duplicate key or display name.
 	ErrTemplateDuplicate = errors.New("entitlements: template key or name already exists")
 	// ErrRevisionConflict reports an optimistic revision mismatch.
-	ErrRevisionConflict = errors.New("entitlements: template revision conflict")
+	ErrRevisionConflict  = errors.New("entitlements: template revision conflict")
+	ErrConfirmationStale = errors.New("entitlements: confirmation is stale")
 	// ErrInvalidPolicy reports a locally invalid template policy.
 	ErrInvalidPolicy = errors.New("entitlements: invalid policy")
 	// ErrProtectedTemplate reports an attempt to remove or weaken a built-in
@@ -193,6 +196,102 @@ func (s *Store) SaveApplyReceipt(ctx context.Context, actorAccountID int, target
 	return tag.RowsAffected() == 1, nil
 }
 
+// PreviewHash is the canonical state binding used by dry-run confirmations.
+func PreviewHash(result ApplyResult) string {
+	result.DryRun = false
+	payload, _ := json.Marshal(result)
+	sum := sha256.Sum256(payload)
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// ApplyTemplateWithReceipt serializes an idempotency key across replicas and
+// commits the materialization and its exact response receipt together.
+func (s *Store) ApplyTemplateWithReceipt(ctx context.Context, actorAccountID int, organizationID uuid.UUID, idempotencyKey, templateKey string, templateRevision int64, previewHash string) (ApplyResult, bool, error) {
+	return s.applyWithReceipt(ctx, actorAccountID, "organization", organizationID.String(), idempotencyKey, templateKey, templateRevision, previewHash,
+		func(tx pgx.Tx, dryRun bool) (ApplyResult, error) {
+			return ApplyTemplateInTx(ctx, tx, organizationID, templateKey, templateRevision, dryRun)
+		})
+}
+
+// ApplyDefaultAccountTemplateWithReceipt is the direct-account equivalent of
+// ApplyTemplateWithReceipt, including default-organization resolution inside
+// the same transaction.
+func (s *Store) ApplyDefaultAccountTemplateWithReceipt(ctx context.Context, actorAccountID, accountID int, idempotencyKey, templateKey string, templateRevision int64, previewHash string) (ApplyResult, bool, error) {
+	return s.applyWithReceipt(ctx, actorAccountID, "account", fmt.Sprint(accountID), idempotencyKey, templateKey, templateRevision, previewHash,
+		func(tx pgx.Tx, dryRun bool) (ApplyResult, error) {
+			var organizationID uuid.UUID
+			if err := tx.QueryRow(ctx, `SELECT o.id FROM organizations o JOIN organization_memberships m ON m.organization_id=o.id WHERE o.is_default AND m.account_id=$1 AND m.status='active'`, accountID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
+				return ApplyResult{}, ErrAccountNotFound
+			} else if err != nil {
+				return ApplyResult{}, fmt.Errorf("entitlements: resolve direct account organization: %w", err)
+			}
+			return applyAccountTemplateInTx(ctx, tx, organizationID, accountID, templateKey, templateRevision, dryRun)
+		})
+}
+
+func (s *Store) applyWithReceipt(ctx context.Context, actorAccountID int, targetType, targetID, idempotencyKey, templateKey string, templateRevision int64, previewHash string, apply func(pgx.Tx, bool) (ApplyResult, error)) (ApplyResult, bool, error) {
+	lockKey := fmt.Sprintf("%d:%s:%s:%s", actorAccountID, targetType, targetID, idempotencyKey)
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return ApplyResult{}, false, fmt.Errorf("entitlements: acquire atomic apply connection: %w", err)
+	}
+	defer conn.Release()
+	// Take the cross-replica lock before starting REPEATABLE READ. Otherwise a
+	// waiter establishes a stale snapshot while blocked on the advisory lock and
+	// cannot observe the receipt committed by the winner.
+	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock(hashtextextended($1,0))`, lockKey); err != nil {
+		return ApplyResult{}, false, fmt.Errorf("entitlements: lock apply receipt: %w", err)
+	}
+	defer func() {
+		_, _ = conn.Exec(context.Background(), `SELECT pg_advisory_unlock(hashtextextended($1,0))`, lockKey)
+	}()
+	// The confirmed preview and the write must resolve dynamic all-library
+	// policy from one database snapshot. READ COMMITTED could observe a library
+	// toggle between those statements and materialize unconfirmed access.
+	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+	if err != nil {
+		return ApplyResult{}, false, fmt.Errorf("entitlements: begin atomic apply: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var prior ApplyReceipt
+	var payload []byte
+	err = tx.QueryRow(ctx, `SELECT template_key,template_revision,result FROM entitlement_apply_receipts WHERE actor_account_id=$1 AND target_type=$2 AND target_id=$3 AND idempotency_key=$4 FOR UPDATE`, actorAccountID, targetType, targetID, idempotencyKey).Scan(&prior.TemplateKey, &prior.TemplateRevision, &payload)
+	if err == nil {
+		if prior.TemplateKey != templateKey || prior.TemplateRevision != templateRevision {
+			return ApplyResult{}, false, ErrRevisionConflict
+		}
+		if err := json.Unmarshal(payload, &prior.Result); err != nil {
+			return ApplyResult{}, false, fmt.Errorf("entitlements: decode apply receipt: %w", err)
+		}
+		return prior.Result, true, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return ApplyResult{}, false, fmt.Errorf("entitlements: load atomic apply receipt: %w", err)
+	}
+	preview, err := apply(tx, true)
+	if err != nil {
+		return ApplyResult{}, false, err
+	}
+	if PreviewHash(preview) != previewHash {
+		return ApplyResult{}, false, ErrConfirmationStale
+	}
+	result, err := apply(tx, false)
+	if err != nil {
+		return ApplyResult{}, false, err
+	}
+	payload, err = json.Marshal(result)
+	if err != nil {
+		return ApplyResult{}, false, fmt.Errorf("entitlements: encode atomic apply receipt: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO entitlement_apply_receipts (actor_account_id,target_type,target_id,idempotency_key,template_key,template_revision,result) VALUES ($1,$2,$3,$4,$5,$6,$7)`, actorAccountID, targetType, targetID, idempotencyKey, templateKey, templateRevision, payload); err != nil {
+		return ApplyResult{}, false, fmt.Errorf("entitlements: save atomic apply receipt: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return ApplyResult{}, false, fmt.Errorf("entitlements: commit atomic apply: %w", err)
+	}
+	return result, false, nil
+}
+
 // OrganizationEntitlement is the operator-facing projection of a Park
 // tenant's managed default group and separate tenant-wide quota layer.
 type OrganizationEntitlement struct {
@@ -306,6 +405,17 @@ func (s *Store) ApplyAccountTemplate(ctx context.Context, organizationID uuid.UU
 		return ApplyResult{}, fmt.Errorf("entitlements: begin account template apply: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	result, err = applyAccountTemplateInTx(ctx, tx, organizationID, accountID, key, revision, dryRun)
+	if err != nil || dryRun {
+		return result, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: commit account template apply: %w", err)
+	}
+	return result, nil
+}
+
+func applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, key string, revision int64, dryRun bool) (result ApplyResult, err error) {
 
 	if err := tx.QueryRow(ctx, `SELECT id FROM organizations WHERE id=$1 FOR UPDATE`, organizationID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
 		return ApplyResult{}, ErrAccountNotFound
@@ -426,10 +536,32 @@ func (s *Store) ApplyAccountTemplate(ctx context.Context, organizationID uuid.UU
 		}
 		// Exact-revision groups are shared. Dynamic all-libraries resolution can
 		// change the group policy, so invalidate every other account using it.
-		if _, err := tx.Exec(ctx, `
+		rows, err := tx.Query(ctx, `
 			UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now()
-			WHERE access_group_id=$1 AND id<>$2`, result.GroupID, accountID); err != nil {
+			WHERE access_group_id=$1 AND id<>$2 RETURNING id`, result.GroupID, accountID)
+		if err != nil {
 			return ApplyResult{}, fmt.Errorf("entitlements: invalidate shared direct group members: %w", err)
+		}
+		var affectedAccounts []int
+		for rows.Next() {
+			var affectedID int
+			if err := rows.Scan(&affectedID); err != nil {
+				rows.Close()
+				return ApplyResult{}, fmt.Errorf("entitlements: scan shared direct group member: %w", err)
+			}
+			affectedAccounts = append(affectedAccounts, affectedID)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return ApplyResult{}, fmt.Errorf("entitlements: iterate shared direct group members: %w", err)
+		}
+		rows.Close()
+		for _, affectedID := range affectedAccounts {
+			if _, err := tx.Exec(ctx, `INSERT INTO entitlement_audit_events
+				(action,organization_id,target_account_id,template_key,template_revision)
+				VALUES ('account.entitlement_shared_policy_changed',$1,$2,$3,$4)`, organizationID, affectedID, template.Key, template.Revision); err != nil {
+				return ApplyResult{}, fmt.Errorf("entitlements: audit shared direct group member: %w", err)
+			}
 		}
 	}
 	if _, err := tx.Exec(ctx, `
@@ -446,9 +578,6 @@ func (s *Store) ApplyAccountTemplate(ctx context.Context, organizationID uuid.UU
 		(action,organization_id,target_account_id,template_key,template_revision)
 		VALUES ('account.entitlement_materialized',$1,$2,$3,$4)`, organizationID, accountID, template.Key, template.Revision); err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: audit direct account materialization: %w", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return ApplyResult{}, fmt.Errorf("entitlements: commit account template apply: %w", err)
 	}
 	return result, nil
 }

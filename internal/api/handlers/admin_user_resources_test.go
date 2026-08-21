@@ -456,6 +456,23 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 		}
 	})
 
+	t.Run("managed zero profile quota is unprocessable", func(t *testing.T) {
+		handler, _, _ := newAdminUserResourceHandler(t)
+		organizationID := uuid.New()
+		groupID := int64(92)
+		key := "browse-only"
+		handler.userRepo = testAdminUserRepo{users: map[int]*models.User{1: {ID: 1, MaxProfiles: 5}}}
+		handler.AccessGroups = profileCapAccessGroups{group: &access.Group{ID: groupID, OrganizationID: organizationID, MaxProfiles: 0, ManagedTemplateKey: &key}}
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/1/profiles", strings.NewReader(`{"name":"Over managed zero quota"}`))
+		request.Header.Set("Content-Type", "application/json")
+		request = request.WithContext(withAdminResourceOrganization(request.Context(), organizationID))
+		recorder := httptest.NewRecorder()
+		routeAdminUserResources(handler).ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+		}
+	})
+
 	t.Run("primary profile cannot be deleted", func(t *testing.T) {
 		handler, _, _ := newAdminUserResourceHandler(t)
 		recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodDelete,

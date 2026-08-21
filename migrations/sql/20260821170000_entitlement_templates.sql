@@ -83,17 +83,21 @@ AS $$
 DECLARE
     account_limit integer;
     group_limit integer;
+    group_managed boolean;
     effective_limit integer;
     existing_profiles integer;
 BEGIN
     PERFORM pg_advisory_xact_lock(NEW.user_id);
-    SELECT u.max_profiles, g.max_profiles
-      INTO account_limit, group_limit
+    SELECT u.max_profiles, g.max_profiles, g.managed_template_key IS NOT NULL
+      INTO account_limit, group_limit, group_managed
       FROM public.users u
       LEFT JOIN public.access_groups g
         ON g.id = NEW.access_group_id
        AND g.organization_id = NEW.organization_id
      WHERE u.id = NEW.user_id;
+    IF group_managed AND group_limit = 0 THEN
+        group_limit := 1;
+    END IF;
     effective_limit := CASE
         WHEN account_limit > 0 AND group_limit > 0 THEN LEAST(account_limit, group_limit)
         WHEN account_limit > 0 THEN account_limit

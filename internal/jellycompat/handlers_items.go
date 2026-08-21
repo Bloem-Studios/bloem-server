@@ -97,13 +97,15 @@ func NewItemsHandler(content ContentService, userData UserDataService, codec *Re
 
 // itemFromDetailForSession applies the media-facing part of the resolved
 // policy after the shared mapper has built the Jellyfin DTO. CanDownload is a
-// direct-play transport capability in this protocol (not an offline-download
-// entitlement), so browse-only policy clears it while leaving catalog fields
-// intact.
+// direct-play transport capability in this protocol, but the same route also
+// downloads the original file. Consequently both playback and download policy
+// must allow it. Custom playback-on/download-off plans are incompatible with
+// Infuse direct play through this Jelly transport and advertise false.
 func (h *ItemsHandler) itemFromDetailForSession(ctx context.Context, session *Session, item upstreamItemDetail, isFavorite bool, progress *upstreamProgress, requestedFields map[string]bool) baseItemDTO {
 	dto := h.mapper.itemFromDetailWithFields(item, isFavorite, progress, requestedFields)
 	if dto.CanDownload && h.accessFilter != nil && session != nil {
-		dto.CanDownload = !h.accessFilter(ctx, session.StreamAppUserID, session.ProfileID).PlaybackDenied
+		filter := h.accessFilter(ctx, session.StreamAppUserID, session.ProfileID)
+		dto.CanDownload = !filter.PlaybackDenied && !filter.DownloadDenied
 	}
 	return dto
 }

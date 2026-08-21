@@ -27,6 +27,15 @@ type testProfileUserRepo struct {
 	err  error
 }
 
+func TestStrictestProfileLimit_ManagedZeroAllowsOnlyPrimary(t *testing.T) {
+	if got := strictestProfileLimit(5, 0, true); got != 1 {
+		t.Fatalf("managed zero limit = %d, want 1 total profile", got)
+	}
+	if got := strictestProfileLimit(5, 0, false); got != 5 {
+		t.Fatalf("legacy unmanaged zero limit = %d, want account limit 5", got)
+	}
+}
+
 func TestProfilesForOrganizationDoesNotCountAnotherTenant(t *testing.T) {
 	organizationID := uuid.New()
 	ctx := withAdminResourceOrganization(context.Background(), organizationID)
@@ -219,6 +228,23 @@ func TestHandleCreateProfile_EnforcesManagedGroupProfileLimit(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler.HandleCreateProfile(rr, req)
 
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusConflict, rr.Body.String())
+	}
+}
+
+func TestHandleCreateProfile_ManagedZeroRejectsSecondaryProfile(t *testing.T) {
+	store := newProfileTestStore(t)
+	groupID := int64(89)
+	organizationID := uuid.New()
+	key := "browse-only"
+	handler := NewProfileHandler(testUserStoreProvider{store: store})
+	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: 5, AccessGroupID: &groupID}}
+	handler.AccessGroups = profileCapAccessGroups{group: &access.Group{ID: groupID, OrganizationID: organizationID, MaxProfiles: 0, ManagedTemplateKey: &key}}
+	req := newAuthorizedProfileRequestWithRole(http.MethodPost, "/profiles", `{"name":"Kids"}`, "admin", "")
+	req = req.WithContext(tenancy.WithContext(req.Context(), tenancy.Context{OrganizationID: organizationID, AccountID: 1, Legacy: true}))
+	rr := httptest.NewRecorder()
+	handler.HandleCreateProfile(rr, req)
 	if rr.Code != http.StatusConflict {
 		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusConflict, rr.Body.String())
 	}

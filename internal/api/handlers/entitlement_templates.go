@@ -59,6 +59,11 @@ type entitlementReceiptStore interface {
 	SaveApplyReceipt(context.Context, int, string, string, string, string, int64, entitlements.ApplyResult) (bool, error)
 }
 
+type entitlementAtomicApplyStore interface {
+	ApplyTemplateWithReceipt(context.Context, int, uuid.UUID, string, string, int64, string) (entitlements.ApplyResult, bool, error)
+	ApplyDefaultAccountTemplateWithReceipt(context.Context, int, int, string, string, int64, string) (entitlements.ApplyResult, bool, error)
+}
+
 type EntitlementTemplatesHandler struct {
 	store  EntitlementTemplateHandlerStore
 	secret []byte
@@ -467,17 +472,23 @@ func (h *EntitlementTemplatesHandler) HandleOrganizationApply(w http.ResponseWri
 		writeAdminValidation(w, map[string]string{"confirmation_token": "is invalid, expired, or belongs to another apply target"})
 		return
 	}
-	receiptKey := strconv.Itoa(claims.AccountID) + ":" + organizationID.String() + ":" + request.IdempotencyKey
-	result, repeated, err := h.applyOnce(r.Context(), claims.AccountID, "organization", organizationID.String(), request.IdempotencyKey, receiptKey, request.TemplateKey, request.TemplateRevision, func() (entitlements.ApplyResult, error) {
-		preview, previewErr := h.store.ApplyTemplate(r.Context(), organizationID, request.TemplateKey, request.TemplateRevision, true)
-		if previewErr != nil {
-			return entitlements.ApplyResult{}, previewErr
-		}
-		if entitlementPreviewHash(preview) != confirmation.PreviewHash {
-			return entitlements.ApplyResult{}, errEntitlementConfirmationStale
-		}
-		return h.store.ApplyTemplate(r.Context(), organizationID, request.TemplateKey, request.TemplateRevision, false)
-	})
+	var result entitlements.ApplyResult
+	var repeated bool
+	if atomic, ok := h.store.(entitlementAtomicApplyStore); ok {
+		result, repeated, err = atomic.ApplyTemplateWithReceipt(r.Context(), claims.AccountID, organizationID, request.IdempotencyKey, request.TemplateKey, request.TemplateRevision, confirmation.PreviewHash)
+	} else {
+		receiptKey := strconv.Itoa(claims.AccountID) + ":" + organizationID.String() + ":" + request.IdempotencyKey
+		result, repeated, err = h.applyOnce(r.Context(), claims.AccountID, "organization", organizationID.String(), request.IdempotencyKey, receiptKey, request.TemplateKey, request.TemplateRevision, func() (entitlements.ApplyResult, error) {
+			preview, previewErr := h.store.ApplyTemplate(r.Context(), organizationID, request.TemplateKey, request.TemplateRevision, true)
+			if previewErr != nil {
+				return entitlements.ApplyResult{}, previewErr
+			}
+			if entitlementPreviewHash(preview) != confirmation.PreviewHash {
+				return entitlements.ApplyResult{}, errEntitlementConfirmationStale
+			}
+			return h.store.ApplyTemplate(r.Context(), organizationID, request.TemplateKey, request.TemplateRevision, false)
+		})
+	}
 	if err != nil {
 		h.writeError(w, err)
 		return
@@ -584,17 +595,23 @@ func (h *EntitlementTemplatesHandler) HandleAccountApply(w http.ResponseWriter, 
 		writeAdminValidation(w, map[string]string{"confirmation_token": "is invalid, expired, or belongs to another apply target"})
 		return
 	}
-	receiptKey := strconv.Itoa(claims.AccountID) + ":account:" + strconv.Itoa(accountID) + ":" + request.IdempotencyKey
-	result, repeated, err := h.applyOnce(r.Context(), claims.AccountID, "account", strconv.Itoa(accountID), request.IdempotencyKey, receiptKey, request.TemplateKey, request.TemplateRevision, func() (entitlements.ApplyResult, error) {
-		preview, previewErr := h.store.ApplyDefaultAccountTemplate(r.Context(), accountID, request.TemplateKey, request.TemplateRevision, true)
-		if previewErr != nil {
-			return entitlements.ApplyResult{}, previewErr
-		}
-		if entitlementPreviewHash(preview) != confirmation.PreviewHash {
-			return entitlements.ApplyResult{}, errEntitlementConfirmationStale
-		}
-		return h.store.ApplyDefaultAccountTemplate(r.Context(), accountID, request.TemplateKey, request.TemplateRevision, false)
-	})
+	var result entitlements.ApplyResult
+	var repeated bool
+	if atomic, ok := h.store.(entitlementAtomicApplyStore); ok {
+		result, repeated, err = atomic.ApplyDefaultAccountTemplateWithReceipt(r.Context(), claims.AccountID, accountID, request.IdempotencyKey, request.TemplateKey, request.TemplateRevision, confirmation.PreviewHash)
+	} else {
+		receiptKey := strconv.Itoa(claims.AccountID) + ":account:" + strconv.Itoa(accountID) + ":" + request.IdempotencyKey
+		result, repeated, err = h.applyOnce(r.Context(), claims.AccountID, "account", strconv.Itoa(accountID), request.IdempotencyKey, receiptKey, request.TemplateKey, request.TemplateRevision, func() (entitlements.ApplyResult, error) {
+			preview, previewErr := h.store.ApplyDefaultAccountTemplate(r.Context(), accountID, request.TemplateKey, request.TemplateRevision, true)
+			if previewErr != nil {
+				return entitlements.ApplyResult{}, previewErr
+			}
+			if entitlementPreviewHash(preview) != confirmation.PreviewHash {
+				return entitlements.ApplyResult{}, errEntitlementConfirmationStale
+			}
+			return h.store.ApplyDefaultAccountTemplate(r.Context(), accountID, request.TemplateKey, request.TemplateRevision, false)
+		})
+	}
 	if err != nil {
 		h.writeError(w, err)
 		return
@@ -725,10 +742,7 @@ type entitlementConfirmationClaims struct {
 }
 
 func entitlementPreviewHash(result entitlements.ApplyResult) string {
-	result.DryRun = false
-	payload, _ := json.Marshal(result)
-	sum := sha256.Sum256(payload)
-	return base64.RawURLEncoding.EncodeToString(sum[:])
+	return entitlements.PreviewHash(result)
 }
 
 func (h *EntitlementTemplatesHandler) signConfirmation(claims entitlementConfirmationClaims) (string, error) {
@@ -799,7 +813,7 @@ func (h *EntitlementTemplatesHandler) writeError(w http.ResponseWriter, err erro
 		writeAdminValidation(w, map[string]string{"policy": err.Error()})
 	case errors.Is(err, entitlements.ErrProtectedTemplate):
 		writeError(w, http.StatusConflict, "protected_template", "The Browse-only authorization boundary cannot be weakened or archived")
-	case errors.Is(err, errEntitlementConfirmationStale):
+	case errors.Is(err, errEntitlementConfirmationStale), errors.Is(err, entitlements.ErrConfirmationStale):
 		writeError(w, http.StatusConflict, "confirmation_stale", "Entitlement state changed; dry-run again")
 	default:
 		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement administration is unavailable")

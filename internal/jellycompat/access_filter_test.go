@@ -30,6 +30,8 @@ func TestScopeAccessFilterMapsScope(t *testing.T) {
 			LibrariesRestricted:       true,
 			MaxContentRating:          "PG-13",
 			MaxPlaybackQuality:        "1080p",
+			PlaybackAllowed:           true,
+			DownloadAllowed:           true,
 			PreferredMetadataLanguage: "fr",
 			MetadataLanguageOverrides: map[string]string{
 				"no": access.OriginalMetadataLanguage,
@@ -62,6 +64,9 @@ func TestScopeAccessFilterMapsScope(t *testing.T) {
 	}
 	if filter.UserID != 7 || filter.ProfileID != "profile-1" {
 		t.Fatalf("identity not propagated: %+v", filter)
+	}
+	if filter.PlaybackDenied || filter.DownloadDenied {
+		t.Fatalf("allowed playback/download scope mapped to denial: %+v", filter)
 	}
 }
 

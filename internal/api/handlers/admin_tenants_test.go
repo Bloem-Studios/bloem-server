@@ -12,14 +12,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/database"
+	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 )
@@ -80,13 +83,22 @@ func tenantCall(t *testing.T, server *httptest.Server, method, path string, body
 }
 
 func TestTenantAdminAPIWireContract(t *testing.T) {
-	server, _ := tenantTestServer(t)
+	server, pool := tenantTestServer(t)
+	template, err := entitlements.NewTemplateStore(pool).Create(context.Background(), entitlements.CreateTemplateInput{
+		Key: "tenant-wire-" + strings.ToLower(uuid.NewString()[:8]), Name: "Tenant wire " + uuid.NewString(), Enabled: true,
+		Policy: entitlements.Policy{LibraryIDs: []int{}, PlaybackAllowed: true, MaxStreams: 2, MaxProfiles: 3, TranscodeAllowed: true, MaxTranscodes: 1, DownloadAllowed: true, MaxPlaybackQuality: "1080p", RequestsAllowed: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create: the park adapter's exact request shape; tenant_id comes back.
 	status, body := tenantCall(t, server, http.MethodPost, "/api/v1/admin/tenants", map[string]any{
-		"name":         "acme@example.test",
-		"external_ref": map[string]string{"operator_id": "op-1", "service_id": "order-" + t.Name()},
-		"limits":       map[string]int{"slots": 10, "transcodes": 4},
+		"name":                          "acme@example.test",
+		"external_ref":                  map[string]string{"operator_id": "op-1", "service_id": "order-" + t.Name()},
+		"limits":                        map[string]int{"slots": 10, "transcodes": 4},
+		"entitlement_template_key":      template.Key,
+		"entitlement_template_revision": template.Revision,
 	})
 	if status != http.StatusCreated {
 		t.Fatalf("create = %d %s", status, body)
@@ -97,27 +109,31 @@ func TestTenantAdminAPIWireContract(t *testing.T) {
 			Slots      int `json:"slots"`
 			Transcodes int `json:"transcodes"`
 		} `json:"limits"`
-		Frozen bool `json:"frozen"`
+		Frozen                     bool  `json:"frozen"`
+		AppliedEntitlementRevision int64 `json:"applied_entitlement_revision"`
 	}
 	if err := json.Unmarshal(body, &created); err != nil || created.TenantID == "" ||
-		created.Limits.Slots != 10 || created.Limits.Transcodes != 4 {
+		created.Limits.Slots != 10 || created.Limits.Transcodes != 4 || created.AppliedEntitlementRevision != template.Revision {
 		t.Fatalf("create body = %s (%v)", body, err)
 	}
 
 	// Idempotent on the park claim: a replayed create returns the SAME tenant.
 	status, body = tenantCall(t, server, http.MethodPost, "/api/v1/admin/tenants", map[string]any{
-		"name":         "acme replay",
-		"external_ref": map[string]string{"operator_id": "op-1", "service_id": "order-" + t.Name()},
-		"limits":       map[string]int{"slots": 99, "transcodes": 99},
+		"name":                          "acme replay",
+		"external_ref":                  map[string]string{"operator_id": "op-1", "service_id": "order-" + t.Name()},
+		"limits":                        map[string]int{"slots": 99, "transcodes": 99},
+		"entitlement_template_key":      template.Key,
+		"entitlement_template_revision": template.Revision,
 	})
 	var replayed struct {
 		TenantID string `json:"tenant_id"`
 		Limits   struct {
 			Slots int `json:"slots"`
 		} `json:"limits"`
+		AppliedEntitlementRevision int64 `json:"applied_entitlement_revision"`
 	}
 	if status != http.StatusCreated || json.Unmarshal(body, &replayed) != nil ||
-		replayed.TenantID != created.TenantID || replayed.Limits.Slots != 10 {
+		replayed.TenantID != created.TenantID || replayed.Limits.Slots != 10 || replayed.AppliedEntitlementRevision != template.Revision {
 		t.Fatalf("replayed create = %d %s, want the original tenant unchanged", status, body)
 	}
 
