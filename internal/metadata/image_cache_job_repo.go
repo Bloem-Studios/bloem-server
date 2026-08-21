@@ -533,7 +533,7 @@ func (r *ImageCacheJobRepository) claimDue(ctx context.Context, workerID, target
 		args = append(args, targetContentID)
 	}
 	query += `
-			ORDER BY next_attempt_at ASC, id ASC
+			ORDER BY job_priority ASC, next_attempt_at ASC, id ASC
 			LIMIT $1
 			FOR UPDATE SKIP LOCKED
 		)
