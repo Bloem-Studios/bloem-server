@@ -73,6 +73,14 @@ type DirectEntitlementProvisioner interface {
 	ApplyDefaultAccountTemplate(context.Context, int, string, int64, bool) (entitlements.ApplyResult, error)
 }
 
+// AccountPolicyReader exposes only authoritative Server-side policy state.
+// Callers cannot supply an expected template or cohort identity through this
+// boundary.
+type AccountPolicyReader interface {
+	GetAccountPolicy(context.Context, uuid.UUID, int) (entitlements.AccountPolicySnapshot, error)
+	GetAccountPolicies(context.Context, uuid.UUID, []int) ([]entitlements.AccountPolicySnapshotResult, time.Time, error)
+}
+
 // ServerSettingsStore provides access to server-wide admin settings.
 type ServerSettingsStore interface {
 	Get(ctx context.Context, key string) (string, error)
@@ -158,6 +166,7 @@ type AdminHandler struct {
 	// is refused.
 	tenantStore        *tenancy.Store
 	directEntitlements DirectEntitlementProvisioner
+	accountPolicies    AccountPolicyReader
 }
 
 // SetProfileHandler wires the same fully configured profile handler used by
@@ -174,6 +183,11 @@ func (h *AdminHandler) SetTenantStore(store *tenancy.Store) { h.tenantStore = st
 // entitlement template revisions in the deployment default organization.
 func (h *AdminHandler) SetDirectEntitlements(store DirectEntitlementProvisioner) {
 	h.directEntitlements = store
+}
+
+// SetAccountPolicies wires authoritative platform account-policy reads.
+func (h *AdminHandler) SetAccountPolicies(store AccountPolicyReader) {
+	h.accountPolicies = store
 }
 
 // NewAdminHandler creates a new AdminHandler backed by the given

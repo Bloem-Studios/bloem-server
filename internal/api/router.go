@@ -1198,7 +1198,9 @@ func NewRouter(deps Dependencies) chi.Router {
 			// resolution above uses also answers this.
 			tenantOrgStore := tenancy.NewStore(deps.DB)
 			adminHandler.SetTenantStore(tenantOrgStore)
-			adminHandler.SetDirectEntitlements(entitlements.NewTemplateStore(deps.DB))
+			entitlementStore := entitlements.NewTemplateStore(deps.DB)
+			adminHandler.SetDirectEntitlements(entitlementStore)
+			adminHandler.SetAccountPolicies(entitlementStore)
 			adminTenantsHandler = handlers.NewAdminTenantsHandler(tenantOrgStore, userRepo)
 			memberAccounts := auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider)
 			memberService := tenancy.NewMemberService(
@@ -1855,7 +1857,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	if deps.DB != nil {
 		tenantMiddleware = apimw.NewTenantMiddleware(tenancy.NewResolver(tenancy.NewStore(deps.DB)))
 	}
-	mountV2(r, deps, authMiddleware, tenantMiddleware, catalogSearchService.Provider())
+	mountV2(r, deps, authMiddleware, tenantMiddleware, catalogSearchService.Provider(), adminHandler)
 
 	// Private Compatibility Service API v1 (internal/compatapi). This is an
 	// internal surface for enrolled compatibility applications only — it is

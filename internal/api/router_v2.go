@@ -33,7 +33,7 @@ import (
 // index event repo), not received from the caller, so there is nothing for
 // Dependencies to carry. May be nil, in which case Watch search answers
 // unavailable rather than searching nothing.
-func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider) {
+func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, accountPolicyHandler *handlers.AdminHandler) {
 	var store handlers.V2OrganizationStore
 	var membershipStore handlers.AdminContextSessionStore
 	var resolver handlers.AdminContextSessionResolver
@@ -103,7 +103,7 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	// capability at all.
 	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
 	mountV2Routes(r, system, session, authMW, adminMW,
-		newV2ClientSurface(deps, authMW, tenantMW, searchProvider), platformHandler, peopleHandler, organizationHandler, explainHandler, compatibilityHandler, entitlementHandler)
+		newV2ClientSurface(deps, authMW, tenantMW, searchProvider), platformHandler, peopleHandler, organizationHandler, explainHandler, compatibilityHandler, entitlementHandler, accountPolicyHandler)
 }
 
 // mountV2Routes registers every /api/v2 route. chi allows one subtree per mount
@@ -118,6 +118,7 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 	var explainHandler *handlers.V2PolicyExplainHandler
 	var compatibilityHandler *handlers.V2AdminCompatibilityHandler
 	var entitlementHandler *handlers.EntitlementTemplatesHandler
+	var accountPolicyHandler *handlers.AdminHandler
 	var client v2ClientSurface
 	for _, candidate := range surfaces {
 		switch handler := candidate.(type) {
@@ -135,6 +136,8 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 			compatibilityHandler = handler
 		case *handlers.EntitlementTemplatesHandler:
 			entitlementHandler = handler
+		case *handlers.AdminHandler:
+			accountPolicyHandler = handler
 		}
 	}
 	r.Route("/api/v2", func(r chi.Router) {
@@ -176,12 +179,18 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 				r.Get("/platform/organizations/{id}/entitlement/audit", entitlement.HandleOrganizationAudit)
 				r.Post("/platform/organizations/{id}/entitlement/dry-run", entitlement.HandleOrganizationDryRun)
 				r.Post("/platform/organizations/{id}/entitlement/apply", entitlement.HandleOrganizationApply)
-				r.Get("/platform/accounts/{account_id}/entitlement", entitlement.HandleGetAccountEntitlement)
 				r.Post("/platform/accounts/{account_id}/entitlement/dry-run", entitlement.HandleAccountDryRun)
 				r.Post("/platform/accounts/{account_id}/entitlement/apply", entitlement.HandleAccountApply)
 				r.Get("/platform/users/{user_id}/entitlement", entitlement.HandleGetAccountEntitlement)
 				r.Post("/platform/users/{user_id}/entitlement/dry-run", entitlement.HandleAccountDryRun)
 				r.Post("/platform/users/{user_id}/entitlement/apply", entitlement.HandleAccountApply)
+			}
+			if accountPolicyHandler != nil {
+				policies := accountPolicyHandler
+				r.Get("/platform/accounts/{account_id}/entitlement", policies.HandleGetAccountPolicy)
+				r.Get("/platform/organizations/{organization_id}/accounts/{account_id}/entitlement", policies.HandleGetOrganizationAccountPolicy)
+				r.Post("/platform/accounts/entitlement-snapshots", policies.HandleGetAccountPolicySnapshots)
+				r.Post("/platform/organizations/{organization_id}/entitlement-snapshots", policies.HandleGetOrganizationAccountPolicySnapshots)
 			}
 			if organizationHandler != nil {
 				organization := organizationHandler

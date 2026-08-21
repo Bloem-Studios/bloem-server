@@ -6,10 +6,12 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -135,6 +137,40 @@ func TestV2AdminPlatformOrganizationRoutesAreMountedBehindPlatformContext(t *tes
 	}
 }
 
+func TestV2AuthoritativeAccountPolicyRoutesAreMountedBehindPlatformContext(t *testing.T) {
+	tokens := auth.NewAdminContextTokenService("router-account-policy-test-secret")
+	adminMW := apimw.NewAdminContextMiddleware(tokens, v2AdminTenantResolverStub{}, v2AdminMembershipStoreStub{}, v2AdminPlatformAuthorizerAllowedStub{})
+	authMW := apimw.NewAuthMiddleware(v2TokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}}, v2SessionValidator{}, nil, nil)
+	policyHandler := handlers.NewAdminHandler(nil, nil, nil)
+	policyHandler.SetAccountPolicies(v2AccountPolicyReaderStub{})
+	router := chi.NewRouter()
+	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, authMW, adminMW, policyHandler)
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopePlatform})
+	if err != nil {
+		t.Fatal(err)
+	}
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	requests := []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodGet, "/api/v2/admin/platform/accounts/42/entitlement", ""},
+		{http.MethodGet, "/api/v2/admin/platform/organizations/" + organizationID.String() + "/accounts/42/entitlement", ""},
+		{http.MethodPost, "/api/v2/admin/platform/accounts/entitlement-snapshots", `{"account_ids":[42]}`},
+		{http.MethodPost, "/api/v2/admin/platform/organizations/" + organizationID.String() + "/entitlement-snapshots", `{"account_ids":[42]}`},
+	}
+	for _, item := range requests {
+		req := httptest.NewRequest(item.method, item.path, strings.NewReader(item.body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s %s = %d %s", item.method, item.path, rec.Code, rec.Body.String())
+		}
+	}
+}
+
 func TestV2AdminPeopleRoutesAreMountedBehindOrganizationContext(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	membershipID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
@@ -233,4 +269,15 @@ func (v2OrganizationStoreStubForRouter) ListMemberships(context.Context, int) ([
 
 func (v2OrganizationStoreStubForRouter) GetOrganization(context.Context, uuid.UUID) (tenancy.Organization, error) {
 	return tenancy.Organization{}, tenancy.ErrOrganizationNotFound
+}
+
+type v2AccountPolicyReaderStub struct{}
+
+func (v2AccountPolicyReaderStub) GetAccountPolicy(context.Context, uuid.UUID, int) (entitlements.AccountPolicySnapshot, error) {
+	return entitlements.AccountPolicySnapshot{ObservedAt: time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC), AccountID: 42}, nil
+}
+
+func (v2AccountPolicyReaderStub) GetAccountPolicies(context.Context, uuid.UUID, []int) ([]entitlements.AccountPolicySnapshotResult, time.Time, error) {
+	observedAt := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	return []entitlements.AccountPolicySnapshotResult{{AccountID: 42, Snapshot: &entitlements.AccountPolicySnapshot{ObservedAt: observedAt, AccountID: 42}}}, observedAt, nil
 }
