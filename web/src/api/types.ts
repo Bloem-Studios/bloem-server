@@ -2358,6 +2358,38 @@ export interface RequestListParams {
 }
 
 // Admin
+export interface EntitlementTemplatePolicy {
+  /** null selects every enabled library. */
+  library_ids: number[] | null;
+  playback_allowed: boolean;
+  max_streams: number;
+  max_profiles: number;
+  transcode_allowed: boolean;
+  max_transcodes: number;
+  download_allowed: boolean;
+  download_transcode_allowed: boolean;
+  max_playback_quality: string;
+  requests_allowed: boolean;
+}
+
+export interface EntitlementTemplate {
+  key: string;
+  name: string;
+  revision: number;
+  enabled: boolean;
+  archived: boolean;
+  created_at?: string;
+  description?: string;
+  policy: EntitlementTemplatePolicy;
+}
+
+export interface EntitlementTemplateInput {
+  key?: string;
+  name: string;
+  enabled: boolean;
+  policy: EntitlementTemplatePolicy;
+}
+
 export interface AccessGroup {
   id: number;
   name: string;

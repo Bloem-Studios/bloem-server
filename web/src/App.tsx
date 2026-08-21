@@ -77,6 +77,7 @@ import AdminRecommendations from "@/pages/AdminRecommendations";
 import AdminPolicyLayout from "@/pages/admin-policy/AdminPolicyLayout";
 import OrganizationsPage from "@/pages/admin-platform/OrganizationsPage";
 import OrganizationDetailPage from "@/pages/admin-platform/OrganizationDetailPage";
+import EntitlementTemplatesPage from "@/pages/admin-platform/EntitlementTemplatesPage";
 import CompatibilityApplicationsPage from "@/pages/admin-platform/CompatibilityApplicationsPage";
 import OrganizationOverviewPage from "@/pages/admin-organization/OrganizationOverviewPage";
 import PeoplePage from "@/pages/admin-organization/PeoplePage";
@@ -504,6 +505,10 @@ function AppRoutes() {
                     <Route index element={<AdminDashboard />} />
                     <Route path="platform/organizations" element={<OrganizationsPage />} />
                     <Route path="platform/organizations/:id" element={<OrganizationDetailPage />} />
+                    <Route
+                      path="platform/entitlement-templates"
+                      element={<EntitlementTemplatesPage />}
+                    />
                     <Route
                       path="platform/compatibility"
                       element={<CompatibilityApplicationsPage />}

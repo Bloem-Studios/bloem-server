@@ -3,6 +3,7 @@ import { AdminV2ClientError } from "@/api/adminV2Client";
 import { ArrowLeft, ChevronLeft, ChevronRight, Plus, ShieldCheck, Users } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { OrganizationLifecyclePanel } from "@/components/admin/organizations/OrganizationLifecyclePanel";
+import { OrganizationEntitlementPanel } from "./OrganizationEntitlementPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -396,6 +397,7 @@ export default function OrganizationDetailPage() {
           await organization.refetch();
         }}
       />
+      <OrganizationEntitlementPanel organizationID={current.id} />
       <AddMembershipDialog
         organization={current}
         open={addMemberOpen}

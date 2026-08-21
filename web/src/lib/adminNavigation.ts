@@ -5,6 +5,7 @@ import {
   CalendarClock,
   Captions,
   Download,
+  FileKey2,
   FileWarning,
   History,
   KeyRound,
@@ -116,6 +117,13 @@ export const ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
         keywords: ["organizations", "tenants", "memberships"],
         icon: Building2,
         href: "/admin/platform/organizations",
+      },
+      {
+        label: "Entitlement Templates",
+        description: "Reusable tenant-member policies and revision history.",
+        keywords: ["entitlements", "templates", "downloads", "profiles", "streams"],
+        icon: FileKey2,
+        href: "/admin/platform/entitlement-templates",
       },
       {
         label: "Dashboard",
