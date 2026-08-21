@@ -9,6 +9,7 @@ import {
   useCreateEntitlementTemplate,
   useEntitlementTemplateHistory,
   useEntitlementTemplates,
+  useRollbackEntitlementTemplate,
   useReviseEntitlementTemplate,
 } from "@/hooks/queries/admin/entitlementTemplates";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -25,13 +26,39 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EntitlementTemplateEditor } from "./EntitlementTemplateEditor";
 
 function policySummary(template: EntitlementTemplate) {
   const policy = template.policy;
-  if (!policy.playback_allowed) return "Browse only";
-  return `${policy.max_streams} streams · ${policy.max_profiles} profiles · ${policy.download_allowed ? "downloads" : "no downloads"}`;
+  return [
+    policy.playback_allowed
+      ? `${policy.max_streams} ${policy.max_streams === 1 ? "stream" : "streams"}`
+      : "Browse only",
+    `${policy.max_profiles} ${policy.max_profiles === 1 ? "profile" : "profiles"}`,
+    `Downloads ${policy.download_allowed ? "on" : "off"}`,
+    `Transcoded downloads ${policy.download_transcode_allowed ? "on" : "off"}`,
+    `Requests ${policy.requests_allowed ? "on" : "off"}`,
+    `Quality ${policy.max_playback_quality || "unrestricted"}`,
+  ].join(" · ");
+}
+
+function formatTimestamp(value?: string) {
+  if (!value) return "Timestamp unavailable";
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 export default function EntitlementTemplatesPage() {
@@ -42,9 +69,13 @@ export default function EntitlementTemplatesPage() {
   const revise = useReviseEntitlementTemplate();
   const clone = useCloneEntitlementTemplate();
   const archive = useArchiveEntitlementTemplate();
+  const rollback = useRollbackEntitlementTemplate();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [archiveCandidate, setArchiveCandidate] = useState<EntitlementTemplate | null>(null);
+  const [cloneCandidate, setCloneCandidate] = useState<EntitlementTemplate | null>(null);
+  const [cloneKey, setCloneKey] = useState("");
+  const [cloneName, setCloneName] = useState("");
   const selected = templates.data?.find((template) => template.key === selectedKey);
   const history = useEntitlementTemplateHistory(selected?.key);
 
@@ -74,6 +105,8 @@ export default function EntitlementTemplatesPage() {
           onClick={() => {
             setSelectedKey(null);
             setCreating(false);
+            create.reset();
+            revise.reset();
           }}
         >
           <ArrowLeft className="size-4" /> All templates
@@ -95,6 +128,7 @@ export default function EntitlementTemplatesPage() {
           libraries={(libraries.data ?? []).map(({ id, name }) => ({ id, name }))}
           onSave={save}
           saving={create.isPending || revise.isPending}
+          error={selected ? revise.error : create.error}
         />
         {selected ? (
           <Card>
@@ -107,12 +141,55 @@ export default function EntitlementTemplatesPage() {
               {history.isLoading ? (
                 <Skeleton className="h-8 w-full" />
               ) : (
-                <ol className="text-muted-foreground space-y-1 text-sm">
+                <ol className="space-y-3 text-sm">
                   {(history.data ?? []).map((revision) => (
-                    <li key={revision.revision}>Revision {revision.revision}</li>
+                    <li
+                      key={revision.revision}
+                      className="border-border flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3"
+                    >
+                      <div className="space-y-1">
+                        <p className="font-medium">Revision {revision.revision}</p>
+                        <p className="text-muted-foreground">
+                          {formatTimestamp(revision.created_at)}
+                        </p>
+                        <p>{policySummary(revision)}</p>
+                      </div>
+                      {revision.revision !== selected.revision ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          aria-label={`Roll back to revision ${revision.revision}`}
+                          disabled={rollback.isPending}
+                          onClick={() =>
+                            void rollback
+                              .mutateAsync({
+                                key: selected.key,
+                                expected_revision: selected.revision,
+                                source_revision: revision.revision,
+                                name: selected.name,
+                                enabled: selected.enabled,
+                              })
+                              .catch(() => undefined)
+                          }
+                        >
+                          Restore as new revision
+                        </Button>
+                      ) : null}
+                    </li>
                   ))}
                 </ol>
               )}
+              {history.isError ? (
+                <p className="text-destructive text-sm" role="alert">
+                  {history.error.message}
+                </p>
+              ) : null}
+              {rollback.error ? (
+                <p className="text-destructive mt-3 text-sm" role="alert">
+                  {rollback.error.message}
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         ) : null}
@@ -130,7 +207,13 @@ export default function EntitlementTemplatesPage() {
             dry run and explicit apply.
           </p>
         </div>
-        <Button type="button" onClick={() => setCreating(true)}>
+        <Button
+          type="button"
+          onClick={() => {
+            create.reset();
+            setCreating(true);
+          }}
+        >
           <Plus className="size-4" /> New template
         </Button>
       </div>
@@ -168,7 +251,12 @@ export default function EntitlementTemplatesPage() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => setSelectedKey(template.key)}
+                    aria-label={`Edit ${template.name}`}
+                    onClick={() => {
+                      revise.reset();
+                      rollback.reset();
+                      setSelectedKey(template.key);
+                    }}
                   >
                     Edit
                   </Button>
@@ -176,11 +264,13 @@ export default function EntitlementTemplatesPage() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() =>
-                      void clone
-                        .mutateAsync({ key: template.key })
-                        .then((result) => setSelectedKey(result.template.key))
-                    }
+                    aria-label={`Clone ${template.name}`}
+                    onClick={() => {
+                      clone.reset();
+                      setCloneCandidate(template);
+                      setCloneKey("");
+                      setCloneName(template.name);
+                    }}
                     disabled={clone.isPending}
                   >
                     <Copy className="size-3.5" /> Clone
@@ -190,7 +280,10 @@ export default function EntitlementTemplatesPage() {
                     size="sm"
                     variant="outline"
                     aria-label={`Archive ${template.name}`}
-                    onClick={() => setArchiveCandidate(template)}
+                    onClick={() => {
+                      archive.reset();
+                      setArchiveCandidate(template);
+                    }}
                     disabled={template.archived}
                   >
                     <Archive className="size-3.5" /> Archive
@@ -208,6 +301,73 @@ export default function EntitlementTemplatesPage() {
         </Link>
         .
       </p>
+      <Dialog
+        open={Boolean(cloneCandidate)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCloneCandidate(null);
+            clone.reset();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clone {cloneCandidate?.name}</DialogTitle>
+            <DialogDescription>
+              Copy the pinned source revision into a new template with its own stable key.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-key">New key</Label>
+              <Input
+                id="clone-key"
+                value={cloneKey}
+                onChange={(event) => setCloneKey(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-name">New name</Label>
+              <Input
+                id="clone-name"
+                value={cloneName}
+                onChange={(event) => setCloneName(event.target.value)}
+              />
+            </div>
+            {clone.error ? (
+              <p className="text-destructive text-sm" role="alert">
+                {clone.error.message}
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCloneCandidate(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={!cloneCandidate || !cloneKey.trim() || !cloneName.trim() || clone.isPending}
+              onClick={() => {
+                if (!cloneCandidate) return;
+                void clone
+                  .mutateAsync({
+                    key: cloneCandidate.key,
+                    source_revision: cloneCandidate.revision,
+                    newKey: cloneKey.trim(),
+                    name: cloneName.trim(),
+                  })
+                  .then((result) => {
+                    setCloneCandidate(null);
+                    setSelectedKey(result.template.key);
+                  })
+                  .catch(() => undefined);
+              }}
+            >
+              Create clone
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <AlertDialog
         open={Boolean(archiveCandidate)}
         onOpenChange={(open) => !open && setArchiveCandidate(null)}
@@ -222,16 +382,23 @@ export default function EntitlementTemplatesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
+            {archive.error ? (
+              <p className="text-destructive text-sm" role="alert">
+                {archive.error.message}
+              </p>
+            ) : null}
             <AlertDialogAction
-              onClick={() =>
-                archiveCandidate &&
+              onClick={(event) => {
+                event.preventDefault();
+                if (!archiveCandidate) return;
                 void archive
                   .mutateAsync({
                     key: archiveCandidate.key,
                     expected_revision: archiveCandidate.revision,
                   })
                   .then(() => setArchiveCandidate(null))
-              }
+                  .catch(() => undefined);
+              }}
               disabled={archive.isPending}
             >
               Archive template

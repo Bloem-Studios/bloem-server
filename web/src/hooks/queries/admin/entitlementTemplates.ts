@@ -8,6 +8,9 @@ export const entitlementTemplateKeys = {
   all: platformKey,
   list: (includeArchived: boolean) => [...platformKey, "list", { includeArchived }] as const,
   history: (key: string) => [...platformKey, "history", key] as const,
+  organizationDetail: (organizationID: string) =>
+    [...platformKey, "organization", organizationID] as const,
+  accountDetail: (userID: string) => [...platformKey, "account", userID] as const,
 };
 
 interface TemplateListResponse {
@@ -83,11 +86,44 @@ export function useReviseEntitlementTemplate() {
 }
 
 export function useCloneEntitlementTemplate() {
-  return useTemplateMutation(({ key, name }: { key: string; name?: string }) =>
-    adminV2Api<TemplateResponse>(templatePath(key, "/clone"), {
-      method: "POST",
-      body: JSON.stringify({ name }),
-    }),
+  return useTemplateMutation(
+    ({
+      key,
+      source_revision,
+      newKey,
+      name,
+    }: {
+      key: string;
+      source_revision: number;
+      newKey: string;
+      name: string;
+    }) =>
+      adminV2Api<TemplateResponse>(templatePath(key, "/clone"), {
+        method: "POST",
+        body: JSON.stringify({ source_revision, key: newKey, name }),
+      }),
+  );
+}
+
+export function useRollbackEntitlementTemplate() {
+  return useTemplateMutation(
+    ({
+      key,
+      expected_revision,
+      source_revision,
+      name,
+      enabled,
+    }: {
+      key: string;
+      expected_revision: number;
+      source_revision: number;
+      name: string;
+      enabled: boolean;
+    }) =>
+      adminV2Api<TemplateResponse>(templatePath(key, "/revisions"), {
+        method: "POST",
+        body: JSON.stringify({ expected_revision, source_revision, name, enabled }),
+      }),
   );
 }
 
@@ -111,8 +147,42 @@ export interface EntitlementDryRun {
   warnings: string[];
 }
 
-function tenantEntitlementPath(organizationID: string, suffix: "/dry-run" | "/apply") {
+export interface OrganizationEntitlementDetail {
+  template_key: string | null;
+  template_revision: number | null;
+  managed_default_group: {
+    id: string;
+    name: string;
+    policy: EntitlementTemplate["policy"];
+  } | null;
+  tenant_limits: { slots: number; transcodes: number };
+  library_ids: number[];
+  last_reconciled_at: string | null;
+  audit_history_href: string | null;
+}
+
+export interface AccountEntitlementDetail {
+  template_key: string | null;
+  template_revision: number | null;
+  managed_default_group: {
+    id: string;
+    name: string;
+    policy: EntitlementTemplate["policy"];
+  } | null;
+  library_ids: number[];
+  last_reconciled_at: string | null;
+}
+
+function tenantEntitlementPath(organizationID: string, suffix: "" | "/dry-run" | "/apply" = "") {
   return `/platform/organizations/${encodeURIComponent(organizationID)}/entitlement${suffix}`;
+}
+
+export function useOrganizationEntitlement(organizationID: string) {
+  return useQuery({
+    queryKey: entitlementTemplateKeys.organizationDetail(organizationID),
+    queryFn: () => adminV2Api<OrganizationEntitlementDetail>(tenantEntitlementPath(organizationID)),
+    enabled: Boolean(organizationID),
+  });
 }
 
 export function useEntitlementDryRun(organizationID: string) {
@@ -139,8 +209,56 @@ export function useApplyTenantEntitlement(organizationID: string) {
         { method: "POST", body: JSON.stringify(input) },
       ),
     onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: adminV2QueryKey("platform", "organizations", organizationID),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: entitlementTemplateKeys.organizationDetail(organizationID),
+        }),
+      ]);
+    },
+  });
+}
+
+function accountEntitlementPath(userID: string, suffix: "" | "/dry-run" | "/apply" = "") {
+  return `/platform/users/${encodeURIComponent(userID)}/entitlement${suffix}`;
+}
+
+export function useAccountEntitlement(userID: string) {
+  return useQuery({
+    queryKey: entitlementTemplateKeys.accountDetail(userID),
+    queryFn: () => adminV2Api<AccountEntitlementDetail>(accountEntitlementPath(userID)),
+    enabled: Boolean(userID),
+  });
+}
+
+export function useAccountEntitlementDryRun(userID: string) {
+  return useMutation({
+    mutationFn: (input: { template_key: string; template_revision: number }) =>
+      adminV2Api<EntitlementDryRun>(accountEntitlementPath(userID, "/dry-run"), {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+  });
+}
+
+export function useApplyAccountEntitlement(userID: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      template_key: string;
+      template_revision: number;
+      dry_run_token: string;
+      idempotency_key: string;
+    }) =>
+      adminV2Api<{ template_key: string; template_revision: number; changed: boolean }>(
+        accountEntitlementPath(userID, "/apply"),
+        { method: "POST", body: JSON.stringify(input) },
+      ),
+    onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: adminV2QueryKey("platform", "organizations", organizationID),
+        queryKey: entitlementTemplateKeys.accountDetail(userID),
       });
     },
   });

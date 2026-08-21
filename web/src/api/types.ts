@@ -2370,6 +2370,8 @@ export interface EntitlementTemplatePolicy {
   download_transcode_allowed: boolean;
   max_playback_quality: string;
   requests_allowed: boolean;
+  /** null permits every access-group permission. */
+  allowed_permissions: string[] | null;
 }
 
 export interface EntitlementTemplate {
@@ -2384,7 +2386,7 @@ export interface EntitlementTemplate {
 }
 
 export interface EntitlementTemplateInput {
-  key?: string;
+  key: string;
   name: string;
   enabled: boolean;
   policy: EntitlementTemplatePolicy;

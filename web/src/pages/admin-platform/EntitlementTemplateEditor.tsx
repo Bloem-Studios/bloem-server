@@ -7,6 +7,7 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PERMISSION_MARKER_EDIT, PERMISSION_METADATA_CURATION } from "@/lib/permissions";
 
 export interface EntitlementTemplateLibrary {
   id: number;
@@ -18,6 +19,7 @@ interface EntitlementTemplateEditorProps {
   template?: EntitlementTemplate;
   onSave(input: EntitlementTemplateInput): void | Promise<void>;
   saving?: boolean;
+  error?: Error | null;
 }
 
 const DEFAULT_POLICY: EntitlementTemplatePolicy = {
@@ -31,10 +33,18 @@ const DEFAULT_POLICY: EntitlementTemplatePolicy = {
   download_transcode_allowed: true,
   max_playback_quality: "original",
   requests_allowed: true,
+  allowed_permissions: null,
 };
 
+const ENTITLEMENT_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
+  [PERMISSION_METADATA_CURATION, "Metadata curation"],
+  [PERMISSION_MARKER_EDIT, "Marker editing"],
+];
+
 function policyFor(template?: EntitlementTemplate): EntitlementTemplatePolicy {
-  return template?.policy ?? DEFAULT_POLICY;
+  return template
+    ? { ...template.policy, allowed_permissions: template.policy.allowed_permissions ?? null }
+    : DEFAULT_POLICY;
 }
 
 function selectedLibraryIDs(
@@ -115,8 +125,10 @@ export function EntitlementTemplateEditor({
   template,
   onSave,
   saving = false,
+  error,
 }: EntitlementTemplateEditorProps) {
   const browseOnly = template?.key === "browse-only";
+  const [key, setKey] = useState(template?.key ?? "");
   const [name, setName] = useState(template?.name ?? "New entitlement template");
   const [policy, setPolicy] = useState<EntitlementTemplatePolicy>(policyFor(template));
   const [enabled, setEnabled] = useState(template?.enabled ?? true);
@@ -140,7 +152,7 @@ export function EntitlementTemplateEditor({
 
   async function save() {
     await onSave({
-      key: template?.key,
+      key: template?.key ?? key.trim(),
       name: name.trim(),
       enabled,
       policy: {
@@ -158,11 +170,24 @@ export function EntitlementTemplateEditor({
       className="space-y-5"
       onSubmit={(event) => {
         event.preventDefault();
-        void save();
+        void save().catch(() => undefined);
       }}
     >
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="template-key">Key</Label>
+            <Input
+              id="template-key"
+              value={key}
+              onChange={(event) => setKey(event.target.value)}
+              disabled={Boolean(template)}
+              placeholder="e.g. standard-plus"
+            />
+            <p className="text-muted-foreground text-xs">
+              Stable lowercase identifier; it cannot change after creation.
+            </p>
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="template-name">Name</Label>
             <Input
@@ -179,6 +204,11 @@ export function EntitlementTemplateEditor({
             onChange={setEnabled}
           />
         </div>
+        {error ? (
+          <p className="text-destructive text-sm" role="alert">
+            {error.message}
+          </p>
+        ) : null}
         {browseOnly ? (
           <p className="border-warning/40 bg-warning/10 rounded-lg border p-3 text-sm">
             Browse-only does not permit playback. Its playback and download gates are protected so
@@ -245,6 +275,20 @@ export function EntitlementTemplateEditor({
           onChange={(playback_allowed) => updatePolicy({ playback_allowed })}
           disabled={browseOnly}
         />
+        <div className="space-y-1.5">
+          <Label htmlFor="max-playback-quality">Maximum playback quality</Label>
+          <select
+            id="max-playback-quality"
+            className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm sm:w-72"
+            value={policy.max_playback_quality}
+            onChange={(event) => updatePolicy({ max_playback_quality: event.target.value })}
+          >
+            <option value="">Any quality</option>
+            <option value="original">Original quality</option>
+            <option value="1080p">Up to 1080p</option>
+            <option value="2160p">Up to 4K</option>
+          </select>
+        </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <NumberField
             id="max-streams"
@@ -279,7 +323,7 @@ export function EntitlementTemplateEditor({
       </section>
 
       <section className="surface-panel space-y-3 rounded-2xl border-0 p-5">
-        <h2 className="text-sm font-semibold">Downloads</h2>
+        <h2 className="text-sm font-semibold">Downloads and requests</h2>
         <PolicyCheckbox
           id="download-allowed"
           label="Allow downloads"
@@ -301,10 +345,63 @@ export function EntitlementTemplateEditor({
           onChange={(download_transcode_allowed) => updatePolicy({ download_transcode_allowed })}
           disabled={browseOnly || !policy.download_allowed}
         />
+        <PolicyCheckbox
+          id="requests-allowed"
+          label="Allow media requests"
+          description="Members may ask administrators to add unavailable media."
+          checked={policy.requests_allowed}
+          onChange={(requests_allowed) => updatePolicy({ requests_allowed })}
+        />
+      </section>
+
+      <section className="surface-panel space-y-3 rounded-2xl border-0 p-5">
+        <div>
+          <h2 className="text-sm font-semibold">Permissions</h2>
+          <p className="text-muted-foreground text-xs">
+            Restrict which elevated media-management actions this entitlement may grant.
+          </p>
+        </div>
+        <PolicyCheckbox
+          id="all-permissions"
+          label="Allow all permissions"
+          description="New permissions are granted automatically. Turn this off to maintain an explicit allowlist."
+          checked={policy.allowed_permissions === null}
+          onChange={(allowAll) =>
+            updatePolicy({
+              allowed_permissions: allowAll
+                ? null
+                : [PERMISSION_METADATA_CURATION, PERMISSION_MARKER_EDIT],
+            })
+          }
+        />
+        {policy.allowed_permissions !== null ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {ENTITLEMENT_PERMISSIONS.map(([permission, label]) => (
+              <label
+                key={permission}
+                className="border-border flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={policy.allowed_permissions?.includes(permission) ?? false}
+                  onChange={(event) => {
+                    const current = policy.allowed_permissions ?? [];
+                    updatePolicy({
+                      allowed_permissions: event.target.checked
+                        ? [...new Set([...current, permission])].sort()
+                        : current.filter((value) => value !== permission),
+                    });
+                  }}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={!name.trim() || saving}>
+        <Button type="submit" disabled={!key.trim() || !name.trim() || saving}>
           {saving ? "Saving…" : "Save template"}
         </Button>
       </div>

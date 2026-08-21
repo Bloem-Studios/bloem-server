@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,11 +17,33 @@ import {
   useApplyTenantEntitlement,
   useEntitlementDryRun,
   useEntitlementTemplates,
+  useOrganizationEntitlement,
   type EntitlementDryRun,
 } from "@/hooks/queries/admin/entitlementTemplates";
 
+function safeAuditHref(organizationID: string, href: string | null) {
+  const fallback = `/admin/platform/activity?organization_id=${encodeURIComponent(organizationID)}&event=entitlement`;
+  if (!href || href.startsWith("//")) return fallback;
+  try {
+    const url = new URL(href, window.location.origin);
+    if (url.origin !== window.location.origin) return fallback;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return fallback;
+  }
+}
+
+function formatTimestamp(value: string | null) {
+  if (!value) return "Never reconciled";
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 export function OrganizationEntitlementPanel({ organizationID }: { organizationID: string }) {
   const templates = useEntitlementTemplates(false);
+  const detail = useOrganizationEntitlement(organizationID);
   const dryRun = useEntitlementDryRun(organizationID);
   const apply = useApplyTenantEntitlement(organizationID);
   const [selectedKey, setSelectedKey] = useState("");
@@ -51,6 +74,8 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
     });
     setConfirming(false);
     setAcknowledged(false);
+    setPreview(null);
+    dryRun.reset();
   }
 
   return (
@@ -59,6 +84,64 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
         <CardTitle>Tenant entitlement</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {detail.isLoading ? (
+          <p className="text-sm" role="status">
+            Loading current entitlement…
+          </p>
+        ) : detail.isError ? (
+          <p className="text-destructive text-sm" role="alert">
+            {detail.error.message}
+          </p>
+        ) : detail.data ? (
+          <div className="border-border grid gap-3 rounded-lg border p-3 text-sm sm:grid-cols-2">
+            <div>
+              <p className="text-muted-foreground text-xs">Current template</p>
+              <p className="font-medium">
+                {detail.data.template_key && detail.data.template_revision
+                  ? `${detail.data.template_key} · revision ${detail.data.template_revision}`
+                  : "No template assigned"}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Tenant limits</p>
+              <p className="font-medium">
+                {detail.data.tenant_limits.slots} slots · {detail.data.tenant_limits.transcodes}{" "}
+                transcodes
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Effective libraries</p>
+              <p className="font-medium">
+                {detail.data.library_ids.length > 0
+                  ? `Libraries ${detail.data.library_ids.join(", ")}`
+                  : "No libraries"}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Last reconciliation</p>
+              <p className="font-medium">{formatTimestamp(detail.data.last_reconciled_at)}</p>
+            </div>
+            <div className="sm:col-span-2">
+              <p className="text-muted-foreground text-xs">Managed default group</p>
+              {detail.data.managed_default_group ? (
+                <p className="font-medium">
+                  {detail.data.managed_default_group.name} ·{" "}
+                  {detail.data.managed_default_group.policy.max_streams} streams ·{" "}
+                  {detail.data.managed_default_group.policy.max_profiles} profiles ·{" "}
+                  {detail.data.managed_default_group.policy.max_transcodes} transcodes
+                </p>
+              ) : (
+                <p className="font-medium">No managed default group</p>
+              )}
+            </div>
+            <Link
+              className="underline sm:col-span-2"
+              to={safeAuditHref(organizationID, detail.data.audit_history_href)}
+            >
+              View apply history
+            </Link>
+          </div>
+        ) : null}
         <p className="text-muted-foreground text-sm">
           Preview the managed default-group changes first. Custom groups are never modified.
         </p>
@@ -81,6 +164,8 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
                 setSelectedKey(event.target.value);
                 setPreview(null);
                 setAcknowledged(false);
+                dryRun.reset();
+                apply.reset();
               }}
             >
               {(templates.data ?? []).map((template) => (
@@ -93,11 +178,16 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
         )}
         <Button
           type="button"
-          onClick={() => void previewChanges()}
+          onClick={() => void previewChanges().catch(() => undefined)}
           disabled={!selected || dryRun.isPending}
         >
           Preview changes
         </Button>
+        {dryRun.error ? (
+          <p className="text-destructive text-sm" role="alert">
+            {dryRun.error.message}
+          </p>
+        ) : null}
         {preview ? (
           <div className="border-border space-y-3 rounded-lg border p-3">
             <p className="text-sm font-medium">
@@ -143,10 +233,21 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction disabled={apply.isPending} onClick={() => void applyChanges()}>
+              <AlertDialogAction
+                disabled={apply.isPending}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void applyChanges().catch(() => undefined);
+                }}
+              >
                 Confirm apply
               </AlertDialogAction>
             </AlertDialogFooter>
+            {apply.error ? (
+              <p className="text-destructive text-sm" role="alert">
+                {apply.error.message}
+              </p>
+            ) : null}
           </AlertDialogContent>
         </AlertDialog>
       </CardContent>
