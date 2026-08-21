@@ -278,7 +278,7 @@ func TestForgottenFavorites_BasicQuery(t *testing.T) {
 	if !strings.Contains(query, "uwh.watched_at >= NOW()") {
 		t.Fatalf("expected watched_at recency filter, got:\n%s", query)
 	}
-	if !strings.Contains(query, "$3 || ' days'") {
+	if !strings.Contains(query, "$3 * INTERVAL '1 day'") {
 		t.Fatalf("expected lookback_days at $3, got:\n%s", query)
 	}
 	if !strings.Contains(query, "ORDER BY mi.rating_imdb DESC NULLS LAST") {
