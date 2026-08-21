@@ -126,6 +126,13 @@ export const ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
         href: "/admin/platform/entitlement-templates",
       },
       {
+        label: "Direct Accounts",
+        description: "Apply entitlement templates to platform-managed accounts.",
+        keywords: ["direct accounts", "entitlements", "products", "templates"],
+        icon: Users,
+        href: "/admin/platform/direct-accounts",
+      },
+      {
         label: "Dashboard",
         description: "Live sessions, content health, and server activity.",
         keywords: ["overview", "stats", "health", "scan all"],

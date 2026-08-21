@@ -19,6 +19,15 @@ import {
   useEntitlementTemplates,
   type EntitlementDryRun,
 } from "@/hooks/queries/admin/entitlementTemplates";
+import { EntitlementPolicyDetails } from "./EntitlementPolicyDetails";
+
+function formatTimestamp(value: string | null) {
+  if (!value) return "Never reconciled";
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
 
 export function AccountEntitlementPanel({ userID }: { userID: string }) {
   const templates = useEntitlementTemplates(false);
@@ -29,8 +38,11 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
   const [preview, setPreview] = useState<EntitlementDryRun | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const selected =
-    templates.data?.find((template) => template.key === selectedKey) ?? templates.data?.[0];
+  const effectiveSelectedKey = selectedKey || detail.data?.template_key || "";
+  const selected = templates.data?.find((template) => template.key === effectiveSelectedKey);
+  const currentTemplateUnavailable =
+    Boolean(detail.data?.template_key) &&
+    !templates.data?.some((template) => template.key === detail.data?.template_key);
 
   async function previewChanges() {
     if (!selected) return;
@@ -82,12 +94,15 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
                 : "No template assigned"}
             </p>
             {detail.data.managed_default_group ? (
-              <p>
-                {detail.data.managed_default_group.name} ·{" "}
-                {detail.data.managed_default_group.policy.max_streams} streams ·{" "}
-                {detail.data.managed_default_group.policy.max_profiles} profiles ·{" "}
-                {detail.data.managed_default_group.policy.max_transcodes} transcodes
-              </p>
+              <div className="space-y-2">
+                <p>
+                  {detail.data.managed_default_group.name} ·{" "}
+                  {detail.data.managed_default_group.policy.max_streams} streams ·{" "}
+                  {detail.data.managed_default_group.policy.max_profiles} profiles ·{" "}
+                  {detail.data.managed_default_group.policy.max_transcodes} transcodes
+                </p>
+                <EntitlementPolicyDetails policy={detail.data.managed_default_group.policy} />
+              </div>
             ) : (
               <p>No managed account group</p>
             )}
@@ -96,6 +111,7 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
                 ? `Libraries ${detail.data.library_ids.join(", ")}`
                 : "No libraries"}
             </p>
+            <p>Last reconciliation: {formatTimestamp(detail.data.last_reconciled_at)}</p>
           </div>
         ) : null}
         {templates.isError ? (
@@ -108,7 +124,7 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
             <select
               id={`account-template-${userID}`}
               className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-              value={selected?.key ?? ""}
+              value={effectiveSelectedKey}
               onChange={(event) => {
                 setSelectedKey(event.target.value);
                 setPreview(null);
@@ -117,6 +133,12 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
                 apply.reset();
               }}
             >
+              <option value="">Select a template</option>
+              {currentTemplateUnavailable ? (
+                <option value={detail.data?.template_key ?? ""} disabled>
+                  Current template unavailable
+                </option>
+              ) : null}
               {(templates.data ?? []).map((template) => (
                 <option key={template.key} value={template.key}>
                   {template.name} · rev {template.revision}

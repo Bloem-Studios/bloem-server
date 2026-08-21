@@ -110,6 +110,7 @@ describe("AdminSidebar", () => {
       expect(markup).toContain(`>${section}<`);
     }
     expect(markup).toContain('href="/admin/platform/organizations"');
+    expect(markup).toContain('href="/admin/platform/direct-accounts"');
     expect(markup).not.toContain('href="/admin/organization/people"');
   });
 

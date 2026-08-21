@@ -20,9 +20,10 @@ import {
   useOrganizationEntitlement,
   type EntitlementDryRun,
 } from "@/hooks/queries/admin/entitlementTemplates";
+import { EntitlementPolicyDetails } from "./EntitlementPolicyDetails";
 
 function safeAuditHref(organizationID: string, href: string | null) {
-  const fallback = `/admin/platform/activity?organization_id=${encodeURIComponent(organizationID)}&event=entitlement`;
+  const fallback = `/admin/activity?organization_id=${encodeURIComponent(organizationID)}&event=entitlement`;
   if (!href || href.startsWith("//")) return fallback;
   try {
     const url = new URL(href, window.location.origin);
@@ -50,8 +51,11 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
   const [preview, setPreview] = useState<EntitlementDryRun | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const selected =
-    templates.data?.find((template) => template.key === selectedKey) ?? templates.data?.[0];
+  const effectiveSelectedKey = selectedKey || detail.data?.template_key || "";
+  const selected = templates.data?.find((template) => template.key === effectiveSelectedKey);
+  const currentTemplateUnavailable =
+    Boolean(detail.data?.template_key) &&
+    !templates.data?.some((template) => template.key === detail.data?.template_key);
 
   async function previewChanges() {
     if (!selected) return;
@@ -124,12 +128,15 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
             <div className="sm:col-span-2">
               <p className="text-muted-foreground text-xs">Managed default group</p>
               {detail.data.managed_default_group ? (
-                <p className="font-medium">
-                  {detail.data.managed_default_group.name} ·{" "}
-                  {detail.data.managed_default_group.policy.max_streams} streams ·{" "}
-                  {detail.data.managed_default_group.policy.max_profiles} profiles ·{" "}
-                  {detail.data.managed_default_group.policy.max_transcodes} transcodes
-                </p>
+                <div className="space-y-2">
+                  <p className="font-medium">
+                    {detail.data.managed_default_group.name} ·{" "}
+                    {detail.data.managed_default_group.policy.max_streams} streams ·{" "}
+                    {detail.data.managed_default_group.policy.max_profiles} profiles ·{" "}
+                    {detail.data.managed_default_group.policy.max_transcodes} transcodes
+                  </p>
+                  <EntitlementPolicyDetails policy={detail.data.managed_default_group.policy} />
+                </div>
               ) : (
                 <p className="font-medium">No managed default group</p>
               )}
@@ -159,7 +166,7 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
             <select
               id="tenant-template"
               className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-              value={selected?.key ?? ""}
+              value={effectiveSelectedKey}
               onChange={(event) => {
                 setSelectedKey(event.target.value);
                 setPreview(null);
@@ -168,6 +175,12 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
                 apply.reset();
               }}
             >
+              <option value="">Select a template</option>
+              {currentTemplateUnavailable ? (
+                <option value={detail.data?.template_key ?? ""} disabled>
+                  Current template unavailable
+                </option>
+              ) : null}
               {(templates.data ?? []).map((template) => (
                 <option key={template.key} value={template.key}>
                   {template.name} · rev {template.revision}

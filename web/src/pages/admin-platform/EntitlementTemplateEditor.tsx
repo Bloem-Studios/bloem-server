@@ -120,7 +120,14 @@ function PolicyCheckbox({
   );
 }
 
-export function EntitlementTemplateEditor({
+export function EntitlementTemplateEditor(props: EntitlementTemplateEditorProps) {
+  const identity = props.template
+    ? `${props.template.key}:${props.template.revision}`
+    : "new-template";
+  return <EntitlementTemplateEditorForm key={identity} {...props} />;
+}
+
+function EntitlementTemplateEditorForm({
   libraries,
   template,
   onSave,

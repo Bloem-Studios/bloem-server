@@ -39,6 +39,13 @@ const standard = {
   },
 };
 
+const premium = {
+  ...standard,
+  key: "premium",
+  name: "Premium",
+  revision: 5,
+};
+
 function renderWithQuery(node: React.ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -200,6 +207,25 @@ describe("EntitlementTemplateEditor", () => {
       }),
     );
   });
+
+  it("resets a draft when the same template advances to a new revision", async () => {
+    const save = vi.fn();
+    const { rerender } = render(
+      <EntitlementTemplateEditor libraries={[]} template={standard} onSave={save} />,
+    );
+
+    await userEvent.setup().clear(screen.getByLabelText("Name"));
+    await userEvent.setup().type(screen.getByLabelText("Name"), "Unsaved draft");
+    rerender(
+      <EntitlementTemplateEditor
+        libraries={[]}
+        template={{ ...standard, revision: 4, name: "Standard restored" }}
+        onSave={save}
+      />,
+    );
+
+    expect(screen.getByLabelText("Name")).toHaveValue("Standard restored");
+  });
 });
 
 describe("EntitlementTemplatesPage", () => {
@@ -349,20 +375,24 @@ describe("OrganizationEntitlementPanel", () => {
           audit_history_href: "https://attacker.example/audit",
         } as never;
       }
-      if (init?.method === "GET" || !init) return { templates: [standard] } as never;
+      if (init?.method === "GET" || !init) return { templates: [premium, standard] } as never;
       return {} as never;
     });
     renderWithQuery(<OrganizationEntitlementPanel organizationID="org-1" />);
 
     expect(await screen.findByText("standard · revision 2")).toBeInTheDocument();
+    expect(screen.getByLabelText("Template")).toHaveValue("standard");
     expect(screen.getByText("25 slots · 4 transcodes")).toBeInTheDocument();
     expect(screen.getByText("Libraries 8, 9")).toBeInTheDocument();
     expect(screen.getByText(/2 streams · 5 profiles/)).toBeInTheDocument();
     expect(screen.getByText(/Aug 21/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View apply history" })).toHaveAttribute(
       "href",
-      "/admin/platform/activity?organization_id=org-1&event=entitlement",
+      "/admin/activity?organization_id=org-1&event=entitlement",
     );
+    expect(screen.getByText("Playback allowed")).toBeInTheDocument();
+    expect(screen.getByText("Original downloads allowed")).toBeInTheDocument();
+    expect(screen.getByText("Permissions unrestricted")).toBeInTheDocument();
 
     await user.click(await screen.findByRole("button", { name: "Preview changes" }));
     expect(await screen.findByText("max_streams")).toBeInTheDocument();
@@ -416,13 +446,18 @@ describe("AccountEntitlementPanel", () => {
           last_reconciled_at: "2026-08-21T14:15:00Z",
         } as never;
       }
-      return { templates: [standard] } as never;
+      return { templates: [premium, standard] } as never;
     });
 
     renderWithQuery(<AccountEntitlementPanel userID="42" />);
 
     expect(await screen.findByText("standard · revision 2")).toBeInTheDocument();
+    expect(screen.getByLabelText("Template")).toHaveValue("standard");
     expect(screen.getByText(/Custom profile groups are never modified/)).toBeInTheDocument();
+    expect(screen.getByText("Playback allowed")).toBeInTheDocument();
+    expect(screen.getByText("Transcoded downloads allowed")).toBeInTheDocument();
+    expect(screen.getByText("Permissions unrestricted")).toBeInTheDocument();
+    expect(screen.getByText(/Aug 21/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Preview account changes" }));
     await user.click(await screen.findByRole("checkbox", { name: /managed account group/i }));
     await user.click(screen.getByRole("button", { name: "Apply to account" }));
@@ -434,5 +469,26 @@ describe("AccountEntitlementPanel", () => {
         .mock.calls.some(([path]) => String(path).endsWith("/users/42/entitlement/apply")),
     ).toBe(true);
     expect(screen.queryByText("max_streams")).not.toBeInTheDocument();
+  });
+
+  it("requires an explicit template choice when the account has no current mapping", async () => {
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (String(path).endsWith("/users/42/entitlement")) {
+        return {
+          template_key: null,
+          template_revision: null,
+          managed_default_group: null,
+          library_ids: [],
+          last_reconciled_at: null,
+        } as never;
+      }
+      return { templates: [premium, standard] } as never;
+    });
+
+    renderWithQuery(<AccountEntitlementPanel userID="42" />);
+
+    expect(await screen.findByRole("option", { name: "Select a template" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Template")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Preview account changes" })).toBeDisabled();
   });
 });
