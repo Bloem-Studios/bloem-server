@@ -164,10 +164,16 @@ type Progress struct {
 }
 
 // Dismissal is one active Continue-Watching dismissal for the requesting
-// profile. ProgressUpdatedAt is the raw progress timestamp captured at the
-// moment of dismissal — a dismissal only holds while the item's current
-// progress carries that same instant; a later update (the item was resumed)
-// means the dismissal no longer applies.
+// profile. ContentID is the identifier the client dismissed by — for a movie
+// or series-root row this is the item's own content identifier, and for an
+// episode-level Continue Watching entry this is the episode's own identifier
+// (the established v1 convention this surface already serves: the dismiss
+// route's {item_id} is keyed by whatever id the client used to display the
+// row, which for an episode row is the episode itself, not its series).
+// ProgressUpdatedAt is the raw progress timestamp captured at the moment of
+// dismissal — a dismissal only holds while the item's current progress
+// carries that same instant; a later update (the item was resumed) means the
+// dismissal no longer applies.
 type Dismissal struct {
 	ContentID         string
 	ProgressUpdatedAt string
@@ -744,21 +750,32 @@ func filterDismissedProgress(ctx context.Context, reader Reader, scope ProfileSc
 		return rows
 	}
 
-	byContentID := make(map[string]time.Time, len(dismissals))
+	// Dismissals are keyed by the identifier the client dismissed by, which for
+	// an episode-level row is the episode's own id, not the series id it is
+	// filed under (see Dismissal's own documentation). Progress rows are keyed
+	// the same way here so the two agree: an episode row matches on EpisodeID,
+	// and a movie or series-root row — which has no EpisodeID — falls back to
+	// ContentID. Keying by episode id also means two dismissed episodes of the
+	// same series get two distinct map entries rather than collapsing into one.
+	byDismissalID := make(map[string]time.Time, len(dismissals))
 	for _, dismissal := range dismissals {
 		parsed, err := time.Parse(time.RFC3339, dismissal.ProgressUpdatedAt)
 		if err != nil {
 			continue
 		}
-		byContentID[dismissal.ContentID] = parsed
+		byDismissalID[dismissal.ContentID] = parsed
 	}
-	if len(byContentID) == 0 {
+	if len(byDismissalID) == 0 {
 		return rows
 	}
 
 	filtered := make([]DocumentProgress, 0, len(rows))
 	for _, row := range rows {
-		dismissedAt, dismissed := byContentID[row.ContentID]
+		dismissalKey := row.EpisodeID
+		if dismissalKey == "" {
+			dismissalKey = row.ContentID
+		}
+		dismissedAt, dismissed := byDismissalID[dismissalKey]
 		if !dismissed {
 			filtered = append(filtered, row)
 			continue

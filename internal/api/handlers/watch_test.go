@@ -501,12 +501,17 @@ type filteredProgressCall struct {
 // slip in untested.
 type fakeWatchStore struct {
 	userstore.UserStore
-	direct   map[string]userstore.WatchProgress
-	filtered []userstore.WatchProgress
+	direct     map[string]userstore.WatchProgress
+	filtered   []userstore.WatchProgress
+	dismissals []userstore.HomeItemDismissal
 
 	directCalls     [][]string
 	filteredCalls   []filteredProgressCall
 	unfilteredCalls int
+}
+
+func (s *fakeWatchStore) ListHomeDismissals(_ context.Context, _, _ string) ([]userstore.HomeItemDismissal, error) {
+	return s.dismissals, nil
 }
 
 func (s *fakeWatchStore) ListProgressByMediaItems(_ context.Context, _ string, mediaItemIDs []string) (map[string]userstore.WatchProgress, error) {
@@ -868,6 +873,43 @@ func TestWatchReaderUnionsInProgressItemsIntoTheHomeSet(t *testing.T) {
 	}
 	if browse.filters.Limit != watchHomeItemLimit {
 		t.Errorf("browse limit = %d, want %d", browse.filters.Limit, watchHomeItemLimit)
+	}
+}
+
+func TestWatchReaderDismissalsCarriesTheDismissedMediaItemIDAsContentID(t *testing.T) {
+	reader, _, _, _, _, store := newWatchReaderFixture(t)
+	// A dismissal is keyed by whatever id the client dismissed by. For an
+	// episode-level Continue Watching row that is the episode's own media item
+	// id, not the series it is filed under (SeriesID is only ever a secondary,
+	// informational field on the stored row) — the id watchdoc.Dismissal.ContentID
+	// must carry through so filterDismissedProgress can match it against an
+	// episode progress row's EpisodeID.
+	seriesID := "8080"
+	progressUpdatedAt := "2026-08-13T11:50:00Z"
+	store.dismissals = []userstore.HomeItemDismissal{
+		{
+			ProfileID:         "p",
+			Surface:           userstore.HomeSurfaceContinueWatching,
+			MediaItemID:       "8080-s01e01",
+			SeriesID:          &seriesID,
+			ProgressUpdatedAt: &progressUpdatedAt,
+			DismissedAt:       "2026-08-13T12:00:00Z",
+		},
+	}
+
+	dismissals, err := reader.Dismissals(context.Background(), watchdoc.ProfileScope{ProfileID: "p"})
+	if err != nil {
+		t.Fatalf("read dismissals: %v", err)
+	}
+	if len(dismissals) != 1 {
+		t.Fatalf("dismissals = %#v, want one", dismissals)
+	}
+	got := dismissals[0]
+	if got.ContentID != "8080-s01e01" {
+		t.Errorf("ContentID = %q, want the dismissed episode's own media item id %q, not its series %q", got.ContentID, "8080-s01e01", seriesID)
+	}
+	if got.ProgressUpdatedAt != progressUpdatedAt {
+		t.Errorf("ProgressUpdatedAt = %q, want %q", got.ProgressUpdatedAt, progressUpdatedAt)
 	}
 }
 

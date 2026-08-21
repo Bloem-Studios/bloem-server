@@ -1258,3 +1258,49 @@ func TestComposeHomeDegradesToUnfilteredWhenDismissalsFails(t *testing.T) {
 		t.Fatal("expected progress to remain unfiltered when the dismissal lookup itself failed")
 	}
 }
+
+func TestComposeHomeFiltersAnEpisodeLevelDismissalByEpisodeID(t *testing.T) {
+	reader := inventedWorld(t)
+	// inventedWorld's episode-level progress row is series "8080", episode
+	// "8080-s01e02", UpdatedAt "2026-08-13T11:50:00Z". A client dismisses a
+	// Continue Watching row by the id it displayed the row under, which for an
+	// episode-level entry is the episode's own id — not the series id it is
+	// filed under.
+	reader.dismissals = []watchdoc.Dismissal{{
+		ContentID: "8080-s01e02", ProgressUpdatedAt: "2026-08-13T11:50:00Z",
+	}}
+
+	doc, err := watchdoc.ComposeHome(context.Background(), reader, watchdoc.ProfileScope{UserID: 7, ProfileID: "profile-invented"})
+	if err != nil {
+		t.Fatalf("ComposeHome: %v", err)
+	}
+	for _, row := range doc.Progress {
+		if row.ContentID == "8080" && row.EpisodeID == "8080-s01e02" {
+			t.Fatalf("expected the episode's progress to be filtered by its own-id dismissal, found: %+v", row)
+		}
+	}
+}
+
+func TestComposeHomeDoesNotFilterAnEpisodeOnASeriesIDDismissal(t *testing.T) {
+	reader := inventedWorld(t)
+	// A dismissal keyed by the series id — the wrong id for an episode-level
+	// row — must not filter the episode's progress. Only a dismissal by the
+	// episode's own id (proven above) may do that.
+	reader.dismissals = []watchdoc.Dismissal{{
+		ContentID: "8080", ProgressUpdatedAt: "2026-08-13T11:50:00Z",
+	}}
+
+	doc, err := watchdoc.ComposeHome(context.Background(), reader, watchdoc.ProfileScope{UserID: 7, ProfileID: "profile-invented"})
+	if err != nil {
+		t.Fatalf("ComposeHome: %v", err)
+	}
+	found := false
+	for _, row := range doc.Progress {
+		if row.ContentID == "8080" && row.EpisodeID == "8080-s01e02" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected the episode's progress to survive a dismissal keyed by the series id, not the episode id")
+	}
+}
