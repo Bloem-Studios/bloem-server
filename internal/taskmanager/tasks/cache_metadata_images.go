@@ -17,9 +17,12 @@ const (
 	// Claim only work that can start immediately. Claiming a large queue page
 	// stamps one lease on every row up front; with a smaller worker count, the
 	// unstarted tail could expire and be reclaimed before this execution
-	// reaches it. Matches upstream Silo Server's worker count.
-	cacheMetadataImagesClaimLimit = 12
-	cacheMetadataImagesWorkers    = 12
+	// reaches it. Higher than upstream Silo Server's 12 to clear a large
+	// existing backlog faster; database.max_connections was raised alongside
+	// it (see server_settings) since this alone would otherwise exceed the
+	// default pool.
+	cacheMetadataImagesClaimLimit = 24
+	cacheMetadataImagesWorkers    = 24
 	cacheMetadataImagesMaxRuntime = 10 * time.Minute
 )
 
