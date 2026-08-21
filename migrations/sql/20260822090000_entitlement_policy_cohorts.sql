@@ -67,7 +67,13 @@ CREATE TABLE public.entitlement_policy_cohort_revisions (
     CONSTRAINT entitlement_policy_cohort_revisions_id_organization_key
         UNIQUE (id, organization_id),
     CONSTRAINT entitlement_policy_cohort_revisions_marker_key
-        UNIQUE (id, organization_id, source_template_key, source_template_revision),
+        UNIQUE (
+            id,
+            organization_id,
+            access_group_id,
+            source_template_key,
+            source_template_revision
+        ),
     CONSTRAINT entitlement_policy_cohort_revisions_derivation
         CHECK (
             (derivation_kind = 'exact_template' AND parent_id IS NULL) OR
@@ -101,17 +107,167 @@ ALTER TABLE public.access_groups
     FOREIGN KEY (
         managed_cohort_id,
         organization_id,
+        id,
         managed_template_key,
         managed_template_revision
     )
     REFERENCES public.entitlement_policy_cohort_revisions (
         id,
         organization_id,
+        access_group_id,
         source_template_key,
         source_template_revision
     )
     ON DELETE RESTRICT
     DEFERRABLE INITIALLY DEFERRED;
+
+CREATE UNIQUE INDEX access_groups_managed_cohort_revision_idx
+    ON public.access_groups (managed_cohort_id)
+    WHERE managed_cohort_id IS NOT NULL;
+
+CREATE FUNCTION public.normalize_entitlement_policy_playback_quality(value text)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+    SELECT CASE upper(btrim(COALESCE(value, '')))
+        WHEN '' THEN ''
+        WHEN 'ANY' THEN ''
+        WHEN 'STANDARD' THEN '1080p'
+        WHEN '480P' THEN '1080p'
+        WHEN '720P' THEN '1080p'
+        WHEN '1080P' THEN '1080p'
+        WHEN '4K' THEN '2160p'
+        WHEN 'UHD' THEN '2160p'
+        WHEN '2160P' THEN '2160p'
+        WHEN '4320P' THEN '2160p'
+        ELSE ''
+    END
+$$;
+
+CREATE FUNCTION public.enforce_access_group_cohort_revision_coherence()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NEW.managed_cohort_id IS NULL THEN
+        IF EXISTS (
+            SELECT 1
+            FROM public.entitlement_policy_cohort_revisions r
+            WHERE r.organization_id = NEW.organization_id
+              AND r.access_group_id = NEW.id
+        ) THEN
+            RAISE EXCEPTION 'cohort revision access group must retain its managed marker'
+                USING ERRCODE = '23514';
+        END IF;
+        RETURN NEW;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.entitlement_policy_cohort_revisions r
+        WHERE r.id = NEW.managed_cohort_id
+          AND r.organization_id = NEW.organization_id
+          AND r.access_group_id = NEW.id
+          AND r.source_template_key = NEW.managed_template_key
+          AND r.source_template_revision = NEW.managed_template_revision
+          AND r.library_ids <@ NEW.library_ids
+          AND r.library_ids @> NEW.library_ids
+          AND r.playback_allowed IS NOT DISTINCT FROM NEW.playback_allowed
+          AND r.max_streams IS NOT DISTINCT FROM NEW.max_streams
+          AND r.max_profiles IS NOT DISTINCT FROM NEW.max_profiles
+          AND r.transcode_allowed IS NOT DISTINCT FROM NEW.transcode_allowed
+          AND r.max_transcodes IS NOT DISTINCT FROM NEW.max_transcodes
+          AND r.download_allowed IS NOT DISTINCT FROM NEW.download_allowed
+          AND r.download_transcode_allowed IS NOT DISTINCT FROM NEW.download_transcode_allowed
+          AND public.normalize_entitlement_policy_playback_quality(r.max_playback_quality) =
+              public.normalize_entitlement_policy_playback_quality(NEW.max_playback_quality)
+          AND (
+              (r.allowed_permissions IS NULL AND NEW.allowed_permissions IS NULL) OR
+              (
+                  r.allowed_permissions IS NOT NULL AND
+                  NEW.allowed_permissions IS NOT NULL AND
+                  r.allowed_permissions <@ NEW.allowed_permissions AND
+                  r.allowed_permissions @> NEW.allowed_permissions
+              )
+          )
+          AND r.requests_allowed IS NOT DISTINCT FROM NEW.requests_allowed
+    ) THEN
+        RAISE EXCEPTION 'managed cohort marker must match its immutable revision and policy'
+            USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER access_groups_managed_cohort_coherence
+AFTER INSERT OR UPDATE OF
+    managed_cohort_id,
+    organization_id,
+    managed_template_key,
+    managed_template_revision,
+    library_ids,
+    playback_allowed,
+    max_streams,
+    max_profiles,
+    transcode_allowed,
+    max_transcodes,
+    download_allowed,
+    download_transcode_allowed,
+    max_playback_quality,
+    allowed_permissions,
+    requests_allowed
+ON public.access_groups
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION public.enforce_access_group_cohort_revision_coherence();
+
+CREATE FUNCTION public.enforce_cohort_revision_access_group_coherence()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.access_groups g
+        WHERE g.organization_id = NEW.organization_id
+          AND g.id = NEW.access_group_id
+          AND g.managed_cohort_id = NEW.id
+          AND g.managed_template_key = NEW.source_template_key
+          AND g.managed_template_revision = NEW.source_template_revision
+          AND g.library_ids <@ NEW.library_ids
+          AND g.library_ids @> NEW.library_ids
+          AND g.playback_allowed IS NOT DISTINCT FROM NEW.playback_allowed
+          AND g.max_streams IS NOT DISTINCT FROM NEW.max_streams
+          AND g.max_profiles IS NOT DISTINCT FROM NEW.max_profiles
+          AND g.transcode_allowed IS NOT DISTINCT FROM NEW.transcode_allowed
+          AND g.max_transcodes IS NOT DISTINCT FROM NEW.max_transcodes
+          AND g.download_allowed IS NOT DISTINCT FROM NEW.download_allowed
+          AND g.download_transcode_allowed IS NOT DISTINCT FROM NEW.download_transcode_allowed
+          AND public.normalize_entitlement_policy_playback_quality(g.max_playback_quality) =
+              public.normalize_entitlement_policy_playback_quality(NEW.max_playback_quality)
+          AND (
+              (g.allowed_permissions IS NULL AND NEW.allowed_permissions IS NULL) OR
+              (
+                  g.allowed_permissions IS NOT NULL AND
+                  NEW.allowed_permissions IS NOT NULL AND
+                  g.allowed_permissions <@ NEW.allowed_permissions AND
+                  g.allowed_permissions @> NEW.allowed_permissions
+              )
+          )
+          AND g.requests_allowed IS NOT DISTINCT FROM NEW.requests_allowed
+    ) THEN
+        RAISE EXCEPTION 'cohort revision must have one matching managed access group'
+            USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER entitlement_policy_cohort_revision_group_coherence
+AFTER INSERT ON public.entitlement_policy_cohort_revisions
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION public.enforce_cohort_revision_access_group_coherence();
 
 CREATE UNIQUE INDEX entitlement_policy_cohort_exact_template_idx
     ON public.entitlement_policy_cohort_revisions (
@@ -162,6 +318,15 @@ END;
 $$;
 
 DROP INDEX IF EXISTS public.access_groups_unadopted_template_revision_per_organization_idx;
+
+DROP TRIGGER IF EXISTS entitlement_policy_cohort_revision_group_coherence
+    ON public.entitlement_policy_cohort_revisions;
+DROP FUNCTION IF EXISTS public.enforce_cohort_revision_access_group_coherence();
+DROP TRIGGER IF EXISTS access_groups_managed_cohort_coherence
+    ON public.access_groups;
+DROP FUNCTION IF EXISTS public.enforce_access_group_cohort_revision_coherence();
+DROP FUNCTION IF EXISTS public.normalize_entitlement_policy_playback_quality(text);
+DROP INDEX IF EXISTS public.access_groups_managed_cohort_revision_idx;
 
 ALTER TABLE public.access_groups
     DROP CONSTRAINT IF EXISTS access_groups_managed_cohort_source_fkey,

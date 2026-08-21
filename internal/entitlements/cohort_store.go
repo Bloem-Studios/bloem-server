@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/permissioncatalog"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -453,8 +454,14 @@ func patchIntegerSet(current []int, patch IntegerSetPatch) ([]int, error) {
 func patchStringSet(current []string, patch StringSetPatch) ([]string, error) {
 	switch strings.TrimSpace(patch.Mode) {
 	case PolicySetAdd:
+		if current == nil {
+			return nil, nil
+		}
 		return append(append([]string{}, current...), patch.Values...), nil
 	case PolicySetRemove:
+		if current == nil {
+			current = permissioncatalog.Assignable()
+		}
 		removed := make(map[string]struct{}, len(patch.Values))
 		for _, value := range patch.Values {
 			removed[strings.TrimSpace(value)] = struct{}{}

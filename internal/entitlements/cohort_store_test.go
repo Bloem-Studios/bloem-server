@@ -2,6 +2,7 @@ package entitlements_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -30,6 +31,25 @@ func TestEnsureExactCohortAdoptsManagedGroupWithoutPolicyDrift(t *testing.T) {
 	require.Equal(t, int64(1), cohort.SourceTemplateRevision)
 	require.Equal(t, "exact_template", cohort.DerivationKind)
 	require.Equal(t, before, fixture.snapshotGroup(cohort.AccessGroupID))
+}
+
+func TestEnsureExactCohortAdoptsSemanticallyEquivalentNoncanonicalGroupWithoutDrift(t *testing.T) {
+	fixture := newCohortFixture(t)
+	_, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE access_groups
+		SET library_ids=ARRAY[2,1,2]::integer[],
+		    max_playback_quality='standard',
+		    allowed_permissions=ARRAY['metadata_curation','marker_edit','marker_edit']::text[]
+		WHERE organization_id=$1 AND id=$2`, fixture.organizationID, fixture.managedGroupID)
+	require.NoError(t, err)
+	before := fixture.snapshotGroup(fixture.managedGroupID)
+
+	cohort, _ := fixture.ensureExact(t)
+
+	require.Equal(t, before, fixture.snapshotGroup(fixture.managedGroupID))
+	require.Equal(t, []int{1, 2}, cohort.Policy.LibraryIDs)
+	require.Equal(t, "1080p", cohort.Policy.MaxPlaybackQuality)
+	require.Equal(t, []string{"marker_edit", "metadata_curation"}, cohort.Policy.AllowedPermissions)
 }
 
 func TestEnsureExactCohortConvergesOnOneRevision(t *testing.T) {
@@ -160,6 +180,184 @@ func TestDeriveCohortPreservesExplicitEmptySetsAcrossEmptyAddPatch(t *testing.T)
 	if child.Policy.AllowedPermissions == nil || len(child.Policy.AllowedPermissions) != 0 {
 		t.Fatalf("allowed_permissions = %#v, want explicit empty set", child.Policy.AllowedPermissions)
 	}
+}
+
+func TestDeriveCohortPermissionPatchFromUnrestrictedUsesSetSemantics(t *testing.T) {
+	fixture := newCohortFixture(t)
+	parent, _ := fixture.ensureExact(t)
+	if parent.Policy.AllowedPermissions != nil {
+		t.Fatalf("parent permissions = %#v, want unrestricted", parent.Policy.AllowedPermissions)
+	}
+
+	added, _ := fixture.derive(t, parent.ID, "Unrestricted permissions add", entitlements.PolicyPatch{
+		AllowedPermissions: &entitlements.StringSetPatch{
+			Mode: entitlements.PolicySetAdd, Values: []string{"marker_edit"},
+		},
+	})
+	if added.Policy.AllowedPermissions != nil {
+		t.Fatalf("permissions after add = %#v, want unrestricted", added.Policy.AllowedPermissions)
+	}
+
+	removed, _ := fixture.derive(t, parent.ID, "Unrestricted permissions remove", entitlements.PolicyPatch{
+		AllowedPermissions: &entitlements.StringSetPatch{
+			Mode: entitlements.PolicySetRemove, Values: []string{"marker_edit"},
+		},
+	})
+	require.Equal(t, []string{"metadata_curation"}, removed.Policy.AllowedPermissions)
+}
+
+func TestDeriveCohortPolicyPatchMatrix(t *testing.T) {
+	fixture := newCohortFixture(t)
+	firstLibraryID := insertEntitlementLibrary(t, fixture.ctx, fixture.pool, "cohort-matrix-first-"+uuid.NewString(), true)
+	secondLibraryID := insertEntitlementLibrary(t, fixture.ctx, fixture.pool, "cohort-matrix-second-"+uuid.NewString(), true)
+	_, err := fixture.store.ApplyTemplate(fixture.ctx, fixture.organizationID, "standard", 1, false)
+	require.NoError(t, err)
+	parent, _ := fixture.ensureExact(t)
+	thirdLibraryID := insertEntitlementLibrary(t, fixture.ctx, fixture.pool, "cohort-matrix-third-"+uuid.NewString(), true)
+
+	addedLibraries, _ := fixture.derive(t, parent.ID, "Matrix libraries add", entitlements.PolicyPatch{
+		LibraryIDs: &entitlements.IntegerSetPatch{Mode: entitlements.PolicySetAdd, Values: []int{thirdLibraryID}},
+	})
+	wantAddedLibraries := append(slices.Clone(parent.Policy.LibraryIDs), thirdLibraryID)
+	slices.Sort(wantAddedLibraries)
+	require.Equal(t, wantAddedLibraries, addedLibraries.Policy.LibraryIDs)
+
+	removedLibraries, _ := fixture.derive(t, parent.ID, "Matrix libraries remove", entitlements.PolicyPatch{
+		LibraryIDs: &entitlements.IntegerSetPatch{Mode: entitlements.PolicySetRemove, Values: []int{firstLibraryID}},
+	})
+	wantRemovedLibraries := make([]int, 0, len(parent.Policy.LibraryIDs)-1)
+	for _, libraryID := range parent.Policy.LibraryIDs {
+		if libraryID != firstLibraryID {
+			wantRemovedLibraries = append(wantRemovedLibraries, libraryID)
+		}
+	}
+	require.Equal(t, wantRemovedLibraries, removedLibraries.Policy.LibraryIDs)
+
+	replacedLibraries, _ := fixture.derive(t, parent.ID, "Matrix libraries replace", entitlements.PolicyPatch{
+		LibraryIDs: &entitlements.IntegerSetPatch{
+			Mode: entitlements.PolicySetReplace, Values: []int{thirdLibraryID, secondLibraryID, thirdLibraryID},
+		},
+	})
+	require.Equal(t, []int{secondLibraryID, thirdLibraryID}, replacedLibraries.Policy.LibraryIDs)
+
+	allLibraries, _ := fixture.derive(t, parent.ID, "Matrix libraries all", entitlements.PolicyPatch{
+		LibraryIDs: &entitlements.IntegerSetPatch{Mode: entitlements.PolicyLibrariesAll},
+	})
+	require.Equal(t, entitlementEnabledLibraryIDs(t, fixture.ctx, fixture.pool), allLibraries.Policy.LibraryIDs)
+
+	noLibraries, _ := fixture.derive(t, parent.ID, "Matrix libraries none", entitlements.PolicyPatch{
+		LibraryIDs: &entitlements.IntegerSetPatch{Mode: entitlements.PolicyLibrariesNone},
+	})
+	if noLibraries.Policy.LibraryIDs == nil || len(noLibraries.Policy.LibraryIDs) != 0 {
+		t.Fatalf("none libraries = %#v, want explicit empty set", noLibraries.Policy.LibraryIDs)
+	}
+
+	restrictedPermissions, _ := fixture.derive(t, parent.ID, "Matrix permissions replace", entitlements.PolicyPatch{
+		AllowedPermissions: &entitlements.StringSetPatch{
+			Mode: entitlements.PolicySetReplace, Values: []string{"marker_edit"},
+		},
+	})
+	require.Equal(t, []string{"marker_edit"}, restrictedPermissions.Policy.AllowedPermissions)
+
+	addedPermissions, _ := fixture.derive(t, restrictedPermissions.ID, "Matrix permissions add", entitlements.PolicyPatch{
+		AllowedPermissions: &entitlements.StringSetPatch{
+			Mode: entitlements.PolicySetAdd, Values: []string{"metadata_curation", "marker_edit"},
+		},
+	})
+	require.Equal(t, []string{"marker_edit", "metadata_curation"}, addedPermissions.Policy.AllowedPermissions)
+
+	removedPermissions, _ := fixture.derive(t, addedPermissions.ID, "Matrix permissions remove", entitlements.PolicyPatch{
+		AllowedPermissions: &entitlements.StringSetPatch{
+			Mode: entitlements.PolicySetRemove, Values: []string{"marker_edit"},
+		},
+	})
+	require.Equal(t, []string{"metadata_curation"}, removedPermissions.Policy.AllowedPermissions)
+
+	unrestrictedPermissions, _ := fixture.derive(t, restrictedPermissions.ID, "Matrix permissions unrestricted", entitlements.PolicyPatch{
+		AllowedPermissions: &entitlements.StringSetPatch{Mode: entitlements.PolicySetUnrestricted},
+	})
+	if unrestrictedPermissions.Policy.AllowedPermissions != nil {
+		t.Fatalf("unrestricted permissions = %#v, want nil", unrestrictedPermissions.Policy.AllowedPermissions)
+	}
+
+	playbackDisabled := false
+	zero := 0
+	playbackPolicy, _ := fixture.derive(t, parent.ID, "Matrix playback", entitlements.PolicyPatch{
+		PlaybackAllowed:          &playbackDisabled,
+		MaxStreams:               &zero,
+		TranscodeAllowed:         &playbackDisabled,
+		MaxTranscodes:            &zero,
+		DownloadAllowed:          &playbackDisabled,
+		DownloadTranscodeAllowed: &playbackDisabled,
+	})
+	require.False(t, playbackPolicy.Policy.PlaybackAllowed)
+	require.False(t, playbackPolicy.Policy.TranscodeAllowed)
+	require.False(t, playbackPolicy.Policy.DownloadAllowed)
+	require.False(t, playbackPolicy.Policy.DownloadTranscodeAllowed)
+	require.Equal(t, 0, playbackPolicy.Policy.MaxStreams)
+	require.Equal(t, 0, playbackPolicy.Policy.MaxTranscodes)
+
+	requestsDisabled := false
+	requestPolicy, _ := fixture.derive(t, parent.ID, "Matrix requests", entitlements.PolicyPatch{
+		RequestsAllowed: &requestsDisabled,
+	})
+	require.False(t, requestPolicy.Policy.RequestsAllowed)
+
+	maxStreams, maxProfiles, maxTranscodes := 7, 9, 2
+	quality := "2160p"
+	limitPolicy, _ := fixture.derive(t, parent.ID, "Matrix limits and quality", entitlements.PolicyPatch{
+		MaxStreams:         &maxStreams,
+		MaxProfiles:        &maxProfiles,
+		MaxTranscodes:      &maxTranscodes,
+		MaxPlaybackQuality: &quality,
+	})
+	require.Equal(t, 7, limitPolicy.Policy.MaxStreams)
+	require.Equal(t, 9, limitPolicy.Policy.MaxProfiles)
+	require.Equal(t, 2, limitPolicy.Policy.MaxTranscodes)
+	require.Equal(t, "2160p", limitPolicy.Policy.MaxPlaybackQuality)
+}
+
+func TestApplyAccountTemplateDoesNotReuseOrMutateDerivedCohortGroup(t *testing.T) {
+	fixture := newCohortFixture(t)
+	parent, _ := fixture.ensureExact(t)
+	maxStreams := parent.Policy.MaxStreams + 1
+	derived, _ := fixture.derive(t, parent.ID, "Derived account apply guard", entitlements.PolicyPatch{
+		MaxStreams: &maxStreams,
+	})
+	before := fixture.snapshotGroup(derived.AccessGroupID)
+
+	result, err := fixture.store.ApplyAccountTemplate(
+		fixture.ctx,
+		fixture.organizationID,
+		fixture.actorID,
+		parent.SourceTemplateKey,
+		parent.SourceTemplateRevision,
+		false,
+	)
+	require.NoError(t, err)
+	if result.GroupID == derived.AccessGroupID {
+		t.Fatalf("template apply reused derived cohort group %d", derived.AccessGroupID)
+	}
+	require.Equal(t, before, fixture.snapshotGroup(derived.AccessGroupID))
+}
+
+func TestApplyTenantTemplateRefusesToMutateCohortManagedDefault(t *testing.T) {
+	fixture := newCohortFixture(t)
+	cohort, _ := fixture.ensureExact(t)
+	before := fixture.snapshotGroup(cohort.AccessGroupID)
+	insertEntitlementLibrary(t, fixture.ctx, fixture.pool, "cohort-apply-guard-"+uuid.NewString(), true)
+
+	_, err := fixture.store.ApplyTemplate(
+		fixture.ctx,
+		fixture.organizationID,
+		cohort.SourceTemplateKey,
+		cohort.SourceTemplateRevision,
+		false,
+	)
+	if err == nil {
+		t.Fatal("tenant template apply succeeded, want protected cohort-group rejection")
+	}
+	require.Equal(t, before, fixture.snapshotGroup(cohort.AccessGroupID))
 }
 
 func TestCohortLookupIsOrganizationScopedAndArchiveAware(t *testing.T) {

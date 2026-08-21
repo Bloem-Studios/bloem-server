@@ -40,6 +40,9 @@ var (
 	ErrTenantNotFound = errors.New("entitlements: tenant not found")
 	// ErrAccountNotFound reports an account outside the asserted organization.
 	ErrAccountNotFound = errors.New("entitlements: account not found")
+	// ErrCohortManagedGroup reports an attempt by a legacy template apply path
+	// to rewrite an access group owned by an immutable cohort revision.
+	ErrCohortManagedGroup = errors.New("entitlements: access group is managed by an immutable cohort")
 )
 
 var templateKeyPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,127}$`)
@@ -457,6 +460,7 @@ func applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organizationID uui
 		       allowed_permissions, requests_allowed
 		FROM access_groups
 		WHERE organization_id=$1 AND managed_template_key=$2 AND managed_template_revision=$3
+		  AND managed_cohort_id IS NULL
 		  AND NOT is_default
 		FOR UPDATE`, organizationID, template.Key, template.Revision).Scan(
 		&result.GroupID, &targetPolicy.LibraryIDs, &targetPolicy.PlaybackAllowed,
@@ -526,7 +530,8 @@ func applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organizationID uui
 			UPDATE access_groups SET library_ids=$4,max_playback_quality=$5,playback_allowed=$6,
 				download_allowed=$7,download_transcode_allowed=$8,max_streams=$9,max_profiles=$10,
 				transcode_allowed=$11,max_transcodes=$12,allowed_permissions=$13,requests_allowed=$14,updated_at=now()
-			WHERE organization_id=$1 AND id=$2 AND managed_template_key=$3`,
+			WHERE organization_id=$1 AND id=$2 AND managed_template_key=$3
+			  AND managed_cohort_id IS NULL`,
 			organizationID, result.GroupID, template.Key, effectivePolicy.LibraryIDs,
 			effectivePolicy.MaxPlaybackQuality, effectivePolicy.PlaybackAllowed,
 			effectivePolicy.DownloadAllowed, effectivePolicy.DownloadTranscodeAllowed,
@@ -976,13 +981,16 @@ func ApplyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, key s
 	} else {
 		result.Changed = true
 	}
+	if group != nil && group.ManagedCohortID != nil && result.Changed {
+		return ApplyResult{}, ErrCohortManagedGroup
+	}
 	if dryRun || !result.Changed {
 		return result, nil
 	}
 
 	if _, err := tx.Exec(ctx, `
 		UPDATE access_groups SET is_default=false, updated_at=now()
-		WHERE organization_id=$1 AND is_default`, tenantID); err != nil {
+		WHERE organization_id=$1 AND is_default AND managed_cohort_id IS NULL`, tenantID); err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: clear previous tenant default: %w", err)
 	}
 	if group == nil {
@@ -1019,7 +1027,7 @@ func ApplyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, key s
 			    allowed_permissions=$12, requests_allowed=$13,
 			    managed_template_key=$14, managed_template_revision=$15,
 			    updated_at=now()
-			WHERE organization_id=$1 AND id=$2`,
+			WHERE organization_id=$1 AND id=$2 AND managed_cohort_id IS NULL`,
 			tenantID, group.ID, effectivePolicy.LibraryIDs,
 			effectivePolicy.MaxPlaybackQuality, effectivePolicy.PlaybackAllowed,
 			effectivePolicy.DownloadAllowed, effectivePolicy.DownloadTranscodeAllowed,
@@ -1142,6 +1150,7 @@ type materializationGroup struct {
 	IsDefault        bool
 	TemplateKey      string
 	TemplateRevision int64
+	ManagedCohortID  *uuid.UUID
 	Policy           Policy
 }
 
@@ -1153,6 +1162,7 @@ func loadMaterializationGroup(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID
 	)
 	err := tx.QueryRow(ctx, `
 		SELECT id, is_default, managed_template_key, managed_template_revision,
+		       managed_cohort_id,
 		       library_ids, playback_allowed, max_streams, max_profiles,
 		       transcode_allowed, max_transcodes, download_allowed,
 		       download_transcode_allowed, max_playback_quality,
@@ -1166,7 +1176,7 @@ func loadMaterializationGroup(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID
 		ORDER BY (managed_template_key IS NOT NULL) DESC, id
 		LIMIT 1
 		FOR UPDATE`, tenantID).Scan(
-		&group.ID, &group.IsDefault, &templateKey, &revision,
+		&group.ID, &group.IsDefault, &templateKey, &revision, &group.ManagedCohortID,
 		&group.Policy.LibraryIDs, &group.Policy.PlaybackAllowed, &group.Policy.MaxStreams,
 		&group.Policy.MaxProfiles, &group.Policy.TranscodeAllowed, &group.Policy.MaxTranscodes,
 		&group.Policy.DownloadAllowed, &group.Policy.DownloadTranscodeAllowed,

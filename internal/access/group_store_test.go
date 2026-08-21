@@ -354,6 +354,23 @@ func TestGroupStoreRejectsCohortManagedMutationAndDeletion(t *testing.T) {
 		t.Fatalf("insert cohort identity: %v", err)
 	}
 	_, err = fixture.pool.Exec(ctx, `
+		UPDATE access_groups
+		SET managed_template_key='standard',managed_template_revision=1,
+		    library_ids=ARRAY[]::integer[],playback_allowed=true,max_streams=2,
+		    max_profiles=2,transcode_allowed=true,max_transcodes=1,
+		    download_allowed=true,download_transcode_allowed=true,
+		    max_playback_quality='1080p',allowed_permissions=ARRAY['marker_edit']::text[],
+		    requests_allowed=true
+		WHERE id=$1`, group.ID)
+	if err != nil {
+		t.Fatalf("prepare cohort group policy: %v", err)
+	}
+	tx, err := fixture.pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin cohort marker transaction: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	_, err = tx.Exec(ctx, `
 		INSERT INTO entitlement_policy_cohort_revisions (
 			id,cohort_id,organization_id,name,revision,access_group_id,
 			source_template_key,source_template_revision,derivation_kind,
@@ -370,12 +387,15 @@ func TestGroupStoreRejectsCohortManagedMutationAndDeletion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("insert cohort revision: %v", err)
 	}
-	_, err = fixture.pool.Exec(ctx, `
+	_, err = tx.Exec(ctx, `
 		UPDATE access_groups
-		SET managed_template_key='standard',managed_template_revision=1,managed_cohort_id=$2
+		SET managed_cohort_id=$2
 		WHERE id=$1`, group.ID, cohortRevisionID)
 	if err != nil {
 		t.Fatalf("mark cohort group: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit cohort marker: %v", err)
 	}
 
 	name := "mutated"
