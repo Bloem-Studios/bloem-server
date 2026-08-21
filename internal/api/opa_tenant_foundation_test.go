@@ -786,8 +786,12 @@ func assertOPAAcceptanceV1ProfileSetting(
 	if err := decoder.Decode(&contract); err != nil {
 		t.Fatalf("decode exact v1 selected-profile settings contract: %v; body=%s", err, response.Body.String())
 	}
-	if contract.Revision != 6 || len(contract.Settings) != 1 {
-		t.Fatalf("v1 selected-profile settings = %#v, want revision 6 with one setting", contract)
+	manifest, err := settingscontract.Load()
+	if err != nil {
+		t.Fatalf("load settings contract: %v", err)
+	}
+	if contract.Revision != manifest.Revision || len(contract.Settings) != 1 {
+		t.Fatalf("v1 selected-profile settings = %#v, want revision %d (the live contract's) with one setting", contract, manifest.Revision)
 	}
 	setting := contract.Settings[0]
 	if setting.Key != "ui.time_format" || string(setting.Value) != `"`+wantValue+`"` ||
