@@ -1,0 +1,119 @@
+-- +goose Up
+-- +goose StatementBegin
+CREATE TABLE public.entitlement_templates (
+    key text PRIMARY KEY,
+    name text NOT NULL,
+    current_revision bigint NOT NULL DEFAULT 1 CHECK (current_revision > 0),
+    enabled boolean NOT NULL DEFAULT false,
+    archived boolean NOT NULL DEFAULT false,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT entitlement_templates_key_format
+        CHECK (key ~ '^[a-z0-9][a-z0-9-]{0,127}$'),
+    CONSTRAINT entitlement_templates_archived_disabled
+        CHECK (NOT archived OR NOT enabled)
+);
+
+CREATE UNIQUE INDEX entitlement_templates_name_ci_idx
+    ON public.entitlement_templates (lower(name));
+
+CREATE TABLE public.entitlement_template_revisions (
+    template_key text NOT NULL REFERENCES public.entitlement_templates(key) ON DELETE RESTRICT,
+    revision bigint NOT NULL CHECK (revision > 0),
+    library_ids integer[],
+    playback_allowed boolean NOT NULL,
+    max_streams integer NOT NULL CHECK (max_streams >= 0),
+    max_profiles integer NOT NULL CHECK (max_profiles >= 0),
+    transcode_allowed boolean NOT NULL,
+    max_transcodes integer NOT NULL CHECK (max_transcodes >= 0),
+    download_allowed boolean NOT NULL,
+    download_transcode_allowed boolean NOT NULL,
+    max_playback_quality text NOT NULL DEFAULT '',
+    allowed_permissions text[],
+    requests_allowed boolean NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (template_key, revision),
+    CONSTRAINT entitlement_template_download_dependency
+        CHECK (NOT download_transcode_allowed OR download_allowed),
+    CONSTRAINT entitlement_template_playback_dependency
+        CHECK (playback_allowed OR (
+            max_streams = 0 AND
+            NOT transcode_allowed AND
+            max_transcodes = 0 AND
+            NOT download_allowed AND
+            NOT download_transcode_allowed
+        )),
+    CONSTRAINT entitlement_template_library_ids_positive
+        CHECK (library_ids IS NULL OR 0 < ALL(library_ids))
+);
+
+CREATE FUNCTION public.reject_entitlement_template_revision_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RAISE EXCEPTION 'entitlement template revisions are immutable';
+END;
+$$;
+
+CREATE TRIGGER entitlement_template_revisions_immutable
+BEFORE UPDATE OR DELETE ON public.entitlement_template_revisions
+FOR EACH ROW EXECUTE FUNCTION public.reject_entitlement_template_revision_mutation();
+
+ALTER TABLE public.access_groups
+    ADD COLUMN playback_allowed boolean NOT NULL DEFAULT true,
+    ADD COLUMN max_profiles integer NOT NULL DEFAULT 0 CHECK (max_profiles >= 0),
+    ADD COLUMN managed_template_key text,
+    ADD COLUMN managed_template_revision bigint,
+    ADD CONSTRAINT access_groups_managed_template_pair
+        CHECK ((managed_template_key IS NULL) = (managed_template_revision IS NULL)),
+    ADD CONSTRAINT access_groups_managed_template_revision_fkey
+        FOREIGN KEY (managed_template_key, managed_template_revision)
+        REFERENCES public.entitlement_template_revisions(template_key, revision)
+        ON DELETE RESTRICT;
+
+CREATE UNIQUE INDEX access_groups_managed_template_revision_per_organization_idx
+    ON public.access_groups (organization_id, managed_template_key, managed_template_revision)
+    WHERE managed_template_key IS NOT NULL;
+
+INSERT INTO public.entitlement_templates (key, name, current_revision, enabled, archived)
+VALUES
+    ('browse-only', 'Browse-only', 1, false, false),
+    ('viewer', 'Viewer', 1, false, false),
+    ('standard', 'Standard', 1, false, false),
+    ('premium', 'Premium', 1, false, false),
+    ('reseller-member', 'Reseller Member', 1, false, false);
+
+INSERT INTO public.entitlement_template_revisions (
+    template_key, revision, library_ids, playback_allowed, max_streams,
+    max_profiles, transcode_allowed, max_transcodes, download_allowed,
+    download_transcode_allowed, max_playback_quality, allowed_permissions,
+    requests_allowed
+)
+VALUES
+    ('browse-only', 1, NULL, false, 0, 0, false, 0, false, false, '', NULL, false),
+    ('viewer', 1, NULL, true, 1, 5, false, 0, true, false, '1080p', NULL, true),
+    ('standard', 1, NULL, true, 3, 5, true, 1, true, true, '1080p', NULL, true),
+    ('premium', 1, NULL, true, 4, 5, true, 2, true, true, '2160p', NULL, true),
+    ('reseller-member', 1, NULL, true, 3, 5, true, 1, true, true, '1080p', NULL, true);
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+DROP INDEX IF EXISTS public.access_groups_managed_template_revision_per_organization_idx;
+
+ALTER TABLE public.access_groups
+    DROP CONSTRAINT IF EXISTS access_groups_managed_template_revision_fkey,
+    DROP CONSTRAINT IF EXISTS access_groups_managed_template_pair,
+    DROP COLUMN IF EXISTS managed_template_revision,
+    DROP COLUMN IF EXISTS managed_template_key,
+    DROP COLUMN IF EXISTS max_profiles,
+    DROP COLUMN IF EXISTS playback_allowed;
+
+DROP TRIGGER IF EXISTS entitlement_template_revisions_immutable
+    ON public.entitlement_template_revisions;
+DROP FUNCTION IF EXISTS public.reject_entitlement_template_revision_mutation();
+DROP TABLE IF EXISTS public.entitlement_template_revisions;
+DROP INDEX IF EXISTS public.entitlement_templates_name_ci_idx;
+DROP TABLE IF EXISTS public.entitlement_templates;
+-- +goose StatementEnd

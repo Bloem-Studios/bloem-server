@@ -22,15 +22,19 @@ type Group struct {
 	Description              string
 	LibraryIDs               []int
 	MaxPlaybackQuality       string
+	PlaybackAllowed          bool
 	DownloadAllowed          bool
 	DownloadTranscodeAllowed bool
 	TranscodeAllowed         bool
 	AudioTranscodeAllowed    bool
 	MaxStreams               int
+	MaxProfiles              int
 	MaxTranscodes            int
 	AllowedPermissions       []string
 	RequestsAllowed          bool
 	IsDefault                bool
+	ManagedTemplateKey       *string
+	ManagedTemplateRevision  *int64
 	MemberCount              int
 	CreatedAt                time.Time
 	UpdatedAt                time.Time
@@ -59,11 +63,13 @@ type CreateGroupInput struct {
 	Description              string
 	LibraryIDs               []int
 	MaxPlaybackQuality       string
+	PlaybackAllowed          *bool
 	DownloadAllowed          bool
 	DownloadTranscodeAllowed bool
 	TranscodeAllowed         bool
 	AudioTranscodeAllowed    bool
 	MaxStreams               int
+	MaxProfiles              int
 	MaxTranscodes            int
 	AllowedPermissions       []string
 	RequestsAllowed          bool
@@ -76,11 +82,13 @@ type UpdateGroupInput struct {
 	Description              *string
 	LibraryIDs               *[]int
 	MaxPlaybackQuality       *string
+	PlaybackAllowed          *bool
 	DownloadAllowed          *bool
 	DownloadTranscodeAllowed *bool
 	TranscodeAllowed         *bool
 	AudioTranscodeAllowed    *bool
 	MaxStreams               *int
+	MaxProfiles              *int
 	MaxTranscodes            *int
 	AllowedPermissions       *[]string
 	RequestsAllowed          *bool
@@ -104,6 +112,10 @@ var (
 	// default group at creation, so losing it would create them ungrouped and
 	// uncapped (the legacy per-user column defaults were retired).
 	ErrDefaultGroupRequired = errors.New("a default access group is required")
+	// ErrManagedGroup reports a generic mutation against a group owned by the
+	// entitlement materializer. Managed groups change only through template
+	// application so their source metadata and effective policy cannot diverge.
+	ErrManagedGroup = errors.New("managed access groups can only be changed by applying an entitlement template")
 )
 
 // GroupStore persists access groups in Postgres.
@@ -117,9 +129,10 @@ func NewGroupStore(pool *pgxpool.Pool) *GroupStore {
 }
 
 const accessGroupSelectColumns = `g.id, g.organization_id, g.name, g.description, g.library_ids, g.max_playback_quality,
-	g.download_allowed, g.download_transcode_allowed, g.transcode_allowed, g.audio_transcode_allowed,
-	g.max_streams, g.max_transcodes,
-	g.allowed_permissions, g.requests_allowed, g.is_default, g.created_at, g.updated_at`
+	g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
+	g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
+	g.max_transcodes, g.allowed_permissions, g.requests_allowed, g.is_default,
+	g.managed_template_key, g.managed_template_revision, g.created_at, g.updated_at`
 
 type groupScanner interface {
 	Scan(dest ...any) error
@@ -134,15 +147,19 @@ func scanGroup(row groupScanner) (*Group, error) {
 		&g.Description,
 		&g.LibraryIDs,
 		&g.MaxPlaybackQuality,
+		&g.PlaybackAllowed,
 		&g.DownloadAllowed,
 		&g.DownloadTranscodeAllowed,
 		&g.TranscodeAllowed,
 		&g.AudioTranscodeAllowed,
 		&g.MaxStreams,
+		&g.MaxProfiles,
 		&g.MaxTranscodes,
 		&g.AllowedPermissions,
 		&g.RequestsAllowed,
 		&g.IsDefault,
+		&g.ManagedTemplateKey,
+		&g.ManagedTemplateRevision,
 		&g.CreatedAt,
 		&g.UpdatedAt,
 		&g.MemberCount,
@@ -232,22 +249,25 @@ func (s *GroupStore) Create(ctx context.Context, organizationID uuid.UUID, input
 	err = tx.QueryRow(ctx, `
 		INSERT INTO access_groups (
 			organization_id, name, description, library_ids, max_playback_quality,
-			download_allowed, download_transcode_allowed, transcode_allowed, audio_transcode_allowed,
-			max_streams, max_transcodes,
-			allowed_permissions, requests_allowed, is_default
+			playback_allowed, download_allowed, download_transcode_allowed,
+			transcode_allowed, audio_transcode_allowed, max_streams, max_profiles,
+			max_transcodes, allowed_permissions, requests_allowed, is_default
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		VALUES ($1, $2, $3, $4, $5, COALESCE($6, true), $7, $8, $9, $10,
+		        $11, $12, $13, $14, $15, $16)
 		RETURNING id`,
 		organizationID,
 		name,
 		input.Description,
 		input.LibraryIDs,
 		NormalizePlaybackQuality(input.MaxPlaybackQuality),
+		input.PlaybackAllowed,
 		input.DownloadAllowed,
 		input.DownloadTranscodeAllowed,
 		input.TranscodeAllowed,
 		input.AudioTranscodeAllowed,
 		input.MaxStreams,
+		input.MaxProfiles,
 		input.MaxTranscodes,
 		input.AllowedPermissions,
 		input.RequestsAllowed,
@@ -295,6 +315,11 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 		args = append(args, normalized)
 		arg++
 	}
+	if input.PlaybackAllowed != nil {
+		sets = append(sets, fmt.Sprintf("playback_allowed = $%d", arg))
+		args = append(args, *input.PlaybackAllowed)
+		arg++
+	}
 	if input.DownloadAllowed != nil {
 		sets = append(sets, fmt.Sprintf("download_allowed = $%d", arg))
 		args = append(args, *input.DownloadAllowed)
@@ -318,6 +343,11 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 	if input.MaxStreams != nil {
 		sets = append(sets, fmt.Sprintf("max_streams = $%d", arg))
 		args = append(args, *input.MaxStreams)
+		arg++
+	}
+	if input.MaxProfiles != nil {
+		sets = append(sets, fmt.Sprintf("max_profiles = $%d", arg))
+		args = append(args, *input.MaxProfiles)
 		arg++
 	}
 	if input.MaxTranscodes != nil {
@@ -352,27 +382,36 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 
 	var current Group
 	if err := tx.QueryRow(ctx, `
-			SELECT library_ids, max_playback_quality, download_allowed,
-				download_transcode_allowed, max_streams, max_transcodes,
-				allowed_permissions, requests_allowed, is_default
+			SELECT library_ids, max_playback_quality, playback_allowed,
+				download_allowed, download_transcode_allowed, transcode_allowed,
+				audio_transcode_allowed, max_streams, max_profiles, max_transcodes, allowed_permissions,
+				requests_allowed, is_default, managed_template_key
 			FROM access_groups
 			WHERE organization_id = $1
 			  AND id = $2
 			FOR UPDATE`, organizationID, id).Scan(
 		&current.LibraryIDs,
 		&current.MaxPlaybackQuality,
+		&current.PlaybackAllowed,
 		&current.DownloadAllowed,
 		&current.DownloadTranscodeAllowed,
+		&current.TranscodeAllowed,
+		&current.AudioTranscodeAllowed,
 		&current.MaxStreams,
+		&current.MaxProfiles,
 		&current.MaxTranscodes,
 		&current.AllowedPermissions,
 		&current.RequestsAllowed,
 		&current.IsDefault,
+		&current.ManagedTemplateKey,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrGroupNotFound
 		}
 		return nil, fmt.Errorf("loading access group for update: %w", err)
+	}
+	if current.ManagedTemplateKey != nil {
+		return nil, ErrManagedGroup
 	}
 	authorizationChanged := groupAuthorizationChanged(current, input)
 	if input.IsDefault != nil && *input.IsDefault {
@@ -440,18 +479,23 @@ func (s *GroupStore) DeleteWithImpact(ctx context.Context, organizationID uuid.U
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var isDefault bool
+	var (
+		isDefault          bool
+		managedTemplateKey *string
+	)
 	err = tx.QueryRow(ctx, `
-		SELECT is_default
+		SELECT is_default, managed_template_key
 		FROM access_groups
 		WHERE organization_id = $1
 		  AND id = $2
-		FOR UPDATE`, organizationID, id).Scan(&isDefault)
+		FOR UPDATE`, organizationID, id).Scan(&isDefault, &managedTemplateKey)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return GroupDeletionImpact{}, ErrGroupNotFound
 	case err != nil:
 		return GroupDeletionImpact{}, fmt.Errorf("checking access group default flag: %w", err)
+	case managedTemplateKey != nil:
+		return GroupDeletionImpact{}, ErrManagedGroup
 	case isDefault:
 		return GroupDeletionImpact{}, ErrDefaultGroupRequired
 	}
@@ -507,9 +551,13 @@ func (s *GroupStore) DeleteWithImpact(ctx context.Context, organizationID uuid.U
 func groupAuthorizationChanged(current Group, input UpdateGroupInput) bool {
 	return input.LibraryIDs != nil && !reflect.DeepEqual(current.LibraryIDs, *input.LibraryIDs) ||
 		input.MaxPlaybackQuality != nil && NormalizePlaybackQuality(current.MaxPlaybackQuality) != NormalizePlaybackQuality(*input.MaxPlaybackQuality) ||
+		input.PlaybackAllowed != nil && current.PlaybackAllowed != *input.PlaybackAllowed ||
 		input.DownloadAllowed != nil && current.DownloadAllowed != *input.DownloadAllowed ||
 		input.DownloadTranscodeAllowed != nil && current.DownloadTranscodeAllowed != *input.DownloadTranscodeAllowed ||
+		input.TranscodeAllowed != nil && current.TranscodeAllowed != *input.TranscodeAllowed ||
+		input.AudioTranscodeAllowed != nil && current.AudioTranscodeAllowed != *input.AudioTranscodeAllowed ||
 		input.MaxStreams != nil && current.MaxStreams != *input.MaxStreams ||
+		input.MaxProfiles != nil && current.MaxProfiles != *input.MaxProfiles ||
 		input.MaxTranscodes != nil && current.MaxTranscodes != *input.MaxTranscodes ||
 		input.AllowedPermissions != nil && !reflect.DeepEqual(current.AllowedPermissions, *input.AllowedPermissions) ||
 		input.RequestsAllowed != nil && current.RequestsAllowed != *input.RequestsAllowed
