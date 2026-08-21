@@ -20,6 +20,7 @@ const KEYS = [
   "playback.hw_device",
   "playback.transcode_enabled",
   "playback.local_transcode_fallback",
+  "playback.proxy_policy",
   "allow_4k_transcode",
   "enable_transcode_throttle",
   "transcode_throttle_seconds",
@@ -172,6 +173,18 @@ export default function PlaybackSettings() {
             hint="When no eligible transcode node is available, transcode on this server instead. Disable to keep all transcoding on dedicated nodes — playback that requires transcoding fails while no node is eligible."
             value={form.getValue("playback.local_transcode_fallback") || "true"}
             onChange={(v) => form.setValue("playback.local_transcode_fallback", v)}
+          />
+          <SettingField
+            label="Proxy Streaming Policy"
+            type="select"
+            options={[
+              { value: "always", label: "Always" },
+              { value: "transcode_only", label: "Transcode only" },
+              { value: "never", label: "Never" },
+            ]}
+            hint="Controls when pooled proxy nodes serve media streams. Always: every delivery routes through a proxy when one is available. Transcode only: direct play and audio remux stay on this server; only transcoded (HLS) output uses a proxy. Never: proxy nodes are never used for streaming — this server relays transcode-node output itself. Use Transcode only or Never for a remote transcode node that does not share this server's media storage."
+            value={form.getValue("playback.proxy_policy") || "always"}
+            onChange={(v) => form.setValue("playback.proxy_policy", v)}
           />
           <SettingField
             label="Allow 4K Transcoding"

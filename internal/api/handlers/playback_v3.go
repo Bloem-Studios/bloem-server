@@ -428,6 +428,11 @@ func (h *PlaybackHandler) planNodeSessionV3(ctx context.Context, session *playba
 		// exact local-egress reservation method. The proxy may have been selected
 		// internally, but it is never exposed as client media authority.
 		plan.ProxyNode = nil
+	} else if plan.ProxyNode != nil && !nodepool.ProxyStreamingPolicy(ctx, h.SettingsRepo).AllowsTranscodeProxy() {
+		if releaser, ok := h.NodePlanner.(sessionProxyReservationReleaserV3); ok {
+			releaser.ReleaseSessionProxy(session.ID)
+		}
+		plan.ProxyNode = nil
 	}
 	return plan
 }
@@ -1263,7 +1268,8 @@ func (h *PlaybackHandler) deleteNodeRecipeV3(ctx context.Context, transportID st
 // bytes are either the source file or a single remux pipe — so the planner is
 // asked for a proxy alone, exactly as the Jellyfin-compat transport does.
 //
-// A nil node (no planner, no signing secret, or no eligible proxy) means the
+// A nil node (no planner, no signing secret, playback.proxy_policy forbids it,
+// or no eligible proxy) means the
 // API server serves the stream itself, which is both the single-node case and
 // the correct degradation when every proxy is unhealthy or at capacity. The one
 // exception is a remux that must run ffmpeg: that is transcode work, so it
@@ -1275,6 +1281,9 @@ func (h *PlaybackHandler) planIdentityProxyV3(r *http.Request, sessionID string,
 	// addresses it by session id against a server-side grant and needs no
 	// signing secret of its own.
 	if h.NodePlanner == nil || (h.JWTSecret == "" && !mode.proxyEgress) {
+		return nil, h.refuseLocalIdentityWorkV3(r, result)
+	}
+	if !nodepool.ProxyStreamingPolicy(r.Context(), h.SettingsRepo).AllowsIdentityProxy() {
 		return nil, h.refuseLocalIdentityWorkV3(r, result)
 	}
 	// Reserve against the session id the rest of the transport uses, so a

@@ -1,6 +1,7 @@
 package nodepool
 
 import (
+	"context"
 	"strconv"
 	"testing"
 	"time"
@@ -740,5 +741,49 @@ func TestProxyNodeURLsListsEnabledProxies(t *testing.T) {
 	urls := planner.ProxyNodeURLs()
 	if len(urls) != 2 {
 		t.Fatalf("proxy urls = %v, want both pooled proxies", urls)
+	}
+}
+
+type fakeProxyPolicySettings struct{ value string }
+
+func (f fakeProxyPolicySettings) Get(context.Context, string) (string, error) {
+	return f.value, nil
+}
+
+func TestProxyStreamingPolicy(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+		want  ProxyPolicy
+	}{
+		{name: "nil settings default to always", value: "", want: ProxyPolicyAlways},
+		{name: "unset key defaults to always", value: "", want: ProxyPolicyAlways},
+		{name: "always", value: "always", want: ProxyPolicyAlways},
+		{name: "transcode_only", value: "transcode_only", want: ProxyPolicyTranscodeOnly},
+		{name: "never", value: "never", want: ProxyPolicyNever},
+		{name: "unrecognized value falls back to always", value: "bogus", want: ProxyPolicyAlways},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ProxyStreamingPolicy(context.Background(), fakeProxyPolicySettings{value: tc.value})
+			if got != tc.want {
+				t.Fatalf("ProxyStreamingPolicy(%q) = %q, want %q", tc.value, got, tc.want)
+			}
+		})
+	}
+	if got := ProxyStreamingPolicy(context.Background(), nil); got != ProxyPolicyAlways {
+		t.Fatalf("ProxyStreamingPolicy(nil settings) = %q, want %q", got, ProxyPolicyAlways)
+	}
+}
+
+func TestProxyPolicyAllowsHelpers(t *testing.T) {
+	if !ProxyPolicyAlways.AllowsIdentityProxy() || !ProxyPolicyAlways.AllowsTranscodeProxy() {
+		t.Fatal("always must allow both identity and transcode proxy routing")
+	}
+	if ProxyPolicyTranscodeOnly.AllowsIdentityProxy() || !ProxyPolicyTranscodeOnly.AllowsTranscodeProxy() {
+		t.Fatal("transcode_only must forbid identity proxy but allow transcode proxy")
+	}
+	if ProxyPolicyNever.AllowsIdentityProxy() || ProxyPolicyNever.AllowsTranscodeProxy() {
+		t.Fatal("never must forbid both identity and transcode proxy routing")
 	}
 }

@@ -58,6 +58,7 @@ var adminSettingDefaults = map[string]string{
 	"playback.hw_accel":                        "auto",
 	"playback.transcode_enabled":               "true",
 	"playback.local_transcode_fallback":        "true",
+	"playback.proxy_policy":                    "always",
 	"playback.chapter_thumbnail_workers":       "1",
 	"playback.chapter_thumbnail_execution":     "local",
 	"playback.chapter_thumbnail_node_capacity": "1",
@@ -394,6 +395,8 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 		return normalizeAdminEnum(key, value, "auto", "copy", "transcode")
 	case "playback.chapter_thumbnail_execution":
 		return normalizeAdminEnum(key, value, "local", "prefer_transcode_nodes", "transcode_nodes_only")
+	case "playback.proxy_policy":
+		return normalizeAdminEnum(key, value, "always", "transcode_only", "never")
 	case "playback.chapter_thumbnail_hdr_policy":
 		return normalizeAdminEnum(key, value, "disabled", "best_effort")
 	case "metadata_ai.on_view":

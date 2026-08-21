@@ -598,3 +598,61 @@ func LocalTranscodeFallbackAllowed(ctx context.Context, settings interface {
 	v, _ := settings.Get(ctx, "playback.local_transcode_fallback")
 	return v != "false"
 }
+
+// ProxyPolicy controls which deliveries a pooled proxy node may serve. It
+// exists because a proxy is a generic byte-server peer, not something the
+// planner scopes to "only when transcoding" — without this setting,
+// registering one pulls all direct-play/remux traffic onto it too, which
+// only makes sense for a proxy that shares the same network-mounted media
+// library the API server does (the deployment shape this pool was designed
+// around: a Proxmox cluster on shared storage, not a standalone remote
+// transcode box with no independent view of the catalog).
+type ProxyPolicy string
+
+const (
+	// ProxyPolicyAlways routes every delivery — direct play, remux, and
+	// transcode — through a pooled proxy when one is available. Historical
+	// behavior; the default for deployments that never set this key.
+	ProxyPolicyAlways ProxyPolicy = "always"
+	// ProxyPolicyTranscodeOnly keeps direct play and remux on the API
+	// server and only uses a proxy to serve transcoded (HLS) output.
+	ProxyPolicyTranscodeOnly ProxyPolicy = "transcode_only"
+	// ProxyPolicyNever never routes client-facing bytes through a proxy.
+	// Transcode nodes still encode; the API server relays their output
+	// itself (see PlaybackHandler.proxyToTranscodeNode).
+	ProxyPolicyNever ProxyPolicy = "never"
+)
+
+// AllowsIdentityProxy reports whether a direct-play or progressive-remux
+// delivery may be routed through a pooled proxy.
+func (policy ProxyPolicy) AllowsIdentityProxy() bool {
+	return policy == ProxyPolicyAlways
+}
+
+// AllowsTranscodeProxy reports whether transcoded (HLS) output may be served
+// through a pooled proxy rather than relayed by the API server.
+func (policy ProxyPolicy) AllowsTranscodeProxy() bool {
+	return policy != ProxyPolicyNever
+}
+
+// ProxyStreamingPolicy reads the playback.proxy_policy setting. Defaults to
+// ProxyPolicyAlways, and an unrecognized stored value also falls back to it,
+// so deployments without the setting (or a value predating a new policy
+// this build doesn't know about) keep the historical behavior rather than
+// silently losing proxy routing.
+func ProxyStreamingPolicy(ctx context.Context, settings interface {
+	Get(ctx context.Context, key string) (string, error)
+}) ProxyPolicy {
+	if settings == nil {
+		return ProxyPolicyAlways
+	}
+	v, _ := settings.Get(ctx, "playback.proxy_policy")
+	switch ProxyPolicy(v) {
+	case ProxyPolicyTranscodeOnly:
+		return ProxyPolicyTranscodeOnly
+	case ProxyPolicyNever:
+		return ProxyPolicyNever
+	default:
+		return ProxyPolicyAlways
+	}
+}

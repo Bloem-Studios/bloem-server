@@ -162,6 +162,103 @@ func TestPlanNodeSessionV3PrefersCapabilityMatchingNode(t *testing.T) {
 	}
 }
 
+// playback.proxy_policy=never must still place transcode work on a pooled
+// transcode node — only the proxy pick (which PlanSessionWith selects
+// alongside it) is discarded, and its reservation released so the policy
+// cannot pin proxy capacity a session will never use.
+func TestPlanNodeSessionV3NeverPolicyDropsProxyButKeepsTranscodeNode(t *testing.T) {
+	transcodes := nodepool.NewTranscodePool()
+	transcodes.SetNodes([]*nodepool.Node{
+		{ID: 1, Name: "home", Type: nodepool.NodeTypeTranscode, URL: "http://home-transcode:9000", Enabled: true, Healthy: true},
+	})
+	proxies := nodepool.NewProxyPool()
+	proxies.SetNodes([]*nodepool.Node{
+		{ID: 2, Name: "proxy", Type: nodepool.NodeTypeProxy, URL: "http://proxy:9100", Enabled: true, Healthy: true},
+	})
+	planner := nodepool.NewPlanner(proxies, transcodes)
+
+	handler := NewPlaybackHandler(playback.NewSessionManager(0, 0))
+	handler.NodePlanner = planner
+	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"playback.proxy_policy": "never"}}
+
+	plan := &playback.PlanV3{PlanID: "plan:never-policy", Delivery: playback.DeliveryTranscodeHLSV3}
+	selected := handler.planNodeSessionV3(context.Background(), &playback.Session{ID: "session-never-policy"}, playback.PlannerResultV3{Plan: plan, PlayMethod: playback.PlayTranscode}, false)
+	if selected.TranscodeNode == nil || selected.TranscodeNode.URL != "http://home-transcode:9000" {
+		t.Fatalf("TranscodeNode = %+v, want the pooled transcode node despite the proxy policy", selected.TranscodeNode)
+	}
+	if selected.ProxyNode != nil {
+		t.Fatalf("ProxyNode = %+v, want nil under playback.proxy_policy=never", selected.ProxyNode)
+	}
+
+	// The released reservation must not still be pinning proxy capacity: a
+	// second session should be able to claim the same proxy for a delivery
+	// that is allowed to use one (identity, which this test does not plan,
+	// so the check goes through PlanSession directly).
+	again := planner.PlanSession("session-should-still-fit", "", false, 0)
+	if again.ProxyNode == nil || again.ProxyNode.URL != "http://proxy:9100" {
+		t.Fatalf("proxy was left reserved after policy discarded it: %+v", again)
+	}
+}
+
+// playback.proxy_policy=transcode_only permits the same delivery to keep its
+// proxy: only "never" discards it.
+func TestPlanNodeSessionV3TranscodeOnlyPolicyKeepsProxy(t *testing.T) {
+	transcodes := nodepool.NewTranscodePool()
+	transcodes.SetNodes([]*nodepool.Node{
+		{ID: 1, Name: "home", Type: nodepool.NodeTypeTranscode, URL: "http://home-transcode:9000", Enabled: true, Healthy: true},
+	})
+	proxies := nodepool.NewProxyPool()
+	proxies.SetNodes([]*nodepool.Node{
+		{ID: 2, Name: "proxy", Type: nodepool.NodeTypeProxy, URL: "http://proxy:9100", Enabled: true, Healthy: true},
+	})
+	handler := NewPlaybackHandler(playback.NewSessionManager(0, 0))
+	handler.NodePlanner = nodepool.NewPlanner(proxies, transcodes)
+	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"playback.proxy_policy": "transcode_only"}}
+
+	plan := &playback.PlanV3{PlanID: "plan:transcode-only-policy", Delivery: playback.DeliveryTranscodeHLSV3}
+	selected := handler.planNodeSessionV3(context.Background(), &playback.Session{ID: "session-transcode-only"}, playback.PlannerResultV3{Plan: plan, PlayMethod: playback.PlayTranscode}, false)
+	if selected.ProxyNode == nil || selected.ProxyNode.URL != "http://proxy:9100" {
+		t.Fatalf("ProxyNode = %+v, want the pooled proxy under playback.proxy_policy=transcode_only", selected.ProxyNode)
+	}
+}
+
+// planIdentityProxyV3 must refuse proxy routing for direct play/remux under
+// both transcode_only and never, and permit it under always (the default).
+func TestPlanIdentityProxyV3RespectsProxyPolicy(t *testing.T) {
+	proxies := nodepool.NewProxyPool()
+	proxies.SetNodes([]*nodepool.Node{
+		{ID: 1, Name: "proxy", Type: nodepool.NodeTypeProxy, URL: "http://proxy:9100", Enabled: true, Healthy: true},
+	})
+
+	for _, tc := range []struct {
+		policy    string
+		wantProxy bool
+	}{
+		{policy: "always", wantProxy: true},
+		{policy: "transcode_only", wantProxy: false},
+		{policy: "never", wantProxy: false},
+	} {
+		t.Run(tc.policy, func(t *testing.T) {
+			handler := NewPlaybackHandler(playback.NewSessionManager(0, 0))
+			handler.JWTSecret = "test-secret"
+			handler.NodePlanner = nodepool.NewPlanner(proxies, nodepool.NewTranscodePool())
+			handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"playback.proxy_policy": tc.policy}}
+
+			result := playback.PlannerResultV3{Plan: &playback.PlanV3{PlanID: "plan:identity-policy-" + tc.policy, Delivery: playback.DeliveryOriginalHTTPV3}}
+			node, transportErr := handler.planIdentityProxyV3(httptest.NewRequest(http.MethodGet, "/", nil), "session-identity-"+tc.policy, result, mediaAuthModeV3{})
+			gotProxy := node != nil
+			if gotProxy != tc.wantProxy {
+				t.Fatalf("planIdentityProxyV3(%s) node = %+v, err = %+v, want proxy=%v", tc.policy, node, transportErr, tc.wantProxy)
+			}
+			// Direct play never requires ffmpeg, so refusing the proxy must
+			// still yield no transport error — it falls back to local.
+			if !tc.wantProxy && transportErr != nil {
+				t.Fatalf("planIdentityProxyV3(%s) transportErr = %+v, want nil (local fallback)", tc.policy, transportErr)
+			}
+		})
+	}
+}
+
 func TestPrepareTransportV3LocalFallbackRejectsUnavailableTransformations(t *testing.T) {
 	handler := NewPlaybackHandler(playback.NewSessionManager(0, 0))
 	presetLocalRegistryV3(handler, playback.NewTransformationRegistryV3([]playback.TransformationSpecV3{
