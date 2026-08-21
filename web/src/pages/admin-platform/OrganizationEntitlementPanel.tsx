@@ -162,6 +162,13 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
           <p className="text-destructive text-sm" role="alert">
             {templates.error.message}
           </p>
+        ) : templates.data?.length === 0 ? (
+          <div className="border-warning/40 bg-warning/10 space-y-1 rounded-lg border p-3 text-sm">
+            <p>No enabled entitlement templates are available.</p>
+            <Link className="underline" to="/admin/platform/entitlement-templates">
+              Manage entitlement templates
+            </Link>
+          </div>
         ) : (
           <div className="space-y-1.5">
             <Label htmlFor="tenant-template">Template</Label>

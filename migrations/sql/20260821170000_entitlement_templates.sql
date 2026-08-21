@@ -159,11 +159,11 @@ CREATE TABLE public.entitlement_apply_receipts (
 
 INSERT INTO public.entitlement_templates (key, name, current_revision, enabled, archived)
 VALUES
-    ('browse-only', 'Browse-only', 1, false, false),
-    ('viewer', 'Viewer', 1, false, false),
-    ('standard', 'Standard', 1, false, false),
-    ('premium', 'Premium', 1, false, false),
-    ('reseller-member', 'Reseller Member', 1, false, false);
+    ('browse-only', 'Browse-only', 1, true, false),
+    ('viewer', 'Viewer', 1, true, false),
+    ('standard', 'Standard', 1, true, false),
+    ('premium', 'Premium', 1, true, false),
+    ('reseller-member', 'Reseller Member', 1, true, false);
 
 INSERT INTO public.entitlement_template_revisions (
     template_key, revision, library_ids, playback_allowed, max_streams,

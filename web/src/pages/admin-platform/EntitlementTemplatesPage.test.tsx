@@ -456,6 +456,34 @@ describe("OrganizationEntitlementPanel", () => {
     );
     expect(screen.queryByText("max_streams")).not.toBeInTheDocument();
   });
+
+  it("explains how to recover when no templates are enabled", async () => {
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (String(path).endsWith("/organizations/org-1/entitlement")) {
+        return {
+          template_key: null,
+          template_revision: null,
+          managed_default_group: null,
+          tenant_limits: { slots: 10, transcodes: 2 },
+          library_ids: [],
+          last_reconciled_at: null,
+          audit_history_href: null,
+        } as never;
+      }
+      return { templates: [] } as never;
+    });
+
+    renderWithQuery(<OrganizationEntitlementPanel organizationID="org-1" />);
+
+    expect(
+      await screen.findByText("No enabled entitlement templates are available."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Manage entitlement templates" })).toHaveAttribute(
+      "href",
+      "/admin/platform/entitlement-templates",
+    );
+    expect(screen.getByRole("button", { name: "Preview changes" })).toBeDisabled();
+  });
 });
 
 describe("AccountEntitlementPanel", () => {
