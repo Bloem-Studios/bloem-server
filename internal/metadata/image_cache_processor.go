@@ -39,6 +39,14 @@ const (
 	immediateImageCacheMinPoll     = 100 * time.Millisecond
 	immediateImageCacheMaxPoll     = 2 * time.Second
 	immediateImageCacheIdleTimeout = 30 * time.Second
+	// imageCacheJobTimeout bounds a single job's download/read, resize, and
+	// upload. Without it, one stalled network call blocks processClaimedJobs'
+	// wg.Wait() forever, which in turn holds runUntilIdle's single-execution
+	// gate forever: no lease ever expires because nothing calls ClaimDue again
+	// to run recoverExpiredRunning. Generous relative to a single image (well
+	// under the 15-minute lease and the 10-minute run budget) so it only fires
+	// on a genuinely stuck job, not a slow one.
+	imageCacheJobTimeout = 90 * time.Second
 )
 
 // ErrTargetArtworkPending reports that some of a refreshed target's artwork was
@@ -148,6 +156,11 @@ type ImageCacheProcessor struct {
 	// a background worker. Zero means immediateImageCacheIdleTimeout.
 	idleWaitTimeout time.Duration
 
+	// jobTimeout bounds a single job's download/read, resize, and upload, so
+	// one stalled network call cannot block processClaimedJobs' wg.Wait()
+	// forever. Zero means imageCacheJobTimeout.
+	jobTimeout time.Duration
+
 	// runGate serializes the scheduled queue drain and explicit full backfill.
 	// They are separate TaskManager tasks, so TaskManager's per-key guard cannot
 	// prevent them from racing each other through the shared durable queue. A
@@ -216,6 +229,7 @@ func NewImageCacheProcessorWithTargets(
 		targets:         targets,
 		logger:          slog.Default(),
 		idleWaitTimeout: immediateImageCacheIdleTimeout,
+		jobTimeout:      imageCacheJobTimeout,
 		runGate:         make(chan struct{}, 1),
 	}
 	p.runGate <- struct{}{}
@@ -423,7 +437,9 @@ loop:
 		go func(job *models.MetadataImageCacheJob) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			result := p.processOne(ctx, job)
+			jobCtx, cancel := context.WithTimeout(ctx, p.jobTimeout)
+			defer cancel()
+			result := p.processOne(jobCtx, job)
 			mu.Lock()
 			switch result.outcome {
 			case "succeeded":
