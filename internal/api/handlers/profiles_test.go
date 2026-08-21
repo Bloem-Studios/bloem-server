@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userdb"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
@@ -23,6 +25,72 @@ import (
 type testProfileUserRepo struct {
 	user *models.User
 	err  error
+}
+
+func TestProfilesForOrganizationDoesNotCountAnotherTenant(t *testing.T) {
+	organizationID := uuid.New()
+	ctx := withAdminResourceOrganization(context.Background(), organizationID)
+	profiles := []userstore.Profile{
+		{ID: "current", OrganizationID: organizationID.String()},
+		{ID: "other", OrganizationID: uuid.NewString()},
+	}
+	got := profilesForOrganization(ctx, profiles)
+	if len(got) != 1 || got[0].ID != "current" {
+		t.Fatalf("profilesForOrganization() = %+v, want only current tenant", got)
+	}
+}
+
+type profileCapAccessGroups struct {
+	group *access.Group
+}
+
+type recordingProfileStore struct {
+	userstore.UserStore
+	created userstore.Profile
+}
+
+type recordingProfileWriter struct {
+	userstore.PreferenceSettingsWriter
+	created *userstore.Profile
+}
+
+func (w *recordingProfileWriter) CreateProfile(ctx context.Context, profile userstore.Profile) error {
+	*w.created = profile
+	return w.PreferenceSettingsWriter.CreateProfile(ctx, profile)
+}
+
+func (s *recordingProfileStore) WithPreferenceSettingsTransaction(ctx context.Context, fn func(userstore.PreferenceSettingsWriter) error) error {
+	transactioner := s.UserStore.(userstore.PreferenceSettingsTransactioner)
+	return transactioner.WithPreferenceSettingsTransaction(ctx, func(writer userstore.PreferenceSettingsWriter) error {
+		return fn(&recordingProfileWriter{PreferenceSettingsWriter: writer, created: &s.created})
+	})
+}
+
+func (g profileCapAccessGroups) Get(context.Context, uuid.UUID, int64) (*access.Group, error) {
+	return g.group, nil
+}
+
+func (g profileCapAccessGroups) GetForAccount(context.Context, int, int64) (*access.Group, error) {
+	return g.group, nil
+}
+
+func (g profileCapAccessGroups) GetDefault(context.Context, uuid.UUID) (*access.Group, error) {
+	return g.group, nil
+}
+
+func (g profileCapAccessGroups) List(context.Context, uuid.UUID) ([]access.Group, error) {
+	if g.group == nil {
+		return nil, nil
+	}
+	return []access.Group{*g.group}, nil
+}
+
+func (g profileCapAccessGroups) ResolvePolicy(context.Context, access.GroupSubject) (*access.GroupPolicy, error) {
+	if g.group == nil {
+		return nil, nil
+	}
+	policy := g.group.Policy()
+	return &policy, nil
 }
 
 func (r testProfileUserRepo) GetByID(context.Context, int) (*models.User, error) {
@@ -131,6 +199,53 @@ func TestHandleCreateProfile_EnforcesUserProfileLimit(t *testing.T) {
 	}
 	if len(profiles) != 1 {
 		t.Fatalf("profile count = %d, want 1", len(profiles))
+	}
+}
+
+func TestHandleCreateProfile_EnforcesManagedGroupProfileLimit(t *testing.T) {
+	store := newProfileTestStore(t)
+	groupID := int64(88)
+	organizationID := uuid.New()
+	handler := NewProfileHandler(testUserStoreProvider{store: store})
+	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: 5, AccessGroupID: &groupID}}
+	handler.AccessGroups = profileCapAccessGroups{group: &access.Group{ID: groupID, OrganizationID: organizationID, MaxProfiles: 1}}
+
+	req := newAuthorizedProfileRequestWithRole(http.MethodPost, "/profiles", `{"name":"Kids"}`, "admin", "")
+	req = req.WithContext(tenancy.WithContext(req.Context(), tenancy.Context{
+		OrganizationID: organizationID,
+		AccountID:      1,
+		Legacy:         true,
+	}))
+	rr := httptest.NewRecorder()
+	handler.HandleCreateProfile(rr, req)
+
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusConflict, rr.Body.String())
+	}
+}
+
+func TestHandleCreateProfile_InheritsAccountManagedGroup(t *testing.T) {
+	store := &recordingProfileStore{UserStore: newProfileTestStore(t)}
+	groupID := int64(88)
+	organizationID := uuid.New()
+	handler := NewProfileHandler(testUserStoreProvider{store: store})
+	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: 5, AccessGroupID: &groupID}}
+	handler.AccessGroups = profileCapAccessGroups{group: &access.Group{ID: groupID, OrganizationID: organizationID, MaxProfiles: 5}}
+
+	req := newAuthorizedProfileRequestWithRole(http.MethodPost, "/profiles", `{"name":"Kids"}`, "admin", "")
+	req = req.WithContext(tenancy.WithContext(req.Context(), tenancy.Context{
+		OrganizationID: organizationID,
+		AccountID:      1,
+		Legacy:         true,
+	}))
+	rr := httptest.NewRecorder()
+	handler.HandleCreateProfile(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusCreated, rr.Body.String())
+	}
+	if store.created.AccessGroupID == nil || *store.created.AccessGroupID != groupID {
+		t.Fatalf("created profile access group = %v, want %d", store.created.AccessGroupID, groupID)
 	}
 }
 

@@ -4,6 +4,7 @@ package entitlements
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -29,8 +30,13 @@ var (
 	ErrRevisionConflict = errors.New("entitlements: template revision conflict")
 	// ErrInvalidPolicy reports a locally invalid template policy.
 	ErrInvalidPolicy = errors.New("entitlements: invalid policy")
+	// ErrProtectedTemplate reports an attempt to remove or weaken a built-in
+	// authorization boundary.
+	ErrProtectedTemplate = errors.New("entitlements: protected template")
 	// ErrTenantNotFound reports an unknown or non-Park tenant organization.
 	ErrTenantNotFound = errors.New("entitlements: tenant not found")
+	// ErrAccountNotFound reports an account outside the asserted organization.
+	ErrAccountNotFound = errors.New("entitlements: account not found")
 )
 
 var templateKeyPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,127}$`)
@@ -84,14 +90,384 @@ type ReviseTemplateInput struct {
 // the same diff but GroupID is zero when a managed group would be created.
 type ApplyResult struct {
 	TenantID                 uuid.UUID
+	AccountID                int
 	TemplateKey              string
 	TemplateRevision         int64
 	GroupID                  int64
 	DryRun                   bool
 	Changed                  bool
+	ProfilesMoved            int
 	PreviousTemplateKey      string
 	PreviousTemplateRevision int64
 	Policy                   Policy
+}
+
+type AuditEvent struct {
+	ID               int64     `json:"id"`
+	CreatedAt        time.Time `json:"created_at"`
+	ActorAccountID   int       `json:"actor_account_id,omitempty"`
+	Action           string    `json:"action"`
+	OrganizationID   uuid.UUID `json:"organization_id,omitempty"`
+	TargetAccountID  int       `json:"target_account_id,omitempty"`
+	TemplateKey      string    `json:"template_key,omitempty"`
+	TemplateRevision int64     `json:"template_revision,omitempty"`
+	RequestID        string    `json:"request_id,omitempty"`
+}
+
+type ApplyReceipt struct {
+	TemplateKey      string
+	TemplateRevision int64
+	Result           ApplyResult
+}
+
+func (s *Store) RecordAudit(ctx context.Context, event AuditEvent) error {
+	var organizationID any
+	if event.OrganizationID != uuid.Nil {
+		organizationID = event.OrganizationID
+	}
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO entitlement_audit_events (
+			actor_account_id,action,organization_id,target_account_id,
+			template_key,template_revision,request_id
+		) VALUES (NULLIF($1,0),$2,$3,NULLIF($4,0),NULLIF($5,''),NULLIF($6,0),NULLIF($7,''))`,
+		event.ActorAccountID, event.Action, organizationID, event.TargetAccountID,
+		event.TemplateKey, event.TemplateRevision, event.RequestID)
+	if err != nil {
+		return fmt.Errorf("entitlements: record audit event: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ListOrganizationAudit(ctx context.Context, organizationID uuid.UUID) ([]AuditEvent, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id,created_at,COALESCE(actor_account_id,0),action,organization_id,
+		       COALESCE(target_account_id,0),COALESCE(template_key,''),
+		       COALESCE(template_revision,0),COALESCE(request_id,'')
+		FROM entitlement_audit_events WHERE organization_id=$1
+		ORDER BY created_at DESC,id DESC LIMIT 200`, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("entitlements: list audit events: %w", err)
+	}
+	defer rows.Close()
+	events := []AuditEvent{}
+	for rows.Next() {
+		var event AuditEvent
+		if err := rows.Scan(&event.ID, &event.CreatedAt, &event.ActorAccountID, &event.Action, &event.OrganizationID,
+			&event.TargetAccountID, &event.TemplateKey, &event.TemplateRevision, &event.RequestID); err != nil {
+			return nil, fmt.Errorf("entitlements: scan audit event: %w", err)
+		}
+		events = append(events, event)
+	}
+	return events, rows.Err()
+}
+
+func (s *Store) LoadApplyReceipt(ctx context.Context, actorAccountID int, targetType, targetID, idempotencyKey string) (ApplyReceipt, bool, error) {
+	var receipt ApplyReceipt
+	var payload []byte
+	err := s.pool.QueryRow(ctx, `SELECT template_key,template_revision,result FROM entitlement_apply_receipts
+		WHERE actor_account_id=$1 AND target_type=$2 AND target_id=$3 AND idempotency_key=$4`,
+		actorAccountID, targetType, targetID, idempotencyKey).Scan(&receipt.TemplateKey, &receipt.TemplateRevision, &payload)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ApplyReceipt{}, false, nil
+	}
+	if err != nil {
+		return ApplyReceipt{}, false, fmt.Errorf("entitlements: load apply receipt: %w", err)
+	}
+	if err := json.Unmarshal(payload, &receipt.Result); err != nil {
+		return ApplyReceipt{}, false, fmt.Errorf("entitlements: decode apply receipt: %w", err)
+	}
+	return receipt, true, nil
+}
+
+func (s *Store) SaveApplyReceipt(ctx context.Context, actorAccountID int, targetType, targetID, idempotencyKey, templateKey string, templateRevision int64, result ApplyResult) (bool, error) {
+	payload, err := json.Marshal(result)
+	if err != nil {
+		return false, fmt.Errorf("entitlements: encode apply receipt: %w", err)
+	}
+	tag, err := s.pool.Exec(ctx, `INSERT INTO entitlement_apply_receipts
+		(actor_account_id,target_type,target_id,idempotency_key,template_key,template_revision,result)
+		VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING`, actorAccountID, targetType, targetID, idempotencyKey, templateKey, templateRevision, payload)
+	if err != nil {
+		return false, fmt.Errorf("entitlements: save apply receipt: %w", err)
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// OrganizationEntitlement is the operator-facing projection of a Park
+// tenant's managed default group and separate tenant-wide quota layer.
+type OrganizationEntitlement struct {
+	OrganizationID   uuid.UUID
+	TemplateKey      string
+	TemplateRevision int64
+	GroupID          int64
+	GroupName        string
+	Policy           Policy
+	Slots            int
+	Transcodes       int
+	LastReconciledAt *time.Time
+}
+
+// AccountEntitlement is the current direct-product template group selected by
+// one account in the deployment default organization.
+type AccountEntitlement struct {
+	OrganizationID   uuid.UUID
+	AccountID        int
+	TemplateKey      string
+	TemplateRevision int64
+	GroupID          int64
+	GroupName        string
+	Policy           Policy
+	LastReconciledAt *time.Time
+}
+
+func (s *Store) GetDefaultAccountEntitlement(ctx context.Context, accountID int) (AccountEntitlement, error) {
+	var result AccountEntitlement
+	result.AccountID = accountID
+	var reconciled *time.Time
+	err := s.pool.QueryRow(ctx, `
+		SELECT o.id,u.access_group_id,COALESCE(g.name,''),COALESCE(g.managed_template_key,''),
+		       COALESCE(g.managed_template_revision,0),g.library_ids,g.playback_allowed,
+		       g.max_streams,g.max_profiles,g.transcode_allowed,g.max_transcodes,
+		       g.download_allowed,g.download_transcode_allowed,g.max_playback_quality,
+		       g.allowed_permissions,g.requests_allowed,g.updated_at
+		FROM users u
+		JOIN organization_memberships m ON m.account_id=u.id AND m.status='active'
+		JOIN organizations o ON o.id=m.organization_id AND o.is_default
+		JOIN access_groups g ON g.organization_id=o.id AND g.id=u.access_group_id
+		WHERE u.id=$1`, accountID).Scan(
+		&result.OrganizationID, &result.GroupID, &result.GroupName, &result.TemplateKey,
+		&result.TemplateRevision, &result.Policy.LibraryIDs, &result.Policy.PlaybackAllowed,
+		&result.Policy.MaxStreams, &result.Policy.MaxProfiles, &result.Policy.TranscodeAllowed,
+		&result.Policy.MaxTranscodes, &result.Policy.DownloadAllowed,
+		&result.Policy.DownloadTranscodeAllowed, &result.Policy.MaxPlaybackQuality,
+		&result.Policy.AllowedPermissions, &result.Policy.RequestsAllowed, &reconciled,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return AccountEntitlement{}, ErrAccountNotFound
+	}
+	if err != nil {
+		return AccountEntitlement{}, fmt.Errorf("entitlements: load direct account entitlement: %w", err)
+	}
+	if result.TemplateKey != "" {
+		result.LastReconciledAt = reconciled
+	}
+	return result, nil
+}
+
+// GetOrganizationEntitlement loads one Park tenant without exposing custom
+// groups. A tenant that has not yet been reconciled returns zero managed-group
+// fields alongside its quota layer.
+func (s *Store) GetOrganizationEntitlement(ctx context.Context, organizationID uuid.UUID) (OrganizationEntitlement, error) {
+	var result OrganizationEntitlement
+	result.OrganizationID = organizationID
+	if err := s.pool.QueryRow(ctx, `
+		SELECT slots,transcodes FROM organizations
+		WHERE id=$1 AND external_service_id IS NOT NULL`, organizationID).Scan(&result.Slots, &result.Transcodes); errors.Is(err, pgx.ErrNoRows) {
+		return OrganizationEntitlement{}, ErrTenantNotFound
+	} else if err != nil {
+		return OrganizationEntitlement{}, fmt.Errorf("entitlements: load tenant quota layer: %w", err)
+	}
+	var reconciled time.Time
+	err := s.pool.QueryRow(ctx, `
+		SELECT id,name,managed_template_key,managed_template_revision,
+		       library_ids,playback_allowed,max_streams,max_profiles,
+		       transcode_allowed,max_transcodes,download_allowed,
+		       download_transcode_allowed,max_playback_quality,
+		       allowed_permissions,requests_allowed,updated_at
+		FROM access_groups
+		WHERE organization_id=$1 AND is_default AND managed_template_key IS NOT NULL`, organizationID).Scan(
+		&result.GroupID, &result.GroupName, &result.TemplateKey, &result.TemplateRevision,
+		&result.Policy.LibraryIDs, &result.Policy.PlaybackAllowed, &result.Policy.MaxStreams,
+		&result.Policy.MaxProfiles, &result.Policy.TranscodeAllowed, &result.Policy.MaxTranscodes,
+		&result.Policy.DownloadAllowed, &result.Policy.DownloadTranscodeAllowed,
+		&result.Policy.MaxPlaybackQuality, &result.Policy.AllowedPermissions,
+		&result.Policy.RequestsAllowed, &reconciled,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return result, nil
+	}
+	if err != nil {
+		return OrganizationEntitlement{}, fmt.Errorf("entitlements: load tenant managed entitlement: %w", err)
+	}
+	result.LastReconciledAt = &reconciled
+	return result, nil
+}
+
+// ApplyAccountTemplate materializes/reuses an organization-scoped immutable
+// template group and makes it the entitlement group for one direct account.
+// Profiles in the account's prior managed group or the organization default
+// follow the entitlement; deliberately custom-group profiles are preserved.
+func (s *Store) ApplyAccountTemplate(ctx context.Context, organizationID uuid.UUID, accountID int, key string, revision int64, dryRun bool) (result ApplyResult, err error) {
+	if organizationID == uuid.Nil || accountID <= 0 || revision <= 0 {
+		return ApplyResult{}, fmt.Errorf("%w: organization, account, and revision are required", ErrInvalidPolicy)
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: begin account template apply: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err := tx.QueryRow(ctx, `SELECT id FROM organizations WHERE id=$1 FOR UPDATE`, organizationID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
+		return ApplyResult{}, ErrAccountNotFound
+	} else if err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: lock account organization: %w", err)
+	}
+	var priorGroupID *int64
+	if err := tx.QueryRow(ctx, `
+		SELECT u.access_group_id
+		FROM users u
+		JOIN organization_memberships m ON m.account_id=u.id
+		WHERE u.id=$1 AND m.organization_id=$2 AND m.status='active'
+		FOR UPDATE OF u`, accountID, organizationID).Scan(&priorGroupID); errors.Is(err, pgx.ErrNoRows) {
+		return ApplyResult{}, ErrAccountNotFound
+	} else if err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: lock direct account: %w", err)
+	}
+	template, err := getTemplate(ctx, tx, strings.TrimSpace(key), revision, false)
+	if err != nil {
+		return ApplyResult{}, err
+	}
+	if !template.Enabled || template.Archived {
+		return ApplyResult{}, ErrTemplateUnavailable
+	}
+	effectivePolicy, err := resolveMaterializedPolicy(ctx, tx, template.Policy)
+	if err != nil {
+		return ApplyResult{}, err
+	}
+
+	result = ApplyResult{
+		TenantID: organizationID, AccountID: accountID, TemplateKey: template.Key,
+		TemplateRevision: template.Revision, DryRun: dryRun, Policy: effectivePolicy,
+	}
+	var targetPolicy Policy
+	err = tx.QueryRow(ctx, `
+		SELECT id, library_ids, playback_allowed, max_streams, max_profiles,
+		       transcode_allowed, max_transcodes, download_allowed,
+		       download_transcode_allowed, max_playback_quality,
+		       allowed_permissions, requests_allowed
+		FROM access_groups
+		WHERE organization_id=$1 AND managed_template_key=$2 AND managed_template_revision=$3
+		  AND NOT is_default
+		FOR UPDATE`, organizationID, template.Key, template.Revision).Scan(
+		&result.GroupID, &targetPolicy.LibraryIDs, &targetPolicy.PlaybackAllowed,
+		&targetPolicy.MaxStreams, &targetPolicy.MaxProfiles, &targetPolicy.TranscodeAllowed,
+		&targetPolicy.MaxTranscodes, &targetPolicy.DownloadAllowed,
+		&targetPolicy.DownloadTranscodeAllowed, &targetPolicy.MaxPlaybackQuality,
+		&targetPolicy.AllowedPermissions, &targetPolicy.RequestsAllowed,
+	)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return ApplyResult{}, fmt.Errorf("entitlements: load direct template group: %w", err)
+	}
+	groupExists := err == nil
+
+	var defaultGroupID int64
+	if err := tx.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, organizationID).Scan(&defaultGroupID); err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: load organization default group: %w", err)
+	}
+	moveGroupIDs := []int64{defaultGroupID}
+	if priorGroupID != nil {
+		var priorDefault bool
+		var priorKey *string
+		var priorRevision *int64
+		if err := tx.QueryRow(ctx, `
+			SELECT is_default, managed_template_key, managed_template_revision
+			FROM access_groups WHERE organization_id=$1 AND id=$2`, organizationID, *priorGroupID).
+			Scan(&priorDefault, &priorKey, &priorRevision); err != nil {
+			return ApplyResult{}, fmt.Errorf("entitlements: load prior account group: %w", err)
+		}
+		if priorKey != nil {
+			result.PreviousTemplateKey = *priorKey
+			result.PreviousTemplateRevision = *priorRevision
+		}
+		if (priorDefault || priorKey != nil) && (!groupExists || *priorGroupID != result.GroupID) {
+			moveGroupIDs = append(moveGroupIDs, *priorGroupID)
+		}
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*)::int FROM user_profiles
+		WHERE user_id=$1 AND organization_id=$2 AND access_group_id=ANY($3)`, accountID, organizationID, moveGroupIDs).
+		Scan(&result.ProfilesMoved); err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: count direct profiles to reconcile: %w", err)
+	}
+	result.Changed = !groupExists || !policiesEqual(targetPolicy, effectivePolicy) || priorGroupID == nil || *priorGroupID != result.GroupID || result.ProfilesMoved > 0
+	if dryRun || !result.Changed {
+		return result, nil
+	}
+
+	if !groupExists {
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO access_groups (
+				organization_id,name,description,is_default,library_ids,max_playback_quality,
+				playback_allowed,download_allowed,download_transcode_allowed,max_streams,
+				max_profiles,transcode_allowed,max_transcodes,allowed_permissions,
+				requests_allowed,managed_template_key,managed_template_revision
+			) VALUES ($1,$2,'Managed direct-account Vondel entitlement.',false,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+			RETURNING id`, organizationID, "Managed Entitlement "+template.Key+" r"+fmt.Sprint(template.Revision),
+			effectivePolicy.LibraryIDs, effectivePolicy.MaxPlaybackQuality,
+			effectivePolicy.PlaybackAllowed, effectivePolicy.DownloadAllowed,
+			effectivePolicy.DownloadTranscodeAllowed, effectivePolicy.MaxStreams,
+			effectivePolicy.MaxProfiles, effectivePolicy.TranscodeAllowed,
+			effectivePolicy.MaxTranscodes, effectivePolicy.AllowedPermissions,
+			effectivePolicy.RequestsAllowed, template.Key, template.Revision).Scan(&result.GroupID); err != nil {
+			return ApplyResult{}, fmt.Errorf("entitlements: create direct template group: %w", err)
+		}
+	} else if !policiesEqual(targetPolicy, effectivePolicy) {
+		if _, err := tx.Exec(ctx, `
+			UPDATE access_groups SET library_ids=$4,max_playback_quality=$5,playback_allowed=$6,
+				download_allowed=$7,download_transcode_allowed=$8,max_streams=$9,max_profiles=$10,
+				transcode_allowed=$11,max_transcodes=$12,allowed_permissions=$13,requests_allowed=$14,updated_at=now()
+			WHERE organization_id=$1 AND id=$2 AND managed_template_key=$3`,
+			organizationID, result.GroupID, template.Key, effectivePolicy.LibraryIDs,
+			effectivePolicy.MaxPlaybackQuality, effectivePolicy.PlaybackAllowed,
+			effectivePolicy.DownloadAllowed, effectivePolicy.DownloadTranscodeAllowed,
+			effectivePolicy.MaxStreams, effectivePolicy.MaxProfiles, effectivePolicy.TranscodeAllowed,
+			effectivePolicy.MaxTranscodes, effectivePolicy.AllowedPermissions, effectivePolicy.RequestsAllowed); err != nil {
+			return ApplyResult{}, fmt.Errorf("entitlements: refresh direct template group: %w", err)
+		}
+		// Exact-revision groups are shared. Dynamic all-libraries resolution can
+		// change the group policy, so invalidate every other account using it.
+		if _, err := tx.Exec(ctx, `
+			UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now()
+			WHERE access_group_id=$1 AND id<>$2`, result.GroupID, accountID); err != nil {
+			return ApplyResult{}, fmt.Errorf("entitlements: invalidate shared direct group members: %w", err)
+		}
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE user_profiles SET access_group_id=$4,updated_at=now()
+		WHERE user_id=$1 AND organization_id=$2 AND access_group_id=ANY($3)`, accountID, organizationID, moveGroupIDs, result.GroupID); err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: reconcile direct profiles: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE users SET access_group_id=$2,access_policy_revision=access_policy_revision+1,updated_at=now()
+		WHERE id=$1`, accountID, result.GroupID); err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: assign direct account template: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO entitlement_audit_events
+		(action,organization_id,target_account_id,template_key,template_revision)
+		VALUES ('account.entitlement_materialized',$1,$2,$3,$4)`, organizationID, accountID, template.Key, template.Revision); err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: audit direct account materialization: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: commit account template apply: %w", err)
+	}
+	return result, nil
+}
+
+// ApplyDefaultAccountTemplate is the direct-product provisioning shortcut:
+// direct accounts live in the deployment default organization, while Park
+// tenant accounts use ApplyTemplate on their tenant organization.
+func (s *Store) ApplyDefaultAccountTemplate(ctx context.Context, accountID int, key string, revision int64, dryRun bool) (ApplyResult, error) {
+	var organizationID uuid.UUID
+	if err := s.pool.QueryRow(ctx, `
+		SELECT o.id
+		FROM organizations o
+		JOIN organization_memberships m ON m.organization_id=o.id
+		WHERE o.is_default AND m.account_id=$1 AND m.status='active'`, accountID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
+		return ApplyResult{}, ErrAccountNotFound
+	} else if err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: resolve direct account organization: %w", err)
+	}
+	return s.ApplyAccountTemplate(ctx, organizationID, accountID, key, revision, dryRun)
 }
 
 // Store persists templates and materializes them into tenant access groups.
@@ -187,6 +563,10 @@ func (s *Store) Create(ctx context.Context, input CreateTemplateInput) (template
 	if err != nil {
 		return Template{}, err
 	}
+	if _, err = tx.Exec(ctx, `INSERT INTO entitlement_audit_events
+		(action,template_key,template_revision) VALUES ('entitlement_template.created',$1,1)`, input.Key); err != nil {
+		return Template{}, fmt.Errorf("entitlements: audit template create: %w", err)
+	}
 	if err = tx.Commit(ctx); err != nil {
 		return Template{}, fmt.Errorf("entitlements: commit template create: %w", err)
 	}
@@ -237,6 +617,39 @@ func (s *Store) List(ctx context.Context, includeArchived bool) ([]Template, err
 	return result, nil
 }
 
+// ListRevisions returns the immutable history for one stable key, newest first.
+func (s *Store) ListRevisions(ctx context.Context, key string) ([]Template, error) {
+	key = strings.TrimSpace(key)
+	rows, err := s.pool.Query(ctx, `
+		SELECT t.key,t.name,r.revision,t.enabled,t.archived,
+		       r.library_ids,r.playback_allowed,r.max_streams,r.max_profiles,
+		       r.transcode_allowed,r.max_transcodes,r.download_allowed,
+		       r.download_transcode_allowed,r.max_playback_quality,
+		       r.allowed_permissions,r.requests_allowed,r.created_at
+		FROM entitlement_templates t
+		JOIN entitlement_template_revisions r ON r.template_key=t.key
+		WHERE t.key=$1 ORDER BY r.revision DESC`, key)
+	if err != nil {
+		return nil, fmt.Errorf("entitlements: list template revisions: %w", err)
+	}
+	defer rows.Close()
+	result := []Template{}
+	for rows.Next() {
+		item, err := scanTemplate(rows)
+		if err != nil {
+			return nil, fmt.Errorf("entitlements: scan template revision: %w", err)
+		}
+		result = append(result, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("entitlements: iterate template revisions: %w", err)
+	}
+	if len(result) == 0 {
+		return nil, ErrTemplateNotFound
+	}
+	return result, nil
+}
+
 // Revise appends a policy revision after checking the caller's optimistic
 // expected revision.
 func (s *Store) Revise(ctx context.Context, key string, expectedRevision int64, input ReviseTemplateInput) (template Template, err error) {
@@ -248,6 +661,9 @@ func (s *Store) Revise(ctx context.Context, key string, expectedRevision int64, 
 	input.Policy, err = normalizePolicy(input.Policy)
 	if err != nil {
 		return Template{}, err
+	}
+	if key == "browse-only" && input.Policy.PlaybackAllowed {
+		return Template{}, ErrProtectedTemplate
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -286,6 +702,10 @@ func (s *Store) Revise(ctx context.Context, key string, expectedRevision int64, 
 	if err != nil {
 		return Template{}, err
 	}
+	if _, err = tx.Exec(ctx, `INSERT INTO entitlement_audit_events
+		(action,template_key,template_revision) VALUES ('entitlement_template.revised',$1,$2)`, key, next); err != nil {
+		return Template{}, fmt.Errorf("entitlements: audit template revision: %w", err)
+	}
 	if err = tx.Commit(ctx); err != nil {
 		return Template{}, fmt.Errorf("entitlements: commit template revision: %w", err)
 	}
@@ -305,7 +725,15 @@ func (s *Store) Clone(ctx context.Context, sourceKey string, sourceRevision int6
 // Archive makes a template unavailable without deleting its history.
 func (s *Store) Archive(ctx context.Context, key string, expectedRevision int64) (Template, error) {
 	key = strings.TrimSpace(key)
-	tag, err := s.pool.Exec(ctx, `
+	if key == "browse-only" {
+		return Template{}, ErrProtectedTemplate
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Template{}, fmt.Errorf("entitlements: begin template archive: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	tag, err := tx.Exec(ctx, `
 		UPDATE entitlement_templates
 		SET archived=true, enabled=false, updated_at=now()
 		WHERE key=$1 AND current_revision=$2 AND NOT archived`, key, expectedRevision)
@@ -314,14 +742,25 @@ func (s *Store) Archive(ctx context.Context, key string, expectedRevision int64)
 	}
 	if tag.RowsAffected() == 0 {
 		var current int64
-		if err := s.pool.QueryRow(ctx, `SELECT current_revision FROM entitlement_templates WHERE key=$1`, key).Scan(&current); errors.Is(err, pgx.ErrNoRows) {
+		if err := tx.QueryRow(ctx, `SELECT current_revision FROM entitlement_templates WHERE key=$1`, key).Scan(&current); errors.Is(err, pgx.ErrNoRows) {
 			return Template{}, ErrTemplateNotFound
 		} else if err != nil {
 			return Template{}, fmt.Errorf("entitlements: inspect archive conflict: %w", err)
 		}
 		return Template{}, ErrRevisionConflict
 	}
-	return s.Latest(ctx, key)
+	item, err := getTemplate(ctx, tx, key, expectedRevision, false)
+	if err != nil {
+		return Template{}, err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO entitlement_audit_events
+		(action,template_key,template_revision) VALUES ('entitlement_template.archived',$1,$2)`, key, expectedRevision); err != nil {
+		return Template{}, fmt.Errorf("entitlements: audit template archive: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Template{}, fmt.Errorf("entitlements: commit template archive: %w", err)
+	}
+	return item, nil
 }
 
 // ApplyTemplate materializes an exact revision into a tenant's managed default
@@ -470,7 +909,37 @@ func ApplyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, key s
 		)`, tenantID, result.GroupID); err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: bump managed group member revisions: %w", err)
 	}
+	if _, err := tx.Exec(ctx, `INSERT INTO entitlement_audit_events
+		(action,organization_id,template_key,template_revision)
+		VALUES ('organization.entitlement_materialized',$1,$2,$3)`, tenantID, template.Key, template.Revision); err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: audit managed group materialization: %w", err)
+	}
 	return result, nil
+}
+
+func resolveMaterializedPolicy(ctx context.Context, tx pgx.Tx, policy Policy) (Policy, error) {
+	if policy.LibraryIDs != nil {
+		return policy, nil
+	}
+	rows, err := tx.Query(ctx, `SELECT id FROM media_folders WHERE enabled ORDER BY id`)
+	if err != nil {
+		return Policy{}, fmt.Errorf("entitlements: resolve enabled libraries: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return Policy{}, fmt.Errorf("entitlements: scan enabled library: %w", err)
+		}
+		policy.LibraryIDs = append(policy.LibraryIDs, id)
+	}
+	if err := rows.Err(); err != nil {
+		return Policy{}, fmt.Errorf("entitlements: iterate enabled libraries: %w", err)
+	}
+	if policy.LibraryIDs == nil {
+		policy.LibraryIDs = []int{}
+	}
+	return policy, nil
 }
 
 type templateQuerier interface {
@@ -562,7 +1031,7 @@ func loadMaterializationGroup(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID
 		FROM access_groups
 		WHERE organization_id=$1
 		  AND (
-			managed_template_key IS NOT NULL OR
+			(is_default AND managed_template_key IS NOT NULL) OR
 			(is_default AND name='Default Group' AND description='Applied automatically to newly created users.')
 		  )
 		ORDER BY (managed_template_key IS NOT NULL) DESC, id

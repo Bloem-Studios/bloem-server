@@ -444,7 +444,7 @@ func (m *TranscodeManager) ReconstructSession(ctx context.Context, sessionID str
 	if err != nil {
 		// Admission denials must still refuse: a replayed token cannot reconstruct
 		// past a current cap or after transcoding has been disabled for the user.
-		if errors.Is(err, ErrTooManyStreams) || errors.Is(err, ErrTooManyTranscodes) || errors.Is(err, ErrTranscodingDisabled) || errors.Is(err, ErrAudioTranscodingDisabled) {
+		if errors.Is(err, ErrPlaybackNotAllowed) || errors.Is(err, ErrTooManyStreams) || errors.Is(err, ErrTooManyTranscodes) || errors.Is(err, ErrTranscodingDisabled) || errors.Is(err, ErrAudioTranscodingDisabled) {
 			slog.WarnContext(ctx, "playback session reconstruct refused by admission policy", "component", "playback",
 				"session", sessionID, "playback_session_id", sessionID,
 				"user", card.UserID, "method", method, "error", err)

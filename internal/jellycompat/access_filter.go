@@ -38,6 +38,7 @@ func NewScopeAccessFilter(resolver ScopeResolver) AccessFilterResolver {
 			)
 			return catalog.AccessFilter{
 				AllowedLibraryIDs: []int{},
+				PlaybackDenied:    true,
 				UserID:            userID,
 				ProfileID:         profileID,
 			}
@@ -47,6 +48,7 @@ func NewScopeAccessFilter(resolver ScopeResolver) AccessFilterResolver {
 			DisabledLibraryIDs:        scope.DisabledLibraryIDs,
 			MaxContentRating:          scope.MaxContentRating,
 			MaxPlaybackQuality:        scope.MaxPlaybackQuality,
+			PlaybackDenied:            !scope.PlaybackAllowed,
 			ProfilePreferredLanguage:  scope.PreferredMetadataLanguage,
 			MetadataLanguageOverrides: scope.MetadataLanguageOverrides,
 			UserID:                    userID,

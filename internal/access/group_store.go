@@ -46,11 +46,13 @@ func (g Group) Policy() GroupPolicy {
 		ID:                       g.ID,
 		LibraryIDs:               cloneInts(g.LibraryIDs),
 		MaxPlaybackQuality:       g.MaxPlaybackQuality,
+		PlaybackAllowed:          g.PlaybackAllowed,
 		DownloadAllowed:          g.DownloadAllowed,
 		DownloadTranscodeAllowed: g.DownloadTranscodeAllowed,
 		TranscodeAllowed:         g.TranscodeAllowed,
 		AudioTranscodeAllowed:    g.AudioTranscodeAllowed,
 		MaxStreams:               g.MaxStreams,
+		MaxProfiles:              g.MaxProfiles,
 		MaxTranscodes:            g.MaxTranscodes,
 		AllowedPermissions:       cloneStrings(g.AllowedPermissions),
 		RequestsAllowed:          g.RequestsAllowed,
@@ -219,6 +221,50 @@ func (s *GroupStore) Get(ctx context.Context, organizationID uuid.UUID, id int64
 	return group, nil
 }
 
+// GetForAccount resolves the group currently assigned to an account. It is
+// used by platform-wide nested account routes, where there is deliberately no
+// organization selected in request context.
+func (s *GroupStore) GetForAccount(ctx context.Context, accountID int, id int64) (*Group, error) {
+	group, err := scanGroup(s.pool.QueryRow(ctx, `
+		SELECT `+accessGroupSelectColumns+`, COUNT(p.id)::int AS member_count
+		FROM access_groups g
+		LEFT JOIN user_profiles p
+		  ON p.organization_id = g.organization_id
+		 AND p.access_group_id = g.id
+		WHERE g.id = $2
+		  AND EXISTS (
+			SELECT 1 FROM users u
+			WHERE u.id = $1 AND u.access_group_id = g.id
+		  )
+		GROUP BY g.id`, accountID, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrGroupNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("loading account access group: %w", err)
+	}
+	return group, nil
+}
+
+// GetDefault returns the group inherited by a new profile in an organization.
+func (s *GroupStore) GetDefault(ctx context.Context, organizationID uuid.UUID) (*Group, error) {
+	group, err := scanGroup(s.pool.QueryRow(ctx, `
+		SELECT `+accessGroupSelectColumns+`, COUNT(p.id)::int AS member_count
+		FROM access_groups g
+		LEFT JOIN user_profiles p
+		  ON p.organization_id = g.organization_id
+		 AND p.access_group_id = g.id
+		WHERE g.organization_id = $1 AND g.is_default
+		GROUP BY g.id`, organizationID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrGroupNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("loading default access group: %w", err)
+	}
+	return group, nil
+}
+
 // Create inserts a new access group.
 func (s *GroupStore) Create(ctx context.Context, organizationID uuid.UUID, input CreateGroupInput) (*Group, error) {
 	if organizationID == uuid.Nil {
@@ -236,6 +282,9 @@ func (s *GroupStore) Create(ctx context.Context, organizationID uuid.UUID, input
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	if input.IsDefault {
+		if err := protectManagedDefault(ctx, tx, organizationID, 0); err != nil {
+			return nil, err
+		}
 		if _, err := tx.Exec(ctx, `
 			UPDATE access_groups
 			SET is_default = false
@@ -415,6 +464,9 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 	}
 	authorizationChanged := groupAuthorizationChanged(current, input)
 	if input.IsDefault != nil && *input.IsDefault {
+		if err := protectManagedDefault(ctx, tx, organizationID, id); err != nil {
+			return nil, err
+		}
 		if _, err := tx.Exec(ctx, `
 			UPDATE access_groups
 			SET is_default = false
@@ -460,6 +512,25 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 		return nil, fmt.Errorf("committing access group update: %w", err)
 	}
 	return s.Get(ctx, organizationID, id)
+}
+
+func protectManagedDefault(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, replacementID int64) error {
+	var currentID int64
+	var managedKey *string
+	err := tx.QueryRow(ctx, `
+		SELECT id,managed_template_key FROM access_groups
+		WHERE organization_id=$1 AND is_default
+		FOR UPDATE`, organizationID).Scan(&currentID, &managedKey)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("locking current default access group: %w", err)
+	}
+	if managedKey != nil && currentID != replacementID {
+		return ErrManagedGroup
+	}
+	return nil
 }
 
 // Delete removes an access group. Canonical profile assignments are moved to
@@ -573,8 +644,9 @@ func (s *GroupStore) ResolvePolicy(ctx context.Context, subject GroupSubject) (*
 	if subject.ProfileID != "" {
 		return nullableGroupPolicy(s.pool.QueryRow(ctx, `
 			SELECT p.access_group_id, g.id, g.library_ids, g.max_playback_quality,
-				g.download_allowed, g.download_transcode_allowed, g.transcode_allowed, g.audio_transcode_allowed,
-				g.max_streams, g.max_transcodes, g.allowed_permissions, g.requests_allowed
+				g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
+				g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
+				g.max_transcodes, g.allowed_permissions, g.requests_allowed
 			FROM user_profiles p
 			LEFT JOIN access_groups g
 			  ON g.organization_id = p.organization_id
@@ -588,8 +660,9 @@ func (s *GroupStore) ResolvePolicy(ctx context.Context, subject GroupSubject) (*
 	}
 	return nullableGroupPolicy(s.pool.QueryRow(ctx, `
 		SELECT u.access_group_id, g.id, g.library_ids, g.max_playback_quality,
-			g.download_allowed, g.download_transcode_allowed, g.transcode_allowed, g.audio_transcode_allowed,
-			g.max_streams, g.max_transcodes, g.allowed_permissions, g.requests_allowed
+			g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
+			g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
+			g.max_transcodes, g.allowed_permissions, g.requests_allowed
 		FROM users u
 		JOIN organizations o
 		  ON o.id = $1
@@ -606,11 +679,13 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 		groupID         *int64
 		libraryIDs      []int
 		maxQuality      *string
+		playbackAllowed *bool
 		downloadAllowed *bool
 		downloadTx      *bool
 		transcodeTx     *bool
 		audioTx         *bool
 		maxStreams      *int
+		maxProfiles     *int
 		maxTranscodes   *int
 		permissions     []string
 		requestsAllowed *bool
@@ -620,11 +695,13 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 		&groupID,
 		&libraryIDs,
 		&maxQuality,
+		&playbackAllowed,
 		&downloadAllowed,
 		&downloadTx,
 		&transcodeTx,
 		&audioTx,
 		&maxStreams,
+		&maxProfiles,
 		&maxTranscodes,
 		&permissions,
 		&requestsAllowed,
@@ -637,18 +714,20 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 	if assignedGroupID == nil {
 		return nil, nil
 	}
-	if groupID == nil || maxQuality == nil || downloadAllowed == nil || downloadTx == nil || transcodeTx == nil || audioTx == nil || maxStreams == nil || maxTranscodes == nil || requestsAllowed == nil {
+	if groupID == nil || maxQuality == nil || playbackAllowed == nil || downloadAllowed == nil || downloadTx == nil || transcodeTx == nil || audioTx == nil || maxStreams == nil || maxProfiles == nil || maxTranscodes == nil || requestsAllowed == nil {
 		return nil, ErrGroupNotFound
 	}
 	return &GroupPolicy{
 		ID:                       *groupID,
 		LibraryIDs:               libraryIDs,
 		MaxPlaybackQuality:       *maxQuality,
+		PlaybackAllowed:          *playbackAllowed,
 		DownloadAllowed:          *downloadAllowed,
 		DownloadTranscodeAllowed: *downloadTx,
 		TranscodeAllowed:         *transcodeTx,
 		AudioTranscodeAllowed:    *audioTx,
 		MaxStreams:               *maxStreams,
+		MaxProfiles:              *maxProfiles,
 		MaxTranscodes:            *maxTranscodes,
 		AllowedPermissions:       permissions,
 		RequestsAllowed:          *requestsAllowed,

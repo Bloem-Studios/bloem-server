@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
@@ -30,6 +31,18 @@ func (*customRoleAdminUserRepo) GetByID(context.Context, int) (*models.User, err
 
 type strictLegacyRoleProvisioner struct {
 	legacyRole string
+}
+
+type recordingDirectEntitlements struct {
+	accountID int
+	key       string
+	revision  int64
+	dryRun    bool
+}
+
+func (r *recordingDirectEntitlements) ApplyDefaultAccountTemplate(_ context.Context, accountID int, key string, revision int64, dryRun bool) (entitlements.ApplyResult, error) {
+	r.accountID, r.key, r.revision, r.dryRun = accountID, key, revision, dryRun
+	return entitlements.ApplyResult{AccountID: accountID, TemplateKey: key, TemplateRevision: revision, GroupID: 44}, nil
 }
 
 func (p *strictLegacyRoleProvisioner) ProvisionDefaultMembership(_ context.Context, _ int, legacyRole string) error {
@@ -63,5 +76,35 @@ func TestAdminHandlerCreateUser_CustomRoleUsesUserMembershipLegacyRole(t *testin
 	}
 	if memberships.legacyRole != "user" {
 		t.Fatalf("membership legacy role = %q, want user", memberships.legacyRole)
+	}
+}
+
+func TestAdminHandlerCreateUser_AppliesDirectEntitlementRevision(t *testing.T) {
+	users := &customRoleAdminUserRepo{}
+	memberships := &strictLegacyRoleProvisioner{}
+	direct := &recordingDirectEntitlements{}
+	handler := NewAdminHandler(users, nil, nil)
+	handler.SetMembershipProvisioner(memberships)
+	handler.SetDirectEntitlements(direct)
+
+	request := httptest.NewRequest(http.MethodPost, "/admin/users", strings.NewReader(`{
+		"username":"direct-user",
+		"email":"direct@example.test",
+		"password":"password",
+		"role":"user",
+		"entitlement_template_key":"premium",
+		"entitlement_template_revision":3
+	}`))
+	response := httptest.NewRecorder()
+	handler.HandleCreateUser(response, request)
+
+	if response.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d; body=%s", response.Code, http.StatusCreated, response.Body.String())
+	}
+	if direct.accountID != 88 || direct.key != "premium" || direct.revision != 3 || direct.dryRun {
+		t.Fatalf("direct entitlement call = %+v", direct)
+	}
+	if users.created.AccessGroupID == nil || *users.created.AccessGroupID != 44 {
+		t.Fatalf("created user access group = %v, want 44", users.created.AccessGroupID)
 	}
 }

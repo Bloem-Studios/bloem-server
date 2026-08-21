@@ -179,6 +179,7 @@ type PlaybackHandler struct {
 	sessionMgr              SessionManagerInterface
 	fileResolver            FilePathResolver
 	storeProvider           userstore.UserStoreProvider
+	accessFilter            AccessFilterResolver
 	NodePlanner             nodepool.SessionPlanner
 	JWTSecret               string
 	profileStaler           profileStaler

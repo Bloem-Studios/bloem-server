@@ -2,6 +2,7 @@ package jellycompat
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -66,6 +67,24 @@ func TestHandleDownload_ServesOriginalFile(t *testing.T) {
 	}
 }
 
+func TestHandleDownload_BrowseOnlyPolicyDeniesDirectPlayTransport(t *testing.T) {
+	handler := &PlaybackHandler{
+		accessFilter: func(context.Context, int, string) catalog.AccessFilter {
+			return catalog.AccessFilter{PlaybackDenied: true}
+		},
+	}
+	req := httptest.NewRequest("GET", "/Items/ignored/Download", nil)
+	ctx := context.WithValue(req.Context(), compatSessionKey, &Session{StreamAppUserID: 1, ProfileID: "browse-only"})
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+	handler.HandleDownload(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+}
+
 // TestItemDetail_AdvertisesCanDownload guards against regressing the
 // CanDownload flag: Infuse refuses Direct Play (Static=true streaming) of
 // items it believes it cannot download, so playable items must advertise it.
@@ -84,5 +103,23 @@ func TestItemDetail_AdvertisesCanDownload(t *testing.T) {
 	dto := m.itemFromDetailWithFields(detail, false, nil, nil)
 	if !dto.CanDownload {
 		t.Error("playable item detail must advertise CanDownload=true; Infuse requires it for Direct Play")
+	}
+}
+
+func TestItemDetail_BrowseOnlyPolicyDoesNotAdvertiseCanDownload(t *testing.T) {
+	h := &ItemsHandler{
+		mapper: newMapper(NewResourceIDCodec(), nil),
+		accessFilter: func(context.Context, int, string) catalog.AccessFilter {
+			return catalog.AccessFilter{PlaybackDenied: true}
+		},
+	}
+	detail := upstreamItemDetail{
+		ContentID: "movie-1",
+		Type:      "movie",
+		Versions:  []catalog.FileVersion{{FileID: 42}},
+	}
+	dto := h.itemFromDetailForSession(context.Background(), &Session{StreamAppUserID: 1, ProfileID: "browse-only"}, detail, false, nil, nil)
+	if dto.CanDownload {
+		t.Fatal("CanDownload = true, want browse-only policy not to advertise direct-play transport")
 	}
 }

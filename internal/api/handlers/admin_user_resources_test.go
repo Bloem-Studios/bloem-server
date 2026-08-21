@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userdb"
@@ -431,6 +432,25 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 		}}
 		recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodPost,
 			"/api/v1/admin/users/1/profiles", `{"name":"Over quota"}`)
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+		}
+	})
+
+	t.Run("managed group profile quota is unprocessable", func(t *testing.T) {
+		handler, _, _ := newAdminUserResourceHandler(t)
+		organizationID := uuid.New()
+		groupID := int64(91)
+		handler.userRepo = testAdminUserRepo{users: map[int]*models.User{
+			1: {ID: 1, MaxProfiles: 5},
+			2: {ID: 2, MaxProfiles: 4},
+		}}
+		handler.AccessGroups = profileCapAccessGroups{group: &access.Group{ID: groupID, OrganizationID: organizationID, MaxProfiles: 2}}
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/1/profiles", strings.NewReader(`{"name":"Over managed quota"}`))
+		request.Header.Set("Content-Type", "application/json")
+		request = request.WithContext(withAdminResourceOrganization(request.Context(), organizationID))
+		recorder := httptest.NewRecorder()
+		routeAdminUserResources(handler).ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusUnprocessableEntity {
 			t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 		}

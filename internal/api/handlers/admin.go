@@ -33,6 +33,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
+	"github.com/Silo-Server/silo-server/internal/entitlements"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/markers"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -64,6 +65,12 @@ type AccessGroupValidator interface {
 	access.GroupPolicyProvider
 	Get(ctx context.Context, organizationID uuid.UUID, id int64) (*access.Group, error)
 	List(ctx context.Context, organizationID uuid.UUID) ([]access.Group, error)
+	GetForAccount(context.Context, int, int64) (*access.Group, error)
+	GetDefault(context.Context, uuid.UUID) (*access.Group, error)
+}
+
+type DirectEntitlementProvisioner interface {
+	ApplyDefaultAccountTemplate(context.Context, int, string, int64, bool) (entitlements.ApplyResult, error)
 }
 
 // ServerSettingsStore provides access to server-wide admin settings.
@@ -149,7 +156,8 @@ type AdminHandler struct {
 	// tenantStore gates tenant-scoped account creation (vondel-park growth
 	// G2); nil means tenants are not wired and an organization_id request
 	// is refused.
-	tenantStore *tenancy.Store
+	tenantStore        *tenancy.Store
+	directEntitlements DirectEntitlementProvisioner
 }
 
 // SetProfileHandler wires the same fully configured profile handler used by
@@ -161,6 +169,12 @@ func (h *AdminHandler) SetProfileHandler(profileHandler *ProfileHandler) {
 
 // SetTenantStore wires the park tenant slot gate into user creation.
 func (h *AdminHandler) SetTenantStore(store *tenancy.Store) { h.tenantStore = store }
+
+// SetDirectEntitlements wires direct-product account provisioning to exact
+// entitlement template revisions in the deployment default organization.
+func (h *AdminHandler) SetDirectEntitlements(store DirectEntitlementProvisioner) {
+	h.directEntitlements = store
+}
 
 // NewAdminHandler creates a new AdminHandler backed by the given
 // user repository and database pool.
@@ -211,9 +225,11 @@ type createUserRequest struct {
 	// organization (vondel-park growth G2) instead of the deployment's
 	// default one. The tenant's slot quota is enforced here: a full or
 	// frozen tenant refuses.
-	OrganizationID  *uuid.UUID `json:"organization_id,omitempty"`
-	RequestsAllowed *bool      `json:"requests_allowed,omitempty"`
-	AccessGroupID   *int64     `json:"access_group_id,omitempty"`
+	OrganizationID              *uuid.UUID `json:"organization_id,omitempty"`
+	RequestsAllowed             *bool      `json:"requests_allowed,omitempty"`
+	AccessGroupID               *int64     `json:"access_group_id,omitempty"`
+	EntitlementTemplateKey      string     `json:"entitlement_template_key,omitempty"`
+	EntitlementTemplateRevision int64      `json:"entitlement_template_revision,omitempty"`
 }
 
 // optionalField is a tri-state JSON field for nullable policy columns: absent
@@ -798,6 +814,20 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
+	req.EntitlementTemplateKey = strings.TrimSpace(req.EntitlementTemplateKey)
+	directEntitlementRequested := req.EntitlementTemplateKey != "" || req.EntitlementTemplateRevision != 0
+	if directEntitlementRequested && (req.EntitlementTemplateKey == "" || req.EntitlementTemplateRevision <= 0) {
+		writeError(w, http.StatusBadRequest, "bad_request", "entitlement_template_key and a positive entitlement_template_revision are required together")
+		return
+	}
+	if directEntitlementRequested && req.OrganizationID != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "direct entitlement templates cannot be combined with organization_id")
+		return
+	}
+	if directEntitlementRequested && h.directEntitlements == nil {
+		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are not configured")
+		return
+	}
 	permissions := auth.DefaultUserPermissions()
 	if req.Permissions.Set {
 		permissions = req.Permissions.Value
@@ -863,7 +893,7 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 		if user == nil {
 			return // createTenantUser already wrote the response.
 		}
-	} else {
+	} else if !directEntitlementRequested {
 		user, err = h.accountProvisioner.CreateAccount(r.Context(), accountInput)
 		if err != nil {
 			if auth.IsDuplicate(err) {
@@ -872,6 +902,36 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 			}
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
 			return
+		}
+	} else {
+		defaultProfile := accountInput.DefaultProfile
+		accountInput.DefaultProfile.Enabled = false
+		user, err = h.accountProvisioner.CreateAccount(r.Context(), accountInput)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
+			return
+		}
+		applied, applyErr := h.directEntitlements.ApplyDefaultAccountTemplate(
+			r.Context(), user.ID, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false,
+		)
+		if applyErr != nil {
+			_ = h.userRepo.Delete(r.Context(), user.ID)
+			switch {
+			case errors.Is(applyErr, entitlements.ErrTemplateNotFound), errors.Is(applyErr, entitlements.ErrTemplateUnavailable):
+				writeError(w, http.StatusUnprocessableEntity, "entitlement_template_unavailable", "Entitlement template revision is unavailable")
+			default:
+				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to apply entitlement template")
+			}
+			return
+		}
+		user.AccessGroupID = &applied.GroupID
+		if defaultProfile.Enabled {
+			accountInput.DefaultProfile = defaultProfile
+			if err := h.accountProvisioner.CreateDefaultProfile(r.Context(), user.ID, accountInput); err != nil {
+				_ = h.userRepo.Delete(r.Context(), user.ID)
+				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create default profile")
+				return
+			}
 		}
 	}
 	h.invalidateStats(r.Context(), cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(user.ID))

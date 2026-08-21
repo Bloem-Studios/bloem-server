@@ -259,6 +259,7 @@ type SessionManager struct {
 type SessionLimits struct {
 	MaxStreams               int
 	MaxTranscodes            int
+	PlaybackDisabled         bool
 	TranscodingDisabled      bool
 	AudioTranscodingDisabled bool
 	// Tenant organization entitlements (vondel-park growth G2). TenantID ""
@@ -503,6 +504,9 @@ func (m *SessionManager) StartSessionWithFilesContext(
 	if err != nil {
 		return nil, err
 	}
+	if limits.PlaybackDisabled {
+		return nil, ErrPlaybackNotAllowed
+	}
 
 	for {
 		m.mu.Lock()
@@ -735,6 +739,9 @@ func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s 
 	if existing, ok := m.sessions[s.ID]; ok {
 		return existing, nil
 	}
+	if limits.PlaybackDisabled {
+		return nil, ErrPlaybackNotAllowed
+	}
 
 	// The session being reconstructed is not yet in the map, so the live counts
 	// reflect the user's *other* sessions; admitting one more must stay within cap.
@@ -830,6 +837,9 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 		limits, err := m.limitsForUser(ctx, userID, profileID)
 		if err != nil {
 			return err
+		}
+		if limits.PlaybackDisabled {
+			return ErrPlaybackNotAllowed
 		}
 		if err := transcodingDisabledError(method == PlayTranscode, transcodeAudio, limits); err != nil {
 			return err

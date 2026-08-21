@@ -9,6 +9,7 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/invitations"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
@@ -59,6 +60,7 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	var peopleHandler *handlers.V2AdminPeopleHandler
 	var organizationHandler *handlers.V2AdminOrganizationHandler
 	var explainHandler *handlers.V2PolicyExplainHandler
+	var entitlementHandler *handlers.EntitlementTemplatesHandler
 	if tokens != nil && resolver != nil && membershipStore != nil && platform != nil {
 		session = handlers.NewAdminContextSessionHandler(tokens, resolver, membershipStore, platform)
 		adminMW = apimw.NewAdminContextMiddleware(tokens, resolver, membershipStore, platform)
@@ -73,6 +75,11 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 			invitations.NewRepository(deps.DB),
 		)
 		explainHandler = handlers.NewV2PolicyExplainHandler(policy.NewDecisionRepository(deps.DB))
+		var entitlementSecret []byte
+		if deps.Config != nil {
+			entitlementSecret = []byte(deps.Config.Auth.JWTSecret)
+		}
+		entitlementHandler = handlers.NewEntitlementTemplatesHandler(entitlements.NewTemplateStore(deps.DB), entitlementSecret)
 	}
 	peopleService := deps.AdminPeopleService
 	if peopleService == nil && deps.DB != nil && deps.Config != nil {
@@ -96,7 +103,7 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	// capability at all.
 	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
 	mountV2Routes(r, system, session, authMW, adminMW,
-		newV2ClientSurface(deps, authMW, tenantMW, searchProvider), platformHandler, peopleHandler, organizationHandler, explainHandler, compatibilityHandler)
+		newV2ClientSurface(deps, authMW, tenantMW, searchProvider), platformHandler, peopleHandler, organizationHandler, explainHandler, compatibilityHandler, entitlementHandler)
 }
 
 // mountV2Routes registers every /api/v2 route. chi allows one subtree per mount
@@ -110,6 +117,7 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 	var organizationHandler *handlers.V2AdminOrganizationHandler
 	var explainHandler *handlers.V2PolicyExplainHandler
 	var compatibilityHandler *handlers.V2AdminCompatibilityHandler
+	var entitlementHandler *handlers.EntitlementTemplatesHandler
 	var client v2ClientSurface
 	for _, candidate := range surfaces {
 		switch handler := candidate.(type) {
@@ -125,6 +133,8 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 			client = handler
 		case *handlers.V2AdminCompatibilityHandler:
 			compatibilityHandler = handler
+		case *handlers.EntitlementTemplatesHandler:
+			entitlementHandler = handler
 		}
 	}
 	r.Route("/api/v2", func(r chi.Router) {
@@ -152,6 +162,27 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 		}
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(adminMW.Require)
+			if entitlementHandler != nil {
+				entitlement := entitlementHandler
+				r.Get("/platform/entitlement-templates", entitlement.HandleList)
+				r.Post("/platform/entitlement-templates", entitlement.HandleCreate)
+				r.Get("/platform/entitlement-templates/{key}", entitlement.HandleGet)
+				r.Get("/platform/entitlement-templates/{key}/revisions", entitlement.HandleListRevisions)
+				r.Get("/platform/entitlement-templates/{key}/history", entitlement.HandleListRevisions)
+				r.Post("/platform/entitlement-templates/{key}/revisions", entitlement.HandleRevise)
+				r.Post("/platform/entitlement-templates/{key}/clone", entitlement.HandleClone)
+				r.Post("/platform/entitlement-templates/{key}/archive", entitlement.HandleArchive)
+				r.Get("/platform/organizations/{id}/entitlement", entitlement.HandleGetOrganizationEntitlement)
+				r.Get("/platform/organizations/{id}/entitlement/audit", entitlement.HandleOrganizationAudit)
+				r.Post("/platform/organizations/{id}/entitlement/dry-run", entitlement.HandleOrganizationDryRun)
+				r.Post("/platform/organizations/{id}/entitlement/apply", entitlement.HandleOrganizationApply)
+				r.Get("/platform/accounts/{account_id}/entitlement", entitlement.HandleGetAccountEntitlement)
+				r.Post("/platform/accounts/{account_id}/entitlement/dry-run", entitlement.HandleAccountDryRun)
+				r.Post("/platform/accounts/{account_id}/entitlement/apply", entitlement.HandleAccountApply)
+				r.Get("/platform/users/{user_id}/entitlement", entitlement.HandleGetAccountEntitlement)
+				r.Post("/platform/users/{user_id}/entitlement/dry-run", entitlement.HandleAccountDryRun)
+				r.Post("/platform/users/{user_id}/entitlement/apply", entitlement.HandleAccountApply)
+			}
 			if organizationHandler != nil {
 				organization := organizationHandler
 				r.Route("/organization", func(r chi.Router) {

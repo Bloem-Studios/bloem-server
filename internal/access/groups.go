@@ -46,11 +46,13 @@ type GroupPolicy struct {
 	ID                       int64
 	LibraryIDs               []int // nil = unrestricted
 	MaxPlaybackQuality       string
+	PlaybackAllowed          bool
 	DownloadAllowed          bool
 	DownloadTranscodeAllowed bool
 	TranscodeAllowed         bool
 	AudioTranscodeAllowed    bool
-	MaxStreams               int // 0 = no cap
+	MaxStreams               int // 0 = no group cap
+	MaxProfiles              int // 0 = no group cap
 	MaxTranscodes            int
 	AllowedPermissions       []string // nil = all assignable
 	RequestsAllowed          bool
@@ -62,11 +64,13 @@ type GroupPolicy struct {
 type EffectiveUserPolicy struct {
 	LibraryIDs               []int // nil = unrestricted
 	MaxPlaybackQuality       string
+	PlaybackAllowed          bool
 	DownloadAllowed          bool
 	DownloadTranscodeAllowed bool
 	TranscodeAllowed         bool
 	AudioTranscodeAllowed    bool
 	MaxStreams               int
+	MaxProfiles              int
 	MaxTranscodes            int
 	Permissions              []string
 	RequestsAllowed          bool
@@ -87,6 +91,7 @@ func NoGroupPolicy() GroupPolicy {
 		TranscodeAllowed:         true,
 		AudioTranscodeAllowed:    true,
 		MaxStreams:               0,
+		MaxProfiles:              0,
 		MaxTranscodes:            0,
 		AllowedPermissions:       nil,
 		RequestsAllowed:          true,
@@ -160,11 +165,13 @@ func ApplyGroupPolicy(user *models.User, group *GroupPolicy) EffectiveUserPolicy
 	effective := EffectiveUserPolicy{
 		LibraryIDs:               inheritLibraryIDs(user.LibraryIDs, base.LibraryIDs),
 		MaxPlaybackQuality:       NormalizePlaybackQuality(inheritString(user.MaxPlaybackQuality, base.MaxPlaybackQuality)),
+		PlaybackAllowed:          base.PlaybackAllowed,
 		DownloadAllowed:          inheritBool(user.DownloadAllowed, base.DownloadAllowed),
 		DownloadTranscodeAllowed: inheritBool(user.DownloadTranscodeAllowed, base.DownloadTranscodeAllowed),
 		TranscodeAllowed:         inheritBool(user.TranscodeAllowed, base.TranscodeAllowed),
 		AudioTranscodeAllowed:    inheritBool(user.AudioTranscodeAllowed, base.AudioTranscodeAllowed),
 		MaxStreams:               inheritInt(user.MaxStreams, base.MaxStreams),
+		MaxProfiles:              strictestPositive(user.MaxProfiles, base.MaxProfiles),
 		MaxTranscodes:            inheritInt(user.MaxTranscodes, base.MaxTranscodes),
 		Permissions:              cloneStrings(user.Permissions),
 		RequestsAllowed:          inheritBool(user.RequestsAllowed, base.RequestsAllowed),
@@ -193,6 +200,16 @@ func inheritInt(override *int, inherited int) int {
 		return *override
 	}
 	return inherited
+}
+
+func strictestPositive(account, group int) int {
+	if account <= 0 {
+		return group
+	}
+	if group <= 0 || account < group {
+		return account
+	}
+	return group
 }
 
 func inheritBool(override *bool, inherited bool) bool {

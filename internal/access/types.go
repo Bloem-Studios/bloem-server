@@ -9,6 +9,7 @@ type Scope struct {
 	LibrariesRestricted bool
 	MaxContentRating    string
 	MaxPlaybackQuality  string
+	PlaybackAllowed     bool
 	// PreferredMetadataLanguage is the profile's metadata (presentation)
 	// language; "" inherits the library's metadata language.
 	PreferredMetadataLanguage string

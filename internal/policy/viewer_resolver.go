@@ -184,6 +184,7 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 		LibrariesRestricted:       decision.LibrariesRestricted,
 		MaxContentRating:          decision.MaxContentRating,
 		MaxPlaybackQuality:        decision.MaxPlaybackQuality,
+		PlaybackAllowed:           effective.PlaybackAllowed,
 		PreferredMetadataLanguage: decision.PreferredMetadataLanguage,
 		MetadataLanguageOverrides: preferences.MetadataLanguageOverrides,
 		PolicyRevision:            user.AccessPolicyRevision,

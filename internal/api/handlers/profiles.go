@@ -12,11 +12,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -27,6 +29,9 @@ type ProfileHandler struct {
 	UserRepo       interface {
 		GetByID(ctx context.Context, id int) (*models.User, error)
 	}
+	// AccessGroups supplies the managed entitlement ceiling inherited by new
+	// profiles. Nil preserves the legacy account-only cap in isolated wiring.
+	AccessGroups  AccessGroupValidator
 	ProfileTokens *access.ProfileTokenService
 	AvatarStore   profileAvatarStore
 	AvatarTTL     time.Duration
@@ -174,10 +179,9 @@ func writeProfileManagementPermissionError(w http.ResponseWriter, err error) {
 //
 // This is a check-then-write guard with no store-level uniqueness constraint
 // (the userstore's dual Postgres/SQLite backends carry no unique index on
-// name), so two concurrent requests can both pass and insert duplicates —
-// the same window the profile_limit_reached check accepts. Good enough for
-// interactive profile management; a functional unique index is the fix if
-// that ever stops being true.
+// name), so two concurrent requests can both pass and insert duplicates.
+// Profile-count limits do not share this gap: PostgreSQL serializes those
+// inserts in the entitlement-limit trigger.
 func profileNameConflicts(profiles []userstore.Profile, name, excludeID string) bool {
 	trimmed := strings.TrimSpace(name)
 	for _, p := range profiles {
@@ -318,6 +322,7 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list profiles")
 		return
 	}
+	existingProfiles = profilesForOrganization(r.Context(), existingProfiles)
 	// The very first profile on a user can be bootstrapped without
 	// primary/admin privileges (it becomes the primary); everything after
 	// requires either the server admin role or the caller's active profile
@@ -349,21 +354,28 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 		)
 		return
 	}
+	var inheritedAccessGroupID *int64
 	if h.UserRepo != nil {
 		user, err := h.UserRepo.GetByID(r.Context(), userID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load user")
 			return
 		}
-		if user != nil && user.MaxProfiles >= 1 && len(existingProfiles) >= user.MaxProfiles {
+		limit, inheritedGroupID, err := h.effectiveProfileLimit(r.Context(), user)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve profile limit")
+			return
+		}
+		if limit >= 1 && len(existingProfiles) >= limit {
 			writeError(
 				w,
 				http.StatusConflict,
 				"profile_limit_reached",
-				fmt.Sprintf("This account has reached its profile limit (%d)", user.MaxProfiles),
+				fmt.Sprintf("This account has reached its profile limit (%d)", limit),
 			)
 			return
 		}
+		inheritedAccessGroupID = inheritedGroupID
 	}
 
 	if profileNameConflicts(existingProfiles, req.Name, "") {
@@ -403,9 +415,14 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 		LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
 		AllowedLibraryIDs:          req.AllowedLibraryIDs,
 		MaxPlaybackQuality:         maxPlaybackQuality,
+		AccessGroupID:              inheritedAccessGroupID,
 	}
 
 	if err := h.createProfileWithSettingsSync(r.Context(), store, userID, profile, settingsSync); err != nil {
+		if isProfileEntitlementLimitError(err) {
+			writeError(w, http.StatusConflict, "profile_limit_reached", "This account has reached its profile limit")
+			return
+		}
 		slog.ErrorContext(r.Context(), "profile create failed to sync canonical settings",
 			"component", "api", "user_id", userID, "profile_id", profileID, "error", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to store profile preferences")
@@ -452,6 +469,88 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 	}
 
 	writeJSON(w, http.StatusCreated, h.toProfileResponse(r.Context(), store, created))
+}
+
+func isProfileEntitlementLimitError(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.ConstraintName == "user_profiles_entitlement_limit"
+}
+
+func (h *ProfileHandler) effectiveProfileLimit(ctx context.Context, user *models.User) (int, *int64, error) {
+	if user == nil {
+		return 0, nil, nil
+	}
+	limit := user.MaxProfiles
+	if h.AccessGroups == nil {
+		return limit, cloneGroupID(user.AccessGroupID), nil
+	}
+	explicitOrganizationID := adminResourceOrganization(ctx)
+	organizationID := explicitOrganizationID
+	if organizationID == uuid.Nil {
+		if tenant, ok := tenancy.FromContext(ctx); ok {
+			organizationID = tenant.OrganizationID
+		}
+	}
+	if organizationID == uuid.Nil {
+		if user.AccessGroupID == nil {
+			return limit, nil, nil
+		}
+		group, err := h.AccessGroups.GetForAccount(ctx, user.ID, *user.AccessGroupID)
+		if err != nil {
+			return 0, nil, err
+		}
+		return strictestProfileLimit(limit, group.MaxProfiles), cloneGroupID(&group.ID), nil
+	}
+	var group *access.Group
+	var err error
+	if explicitOrganizationID == uuid.Nil && user.AccessGroupID != nil {
+		group, err = h.AccessGroups.Get(ctx, organizationID, *user.AccessGroupID)
+		if errors.Is(err, access.ErrGroupNotFound) {
+			group, err = h.AccessGroups.GetDefault(ctx, organizationID)
+		}
+	} else {
+		group, err = h.AccessGroups.GetDefault(ctx, organizationID)
+	}
+	if err != nil {
+		return 0, nil, err
+	}
+	return strictestProfileLimit(limit, group.MaxProfiles), cloneGroupID(&group.ID), nil
+}
+
+func cloneGroupID(id *int64) *int64 {
+	if id == nil {
+		return nil
+	}
+	copy := *id
+	return &copy
+}
+
+func strictestProfileLimit(accountLimit, groupLimit int) int {
+	if groupLimit <= 0 || accountLimit > 0 && accountLimit <= groupLimit {
+		return accountLimit
+	}
+	return groupLimit
+}
+
+func profilesForOrganization(ctx context.Context, profiles []userstore.Profile) []userstore.Profile {
+	organizationID := adminResourceOrganization(ctx)
+	if organizationID == uuid.Nil {
+		if tenant, ok := tenancy.FromContext(ctx); ok {
+			organizationID = tenant.OrganizationID
+		}
+	}
+	if organizationID == uuid.Nil {
+		return profiles
+	}
+	filtered := make([]userstore.Profile, 0, len(profiles))
+	for _, profile := range profiles {
+		// Empty is the legacy/pre-migration representation of the deployment
+		// default organization and must remain fail-closed for cap accounting.
+		if profile.OrganizationID == "" || profile.OrganizationID == organizationID.String() {
+			filtered = append(filtered, profile)
+		}
+	}
+	return filtered
 }
 
 // HandleUpdateProfile handles PUT /profiles/{id}.

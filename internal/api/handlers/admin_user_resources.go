@@ -133,6 +133,7 @@ func (h *AdminHandler) adminResourceProfileHandler() *ProfileHandler {
 	}
 	profileHandler := NewProfileHandler(h.storeProv)
 	profileHandler.UserRepo = h.userRepo
+	profileHandler.AccessGroups = h.AccessGroups
 	profileHandler.EventsHub = h.EventsHub
 	return profileHandler
 }
@@ -148,6 +149,7 @@ func (h *AdminHandler) HandleListUserProfiles(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list profiles")
 		return
 	}
+	profiles = profilesForOrganization(r.Context(), profiles)
 	if organizationID := adminResourceOrganization(r.Context()); organizationID != uuid.Nil {
 		filtered := profiles[:0]
 		for _, profile := range profiles {
@@ -196,9 +198,15 @@ func (h *AdminHandler) HandleCreateUserProfile(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list profiles")
 		return
 	}
-	if resources.user.MaxProfiles >= 1 && len(profiles) >= resources.user.MaxProfiles {
+	profileHandler := h.adminResourceProfileHandler()
+	limit, inheritedGroupID, err := profileHandler.effectiveProfileLimit(r.Context(), resources.user)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve profile limit")
+		return
+	}
+	if limit >= 1 && len(profiles) >= limit {
 		writeError(w, http.StatusUnprocessableEntity, "profile_limit_reached",
-			fmt.Sprintf("This account has reached its profile limit (%d)", resources.user.MaxProfiles))
+			fmt.Sprintf("This account has reached its profile limit (%d)", limit))
 		return
 	}
 	if profileNameConflicts(profiles, name, "") {
@@ -229,14 +237,18 @@ func (h *AdminHandler) HandleCreateUserProfile(w http.ResponseWriter, r *http.Re
 		LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
 		AllowedLibraryIDs:          req.AllowedLibraryIDs,
 		MaxPlaybackQuality:         maxPlaybackQuality,
+		AccessGroupID:              inheritedGroupID,
 	}
 	if organizationID := adminResourceOrganization(r.Context()); organizationID != uuid.Nil {
 		profile.OrganizationID = organizationID.String()
 	}
-	profileHandler := h.adminResourceProfileHandler()
 	if err := profileHandler.createProfileWithSettingsSync(
 		r.Context(), resources.store, resources.user.ID, profile, settingsSync,
 	); err != nil {
+		if isProfileEntitlementLimitError(err) {
+			writeError(w, http.StatusUnprocessableEntity, "profile_limit_reached", "This account has reached its profile limit")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create profile")
 		return
 	}

@@ -644,6 +644,8 @@ func TestViewerResolverAppliesGroupPolicy(t *testing.T) {
 	group := &access.GroupPolicy{
 		LibraryIDs:               []int{2, 4},
 		MaxPlaybackQuality:       access.PlaybackQualityStandard,
+		PlaybackAllowed:          true,
+		TranscodeAllowed:         true,
 		DownloadAllowed:          true,
 		DownloadTranscodeAllowed: true,
 		TranscodeAllowed:         true,
@@ -687,7 +689,7 @@ func TestViewerResolverLoadsProfileBeforeResolvingTenantGroup(t *testing.T) {
 		events: &events,
 	}
 	groups := &viewerResolverGroupProvider{
-		group:  &access.GroupPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true, RequestsAllowed: true},
+		group:  &access.GroupPolicy{PlaybackAllowed: true, TranscodeAllowed: true, DownloadAllowed: true, DownloadTranscodeAllowed: true, RequestsAllowed: true},
 		events: &events,
 	}
 	libraries := &viewerResolverTenantLibraries{ids: defaultViewerResolverTenantLibraries().ids, events: &events}

@@ -35,6 +35,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
 	"github.com/Silo-Server/silo-server/internal/downloads"
+	"github.com/Silo-Server/silo-server/internal/entitlements"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/historyimport"
 	"github.com/Silo-Server/silo-server/internal/intromarkers"
@@ -883,6 +884,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	if deps.UserStoreProvider != nil {
 		profileHandler = handlers.NewProfileHandler(deps.UserStoreProvider)
 		profileHandler.UserRepo = userRepo
+		profileHandler.AccessGroups = accessGroupStore
 		profileHandler.EventsHub = deps.EventsHub
 		profileHandler.ProfileTokens = profileTokenService
 		// Preserve genuine nil in the interface. Assigning a nil *s3client.Client
@@ -1196,6 +1198,7 @@ func NewRouter(deps Dependencies) chi.Router {
 			// resolution above uses also answers this.
 			tenantOrgStore := tenancy.NewStore(deps.DB)
 			adminHandler.SetTenantStore(tenantOrgStore)
+			adminHandler.SetDirectEntitlements(entitlements.NewTemplateStore(deps.DB))
 			adminTenantsHandler = handlers.NewAdminTenantsHandler(tenantOrgStore, userRepo)
 			memberAccounts := auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider)
 			memberService := tenancy.NewMemberService(
@@ -3601,6 +3604,7 @@ func playbackSessionLimitProvider(
 		limits := playback.SessionLimits{
 			MaxStreams:               effective.MaxStreams,
 			MaxTranscodes:            effective.MaxTranscodes,
+			PlaybackDisabled:         !effective.PlaybackAllowed,
 			TranscodingDisabled:      !effective.TranscodeAllowed,
 			AudioTranscodingDisabled: !effective.AudioTranscodeAllowed,
 		}

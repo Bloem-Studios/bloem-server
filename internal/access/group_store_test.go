@@ -150,7 +150,8 @@ func TestGroupStoreResolvePolicyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolvePolicy(member) error: %v", err)
 	}
-	if policy == nil || policy.ID != group.ID || !reflect.DeepEqual(policy.LibraryIDs, []int{1, 3}) {
+	if policy == nil || policy.ID != group.ID || !reflect.DeepEqual(policy.LibraryIDs, []int{1, 3}) ||
+		!policy.PlaybackAllowed || policy.TranscodeAllowed || !policy.AudioTranscodeAllowed || policy.MaxProfiles != 2 {
 		t.Fatalf("policy = %#v, want group policy", policy)
 	}
 	if policy.TranscodeAllowed || !policy.AudioTranscodeAllowed {
@@ -173,6 +174,10 @@ func TestGroupStoreResolvePolicyDB(t *testing.T) {
 	}
 	if policy == nil || !policy.TranscodeAllowed {
 		t.Fatalf("policy after update = %#v, want transcode_allowed true", policy)
+	}
+	accountGroup, err := store.GetForAccount(ctx, memberID, group.ID)
+	if err != nil || accountGroup.ID != group.ID || accountGroup.MaxProfiles != 2 {
+		t.Fatalf("GetForAccount() = %#v, %v; want group %d", accountGroup, err, group.ID)
 	}
 	policy, err = store.ResolvePolicy(ctx, GroupSubject{
 		OrganizationID: organizationID,
@@ -755,6 +760,7 @@ func createTestGroup(t *testing.T, ctx context.Context, store *GroupStore, organ
 		TranscodeAllowed:         false,
 		AudioTranscodeAllowed:    true,
 		MaxStreams:               3,
+		MaxProfiles:              2,
 		MaxTranscodes:            2,
 		AllowedPermissions:       []string{"marker_edit"},
 		RequestsAllowed:          true,

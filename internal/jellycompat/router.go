@@ -103,6 +103,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	}
 	userDataHandler := NewUserDataHandler(deps.ContentService, deps.UserDataService, deps.IDCodec, deps.Config)
 	playbackHandler := NewPlaybackHandler(deps.Config, deps.ContentService, deps.IDCodec, deps.DeviceProfiles, deps.PlaybackStore, deps.SessionMgr, deps.FileResolver, deps.UserStoreProvider)
+	playbackHandler.accessFilter = deps.AccessFilterFn
 	if deps.DB != nil {
 		playbackHandler.profileStaler = recommendations.NewRepo(deps.DB)
 	}

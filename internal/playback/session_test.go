@@ -414,6 +414,46 @@ func TestSessionManager_DisabledVideoTranscodingAllowsAudioByDefault(t *testing.
 	}
 }
 
+func TestSessionManager_PlaybackDisabledRejectsEveryPlayMethodBeforeDecider(t *testing.T) {
+	for _, method := range []playback.PlayMethod{playback.PlayDirect, playback.PlayRemux, playback.PlayTranscode} {
+		t.Run(string(method), func(t *testing.T) {
+			sm := playback.NewSessionManager(0, 0)
+			sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+				return playback.SessionLimits{PlaybackDisabled: true}, nil
+			})
+			deciderCalled := false
+			sm.SetAdmissionDecider(func(context.Context, playback.AdmissionRequest) (playback.AdmissionDecision, error) {
+				deciderCalled = true
+				return playback.AdmissionDecision{Allowed: true}, nil
+			})
+
+			_, err := sm.StartSession(1, "browse-only", 100, method, false)
+			if !errors.Is(err, playback.ErrPlaybackNotAllowed) {
+				t.Fatalf("StartSession() error = %v, want ErrPlaybackNotAllowed", err)
+			}
+			if deciderCalled {
+				t.Fatal("admission decider called for an entitlement-level playback denial")
+			}
+		})
+	}
+}
+
+func TestSessionManager_PlaybackDisabledRejectsRecipeReconstruction(t *testing.T) {
+	sm := playback.NewSessionManager(0, 0)
+	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {
+		return playback.SessionLimits{PlaybackDisabled: true}, nil
+	})
+	_, err := sm.RegisterReconstructedWithLimits(context.Background(), &playback.Session{
+		ID: "old-recipe", UserID: 1, ProfileID: "browse-only", PlayMethod: playback.PlayDirect,
+	})
+	if !errors.Is(err, playback.ErrPlaybackNotAllowed) {
+		t.Fatalf("RegisterReconstructedWithLimits() error = %v, want ErrPlaybackNotAllowed", err)
+	}
+	if _, err := sm.GetSession("old-recipe"); !errors.Is(err, playback.ErrSessionNotFound) {
+		t.Fatalf("reconstructed denied session lookup error = %v, want ErrSessionNotFound", err)
+	}
+}
+
 func TestSessionManager_DisabledAudioTranscodingRejectsAudioTranscode(t *testing.T) {
 	sm := playback.NewSessionManager(0, 0)
 	sm.SetLimitProvider(func(context.Context, int, string) (playback.SessionLimits, error) {

@@ -90,6 +90,7 @@ func (r *Resolver) Resolve(ctx context.Context, input ResolveInput) (Scope, erro
 		AllowedLibraryIDs:   cloneInts(effective.LibraryIDs),
 		LibrariesRestricted: effective.LibraryIDs != nil,
 		MaxPlaybackQuality:  NormalizePlaybackQuality(effective.MaxPlaybackQuality),
+		PlaybackAllowed:     effective.PlaybackAllowed,
 		PolicyRevision:      user.AccessPolicyRevision,
 		ProfileVerified:     input.ProfileID == "",
 	}

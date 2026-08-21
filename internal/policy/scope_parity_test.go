@@ -410,6 +410,7 @@ func decisionToAccessScope(input ScopeInput, decision ScopeDecision) access.Scop
 		LibrariesRestricted:       decision.LibrariesRestricted,
 		MaxContentRating:          decision.MaxContentRating,
 		MaxPlaybackQuality:        decision.MaxPlaybackQuality,
+		PlaybackAllowed:           true,
 		PreferredMetadataLanguage: decision.PreferredMetadataLanguage,
 		PolicyRevision:            decision.PolicyRevision,
 		ProfileVerified:           decision.ProfileVerified,

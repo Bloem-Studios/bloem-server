@@ -663,6 +663,8 @@ func TestResolver_AppliesGroupPolicy(t *testing.T) {
 		&stubGroupProvider{group: &GroupPolicy{
 			LibraryIDs:               []int{2, 4},
 			MaxPlaybackQuality:       PlaybackQualityStandard,
+			PlaybackAllowed:          true,
+			TranscodeAllowed:         true,
 			DownloadAllowed:          true,
 			DownloadTranscodeAllowed: true,
 			RequestsAllowed:          true,
@@ -761,7 +763,7 @@ func TestResolverLoadsProfileBeforeResolvingTenantGroup(t *testing.T) {
 		events: &events,
 	}
 	groups := &stubGroupProvider{
-		group:  &GroupPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true, RequestsAllowed: true},
+		group:  &GroupPolicy{PlaybackAllowed: true, TranscodeAllowed: true, DownloadAllowed: true, DownloadTranscodeAllowed: true, RequestsAllowed: true},
 		events: &events,
 	}
 	resolver := NewResolver(

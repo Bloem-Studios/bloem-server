@@ -153,6 +153,10 @@ func (h *PlaybackHandler) HandleDownload(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusUnauthorized, "Unauthorized", "Missing authentication token")
 		return
 	}
+	if h.accessFilter != nil && h.accessFilter(r.Context(), session.StreamAppUserID, session.ProfileID).PlaybackDenied {
+		writeError(w, http.StatusForbidden, "Forbidden", "Playback is not allowed")
+		return
+	}
 
 	contentID, err := decodeContentID(h.codec, chiURLParam(r, "id"))
 	if err != nil {
@@ -1403,6 +1407,15 @@ func (h *PlaybackHandler) reviveUpstreamForReport(ctx context.Context, session *
 }
 
 func (h *PlaybackHandler) ensureUpstreamPlayback(ctx context.Context, compatSession *Session, playSessionID string, source PlaybackMediaSource, method string) (*PlaybackSession, error) {
+	if compatSession == nil {
+		return nil, ErrSessionNotFound
+	}
+	// Re-resolve policy on every transport admission. A durable compat session
+	// may outlive an entitlement reconciliation, so trusting only the policy
+	// that existed when it was created would let Browse-only users continue.
+	if h.accessFilter != nil && h.accessFilter(ctx, compatSession.StreamAppUserID, compatSession.ProfileID).PlaybackDenied {
+		return nil, playback.ErrPlaybackNotAllowed
+	}
 	playSession, ok := h.playbackStore.Get(playSessionID)
 	if !ok {
 		return nil, ErrSessionNotFound

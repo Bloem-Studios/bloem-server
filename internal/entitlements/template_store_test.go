@@ -18,6 +18,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
@@ -148,6 +150,24 @@ func TestTemplateCloneHasIndependentHistory(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(1), storedClone.Revision)
 	require.Equal(t, 3, storedClone.Policy.MaxStreams)
+}
+
+func TestBrowseOnlyPresetCannotBeWeakenedOrArchived(t *testing.T) {
+	ctx, _, store := entitlementTestStore(t)
+	preset, err := store.Latest(ctx, "browse-only")
+	require.NoError(t, err)
+	weakened := preset.Policy
+	weakened.PlaybackAllowed = true
+	weakened.TranscodeAllowed = true
+	_, err = store.Revise(ctx, preset.Key, preset.Revision, entitlements.ReviseTemplateInput{Name: preset.Name, Enabled: true, Policy: weakened})
+	require.ErrorIs(t, err, entitlements.ErrProtectedTemplate)
+	_, err = store.Archive(ctx, preset.Key, preset.Revision)
+	require.ErrorIs(t, err, entitlements.ErrProtectedTemplate)
+
+	// Rollout may enable the preset, but its playback denial remains invariant.
+	enabled, err := store.Revise(ctx, preset.Key, preset.Revision, entitlements.ReviseTemplateInput{Name: preset.Name, Enabled: true, Policy: preset.Policy})
+	require.NoError(t, err)
+	require.False(t, enabled.Policy.PlaybackAllowed)
 }
 
 func TestApplyTemplateMaterializesAllEnabledLibrariesAndPreservesCustomGroups(t *testing.T) {
@@ -359,6 +379,216 @@ func TestManagedTemplateGroupRejectsGenericMutationAndDeletion(t *testing.T) {
 	require.ErrorIs(t, err, access.ErrManagedGroup)
 	err = groupStore.Delete(ctx, tenant.ID, groupID)
 	require.ErrorIs(t, err, access.ErrManagedGroup)
+	_, err = groupStore.Create(ctx, tenant.ID, access.CreateGroupInput{Name: "Replacement " + key, IsDefault: true})
+	require.ErrorIs(t, err, access.ErrManagedGroup)
+	custom, err := groupStore.Create(ctx, tenant.ID, access.CreateGroupInput{Name: "Custom " + key})
+	require.NoError(t, err)
+	makeDefault := true
+	_, err = groupStore.Update(ctx, tenant.ID, custom.ID, access.UpdateGroupInput{IsDefault: &makeDefault})
+	require.ErrorIs(t, err, access.ErrManagedGroup)
+}
+
+func TestApplyAccountTemplateKeepsDirectAccountsIndependentAndPreservesCustomProfiles(t *testing.T) {
+	ctx, pool, store := entitlementTestStore(t)
+	var organizationID uuid.UUID
+	var defaultGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT o.id, g.id FROM organizations o
+		JOIN access_groups g ON g.organization_id=o.id AND g.is_default
+		WHERE o.is_default`).Scan(&organizationID, &defaultGroupID))
+
+	firstTemplate, err := store.Create(ctx, entitlements.CreateTemplateInput{
+		Key: entitlementTestKey(t, "direct-standard"), Name: "Direct standard " + uuid.NewString(), Enabled: true, Policy: standardPolicy([]int{}),
+	})
+	require.NoError(t, err)
+	secondTemplate, err := store.Create(ctx, entitlements.CreateTemplateInput{
+		Key: entitlementTestKey(t, "direct-premium"), Name: "Direct premium " + uuid.NewString(), Enabled: true, Policy: premiumPolicy([]int{}),
+	})
+	require.NoError(t, err)
+
+	firstAccountID := insertDirectEntitlementAccount(t, ctx, pool, organizationID, defaultGroupID, "first")
+	secondAccountID := insertDirectEntitlementAccount(t, ctx, pool, organizationID, defaultGroupID, "second")
+	var customGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `
+		INSERT INTO access_groups (organization_id,name,description,is_default)
+		VALUES ($1,$2,'deliberate custom group',false) RETURNING id`, organizationID, "Custom "+uuid.NewString()).Scan(&customGroupID))
+	_, err = pool.Exec(ctx, `
+		INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id)
+		VALUES ($1,$2,'First default',$3,$4),($5,$2,'First custom',$3,$6),($7,$8,'Second default',$3,$4)`,
+		uuid.NewString(), firstAccountID, organizationID, defaultGroupID,
+		uuid.NewString(), customGroupID, uuid.NewString(), secondAccountID)
+	require.NoError(t, err)
+
+	first, err := store.ApplyAccountTemplate(ctx, organizationID, firstAccountID, firstTemplate.Key, firstTemplate.Revision, false)
+	require.NoError(t, err)
+	second, err := store.ApplyAccountTemplate(ctx, organizationID, secondAccountID, secondTemplate.Key, secondTemplate.Revision, false)
+	require.NoError(t, err)
+	if first.GroupID == second.GroupID {
+		t.Fatal("different direct templates reused the same managed group")
+	}
+	idempotent, err := store.ApplyAccountTemplate(ctx, organizationID, firstAccountID, firstTemplate.Key, firstTemplate.Revision, false)
+	require.NoError(t, err)
+	require.False(t, idempotent.Changed)
+
+	var firstCustomGroup int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='First custom'`, firstAccountID).Scan(&firstCustomGroup))
+	require.Equal(t, customGroupID, firstCustomGroup)
+	var secondDefaultGroup int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='Second default'`, secondAccountID).Scan(&secondDefaultGroup))
+	require.Equal(t, second.GroupID, secondDefaultGroup)
+
+	directStore, err := pgstore.NewPostgresProvider(pool).ForUser(ctx, firstAccountID)
+	require.NoError(t, err)
+	require.NoError(t, directStore.CreateProfile(ctx, userstore.Profile{Name: "Inherited"}))
+	var inheritedGroup int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='Inherited'`, firstAccountID).Scan(&inheritedGroup))
+	require.Equal(t, first.GroupID, inheritedGroup, "new direct profiles inherit the account entitlement group")
+
+	secondRevision, err := store.Revise(ctx, firstTemplate.Key, firstTemplate.Revision, entitlements.ReviseTemplateInput{
+		Name: firstTemplate.Name, Enabled: true, Policy: premiumPolicy([]int{}),
+	})
+	require.NoError(t, err)
+	reconciled, err := store.ApplyAccountTemplate(ctx, organizationID, firstAccountID, secondRevision.Key, secondRevision.Revision, false)
+	require.NoError(t, err)
+	require.True(t, reconciled.Changed)
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='First custom'`, firstAccountID).Scan(&firstCustomGroup))
+	require.Equal(t, customGroupID, firstCustomGroup)
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='Second default'`, secondAccountID).Scan(&secondDefaultGroup))
+	require.Equal(t, second.GroupID, secondDefaultGroup, "reconcile must not move another direct account")
+}
+
+func TestSharedDynamicDirectGroupInvalidatesEveryAccountOnLibraryChange(t *testing.T) {
+	ctx, pool, store := entitlementTestStore(t)
+	var organizationID uuid.UUID
+	var defaultGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT o.id,g.id FROM organizations o JOIN access_groups g ON g.organization_id=o.id AND g.is_default WHERE o.is_default`).Scan(&organizationID, &defaultGroupID))
+	template, err := store.Create(ctx, entitlements.CreateTemplateInput{Key: entitlementTestKey(t, "dynamic-direct"), Name: "Dynamic direct " + uuid.NewString(), Enabled: true, Policy: standardPolicy(nil)})
+	require.NoError(t, err)
+	firstID := insertDirectEntitlementAccount(t, ctx, pool, organizationID, defaultGroupID, "dynamic-first")
+	secondID := insertDirectEntitlementAccount(t, ctx, pool, organizationID, defaultGroupID, "dynamic-second")
+	_, err = store.ApplyAccountTemplate(ctx, organizationID, firstID, template.Key, template.Revision, false)
+	require.NoError(t, err)
+	_, err = store.ApplyAccountTemplate(ctx, organizationID, secondID, template.Key, template.Revision, false)
+	require.NoError(t, err)
+	var firstRevision int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_policy_revision FROM users WHERE id=$1`, firstID).Scan(&firstRevision))
+	newLibraryID := insertEntitlementLibrary(t, ctx, pool, "dynamic-added-"+uuid.NewString(), true)
+	_, err = store.ApplyAccountTemplate(ctx, organizationID, secondID, template.Key, template.Revision, false)
+	require.NoError(t, err)
+	var invalidatedRevision int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_policy_revision FROM users WHERE id=$1`, firstID).Scan(&invalidatedRevision))
+	if invalidatedRevision <= firstRevision {
+		t.Fatalf("shared account revision = %d, want > %d after dynamic policy changed", invalidatedRevision, firstRevision)
+	}
+	var libraries []int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT g.library_ids FROM access_groups g JOIN users u ON u.access_group_id=g.id WHERE u.id=$1`, firstID).Scan(&libraries))
+	if !slices.Contains(libraries, newLibraryID) {
+		t.Fatalf("shared group libraries = %v, want newly enabled %d", libraries, newLibraryID)
+	}
+}
+
+func TestTenantApplyDoesNotReuseDirectAccountManagedGroup(t *testing.T) {
+	ctx, pool, store := entitlementTestStore(t)
+	tenantStore := tenancy.NewStore(pool)
+	suffix := entitlementTestKey(t, "tenant-direct-separation")
+	tenant, err := tenantStore.CreateTenantOrganization(ctx, tenancy.CreateTenantOrganizationInput{
+		Name: "Tenant and direct group separation", ExternalOperatorID: "operator-" + suffix,
+		ExternalServiceID: "service-" + suffix, Slots: 3, Transcodes: 2,
+	})
+	require.NoError(t, err)
+	var defaultGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, tenant.ID).Scan(&defaultGroupID))
+	accountID := insertDirectEntitlementAccount(t, ctx, pool, tenant.ID, defaultGroupID, "separated")
+	template, err := store.Create(ctx, entitlements.CreateTemplateInput{
+		Key: suffix, Name: "Separated " + suffix, Enabled: true, Policy: standardPolicy([]int{}),
+	})
+	require.NoError(t, err)
+	direct, err := store.ApplyAccountTemplate(ctx, tenant.ID, accountID, template.Key, template.Revision, false)
+	require.NoError(t, err)
+
+	managedDefault, err := store.ApplyTemplate(ctx, tenant.ID, template.Key, template.Revision, false)
+	require.NoError(t, err)
+	if direct.GroupID == managedDefault.GroupID {
+		t.Fatal("tenant managed-default and direct account groups must be distinct")
+	}
+	var directIsDefault bool
+	require.NoError(t, pool.QueryRow(ctx, `SELECT is_default FROM access_groups WHERE id=$1`, direct.GroupID).Scan(&directIsDefault))
+	require.False(t, directIsDefault, "tenant apply must not promote a direct account group")
+}
+
+func TestProfileEntitlementLimitIsOrganizationScopedAndConcurrentSafe(t *testing.T) {
+	ctx, pool, _ := entitlementTestStore(t)
+	var firstOrganizationID uuid.UUID
+	var firstGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT o.id,g.id FROM organizations o JOIN access_groups g ON g.organization_id=o.id AND g.is_default WHERE o.is_default`).Scan(&firstOrganizationID, &firstGroupID))
+	accountID := insertDirectEntitlementAccount(t, ctx, pool, firstOrganizationID, firstGroupID, "profile-cap")
+	_, err := pool.Exec(ctx, `UPDATE users SET max_profiles=1 WHERE id=$1`, accountID)
+	require.NoError(t, err)
+
+	start := make(chan struct{})
+	errorsCh := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		go func(index int) {
+			<-start
+			_, insertErr := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,$3,$4,$5)`, uuid.NewString(), accountID, fmt.Sprintf("Concurrent %d", index), firstOrganizationID, firstGroupID)
+			errorsCh <- insertErr
+		}(i)
+	}
+	close(start)
+	succeeded := 0
+	for i := 0; i < 2; i++ {
+		if <-errorsCh == nil {
+			succeeded++
+		}
+	}
+	require.Equal(t, 1, succeeded, "concurrent inserts must serialize at the hard cap")
+
+	tenant, err := tenancy.NewStore(pool).CreateTenantOrganization(ctx, tenancy.CreateTenantOrganizationInput{
+		Name: "Second cap tenant", ExternalOperatorID: "cap-" + uuid.NewString(), ExternalServiceID: "cap-" + uuid.NewString(), Slots: 1, Transcodes: 1,
+	})
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role) VALUES ($1,$2,$3,'active','user')`, uuid.New(), tenant.ID, accountID)
+	require.NoError(t, err)
+	var secondGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, tenant.ID).Scan(&secondGroupID))
+	_, err = pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,'Other tenant',$3,$4)`, uuid.NewString(), accountID, tenant.ID, secondGroupID)
+	require.NoError(t, err, "a profile in another organization must not consume this organization's cap")
+}
+
+func TestEntitlementAuditAndApplyReceiptAreDurable(t *testing.T) {
+	ctx, pool, store := entitlementTestStore(t)
+	var organizationID uuid.UUID
+	var defaultGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT o.id,g.id FROM organizations o JOIN access_groups g ON g.organization_id=o.id AND g.is_default WHERE o.is_default`).Scan(&organizationID, &defaultGroupID))
+	actorID := insertDirectEntitlementAccount(t, ctx, pool, organizationID, defaultGroupID, "receipt-actor")
+	require.NoError(t, store.RecordAudit(ctx, entitlements.AuditEvent{ActorAccountID: actorID, Action: "organization.entitlement_applied", OrganizationID: organizationID, TemplateKey: "premium", TemplateRevision: 1, RequestID: "request-1"}))
+	events, err := store.ListOrganizationAudit(ctx, organizationID)
+	require.NoError(t, err)
+	if len(events) == 0 || events[0].ActorAccountID != actorID || events[0].RequestID != "request-1" {
+		t.Fatalf("audit events = %+v, want durable actor/request event", events)
+	}
+	result := entitlements.ApplyResult{TenantID: organizationID, TemplateKey: "premium", TemplateRevision: 1, Changed: true}
+	inserted, err := store.SaveApplyReceipt(ctx, actorID, "organization", organizationID.String(), "command-1", "premium", 1, result)
+	require.NoError(t, err)
+	require.True(t, inserted)
+	receipt, found, err := store.LoadApplyReceipt(ctx, actorID, "organization", organizationID.String(), "command-1")
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, result, receipt.Result)
+}
+
+func insertDirectEntitlementAccount(t *testing.T, ctx context.Context, pool *pgxpool.Pool, organizationID uuid.UUID, defaultGroupID int64, label string) int {
+	t.Helper()
+	var accountID int
+	suffix := uuid.NewString()
+	require.NoError(t, pool.QueryRow(ctx, `
+		INSERT INTO users (email,username,password_hash,role,access_group_id)
+		VALUES ($1,$2,'test-hash','user',$3) RETURNING id`, label+"-"+suffix+"@example.test", label+"-"+suffix, defaultGroupID).Scan(&accountID))
+	_, err := pool.Exec(ctx, `
+		INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role)
+		VALUES ($1,$2,$3,'active','user')`, uuid.New(), organizationID, accountID)
+	require.NoError(t, err)
+	return accountID
 }
 
 func standardPolicy(libraryIDs []int) entitlements.Policy {
