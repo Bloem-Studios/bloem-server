@@ -992,6 +992,7 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 		DryRun: dryRun, Policy: effectivePolicy,
 	}
 	var formerDefaultGroupID int64
+	var moveFormerDefaultAssignments bool
 	movedAccountIDs := []int{}
 	if group != nil {
 		result.GroupID = group.ID
@@ -1008,10 +1009,10 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 	if exactFound && !group.IsDefault {
 		var protectedDefaultRevision *uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			SELECT id,managed_cohort_id
+			SELECT id,managed_cohort_id,`+materializationGroupDiscriminator+`
 			FROM access_groups
 			WHERE organization_id=$1 AND is_default AND id<>$2
-			FOR UPDATE`, tenantID, group.ID).Scan(&formerDefaultGroupID, &protectedDefaultRevision); errors.Is(err, pgx.ErrNoRows) {
+			FOR UPDATE`, tenantID, group.ID).Scan(&formerDefaultGroupID, &protectedDefaultRevision, &moveFormerDefaultAssignments); errors.Is(err, pgx.ErrNoRows) {
 			return ApplyResult{}, fmt.Errorf("entitlements: tenant has no former managed default")
 		} else if err != nil {
 			return ApplyResult{}, fmt.Errorf("entitlements: load former tenant default: %w", err)
@@ -1019,7 +1020,8 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 		if protectedDefaultRevision != nil {
 			return ApplyResult{}, ErrManagedCohortImmutable
 		}
-		if err := tx.QueryRow(ctx, `
+		if moveFormerDefaultAssignments {
+			if err := tx.QueryRow(ctx, `
 			SELECT count(*)::int
 			FROM user_profiles p
 			JOIN users u ON u.id=p.user_id AND u.access_group_id=$2
@@ -1028,7 +1030,8 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 				SELECT 1 FROM organization_memberships m
 				WHERE m.organization_id=$1 AND m.account_id=u.id AND m.status='active'
 			  )`, tenantID, formerDefaultGroupID).Scan(&result.ProfilesMoved); err != nil {
-			return ApplyResult{}, fmt.Errorf("entitlements: count former default profile assignments: %w", err)
+				return ApplyResult{}, fmt.Errorf("entitlements: count former default profile assignments: %w", err)
+			}
 		}
 	}
 	if dryRun || !result.Changed {
@@ -1068,7 +1071,8 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 			return ApplyResult{}, fmt.Errorf("entitlements: create managed default group: %w", err)
 		}
 	} else if group.ManagedCohortID != nil {
-		rows, err := tx.Query(ctx, `
+		if moveFormerDefaultAssignments {
+			rows, err := tx.Query(ctx, `
 			UPDATE users u
 			SET access_group_id=$3,access_policy_revision=access_policy_revision+1,updated_at=now()
 			WHERE u.access_group_id=$2
@@ -1077,32 +1081,33 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 				WHERE m.organization_id=$1 AND m.account_id=u.id AND m.status='active'
 			  )
 			RETURNING u.id`, tenantID, formerDefaultGroupID, group.ID)
-		if err != nil {
-			return ApplyResult{}, fmt.Errorf("entitlements: move former default account assignments: %w", err)
-		}
-		for rows.Next() {
-			var accountID int
-			if err := rows.Scan(&accountID); err != nil {
-				rows.Close()
-				return ApplyResult{}, fmt.Errorf("entitlements: scan moved former default account: %w", err)
+			if err != nil {
+				return ApplyResult{}, fmt.Errorf("entitlements: move former default account assignments: %w", err)
 			}
-			movedAccountIDs = append(movedAccountIDs, accountID)
-		}
-		if err := rows.Err(); err != nil {
+			for rows.Next() {
+				var accountID int
+				if err := rows.Scan(&accountID); err != nil {
+					rows.Close()
+					return ApplyResult{}, fmt.Errorf("entitlements: scan moved former default account: %w", err)
+				}
+				movedAccountIDs = append(movedAccountIDs, accountID)
+			}
+			if err := rows.Err(); err != nil {
+				rows.Close()
+				return ApplyResult{}, fmt.Errorf("entitlements: iterate moved former default accounts: %w", err)
+			}
 			rows.Close()
-			return ApplyResult{}, fmt.Errorf("entitlements: iterate moved former default accounts: %w", err)
-		}
-		rows.Close()
-		if len(movedAccountIDs) > 0 {
-			tag, err := tx.Exec(ctx, `
+			if len(movedAccountIDs) > 0 {
+				tag, err := tx.Exec(ctx, `
 				UPDATE user_profiles
 				SET access_group_id=$4,updated_at=now()
 				WHERE organization_id=$1 AND access_group_id=$2 AND user_id=ANY($3)`,
-				tenantID, formerDefaultGroupID, movedAccountIDs, group.ID)
-			if err != nil {
-				return ApplyResult{}, fmt.Errorf("entitlements: move inherited former default profiles: %w", err)
+					tenantID, formerDefaultGroupID, movedAccountIDs, group.ID)
+				if err != nil {
+					return ApplyResult{}, fmt.Errorf("entitlements: move inherited former default profiles: %w", err)
+				}
+				result.ProfilesMoved = int(tag.RowsAffected())
 			}
-			result.ProfilesMoved = int(tag.RowsAffected())
 		}
 		if _, err := tx.Exec(ctx, `
 			UPDATE access_groups SET is_default=true,updated_at=now()
@@ -1256,6 +1261,11 @@ type materializationGroup struct {
 	Policy           Policy
 }
 
+const materializationGroupDiscriminator = `(
+	managed_template_key IS NOT NULL OR
+	(name='Default Group' AND description='Applied automatically to newly created users.')
+)`
+
 func (s *Store) resolveExactCohortForApply(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, key string, revision int64, actorID int, create bool) (CohortRevision, bool, error) {
 	if !create {
 		actorID = 0
@@ -1281,10 +1291,8 @@ func loadMaterializationGroup(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID
 		FROM access_groups
 		WHERE organization_id=$1
 		  AND managed_cohort_id IS NULL
-		  AND (
-			(is_default AND managed_template_key IS NOT NULL) OR
-			(is_default AND name='Default Group' AND description='Applied automatically to newly created users.')
-		  )
+		  AND is_default
+		  AND `+materializationGroupDiscriminator+`
 		ORDER BY (managed_template_key IS NOT NULL) DESC, id
 		LIMIT 1
 		FOR UPDATE`, tenantID), "managed default")

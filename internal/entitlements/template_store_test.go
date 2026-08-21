@@ -567,6 +567,45 @@ func TestTenantApplyMovesFormerDefaultAssignmentsToExactCohort(t *testing.T) {
 	require.Equal(t, customGroupID, customProfileGroupID)
 }
 
+func TestTenantApplyPreservesAdministratorOwnedCustomDefaultAssignments(t *testing.T) {
+	ctx, pool, store := entitlementTestStore(t)
+	tenant, err := tenancy.NewStore(pool).CreateTenantOrganization(ctx, tenancy.CreateTenantOrganizationInput{
+		Name: "Tenant custom default preservation", ExternalServiceID: uuid.NewString(), Slots: 3, Transcodes: 1,
+	})
+	require.NoError(t, err)
+	var canonicalDefaultID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, tenant.ID).Scan(&canonicalDefaultID))
+
+	template, err := store.Create(ctx, entitlements.CreateTemplateInput{
+		Key: entitlementTestKey(t, "tenant-custom-default"), Name: "Tenant custom default " + uuid.NewString(), Enabled: true, Policy: standardPolicy([]int{}),
+	})
+	require.NoError(t, err)
+	exactAccountID := insertDirectEntitlementAccount(t, ctx, pool, tenant.ID, canonicalDefaultID, "custom-default-exact")
+	exact, err := store.ApplyAccountTemplate(ctx, tenant.ID, exactAccountID, template.Key, template.Revision, false)
+	require.NoError(t, err)
+
+	customDefault, err := access.NewGroupStore(pool).Create(ctx, tenant.ID, access.CreateGroupInput{
+		Name: "Administrator default " + uuid.NewString(), Description: "Explicitly managed by an administrator", IsDefault: true,
+	})
+	require.NoError(t, err)
+	customAccountID := insertDirectEntitlementAccount(t, ctx, pool, tenant.ID, customDefault.ID, "custom-default-occupant")
+	_, err = pool.Exec(ctx, `
+		INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id)
+		VALUES ($1,$2,'Administrator default profile',$3,$4)`, uuid.NewString(), customAccountID, tenant.ID, customDefault.ID)
+	require.NoError(t, err)
+
+	result, err := store.ApplyTemplate(ctx, tenant.ID, template.Key, template.Revision, false)
+	require.NoError(t, err)
+	require.Equal(t, exact.GroupID, result.GroupID)
+	require.Equal(t, 0, result.ProfilesMoved)
+
+	var accountGroupID, profileGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM users WHERE id=$1`, customAccountID).Scan(&accountGroupID))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='Administrator default profile'`, customAccountID).Scan(&profileGroupID))
+	require.Equal(t, customDefault.ID, accountGroupID)
+	require.Equal(t, customDefault.ID, profileGroupID)
+}
+
 func TestProfileEntitlementLimitIsOrganizationScopedAndConcurrentSafe(t *testing.T) {
 	ctx, pool, _ := entitlementTestStore(t)
 	var firstOrganizationID uuid.UUID
