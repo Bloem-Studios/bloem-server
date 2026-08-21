@@ -15,10 +15,11 @@ import (
 const (
 	cacheMetadataImagesIntervalMs = int64(60 * 1000)
 	// Claim only work that can start immediately. Claiming a large queue page
-	// stamps one lease on every row up front; with two workers, the unstarted
-	// tail could expire and be reclaimed before this execution reaches it.
-	cacheMetadataImagesClaimLimit = 2
-	cacheMetadataImagesWorkers    = 2
+	// stamps one lease on every row up front; with a smaller worker count, the
+	// unstarted tail could expire and be reclaimed before this execution
+	// reaches it. Matches upstream Silo Server's worker count.
+	cacheMetadataImagesClaimLimit = 12
+	cacheMetadataImagesWorkers    = 12
 	cacheMetadataImagesMaxRuntime = 10 * time.Minute
 )
 

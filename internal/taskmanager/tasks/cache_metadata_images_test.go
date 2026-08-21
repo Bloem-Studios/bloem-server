@@ -115,11 +115,11 @@ func TestCacheMetadataImagesTaskReportsStats(t *testing.T) {
 	if err := task.Execute(context.Background(), progress); err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
-	if runner.claimLimit != 2 {
+	if runner.claimLimit != 12 {
 		t.Fatalf("claimLimit = %d, want one immediately-startable job per worker", runner.claimLimit)
 	}
-	if runner.concurrency != 2 {
-		t.Fatalf("concurrency = %d, want 2", runner.concurrency)
+	if runner.concurrency != 12 {
+		t.Fatalf("concurrency = %d, want 12", runner.concurrency)
 	}
 	if runner.maxRuntime != 10*time.Minute {
 		t.Fatalf("maxRuntime = %s, want 10m", runner.maxRuntime)
@@ -161,7 +161,7 @@ func TestBackfillMetadataImagesTaskReportsDiscovery(t *testing.T) {
 	if runner.maxRuntime != 0 {
 		t.Fatalf("maxRuntime = %s, want no deadline for manual backfill", runner.maxRuntime)
 	}
-	if runner.claimLimit != 2 {
+	if runner.claimLimit != 12 {
 		t.Fatalf("claimLimit = %d, want one immediately-startable job per worker", runner.claimLimit)
 	}
 	if len(runner.workerIDs) != 1 || !strings.Contains(runner.workerIDs[0], ":backfill:") {
