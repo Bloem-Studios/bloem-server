@@ -93,15 +93,31 @@ func NoGroupPolicy() GroupPolicy {
 	}
 }
 
+// GroupApplies reports whether an access group contributes to the user's
+// effective policy. Admin accounts are never capped by a group: the repository
+// keeps them ungrouped, and a row that still carries a group (written before
+// that rule existed) is resolved as if it did not.
+func GroupApplies(user *models.User) bool {
+	return user != nil && user.AccessGroupID != nil && user.Role != models.RoleAdmin
+}
+
 // EffectivePolicyForSubject loads a subject's group policy and returns the
-// merged restriction layer. Nil providers are treated as "no group".
+// merged restriction layer. Nil providers are treated as "no group". Unlike
+// GroupApplies' AccessGroupID check (correct for the legacy per-row reads it
+// guards), this deliberately does NOT skip the provider just because the
+// passed-in user has no AccessGroupID set: group membership here is resolved
+// fresh per subject by the provider's own LEFT JOIN (see
+// GroupStore.ResolvePolicy), not by that Go-level field, so a caller that
+// constructs a bare *models.User is still resolved correctly. Only the
+// role check is skipped locally -- admins are never capped by a group,
+// so there is no reason to spend the query.
 func EffectivePolicyForSubject(
 	ctx context.Context,
 	user *models.User,
 	subject GroupSubject,
 	provider GroupPolicyProvider,
 ) (EffectiveUserPolicy, error) {
-	if provider == nil || user == nil {
+	if provider == nil || user == nil || user.Role == models.RoleAdmin {
 		return ApplyGroupPolicy(user, nil), nil
 	}
 	group, err := provider.ResolvePolicy(ctx, subject)

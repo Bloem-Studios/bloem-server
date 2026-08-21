@@ -354,14 +354,35 @@ func TestApplyGroupPolicyRules(t *testing.T) {
 	}
 }
 
-// EffectivePolicyForUser has no AccessGroupID-driven short-circuit of its
-// own -- unlike the old single-tenant GetPolicyForUser, it always resolves a
-// GroupSubject from the request's tenancy context and delegates to
-// EffectivePolicyForSubject, which always queries the provider and lets the
-// provider (backed by a LEFT JOIN in GroupStore.ResolvePolicy) decide
-// per-subject whether a group applies. A request with no tenancy context in
-// scope is the only "skip the provider" case, covered by
-// TestEffectivePolicyForSubject's nil-provider path.
+// EffectivePolicyForUser resolves a GroupSubject from the request's tenancy
+// context and delegates to EffectivePolicyForSubject, which skips the
+// provider only for an admin -- never for a merely ungrouped account. Group
+// membership is resolved fresh per subject by the provider's own LEFT JOIN
+// (GroupStore.ResolvePolicy), not by the user struct's AccessGroupID field,
+// so an ungrouped non-admin still queries the provider and lets it return
+// nil. A request with no tenancy context in scope also skips the provider,
+// covered by TestEffectivePolicyForSubject's nil-provider path.
+
+// failingGroupProvider fails the test if the resolver queries it.
+type failingGroupProvider struct{ t *testing.T }
+
+func (p failingGroupProvider) ResolvePolicy(context.Context, GroupSubject) (*GroupPolicy, error) {
+	p.t.Helper()
+	p.t.Fatal("ResolvePolicy should not be called for an admin account")
+	return nil, nil
+}
+
+// groupedTenancyContext returns a context carrying the tenancy info
+// EffectivePolicyForUser needs to resolve a GroupSubject for accountID, so
+// tests exercise the admin short-circuit itself rather than the separate
+// "no tenancy context" fallback.
+func groupedTenancyContext(accountID int) context.Context {
+	return tenancy.WithContext(context.Background(), tenancy.Context{
+		OrganizationID: uuid.New(),
+		AccountID:      accountID,
+		Legacy:         true,
+	})
+}
 
 func TestEffectivePolicyForUserQueriesProviderWhenGrouped(t *testing.T) {
 	groupID := int64(11)
@@ -378,5 +399,19 @@ func TestEffectivePolicyForUserQueriesProviderWhenGrouped(t *testing.T) {
 	}
 	if got.MaxStreams != 2 {
 		t.Fatalf("EffectivePolicyForUser(grouped).MaxStreams = %d, want 2", got.MaxStreams)
+	}
+}
+
+// An admin row that still carries a group (written before admins were kept
+// ungrouped) resolves as ungrouped without consulting the provider.
+func TestEffectivePolicyForUserIgnoresGroupOnAdmin(t *testing.T) {
+	groupID := int64(7)
+	user := &models.User{ID: 3, Role: models.RoleAdmin, AccessGroupID: &groupID}
+	got, err := EffectivePolicyForUser(groupedTenancyContext(user.ID), user, failingGroupProvider{t: t})
+	if err != nil {
+		t.Fatalf("EffectivePolicyForUser() error = %v", err)
+	}
+	if !reflect.DeepEqual(got, ApplyGroupPolicy(user, nil)) {
+		t.Fatalf("EffectivePolicyForUser(admin) = %#v, want the no-group policy %#v", got, ApplyGroupPolicy(user, nil))
 	}
 }
