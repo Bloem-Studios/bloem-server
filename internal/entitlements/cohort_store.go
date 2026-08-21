@@ -2,15 +2,11 @@ package entitlements
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/permissioncatalog"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -20,45 +16,6 @@ var (
 	// an organization that does not exist.
 	ErrCohortNotFound = errors.New("entitlements: cohort not found")
 )
-
-const (
-	PolicySetAdd          = "add"
-	PolicySetRemove       = "remove"
-	PolicySetReplace      = "replace"
-	PolicyLibrariesAll    = "all"
-	PolicyLibrariesNone   = "none"
-	PolicySetUnrestricted = "unrestricted"
-)
-
-// IntegerSetPatch applies an explicit operation to a policy's integer set.
-// Values are ignored only for the all and none operations.
-type IntegerSetPatch struct {
-	Mode   string
-	Values []int
-}
-
-// StringSetPatch applies an explicit operation to a policy's string set.
-// Values are ignored only for the unrestricted operation.
-type StringSetPatch struct {
-	Mode   string
-	Values []string
-}
-
-// PolicyPatch describes deterministic changes to a complete effective policy.
-// Nil fields remain unchanged.
-type PolicyPatch struct {
-	LibraryIDs               *IntegerSetPatch
-	PlaybackAllowed          *bool
-	MaxStreams               *int
-	MaxProfiles              *int
-	TranscodeAllowed         *bool
-	MaxTranscodes            *int
-	DownloadAllowed          *bool
-	DownloadTranscodeAllowed *bool
-	MaxPlaybackQuality       *string
-	AllowedPermissions       *StringSetPatch
-	RequestsAllowed          *bool
-}
 
 // CohortRevision is one immutable organization policy and its protected access
 // group. ID identifies this exact revision; ParentID identifies the exact
@@ -182,7 +139,11 @@ func (s *Store) DeriveCohortInTx(ctx context.Context, tx pgx.Tx, organizationID 
 	if err != nil {
 		return CohortRevision{}, false, err
 	}
-	policy, err := applyPolicyPatch(ctx, tx, parent.Policy, patch)
+	policy, err := ApplyPolicyPatch(parent.Policy, patch)
+	if err != nil {
+		return CohortRevision{}, false, err
+	}
+	policy, err = resolveMaterializedPolicy(ctx, tx, policy)
 	if err != nil {
 		return CohortRevision{}, false, err
 	}
@@ -364,138 +325,8 @@ func insertCohortRevision(ctx context.Context, tx pgx.Tx, cohortID uuid.UUID, re
 	return nil
 }
 
-func applyPolicyPatch(ctx context.Context, tx pgx.Tx, policy Policy, patch PolicyPatch) (Policy, error) {
-	if policy.LibraryIDs != nil {
-		policy.LibraryIDs = append([]int{}, policy.LibraryIDs...)
-	}
-	if policy.AllowedPermissions != nil {
-		policy.AllowedPermissions = append([]string{}, policy.AllowedPermissions...)
-	}
-	var err error
-	if patch.LibraryIDs != nil {
-		policy.LibraryIDs, err = patchIntegerSet(policy.LibraryIDs, *patch.LibraryIDs)
-		if err != nil {
-			return Policy{}, err
-		}
-	}
-	if patch.PlaybackAllowed != nil {
-		policy.PlaybackAllowed = *patch.PlaybackAllowed
-	}
-	if patch.MaxStreams != nil {
-		policy.MaxStreams = *patch.MaxStreams
-	}
-	if patch.MaxProfiles != nil {
-		policy.MaxProfiles = *patch.MaxProfiles
-	}
-	if patch.TranscodeAllowed != nil {
-		policy.TranscodeAllowed = *patch.TranscodeAllowed
-	}
-	if patch.MaxTranscodes != nil {
-		policy.MaxTranscodes = *patch.MaxTranscodes
-	}
-	if patch.DownloadAllowed != nil {
-		policy.DownloadAllowed = *patch.DownloadAllowed
-	}
-	if patch.DownloadTranscodeAllowed != nil {
-		policy.DownloadTranscodeAllowed = *patch.DownloadTranscodeAllowed
-	}
-	if patch.MaxPlaybackQuality != nil {
-		policy.MaxPlaybackQuality = *patch.MaxPlaybackQuality
-	}
-	if patch.AllowedPermissions != nil {
-		policy.AllowedPermissions, err = patchStringSet(policy.AllowedPermissions, *patch.AllowedPermissions)
-		if err != nil {
-			return Policy{}, err
-		}
-	}
-	if patch.RequestsAllowed != nil {
-		policy.RequestsAllowed = *patch.RequestsAllowed
-	}
-	policy, err = normalizeResolvedPolicy(policy)
-	if err != nil {
-		return Policy{}, err
-	}
-	policy, err = resolveMaterializedPolicy(ctx, tx, policy)
-	if err != nil {
-		return Policy{}, err
-	}
-	return policy, nil
-}
-
-func patchIntegerSet(current []int, patch IntegerSetPatch) ([]int, error) {
-	for _, value := range patch.Values {
-		if value <= 0 {
-			return nil, fmt.Errorf("%w: library ids must be positive", ErrInvalidPolicy)
-		}
-	}
-	switch strings.TrimSpace(patch.Mode) {
-	case PolicySetAdd:
-		return append(append([]int{}, current...), patch.Values...), nil
-	case PolicySetRemove:
-		removed := make(map[int]struct{}, len(patch.Values))
-		for _, value := range patch.Values {
-			removed[value] = struct{}{}
-		}
-		result := make([]int, 0, len(current))
-		for _, value := range current {
-			if _, ok := removed[value]; !ok {
-				result = append(result, value)
-			}
-		}
-		return result, nil
-	case PolicySetReplace:
-		return append([]int{}, patch.Values...), nil
-	case PolicyLibrariesAll:
-		return nil, nil
-	case PolicyLibrariesNone:
-		return []int{}, nil
-	default:
-		return nil, fmt.Errorf("%w: unsupported library patch mode", ErrInvalidPolicy)
-	}
-}
-
-func patchStringSet(current []string, patch StringSetPatch) ([]string, error) {
-	switch strings.TrimSpace(patch.Mode) {
-	case PolicySetAdd:
-		if current == nil {
-			return nil, nil
-		}
-		return append(append([]string{}, current...), patch.Values...), nil
-	case PolicySetRemove:
-		if current == nil {
-			current = permissioncatalog.Assignable()
-		}
-		removed := make(map[string]struct{}, len(patch.Values))
-		for _, value := range patch.Values {
-			removed[strings.TrimSpace(value)] = struct{}{}
-		}
-		result := make([]string, 0, len(current))
-		for _, value := range current {
-			if _, ok := removed[value]; !ok {
-				result = append(result, value)
-			}
-		}
-		return result, nil
-	case PolicySetReplace:
-		return append([]string{}, patch.Values...), nil
-	case PolicySetUnrestricted:
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("%w: unsupported permission patch mode", ErrInvalidPolicy)
-	}
-}
-
 func cohortPolicyDigest(policy Policy) (string, error) {
-	policy, err := normalizeResolvedPolicy(policy)
-	if err != nil {
-		return "", err
-	}
-	payload, err := json.Marshal(policy)
-	if err != nil {
-		return "", fmt.Errorf("entitlements: encode cohort policy digest: %w", err)
-	}
-	sum := sha256.Sum256(payload)
-	return hex.EncodeToString(sum[:]), nil
+	return PolicyDigest(policy)
 }
 
 const cohortSelect = `

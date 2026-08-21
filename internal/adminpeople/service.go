@@ -490,17 +490,23 @@ func (s *Service) decodePeopleCursor(value string) (peopleCursor, error) {
 }
 
 type profileSnapshot struct {
-	ID        string    `json:"id"`
-	GroupID   int       `json:"group_id"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID              string    `json:"id"`
+	GroupID         int       `json:"group_id"`
+	InheritsAccount bool      `json:"inherits_account"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 type targetSnapshot struct {
-	AccountID             int                      `json:"account_id"`
-	MembershipID          uuid.UUID                `json:"membership_id"`
-	MembershipStatus      tenancy.MembershipStatus `json:"membership_status"`
-	MembershipRevision    int64                    `json:"membership_revision"`
-	AccountPolicyRevision int64                    `json:"account_policy_revision"`
-	Profiles              []profileSnapshot        `json:"profiles"`
+	AccountID              int                      `json:"account_id"`
+	MembershipID           uuid.UUID                `json:"membership_id"`
+	MembershipStatus       tenancy.MembershipStatus `json:"membership_status"`
+	MembershipRevision     int64                    `json:"membership_revision"`
+	AccountPolicyRevision  int64                    `json:"account_policy_revision"`
+	GroupID                int64                    `json:"group_id"`
+	CohortID               uuid.UUID                `json:"cohort_id,omitempty"`
+	CohortRevision         int64                    `json:"cohort_revision,omitempty"`
+	SourceTemplateKey      string                   `json:"source_template_key,omitempty"`
+	SourceTemplateRevision int64                    `json:"source_template_revision,omitempty"`
+	Profiles               []profileSnapshot        `json:"profiles"`
 }
 
 func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID, filter Filter) (Selection, error) {
@@ -523,8 +529,13 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 	conditions, args := buildPeopleConditions(organizationID, canonical.toFilter(), nil)
 	rows, err := tx.Query(ctx, `
 		SELECT m.account_id,m.id,m.status,m.security_revision,u.access_policy_revision,
-		       COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'group_id',p.access_group_id,'updated_at',p.updated_at) ORDER BY p.id) FROM user_profiles p WHERE p.organization_id=m.organization_id AND p.user_id=m.account_id),'[]'::jsonb)
-		FROM organization_memberships m JOIN users u ON u.id=m.account_id
+		       COALESCE(u.access_group_id,0),COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),COALESCE(r.revision,0),
+		       COALESCE(r.source_template_key,''),COALESCE(r.source_template_revision,0),
+		       COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'group_id',p.access_group_id,'inherits_account',p.access_group_id IS NOT DISTINCT FROM u.access_group_id,'updated_at',p.updated_at) ORDER BY p.id) FROM user_profiles p WHERE p.organization_id=m.organization_id AND p.user_id=m.account_id),'[]'::jsonb)
+		FROM organization_memberships m
+		JOIN users u ON u.id=m.account_id
+		LEFT JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=u.access_group_id
+		LEFT JOIN entitlement_policy_cohort_revisions r ON r.organization_id=g.organization_id AND r.id=g.managed_cohort_id AND r.access_group_id=g.id
 		WHERE `+strings.Join(conditions, " AND ")+` ORDER BY m.account_id LIMIT `+strconv.Itoa(maximumSelectionTargets+1), args...)
 	if err != nil {
 		return Selection{}, fmt.Errorf("snapshot people selection: %w", err)
@@ -534,7 +545,7 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 	for rows.Next() {
 		var target targetSnapshot
 		var profilesJSON []byte
-		if err := rows.Scan(&target.AccountID, &target.MembershipID, &target.MembershipStatus, &target.MembershipRevision, &target.AccountPolicyRevision, &profilesJSON); err != nil {
+		if err := rows.Scan(&target.AccountID, &target.MembershipID, &target.MembershipStatus, &target.MembershipRevision, &target.AccountPolicyRevision, &target.GroupID, &target.CohortID, &target.CohortRevision, &target.SourceTemplateKey, &target.SourceTemplateRevision, &profilesJSON); err != nil {
 			rows.Close()
 			return Selection{}, fmt.Errorf("scan people selection: %w", err)
 		}
@@ -1108,14 +1119,14 @@ func (s *Service) executeBulkRecord(ctx context.Context, tx pgx.Tx, organization
 	}
 	switch action.Kind {
 	case BulkAssignGroup:
-		rows, err := tx.Query(ctx, `SELECT id,access_group_id,updated_at FROM user_profiles WHERE organization_id=$1 AND user_id=$2 ORDER BY id FOR UPDATE`, organizationID, snapshot.AccountID)
+		rows, err := tx.Query(ctx, `SELECT id,access_group_id,(access_group_id=$3),updated_at FROM user_profiles WHERE organization_id=$1 AND user_id=$2 ORDER BY id FOR UPDATE`, organizationID, snapshot.AccountID, snapshot.GroupID)
 		if err != nil {
 			return "", "", err
 		}
 		profiles := []profileSnapshot{}
 		for rows.Next() {
 			var profile profileSnapshot
-			if err := rows.Scan(&profile.ID, &profile.GroupID, &profile.UpdatedAt); err != nil {
+			if err := rows.Scan(&profile.ID, &profile.GroupID, &profile.InheritsAccount, &profile.UpdatedAt); err != nil {
 				rows.Close()
 				return "", "", err
 			}
@@ -1184,7 +1195,7 @@ func sameProfileSnapshots(current, want []profileSnapshot) bool {
 		return false
 	}
 	for i := range current {
-		if current[i].ID != want[i].ID || current[i].GroupID != want[i].GroupID || !current[i].UpdatedAt.Equal(want[i].UpdatedAt) {
+		if current[i].ID != want[i].ID || current[i].GroupID != want[i].GroupID || current[i].InheritsAccount != want[i].InheritsAccount || !current[i].UpdatedAt.Equal(want[i].UpdatedAt) {
 			return false
 		}
 	}

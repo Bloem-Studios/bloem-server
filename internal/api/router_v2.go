@@ -250,6 +250,7 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 				r.Route("/organization/people", func(r chi.Router) {
 					r.Get("/", people.HandleListPeople)
 					r.Post("/selections", people.HandleCreateSelection)
+					r.Post("/policy-previews", people.HandleCreatePolicyPreview)
 					r.Post("/bulk-jobs", people.HandleCreateBulkJob)
 					r.Get("/bulk-jobs/{job_id}", people.HandleGetBulkJob)
 					r.Route("/{account_id}", func(r chi.Router) {

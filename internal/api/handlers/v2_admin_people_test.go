@@ -25,6 +25,8 @@ type adminPeopleServiceStub struct {
 	page           adminpeople.Page
 	selection      adminpeople.Selection
 	result         adminpeople.BulkResult
+	policyPreview  adminpeople.PolicyPreview
+	policyCommand  adminpeople.PolicyCommand
 	err            error
 	authority      string
 }
@@ -47,6 +49,16 @@ func (s *adminPeopleServiceStub) CreateSelection(_ context.Context, org uuid.UUI
 	s.calls++
 	s.organizationID = org
 	return s.selection, s.err
+}
+func (s *adminPeopleServiceStub) PreviewPolicy(ctx context.Context, org uuid.UUID, actorID int, selectionToken string, command adminpeople.PolicyCommand) (adminpeople.PolicyPreview, error) {
+	s.calls++
+	s.organizationID = org
+	s.actorID = actorID
+	s.policyCommand = command
+	if actor, ok := adminpeople.MutationActorFromContext(ctx); ok {
+		s.authority = actor.Authority
+	}
+	return s.policyPreview, s.err
 }
 func (s *adminPeopleServiceStub) ExecuteBulk(ctx context.Context, org uuid.UUID, actorID int, _ adminpeople.BulkAction) (adminpeople.BulkResult, error) {
 	s.calls++
@@ -132,6 +144,23 @@ func TestV2AdminPeopleSignalsSharedWorkerAfterDurableEnqueue(t *testing.T) {
 	handler.HandleCreateBulkJob(rec, req)
 	if rec.Code != http.StatusCreated || wake.calls != 1 {
 		t.Fatalf("response=%d %s wakes=%d", rec.Code, rec.Body.String(), wake.calls)
+	}
+}
+
+func TestV2AdminPeoplePolicyPreviewUsesImmutableSelectionAndMiddlewareActor(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	store := &adminPeopleServiceStub{policyPreview: adminpeople.PolicyPreview{Matched: 2, ConfirmationToken: "confirmed"}}
+	handler := NewV2AdminPeopleHandler(store)
+	req := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/policy-previews", `{"selection_token":"signed","command":{"kind":"apply_entitlement_template","template_key":"premium","template_revision":1}}`, organizationID, 7, nil)
+	rec := httptest.NewRecorder()
+
+	handler.HandleCreatePolicyPreview(rec, req)
+
+	if rec.Code != http.StatusCreated || !strings.Contains(rec.Body.String(), `"confirmation_token":"confirmed"`) {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+	if store.organizationID != organizationID || store.actorID != 7 || store.policyCommand.TemplateKey != "premium" || store.policyCommand.TemplateRevision != 1 || store.authority != adminpeople.AuthorityOrganizationAdmin {
+		t.Fatalf("preview authority/command = %s/%d/%s/%d/%s", store.organizationID, store.actorID, store.policyCommand.TemplateKey, store.policyCommand.TemplateRevision, store.authority)
 	}
 }
 

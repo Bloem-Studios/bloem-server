@@ -20,6 +20,7 @@ type V2AdminPeopleService interface {
 	List(context.Context, uuid.UUID, adminpeople.Filter) (adminpeople.Page, error)
 	Get(context.Context, uuid.UUID, int) (adminpeople.PersonSummary, error)
 	CreateSelection(context.Context, uuid.UUID, adminpeople.Filter) (adminpeople.Selection, error)
+	PreviewPolicy(context.Context, uuid.UUID, int, string, adminpeople.PolicyCommand) (adminpeople.PolicyPreview, error)
 	ExecuteBulk(context.Context, uuid.UUID, int, adminpeople.BulkAction) (adminpeople.BulkResult, error)
 	GetBulkJob(context.Context, uuid.UUID, string) (adminpeople.BulkResult, error)
 	UpdateMembership(context.Context, uuid.UUID, int, int, int64, tenancy.MembershipStatus) (adminpeople.PersonSummary, error)
@@ -100,6 +101,29 @@ func (h *V2AdminPeopleHandler) HandleCreateSelection(w http.ResponseWriter, r *h
 	writeJSON(w, http.StatusCreated, struct {
 		Selection adminpeople.Selection `json:"selection"`
 	}{selection})
+}
+
+func (h *V2AdminPeopleHandler) HandleCreatePolicyPreview(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := h.requireOrganization(w, r)
+	if !ok {
+		return
+	}
+	var request struct {
+		SelectionToken string                    `json:"selection_token"`
+		Command        adminpeople.PolicyCommand `json:"command"`
+	}
+	if !decodeAdminPlatformJSON(w, r, &request) {
+		return
+	}
+	ctx := adminPeopleMutationContext(r)
+	preview, err := h.service.PreviewPolicy(ctx, tenant.OrganizationID, tenant.AccountID, request.SelectionToken, request.Command)
+	if err != nil {
+		h.writeError(w, r, err, 0)
+		return
+	}
+	writeJSON(w, http.StatusCreated, struct {
+		Preview adminpeople.PolicyPreview `json:"preview"`
+	}{preview})
 }
 
 func (h *V2AdminPeopleHandler) HandleCreateBulkJob(w http.ResponseWriter, r *http.Request) {
@@ -252,8 +276,10 @@ func (h *V2AdminPeopleHandler) writeError(w http.ResponseWriter, r *http.Request
 		writeAdminValidation(w, map[string]string{"cursor": "is invalid"})
 	case errors.Is(err, adminpeople.ErrInvalidFilter):
 		writeAdminValidation(w, map[string]string{"filters": "contain invalid values"})
-	case errors.Is(err, adminpeople.ErrInvalidBulkAction):
+	case errors.Is(err, adminpeople.ErrInvalidBulkAction), errors.Is(err, adminpeople.ErrInvalidPolicyCommand):
 		writeAdminValidation(w, map[string]string{"request": "contains an invalid people mutation"})
+	case errors.Is(err, adminpeople.ErrInvalidPolicyConfirmation):
+		writeError(w, http.StatusConflict, "policy_confirmation_stale", "The policy preview changed or expired; create a new preview")
 	default:
 		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
 	}

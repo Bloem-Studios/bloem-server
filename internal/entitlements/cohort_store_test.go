@@ -165,13 +165,13 @@ func TestDeriveCohortPreservesExplicitEmptySetsAcrossEmptyAddPatch(t *testing.T)
 	fixture := newCohortFixture(t)
 	parent, _ := fixture.ensureExact(t)
 	empty, _ := fixture.derive(t, parent.ID, "Standard with empty sets", entitlements.PolicyPatch{
-		LibraryIDs:         &entitlements.IntegerSetPatch{Mode: entitlements.PolicyLibrariesNone},
-		AllowedPermissions: &entitlements.StringSetPatch{Mode: entitlements.PolicySetReplace, Values: []string{}},
+		Libraries:   &entitlements.SetOperation[int]{Mode: entitlements.PolicyLibrariesNone},
+		Permissions: &entitlements.SetOperation[string]{Mode: entitlements.PolicySetReplace, Values: []string{}},
 	})
 
 	child, _ := fixture.derive(t, empty.ID, "Standard with empty sets unchanged", entitlements.PolicyPatch{
-		LibraryIDs:         &entitlements.IntegerSetPatch{Mode: entitlements.PolicySetAdd, Values: []int{}},
-		AllowedPermissions: &entitlements.StringSetPatch{Mode: entitlements.PolicySetAdd, Values: []string{}},
+		Libraries:   &entitlements.SetOperation[int]{Mode: entitlements.PolicySetAdd, Values: []int{}},
+		Permissions: &entitlements.SetOperation[string]{Mode: entitlements.PolicySetAdd, Values: []string{}},
 	})
 
 	if child.Policy.LibraryIDs == nil || len(child.Policy.LibraryIDs) != 0 {
@@ -190,7 +190,7 @@ func TestDeriveCohortPermissionPatchFromUnrestrictedUsesSetSemantics(t *testing.
 	}
 
 	added, _ := fixture.derive(t, parent.ID, "Unrestricted permissions add", entitlements.PolicyPatch{
-		AllowedPermissions: &entitlements.StringSetPatch{
+		Permissions: &entitlements.SetOperation[string]{
 			Mode: entitlements.PolicySetAdd, Values: []string{"marker_edit"},
 		},
 	})
@@ -199,7 +199,7 @@ func TestDeriveCohortPermissionPatchFromUnrestrictedUsesSetSemantics(t *testing.
 	}
 
 	removed, _ := fixture.derive(t, parent.ID, "Unrestricted permissions remove", entitlements.PolicyPatch{
-		AllowedPermissions: &entitlements.StringSetPatch{
+		Permissions: &entitlements.SetOperation[string]{
 			Mode: entitlements.PolicySetRemove, Values: []string{"marker_edit"},
 		},
 	})
@@ -216,14 +216,14 @@ func TestDeriveCohortPolicyPatchMatrix(t *testing.T) {
 	thirdLibraryID := insertEntitlementLibrary(t, fixture.ctx, fixture.pool, "cohort-matrix-third-"+uuid.NewString(), true)
 
 	addedLibraries, _ := fixture.derive(t, parent.ID, "Matrix libraries add", entitlements.PolicyPatch{
-		LibraryIDs: &entitlements.IntegerSetPatch{Mode: entitlements.PolicySetAdd, Values: []int{thirdLibraryID}},
+		Libraries: &entitlements.SetOperation[int]{Mode: entitlements.PolicySetAdd, Values: []int{thirdLibraryID}},
 	})
 	wantAddedLibraries := append(slices.Clone(parent.Policy.LibraryIDs), thirdLibraryID)
 	slices.Sort(wantAddedLibraries)
 	require.Equal(t, wantAddedLibraries, addedLibraries.Policy.LibraryIDs)
 
 	removedLibraries, _ := fixture.derive(t, parent.ID, "Matrix libraries remove", entitlements.PolicyPatch{
-		LibraryIDs: &entitlements.IntegerSetPatch{Mode: entitlements.PolicySetRemove, Values: []int{firstLibraryID}},
+		Libraries: &entitlements.SetOperation[int]{Mode: entitlements.PolicySetRemove, Values: []int{firstLibraryID}},
 	})
 	wantRemovedLibraries := make([]int, 0, len(parent.Policy.LibraryIDs)-1)
 	for _, libraryID := range parent.Policy.LibraryIDs {
@@ -234,47 +234,47 @@ func TestDeriveCohortPolicyPatchMatrix(t *testing.T) {
 	require.Equal(t, wantRemovedLibraries, removedLibraries.Policy.LibraryIDs)
 
 	replacedLibraries, _ := fixture.derive(t, parent.ID, "Matrix libraries replace", entitlements.PolicyPatch{
-		LibraryIDs: &entitlements.IntegerSetPatch{
+		Libraries: &entitlements.SetOperation[int]{
 			Mode: entitlements.PolicySetReplace, Values: []int{thirdLibraryID, secondLibraryID, thirdLibraryID},
 		},
 	})
 	require.Equal(t, []int{secondLibraryID, thirdLibraryID}, replacedLibraries.Policy.LibraryIDs)
 
 	allLibraries, _ := fixture.derive(t, parent.ID, "Matrix libraries all", entitlements.PolicyPatch{
-		LibraryIDs: &entitlements.IntegerSetPatch{Mode: entitlements.PolicyLibrariesAll},
+		Libraries: &entitlements.SetOperation[int]{Mode: entitlements.PolicyLibrariesAll},
 	})
 	require.Equal(t, entitlementEnabledLibraryIDs(t, fixture.ctx, fixture.pool), allLibraries.Policy.LibraryIDs)
 
 	noLibraries, _ := fixture.derive(t, parent.ID, "Matrix libraries none", entitlements.PolicyPatch{
-		LibraryIDs: &entitlements.IntegerSetPatch{Mode: entitlements.PolicyLibrariesNone},
+		Libraries: &entitlements.SetOperation[int]{Mode: entitlements.PolicyLibrariesNone},
 	})
 	if noLibraries.Policy.LibraryIDs == nil || len(noLibraries.Policy.LibraryIDs) != 0 {
 		t.Fatalf("none libraries = %#v, want explicit empty set", noLibraries.Policy.LibraryIDs)
 	}
 
 	restrictedPermissions, _ := fixture.derive(t, parent.ID, "Matrix permissions replace", entitlements.PolicyPatch{
-		AllowedPermissions: &entitlements.StringSetPatch{
+		Permissions: &entitlements.SetOperation[string]{
 			Mode: entitlements.PolicySetReplace, Values: []string{"marker_edit"},
 		},
 	})
 	require.Equal(t, []string{"marker_edit"}, restrictedPermissions.Policy.AllowedPermissions)
 
 	addedPermissions, _ := fixture.derive(t, restrictedPermissions.ID, "Matrix permissions add", entitlements.PolicyPatch{
-		AllowedPermissions: &entitlements.StringSetPatch{
+		Permissions: &entitlements.SetOperation[string]{
 			Mode: entitlements.PolicySetAdd, Values: []string{"metadata_curation", "marker_edit"},
 		},
 	})
 	require.Equal(t, []string{"marker_edit", "metadata_curation"}, addedPermissions.Policy.AllowedPermissions)
 
 	removedPermissions, _ := fixture.derive(t, addedPermissions.ID, "Matrix permissions remove", entitlements.PolicyPatch{
-		AllowedPermissions: &entitlements.StringSetPatch{
+		Permissions: &entitlements.SetOperation[string]{
 			Mode: entitlements.PolicySetRemove, Values: []string{"marker_edit"},
 		},
 	})
 	require.Equal(t, []string{"metadata_curation"}, removedPermissions.Policy.AllowedPermissions)
 
 	unrestrictedPermissions, _ := fixture.derive(t, restrictedPermissions.ID, "Matrix permissions unrestricted", entitlements.PolicyPatch{
-		AllowedPermissions: &entitlements.StringSetPatch{Mode: entitlements.PolicySetUnrestricted},
+		Permissions: &entitlements.SetOperation[string]{Mode: entitlements.PolicySetUnrestricted},
 	})
 	if unrestrictedPermissions.Policy.AllowedPermissions != nil {
 		t.Fatalf("unrestricted permissions = %#v, want nil", unrestrictedPermissions.Policy.AllowedPermissions)
