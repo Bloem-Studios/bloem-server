@@ -28,16 +28,34 @@ var (
 	ErrInvalidAccountPolicyIDs    = errors.New("entitlements: invalid account policy ids")
 )
 
+// EffectivePolicySnapshot is the complete, currently resolved read projection.
+// It is intentionally separate from Policy, whose JSON representation is part
+// of durable cohort hashing and persistence.
+type EffectivePolicySnapshot struct {
+	LibraryIDs               []int    `json:"library_ids"`
+	PlaybackAllowed          bool     `json:"playback_allowed"`
+	MaxStreams               int      `json:"max_streams"`
+	MaxProfiles              int      `json:"max_profiles"`
+	TranscodeAllowed         bool     `json:"transcode_allowed"`
+	AudioTranscodeAllowed    bool     `json:"audio_transcode_allowed"`
+	MaxTranscodes            int      `json:"max_transcodes"`
+	DownloadAllowed          bool     `json:"download_allowed"`
+	DownloadTranscodeAllowed bool     `json:"download_transcode_allowed"`
+	MaxPlaybackQuality       string   `json:"max_playback_quality"`
+	AllowedPermissions       []string `json:"allowed_permissions"`
+	RequestsAllowed          bool     `json:"requests_allowed"`
+}
+
 // ProfilePolicySnapshot is the current effective access-group policy for one
 // profile. InheritsAccount is true only when the profile and account currently
 // point at the same authoritative access group.
 type ProfilePolicySnapshot struct {
-	ProfileID       string `json:"profile_id"`
-	ProfileName     string `json:"profile_name"`
-	GroupID         int64  `json:"group_id"`
-	InheritsAccount bool   `json:"inherits_account"`
-	State           string `json:"state"`
-	Policy          Policy `json:"policy"`
+	ProfileID       string                  `json:"profile_id"`
+	ProfileName     string                  `json:"profile_name"`
+	GroupID         int64                   `json:"group_id"`
+	InheritsAccount bool                    `json:"inherits_account"`
+	State           string                  `json:"state"`
+	Policy          EffectivePolicySnapshot `json:"policy"`
 }
 
 // AccountPolicySnapshot is an authoritative point-in-time projection of the
@@ -53,7 +71,7 @@ type AccountPolicySnapshot struct {
 	SourceTemplateRevision int64                   `json:"source_template_revision,omitempty"`
 	State                  string                  `json:"state"`
 	PolicyRevision         int64                   `json:"policy_revision"`
-	Policy                 Policy                  `json:"policy"`
+	Policy                 EffectivePolicySnapshot `json:"policy"`
 	Profiles               []ProfilePolicySnapshot `json:"profiles"`
 }
 
@@ -115,23 +133,196 @@ func (s *Store) GetAccountPolicies(ctx context.Context, organizationID uuid.UUID
 	if err != nil {
 		return nil, time.Time{}, err
 	}
+	libraryIDs, err := currentEnabledLibraryIDs(ctx, tx)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	accounts, err := loadAccountPolicyBatchAccounts(ctx, tx, organizationID, accountIDs)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	profiles, err := loadAccountPolicyBatchProfiles(ctx, tx, organizationID, accountIDs)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
 
 	items := make([]AccountPolicySnapshotResult, 0, len(accountIDs))
 	for _, accountID := range accountIDs {
-		snapshot, err := getAccountPolicyInTx(ctx, tx, organizationID, accountID, observedAt)
-		if errors.Is(err, ErrAccountNotFound) {
+		account, ok := accounts[accountID]
+		if !ok {
 			items = append(items, AccountPolicySnapshotResult{AccountID: accountID, Error: AccountPolicyResultNotFound})
 			continue
 		}
-		if err != nil {
-			return nil, time.Time{}, err
-		}
+		snapshot := accountPolicySnapshotFromBatch(account, profiles[accountID], observedAt, libraryIDs)
 		items = append(items, AccountPolicySnapshotResult{AccountID: accountID, Snapshot: &snapshot})
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, time.Time{}, fmt.Errorf("entitlements: commit bulk account policy snapshot: %w", err)
 	}
 	return items, observedAt, nil
+}
+
+type accountPolicyBatchAccount struct {
+	organizationID uuid.UUID
+	user           models.User
+	group          accountPolicyGroup
+	groupPolicy    *accesspolicy.GroupPolicy
+}
+
+type accountPolicyBatchProfile struct {
+	accountPolicyProfile
+	groupPolicy *accesspolicy.GroupPolicy
+}
+
+func loadAccountPolicyBatchAccounts(ctx context.Context, tx pgx.Tx, requestedOrganizationID uuid.UUID, accountIDs []int) (map[int]accountPolicyBatchAccount, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT memberships.organization_id,
+		       users.id,users.role,users.permissions,users.library_ids,users.max_playback_quality,
+		       users.access_policy_revision,users.max_streams,users.max_transcodes,
+		       users.transcode_allowed,users.audio_transcode_allowed,users.max_profiles,
+		       users.download_allowed,users.download_transcode_allowed,users.requests_allowed,
+		       users.access_group_id,groups.id,groups.managed_template_key,
+		       revisions.cohort_id,revisions.revision,
+		       revisions.source_template_key,revisions.source_template_revision,
+		       groups.library_ids,groups.max_playback_quality,groups.playback_allowed,
+		       groups.download_allowed,groups.download_transcode_allowed,
+		       groups.transcode_allowed,groups.audio_transcode_allowed,
+		       groups.max_streams,groups.max_profiles,groups.max_transcodes,
+		       groups.allowed_permissions,groups.requests_allowed
+		FROM users
+		JOIN organization_memberships memberships ON memberships.account_id=users.id
+		JOIN organizations ON organizations.id=memberships.organization_id
+		LEFT JOIN access_groups groups
+		  ON groups.organization_id=memberships.organization_id
+		 AND groups.id=users.access_group_id
+		LEFT JOIN entitlement_policy_cohort_revisions revisions
+		  ON revisions.organization_id=groups.organization_id
+		 AND revisions.access_group_id=groups.id
+		 AND revisions.id=groups.managed_cohort_id
+		WHERE users.id=ANY($1::integer[])
+		  AND (($2::boolean AND organizations.is_default) OR
+		       (NOT $2::boolean AND memberships.organization_id=$3))`,
+		accountIDs, requestedOrganizationID == uuid.Nil, requestedOrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("entitlements: load bulk account policy subjects: %w", err)
+	}
+	defer rows.Close()
+
+	accounts := make(map[int]accountPolicyBatchAccount, len(accountIDs))
+	for rows.Next() {
+		var account accountPolicyBatchAccount
+		var group accountPolicyGroupScan
+		destinations := []any{
+			&account.organizationID,
+			&account.user.ID, &account.user.Role, &account.user.Permissions,
+			&account.user.LibraryIDs, &account.user.MaxPlaybackQuality,
+			&account.user.AccessPolicyRevision, &account.user.MaxStreams,
+			&account.user.MaxTranscodes, &account.user.TranscodeAllowed,
+			&account.user.AudioTranscodeAllowed, &account.user.MaxProfiles,
+			&account.user.DownloadAllowed, &account.user.DownloadTranscodeAllowed,
+			&account.user.RequestsAllowed,
+		}
+		destinations = append(destinations, group.destinations()...)
+		if err := rows.Scan(destinations...); err != nil {
+			return nil, fmt.Errorf("entitlements: scan bulk account policy subject: %w", err)
+		}
+		account.group, account.groupPolicy, err = group.values()
+		if errors.Is(err, ErrAccountNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		accounts[account.user.ID] = account
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("entitlements: iterate bulk account policy subjects: %w", err)
+	}
+	return accounts, nil
+}
+
+func loadAccountPolicyBatchProfiles(ctx context.Context, tx pgx.Tx, requestedOrganizationID uuid.UUID, accountIDs []int) (map[int][]accountPolicyBatchProfile, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT profiles.user_id,profiles.id,profiles.name,
+		       profiles.access_group_id,groups.id,groups.managed_template_key,
+		       revisions.cohort_id,revisions.revision,
+		       revisions.source_template_key,revisions.source_template_revision,
+		       groups.library_ids,groups.max_playback_quality,groups.playback_allowed,
+		       groups.download_allowed,groups.download_transcode_allowed,
+		       groups.transcode_allowed,groups.audio_transcode_allowed,
+		       groups.max_streams,groups.max_profiles,groups.max_transcodes,
+		       groups.allowed_permissions,groups.requests_allowed
+		FROM user_profiles profiles
+		JOIN organization_memberships memberships
+		  ON memberships.organization_id=profiles.organization_id
+		 AND memberships.account_id=profiles.user_id
+		JOIN organizations ON organizations.id=memberships.organization_id
+		JOIN access_groups groups
+		  ON groups.organization_id=profiles.organization_id
+		 AND groups.id=profiles.access_group_id
+		LEFT JOIN entitlement_policy_cohort_revisions revisions
+		  ON revisions.organization_id=groups.organization_id
+		 AND revisions.access_group_id=groups.id
+		 AND revisions.id=groups.managed_cohort_id
+		WHERE profiles.user_id=ANY($1::integer[])
+		  AND (($2::boolean AND organizations.is_default) OR
+		       (NOT $2::boolean AND memberships.organization_id=$3))
+		ORDER BY profiles.user_id,profiles.created_at,profiles.id`,
+		accountIDs, requestedOrganizationID == uuid.Nil, requestedOrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("entitlements: load bulk account policy profiles: %w", err)
+	}
+	defer rows.Close()
+
+	profiles := make(map[int][]accountPolicyBatchProfile)
+	for rows.Next() {
+		var accountID int
+		var profile accountPolicyBatchProfile
+		var group accountPolicyGroupScan
+		destinations := []any{&accountID, &profile.id, &profile.name}
+		destinations = append(destinations, group.destinations()...)
+		if err := rows.Scan(destinations...); err != nil {
+			return nil, fmt.Errorf("entitlements: scan bulk account policy profile: %w", err)
+		}
+		profile.group, profile.groupPolicy, err = group.values()
+		if err != nil {
+			return nil, fmt.Errorf("entitlements: resolve bulk account policy profile group: %w", err)
+		}
+		profiles[accountID] = append(profiles[accountID], profile)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("entitlements: iterate bulk account policy profiles: %w", err)
+	}
+	return profiles, nil
+}
+
+func accountPolicySnapshotFromBatch(account accountPolicyBatchAccount, profiles []accountPolicyBatchProfile, observedAt time.Time, libraryIDs []int) AccountPolicySnapshot {
+	effective := accountPolicyEffective(&account.user, account.groupPolicy)
+	snapshot := AccountPolicySnapshot{
+		ObservedAt: observedAt, OrganizationID: account.organizationID, AccountID: account.user.ID,
+		GroupID: account.group.id, CohortID: account.group.cohortID,
+		CohortRevision:         account.group.cohortRevision,
+		SourceTemplateKey:      account.group.sourceTemplateKey,
+		SourceTemplateRevision: account.group.sourceTemplateRevision,
+		State:                  account.group.state(), PolicyRevision: account.user.AccessPolicyRevision,
+		Policy: effectivePolicySnapshot(effective, libraryIDs), Profiles: []ProfilePolicySnapshot{},
+	}
+	for _, profile := range profiles {
+		effective = accountPolicyEffective(&account.user, profile.groupPolicy)
+		snapshot.Profiles = append(snapshot.Profiles, ProfilePolicySnapshot{
+			ProfileID: profile.id, ProfileName: profile.name, GroupID: profile.group.id,
+			InheritsAccount: profile.group.id != 0 && profile.group.id == account.group.id,
+			State:           profile.group.state(), Policy: effectivePolicySnapshot(effective, libraryIDs),
+		})
+	}
+	return snapshot
+}
+
+func accountPolicyEffective(user *models.User, group *accesspolicy.GroupPolicy) accesspolicy.EffectiveUserPolicy {
+	if user != nil && user.Role == models.RoleAdmin {
+		group = nil
+	}
+	return accesspolicy.ApplyGroupPolicy(user, group)
 }
 
 func accountPolicyObservedAt(ctx context.Context, tx pgx.Tx) (time.Time, error) {
@@ -254,7 +445,7 @@ func loadAccountPolicyUser(ctx context.Context, tx pgx.Tx, organizationID uuid.U
 		       u.access_policy_revision,u.max_streams,u.max_transcodes,
 		       u.transcode_allowed,u.audio_transcode_allowed,u.max_profiles,
 		       u.download_allowed,u.download_transcode_allowed,u.requests_allowed,
-		       u.access_group_id,g.id,g.managed_template_key,g.managed_cohort_id,
+		       u.access_group_id,g.id,g.managed_template_key,revisions.cohort_id,
 		       revisions.revision,revisions.source_template_key,revisions.source_template_revision
 		FROM users u
 		LEFT JOIN access_groups g
@@ -289,7 +480,7 @@ type accountPolicyProfile struct {
 func loadAccountPolicyProfiles(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int) ([]accountPolicyProfile, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT profiles.id,profiles.name,groups.id,groups.managed_template_key,
-		       groups.managed_cohort_id,revisions.revision,
+		       revisions.cohort_id,revisions.revision,
 		       revisions.source_template_key,revisions.source_template_revision
 		FROM user_profiles profiles
 		JOIN access_groups groups
@@ -350,6 +541,68 @@ func makeAccountPolicyGroup(groupID *int64, managedTemplateKey *string, cohortID
 		group.sourceTemplateRevision = *sourceTemplateRevision
 	}
 	return group
+}
+
+type accountPolicyGroupScan struct {
+	assignedGroupID                        *int64
+	groupID                                *int64
+	managedTemplateKey                     *string
+	cohortID                               *uuid.UUID
+	cohortRevision                         *int64
+	sourceTemplateKey                      *string
+	sourceTemplateRevision                 *int64
+	libraryIDs                             []int
+	maxQuality                             *string
+	playbackAllowed                        *bool
+	downloadAllowed                        *bool
+	downloadTranscodeAllowed               *bool
+	transcodeAllowed                       *bool
+	audioTranscodeAllowed                  *bool
+	maxStreams, maxProfiles, maxTranscodes *int
+	allowedPermissions                     []string
+	requestsAllowed                        *bool
+}
+
+func (s *accountPolicyGroupScan) destinations() []any {
+	return []any{
+		&s.assignedGroupID, &s.groupID, &s.managedTemplateKey,
+		&s.cohortID, &s.cohortRevision, &s.sourceTemplateKey,
+		&s.sourceTemplateRevision, &s.libraryIDs, &s.maxQuality,
+		&s.playbackAllowed, &s.downloadAllowed, &s.downloadTranscodeAllowed,
+		&s.transcodeAllowed, &s.audioTranscodeAllowed, &s.maxStreams,
+		&s.maxProfiles, &s.maxTranscodes, &s.allowedPermissions,
+		&s.requestsAllowed,
+	}
+}
+
+func (s *accountPolicyGroupScan) values() (accountPolicyGroup, *accesspolicy.GroupPolicy, error) {
+	if s.assignedGroupID == nil {
+		return accountPolicyGroup{}, nil, nil
+	}
+	if s.groupID == nil || s.maxQuality == nil || s.playbackAllowed == nil ||
+		s.downloadAllowed == nil || s.downloadTranscodeAllowed == nil ||
+		s.transcodeAllowed == nil || s.audioTranscodeAllowed == nil ||
+		s.maxStreams == nil || s.maxProfiles == nil || s.maxTranscodes == nil ||
+		s.requestsAllowed == nil {
+		return accountPolicyGroup{}, nil, ErrAccountNotFound
+	}
+	group := makeAccountPolicyGroup(
+		s.groupID, s.managedTemplateKey, s.cohortID, s.cohortRevision,
+		s.sourceTemplateKey, s.sourceTemplateRevision,
+	)
+	policy := &accesspolicy.GroupPolicy{
+		ID: *s.groupID, LibraryIDs: s.libraryIDs, MaxPlaybackQuality: *s.maxQuality,
+		PlaybackAllowed: *s.playbackAllowed, DownloadAllowed: *s.downloadAllowed,
+		DownloadTranscodeAllowed: *s.downloadTranscodeAllowed,
+		TranscodeAllowed:         *s.transcodeAllowed,
+		AudioTranscodeAllowed:    *s.audioTranscodeAllowed,
+		MaxStreams:               *s.maxStreams,
+		MaxProfiles:              *s.maxProfiles,
+		MaxTranscodes:            *s.maxTranscodes,
+		AllowedPermissions:       s.allowedPermissions,
+		RequestsAllowed:          *s.requestsAllowed,
+	}
+	return group, policy, nil
 }
 
 type accountPolicyGroupProvider struct{ tx pgx.Tx }
@@ -444,15 +697,16 @@ func currentEnabledLibraryIDs(ctx context.Context, tx pgx.Tx) ([]int, error) {
 	return result, nil
 }
 
-func effectivePolicySnapshot(effective accesspolicy.EffectiveUserPolicy, currentLibraryIDs []int) Policy {
+func effectivePolicySnapshot(effective accesspolicy.EffectiveUserPolicy, currentLibraryIDs []int) EffectivePolicySnapshot {
 	libraryIDs := effective.LibraryIDs
 	if libraryIDs == nil {
 		libraryIDs = currentLibraryIDs
 	}
-	return Policy{
+	return EffectivePolicySnapshot{
 		LibraryIDs: append([]int{}, libraryIDs...), PlaybackAllowed: effective.PlaybackAllowed,
 		MaxStreams: effective.MaxStreams, MaxProfiles: effective.MaxProfiles,
-		TranscodeAllowed: effective.TranscodeAllowed, MaxTranscodes: effective.MaxTranscodes,
+		TranscodeAllowed: effective.TranscodeAllowed, AudioTranscodeAllowed: effective.AudioTranscodeAllowed,
+		MaxTranscodes:            effective.MaxTranscodes,
 		DownloadAllowed:          effective.DownloadAllowed,
 		DownloadTranscodeAllowed: effective.DownloadTranscodeAllowed,
 		MaxPlaybackQuality:       effective.MaxPlaybackQuality,

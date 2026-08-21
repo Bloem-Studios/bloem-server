@@ -26,12 +26,14 @@ type accountPolicyReaderStub struct {
 	organizationID uuid.UUID
 	accountID      int
 	accountIDs     []int
+	singleCalls    int
 	bulkCalls      int
 }
 
 func (s *accountPolicyReaderStub) GetAccountPolicy(_ context.Context, organizationID uuid.UUID, accountID int) (entitlements.AccountPolicySnapshot, error) {
 	s.organizationID = organizationID
 	s.accountID = accountID
+	s.singleCalls++
 	return s.snapshot, s.err
 }
 
@@ -74,7 +76,9 @@ func TestAccountPolicyReadUsesOnlyAuthoritativePathScope(t *testing.T) {
 	store := &accountPolicyReaderStub{snapshot: entitlements.AccountPolicySnapshot{
 		ObservedAt: observedAt, OrganizationID: organizationID, AccountID: 42,
 		GroupID: 9, State: entitlements.AccountPolicyStateManaged,
-		Policy: entitlements.Policy{LibraryIDs: []int{3, 5}, PlaybackAllowed: true},
+		Policy: entitlements.EffectivePolicySnapshot{
+			LibraryIDs: []int{3, 5}, PlaybackAllowed: true, AudioTranscodeAllowed: true,
+		},
 	}}
 	handler := &AdminHandler{}
 	handler.SetAccountPolicies(store)
@@ -99,6 +103,7 @@ func TestAccountPolicyReadUsesOnlyAuthoritativePathScope(t *testing.T) {
 		t.Fatalf("policy = %#v, want JSON object", payload["policy"])
 	}
 	accountPolicyRequireEqual(t, []any{float64(3), float64(5)}, policy["library_ids"])
+	accountPolicyRequireEqual(t, true, policy["audio_transcode_allowed"])
 	if _, ok := policy["LibraryIDs"]; ok {
 		t.Fatalf("policy unexpectedly exposes Go field name: %v", policy)
 	}
@@ -127,6 +132,33 @@ func TestAccountPolicyReadCollapsesCrossOrganizationAccountToNotFound(t *testing
 	)
 	accountPolicyRequireEqual(t, http.StatusNotFound, recorder.Code)
 	accountPolicyRequireContains(t, recorder.Body.String(), `"error":"not_found"`)
+}
+
+func TestOrganizationAccountPolicyRoutesRejectNilOrganizationBeforeStore(t *testing.T) {
+	nilOrganizationPath := uuid.Nil.String()
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+	}{
+		{name: "single", method: http.MethodGet, path: "/organizations/" + nilOrganizationPath + "/accounts/42/entitlement"},
+		{name: "bulk", method: http.MethodPost, path: "/organizations/" + nilOrganizationPath + "/entitlement-snapshots", body: `{"account_ids":[42]}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			store := &accountPolicyReaderStub{}
+			handler := &AdminHandler{}
+			handler.SetAccountPolicies(store)
+			recorder := httptest.NewRecorder()
+			accountPolicyRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}).ServeHTTP(
+				recorder, httptest.NewRequest(test.method, test.path, strings.NewReader(test.body)),
+			)
+			accountPolicyRequireEqual(t, http.StatusNotFound, recorder.Code, recorder.Body.String())
+			accountPolicyRequireEqual(t, 0, store.singleCalls)
+			accountPolicyRequireEqual(t, 0, store.bulkCalls)
+		})
+	}
 }
 
 func TestEntitlementSnapshotBulkReturnsOneObservationAndSafeItems(t *testing.T) {

@@ -1,18 +1,29 @@
 package entitlements_test
 
 import (
+	"context"
 	"errors"
+	"os"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestGetAccountPolicyReturnsExactManagedProvenance(t *testing.T) {
 	fixture := newCohortFixture(t)
 	cohort, _ := fixture.ensureExact(t)
+	var stableCohortID uuid.UUID
+	require.NoError(t, fixture.pool.QueryRow(fixture.ctx,
+		`SELECT cohort_id FROM entitlement_policy_cohort_revisions WHERE id=$1`, cohort.ID,
+	).Scan(&stableCohortID))
+	_, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET audio_transcode_allowed=true WHERE id=$1`, fixture.actorID)
+	require.NoError(t, err)
 
 	snapshot, err := fixture.store.GetAccountPolicy(fixture.ctx, fixture.organizationID, fixture.actorID)
 	require.NoError(t, err)
@@ -20,7 +31,10 @@ func TestGetAccountPolicyReturnsExactManagedProvenance(t *testing.T) {
 	require.Equal(t, fixture.organizationID, snapshot.OrganizationID)
 	require.Equal(t, fixture.actorID, snapshot.AccountID)
 	require.Equal(t, cohort.AccessGroupID, snapshot.GroupID)
-	require.Equal(t, cohort.ID, snapshot.CohortID)
+	require.Equal(t, stableCohortID, snapshot.CohortID)
+	if snapshot.CohortID == cohort.ID {
+		t.Fatalf("cohort_id = revision marker %s, want stable cohort %s", snapshot.CohortID, stableCohortID)
+	}
 	require.Equal(t, cohort.Revision, snapshot.CohortRevision)
 	require.Equal(t, "standard", snapshot.SourceTemplateKey)
 	require.Equal(t, int64(1), snapshot.SourceTemplateRevision)
@@ -28,6 +42,7 @@ func TestGetAccountPolicyReturnsExactManagedProvenance(t *testing.T) {
 	require.Equal(t, cohort.Policy.LibraryIDs, snapshot.Policy.LibraryIDs)
 	require.Equal(t, cohort.Policy.MaxStreams, snapshot.Policy.MaxStreams)
 	require.Equal(t, []string{"marker_edit"}, snapshot.Policy.AllowedPermissions)
+	require.True(t, snapshot.Policy.AudioTranscodeAllowed)
 	require.Equal(t, int64(1), snapshot.PolicyRevision)
 	if len(snapshot.Profiles) != 1 {
 		t.Fatalf("profiles = %d, want 1", len(snapshot.Profiles))
@@ -42,6 +57,10 @@ func TestGetAccountPolicyReturnsDerivedCohortAndProfileExceptions(t *testing.T) 
 	parent, _ := fixture.ensureExact(t)
 	maxStreams := 1
 	derived, _ := fixture.derive(t, parent.ID, "Selection-specific", entitlements.PolicyPatch{MaxStreams: &maxStreams})
+	var stableDerivedCohortID uuid.UUID
+	require.NoError(t, fixture.pool.QueryRow(fixture.ctx,
+		`SELECT cohort_id FROM entitlement_policy_cohort_revisions WHERE id=$1`, derived.ID,
+	).Scan(&stableDerivedCohortID))
 
 	var inheritedProfileID string
 	require.NoError(t, fixture.pool.QueryRow(fixture.ctx, `
@@ -64,7 +83,7 @@ func TestGetAccountPolicyReturnsDerivedCohortAndProfileExceptions(t *testing.T) 
 
 	snapshot, err := fixture.store.GetAccountPolicy(fixture.ctx, fixture.organizationID, fixture.actorID)
 	require.NoError(t, err)
-	require.Equal(t, derived.ID, snapshot.CohortID)
+	require.Equal(t, stableDerivedCohortID, snapshot.CohortID)
 	require.Equal(t, parent.SourceTemplateKey, snapshot.SourceTemplateKey)
 	require.Equal(t, parent.SourceTemplateRevision, snapshot.SourceTemplateRevision)
 	require.Equal(t, maxStreams, snapshot.Policy.MaxStreams)
@@ -129,6 +148,8 @@ func TestEntitlementSnapshotUsesOneObservationAndSafeNotFoundResults(t *testing.
 	fixture := newCohortFixture(t)
 	fixture.ensureExact(t)
 	missingID := fixture.actorID + 1000000
+	wantSnapshot, err := fixture.store.GetAccountPolicy(fixture.ctx, fixture.organizationID, fixture.actorID)
+	require.NoError(t, err)
 
 	items, observedAt, err := fixture.store.GetAccountPolicies(fixture.ctx, fixture.organizationID, []int{fixture.actorID, missingID})
 	require.NoError(t, err)
@@ -140,10 +161,48 @@ func TestEntitlementSnapshotUsesOneObservationAndSafeNotFoundResults(t *testing.
 		t.Fatal("first snapshot is nil")
 	}
 	require.Equal(t, observedAt, items[0].Snapshot.ObservedAt)
+	wantSnapshot.ObservedAt = observedAt
+	require.Equal(t, wantSnapshot, *items[0].Snapshot)
 	require.Equal(t, fixture.actorID, items[0].AccountID)
 	require.Nil(t, items[1].Snapshot)
 	require.Equal(t, missingID, items[1].AccountID)
 	require.Equal(t, entitlements.AccountPolicyResultNotFound, items[1].Error)
+}
+
+func TestEntitlementSnapshotDirectScopeUsesDefaultOrganization(t *testing.T) {
+	fixture := newCohortFixture(t)
+	var organizationID uuid.UUID
+	var groupID int64
+	require.NoError(t, fixture.pool.QueryRow(fixture.ctx, `
+		SELECT organizations.id,groups.id
+		FROM organizations
+		JOIN access_groups groups ON groups.organization_id=organizations.id AND groups.is_default
+		WHERE organizations.is_default`).Scan(&organizationID, &groupID))
+
+	suffix := uuid.NewString()
+	var accountID int
+	require.NoError(t, fixture.pool.QueryRow(fixture.ctx, `
+		INSERT INTO users (email,username,password_hash,role,access_group_id)
+		VALUES ($1,$2,'test-hash','user',$3) RETURNING id`,
+		"policy-direct-"+suffix+"@example.test", "policy-direct-"+suffix, groupID).Scan(&accountID))
+	_, err := fixture.pool.Exec(fixture.ctx, `
+		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+		VALUES ($1,$2,'active','user')`, organizationID, accountID)
+	require.NoError(t, err)
+	_, err = fixture.pool.Exec(fixture.ctx, `
+		INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id,is_primary)
+		VALUES ($1,$2,'Primary',$3,$4,true)`, uuid.NewString(), accountID, organizationID, groupID)
+	require.NoError(t, err)
+
+	want, err := fixture.store.GetAccountPolicy(fixture.ctx, organizationID, accountID)
+	require.NoError(t, err)
+	items, observedAt, err := fixture.store.GetAccountPolicies(fixture.ctx, uuid.Nil, []int{accountID})
+	require.NoError(t, err)
+	if len(items) != 1 || items[0].Snapshot == nil {
+		t.Fatalf("items = %+v, want one direct default-organization snapshot", items)
+	}
+	want.ObservedAt = observedAt
+	require.Equal(t, want, *items[0].Snapshot)
 }
 
 func TestEntitlementSnapshotRejectsMoreThanTenThousandIDs(t *testing.T) {
@@ -159,6 +218,70 @@ func TestEntitlementSnapshotRejectsMoreThanTenThousandIDs(t *testing.T) {
 	if elapsed := time.Since(started); elapsed >= time.Second {
 		t.Fatalf("limit rejection took %v, want under 1s", elapsed)
 	}
+}
+
+// TestEntitlementSnapshotMaxBatchUsesFixedQueryBudget rejects an N+1 bulk
+// implementation. The maximum accepted request must cost a fixed number of
+// statements even when every item resolves an account and profile policy.
+func TestEntitlementSnapshotMaxBatchUsesFixedQueryBudget(t *testing.T) {
+	fixture := newCohortFixture(t)
+	fixture.ensureExact(t)
+	config, err := pgxpool.ParseConfig(os.Getenv("SILO_TEST_DATABASE_URL"))
+	require.NoError(t, err)
+	tracer := &accountPolicyQueryTracer{}
+	config.ConnConfig.Tracer = tracer
+	config.MaxConns = 1
+	pool, err := pgxpool.NewWithConfig(fixture.ctx, config)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+
+	accountIDs := make([]int, entitlements.MaxAccountPolicySnapshotIDs)
+	for index := range accountIDs {
+		accountIDs[index] = fixture.actorID
+	}
+	tracer.reset()
+	items, observedAt, err := entitlements.NewTemplateStore(pool).GetAccountPolicies(
+		fixture.ctx, fixture.organizationID, accountIDs,
+	)
+	require.NoError(t, err)
+	require.False(t, observedAt.IsZero())
+	if len(items) != entitlements.MaxAccountPolicySnapshotIDs {
+		t.Fatalf("items = %d, want %d", len(items), entitlements.MaxAccountPolicySnapshotIDs)
+	}
+	for index, item := range items {
+		if item.AccountID != accountIDs[index] || item.Error != "" || item.Snapshot == nil || len(item.Snapshot.Profiles) != 1 {
+			t.Fatalf("item %d = %+v, want account and profile snapshot for %d", index, item, accountIDs[index])
+		}
+	}
+	if queries := tracer.snapshot(); len(queries) > 6 {
+		t.Fatalf("maximum bulk snapshot issued %d queries, want at most 6 fixed queries", len(queries))
+	}
+}
+
+type accountPolicyQueryTracer struct {
+	mu      sync.Mutex
+	queries []string
+}
+
+func (c *accountPolicyQueryTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.queries = append(c.queries, data.SQL)
+	return ctx
+}
+
+func (*accountPolicyQueryTracer) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+func (c *accountPolicyQueryTracer) reset() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.queries = nil
+}
+
+func (c *accountPolicyQueryTracer) snapshot() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]string{}, c.queries...)
 }
 
 func insertAccountPolicyGroup(t *testing.T, fixture *cohortFixture, name string, libraryIDs []int, maxStreams int) int64 {
