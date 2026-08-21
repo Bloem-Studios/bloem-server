@@ -516,6 +516,57 @@ func TestTenantApplyReusesDirectAccountExactCohort(t *testing.T) {
 	require.True(t, directIsDefault, "tenant apply must select the existing exact cohort as its managed default")
 }
 
+func TestTenantApplyMovesFormerDefaultAssignmentsToExactCohort(t *testing.T) {
+	ctx, pool, store := entitlementTestStore(t)
+	tenant, err := tenancy.NewStore(pool).CreateTenantOrganization(ctx, tenancy.CreateTenantOrganizationInput{
+		Name: "Tenant exact cohort assignment move", ExternalServiceID: uuid.NewString(), Slots: 3, Transcodes: 1,
+	})
+	require.NoError(t, err)
+	var formerDefaultID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, tenant.ID).Scan(&formerDefaultID))
+
+	template, err := store.Create(ctx, entitlements.CreateTemplateInput{
+		Key: entitlementTestKey(t, "tenant-assignment-move"), Name: "Tenant assignment move " + uuid.NewString(), Enabled: true, Policy: standardPolicy([]int{}),
+	})
+	require.NoError(t, err)
+	exactAccountID := insertDirectEntitlementAccount(t, ctx, pool, tenant.ID, formerDefaultID, "exact-occupant")
+	exact, err := store.ApplyAccountTemplate(ctx, tenant.ID, exactAccountID, template.Key, template.Revision, false)
+	require.NoError(t, err)
+
+	legacyAccountID := insertDirectEntitlementAccount(t, ctx, pool, tenant.ID, formerDefaultID, "legacy-occupant")
+	var customGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `
+		INSERT INTO access_groups (organization_id,name,description,is_default)
+		VALUES ($1,$2,'explicit custom profile group',false) RETURNING id`, tenant.ID, "Custom "+uuid.NewString()).Scan(&customGroupID))
+	_, err = pool.Exec(ctx, `
+		INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id)
+		VALUES ($1,$2,'Inherited former default',$3,$4),
+		       ($5,$2,'Explicit custom',$3,$6)`,
+		uuid.NewString(), legacyAccountID, tenant.ID, formerDefaultID,
+		uuid.NewString(), customGroupID)
+	require.NoError(t, err)
+
+	preview, err := store.ApplyTemplate(ctx, tenant.ID, template.Key, template.Revision, true)
+	require.NoError(t, err)
+	require.Equal(t, 1, preview.ProfilesMoved)
+	var previewAccountGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM users WHERE id=$1`, legacyAccountID).Scan(&previewAccountGroupID))
+	require.Equal(t, formerDefaultID, previewAccountGroupID, "dry-run must not move the former-default account")
+
+	result, err := store.ApplyTemplate(ctx, tenant.ID, template.Key, template.Revision, false)
+	require.NoError(t, err)
+	require.Equal(t, exact.GroupID, result.GroupID)
+	require.Equal(t, 1, result.ProfilesMoved)
+
+	var accountGroupID, inheritedGroupID, customProfileGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM users WHERE id=$1`, legacyAccountID).Scan(&accountGroupID))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='Inherited former default'`, legacyAccountID).Scan(&inheritedGroupID))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='Explicit custom'`, legacyAccountID).Scan(&customProfileGroupID))
+	require.Equal(t, exact.GroupID, accountGroupID)
+	require.Equal(t, exact.GroupID, inheritedGroupID)
+	require.Equal(t, customGroupID, customProfileGroupID)
+}
+
 func TestProfileEntitlementLimitIsOrganizationScopedAndConcurrentSafe(t *testing.T) {
 	ctx, pool, _ := entitlementTestStore(t)
 	var firstOrganizationID uuid.UUID
