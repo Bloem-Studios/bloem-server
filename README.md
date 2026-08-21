@@ -44,6 +44,13 @@ adds a focused set of its own capabilities alongside it:
   remains the unmodified Silo-compatible surface every existing client
   already speaks. See
   [the operator runbook](docs/architecture/opa-tenant-authorization.md).
+- Revisioned **entitlement templates** for consistently applying playback,
+  stream, profile, transcode, download, request, permission, quality, and
+  library policy to an organization or a directly managed account. Vondel
+  ships Browse-only, Viewer, Standard, Premium, and Reseller Member starting
+  points; platform admins can create, revise, clone, archive, preview, and
+  apply templates from the web console. See the
+  [entitlement-template operations guide](docs/operations/entitlement-templates.md).
 - A companion-deployment gateway: enrollment, trust, and administration for
   companion instances running behind this server, with its own hardened
   default-deny posture.
@@ -60,8 +67,8 @@ adds a focused set of its own capabilities alongside it:
 - Product identity: Vondel naming and branding in user-facing copy, applied
   at build time so upstream source stays mergeable (see FORK.md).
 
-Everything else — the feature list below, deployment, and configuration — is
-Silo's own work, unchanged.
+Unless called out above, the feature list below, deployment, and configuration
+remain Silo's own work, unchanged.
 
 ## Highlights
 
@@ -69,6 +76,7 @@ Silo's own work, unchanged.
 - **Web app included** — a full-featured web client and admin interface ship with the server.
 - **Works with apps you already use** — a Jellyfin/Emby-compatible API supports clients such as VidHub, Findroid, and Infuse, and an Audiobookshelf-compatible API supports Audiobookshelf-protocol clients for audiobook/podcast playback, progress sync, bookmarks, and RSS feeds. Both are enabled by default and reachable on Silo's own address — no extra ports to open. Both can be turned off in Admin > Settings, and an operator who wants a dedicated listener on a fixed port (`JF_PORT`/`ABS_PORT`, `8096`/`13378`) can still opt into one there.
 - **Household profiles** — multiple profiles per account, with per-profile watch state and parental controls.
+- **Reusable access policy** — immutable entitlement-template revisions make plan changes reviewable and repeatable, with separate controls for original downloads and transcoded downloads and either all libraries or an explicit library selection.
 - **Plugin-driven metadata** — match and enrich your libraries with providers like TMDB and TVDB, installed as plugins.
 - **Fast setup** — one `docker compose up -d` brings up the whole stack; everything else is configured in the admin UI.
 

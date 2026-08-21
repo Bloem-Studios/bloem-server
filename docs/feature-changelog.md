@@ -2,6 +2,14 @@
 
 ## 2026-08-21
 
+### Manage reusable entitlement policy as immutable templates
+Platform administrators can now define a policy once and safely apply an exact revision to an organization or directly managed account.
+- Ships enabled Browse-only, Viewer, Standard, Premium, and Reseller Member starting points, all initially following every available library.
+- Separates playback, streams, profiles, transcoding, original downloads, transcoded downloads, quality, requests, permissions, and library selection.
+- Adds create, revise, clone, archive, revision-history, and rollback-as-new-revision workflows in the platform admin UI.
+- Requires a signed dry-run preview before apply, binds confirmation to the actor, target, revision, and previewed state, and stores payload-bound idempotency receipts and durable audit history.
+- Materializes only managed groups, preserves custom groups, and enforces the resulting playback, profile, transcode, download, permission, and library policy at server boundaries.
+
 ### Admin accounts are never capped by an access group
 An account promoted to admin kept its access group, so the Default Group's stream cap and library list still applied to it. Admins are now ungrouped everywhere: promoting clears the group, demoting lands the account on the default group unless the request names one, and `POST /admin/users`, `PUT /admin/users/{id}`, and `POST /admin/invitations` reject `role: "admin"` together with an `access_group_id` with `422`. Policy resolution ignores any group an admin row still carries, and a migration clears the admins that were grouped before this change.
 

@@ -31,6 +31,9 @@ rewriting.
 
 ## Admin
 
+- [Entitlement Templates](admin/entitlement-templates.md) - Create revisioned playback,
+  download, profile, transcode, permission, and library policies and safely apply them to
+  organizations or direct accounts.
 - [Supported Media Folder Structures and Naming](admin/media-folder-and-naming.md) - Accurate
   reference for the folder layouts and filenames Silo can scan and match today.
 - [Collection Templates](admin/collection-templates.md) - Curated, one-click starting points for

@@ -1179,6 +1179,112 @@ Only reachable by clients: **no** — confirmed by grepping both `vondel-android
 are zero matches in either repository. This surface is platform-operator / admin-console-only, not
 called by any first-party native client.
 
+#### Entitlement template administration
+
+Source: `internal/api/handlers/entitlement_templates.go`. Every route below
+requires a platform-scoped admin-context token. Mutation routes also require
+the platform mutation authority enforced by the shared admin middleware.
+
+These are **policy templates**, not the organization-library grants at
+`/api/v2/admin/organization/entitlements/{folder_id}`. A template's library
+selection narrows the libraries already available to the target; it does not
+create a platform-library grant.
+
+Policy wire shape:
+
+```json
+{
+  "all_libraries": true,
+  "library_ids": null,
+  "playback_allowed": true,
+  "max_streams": 3,
+  "max_profiles": 5,
+  "transcode_allowed": true,
+  "max_transcodes": 1,
+  "download_allowed": true,
+  "download_transcode_allowed": true,
+  "max_playback_quality": "1080p",
+  "allowed_permissions": null,
+  "requests_allowed": true
+}
+```
+
+`all_libraries: true` or `library_ids: null` selects every available library
+dynamically. An explicit array selects only those positive IDs.
+`allowed_permissions: null` permits all access-group permissions; an explicit
+array is an allowlist. Original and transcoded downloads are independent.
+
+Template routes:
+
+| Method and path | Contract |
+| --- | --- |
+| `GET /api/v2/admin/platform/entitlement-templates` | Returns `{ "templates": [...] }`. `?status=enabled` returns only enabled, non-archived templates; `?include_archived=false` omits archived history. |
+| `POST /api/v2/admin/platform/entitlement-templates` | Creates revision 1 from `{key,name,enabled,policy}`; returns `201 {"template": ...}`. |
+| `GET /api/v2/admin/platform/entitlement-templates/{key}` | Returns the latest revision, or the exact positive `?revision=N`. |
+| `GET /api/v2/admin/platform/entitlement-templates/{key}/revisions` | Returns `{ "revisions": [...] }`; `/history` is an equivalent UI-oriented alias. |
+| `POST /api/v2/admin/platform/entitlement-templates/{key}/revisions` | Appends a revision. Send `{expected_revision,name,enabled,policy}` or `{expected_revision,source_revision,name,enabled}` to copy historic policy as a new rollback revision. |
+| `POST /api/v2/admin/platform/entitlement-templates/{key}/clone` | Creates a disabled template from `{source_revision,key,name}`; returns 201. |
+| `POST /api/v2/admin/platform/entitlement-templates/{key}/archive` | Archives the latest revision using `{expected_revision}`. |
+
+Template responses contain `key`, `name`, `revision`, `enabled`, `archived`,
+`status` (`enabled`, `disabled`, or `archived`), `policy`, and `created_at`.
+Revision conflicts return 409; invalid policies and revisions return 422.
+
+Target detail and application routes:
+
+| Target | Detail | Dry run | Apply |
+| --- | --- | --- | --- |
+| Organization | `GET /platform/organizations/{id}/entitlement` | `POST /platform/organizations/{id}/entitlement/dry-run` | `POST /platform/organizations/{id}/entitlement/apply` |
+| Direct account | `GET /platform/accounts/{account_id}/entitlement` | `POST /platform/accounts/{account_id}/entitlement/dry-run` | `POST /platform/accounts/{account_id}/entitlement/apply` |
+
+All paths in the table are relative to `/api/v2/admin`. The account routes are
+also mounted at `/platform/users/{user_id}/entitlement...` as compatibility
+aliases.
+
+Dry-run request:
+
+```json
+{ "template_key": "standard", "template_revision": 1 }
+```
+
+The 200 response includes the full dry-run `result`, top-level
+`template_key`, `template_revision`, `changed`, `changes`, `warnings`,
+`expires_at`, and identical `confirmation_token` and legacy `dry_run_token`
+aliases. The token expires after ten minutes and is bound to the actor, target,
+exact revision, and a hash of the previewed state.
+
+Apply request:
+
+```json
+{
+  "template_key": "standard",
+  "template_revision": 1,
+  "confirmation_token": "signed-preview-token",
+  "idempotency_key": "stable-client-command-id"
+}
+```
+
+`dry_run_token` is accepted as a compatibility alias. The non-empty
+idempotency key is limited to 200 characters. The 200 response includes
+`organization_id`, optional `account_id`, `template_key`,
+`template_revision`, `group_id`, `dry_run`, `changed`, optional
+`profiles_moved`, the previous key/revision when present, and effective
+`policy`. Replaying an identical command returns its stored response; reusing
+the key for another payload conflicts. A stale or target-mismatched preview
+must be discarded and repeated from dry-run.
+
+Organization detail additionally returns `managed_default_group`,
+`tenant_limits`, `library_ids`, `last_reconciled_at`, and
+`audit_history_href`. Direct-account detail returns its organization/account
+IDs, managed group, policy libraries, and last reconciliation. Organization
+audit history is:
+
+```text
+GET /api/v2/admin/platform/organizations/{id}/entitlement/audit
+```
+
+and returns `{ "events": [...] }` in reverse chronological order.
+
 #### `Organization` (wire shape used throughout)
 ```json
 {
