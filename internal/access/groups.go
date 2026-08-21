@@ -86,6 +86,7 @@ func NoGroupPolicy() GroupPolicy {
 	return GroupPolicy{
 		LibraryIDs:               nil,
 		MaxPlaybackQuality:       "",
+		PlaybackAllowed:          true,
 		DownloadAllowed:          true,
 		DownloadTranscodeAllowed: false,
 		TranscodeAllowed:         true,

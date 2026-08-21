@@ -37,6 +37,24 @@ func TestEffectivePolicyForSubjectResolvesExactSubject(t *testing.T) {
 	}
 }
 
+func TestEffectivePolicyForSubjectAdminBypassesGroupsWithPlaybackAllowed(t *testing.T) {
+	provider := &recordingGroupPolicyProvider{policy: &GroupPolicy{
+		PlaybackAllowed: false,
+	}}
+	user := &models.User{ID: 7, Role: models.RoleAdmin}
+
+	effective, err := EffectivePolicyForSubject(context.Background(), user, GroupSubject{AccountID: user.ID}, provider)
+	if err != nil {
+		t.Fatalf("EffectivePolicyForSubject() error: %v", err)
+	}
+	if !effective.PlaybackAllowed {
+		t.Fatal("PlaybackAllowed = false, want ungrouped admin playback allowed")
+	}
+	if provider.subject != (GroupSubject{}) {
+		t.Fatalf("ResolvePolicy called for admin subject %#v", provider.subject)
+	}
+}
+
 func TestApplyGroupPolicyRestrictsEntitlementPlaybackTranscodeAndProfiles(t *testing.T) {
 	user := &models.User{
 		TranscodeAllowed:      ptr(true),
@@ -137,6 +155,7 @@ func TestApplyGroupPolicyUnsetUserInheritsNoGroupDefaults(t *testing.T) {
 	want := EffectiveUserPolicy{
 		LibraryIDs:         nil,
 		MaxPlaybackQuality: "",
+		PlaybackAllowed:    true,
 		DownloadAllowed:    true,
 		// The no-group default for transcoded downloads is deny: it matches
 		// the pre-inherit column default on users.
