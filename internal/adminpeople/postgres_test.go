@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -869,6 +870,134 @@ func TestPolicyBulkJobMovesInheritedProfilesAndPreservesCustomProfiles(t *testin
 	}
 	if assignmentAudits != 1 {
 		t.Fatalf("assignment audits = %d, want 1", assignmentAudits)
+	}
+}
+
+func TestPolicyBulkJobClearsManagedAccountOverridesAndAuditsEffectivePolicy(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	customGroup := fixture.addGroup(t, fixture.orgA, "Override custom", false)
+	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Override custom profile", customGroup)
+	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), standard.AccessGroupID)
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE users SET
+			library_ids='{}'::integer[],max_playback_quality='720p',max_streams=1,max_transcodes=1,
+			transcode_allowed=false,audio_transcode_allowed=false,download_allowed=false,
+			download_transcode_allowed=false,requests_allowed=false
+		WHERE id=$1`, fixture.sharedAccountID); err != nil {
+		t.Fatal(err)
+	}
+
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1, RequestID: "policy-overrides"})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{
+		SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken,
+		IdempotencyKey: "policy-overrides", Command: command,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || completed.Succeeded != 1 {
+		t.Fatalf("completed=%+v err=%v", completed, err)
+	}
+
+	actual, err := store.GetAccountPolicy(fixture.ctx, fixture.orgA, fixture.sharedAccountID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actual.GroupID != premium.AccessGroupID ||
+		!reflect.DeepEqual(actual.Policy.LibraryIDs, preview.Target.Policy.LibraryIDs) ||
+		actual.Policy.MaxStreams != preview.Target.Policy.MaxStreams ||
+		actual.Policy.MaxTranscodes != preview.Target.Policy.MaxTranscodes ||
+		actual.Policy.TranscodeAllowed != preview.Target.Policy.TranscodeAllowed ||
+		actual.Policy.DownloadAllowed != preview.Target.Policy.DownloadAllowed ||
+		actual.Policy.DownloadTranscodeAllowed != preview.Target.Policy.DownloadTranscodeAllowed ||
+		actual.Policy.MaxPlaybackQuality != preview.Target.Policy.MaxPlaybackQuality ||
+		actual.Policy.RequestsAllowed != preview.Target.Policy.RequestsAllowed {
+		t.Fatalf("effective policy=%+v, want managed target=%+v", actual.Policy, preview.Target.Policy)
+	}
+	var managedOverridesCleared bool
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT library_ids IS NULL AND max_playback_quality IS NULL AND
+		       max_streams IS NULL AND max_transcodes IS NULL AND
+		       transcode_allowed IS NULL AND audio_transcode_allowed IS NULL AND
+		       download_allowed IS NULL AND download_transcode_allowed IS NULL AND
+		       requests_allowed IS NULL
+		FROM users WHERE id=$1`, fixture.sharedAccountID).Scan(&managedOverridesCleared); err != nil {
+		t.Fatal(err)
+	}
+	if !managedOverridesCleared {
+		t.Fatal("managed account overrides were not cleared")
+	}
+	fixture.assertProfileGroup(t, fixture.sharedAccountID, customProfile, customGroup)
+
+	var audited entitlements.EffectivePolicySnapshot
+	var auditedDigest string
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT after_state->'effective_policy',after_state->>'effective_policy_digest'
+		FROM admin_audit_events
+		WHERE request_id='policy-overrides' AND action='people.bulk_policy_assigned'`).Scan(&audited, &auditedDigest); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(audited, actual.Policy) {
+		t.Fatalf("audited effective policy=%+v, want actual=%+v", audited, actual.Policy)
+	}
+	wantDigest, err := entitlements.PolicyDigest(policyFromEffective(actual.Policy))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if auditedDigest != wantDigest {
+		t.Fatalf("audited effective policy digest=%q, want %q", auditedDigest, wantDigest)
+	}
+}
+
+func TestPolicyBulkJobReconcilesOverridesOnAlreadyAssignedCohort(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), premium.AccessGroupID)
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET max_streams=1 WHERE id=$1`, fixture.sharedAccountID); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1, RequestID: "policy-reconcile-overrides"})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "policy-reconcile-overrides", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || completed.Succeeded != 1 || len(completed.Skipped) != 0 {
+		t.Fatalf("completed=%+v err=%v", completed, err)
+	}
+	var maxStreams *int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT max_streams FROM users WHERE id=$1`, fixture.sharedAccountID).Scan(&maxStreams); err != nil {
+		t.Fatal(err)
+	}
+	if maxStreams != nil {
+		t.Fatalf("max_streams override=%d, want inherited NULL", *maxStreams)
+	}
+	actual, err := store.GetAccountPolicy(fixture.ctx, fixture.orgA, fixture.sharedAccountID)
+	if err != nil || actual.Policy.MaxStreams != preview.Target.Policy.MaxStreams {
+		t.Fatalf("effective max_streams=%d err=%v, want %d", actual.Policy.MaxStreams, err, preview.Target.Policy.MaxStreams)
 	}
 }
 

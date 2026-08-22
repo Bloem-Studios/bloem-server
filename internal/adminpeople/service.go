@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1519,17 +1520,23 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	var currentCohortID uuid.UUID
 	var sourceKey string
 	var sourceRevision int64
+	var hasManagedOverrides bool
 	err := tx.QueryRow(ctx, `
 		SELECT m.id,m.status,m.security_revision,u.access_policy_revision,COALESCE(u.access_group_id,0),
 		       COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),COALESCE(r.revision,0),
-		       COALESCE(r.source_template_key,g.managed_template_key,''),COALESCE(r.source_template_revision,g.managed_template_revision,0)
+		       COALESCE(r.source_template_key,g.managed_template_key,''),COALESCE(r.source_template_revision,g.managed_template_revision,0),
+		       u.library_ids IS NOT NULL OR u.max_playback_quality IS NOT NULL OR
+		       u.max_streams IS NOT NULL OR u.max_transcodes IS NOT NULL OR
+		       u.transcode_allowed IS NOT NULL OR u.audio_transcode_allowed IS NOT NULL OR
+		       u.download_allowed IS NOT NULL OR u.download_transcode_allowed IS NOT NULL OR
+		       u.requests_allowed IS NOT NULL
 		FROM organization_memberships m
 		JOIN users u ON u.id=m.account_id
 		LEFT JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=u.access_group_id
 		LEFT JOIN entitlement_policy_cohort_revisions r ON r.organization_id=g.organization_id AND r.id=g.managed_cohort_id AND r.access_group_id=g.id
 		WHERE m.organization_id=$1 AND m.account_id=$2 FOR UPDATE OF m,u`, organizationID, snapshot.AccountID).Scan(
 		&membershipID, &status, &membershipRevision, &accountRevision, &currentGroupID,
-		&currentCohortID, &currentCohortRevision, &sourceKey, &sourceRevision,
+		&currentCohortID, &currentCohortRevision, &sourceKey, &sourceRevision, &hasManagedOverrides,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "failed", ReasonNotFound, nil
@@ -1567,7 +1574,7 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 			profilesMoved++
 		}
 	}
-	if currentGroupID == targetGroupID && profilesMoved == 0 {
+	if currentGroupID == targetGroupID && profilesMoved == 0 && !hasManagedOverrides {
 		return "skipped", ReasonAlreadyApplied, nil
 	}
 	if command.IncludeCustomProfiles {
@@ -1577,7 +1584,14 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	} else if _, err := tx.Exec(ctx, `UPDATE user_profiles SET access_group_id=$3,updated_at=now() WHERE organization_id=$1 AND user_id=$2 AND access_group_id=$4 AND access_group_id<>$3`, organizationID, snapshot.AccountID, targetGroupID, currentGroupID); err != nil {
 		return "", "", err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE users SET access_group_id=$2,access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, snapshot.AccountID, targetGroupID); err != nil {
+	if _, err := tx.Exec(ctx, `
+		UPDATE users SET
+			access_group_id=$2,
+			library_ids=NULL,max_playback_quality=NULL,max_streams=NULL,max_transcodes=NULL,
+			transcode_allowed=NULL,audio_transcode_allowed=NULL,download_allowed=NULL,
+			download_transcode_allowed=NULL,requests_allowed=NULL,
+			access_policy_revision=access_policy_revision+1,updated_at=now()
+		WHERE id=$1`, snapshot.AccountID, targetGroupID); err != nil {
 		return "", "", err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET security_revision=security_revision+1,updated_at=now() WHERE id=$1`, membershipID); err != nil {
@@ -1590,8 +1604,47 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	if targetCohortRevision != nil {
 		cohortRevision = *targetCohortRevision
 	}
+	policyResults, _, err := entitlements.NewTemplateStore(s.pool).GetAccountPoliciesInTx(ctx, tx, organizationID, []int{snapshot.AccountID})
+	if err != nil || len(policyResults) != 1 || policyResults[0].Snapshot == nil {
+		if err != nil {
+			return "", "", err
+		}
+		return "", "", errors.New("reconcile assigned policy")
+	}
+	effectivePolicy := policyResults[0].Snapshot.Policy
+	var targetPolicy entitlements.Policy
+	var targetAudioTranscodeAllowed bool
+	err = tx.QueryRow(ctx, `
+		SELECT library_ids,playback_allowed,max_streams,max_profiles,transcode_allowed,
+		       max_transcodes,download_allowed,download_transcode_allowed,max_playback_quality,
+		       allowed_permissions,requests_allowed,audio_transcode_allowed
+		FROM access_groups WHERE organization_id=$1 AND id=$2`, organizationID, targetGroupID).Scan(
+		&targetPolicy.LibraryIDs, &targetPolicy.PlaybackAllowed, &targetPolicy.MaxStreams, &targetPolicy.MaxProfiles,
+		&targetPolicy.TranscodeAllowed, &targetPolicy.MaxTranscodes, &targetPolicy.DownloadAllowed,
+		&targetPolicy.DownloadTranscodeAllowed, &targetPolicy.MaxPlaybackQuality,
+		&targetPolicy.AllowedPermissions, &targetPolicy.RequestsAllowed, &targetAudioTranscodeAllowed,
+	)
+	if err != nil {
+		return "", "", err
+	}
+	targetPolicy, err = materializePreviewPolicyWithDB(ctx, tx, targetPolicy)
+	if err != nil {
+		return "", "", err
+	}
+	if !managedEffectivePolicyMatchesTarget(effectivePolicy, targetPolicy, targetAudioTranscodeAllowed) {
+		return "", "", errors.New("reconcile assigned policy")
+	}
+	effectivePolicyDigest, err := entitlements.PolicyDigest(policyFromEffective(effectivePolicy))
+	if err != nil {
+		return "", "", err
+	}
 	before := map[string]any{"group_id": currentGroupID, "cohort_id": currentCohortID, "cohort_revision": currentCohortRevision}
-	after := map[string]any{"job_id": jobID, "group_id": targetGroupID, "cohort_id": cohortID, "cohort_revision": cohortRevision, "profiles_moved": profilesMoved, "include_custom_profiles": command.IncludeCustomProfiles}
+	after := map[string]any{
+		"job_id": jobID, "group_id": targetGroupID, "cohort_id": cohortID, "cohort_revision": cohortRevision,
+		"profiles_moved": profilesMoved, "include_custom_profiles": command.IncludeCustomProfiles,
+		"managed_account_overrides_cleared": hasManagedOverrides,
+		"effective_policy":                  effectivePolicy, "effective_policy_digest": effectivePolicyDigest,
+	}
 	if err := recordPeopleAudit(ctx, tx, actorID, "people.bulk_policy_assigned", "membership", membershipID.String(), organizationID, snapshot.AccountID, membershipRevision, membershipRevision+1, "success", before, after); err != nil {
 		return "", "", err
 	}
@@ -1599,6 +1652,18 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 		return "", "", err
 	}
 	return "succeeded", "", nil
+}
+
+func managedEffectivePolicyMatchesTarget(effective entitlements.EffectivePolicySnapshot, target entitlements.Policy, targetAudioTranscodeAllowed bool) bool {
+	return slices.Equal(effective.LibraryIDs, target.LibraryIDs) &&
+		effective.MaxStreams == target.MaxStreams &&
+		effective.MaxTranscodes == target.MaxTranscodes &&
+		effective.TranscodeAllowed == target.TranscodeAllowed &&
+		effective.AudioTranscodeAllowed == targetAudioTranscodeAllowed &&
+		effective.DownloadAllowed == target.DownloadAllowed &&
+		effective.DownloadTranscodeAllowed == target.DownloadTranscodeAllowed &&
+		effective.MaxPlaybackQuality == target.MaxPlaybackQuality &&
+		effective.RequestsAllowed == target.RequestsAllowed
 }
 
 func sameProfileSnapshots(current, want []profileSnapshot) bool {
