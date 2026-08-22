@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -13,6 +13,14 @@ vi.mock("@/api/adminV2Client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/api/adminV2Client")>();
   return { ...actual, adminV2Api: vi.fn() };
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 const organizationID = "10000000-0000-0000-0000-000000000001";
 
@@ -301,6 +309,156 @@ describe("DirectAccountPolicyBulkPage", () => {
       screen.queryByRole("heading", { name: "Authoritative observations" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("radiogroup", { name: "Policy operation" })).not.toBeInTheDocument();
+  });
+
+  it("ignores a snapshot response that resolves after the account selection changes", async () => {
+    const user = userEvent.setup();
+    const lateSnapshot = deferred<{
+      observed_at: string;
+      items: Array<{ account_id: number; snapshot: ReturnType<typeof snapshot> }>;
+    }>();
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (path === "/platform/accounts/entitlement-snapshots") {
+        return lateSnapshot.promise as never;
+      }
+      throw new Error(`Unexpected API route: ${String(path)}`);
+    });
+
+    renderPage();
+    await user.type(screen.getByLabelText("Server account IDs"), "41");
+    await user.click(screen.getByRole("button", { name: "Review selected accounts" }));
+    await user.clear(screen.getByLabelText("Server account IDs"));
+    await user.type(screen.getByLabelText("Server account IDs"), "99");
+
+    await act(async () => {
+      lateSnapshot.resolve({
+        observed_at: "2026-08-21T10:15:00Z",
+        items: [{ account_id: 41, snapshot: snapshot(41) }],
+      });
+      await lateSnapshot.promise;
+    });
+
+    expect(screen.queryByRole("heading", { name: "Account 41" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Authoritative observations" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("rejects an equal-sized snapshot response for different account IDs", async () => {
+    const user = userEvent.setup();
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (path === "/platform/accounts/entitlement-snapshots") {
+        return {
+          observed_at: "2026-08-21T10:15:00Z",
+          items: [{ account_id: 51, snapshot: snapshot(51) }],
+        } as never;
+      }
+      throw new Error(`Unexpected API route: ${String(path)}`);
+    });
+
+    renderPage();
+    await user.type(screen.getByLabelText("Server account IDs"), "41");
+    await user.click(screen.getByRole("button", { name: "Review selected accounts" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/did not match.*account IDs/i);
+    expect(screen.queryByRole("heading", { name: "Account 51" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Policy operation" })).not.toBeInTheDocument();
+  });
+
+  it("ignores a preview response that resolves after the account selection changes", async () => {
+    const user = userEvent.setup();
+    const latePreview = deferred<ReturnType<typeof previewResponse>>();
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (path === "/platform/accounts/entitlement-snapshots") {
+        return {
+          observed_at: "2026-08-21T10:15:00Z",
+          items: [{ account_id: 41, snapshot: snapshot(41) }],
+        } as never;
+      }
+      if (String(path).includes("/entitlement-cohorts")) return { cohorts } as never;
+      if (path === "/platform/accounts/entitlement-bulk/policy-previews") {
+        return latePreview.promise as never;
+      }
+      throw new Error(`Unexpected API route: ${String(path)}`);
+    });
+
+    renderPage();
+    await reviewAccounts(user, "41");
+    await user.click(screen.getByRole("radio", { name: "Restore the managed default" }));
+    await user.click(screen.getByRole("button", { name: "Preview policy impact" }));
+    await user.clear(screen.getByLabelText("Server account IDs"));
+    await user.type(screen.getByLabelText("Server account IDs"), "99");
+
+    await act(async () => {
+      latePreview.resolve(previewResponse("restore_default_entitlement"));
+      await latePreview.promise;
+    });
+
+    expect(
+      screen.queryByRole("heading", { name: "Review authoritative impact" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start policy job" })).not.toBeInTheDocument();
+  });
+
+  it("ignores a job response that resolves after the account selection changes", async () => {
+    const user = userEvent.setup();
+    const lateJob = deferred<{
+      job: {
+        job_id: string;
+        status: "completed";
+        progress_current: number;
+        progress_total: number;
+        succeeded: number;
+        skipped: never[];
+        failed: never[];
+      };
+    }>();
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (path === "/platform/accounts/entitlement-snapshots") {
+        return {
+          observed_at: "2026-08-21T10:15:00Z",
+          items: [{ account_id: 41, snapshot: snapshot(41) }],
+        } as never;
+      }
+      if (String(path).includes("/entitlement-cohorts")) return { cohorts } as never;
+      if (path === "/platform/accounts/entitlement-bulk/policy-previews") {
+        return previewResponse("restore_default_entitlement") as never;
+      }
+      if (path === "/platform/accounts/entitlement-bulk/policy-jobs") {
+        return lateJob.promise as never;
+      }
+      throw new Error(`Unexpected API route: ${String(path)}`);
+    });
+
+    renderPage();
+    await reviewAccounts(user, "41");
+    await user.click(screen.getByRole("radio", { name: "Restore the managed default" }));
+    await user.click(screen.getByRole("button", { name: "Preview policy impact" }));
+    await screen.findByRole("heading", { name: "Review authoritative impact" });
+    await user.click(screen.getByRole("checkbox", { name: /I confirm this exact account set/i }));
+    await user.click(screen.getByRole("button", { name: "Start policy job" }));
+    await user.clear(screen.getByLabelText("Server account IDs"));
+    await user.type(screen.getByLabelText("Server account IDs"), "99");
+
+    await act(async () => {
+      lateJob.resolve({
+        job: {
+          job_id: "late-job",
+          status: "completed",
+          progress_current: 1,
+          progress_total: 1,
+          succeeded: 1,
+          skipped: [],
+          failed: [],
+        },
+      });
+      await lateJob.promise;
+    });
+
+    expect(screen.queryByRole("heading", { name: "Policy job completed" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Refresh authoritative selection" }),
+    ).not.toBeInTheDocument();
   });
 
   it("previews an exact template revision and recovers safely from stale confirmation", async () => {

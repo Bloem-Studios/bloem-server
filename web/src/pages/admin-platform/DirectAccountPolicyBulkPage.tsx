@@ -78,6 +78,25 @@ interface PreviewResponse {
 
 interface PreviewBinding extends PreviewResponse {
   command: PolicyCommand;
+  accountIDs: number[];
+  generation: number;
+}
+
+interface SelectionRequest {
+  accountIDs: number[];
+  generation: number;
+}
+
+interface PreviewRequest extends SelectionRequest {
+  command: PolicyCommand;
+}
+
+interface JobRequest extends SelectionRequest {
+  binding: PreviewBinding;
+}
+
+interface CancelJobRequest extends SelectionRequest {
+  jobID: string;
 }
 
 interface PatchDraft {
@@ -133,15 +152,27 @@ export default function DirectAccountPolicyBulkPage() {
   const submitGuard = useRef(false);
   const idempotencyKey = useRef("");
   const refreshedTerminalJob = useRef<string | undefined>(undefined);
+  const requestGeneration = useRef(0);
+  const selectedIDsRef = useRef<number[]>([]);
   const queryClient = useQueryClient();
 
   const snapshots = useMutation({
-    mutationFn: (accountIDs: number[]) =>
+    mutationFn: ({ accountIDs }: SelectionRequest) =>
       adminV2Api<SnapshotResponse>("/platform/accounts/entitlement-snapshots", {
         method: "POST",
         body: JSON.stringify({ account_ids: accountIDs }),
       }),
-    onSuccess: setSnapshotData,
+    onSuccess: (response, request) => {
+      if (!isCurrentSelection(request)) return;
+      if (!snapshotMatchesSelection(response, request.accountIDs)) {
+        discardReviewedSelection();
+        setSelectionError(
+          "The authoritative response did not match the requested Server account IDs. Review again.",
+        );
+        return;
+      }
+      setSnapshotData(response);
+    },
   });
 
   const validSnapshots = snapshotData?.items.flatMap((item) =>
@@ -164,15 +195,15 @@ export default function DirectAccountPolicyBulkPage() {
   });
 
   const createPreview = useMutation({
-    mutationFn: (command: PolicyCommand) =>
+    mutationFn: ({ accountIDs, command }: PreviewRequest) =>
       adminV2Api<PreviewResponse>("/platform/accounts/entitlement-bulk/policy-previews", {
         method: "POST",
-        body: JSON.stringify({ account_ids: selectedIDs, command }),
+        body: JSON.stringify({ account_ids: accountIDs, command }),
       }),
   });
 
   const createJob = useMutation({
-    mutationFn: ({ selection, preview, command }: PreviewBinding) =>
+    mutationFn: ({ binding: { selection, preview, command } }: JobRequest) =>
       adminV2Api<{ job: PeopleBulkJob }>("/platform/accounts/entitlement-bulk/policy-jobs", {
         method: "POST",
         body: JSON.stringify({
@@ -182,7 +213,9 @@ export default function DirectAccountPolicyBulkPage() {
           command,
         }),
       }).then((result) => result.job),
-    onSuccess: setSubmittedJob,
+    onSuccess: (job, request) => {
+      if (isCurrentSelection(request)) setSubmittedJob(job);
+    },
   });
 
   const polledJob = useQuery({
@@ -214,12 +247,14 @@ export default function DirectAccountPolicyBulkPage() {
   }, [organizationID, queryClient, visibleJob]);
 
   const cancelJob = useMutation({
-    mutationFn: (jobID: string) =>
+    mutationFn: ({ jobID }: CancelJobRequest) =>
       adminV2Api<{ job: PeopleBulkJob }>(
         `/platform/accounts/entitlement-bulk/policy-jobs/${encodeURIComponent(jobID)}/cancel`,
         { method: "POST", body: "{}" },
       ).then((result) => result.job),
-    onSuccess: setSubmittedJob,
+    onSuccess: (job, request) => {
+      if (isCurrentSelection(request)) setSubmittedJob(job);
+    },
   });
 
   const draftChanges = useMemo(() => describePatch(patchDraft), [patchDraft]);
@@ -244,6 +279,8 @@ export default function DirectAccountPolicyBulkPage() {
   }
 
   function discardReviewedSelection() {
+    requestGeneration.current += 1;
+    selectedIDsRef.current = [];
     setSelectedIDs([]);
     setSnapshotData(undefined);
     snapshots.reset();
@@ -258,15 +295,21 @@ export default function DirectAccountPolicyBulkPage() {
       return;
     }
     setSelectionError("");
+    selectedIDsRef.current = parsed;
     setSelectedIDs(parsed);
+    const request = {
+      accountIDs: [...parsed],
+      generation: requestGeneration.current,
+    };
     try {
-      await snapshots.mutateAsync(parsed);
+      await snapshots.mutateAsync(request);
     } catch {
       // The mutation's bounded API error remains visible below the form.
     }
   }
 
   function invalidatePreview() {
+    requestGeneration.current += 1;
     if (previewBinding) setPreviewOutdated(true);
     setPreviewBinding(undefined);
     setConfirmed(false);
@@ -349,9 +392,15 @@ export default function DirectAccountPolicyBulkPage() {
   async function previewImpact() {
     const command = buildCommand();
     if (!command) return;
+    const request: PreviewRequest = {
+      accountIDs: [...selectedIDsRef.current],
+      command,
+      generation: requestGeneration.current,
+    };
     try {
-      const response = await createPreview.mutateAsync(command);
-      setPreviewBinding({ ...response, command });
+      const response = await createPreview.mutateAsync(request);
+      if (!isCurrentSelection(request)) return;
+      setPreviewBinding({ ...response, ...request });
       setPreviewOutdated(false);
     } catch {
       // The mutation exposes the safe API error.
@@ -359,12 +408,17 @@ export default function DirectAccountPolicyBulkPage() {
   }
 
   async function submitJob() {
-    if (submitGuard.current || !confirmed || !previewBinding) return;
+    if (submitGuard.current || !confirmed || !previewBinding || !isCurrentSelection(previewBinding))
+      return;
     submitGuard.current = true;
     if (!idempotencyKey.current) idempotencyKey.current = newIdempotencyKey();
     refreshedTerminalJob.current = undefined;
     try {
-      await createJob.mutateAsync(previewBinding);
+      await createJob.mutateAsync({
+        binding: previewBinding,
+        accountIDs: [...previewBinding.accountIDs],
+        generation: previewBinding.generation,
+      });
     } catch {
       // The mutation exposes the safe API error and retains the reviewed preview.
     } finally {
@@ -380,6 +434,13 @@ export default function DirectAccountPolicyBulkPage() {
       requestError.code,
     );
   const canPreview = Boolean(operation && organizationID) && !createPreview.isPending;
+
+  function isCurrentSelection(request: SelectionRequest): boolean {
+    return (
+      request.generation === requestGeneration.current &&
+      sameAccountIDs(request.accountIDs, selectedIDsRef.current)
+    );
+  }
 
   return (
     <section className="admin-page space-y-6">
@@ -611,7 +672,7 @@ export default function DirectAccountPolicyBulkPage() {
       {previewBinding && !visibleJob ? (
         <PreviewAndConfirmation
           binding={previewBinding}
-          accountIDs={selectedIDs}
+          accountIDs={previewBinding.accountIDs}
           includeCustomProfiles={includeCustomProfiles}
           confirmed={confirmed}
           submitting={createJob.isPending}
@@ -632,7 +693,15 @@ export default function DirectAccountPolicyBulkPage() {
           job={visibleJob}
           error={polledJob.error ?? cancelJob.error}
           cancelling={cancelJob.isPending}
-          onCancel={() => void cancelJob.mutateAsync(visibleJob.job_id).catch(() => undefined)}
+          onCancel={() =>
+            void cancelJob
+              .mutateAsync({
+                jobID: visibleJob.job_id,
+                accountIDs: [...selectedIDsRef.current],
+                generation: requestGeneration.current,
+              })
+              .catch(() => undefined)
+          }
           onRefresh={() => void reviewSelection()}
         />
       ) : null}
@@ -1214,6 +1283,20 @@ function parseAccountIDs(input: string): number[] | Error {
   if (new Set(ids).size !== ids.length)
     return new Error("Remove duplicate Server account IDs before review.");
   return [...ids].sort((left, right) => left - right);
+}
+
+function snapshotMatchesSelection(response: SnapshotResponse, requestedIDs: number[]): boolean {
+  return sameAccountIDs(
+    response.items.map((item) => item.account_id),
+    requestedIDs,
+  );
+}
+
+function sameAccountIDs(left: number[], right: number[]): boolean {
+  if (left.length !== right.length) return false;
+  const sortedLeft = [...left].sort((a, b) => a - b);
+  const sortedRight = [...right].sort((a, b) => a - b);
+  return sortedLeft.every((value, index) => value === sortedRight[index]);
 }
 
 function buildPatch(draft: PatchDraft): PolicyPatch | Error {
