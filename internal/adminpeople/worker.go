@@ -2,6 +2,7 @@ package adminpeople
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -97,8 +98,10 @@ func (w *Worker) process(ctx context.Context) {
 			return
 		}
 		result, err := w.store.ProcessBulkBatch(ctx, job.OrganizationID, job.JobID, w.options.BatchSize)
-		if err != nil && ctx.Err() == nil {
-			_ = w.store.FailBulkJob(ctx, job.OrganizationID, job.JobID, err)
+		if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			failureCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			_ = w.store.FailBulkJob(failureCtx, job.OrganizationID, job.JobID, err)
+			cancel()
 		}
 		if err == nil && (result.Status == "queued" || result.Status == "running") {
 			more = true

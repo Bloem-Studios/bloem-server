@@ -21,7 +21,9 @@ type V2AdminPeopleService interface {
 	Get(context.Context, uuid.UUID, int) (adminpeople.PersonSummary, error)
 	CreateSelection(context.Context, uuid.UUID, adminpeople.Filter) (adminpeople.Selection, error)
 	PreviewPolicy(context.Context, uuid.UUID, int, string, adminpeople.PolicyCommand) (adminpeople.PolicyPreview, error)
+	EnqueuePolicyBulk(context.Context, uuid.UUID, int, adminpeople.PolicyBulkAction) (adminpeople.BulkResult, error)
 	ExecuteBulk(context.Context, uuid.UUID, int, adminpeople.BulkAction) (adminpeople.BulkResult, error)
+	CancelBulkJob(context.Context, uuid.UUID, int, string) (adminpeople.BulkResult, error)
 	GetBulkJob(context.Context, uuid.UUID, string) (adminpeople.BulkResult, error)
 	UpdateMembership(context.Context, uuid.UUID, int, int, int64, tenancy.MembershipStatus) (adminpeople.PersonSummary, error)
 	UpdateProfileGroup(context.Context, uuid.UUID, int, int, string, int64, int) (adminpeople.PersonSummary, error)
@@ -145,6 +147,48 @@ func (h *V2AdminPeopleHandler) HandleCreateBulkJob(w http.ResponseWriter, r *htt
 		h.worker.Wake()
 	}
 	writeJSON(w, http.StatusCreated, struct {
+		Job adminpeople.BulkResult `json:"job"`
+	}{result})
+}
+
+func (h *V2AdminPeopleHandler) HandleCreatePolicyJob(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := h.requireOrganization(w, r)
+	if !ok {
+		return
+	}
+	var action adminpeople.PolicyBulkAction
+	if !decodeAdminPlatformJSON(w, r, &action) {
+		return
+	}
+	result, err := h.service.EnqueuePolicyBulk(adminPeopleMutationContext(r), tenant.OrganizationID, tenant.AccountID, action)
+	if err != nil {
+		h.writeError(w, r, err, 0)
+		return
+	}
+	if h.worker != nil {
+		h.worker.Wake()
+	}
+	writeJSON(w, http.StatusCreated, struct {
+		Job adminpeople.BulkResult `json:"job"`
+	}{result})
+}
+
+func (h *V2AdminPeopleHandler) HandleCancelPolicyJob(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := h.requireOrganization(w, r)
+	if !ok {
+		return
+	}
+	jobID := strings.TrimSpace(chi.URLParam(r, "job_id"))
+	if jobID == "" {
+		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")
+		return
+	}
+	result, err := h.service.CancelBulkJob(adminPeopleMutationContext(r), tenant.OrganizationID, tenant.AccountID, jobID)
+	if err != nil {
+		h.writeError(w, r, err, 0)
+		return
+	}
+	writeJSON(w, http.StatusOK, struct {
 		Job adminpeople.BulkResult `json:"job"`
 	}{result})
 }
@@ -280,6 +324,8 @@ func (h *V2AdminPeopleHandler) writeError(w http.ResponseWriter, r *http.Request
 		writeAdminValidation(w, map[string]string{"request": "contains an invalid people mutation"})
 	case errors.Is(err, adminpeople.ErrInvalidPolicyConfirmation):
 		writeError(w, http.StatusConflict, "policy_confirmation_stale", "The policy preview changed or expired; create a new preview")
+	case errors.Is(err, adminpeople.ErrBulkIdempotencyConflict):
+		writeError(w, http.StatusConflict, "idempotency_conflict", "The idempotency key was used for a different command")
 	default:
 		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
 	}

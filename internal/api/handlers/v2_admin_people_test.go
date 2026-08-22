@@ -27,6 +27,7 @@ type adminPeopleServiceStub struct {
 	result         adminpeople.BulkResult
 	policyPreview  adminpeople.PolicyPreview
 	policyCommand  adminpeople.PolicyCommand
+	policyAction   adminpeople.PolicyBulkAction
 	err            error
 	authority      string
 }
@@ -61,6 +62,25 @@ func (s *adminPeopleServiceStub) PreviewPolicy(ctx context.Context, org uuid.UUI
 	return s.policyPreview, s.err
 }
 func (s *adminPeopleServiceStub) ExecuteBulk(ctx context.Context, org uuid.UUID, actorID int, _ adminpeople.BulkAction) (adminpeople.BulkResult, error) {
+	s.calls++
+	s.organizationID = org
+	s.actorID = actorID
+	if actor, ok := adminpeople.MutationActorFromContext(ctx); ok {
+		s.authority = actor.Authority
+	}
+	return s.result, s.err
+}
+func (s *adminPeopleServiceStub) EnqueuePolicyBulk(ctx context.Context, org uuid.UUID, actorID int, action adminpeople.PolicyBulkAction) (adminpeople.BulkResult, error) {
+	s.calls++
+	s.organizationID = org
+	s.actorID = actorID
+	s.policyAction = action
+	if actor, ok := adminpeople.MutationActorFromContext(ctx); ok {
+		s.authority = actor.Authority
+	}
+	return s.result, s.err
+}
+func (s *adminPeopleServiceStub) CancelBulkJob(ctx context.Context, org uuid.UUID, actorID int, _ string) (adminpeople.BulkResult, error) {
 	s.calls++
 	s.organizationID = org
 	s.actorID = actorID
@@ -161,6 +181,19 @@ func TestV2AdminPeoplePolicyPreviewUsesImmutableSelectionAndMiddlewareActor(t *t
 	}
 	if store.organizationID != organizationID || store.actorID != 7 || store.policyCommand.TemplateKey != "premium" || store.policyCommand.TemplateRevision != 1 || store.authority != adminpeople.AuthorityOrganizationAdmin {
 		t.Fatalf("preview authority/command = %s/%d/%s/%d/%s", store.organizationID, store.actorID, store.policyCommand.TemplateKey, store.policyCommand.TemplateRevision, store.authority)
+	}
+}
+
+func TestV2AdminPeoplePolicyJobEnqueuesConfirmedCommandAndWakesWorker(t *testing.T) {
+	organizationID := uuid.New()
+	store := &adminPeopleServiceStub{result: adminpeople.BulkResult{JobID: "policy-job-1", Status: "queued"}}
+	wake := &adminPeopleWakeStub{}
+	handler := NewV2AdminPeopleHandlerWithWake(store, wake)
+	req := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/policy-jobs", `{"selection_token":"signed","confirmation_token":"confirmed","idempotency_key":"command-1","command":{"kind":"apply_entitlement_template","template_key":"premium","template_revision":1}}`, organizationID, 7, nil)
+	rec := httptest.NewRecorder()
+	handler.HandleCreatePolicyJob(rec, req)
+	if rec.Code != http.StatusCreated || wake.calls != 1 || store.policyAction.ConfirmationToken != "confirmed" || store.policyAction.IdempotencyKey != "command-1" || store.policyAction.Command.TemplateKey != "premium" {
+		t.Fatalf("response=%d %s wakes=%d action=%+v", rec.Code, rec.Body.String(), wake.calls, store.policyAction)
 	}
 }
 

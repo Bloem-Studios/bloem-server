@@ -203,6 +203,24 @@ func TestV2AdminPeopleRoutesAreMountedBehindOrganizationContext(t *testing.T) {
 	if previewRec.Code != http.StatusServiceUnavailable || !strings.Contains(previewRec.Body.String(), `"error":"tenant_unavailable"`) {
 		t.Fatalf("policy preview route = %d %s", previewRec.Code, previewRec.Body.String())
 	}
+
+	for _, route := range []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodPost, "/api/v2/admin/organization/people/policy-jobs", `{}`},
+		{http.MethodGet, "/api/v2/admin/organization/people/policy-jobs/job-1", ""},
+		{http.MethodPost, "/api/v2/admin/organization/people/policy-jobs/job-1/cancel", `{}`},
+	} {
+		req := httptest.NewRequest(route.method, route.path, strings.NewReader(route.body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), `"error":"tenant_unavailable"`) {
+			t.Fatalf("policy job route %s %s = %d %s", route.method, route.path, rec.Code, rec.Body.String())
+		}
+	}
 }
 
 func TestV2AdminOrganizationProjectionRoutesAreMountedWithoutPolicyMutationRoutes(t *testing.T) {

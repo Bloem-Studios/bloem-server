@@ -2,6 +2,7 @@ package adminpeople
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -17,6 +18,10 @@ type workerStoreStub struct {
 	jobCleanups    int
 	processStarted chan struct{}
 	releaseProcess chan struct{}
+	processErr     error
+	cancelProcess  func()
+	failures       int
+	failureStored  chan struct{}
 }
 
 func (s *workerStoreStub) ListRunnableBulkJobs(context.Context, int) ([]DurableJob, error) {
@@ -29,6 +34,8 @@ func (s *workerStoreStub) ProcessBulkBatch(ctx context.Context, _ uuid.UUID, job
 	s.processed = append(s.processed, jobID)
 	started := s.processStarted
 	release := s.releaseProcess
+	processErr := s.processErr
+	cancelProcess := s.cancelProcess
 	s.mu.Unlock()
 	if started != nil {
 		select {
@@ -45,6 +52,12 @@ func (s *workerStoreStub) ProcessBulkBatch(ctx context.Context, _ uuid.UUID, job
 			return BulkResult{}, ctx.Err()
 		}
 	}
+	if cancelProcess != nil {
+		cancelProcess()
+	}
+	if processErr != nil {
+		return BulkResult{}, processErr
+	}
 	return BulkResult{JobID: jobID, Status: "completed"}, nil
 }
 func (s *workerStoreStub) CleanupExpiredSelections(context.Context, int) (int64, error) {
@@ -59,7 +72,19 @@ func (s *workerStoreStub) CleanupTerminalBulkJobs(context.Context, time.Time, in
 	s.mu.Unlock()
 	return 0, nil
 }
-func (s *workerStoreStub) FailBulkJob(context.Context, uuid.UUID, string, error) error { return nil }
+func (s *workerStoreStub) FailBulkJob(context.Context, uuid.UUID, string, error) error {
+	s.mu.Lock()
+	s.failures++
+	stored := s.failureStored
+	s.mu.Unlock()
+	if stored != nil {
+		select {
+		case stored <- struct{}{}:
+		default:
+		}
+	}
+	return nil
+}
 
 func TestWorkerWakeProcessesQueuedJobWithoutPerRequestGoroutine(t *testing.T) {
 	store := &workerStoreStub{jobs: []DurableJob{{JobID: "job-1", OrganizationID: uuid.New()}}}
@@ -110,6 +135,31 @@ func TestWorkerShutdownCancelsActiveBatch(t *testing.T) {
 	case <-done:
 	case <-time.After(time.Second):
 		t.Fatal("worker did not cancel active batch")
+	}
+}
+
+func TestWorkerDurablySchedulesNonContextFailureDuringConcurrentShutdown(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	stored := make(chan struct{}, 1)
+	store := &workerStoreStub{
+		jobs:          []DurableJob{{JobID: "retry", OrganizationID: uuid.New()}},
+		processErr:    errors.New("database unavailable"),
+		cancelProcess: cancel,
+		failureStored: stored,
+	}
+	worker := NewWorker(store, WorkerOptions{RecoveryInterval: time.Hour, CleanupInterval: time.Hour})
+	done := make(chan struct{})
+	go func() { worker.Run(ctx); close(done) }()
+	select {
+	case <-stored:
+	case <-time.After(time.Second):
+		t.Fatal("non-context failure was not durably scheduled")
+	}
+	<-done
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.failures != 1 || len(store.processed) != 1 {
+		t.Fatalf("failures=%d processed=%v", store.failures, store.processed)
 	}
 }
 

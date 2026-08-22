@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/database"
+	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/google/uuid"
@@ -773,6 +774,451 @@ func TestServiceBulkSuspensionReturnsExactPartialResultAndRevokesContext(t *test
 	fixture.assertMembershipStatusAndRevision(t, fixture.orgA, lateID, "active", 1)
 }
 
+func TestPolicyBulkJobMovesInheritedProfilesAndPreservesCustomProfiles(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	customGroup := fixture.addGroup(t, fixture.orgA, "Policy custom", false)
+	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Custom policy", customGroup)
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2 AND id<>$4`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID, customProfile); err != nil {
+		t.Fatal(err)
+	}
+
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyApplyEntitlementTemplate, TemplateKey: "premium", TemplateRevision: 1}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1, RequestID: "policy-exact"})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{
+		SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken,
+		IdempotencyKey: "policy-exact-1", Command: command,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if completed.Status != "completed" || completed.Succeeded != 1 || completed.TargetCohortID != premium.ID || completed.TargetCohortRevision != premium.Revision || completed.TargetGroupID != premium.AccessGroupID {
+		t.Fatalf("completed = %+v", completed)
+	}
+	fixture.assertAccountGroup(t, fixture.sharedAccountID, int(premium.AccessGroupID))
+	fixture.assertProfileGroup(t, fixture.sharedAccountID, fixture.profileA, int(premium.AccessGroupID))
+	fixture.assertProfileGroup(t, fixture.sharedAccountID, customProfile, customGroup)
+
+	replayed, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{
+		SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken,
+		IdempotencyKey: "policy-exact-1", Command: command,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replayed.JobID != completed.JobID || replayed.Succeeded != 1 {
+		t.Fatalf("replayed = %+v, completed = %+v", replayed, completed)
+	}
+	var assignmentAudits int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM admin_audit_events WHERE request_id='policy-exact' AND action='people.bulk_policy_assigned'`).Scan(&assignmentAudits); err != nil {
+		t.Fatal(err)
+	}
+	if assignmentAudits != 1 {
+		t.Fatalf("assignment audits = %d, want 1", assignmentAudits)
+	}
+}
+
+func TestPolicyBulkJobRejectsPayloadMismatchAndCancelsWithoutEffects(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1, RequestID: "policy-cancel"})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "policy-cancel-1", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := command
+	changed.IncludeCustomProfiles = true
+	if _, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "policy-cancel-1", Command: changed}); !errors.Is(err, ErrBulkIdempotencyConflict) {
+		t.Fatalf("payload mismatch error = %v", err)
+	}
+	cancelled, err := fixture.service.CancelBulkJob(ctx, fixture.orgA, fixture.ownerID, queued.JobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cancelled.Status != "cancelled" || cancelled.ProgressCurrent != 0 {
+		t.Fatalf("cancelled = %+v", cancelled)
+	}
+	fixture.assertAccountGroup(t, fixture.sharedAccountID, int(standard.AccessGroupID))
+	replayed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || replayed.Status != "cancelled" {
+		t.Fatalf("cancelled replay = %+v, %v", replayed, err)
+	}
+}
+
+func TestPolicyBulkJobFailureSchedulesSafeBackoff(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "policy-backoff-1", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.service.FailBulkJob(ctx, fixture.orgA, queued.JobID, errors.New("secret database details")); err != nil {
+		t.Fatal(err)
+	}
+	var status, safeError, storedCode string
+	var attempts int
+	var delayed bool
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT j.status,j.error_message,b.last_error_code,b.attempt_count,b.next_attempt_at>now() FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1`, queued.JobID).Scan(&status, &safeError, &storedCode, &attempts, &delayed); err != nil {
+		t.Fatal(err)
+	}
+	if status != "queued" || safeError != "executor_failure" || storedCode != "executor_failure" || attempts != 1 || !delayed {
+		t.Fatalf("retry state = %q/%q/%q/%d/%v", status, safeError, storedCode, attempts, delayed)
+	}
+}
+
+func TestPolicyBulkJobDerivedCohortConvergesAndRestoreDefaultMovesInheritedOnly(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	customGroup := fixture.addGroup(t, fixture.orgA, "Derived custom", false)
+	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Derived custom profile", customGroup)
+	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), standard.AccessGroupID)
+
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyDeriveEntitlementCohort, CohortID: standard.ID, Name: "Two streams", Patch: entitlements.PolicyPatch{MaxStreams: intPointer(2)}}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1, RequestID: "policy-derived"})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "derive-a", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	converged, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "derive-b", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if converged.JobID != queued.JobID || queued.TargetCohortID == uuid.Nil || queued.TargetCohortID == standard.ID {
+		t.Fatalf("queued=%+v converged=%+v", queued, converged)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || completed.Succeeded != 1 {
+		t.Fatalf("derived completion=%+v err=%v", completed, err)
+	}
+	var parent uuid.UUID
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT parent_id FROM entitlement_policy_cohort_revisions WHERE id=$1`, completed.TargetCohortID).Scan(&parent); err != nil || parent != standard.ID {
+		t.Fatalf("derived parent=%s err=%v", parent, err)
+	}
+	fixture.assertProfileGroup(t, fixture.sharedAccountID, customProfile, customGroup)
+
+	restoreSelection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restoreCommand := PolicyCommand{Kind: PolicyRestoreDefaultEntitlement}
+	restorePreview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, restoreSelection.Token, restoreCommand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restore, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: restoreSelection.Token, ConfirmationToken: restorePreview.ConfirmationToken, IdempotencyKey: "restore-a", Command: restoreCommand})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, restore.JobID)
+	if err != nil || restored.Succeeded != 1 || restored.TargetGroupID != int64(fixture.groupA) {
+		t.Fatalf("restore=%+v err=%v", restored, err)
+	}
+	fixture.assertAccountGroup(t, fixture.sharedAccountID, fixture.groupA)
+	fixture.assertProfileGroup(t, fixture.sharedAccountID, fixture.profileA, fixture.groupA)
+	fixture.assertProfileGroup(t, fixture.sharedAccountID, customProfile, customGroup)
+}
+
+func TestPolicyBulkJobSkipsStaleProfileSnapshot(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), standard.AccessGroupID)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "stale-profile", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET updated_at=updated_at+interval '1 second' WHERE organization_id=$1 AND user_id=$2`, fixture.orgA, fixture.sharedAccountID); err != nil {
+		t.Fatal(err)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || len(completed.Skipped) != 1 || completed.Skipped[0].Reason != ReasonAuthorizationChanged {
+		t.Fatalf("stale completion=%+v err=%v", completed, err)
+	}
+	fixture.assertAccountGroup(t, fixture.sharedAccountID, int(standard.AccessGroupID))
+}
+
+func TestPolicyBulkJobFailsBeforeMutationWhenActorRevoked(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "revoked-actor", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET legacy_role='user' WHERE id=$1`, fixture.ownerMembershipID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID); !errors.Is(err, ErrAuthorizationStateChanged) {
+		t.Fatalf("revoked actor error=%v", err)
+	}
+	observed, err := fixture.service.GetBulkJob(fixture.ctx, fixture.orgA, queued.JobID)
+	if err != nil || observed.Status != "failed" || observed.ProgressCurrent != 0 {
+		t.Fatalf("revoked job=%+v err=%v", observed, err)
+	}
+}
+
+func TestPolicyBulkJobCommitsSuccessfulTargetsAcrossPartialFailure(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	first, _ := fixture.addAccount(t, fixture.orgA, "partial-policy-a@example.test", "Partial A", "Partial A", int(standard.AccessGroupID), false)
+	second, _ := fixture.addAccount(t, fixture.orgA, "partial-policy-b@example.test", "Partial B", "Partial B", int(standard.AccessGroupID), false)
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=ANY($1::integer[])`, []int{first, second}, standard.AccessGroupID); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "partial-policy-"})
+	if err != nil || selection.Matched != 2 {
+		t.Fatalf("selection=%+v err=%v", selection, err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "partial-target", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `DELETE FROM organization_memberships WHERE organization_id=$1 AND account_id=$2`, fixture.orgA, second); err != nil {
+		t.Fatal(err)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || completed.Succeeded != 1 || len(completed.Failed) != 1 || completed.Failed[0].AccountID != second || completed.Failed[0].Reason != ReasonNotFound {
+		t.Fatalf("partial completion=%+v err=%v", completed, err)
+	}
+	fixture.assertAccountGroup(t, first, int(premium.AccessGroupID))
+	fixture.assertAccountGroup(t, second, int(standard.AccessGroupID))
+}
+
+func TestPolicyBulkJobConcurrentIdenticalEnqueueReturnsOneJob(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	action := PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "concurrent-identical", Command: command}
+	type outcome struct {
+		result BulkResult
+		err    error
+	}
+	start := make(chan struct{})
+	results := make(chan outcome, 2)
+	for range 2 {
+		go func() {
+			<-start
+			result, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, action)
+			results <- outcome{result: result, err: err}
+		}()
+	}
+	close(start)
+	first, second := <-results, <-results
+	if first.err != nil || second.err != nil {
+		t.Fatalf("concurrent enqueue errors = %v / %v", first.err, second.err)
+	}
+	if first.result.JobID == "" || first.result.JobID != second.result.JobID {
+		t.Fatalf("concurrent jobs = %q / %q", first.result.JobID, second.result.JobID)
+	}
+	var jobs, receipts int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM admin_people_bulk_jobs WHERE job_id=$1`, first.result.JobID).Scan(&jobs); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM admin_people_bulk_job_receipts WHERE job_id=$1`, first.result.JobID).Scan(&receipts); err != nil {
+		t.Fatal(err)
+	}
+	if jobs != 1 || receipts != 1 {
+		t.Fatalf("durable jobs=%d receipts=%d", jobs, receipts)
+	}
+}
+
+func TestPolicyBulkJobConcurrentOverlappingJobsHaveOneAssignmentEffect(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), standard.AccessGroupID)
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1, RequestID: "policy-concurrent"})
+	type queuedCommand struct {
+		result BulkResult
+		err    error
+	}
+	enqueue := func(key string, command PolicyCommand) queuedCommand {
+		selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+		if err != nil {
+			return queuedCommand{err: err}
+		}
+		preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+		if err != nil {
+			return queuedCommand{err: err}
+		}
+		result, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: key, Command: command})
+		return queuedCommand{result: result, err: err}
+	}
+	premiumJob := enqueue("concurrent-premium", PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID})
+	restoreJob := enqueue("concurrent-default", PolicyCommand{Kind: PolicyRestoreDefaultEntitlement})
+	if premiumJob.err != nil || restoreJob.err != nil {
+		t.Fatalf("enqueue premium=%v restore=%v", premiumJob.err, restoreJob.err)
+	}
+	results := make(chan queuedCommand, 2)
+	for _, job := range []BulkResult{premiumJob.result, restoreJob.result} {
+		job := job
+		go func() {
+			result, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, job.JobID)
+			results <- queuedCommand{result: result, err: err}
+		}()
+	}
+	totalSucceeded, totalSkipped := 0, 0
+	for range 2 {
+		result := <-results
+		if result.err != nil {
+			t.Fatal(result.err)
+		}
+		totalSucceeded += result.result.Succeeded
+		totalSkipped += len(result.result.Skipped)
+	}
+	if totalSucceeded != 1 || totalSkipped != 1 {
+		t.Fatalf("concurrent succeeded=%d skipped=%d", totalSucceeded, totalSkipped)
+	}
+	var audits int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM admin_audit_events WHERE request_id='policy-concurrent' AND action='people.bulk_policy_assigned'`).Scan(&audits); err != nil || audits != 1 {
+		t.Fatalf("assignment audits=%d err=%v", audits, err)
+	}
+}
+
+func TestPolicyBulkJobExecutesTenThousandTargetsExactlyOnce(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		INSERT INTO users (email,username,password_hash,role,enabled,access_group_id)
+		SELECT 'policy-10k-'||n||'@example.test','Policy 10k '||n,'hash','user',true,$1
+		FROM generate_series(1,10000) n`, standard.AccessGroupID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+		SELECT $1,id,'active','user' FROM users WHERE email LIKE 'policy-10k-%@example.test'`, fixture.orgA); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "policy-10k-"})
+	if err != nil || selection.Matched != 10000 || selection.Excluded != 0 {
+		t.Fatalf("selection=%+v err=%v", selection, err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1, RequestID: "policy-10k"})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil || preview.Matched != 10000 {
+		t.Fatalf("preview matched=%d err=%v", preview.Matched, err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "policy-10k", Command: command})
+	if err != nil || queued.ProgressTotal != 10000 {
+		t.Fatalf("queued=%+v err=%v", queued, err)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || completed.Status != "completed" || completed.ProgressCurrent != 10000 || completed.ProgressTotal != 10000 || completed.Succeeded != 10000 || len(completed.Skipped) != 0 || len(completed.Failed) != 0 {
+		t.Fatalf("completed=%+v err=%v", completed, err)
+	}
+	var assignments int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM admin_audit_events WHERE request_id='policy-10k' AND action='people.bulk_policy_assigned'`).Scan(&assignments); err != nil || assignments != 10000 {
+		t.Fatalf("assignments=%d err=%v", assignments, err)
+	}
+}
+
+func assignAccountAndInheritedProfiles(t *testing.T, fixture *peopleFixture, accountID int, oldGroupID, newGroupID int64) {
+	t.Helper()
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, accountID, newGroupID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2 AND access_group_id=$4`, fixture.orgA, accountID, newGroupID, oldGroupID); err != nil {
+		t.Fatal(err)
+	}
+}
+
 type peopleFixture struct {
 	t                 *testing.T
 	ctx               context.Context
@@ -893,6 +1339,17 @@ func (f *peopleFixture) assertProfileGroup(t *testing.T, accountID int, profileI
 	}
 	if got != want {
 		t.Fatalf("profile group = %d, want %d", got, want)
+	}
+}
+
+func (f *peopleFixture) assertAccountGroup(t *testing.T, accountID, want int) {
+	t.Helper()
+	var got int
+	if err := f.pool.QueryRow(f.ctx, `SELECT access_group_id FROM users WHERE id=$1`, accountID).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("account group = %d, want %d", got, want)
 	}
 }
 
