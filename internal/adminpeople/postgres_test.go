@@ -953,7 +953,7 @@ func TestPolicyBulkJobClearsManagedAccountOverridesAndAuditsEffectivePolicy(t *t
 	if !reflect.DeepEqual(audited, actual.Policy) {
 		t.Fatalf("audited effective policy=%+v, want actual=%+v", audited, actual.Policy)
 	}
-	wantDigest, err := entitlements.PolicyDigest(policyFromEffective(actual.Policy))
+	wantDigest, err := entitlements.EffectivePolicyDigest(actual.Policy)
 	if err != nil {
 		t.Fatal(err)
 	}

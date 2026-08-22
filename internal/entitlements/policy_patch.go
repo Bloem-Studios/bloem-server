@@ -121,6 +121,40 @@ func PolicyDigest(policy Policy) (string, error) {
 	return sha256Hex(payload), nil
 }
 
+// EffectivePolicyDigest returns a deterministic digest of the complete
+// authoritative account-policy projection. It intentionally has a separate
+// format from PolicyDigest because the durable cohort Policy does not contain
+// every resolved field, including the audio-transcode gate.
+func EffectivePolicyDigest(policy EffectivePolicySnapshot) (string, error) {
+	if policy.MaxStreams < 0 || policy.MaxProfiles < 0 || policy.MaxTranscodes < 0 {
+		return "", fmt.Errorf("%w: limits cannot be negative", ErrInvalidPolicy)
+	}
+	if policy.LibraryIDs != nil {
+		policy.LibraryIDs = append([]int{}, policy.LibraryIDs...)
+		for _, id := range policy.LibraryIDs {
+			if id <= 0 {
+				return "", fmt.Errorf("%w: library ids must be positive", ErrInvalidPolicy)
+			}
+		}
+		sort.Ints(policy.LibraryIDs)
+		policy.LibraryIDs = deduplicateSorted(policy.LibraryIDs)
+	}
+	if policy.AllowedPermissions != nil {
+		policy.AllowedPermissions = append([]string{}, policy.AllowedPermissions...)
+		for index := range policy.AllowedPermissions {
+			policy.AllowedPermissions[index] = strings.TrimSpace(policy.AllowedPermissions[index])
+		}
+		sort.Strings(policy.AllowedPermissions)
+		policy.AllowedPermissions = deduplicateSorted(policy.AllowedPermissions)
+	}
+	policy.MaxPlaybackQuality = strings.TrimSpace(policy.MaxPlaybackQuality)
+	payload, err := json.Marshal(policy)
+	if err != nil {
+		return "", fmt.Errorf("entitlements: encode effective policy digest: %w", err)
+	}
+	return sha256Hex(payload), nil
+}
+
 // PolicyEqual compares canonical policies while preserving the semantic
 // distinction between unrestricted/all and explicit empty sets.
 func PolicyEqual(left, right Policy) bool {

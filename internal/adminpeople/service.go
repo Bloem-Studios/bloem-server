@@ -1634,7 +1634,7 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	if !managedEffectivePolicyMatchesTarget(effectivePolicy, targetPolicy, targetAudioTranscodeAllowed) {
 		return "", "", errors.New("reconcile assigned policy")
 	}
-	effectivePolicyDigest, err := entitlements.PolicyDigest(policyFromEffective(effectivePolicy))
+	effectivePolicyDigest, err := entitlements.EffectivePolicyDigest(effectivePolicy)
 	if err != nil {
 		return "", "", err
 	}
