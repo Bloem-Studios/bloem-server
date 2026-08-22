@@ -57,9 +57,7 @@ func TestEffectivePolicyForSubjectAdminBypassesGroupsWithPlaybackAllowed(t *test
 
 func TestApplyGroupPolicyRestrictsEntitlementPlaybackTranscodeAndProfiles(t *testing.T) {
 	user := &models.User{
-		TranscodeAllowed:      ptr(true),
-		AudioTranscodeAllowed: ptr(true),
-		MaxProfiles:           8,
+		MaxProfiles: 8,
 	}
 
 	effective := ApplyGroupPolicy(user, &GroupPolicy{
