@@ -98,6 +98,7 @@ export default function BulkPolicyDrawer({
   const submitGuard = useRef(false);
   const cancelGuard = useRef(false);
   const idempotencyKey = useRef("");
+  const handledInitialCohortID = useRef<string | undefined>(undefined);
   const createPreview = useCreatePolicyPreview(contextKey);
   const createJob = useCreatePolicyJob(contextKey);
   const polledJob = usePolicyJob(contextKey, submittedJob?.job_id);
@@ -116,10 +117,23 @@ export default function BulkPolicyDrawer({
   }, [selection.token, contextKey]);
 
   useEffect(() => {
-    if (initialCohortID && cohorts.some((cohort) => cohort.cohort_id === initialCohortID)) {
-      setCohortID(initialCohortID);
-    } else if (!cohortID && cohorts[0]) {
-      setCohortID(cohorts[0].cohort_id);
+    if (initialCohortID && handledInitialCohortID.current !== initialCohortID) {
+      if (cohorts.length === 0) return;
+      handledInitialCohortID.current = initialCohortID;
+      setCohortID(
+        cohorts.some((cohort) => cohort.cohort_id === initialCohortID) ? initialCohortID : "",
+      );
+      return;
+    }
+    if (!initialCohortID) {
+      handledInitialCohortID.current = undefined;
+      if (!cohortID && cohorts[0]) {
+        setCohortID(cohorts[0].cohort_id);
+        return;
+      }
+    }
+    if (cohortID && !cohorts.some((cohort) => cohort.cohort_id === cohortID)) {
+      setCohortID("");
     }
   }, [cohortID, cohorts, initialCohortID]);
 
@@ -145,8 +159,8 @@ export default function BulkPolicyDrawer({
   function buildCommand(): PolicyCommand | undefined {
     setValidationError("");
     if (operation === "assign") {
-      if (!cohortID) {
-        setValidationError("Choose a target cohort.");
+      if (!cohorts.some((cohort) => cohort.cohort_id === cohortID && !cohort.archived)) {
+        setValidationError("Choose an active target cohort.");
         return;
       }
       return {
@@ -174,8 +188,11 @@ export default function BulkPolicyDrawer({
         include_custom_profiles: includeCustomProfiles,
       };
     }
-    if (!cohortID || !derivedName.trim()) {
-      setValidationError("Choose a base cohort and name the derived cohort.");
+    if (
+      !cohorts.some((cohort) => cohort.cohort_id === cohortID && !cohort.archived) ||
+      !derivedName.trim()
+    ) {
+      setValidationError("Choose an active base cohort and name the derived cohort.");
       return;
     }
     const patch = buildPatch(patchDraft);
@@ -994,15 +1011,15 @@ function CurrentCohortDistribution({ items }: { items: PolicyPreview["current_co
         <ul className="text-muted-foreground mt-2 space-y-2 text-sm">
           {items.map((item, index) => (
             <li key={`${item.cohort_id ?? item.group_id ?? "unmanaged"}:${index}`}>
-              <span className="text-foreground font-medium">
-                {item.source_template_key ??
-                  item.cohort_id ??
-                  `Access group ${item.group_id ?? "unknown"}`}
-              </span>
-              {item.source_template_revision
-                ? ` · template revision ${item.source_template_revision}`
-                : ""}
-              {item.cohort_revision ? ` · cohort revision ${item.cohort_revision}` : ""}
+              {item.source_template_key
+                ? `Template ${item.source_template_key}${item.source_template_revision ? ` · revision ${item.source_template_revision}` : ""}`
+                : "Template unavailable"}
+              {item.cohort_id
+                ? ` · Cohort ${item.cohort_id}${item.cohort_revision ? ` · revision ${item.cohort_revision}` : ""}`
+                : " · Cohort unavailable"}
+              {item.group_id
+                ? ` · Access group ${item.group_name ? `${item.group_name} · ` : ""}${item.group_id}`
+                : " · Access group unavailable"}
               {` · ${item.count.toLocaleString()} ${item.state.replace(/_/g, " ")} accounts`}
             </li>
           ))}
@@ -1247,7 +1264,9 @@ function buildPatch(draft: PatchDraft): PolicyPatch | Error {
       return new Error(`${label} must be a non-negative whole number.`);
     patch[key] = parsed;
   }
-  if (draft.maxPlaybackQuality.trim()) patch.max_playback_quality = draft.maxPlaybackQuality.trim();
+  if (draft.playback === "false") patch.max_playback_quality = "";
+  else if (draft.maxPlaybackQuality.trim())
+    patch.max_playback_quality = draft.maxPlaybackQuality.trim();
   return patch;
 }
 

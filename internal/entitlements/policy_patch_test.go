@@ -70,6 +70,29 @@ func TestApplyPolicyPatchRejectsUnknownModesAndInvalidDependencies(t *testing.T)
 	}
 }
 
+func TestApplyPolicyPatchAcceptsCompletePlaybackDisableReset(t *testing.T) {
+	base := entitlements.Policy{
+		PlaybackAllowed: true, MaxStreams: 4, MaxProfiles: 5,
+		TranscodeAllowed: true, MaxTranscodes: 2, DownloadAllowed: true,
+		DownloadTranscodeAllowed: true, MaxPlaybackQuality: "4k",
+	}
+	disabled := false
+	zero := 0
+	clearedQuality := ""
+	got, err := entitlements.ApplyPolicyPatch(base, entitlements.PolicyPatch{
+		PlaybackAllowed: &disabled, MaxStreams: &zero,
+		TranscodeAllowed: &disabled, MaxTranscodes: &zero,
+		DownloadAllowed: &disabled, DownloadTranscodeAllowed: &disabled,
+		MaxPlaybackQuality: &clearedQuality,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PlaybackAllowed || got.MaxStreams != 0 || got.TranscodeAllowed || got.MaxTranscodes != 0 || got.DownloadAllowed || got.DownloadTranscodeAllowed || got.MaxPlaybackQuality != "" {
+		t.Fatalf("playback-disabled policy = %+v, want dependent values and quality cleared", got)
+	}
+}
+
 func TestPolicyPatchDigestCanonicalizesEquivalentSetValues(t *testing.T) {
 	first := entitlements.PolicyPatch{
 		Libraries:   &entitlements.SetOperation[int]{Mode: "replace", Values: []int{7, 5, 7}},

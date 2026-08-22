@@ -80,6 +80,7 @@ export type PolicyCommand =
 
 export interface CohortDistribution {
   group_id?: number;
+  group_name?: string;
   cohort_id?: string;
   cohort_revision?: number;
   source_template_key?: string;

@@ -54,6 +54,7 @@ const preview: PolicyPreview = {
   current_cohorts: [
     {
       group_id: 9,
+      group_name: "Browse access",
       cohort_id: "cohort-old",
       cohort_revision: 1,
       source_template_key: "browse",
@@ -222,7 +223,7 @@ describe("BulkPolicyDrawer", () => {
     expect(screen.getByText("9 custom profiles remain unchanged")).toBeInTheDocument();
     expect(screen.getByText("90 accounts change maximum streams")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Observed current cohorts" })).toHaveTextContent(
-      /browse.*template revision 1.*106 managed/i,
+      /Template browse.*revision 1.*Cohort cohort-old.*revision 1.*Access group Browse access.*9.*106 managed/i,
     );
     const target = screen.getByRole("region", { name: "Authoritative policy target" });
     expect(target).toHaveTextContent(/Standard/);
@@ -316,9 +317,21 @@ describe("BulkPolicyDrawer", () => {
         },
       },
     });
-    expect((requestBody?.command as { patch: Record<string, unknown> }).patch).not.toHaveProperty(
+    expect((requestBody?.command as { patch: Record<string, unknown> }).patch).toHaveProperty(
       "max_playback_quality",
+      "",
     );
+  });
+
+  it("rejects a deep-linked cohort that is absent from the loaded active cohort list", async () => {
+    vi.mocked(adminV2Api).mockResolvedValue({ preview } as never);
+    renderDrawer({ initialCohortID: "archived-cohort" });
+    await goToOperationStep();
+
+    expect(screen.getByRole("combobox", { name: "Target cohort" })).toHaveValue("");
+    await userEvent.click(screen.getByRole("button", { name: "Preview policy impact" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(/choose an active target cohort/i);
+    expect(adminV2Api).not.toHaveBeenCalled();
   });
 
   it("rejects a malformed library ID list instead of silently dropping tokens", async () => {
