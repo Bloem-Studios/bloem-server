@@ -59,7 +59,7 @@ func TestDefaultOrganizationMaterializedMediaScopeParity(t *testing.T) {
 	var accountID int
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO users (username, email, password_hash, role, enabled)
-		VALUES ('task5-v1-user', 'task5-v1-user@example.test', 'x', 'admin', true)
+		VALUES ('task5-v1-user', 'task5-v1-user@example.test', 'x', 'user', true)
 		RETURNING id`).Scan(&accountID); err != nil {
 		t.Fatalf("create v1 account: %v", err)
 	}
@@ -130,7 +130,6 @@ func TestDefaultOrganizationMaterializedMediaScopeParity(t *testing.T) {
 			UserID: accountID, SessionID: "task5-v1-session", ProfileID: profileID,
 		})
 	}
-
 	if _, err := pool.Exec(ctx, `
 		DELETE FROM organization_entitlements
 		WHERE organization_id=$1 AND media_folder_id=ANY($2)`, organizationID, preexistingFolderIDs); err != nil {
