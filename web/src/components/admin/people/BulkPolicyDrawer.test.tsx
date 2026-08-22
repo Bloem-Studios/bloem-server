@@ -221,6 +221,14 @@ describe("BulkPolicyDrawer", () => {
     expect(screen.getByText("172 inherited profiles move")).toBeInTheDocument();
     expect(screen.getByText("9 custom profiles remain unchanged")).toBeInTheDocument();
     expect(screen.getByText("90 accounts change maximum streams")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Observed current cohorts" })).toHaveTextContent(
+      /browse.*template revision 1.*106 managed/i,
+    );
+    const target = screen.getByRole("region", { name: "Authoritative policy target" });
+    expect(target).toHaveTextContent(/Standard/);
+    expect(target).toHaveTextContent(/Cohort revision.*2/i);
+    expect(target).toHaveTextContent(/Template.*standard.*revision 4/i);
+    expect(target).toHaveTextContent(/digest-standard/i);
     expect(screen.getByRole("region", { name: "Authoritative target policy" })).toHaveTextContent(
       /Maximum streams.*2/i,
     );
@@ -234,6 +242,12 @@ describe("BulkPolicyDrawer", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Continue to confirmation" }));
     expect(screen.getByRole("heading", { name: "Confirm policy job" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Observed current cohorts" })).toHaveTextContent(
+      /browse.*106 managed/i,
+    );
+    expect(screen.getByRole("region", { name: "Authoritative policy target" })).toHaveTextContent(
+      /Standard.*digest-standard/i,
+    );
     expect(screen.getByRole("button", { name: "Start policy job" })).toBeDisabled();
     await userEvent.click(
       screen.getByRole("checkbox", { name: "I understand this creates a durable policy job" }),
@@ -257,6 +271,73 @@ describe("BulkPolicyDrawer", () => {
       },
     });
     expect(JSON.parse(String(call?.[1]?.body)).idempotency_key).toEqual(expect.any(String));
+  });
+
+  it("normalizes disabled policy dependencies before previewing a derived cohort", async () => {
+    let requestBody: Record<string, unknown> | undefined;
+    vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
+      if (path === "/organization/people/policy-previews") {
+        requestBody = JSON.parse(String(init?.body));
+        return { preview } as never;
+      }
+      throw new Error(`unexpected ${path}`);
+    });
+
+    renderDrawer();
+    await goToOperationStep();
+    await userEvent.click(
+      screen.getByRole("radio", { name: "Derive a policy for this selection" }),
+    );
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Derived cohort name" }),
+      "No playback",
+    );
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Transcoding" }), "true");
+    await userEvent.type(screen.getByRole("spinbutton", { name: "Maximum transcodes" }), "3");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Downloads" }), "true");
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Transcoded downloads" }),
+      "true",
+    );
+    await userEvent.type(screen.getByRole("spinbutton", { name: "Maximum streams" }), "4");
+    await userEvent.type(screen.getByRole("textbox", { name: "Maximum playback quality" }), "4k");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Playback" }), "false");
+    await userEvent.click(screen.getByRole("button", { name: "Preview policy impact" }));
+
+    expect(requestBody).toMatchObject({
+      command: {
+        patch: {
+          playback_allowed: false,
+          max_streams: 0,
+          transcode_allowed: false,
+          max_transcodes: 0,
+          download_allowed: false,
+          download_transcode_allowed: false,
+        },
+      },
+    });
+    expect((requestBody?.command as { patch: Record<string, unknown> }).patch).not.toHaveProperty(
+      "max_playback_quality",
+    );
+  });
+
+  it("rejects a malformed library ID list instead of silently dropping tokens", async () => {
+    vi.mocked(adminV2Api).mockResolvedValue({ preview } as never);
+    renderDrawer();
+    await goToOperationStep();
+    await userEvent.click(
+      screen.getByRole("radio", { name: "Derive a policy for this selection" }),
+    );
+    await userEvent.type(screen.getByRole("textbox", { name: "Derived cohort name" }), "Bad input");
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Library operation" }),
+      "add",
+    );
+    await userEvent.type(screen.getByRole("textbox", { name: "Library IDs" }), "8, nope, 13");
+    await userEvent.click(screen.getByRole("button", { name: "Preview policy impact" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/positive numeric library IDs/i);
+    expect(adminV2Api).not.toHaveBeenCalled();
   });
 
   it("shows progress, cancels queued work, and never exposes an unexpected failure", async () => {

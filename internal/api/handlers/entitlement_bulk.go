@@ -426,11 +426,11 @@ func platformEntitlementCohortFromDomain(item entitlements.CohortRevision) platf
 		AccessGroupID: item.AccessGroupID, SourceTemplateKey: item.SourceTemplateKey,
 		SourceTemplateRevision: item.SourceTemplateRevision, ParentCohortID: item.ParentID,
 		DerivationKind: item.DerivationKind, Policy: adminpeople.PolicyView{
-			LibraryIDs: append([]int{}, item.Policy.LibraryIDs...), PlaybackAllowed: item.Policy.PlaybackAllowed,
+			LibraryIDs: item.Policy.LibraryIDs, PlaybackAllowed: item.Policy.PlaybackAllowed,
 			MaxStreams: item.Policy.MaxStreams, MaxProfiles: item.Policy.MaxProfiles,
 			TranscodeAllowed: item.Policy.TranscodeAllowed, MaxTranscodes: item.Policy.MaxTranscodes,
 			DownloadAllowed: item.Policy.DownloadAllowed, DownloadTranscodeAllowed: item.Policy.DownloadTranscodeAllowed,
-			MaxPlaybackQuality: item.Policy.MaxPlaybackQuality, AllowedPermissions: append([]string{}, item.Policy.AllowedPermissions...),
+			MaxPlaybackQuality: item.Policy.MaxPlaybackQuality, AllowedPermissions: item.Policy.AllowedPermissions,
 			RequestsAllowed: item.Policy.RequestsAllowed,
 		}, PolicyDigest: item.PolicyDigest, Archived: item.Archived, MemberCount: item.MemberCount,
 		CreatedByAccountID: item.CreatedByAccountID, CreatedAt: item.CreatedAt,

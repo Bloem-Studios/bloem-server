@@ -103,7 +103,6 @@ export default function BulkPolicyDrawer({
   const polledJob = usePolicyJob(contextKey, submittedJob?.job_id);
   const cancelJob = useCancelPolicyJob(contextKey);
   const visibleJob = polledJob.data ?? submittedJob;
-  const activeCohort = cohorts.find((cohort) => cohort.cohort_id === cohortID);
   const draftChanges = useMemo(() => describePatchDraft(patchDraft), [patchDraft]);
 
   useEffect(() => {
@@ -139,7 +138,7 @@ export default function BulkPolicyDrawer({
   }
 
   function changePatch<Key extends keyof PatchDraft>(key: Key, value: PatchDraft[Key]) {
-    setPatchDraft((current) => ({ ...current, [key]: value }));
+    setPatchDraft((current) => normalizePatchDraft({ ...current, [key]: value }));
     clearPreview();
   }
 
@@ -322,8 +321,6 @@ export default function BulkPolicyDrawer({
           ) : (
             <ConfirmationStep
               selection={selection}
-              operation={operation}
-              cohort={activeCohort}
               preview={preview!}
               includeCustomProfiles={includeCustomProfiles}
               confirmed={confirmed}
@@ -800,6 +797,8 @@ function ImpactStep({
               ))}
             </ul>
           </section>
+          <CurrentCohortDistribution items={preview.current_cohorts} />
+          <PolicyTargetSummary target={preview.target} />
           <PolicyView policy={preview.target.policy} />
         </>
       ) : null}
@@ -809,8 +808,6 @@ function ImpactStep({
 
 function ConfirmationStep({
   selection,
-  operation,
-  cohort,
   preview,
   includeCustomProfiles,
   confirmed,
@@ -818,8 +815,6 @@ function ConfirmationStep({
   error,
 }: {
   selection: PeopleSelection;
-  operation: Operation;
-  cohort?: EntitlementCohort;
   preview: PolicyPreview;
   includeCustomProfiles: boolean;
   confirmed: boolean;
@@ -836,7 +831,7 @@ function ConfirmationStep({
       </div>
       <dl className="grid gap-3 sm:grid-cols-2">
         <Metric label="Selected people" value={selection.matched.toLocaleString()} />
-        <Metric label="Operation" value={operationLabel(operation, cohort)} />
+        <Metric label="Operation" value={readableField(preview.target.kind)} />
         <Metric
           label="Inherited profiles moving"
           value={preview.inherited_profiles_will_move.toLocaleString()}
@@ -846,6 +841,8 @@ function ConfirmationStep({
           value={includeCustomProfiles ? "Move with accounts" : "Remain unchanged"}
         />
       </dl>
+      <CurrentCohortDistribution items={preview.current_cohorts} />
+      <PolicyTargetSummary target={preview.target} />
       <label className="border-primary/30 bg-primary/5 flex items-start gap-3 rounded-lg border p-4 text-sm">
         <input
           type="checkbox"
@@ -942,7 +939,14 @@ function JobView({
 
 export function PolicyView({ policy }: { policy: EffectivePolicy }) {
   const values: Array<[string, string]> = [
-    ["Libraries", policy.library_ids.length ? policy.library_ids.join(", ") : "None"],
+    [
+      "Libraries",
+      policy.library_ids === null
+        ? "All libraries"
+        : policy.library_ids.length
+          ? policy.library_ids.join(", ")
+          : "None",
+    ],
     ["Playback", policy.playback_allowed ? "Allowed" : "Not allowed"],
     ["Maximum streams", String(policy.max_streams)],
     ["Maximum profiles", String(policy.max_profiles)],
@@ -953,7 +957,11 @@ export function PolicyView({ policy }: { policy: EffectivePolicy }) {
     ["Maximum playback quality", policy.max_playback_quality || "Unrestricted"],
     [
       "Permissions",
-      policy.allowed_permissions.length ? policy.allowed_permissions.join(", ") : "None",
+      policy.allowed_permissions === null
+        ? "Unrestricted"
+        : policy.allowed_permissions.length
+          ? policy.allowed_permissions.join(", ")
+          : "None",
     ],
     ["Requests", policy.requests_allowed ? "Allowed" : "Not allowed"],
   ];
@@ -971,6 +979,74 @@ export function PolicyView({ policy }: { policy: EffectivePolicy }) {
           <div key={label}>
             <dt className="text-muted-foreground">{label}</dt>
             <dd className="font-medium break-words">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function CurrentCohortDistribution({ items }: { items: PolicyPreview["current_cohorts"] }) {
+  return (
+    <section className="border-border rounded-lg border p-4" aria-label="Observed current cohorts">
+      <h3 className="text-sm font-semibold">Observed current cohorts</h3>
+      {items.length ? (
+        <ul className="text-muted-foreground mt-2 space-y-2 text-sm">
+          {items.map((item, index) => (
+            <li key={`${item.cohort_id ?? item.group_id ?? "unmanaged"}:${index}`}>
+              <span className="text-foreground font-medium">
+                {item.source_template_key ??
+                  item.cohort_id ??
+                  `Access group ${item.group_id ?? "unknown"}`}
+              </span>
+              {item.source_template_revision
+                ? ` · template revision ${item.source_template_revision}`
+                : ""}
+              {item.cohort_revision ? ` · cohort revision ${item.cohort_revision}` : ""}
+              {` · ${item.count.toLocaleString()} ${item.state.replace(/_/g, " ")} accounts`}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-muted-foreground mt-2 text-sm">No current cohort observations.</p>
+      )}
+    </section>
+  );
+}
+
+function PolicyTargetSummary({ target }: { target: PolicyPreview["target"] }) {
+  const details: Array<[string, string]> = [
+    ["Operation", readableField(target.kind)],
+    ...(target.name ? ([["Target name", target.name]] as Array<[string, string]>) : []),
+    ...(target.cohort_id ? [["Cohort ID", target.cohort_id] as [string, string]] : []),
+    ...(target.cohort_revision
+      ? [["Cohort revision", String(target.cohort_revision)] as [string, string]]
+      : []),
+    ...(target.parent_cohort_id
+      ? [["Parent cohort", target.parent_cohort_id] as [string, string]]
+      : []),
+    ...(target.group_id ? [["Access group", String(target.group_id)] as [string, string]] : []),
+    ...(target.template_key
+      ? [
+          [
+            "Template",
+            `${target.template_key}${target.template_revision ? ` · revision ${target.template_revision}` : ""}`,
+          ] as [string, string],
+        ]
+      : []),
+    ["Policy digest", target.policy_digest],
+  ];
+  return (
+    <section
+      className="border-primary/20 bg-primary/5 rounded-lg border p-4"
+      aria-label="Authoritative policy target"
+    >
+      <h3 className="text-sm font-semibold">Authoritative policy target</h3>
+      <dl className="mt-3 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+        {details.map(([label, value]) => (
+          <div key={label}>
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd className="font-medium break-all">{value}</dd>
           </div>
         ))}
       </dl>
@@ -1109,11 +1185,11 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function parseIntegerList(value: string): number[] | Error {
-  const parsed = value
-    .split(",")
-    .map((item) => Number(item.trim()))
-    .filter((item) => !Number.isNaN(item));
-  if (!parsed.length || parsed.some((item) => !Number.isInteger(item) || item <= 0))
+  const tokens = value.split(",").map((item) => item.trim());
+  if (!tokens.length || tokens.some((item) => !/^\d+$/.test(item)))
+    return new Error("Library operations require positive numeric library IDs.");
+  const parsed = tokens.map(Number);
+  if (parsed.some((item) => !Number.isSafeInteger(item) || item <= 0))
     return new Error("Library operations require positive numeric library IDs.");
   return [...new Set(parsed)].sort((left, right) => left - right);
 }
@@ -1133,6 +1209,7 @@ function parseStringList(value: string): string[] | Error {
 }
 
 function buildPatch(draft: PatchDraft): PolicyPatch | Error {
+  draft = normalizePatchDraft(draft);
   const patch: PolicyPatch = {};
   if (draft.librariesMode !== "unchanged") {
     if (["add", "remove", "replace"].includes(draft.librariesMode)) {
@@ -1174,6 +1251,22 @@ function buildPatch(draft: PatchDraft): PolicyPatch | Error {
   return patch;
 }
 
+function normalizePatchDraft(draft: PatchDraft): PatchDraft {
+  const normalized = { ...draft };
+  if (normalized.playback === "false") {
+    normalized.maxStreams = "0";
+    normalized.transcode = "false";
+    normalized.maxTranscodes = "0";
+    normalized.downloads = "false";
+    normalized.transcodedDownloads = "false";
+    normalized.maxPlaybackQuality = "";
+    return normalized;
+  }
+  if (normalized.transcode === "false") normalized.maxTranscodes = "0";
+  if (normalized.downloads === "false") normalized.transcodedDownloads = "false";
+  return normalized;
+}
+
 function describePatchDraft(draft: PatchDraft): string[] {
   const changes: string[] = [];
   if (draft.librariesMode !== "unchanged")
@@ -1205,13 +1298,6 @@ function describePatchDraft(draft: PatchDraft): string[] {
     if (value.trim()) changes.push(`${label}: ${value.trim()}`);
   });
   return changes;
-}
-
-function operationLabel(operation: Operation, cohort?: EntitlementCohort): string {
-  if (operation === "assign") return `Move to ${cohort?.name ?? "selected cohort"}`;
-  if (operation === "template") return "Apply exact template revision";
-  if (operation === "derive") return `Derive from ${cohort?.name ?? "selected cohort"}`;
-  return "Restore managed default";
 }
 
 function readableField(field: string): string {

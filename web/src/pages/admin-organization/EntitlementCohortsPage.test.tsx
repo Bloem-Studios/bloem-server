@@ -60,7 +60,7 @@ describe("EntitlementCohortsPage", () => {
           created_by_account_id: 7,
           created_at: "2026-08-20T10:00:00Z",
           policy: {
-            library_ids: [3, 9],
+            library_ids: null,
             playback_allowed: true,
             max_streams: 1,
             max_profiles: 4,
@@ -69,7 +69,7 @@ describe("EntitlementCohortsPage", () => {
             download_allowed: false,
             download_transcode_allowed: false,
             max_playback_quality: "720p",
-            allowed_permissions: ["request_media"],
+            allowed_permissions: null,
             requests_allowed: true,
           },
         },
@@ -85,7 +85,7 @@ describe("EntitlementCohortsPage", () => {
     expect(within(cohort).getByText(/Derived from.*cohort-parent/i)).toBeInTheDocument();
     expect(within(cohort).getByText(/Created by account 7/i)).toBeInTheDocument();
     const policy = within(cohort).getByRole("region", { name: "Effective policy" });
-    expect(policy).toHaveTextContent(/Libraries.*3, 9/i);
+    expect(policy).toHaveTextContent(/Libraries.*All libraries/i);
     expect(policy).toHaveTextContent(/Playback.*Allowed/i);
     expect(policy).toHaveTextContent(/Maximum streams.*1/i);
     expect(policy).toHaveTextContent(/Maximum profiles.*4/i);
@@ -94,11 +94,11 @@ describe("EntitlementCohortsPage", () => {
     expect(policy).toHaveTextContent(/Downloads.*Not allowed/i);
     expect(policy).toHaveTextContent(/Transcoded downloads.*Not allowed/i);
     expect(policy).toHaveTextContent(/Maximum playback quality.*720p/i);
-    expect(policy).toHaveTextContent(/Permissions.*request_media/i);
+    expect(policy).toHaveTextContent(/Permissions.*Unrestricted/i);
     expect(policy).toHaveTextContent(/Requests.*Allowed/i);
     expect(
-      within(cohort).getByRole("link", { name: "Apply Low bandwidth to people" }),
-    ).toHaveAttribute("href", "/admin/organization/people?policy_cohort=cohort-child");
+      within(cohort).queryByRole("link", { name: "Apply Low bandwidth to people" }),
+    ).not.toBeInTheDocument();
     expect(within(cohort).queryByRole("button", { name: /edit/i })).not.toBeInTheDocument();
     expect(vi.mocked(adminV2Api)).toHaveBeenCalledWith(
       "/organization/entitlement-cohorts?include_archived=true",

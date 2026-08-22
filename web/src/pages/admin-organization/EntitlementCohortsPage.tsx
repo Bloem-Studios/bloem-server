@@ -140,14 +140,18 @@ function CohortCard({ cohort }: { cohort: EntitlementCohort }) {
       </section>
 
       <div className="mt-5 flex justify-end">
-        <Button asChild size="sm">
-          <Link
-            to={`/admin/organization/people?policy_cohort=${encodeURIComponent(cohort.cohort_id)}`}
-            aria-label={`Apply ${cohort.name} to people`}
-          >
-            Apply to people
-          </Link>
-        </Button>
+        {cohort.archived ? (
+          <p className="text-muted-foreground text-sm">Archived cohorts cannot be applied.</p>
+        ) : (
+          <Button asChild size="sm">
+            <Link
+              to={`/admin/organization/people?policy_cohort=${encodeURIComponent(cohort.cohort_id)}`}
+              aria-label={`Apply ${cohort.name} to people`}
+            >
+              Apply to people
+            </Link>
+          </Button>
+        )}
       </div>
     </article>
   );

@@ -5,7 +5,7 @@ import type { AdminContextKey } from "@/api/types";
 import { organizationPeopleKeys, type PeopleBulkJob } from "./organizationPeople";
 
 export interface EffectivePolicy {
-  library_ids: number[];
+  library_ids: number[] | null;
   playback_allowed: boolean;
   max_streams: number;
   max_profiles: number;
@@ -14,7 +14,7 @@ export interface EffectivePolicy {
   download_allowed: boolean;
   download_transcode_allowed: boolean;
   max_playback_quality: string;
-  allowed_permissions: string[];
+  allowed_permissions: string[] | null;
   requests_allowed: boolean;
 }
 

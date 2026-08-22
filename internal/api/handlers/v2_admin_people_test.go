@@ -225,7 +225,7 @@ func TestV2AdminPeopleCohortDiscoveryUsesOnlyOrganizationContext(t *testing.T) {
 		ID: cohortID, OrganizationID: organizationID, Name: "Standard", Revision: 2,
 		AccessGroupID: 12, SourceTemplateKey: "standard", SourceTemplateRevision: 4,
 		DerivationKind: "exact_template", PolicyDigest: "safe-digest", MemberCount: 31,
-		Policy: entitlements.Policy{LibraryIDs: []int{1, 2}, PlaybackAllowed: true, MaxStreams: 2},
+		Policy: entitlements.Policy{LibraryIDs: nil, AllowedPermissions: nil, PlaybackAllowed: true, MaxStreams: 2},
 	}
 	cohorts := &organizationCohortStoreStub{items: []entitlements.CohortRevision{cohort}, item: cohort}
 	handler := NewV2AdminPeopleHandler(&adminPeopleServiceStub{})
@@ -234,7 +234,7 @@ func TestV2AdminPeopleCohortDiscoveryUsesOnlyOrganizationContext(t *testing.T) {
 	list := adminPeopleRequest(http.MethodGet, "/api/v2/admin/organization/entitlement-cohorts?include_archived=true", "", organizationID, 7, nil)
 	listRecorder := httptest.NewRecorder()
 	handler.HandleListEntitlementCohorts(listRecorder, list)
-	if listRecorder.Code != http.StatusOK || cohorts.org != organizationID || !strings.Contains(listRecorder.Body.String(), `"member_count":31`) || !strings.Contains(listRecorder.Body.String(), `"policy_digest":"safe-digest"`) {
+	if listRecorder.Code != http.StatusOK || cohorts.org != organizationID || !strings.Contains(listRecorder.Body.String(), `"member_count":31`) || !strings.Contains(listRecorder.Body.String(), `"policy_digest":"safe-digest"`) || !strings.Contains(listRecorder.Body.String(), `"library_ids":null`) || !strings.Contains(listRecorder.Body.String(), `"allowed_permissions":null`) {
 		t.Fatalf("list response = %d %s, store organization=%s", listRecorder.Code, listRecorder.Body.String(), cohorts.org)
 	}
 
