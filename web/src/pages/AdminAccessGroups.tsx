@@ -116,8 +116,8 @@ export default function AdminAccessGroups() {
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Access Groups</h1>
           <p className="page-subtitle text-sm sm:text-base">
             {active?.scope === "organization" && <>{active.name}: </>}The shared policy layer for a
-            set of users. A group supplies the value for every field its members leave on Inherit;
-            a per-user override replaces the group value in either direction.
+            set of users. A group supplies the value for every field its members leave on Inherit; a
+            per-user override replaces the group value in either direction.
           </p>
         </div>
         {!creating && (
