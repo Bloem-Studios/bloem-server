@@ -411,6 +411,7 @@ func decisionToAccessScope(input ScopeInput, decision ScopeDecision) access.Scop
 		MaxContentRating:          decision.MaxContentRating,
 		MaxPlaybackQuality:        decision.MaxPlaybackQuality,
 		PlaybackAllowed:           true,
+		DownloadAllowed:           true,
 		PreferredMetadataLanguage: decision.PreferredMetadataLanguage,
 		PolicyRevision:            decision.PolicyRevision,
 		ProfileVerified:           decision.ProfileVerified,

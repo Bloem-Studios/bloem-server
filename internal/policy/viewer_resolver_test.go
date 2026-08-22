@@ -645,7 +645,6 @@ func TestViewerResolverAppliesGroupPolicy(t *testing.T) {
 		LibraryIDs:               []int{2, 4},
 		MaxPlaybackQuality:       access.PlaybackQualityStandard,
 		PlaybackAllowed:          true,
-		TranscodeAllowed:         true,
 		DownloadAllowed:          true,
 		DownloadTranscodeAllowed: true,
 		TranscodeAllowed:         true,
