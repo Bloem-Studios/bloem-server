@@ -243,7 +243,15 @@ export default function DirectAccountPolicyBulkPage() {
     refreshedTerminalJob.current = undefined;
   }
 
+  function discardReviewedSelection() {
+    setSelectedIDs([]);
+    setSnapshotData(undefined);
+    snapshots.reset();
+    resetPolicyWorkflow();
+  }
+
   async function reviewSelection() {
+    discardReviewedSelection();
     const parsed = parseAccountIDs(accountInput);
     if (parsed instanceof Error) {
       setSelectionError(parsed.message);
@@ -251,8 +259,6 @@ export default function DirectAccountPolicyBulkPage() {
     }
     setSelectionError("");
     setSelectedIDs(parsed);
-    setSnapshotData(undefined);
-    resetPolicyWorkflow();
     try {
       await snapshots.mutateAsync(parsed);
     } catch {
@@ -418,7 +424,11 @@ export default function DirectAccountPolicyBulkPage() {
             className="border-input bg-background min-h-24 w-full rounded-md border px-3 py-2 text-sm"
             placeholder="41, 42"
             value={accountInput}
-            onChange={(event) => setAccountInput(event.target.value)}
+            onChange={(event) => {
+              setAccountInput(event.target.value);
+              setSelectionError("");
+              discardReviewedSelection();
+            }}
           />
         </div>
         {selectionError ? (

@@ -250,6 +250,59 @@ describe("DirectAccountPolicyBulkPage", () => {
     expect(screen.queryByRole("radiogroup", { name: "Policy operation" })).not.toBeInTheDocument();
   });
 
+  it("discards a reviewed preview as soon as the visible account selection changes", async () => {
+    const user = userEvent.setup();
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (path === "/platform/accounts/entitlement-snapshots") {
+        return {
+          observed_at: "2026-08-21T10:15:00Z",
+          items: [
+            { account_id: 41, snapshot: snapshot(41) },
+            { account_id: 42, snapshot: snapshot(42, "custom") },
+          ],
+        } as never;
+      }
+      if (String(path).includes("/entitlement-cohorts")) return { cohorts } as never;
+      if (path === "/platform/accounts/entitlement-bulk/policy-previews") {
+        return previewResponse("restore_default_entitlement") as never;
+      }
+      throw new Error(`Unexpected API route: ${String(path)}`);
+    });
+
+    renderPage();
+    await reviewAccounts(user);
+    await user.click(screen.getByRole("radio", { name: "Restore the managed default" }));
+    await user.click(screen.getByRole("button", { name: "Preview policy impact" }));
+    await screen.findByRole("heading", { name: "Review authoritative impact" });
+    await user.click(screen.getByRole("checkbox", { name: /I confirm this exact account set/i }));
+
+    await user.clear(screen.getByLabelText("Server account IDs"));
+    await user.type(screen.getByLabelText("Server account IDs"), "99");
+
+    expect(
+      screen.queryByRole("heading", { name: "Review authoritative impact" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start policy job" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Policy operation" })).not.toBeInTheDocument();
+  });
+
+  it("does not retain an old reviewed workflow when replacement account IDs are invalid", async () => {
+    const user = userEvent.setup();
+    installBaseRoutes();
+    renderPage();
+    await reviewAccounts(user);
+
+    await user.clear(screen.getByLabelText("Server account IDs"));
+    await user.type(screen.getByLabelText("Server account IDs"), "41, invalid");
+    await user.click(screen.getByRole("button", { name: "Review selected accounts" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/positive whole numbers/i);
+    expect(
+      screen.queryByRole("heading", { name: "Authoritative observations" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Policy operation" })).not.toBeInTheDocument();
+  });
+
   it("previews an exact template revision and recovers safely from stale confirmation", async () => {
     const user = userEvent.setup();
     let snapshotReads = 0;
