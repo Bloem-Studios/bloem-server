@@ -731,6 +731,15 @@ func (s *Store) Get(ctx context.Context, key string, revision int64) (Template, 
 	return getTemplate(ctx, s.pool, strings.TrimSpace(key), revision, false)
 }
 
+// GetInTx loads an exact immutable policy revision using the caller's
+// transaction and snapshot.
+func (s *Store) GetInTx(ctx context.Context, tx pgx.Tx, key string, revision int64) (Template, error) {
+	if s == nil || tx == nil {
+		return Template{}, ErrTemplateNotFound
+	}
+	return getTemplate(ctx, tx, strings.TrimSpace(key), revision, false)
+}
+
 // Latest loads the current revision for a stable key.
 func (s *Store) Latest(ctx context.Context, key string) (Template, error) {
 	return getTemplate(ctx, s.pool, strings.TrimSpace(key), 0, true)

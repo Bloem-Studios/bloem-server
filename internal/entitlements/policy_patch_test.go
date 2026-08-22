@@ -91,3 +91,25 @@ func TestPolicyPatchDigestCanonicalizesEquivalentSetValues(t *testing.T) {
 		t.Fatalf("equivalent digests = %q/%q", firstDigest, secondDigest)
 	}
 }
+
+func TestApplyPolicyPatchPreservesDynamicAllLibrarySemantics(t *testing.T) {
+	base := entitlements.Policy{
+		LibraryIDs: nil, PlaybackAllowed: true, MaxStreams: 3, MaxProfiles: 5,
+		TranscodeAllowed: true, MaxTranscodes: 1, DownloadAllowed: true,
+		DownloadTranscodeAllowed: true, MaxPlaybackQuality: "1080p", RequestsAllowed: true,
+	}
+	added, err := entitlements.ApplyPolicyPatch(base, entitlements.PolicyPatch{
+		Libraries: &entitlements.SetOperation[int]{Mode: entitlements.PolicySetAdd, Values: []int{7}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if added.LibraryIDs != nil {
+		t.Fatalf("add to dynamic all libraries = %#v, want nil (all)", added.LibraryIDs)
+	}
+	if _, err := entitlements.ApplyPolicyPatch(base, entitlements.PolicyPatch{
+		Libraries: &entitlements.SetOperation[int]{Mode: entitlements.PolicySetRemove, Values: []int{7}},
+	}); !errors.Is(err, entitlements.ErrInvalidPolicy) {
+		t.Fatalf("remove from unmaterialized all libraries error = %v, want ErrInvalidPolicy", err)
+	}
+}

@@ -1,12 +1,15 @@
 package adminpeople
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 func TestPolicyPreviewUsesImmutableAuthoritativeSelectionSnapshot(t *testing.T) {
@@ -133,6 +136,114 @@ func TestPolicyPreviewCountsPolicyEquivalentAccountThatMustMoveCohorts(t *testin
 	}
 }
 
+func TestPolicyPreviewPartitionsCustomProfileAlreadyAssignedToTarget(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Already premium", int(premium.AccessGroupID))
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2 AND id<>$4`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID, customProfile); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID, IncludeCustomProfiles: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.InheritedProfilesWillMove != 1 || preview.CustomProfilesWillMove != 0 || preview.CustomProfilesWillRemain != 1 {
+		t.Fatalf("already-target custom profile partition = %+v", preview)
+	}
+}
+
+func TestPolicyPreviewUsesImmutableExactCohortPolicyAfterDynamicLibrariesChange(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	var laterLibraryID int
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		INSERT INTO media_folders (type,name,enabled)
+		VALUES ('movies',$1,true) RETURNING id`, "preview-later-"+uuid.NewString()).Scan(&laterLibraryID); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, PolicyCommand{Kind: PolicyApplyEntitlementTemplate, TemplateKey: "premium", TemplateRevision: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, libraryID := range preview.Target.Policy.LibraryIDs {
+		if libraryID == laterLibraryID {
+			t.Fatalf("exact cohort target rematerialized dynamic library %d: %+v", laterLibraryID, preview.Target)
+		}
+	}
+	if preview.Target.GroupID != premium.AccessGroupID || preview.Target.PolicyDigest != premium.PolicyDigest {
+		t.Fatalf("exact cohort identity/policy mismatch: target=%+v cohort=%+v", preview.Target, premium)
+	}
+}
+
+func TestPolicySelectionCapturesUnadoptedManagedTemplateProvenance(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	groupID := createUnadoptedPreviewGroup(t, fixture, "standard", 1)
+	assignPreviewGroup(t, fixture, groupID)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reference, _ := fixture.service.parseSelectionReference(selection.Token)
+	var targetsJSON []byte
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT targets FROM admin_people_selections WHERE id=$1`, reference).Scan(&targetsJSON); err != nil {
+		t.Fatal(err)
+	}
+	var targets []targetSnapshot
+	if err := json.Unmarshal(targetsJSON, &targets); err != nil {
+		t.Fatal(err)
+	}
+	if len(targets) != 1 || targets[0].CohortID != uuid.Nil || targets[0].SourceTemplateKey != "standard" || targets[0].SourceTemplateRevision != 1 {
+		t.Fatalf("unadopted managed provenance = %s", targetsJSON)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, PolicyCommand{Kind: PolicyApplyEntitlementTemplate, TemplateKey: "premium", TemplateRevision: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.IneligibleOrStale != 0 || len(preview.CurrentCohorts) != 1 || preview.CurrentCohorts[0].SourceTemplateKey != "standard" || preview.CurrentCohorts[0].SourceTemplateRevision != 1 {
+		t.Fatalf("unadopted managed preview = %+v", preview)
+	}
+}
+
+func TestPolicyPreviewMarksCohortAdoptionAfterSelectionStale(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	groupID := createUnadoptedPreviewGroup(t, fixture, "standard", 1)
+	assignPreviewGroup(t, fixture, groupID)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := entitlements.NewTemplateStore(fixture.pool)
+	adopted := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	if adopted.AccessGroupID != int64(groupID) {
+		t.Fatalf("adopted group = %d, want %d", adopted.AccessGroupID, groupID)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, PolicyCommand{Kind: PolicyApplyEntitlementTemplate, TemplateKey: "premium", TemplateRevision: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.IneligibleOrStale != 1 {
+		t.Fatalf("post-selection cohort adoption preview = %+v", preview)
+	}
+}
+
 func TestPolicyPreviewRejectsBlankAndNoOpDerivedCommands(t *testing.T) {
 	fixture := newPeopleFixture(t)
 	store := entitlements.NewTemplateStore(fixture.pool)
@@ -149,6 +260,38 @@ func TestPolicyPreviewRejectsBlankAndNoOpDerivedCommands(t *testing.T) {
 		if _, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command); !errors.Is(err, ErrInvalidPolicyCommand) {
 			t.Fatalf("command %+v error = %v, want ErrInvalidPolicyCommand", command, err)
 		}
+	}
+}
+
+func TestResolvePolicyTargetPreservesLookupErrorClasses(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	if _, err := fixture.service.resolvePolicyTarget(fixture.ctx, fixture.orgA, PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: uuid.New()}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("missing cohort error = %v, want ErrNotFound", err)
+	}
+	if _, err := fixture.service.resolvePolicyTarget(fixture.ctx, fixture.orgA, PolicyCommand{Kind: PolicyApplyEntitlementTemplate, TemplateKey: "missing-template", TemplateRevision: 1}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("missing template error = %v, want ErrNotFound", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE entitlement_policy_cohorts AS c SET archived=true
+		FROM entitlement_policy_cohort_revisions AS r
+		WHERE r.id=$1 AND c.id=r.cohort_id`, standard.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.service.resolvePolicyTarget(fixture.ctx, fixture.orgA, PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: standard.ID}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("archived cohort error = %v, want ErrNotFound", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE entitlement_policy_cohorts AS c SET archived=false
+		FROM entitlement_policy_cohort_revisions AS r
+		WHERE r.id=$1 AND c.id=r.cohort_id`, standard.ID); err != nil {
+		t.Fatal(err)
+	}
+	canceled, cancel := context.WithCancel(fixture.ctx)
+	cancel()
+	if _, err := fixture.service.resolvePolicyTarget(canceled, fixture.orgA, PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: standard.ID}); err == nil || errors.Is(err, ErrInvalidPolicyCommand) || errors.Is(err, ErrNotFound) {
+		t.Fatalf("canceled database lookup error = %v, want retryable infrastructure error", err)
 	}
 }
 
@@ -294,6 +437,46 @@ func TestPolicyPreviewConfirmationInvalidatesOnObservedPolicyRevisionChange(t *t
 	}
 }
 
+func TestValidatePolicyConfirmationInTxLocksObservedStateUntilCallerCommit(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyApplyEntitlementTemplate, TemplateKey: "premium", TemplateRevision: 1}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	validationTx, err := fixture.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = validationTx.Rollback(ctx) }()
+	if _, err := fixture.service.ValidatePolicyConfirmationInTx(ctx, validationTx, fixture.orgA, fixture.ownerID, selection.Token, command, preview.ConfirmationToken); err != nil {
+		t.Fatalf("validate confirmation in transaction: %v", err)
+	}
+
+	mutationTx, err := fixture.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = mutationTx.Rollback(ctx) }()
+	if _, err := mutationTx.Exec(ctx, `SET LOCAL lock_timeout='100ms'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := mutationTx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1 WHERE id=$1`, fixture.sharedAccountID); err == nil || !strings.Contains(strings.ToLower(err.Error()), "lock timeout") {
+		t.Fatalf("concurrent observed-state update error = %v, want lock timeout", err)
+	}
+}
+
 func ensurePreviewCohort(t *testing.T, fixture *peopleFixture, store *entitlements.Store, key string, revision int64) entitlements.CohortRevision {
 	t.Helper()
 	tx, err := fixture.pool.Begin(fixture.ctx)
@@ -309,6 +492,39 @@ func ensurePreviewCohort(t *testing.T, fixture *peopleFixture, store *entitlemen
 		t.Fatal(err)
 	}
 	return cohort
+}
+
+func createUnadoptedPreviewGroup(t *testing.T, fixture *peopleFixture, key string, revision int64) int {
+	t.Helper()
+	var groupID int
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		INSERT INTO access_groups (
+			organization_id,name,is_default,library_ids,max_playback_quality,
+			playback_allowed,download_allowed,download_transcode_allowed,
+			max_streams,max_profiles,transcode_allowed,max_transcodes,
+			allowed_permissions,requests_allowed,managed_template_key,managed_template_revision
+		)
+		SELECT $1,$2,false,ARRAY(SELECT id FROM media_folders WHERE enabled ORDER BY id),
+		       r.max_playback_quality,r.playback_allowed,r.download_allowed,
+		       r.download_transcode_allowed,r.max_streams,r.max_profiles,
+		       r.transcode_allowed,r.max_transcodes,r.allowed_permissions,
+		       r.requests_allowed,r.template_key,r.revision
+		FROM entitlement_template_revisions r
+		WHERE r.template_key=$3 AND r.revision=$4
+		RETURNING id`, fixture.orgA, "Unadopted "+uuid.NewString(), key, revision).Scan(&groupID); err != nil {
+		t.Fatal(err)
+	}
+	return groupID
+}
+
+func assignPreviewGroup(t *testing.T, fixture *peopleFixture, groupID int) {
+	t.Helper()
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, fixture.sharedAccountID, groupID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2`, fixture.orgA, fixture.sharedAccountID, groupID); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func intPointer(value int) *int { return &value }

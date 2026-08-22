@@ -530,7 +530,7 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 	rows, err := tx.Query(ctx, `
 		SELECT m.account_id,m.id,m.status,m.security_revision,u.access_policy_revision,
 		       COALESCE(u.access_group_id,0),COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),COALESCE(r.revision,0),
-		       COALESCE(r.source_template_key,''),COALESCE(r.source_template_revision,0),
+		       COALESCE(r.source_template_key,g.managed_template_key,''),COALESCE(r.source_template_revision,g.managed_template_revision,0),
 		       COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'group_id',p.access_group_id,'inherits_account',p.access_group_id IS NOT DISTINCT FROM u.access_group_id,'updated_at',p.updated_at) ORDER BY p.id) FROM user_profiles p WHERE p.organization_id=m.organization_id AND p.user_id=m.account_id),'[]'::jsonb)
 		FROM organization_memberships m
 		JOIN users u ON u.id=m.account_id

@@ -212,7 +212,7 @@ func (s *Service) PreviewPolicy(ctx context.Context, organizationID uuid.UUID, a
 	for _, snapshot := range record.targets {
 		result, ok := results[snapshot.AccountID]
 		membership, membershipOK := memberships[snapshot.AccountID]
-		if !ok || result.Snapshot == nil || result.Error != "" || !membershipOK || snapshot.MembershipStatus != tenancy.MembershipActive || membership.id != snapshot.MembershipID || membership.status != snapshot.MembershipStatus || membership.revision != snapshot.MembershipRevision || result.Snapshot.GroupID != snapshot.GroupID || result.Snapshot.PolicyRevision != snapshot.AccountPolicyRevision || !samePolicyProfileSnapshots(snapshot.Profiles, result.Snapshot.Profiles) {
+		if !ok || result.Snapshot == nil || result.Error != "" || !membershipOK || snapshot.MembershipStatus != tenancy.MembershipActive || membership.id != snapshot.MembershipID || membership.status != snapshot.MembershipStatus || membership.revision != snapshot.MembershipRevision || membership.groupID != snapshot.GroupID || membership.cohortRevisionID != snapshot.CohortID || membership.cohortRevision != snapshot.CohortRevision || membership.sourceTemplateKey != snapshot.SourceTemplateKey || membership.sourceTemplateRevision != snapshot.SourceTemplateRevision || result.Snapshot.PolicyRevision != snapshot.AccountPolicyRevision || !samePolicyProfileSnapshots(snapshot.Profiles, result.Snapshot.Profiles) {
 			preview.IneligibleOrStale++
 			continue
 		}
@@ -230,6 +230,8 @@ func (s *Service) PreviewPolicy(ctx context.Context, organizationID uuid.UUID, a
 			} else if command.IncludeCustomProfiles {
 				if target.GroupID == 0 || int64(profile.GroupID) != target.GroupID {
 					preview.CustomProfilesWillMove++
+				} else {
+					preview.CustomProfilesWillRemain++
 				}
 			} else {
 				preview.CustomProfilesWillRemain++
@@ -267,19 +269,29 @@ func (s *Service) PreviewPolicy(ctx context.Context, organizationID uuid.UUID, a
 }
 
 type policySelectionMembership struct {
-	id       uuid.UUID
-	status   tenancy.MembershipStatus
-	revision int64
+	id                     uuid.UUID
+	status                 tenancy.MembershipStatus
+	revision               int64
+	groupID                int64
+	cohortRevisionID       uuid.UUID
+	cohortRevision         int64
+	sourceTemplateKey      string
+	sourceTemplateRevision int64
 }
 
 type policyObservation struct {
-	AccountID          int                       `json:"account_id"`
-	MembershipFound    bool                      `json:"membership_found"`
-	MembershipID       uuid.UUID                 `json:"membership_id,omitempty"`
-	MembershipStatus   tenancy.MembershipStatus  `json:"membership_status,omitempty"`
-	MembershipRevision int64                     `json:"membership_revision,omitempty"`
-	ResultError        string                    `json:"result_error,omitempty"`
-	Snapshot           *policyAccountObservation `json:"snapshot,omitempty"`
+	AccountID                        int                       `json:"account_id"`
+	MembershipFound                  bool                      `json:"membership_found"`
+	MembershipID                     uuid.UUID                 `json:"membership_id,omitempty"`
+	MembershipStatus                 tenancy.MembershipStatus  `json:"membership_status,omitempty"`
+	MembershipRevision               int64                     `json:"membership_revision,omitempty"`
+	MembershipGroupID                int64                     `json:"membership_group_id,omitempty"`
+	MembershipCohortRevisionID       uuid.UUID                 `json:"membership_cohort_revision_id,omitempty"`
+	MembershipCohortRevision         int64                     `json:"membership_cohort_revision,omitempty"`
+	MembershipSourceTemplateKey      string                    `json:"membership_source_template_key,omitempty"`
+	MembershipSourceTemplateRevision int64                     `json:"membership_source_template_revision,omitempty"`
+	ResultError                      string                    `json:"result_error,omitempty"`
+	Snapshot                         *policyAccountObservation `json:"snapshot,omitempty"`
 }
 
 type policyAccountObservation struct {
@@ -304,11 +316,29 @@ type policyProfileObservation struct {
 	Policy          entitlements.EffectivePolicySnapshot `json:"policy"`
 }
 
+type policyPreviewDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
 func (s *Service) currentPolicyMemberships(ctx context.Context, organizationID uuid.UUID, accountIDs []int) (map[int]policySelectionMembership, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT account_id,id,status,security_revision
-		FROM organization_memberships
-		WHERE organization_id=$1 AND account_id=ANY($2::integer[])`, organizationID, accountIDs)
+	return currentPolicyMembershipsWithDB(ctx, s.pool, organizationID, accountIDs)
+}
+
+func currentPolicyMembershipsWithDB(ctx context.Context, db policyPreviewDB, organizationID uuid.UUID, accountIDs []int) (map[int]policySelectionMembership, error) {
+	rows, err := db.Query(ctx, `
+		SELECT m.account_id,m.id,m.status,m.security_revision,
+		       COALESCE(u.access_group_id,0),
+		       COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),
+		       COALESCE(r.revision,0),
+		       COALESCE(r.source_template_key,g.managed_template_key,''),
+		       COALESCE(r.source_template_revision,g.managed_template_revision,0)
+		FROM organization_memberships m
+		JOIN users u ON u.id=m.account_id
+		LEFT JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=u.access_group_id
+		LEFT JOIN entitlement_policy_cohort_revisions r
+		  ON r.organization_id=g.organization_id AND r.id=g.managed_cohort_id AND r.access_group_id=g.id
+		WHERE m.organization_id=$1 AND m.account_id=ANY($2::integer[])`, organizationID, accountIDs)
 	if err != nil {
 		return nil, fmt.Errorf("preview current memberships: %w", err)
 	}
@@ -317,7 +347,9 @@ func (s *Service) currentPolicyMemberships(ctx context.Context, organizationID u
 	for rows.Next() {
 		var accountID int
 		var membership policySelectionMembership
-		if err := rows.Scan(&accountID, &membership.id, &membership.status, &membership.revision); err != nil {
+		if err := rows.Scan(&accountID, &membership.id, &membership.status, &membership.revision,
+			&membership.groupID, &membership.cohortRevisionID, &membership.cohortRevision,
+			&membership.sourceTemplateKey, &membership.sourceTemplateRevision); err != nil {
 			return nil, fmt.Errorf("scan preview membership: %w", err)
 		}
 		result[accountID] = membership
@@ -354,6 +386,11 @@ func policyObservationDigest(targets []targetSnapshot, results map[int]entitleme
 			observation.MembershipID = membership.id
 			observation.MembershipStatus = membership.status
 			observation.MembershipRevision = membership.revision
+			observation.MembershipGroupID = membership.groupID
+			observation.MembershipCohortRevisionID = membership.cohortRevisionID
+			observation.MembershipCohortRevision = membership.cohortRevision
+			observation.MembershipSourceTemplateKey = membership.sourceTemplateKey
+			observation.MembershipSourceTemplateRevision = membership.sourceTemplateRevision
 		}
 		if result, ok := results[target.AccountID]; ok {
 			observation.ResultError = result.Error
@@ -387,8 +424,31 @@ func policyObservationDigest(targets []targetSnapshot, results map[int]entitleme
 }
 
 func (s *Service) ValidatePolicyConfirmation(ctx context.Context, organizationID uuid.UUID, actorID int, selectionToken string, command PolicyCommand, token string) (PolicyConfirmation, error) {
+	if s == nil || s.pool == nil {
+		return PolicyConfirmation{}, ErrInvalidPolicyConfirmation
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	if err != nil {
+		return PolicyConfirmation{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	confirmation, err := s.ValidatePolicyConfirmationInTx(ctx, tx, organizationID, actorID, selectionToken, command, token)
+	if err != nil {
+		return PolicyConfirmation{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return PolicyConfirmation{}, err
+	}
+	return confirmation, nil
+}
+
+// ValidatePolicyConfirmationInTx validates every confirmation binding through
+// the caller's transaction and locks the observed subjects until that caller
+// commits. Durable job creation must call this method in its persistence
+// transaction so policy or membership changes cannot race validation.
+func (s *Service) ValidatePolicyConfirmationInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID int, selectionToken string, command PolicyCommand, token string) (PolicyConfirmation, error) {
 	invalid := func() (PolicyConfirmation, error) { return PolicyConfirmation{}, ErrInvalidPolicyConfirmation }
-	if s == nil || s.pool == nil || organizationID == uuid.Nil || actorID <= 0 {
+	if s == nil || s.pool == nil || tx == nil || organizationID == uuid.Nil || actorID <= 0 {
 		return invalid()
 	}
 	payload, err := s.parsePolicyConfirmation(token)
@@ -399,7 +459,7 @@ func (s *Service) ValidatePolicyConfirmation(ctx context.Context, organizationID
 	if err != nil || reference != payload.SelectionID {
 		return invalid()
 	}
-	record, err := s.loadActivePolicySelection(ctx, organizationID, reference)
+	record, err := s.loadActivePolicySelectionInTx(ctx, tx, organizationID, reference)
 	if err != nil {
 		return invalid()
 	}
@@ -411,7 +471,14 @@ func (s *Service) ValidatePolicyConfirmation(ctx context.Context, organizationID
 	if err != nil {
 		return invalid()
 	}
-	actor, err = s.currentPolicyActor(ctx, organizationID, actor)
+	accountIDs := make([]int, len(record.targets))
+	for index := range record.targets {
+		accountIDs[index] = record.targets[index].AccountID
+	}
+	if err := lockPolicyConfirmationSubjects(ctx, tx, organizationID, actorID, accountIDs); err != nil {
+		return PolicyConfirmation{}, err
+	}
+	actor, err = s.resolveBulkActorSnapshot(ctx, tx, organizationID, actor)
 	if err != nil {
 		return invalid()
 	}
@@ -419,25 +486,29 @@ func (s *Service) ValidatePolicyConfirmation(ctx context.Context, organizationID
 	if err != nil {
 		return invalid()
 	}
-	target, err := s.resolvePolicyTarget(ctx, organizationID, command)
+	target, err := s.resolvePolicyTargetInTx(ctx, tx, organizationID, command)
 	if err != nil {
 		return invalid()
 	}
-	accountIDs := make([]int, len(record.targets))
-	for index := range record.targets {
-		accountIDs[index] = record.targets[index].AccountID
+	if err := lockPolicyConfirmationPolicies(ctx, tx, organizationID, accountIDs, record.targets, target); err != nil {
+		return PolicyConfirmation{}, err
 	}
-	policyResults, _, err := entitlements.NewTemplateStore(s.pool).GetAccountPolicies(ctx, organizationID, accountIDs)
-	if err != nil {
+	lockedTarget, err := s.resolvePolicyTargetInTx(ctx, tx, organizationID, command)
+	if err != nil || !reflect.DeepEqual(target.binding(), lockedTarget.binding()) {
 		return invalid()
+	}
+	target = lockedTarget
+	policyResults, _, err := entitlements.NewTemplateStore(s.pool).GetAccountPoliciesInTx(ctx, tx, organizationID, accountIDs)
+	if err != nil {
+		return PolicyConfirmation{}, err
 	}
 	results := make(map[int]entitlements.AccountPolicySnapshotResult, len(policyResults))
 	for _, result := range policyResults {
 		results[result.AccountID] = result
 	}
-	memberships, err := s.currentPolicyMemberships(ctx, organizationID, accountIDs)
+	memberships, err := currentPolicyMembershipsWithDB(ctx, tx, organizationID, accountIDs)
 	if err != nil {
-		return invalid()
+		return PolicyConfirmation{}, err
 	}
 	observationDigest, err := policyObservationDigest(record.targets, results, memberships)
 	if err != nil {
@@ -451,6 +522,105 @@ func (s *Service) ValidatePolicyConfirmation(ctx context.Context, organizationID
 		Actor: actor, OrganizationID: organizationID, OrganizationPolicyRevision: actor.PolicyRevision,
 		ExpiresAt: payload.ExpiresAt,
 	}, nil
+}
+
+func (s *Service) loadActivePolicySelectionInTx(ctx context.Context, tx pgx.Tx, organizationID, reference uuid.UUID) (selectionRecord, error) {
+	record, err := loadSelection(ctx, tx.QueryRow(ctx, `
+		SELECT id,organization_id,canonical_filter,snapshot_at,expires_at,account_ids,matched_count,excluded_count,targets
+		FROM admin_people_selections
+		WHERE id=$1 AND organization_id=$2
+		FOR SHARE`, reference, organizationID), organizationID)
+	if err != nil {
+		return selectionRecord{}, err
+	}
+	if !s.now().UTC().Before(record.expires) {
+		return selectionRecord{}, ErrSelectionExpired
+	}
+	return record, nil
+}
+
+func lockPolicyConfirmationSubjects(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID int, accountIDs []int) error {
+	allAccountIDs := append(append([]int(nil), accountIDs...), actorID)
+	sort.Ints(allAccountIDs)
+	allAccountIDs = compactSortedInts(allAccountIDs)
+	statements := []struct {
+		query string
+		args  []any
+	}{
+		{`SELECT id FROM organizations WHERE id=$1 FOR SHARE`, []any{organizationID}},
+		{`SELECT id FROM users WHERE id=ANY($1::integer[]) ORDER BY id FOR UPDATE`, []any{allAccountIDs}},
+		{`SELECT id FROM organization_memberships WHERE organization_id=$1 AND account_id=ANY($2::integer[]) ORDER BY account_id FOR UPDATE`, []any{organizationID, allAccountIDs}},
+		{`SELECT id FROM user_profiles WHERE organization_id=$1 AND user_id=ANY($2::integer[]) ORDER BY id FOR UPDATE`, []any{organizationID, accountIDs}},
+	}
+	for _, statement := range statements {
+		if _, err := tx.Exec(ctx, statement.query, statement.args...); err != nil {
+			return fmt.Errorf("lock policy confirmation subjects: %w", err)
+		}
+	}
+	if _, err := tx.Exec(ctx, `LOCK TABLE media_folders IN SHARE MODE`); err != nil {
+		return fmt.Errorf("lock policy confirmation libraries: %w", err)
+	}
+	return nil
+}
+
+func lockPolicyConfirmationPolicies(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountIDs []int, selected []targetSnapshot, target PolicyTarget) error {
+	if target.TemplateKey != "" {
+		if _, err := tx.Exec(ctx, `SELECT key FROM entitlement_templates WHERE key=$1 FOR SHARE`, target.TemplateKey); err != nil {
+			return fmt.Errorf("lock policy confirmation template: %w", err)
+		}
+	}
+	cohortRevisionIDs := []uuid.UUID{target.CohortID, target.ParentCohortID}
+	if _, err := tx.Exec(ctx, `
+		SELECT c.id
+		FROM entitlement_policy_cohorts c
+		JOIN entitlement_policy_cohort_revisions r
+		  ON r.organization_id=c.organization_id AND r.cohort_id=c.id
+		WHERE r.organization_id=$1 AND r.id=ANY($2::uuid[])
+		ORDER BY c.id
+		FOR SHARE OF c`, organizationID, cohortRevisionIDs); err != nil {
+		return fmt.Errorf("lock policy confirmation cohorts: %w", err)
+	}
+	groupIDs := []int64{target.GroupID}
+	for _, account := range selected {
+		groupIDs = append(groupIDs, account.GroupID)
+		for _, profile := range account.Profiles {
+			groupIDs = append(groupIDs, int64(profile.GroupID))
+		}
+	}
+	sort.Slice(groupIDs, func(i, j int) bool { return groupIDs[i] < groupIDs[j] })
+	groupIDs = compactSortedInt64s(groupIDs)
+	if _, err := tx.Exec(ctx, `
+		SELECT id
+		FROM access_groups
+		WHERE organization_id=$1
+		  AND (id=ANY($2::bigint[])
+		       OR id IN (SELECT access_group_id FROM users WHERE id=ANY($3::integer[]) AND access_group_id IS NOT NULL)
+		       OR id IN (SELECT access_group_id FROM user_profiles WHERE organization_id=$1 AND user_id=ANY($3::integer[]) AND access_group_id IS NOT NULL))
+		ORDER BY id
+		FOR SHARE`, organizationID, groupIDs, accountIDs); err != nil {
+		return fmt.Errorf("lock policy confirmation groups: %w", err)
+	}
+	return nil
+}
+
+func compactSortedInts(values []int) []int {
+	result := values[:0]
+	for _, value := range values {
+		if len(result) == 0 || result[len(result)-1] != value {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func compactSortedInt64s(values []int64) []int64 {
+	result := values[:0]
+	for _, value := range values {
+		if value > 0 && (len(result) == 0 || result[len(result)-1] != value) {
+			result = append(result, value)
+		}
+	}
+	return result
 }
 
 func PolicyCommandDigest(command PolicyCommand) (string, error) {
@@ -523,49 +693,91 @@ func (s *Service) currentPolicyActor(ctx context.Context, organizationID uuid.UU
 	return actor, nil
 }
 
+type policyTargetSource struct {
+	getTemplate       func(context.Context, string, int64) (entitlements.Template, error)
+	getCohort         func(context.Context, uuid.UUID, uuid.UUID) (entitlements.CohortRevision, error)
+	findExactCohort   func(context.Context, uuid.UUID, string, int64) (entitlements.CohortRevision, bool, error)
+	findDerivedCohort func(context.Context, uuid.UUID, uuid.UUID, string, string) (entitlements.CohortRevision, bool, error)
+}
+
 func (s *Service) resolvePolicyTarget(ctx context.Context, organizationID uuid.UUID, command PolicyCommand) (PolicyTarget, error) {
+	store := entitlements.NewTemplateStore(s.pool)
+	source := policyTargetSource{
+		getTemplate:       store.Get,
+		getCohort:         store.GetCohort,
+		findExactCohort:   store.FindExactCohort,
+		findDerivedCohort: store.FindDerivedCohort,
+	}
+	return s.resolvePolicyTargetWithDB(ctx, s.pool, organizationID, command, source)
+}
+
+func (s *Service) resolvePolicyTargetInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, command PolicyCommand) (PolicyTarget, error) {
+	store := entitlements.NewTemplateStore(s.pool)
+	source := policyTargetSource{
+		getTemplate: func(ctx context.Context, key string, revision int64) (entitlements.Template, error) {
+			return store.GetInTx(ctx, tx, key, revision)
+		},
+		getCohort: func(ctx context.Context, organizationID, cohortID uuid.UUID) (entitlements.CohortRevision, error) {
+			return store.GetCohortInTx(ctx, tx, organizationID, cohortID)
+		},
+		findExactCohort: func(ctx context.Context, organizationID uuid.UUID, key string, revision int64) (entitlements.CohortRevision, bool, error) {
+			return store.FindExactCohortInTx(ctx, tx, organizationID, key, revision)
+		},
+		findDerivedCohort: func(ctx context.Context, organizationID, parentID uuid.UUID, name, digest string) (entitlements.CohortRevision, bool, error) {
+			return store.FindDerivedCohortInTx(ctx, tx, organizationID, parentID, name, digest)
+		},
+	}
+	return s.resolvePolicyTargetWithDB(ctx, tx, organizationID, command, source)
+}
+
+func (s *Service) resolvePolicyTargetWithDB(ctx context.Context, db policyPreviewDB, organizationID uuid.UUID, command PolicyCommand, source policyTargetSource) (PolicyTarget, error) {
 	if _, err := PolicyCommandDigest(command); err != nil {
 		return PolicyTarget{}, err
 	}
-	store := entitlements.NewTemplateStore(s.pool)
 	var target PolicyTarget
 	switch strings.TrimSpace(command.Kind) {
 	case PolicyAssignEntitlementCohort:
-		cohort, err := store.GetCohort(ctx, organizationID, command.CohortID)
-		if err != nil || cohort.Archived {
-			return PolicyTarget{}, ErrInvalidPolicyCommand
+		cohort, err := source.getCohort(ctx, organizationID, command.CohortID)
+		if err != nil {
+			return PolicyTarget{}, policyTargetLookupError(err)
+		}
+		if cohort.Archived {
+			return PolicyTarget{}, ErrNotFound
 		}
 		target = policyTargetFromCohort(PolicyAssignEntitlementCohort, cohort)
 	case PolicyApplyEntitlementTemplate:
-		template, err := store.Get(ctx, strings.TrimSpace(command.TemplateKey), command.TemplateRevision)
-		if err != nil || !template.Enabled || template.Archived {
-			return PolicyTarget{}, ErrInvalidPolicyCommand
+		template, err := source.getTemplate(ctx, strings.TrimSpace(command.TemplateKey), command.TemplateRevision)
+		if err != nil {
+			return PolicyTarget{}, policyTargetLookupError(err)
 		}
-		policy, err := s.materializePreviewPolicy(ctx, template.Policy)
+		if !template.Enabled || template.Archived {
+			return PolicyTarget{}, ErrNotFound
+		}
+		cohort, found, err := source.findExactCohort(ctx, organizationID, template.Key, template.Revision)
+		if err != nil {
+			return PolicyTarget{}, err
+		}
+		if found && !cohort.Archived {
+			return policyTargetFromCohort(PolicyApplyEntitlementTemplate, cohort), nil
+		}
+		policy, err := materializePreviewPolicyWithDB(ctx, db, template.Policy)
 		if err != nil {
 			return PolicyTarget{}, err
 		}
 		target = PolicyTarget{Kind: PolicyApplyEntitlementTemplate, TemplateKey: template.Key, TemplateRevision: template.Revision, Name: template.Name, policy: policy}
-		cohorts, err := store.ListCohorts(ctx, organizationID, false)
-		if err != nil {
-			return PolicyTarget{}, err
-		}
-		for _, cohort := range cohorts {
-			if cohort.DerivationKind == "exact_template" && cohort.SourceTemplateKey == template.Key && cohort.SourceTemplateRevision == template.Revision {
-				target.CohortID, target.CohortRevision, target.GroupID = cohort.ID, cohort.Revision, cohort.AccessGroupID
-				break
-			}
-		}
 	case PolicyDeriveEntitlementCohort:
-		parent, err := store.GetCohort(ctx, organizationID, command.CohortID)
-		if err != nil || parent.Archived {
-			return PolicyTarget{}, ErrInvalidPolicyCommand
+		parent, err := source.getCohort(ctx, organizationID, command.CohortID)
+		if err != nil {
+			return PolicyTarget{}, policyTargetLookupError(err)
+		}
+		if parent.Archived {
+			return PolicyTarget{}, ErrNotFound
 		}
 		policy, err := entitlements.ApplyPolicyPatch(parent.Policy, command.Patch)
 		if err != nil {
 			return PolicyTarget{}, ErrInvalidPolicyCommand
 		}
-		policy, err = s.materializePreviewPolicy(ctx, policy)
+		policy, err = materializePreviewPolicyWithDB(ctx, db, policy)
 		if err != nil {
 			return PolicyTarget{}, err
 		}
@@ -578,19 +790,16 @@ func (s *Service) resolvePolicyTarget(ctx context.Context, organizationID uuid.U
 			Name: strings.TrimSpace(command.Name), policy: policy,
 		}
 		candidateDigest, _ := entitlements.PolicyDigest(policy)
-		cohorts, err := store.ListCohorts(ctx, organizationID, false)
+		cohort, found, err := source.findDerivedCohort(ctx, organizationID, parent.ID, target.Name, candidateDigest)
 		if err != nil {
 			return PolicyTarget{}, err
 		}
-		for _, cohort := range cohorts {
-			if cohort.ParentID == parent.ID && strings.EqualFold(cohort.Name, target.Name) && cohort.PolicyDigest == candidateDigest {
-				target.CohortID, target.CohortRevision, target.GroupID = cohort.ID, cohort.Revision, cohort.AccessGroupID
-				break
-			}
+		if found && !cohort.Archived {
+			target.CohortID, target.CohortRevision, target.GroupID = cohort.ID, cohort.Revision, cohort.AccessGroupID
 		}
 	case PolicyRestoreDefaultEntitlement:
 		var cohortID uuid.UUID
-		err := s.pool.QueryRow(ctx, `
+		err := db.QueryRow(ctx, `
 			SELECT g.id,COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),
 			       COALESCE(r.revision,0),COALESCE(r.source_template_key,''),COALESCE(r.source_template_revision,0),g.name,
 			       g.library_ids,g.playback_allowed,g.max_streams,g.max_profiles,g.transcode_allowed,
@@ -606,7 +815,7 @@ func (s *Service) resolvePolicyTarget(ctx context.Context, organizationID uuid.U
 			&target.policy.AllowedPermissions, &target.policy.RequestsAllowed,
 		)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return PolicyTarget{}, ErrInvalidPolicyCommand
+			return PolicyTarget{}, ErrNotFound
 		}
 		if err != nil {
 			return PolicyTarget{}, err
@@ -618,11 +827,22 @@ func (s *Service) resolvePolicyTarget(ctx context.Context, organizationID uuid.U
 	return target, nil
 }
 
+func policyTargetLookupError(err error) error {
+	if errors.Is(err, entitlements.ErrCohortNotFound) || errors.Is(err, entitlements.ErrTemplateNotFound) || errors.Is(err, entitlements.ErrTemplateUnavailable) {
+		return ErrNotFound
+	}
+	return err
+}
+
 func (s *Service) materializePreviewPolicy(ctx context.Context, policy entitlements.Policy) (entitlements.Policy, error) {
+	return materializePreviewPolicyWithDB(ctx, s.pool, policy)
+}
+
+func materializePreviewPolicyWithDB(ctx context.Context, db policyPreviewDB, policy entitlements.Policy) (entitlements.Policy, error) {
 	if policy.LibraryIDs != nil {
 		return entitlements.ApplyPolicyPatch(policy, entitlements.PolicyPatch{})
 	}
-	rows, err := s.pool.Query(ctx, `SELECT id FROM media_folders WHERE enabled ORDER BY id`)
+	rows, err := db.Query(ctx, `SELECT id FROM media_folders WHERE enabled ORDER BY id`)
 	if err != nil {
 		return entitlements.Policy{}, err
 	}
@@ -683,7 +903,7 @@ func currentCohortDistribution(targets []targetSnapshot) []CohortDistribution {
 		state := entitlements.AccountPolicyStateManaged
 		if item.cohortID == uuid.Nil {
 			state = entitlements.AccountPolicyStateCustom
-			if item.groupID == 0 {
+			if item.groupID == 0 || item.templateKey != "" {
 				state = entitlements.AccountPolicyStateLegacyUnmanaged
 			}
 		}

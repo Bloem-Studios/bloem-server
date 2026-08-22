@@ -112,13 +112,8 @@ func (s *Store) GetAccountPolicy(ctx context.Context, organizationID uuid.UUID, 
 // GetAccountPolicies returns bounded per-account results observed through one
 // repeatable-read transaction and one Server timestamp.
 func (s *Store) GetAccountPolicies(ctx context.Context, organizationID uuid.UUID, accountIDs []int) ([]AccountPolicySnapshotResult, time.Time, error) {
-	if len(accountIDs) > MaxAccountPolicySnapshotIDs {
-		return nil, time.Time{}, ErrAccountPolicySnapshotLimit
-	}
-	for _, accountID := range accountIDs {
-		if accountID <= 0 {
-			return nil, time.Time{}, ErrInvalidAccountPolicyIDs
-		}
+	if err := validateAccountPolicyIDs(accountIDs); err != nil {
+		return nil, time.Time{}, err
 	}
 	if s == nil || s.pool == nil {
 		return nil, time.Time{}, errors.New("entitlements: account policy store unavailable")
@@ -129,6 +124,41 @@ func (s *Store) GetAccountPolicies(ctx context.Context, organizationID uuid.UUID
 		return nil, time.Time{}, fmt.Errorf("entitlements: begin bulk account policy snapshot: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	items, observedAt, err := s.GetAccountPoliciesInTx(ctx, tx, organizationID, accountIDs)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, time.Time{}, fmt.Errorf("entitlements: commit bulk account policy snapshot: %w", err)
+	}
+	return items, observedAt, nil
+}
+
+// GetAccountPoliciesInTx returns bounded per-account results using the
+// caller's transaction and snapshot. The caller owns transaction completion.
+func (s *Store) GetAccountPoliciesInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountIDs []int) ([]AccountPolicySnapshotResult, time.Time, error) {
+	if err := validateAccountPolicyIDs(accountIDs); err != nil {
+		return nil, time.Time{}, err
+	}
+	if s == nil || tx == nil {
+		return nil, time.Time{}, errors.New("entitlements: account policy store unavailable")
+	}
+	return getAccountPoliciesInTx(ctx, tx, organizationID, accountIDs)
+}
+
+func validateAccountPolicyIDs(accountIDs []int) error {
+	if len(accountIDs) > MaxAccountPolicySnapshotIDs {
+		return ErrAccountPolicySnapshotLimit
+	}
+	for _, accountID := range accountIDs {
+		if accountID <= 0 {
+			return ErrInvalidAccountPolicyIDs
+		}
+	}
+	return nil
+}
+
+func getAccountPoliciesInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountIDs []int) ([]AccountPolicySnapshotResult, time.Time, error) {
 	observedAt, err := accountPolicyObservedAt(ctx, tx)
 	if err != nil {
 		return nil, time.Time{}, err
@@ -156,9 +186,6 @@ func (s *Store) GetAccountPolicies(ctx context.Context, organizationID uuid.UUID
 		snapshot := accountPolicySnapshotFromBatch(account, profiles[accountID], observedAt, libraryIDs)
 		items = append(items, AccountPolicySnapshotResult{AccountID: accountID, Snapshot: &snapshot})
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, time.Time{}, fmt.Errorf("entitlements: commit bulk account policy snapshot: %w", err)
-	}
 	return items, observedAt, nil
 }
 
@@ -183,7 +210,8 @@ func loadAccountPolicyBatchAccounts(ctx context.Context, tx pgx.Tx, requestedOrg
 		       users.download_allowed,users.download_transcode_allowed,users.requests_allowed,
 		       users.access_group_id,groups.id,groups.managed_template_key,
 		       revisions.cohort_id,revisions.revision,
-		       revisions.source_template_key,revisions.source_template_revision,
+		       COALESCE(revisions.source_template_key,groups.managed_template_key),
+		       COALESCE(revisions.source_template_revision,groups.managed_template_revision),
 		       groups.library_ids,groups.max_playback_quality,groups.playback_allowed,
 		       groups.download_allowed,groups.download_transcode_allowed,
 		       groups.transcode_allowed,groups.audio_transcode_allowed,
@@ -246,7 +274,8 @@ func loadAccountPolicyBatchProfiles(ctx context.Context, tx pgx.Tx, requestedOrg
 		SELECT profiles.user_id,profiles.id,profiles.name,
 		       profiles.access_group_id,groups.id,groups.managed_template_key,
 		       revisions.cohort_id,revisions.revision,
-		       revisions.source_template_key,revisions.source_template_revision,
+		       COALESCE(revisions.source_template_key,groups.managed_template_key),
+		       COALESCE(revisions.source_template_revision,groups.managed_template_revision),
 		       groups.library_ids,groups.max_playback_quality,groups.playback_allowed,
 		       groups.download_allowed,groups.download_transcode_allowed,
 		       groups.transcode_allowed,groups.audio_transcode_allowed,
@@ -446,7 +475,8 @@ func loadAccountPolicyUser(ctx context.Context, tx pgx.Tx, organizationID uuid.U
 		       u.transcode_allowed,u.audio_transcode_allowed,u.max_profiles,
 		       u.download_allowed,u.download_transcode_allowed,u.requests_allowed,
 		       u.access_group_id,g.id,g.managed_template_key,revisions.cohort_id,
-		       revisions.revision,revisions.source_template_key,revisions.source_template_revision
+		       revisions.revision,COALESCE(revisions.source_template_key,g.managed_template_key),
+		       COALESCE(revisions.source_template_revision,g.managed_template_revision)
 		FROM users u
 		LEFT JOIN access_groups g
 		  ON g.organization_id=$1 AND g.id=u.access_group_id
@@ -481,7 +511,8 @@ func loadAccountPolicyProfiles(ctx context.Context, tx pgx.Tx, organizationID uu
 	rows, err := tx.Query(ctx, `
 		SELECT profiles.id,profiles.name,groups.id,groups.managed_template_key,
 		       revisions.cohort_id,revisions.revision,
-		       revisions.source_template_key,revisions.source_template_revision
+		       COALESCE(revisions.source_template_key,groups.managed_template_key),
+		       COALESCE(revisions.source_template_revision,groups.managed_template_revision)
 		FROM user_profiles profiles
 		JOIN access_groups groups
 		  ON groups.organization_id=profiles.organization_id

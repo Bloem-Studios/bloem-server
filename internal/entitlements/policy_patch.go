@@ -178,8 +178,14 @@ func canonicalPolicyPatch(patch PolicyPatch) (PolicyPatch, error) {
 func patchIntegerSet(current []int, operation SetOperation[int]) ([]int, error) {
 	switch operation.Mode {
 	case PolicySetAdd:
+		if current == nil {
+			return nil, nil
+		}
 		return append(append([]int{}, current...), operation.Values...), nil
 	case PolicySetRemove:
+		if current == nil {
+			return nil, fmt.Errorf("%w: materialize all libraries before removing values", ErrInvalidPolicy)
+		}
 		removed := make(map[int]struct{}, len(operation.Values))
 		for _, value := range operation.Values {
 			removed[value] = struct{}{}

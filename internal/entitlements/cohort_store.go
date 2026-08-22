@@ -139,7 +139,11 @@ func (s *Store) DeriveCohortInTx(ctx context.Context, tx pgx.Tx, organizationID 
 	if err != nil {
 		return CohortRevision{}, false, err
 	}
-	policy, err := ApplyPolicyPatch(parent.Policy, patch)
+	policy, err := resolveMaterializedPolicy(ctx, tx, parent.Policy)
+	if err != nil {
+		return CohortRevision{}, false, err
+	}
+	policy, err = ApplyPolicyPatch(policy, patch)
 	if err != nil {
 		return CohortRevision{}, false, err
 	}
@@ -223,6 +227,49 @@ func (s *Store) GetCohort(ctx context.Context, organizationID, cohortID uuid.UUI
 		return CohortRevision{}, ErrCohortNotFound
 	}
 	return getCohort(ctx, s.pool, organizationID, cohortID)
+}
+
+// GetCohortInTx returns one exact revision using the caller's transaction and
+// snapshot.
+func (s *Store) GetCohortInTx(ctx context.Context, tx pgx.Tx, organizationID, cohortID uuid.UUID) (CohortRevision, error) {
+	if s == nil || tx == nil || organizationID == uuid.Nil || cohortID == uuid.Nil {
+		return CohortRevision{}, ErrCohortNotFound
+	}
+	return getCohort(ctx, tx, organizationID, cohortID)
+}
+
+// FindExactCohort returns the immutable cohort for an exact template revision,
+// when one exists.
+func (s *Store) FindExactCohort(ctx context.Context, organizationID uuid.UUID, key string, revision int64) (CohortRevision, bool, error) {
+	if s == nil || s.pool == nil || organizationID == uuid.Nil {
+		return CohortRevision{}, false, ErrCohortNotFound
+	}
+	return getExactCohort(ctx, s.pool, organizationID, strings.TrimSpace(key), revision)
+}
+
+// FindExactCohortInTx uses the caller's transaction and snapshot.
+func (s *Store) FindExactCohortInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, key string, revision int64) (CohortRevision, bool, error) {
+	if s == nil || tx == nil || organizationID == uuid.Nil {
+		return CohortRevision{}, false, ErrCohortNotFound
+	}
+	return getExactCohort(ctx, tx, organizationID, strings.TrimSpace(key), revision)
+}
+
+// FindDerivedCohort returns a matching immutable derived cohort, when one
+// exists.
+func (s *Store) FindDerivedCohort(ctx context.Context, organizationID, parentID uuid.UUID, name, digest string) (CohortRevision, bool, error) {
+	if s == nil || s.pool == nil || organizationID == uuid.Nil {
+		return CohortRevision{}, false, ErrCohortNotFound
+	}
+	return getDerivedCohort(ctx, s.pool, organizationID, parentID, strings.TrimSpace(name), digest)
+}
+
+// FindDerivedCohortInTx uses the caller's transaction and snapshot.
+func (s *Store) FindDerivedCohortInTx(ctx context.Context, tx pgx.Tx, organizationID, parentID uuid.UUID, name, digest string) (CohortRevision, bool, error) {
+	if s == nil || tx == nil || organizationID == uuid.Nil {
+		return CohortRevision{}, false, ErrCohortNotFound
+	}
+	return getDerivedCohort(ctx, tx, organizationID, parentID, strings.TrimSpace(name), digest)
 }
 
 func lockCohortOrganization(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID) error {
