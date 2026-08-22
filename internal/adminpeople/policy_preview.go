@@ -488,13 +488,16 @@ func (s *Service) ValidatePolicyConfirmationInTx(ctx context.Context, tx pgx.Tx,
 	}
 	target, err := s.resolvePolicyTargetInTx(ctx, tx, organizationID, command)
 	if err != nil {
-		return invalid()
+		return PolicyConfirmation{}, policyConfirmationTargetError(err)
 	}
 	if err := lockPolicyConfirmationPolicies(ctx, tx, organizationID, accountIDs, record.targets, target); err != nil {
 		return PolicyConfirmation{}, err
 	}
 	lockedTarget, err := s.resolvePolicyTargetInTx(ctx, tx, organizationID, command)
-	if err != nil || !reflect.DeepEqual(target.binding(), lockedTarget.binding()) {
+	if err != nil {
+		return PolicyConfirmation{}, policyConfirmationTargetError(err)
+	}
+	if !reflect.DeepEqual(target.binding(), lockedTarget.binding()) {
 		return invalid()
 	}
 	target = lockedTarget
@@ -522,6 +525,13 @@ func (s *Service) ValidatePolicyConfirmationInTx(ctx context.Context, tx pgx.Tx,
 		Actor: actor, OrganizationID: organizationID, OrganizationPolicyRevision: actor.PolicyRevision,
 		ExpiresAt: payload.ExpiresAt,
 	}, nil
+}
+
+func policyConfirmationTargetError(err error) error {
+	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrInvalidPolicyCommand) {
+		return ErrInvalidPolicyConfirmation
+	}
+	return err
 }
 
 func (s *Service) loadActivePolicySelectionInTx(ctx context.Context, tx pgx.Tx, organizationID, reference uuid.UUID) (selectionRecord, error) {
@@ -694,19 +704,17 @@ func (s *Service) currentPolicyActor(ctx context.Context, organizationID uuid.UU
 }
 
 type policyTargetSource struct {
-	getTemplate       func(context.Context, string, int64) (entitlements.Template, error)
-	getCohort         func(context.Context, uuid.UUID, uuid.UUID) (entitlements.CohortRevision, error)
-	findExactCohort   func(context.Context, uuid.UUID, string, int64) (entitlements.CohortRevision, bool, error)
-	findDerivedCohort func(context.Context, uuid.UUID, uuid.UUID, string, string) (entitlements.CohortRevision, bool, error)
+	resolveExactCohort func(context.Context, uuid.UUID, string, int64) (entitlements.CohortRevision, bool, error)
+	getCohort          func(context.Context, uuid.UUID, uuid.UUID) (entitlements.CohortRevision, error)
+	findDerivedCohort  func(context.Context, uuid.UUID, uuid.UUID, string, string) (entitlements.CohortRevision, bool, error)
 }
 
 func (s *Service) resolvePolicyTarget(ctx context.Context, organizationID uuid.UUID, command PolicyCommand) (PolicyTarget, error) {
 	store := entitlements.NewTemplateStore(s.pool)
 	source := policyTargetSource{
-		getTemplate:       store.Get,
-		getCohort:         store.GetCohort,
-		findExactCohort:   store.FindExactCohort,
-		findDerivedCohort: store.FindDerivedCohort,
+		resolveExactCohort: store.ResolveExactCohort,
+		getCohort:          store.GetCohort,
+		findDerivedCohort:  store.FindDerivedCohort,
 	}
 	return s.resolvePolicyTargetWithDB(ctx, s.pool, organizationID, command, source)
 }
@@ -714,14 +722,11 @@ func (s *Service) resolvePolicyTarget(ctx context.Context, organizationID uuid.U
 func (s *Service) resolvePolicyTargetInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, command PolicyCommand) (PolicyTarget, error) {
 	store := entitlements.NewTemplateStore(s.pool)
 	source := policyTargetSource{
-		getTemplate: func(ctx context.Context, key string, revision int64) (entitlements.Template, error) {
-			return store.GetInTx(ctx, tx, key, revision)
+		resolveExactCohort: func(ctx context.Context, organizationID uuid.UUID, key string, revision int64) (entitlements.CohortRevision, bool, error) {
+			return store.ResolveExactCohortInTx(ctx, tx, organizationID, key, revision)
 		},
 		getCohort: func(ctx context.Context, organizationID, cohortID uuid.UUID) (entitlements.CohortRevision, error) {
 			return store.GetCohortInTx(ctx, tx, organizationID, cohortID)
-		},
-		findExactCohort: func(ctx context.Context, organizationID uuid.UUID, key string, revision int64) (entitlements.CohortRevision, bool, error) {
-			return store.FindExactCohortInTx(ctx, tx, organizationID, key, revision)
 		},
 		findDerivedCohort: func(ctx context.Context, organizationID, parentID uuid.UUID, name, digest string) (entitlements.CohortRevision, bool, error) {
 			return store.FindDerivedCohortInTx(ctx, tx, organizationID, parentID, name, digest)
@@ -746,25 +751,11 @@ func (s *Service) resolvePolicyTargetWithDB(ctx context.Context, db policyPrevie
 		}
 		target = policyTargetFromCohort(PolicyAssignEntitlementCohort, cohort)
 	case PolicyApplyEntitlementTemplate:
-		template, err := source.getTemplate(ctx, strings.TrimSpace(command.TemplateKey), command.TemplateRevision)
+		cohort, _, err := source.resolveExactCohort(ctx, organizationID, strings.TrimSpace(command.TemplateKey), command.TemplateRevision)
 		if err != nil {
 			return PolicyTarget{}, policyTargetLookupError(err)
 		}
-		if !template.Enabled || template.Archived {
-			return PolicyTarget{}, ErrNotFound
-		}
-		cohort, found, err := source.findExactCohort(ctx, organizationID, template.Key, template.Revision)
-		if err != nil {
-			return PolicyTarget{}, err
-		}
-		if found && !cohort.Archived {
-			return policyTargetFromCohort(PolicyApplyEntitlementTemplate, cohort), nil
-		}
-		policy, err := materializePreviewPolicyWithDB(ctx, db, template.Policy)
-		if err != nil {
-			return PolicyTarget{}, err
-		}
-		target = PolicyTarget{Kind: PolicyApplyEntitlementTemplate, TemplateKey: template.Key, TemplateRevision: template.Revision, Name: template.Name, policy: policy}
+		return policyTargetFromCohort(PolicyApplyEntitlementTemplate, cohort), nil
 	case PolicyDeriveEntitlementCohort:
 		parent, err := source.getCohort(ctx, organizationID, command.CohortID)
 		if err != nil {

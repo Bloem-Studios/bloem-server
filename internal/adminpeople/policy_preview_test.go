@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/google/uuid"
@@ -188,6 +189,94 @@ func TestPolicyPreviewUsesImmutableExactCohortPolicyAfterDynamicLibrariesChange(
 	}
 	if preview.Target.GroupID != premium.AccessGroupID || preview.Target.PolicyDigest != premium.PolicyDigest {
 		t.Fatalf("exact cohort identity/policy mismatch: target=%+v cohort=%+v", preview.Target, premium)
+	}
+}
+
+func TestPolicyPreviewUsesArchivedExactCohortPolicyTask4WillReuse(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE entitlement_policy_cohorts AS c SET archived=true
+		FROM entitlement_policy_cohort_revisions AS r
+		WHERE r.id=$1 AND c.id=r.cohort_id`, premium.ID); err != nil {
+		t.Fatal(err)
+	}
+	var laterLibraryID int
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		INSERT INTO media_folders (type,name,enabled)
+		VALUES ('movies',$1,true) RETURNING id`, "preview-archived-later-"+uuid.NewString()).Scan(&laterLibraryID); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, PolicyCommand{Kind: PolicyApplyEntitlementTemplate, TemplateKey: "premium", TemplateRevision: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.Target.GroupID != premium.AccessGroupID || preview.Target.PolicyDigest != premium.PolicyDigest {
+		t.Fatalf("archived exact preview target = %+v, want group %d digest %s", preview.Target, premium.AccessGroupID, premium.PolicyDigest)
+	}
+	for _, libraryID := range preview.Target.Policy.LibraryIDs {
+		if libraryID == laterLibraryID {
+			t.Fatalf("archived exact target rematerialized later library %d: %+v", laterLibraryID, preview.Target)
+		}
+	}
+	tx, err := fixture.pool.Begin(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(fixture.ctx) }()
+	reused, created, err := store.EnsureExactCohortInTx(fixture.ctx, tx, fixture.orgA, "premium", 1, fixture.ownerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created || reused.ID != premium.ID || reused.PolicyDigest != preview.Target.PolicyDigest || reused.AccessGroupID != preview.Target.GroupID {
+		t.Fatalf("Task 4 reuse = %+v created=%v, preview=%+v", reused, created, preview.Target)
+	}
+}
+
+func TestPolicyPreviewUsesUnadoptedGroupPolicyTask4WillAdopt(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	groupID := createUnadoptedPreviewGroup(t, fixture, "premium", 1)
+	var laterLibraryID int
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		INSERT INTO media_folders (type,name,enabled)
+		VALUES ('movies',$1,true) RETURNING id`, "preview-adoption-later-"+uuid.NewString()).Scan(&laterLibraryID); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, PolicyCommand{Kind: PolicyApplyEntitlementTemplate, TemplateKey: "premium", TemplateRevision: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.Target.GroupID != int64(groupID) {
+		t.Fatalf("unadopted preview group = %d, want %d", preview.Target.GroupID, groupID)
+	}
+	for _, libraryID := range preview.Target.Policy.LibraryIDs {
+		if libraryID == laterLibraryID {
+			t.Fatalf("unadopted target rematerialized later library %d: %+v", laterLibraryID, preview.Target)
+		}
+	}
+	tx, err := fixture.pool.Begin(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(fixture.ctx) }()
+	adopted, created, err := store.EnsureExactCohortInTx(fixture.ctx, tx, fixture.orgA, "premium", 1, fixture.ownerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !created || adopted.AccessGroupID != int64(groupID) || adopted.PolicyDigest != preview.Target.PolicyDigest {
+		t.Fatalf("Task 4 adoption = %+v created=%v, preview=%+v", adopted, created, preview.Target)
 	}
 }
 
@@ -474,6 +563,41 @@ func TestValidatePolicyConfirmationInTxLocksObservedStateUntilCallerCommit(t *te
 	}
 	if _, err := mutationTx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1 WHERE id=$1`, fixture.sharedAccountID); err == nil || !strings.Contains(strings.ToLower(err.Error()), "lock timeout") {
 		t.Fatalf("concurrent observed-state update error = %v, want lock timeout", err)
+	}
+}
+
+func TestValidatePolicyConfirmationInTxPreservesTargetLookupCancellation(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyApplyEntitlementTemplate, TemplateKey: "premium", TemplateRevision: 1}
+	actorCtx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(actorCtx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	validationTx, err := fixture.pool.BeginTx(actorCtx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = validationTx.Rollback(actorCtx) }()
+	blockerTx, err := fixture.pool.Begin(actorCtx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = blockerTx.Rollback(actorCtx) }()
+	if _, err := blockerTx.Exec(actorCtx, `LOCK TABLE entitlement_templates IN ACCESS EXCLUSIVE MODE`); err != nil {
+		t.Fatal(err)
+	}
+
+	deadlineCtx, cancel := context.WithTimeout(actorCtx, 100*time.Millisecond)
+	defer cancel()
+	_, err = fixture.service.ValidatePolicyConfirmationInTx(deadlineCtx, validationTx, fixture.orgA, fixture.ownerID, selection.Token, command, preview.ConfirmationToken)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("target lookup cancellation error = %v, want context deadline exceeded", err)
 	}
 }
 

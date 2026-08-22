@@ -57,6 +57,82 @@ func (s *Store) EnsureExactCohortInTx(ctx context.Context, tx pgx.Tx, organizati
 		return CohortRevision{}, false, fmt.Errorf("%w: actor is required to create an exact cohort", ErrInvalidPolicy)
 	}
 
+	result, found, err := resolveExactCohortCandidate(ctx, tx, organizationID, key, revision, true)
+	if err != nil {
+		return CohortRevision{}, false, err
+	}
+
+	cohortID := uuid.New()
+	revisionID := uuid.New()
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO entitlement_policy_cohorts (id,organization_id,name)
+		VALUES ($1,$2,$3)`, cohortID, organizationID, result.Name); err != nil {
+		return CohortRevision{}, false, fmt.Errorf("entitlements: create exact cohort identity: %w", err)
+	}
+	if !found {
+		result.AccessGroupID, err = insertCohortGroup(ctx, tx, organizationID, revisionID, result.SourceTemplateKey, result.SourceTemplateRevision, result.Name, result.Policy)
+		if err != nil {
+			return CohortRevision{}, false, err
+		}
+	}
+	result.ID, result.CreatedByAccountID = revisionID, actorID
+	if err := insertCohortRevision(ctx, tx, cohortID, result); err != nil {
+		return CohortRevision{}, false, err
+	}
+	if found {
+		if _, err := tx.Exec(ctx, `
+			UPDATE access_groups
+			SET managed_cohort_id=$3
+			WHERE organization_id=$1 AND id=$2`, organizationID, result.AccessGroupID, revisionID); err != nil {
+			return CohortRevision{}, false, fmt.Errorf("entitlements: adopt template-managed group: %w", err)
+		}
+	}
+	loaded, err := getCohort(ctx, tx, organizationID, revisionID)
+	if err != nil {
+		return CohortRevision{}, false, err
+	}
+	return loaded, true, nil
+}
+
+// ResolveExactCohort returns the immutable exact cohort Task 4 will reuse or,
+// when absent, the complete non-mutating candidate EnsureExactCohortInTx will
+// create or adopt. Existing archived exact cohorts remain authoritative.
+func (s *Store) ResolveExactCohort(ctx context.Context, organizationID uuid.UUID, key string, revision int64) (CohortRevision, bool, error) {
+	if s == nil || s.pool == nil {
+		return CohortRevision{}, false, ErrCohortNotFound
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+	if err != nil {
+		return CohortRevision{}, false, fmt.Errorf("entitlements: begin exact cohort resolution: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	resolved, existing, err := s.ResolveExactCohortInTx(ctx, tx, organizationID, key, revision)
+	if err != nil {
+		return CohortRevision{}, false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return CohortRevision{}, false, fmt.Errorf("entitlements: commit exact cohort resolution: %w", err)
+	}
+	return resolved, existing, nil
+}
+
+// ResolveExactCohortInTx resolves through the caller's transaction without
+// creating or adopting a cohort.
+func (s *Store) ResolveExactCohortInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, key string, revision int64) (CohortRevision, bool, error) {
+	key = strings.TrimSpace(key)
+	if s == nil || tx == nil || organizationID == uuid.Nil || key == "" || revision <= 0 {
+		return CohortRevision{}, false, fmt.Errorf("%w: organization and template revision are required", ErrInvalidPolicy)
+	}
+	if existing, found, err := getExactCohort(ctx, tx, organizationID, key, revision); err != nil {
+		return CohortRevision{}, false, err
+	} else if found {
+		return existing, true, nil
+	}
+	candidate, _, err := resolveExactCohortCandidate(ctx, tx, organizationID, key, revision, false)
+	return candidate, false, err
+}
+
+func resolveExactCohortCandidate(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, key string, revision int64, lockAdoptableGroup bool) (CohortRevision, bool, error) {
 	template, err := getTemplate(ctx, tx, key, revision, false)
 	if err != nil {
 		return CohortRevision{}, false, err
@@ -64,8 +140,7 @@ func (s *Store) EnsureExactCohortInTx(ctx context.Context, tx pgx.Tx, organizati
 	if !template.Enabled || template.Archived {
 		return CohortRevision{}, false, ErrTemplateUnavailable
 	}
-
-	groupID, policy, found, err := loadUnadoptedTemplateGroup(ctx, tx, organizationID, key, revision)
+	groupID, policy, found, err := loadUnadoptedTemplateGroup(ctx, tx, organizationID, key, revision, lockAdoptableGroup)
 	if err != nil {
 		return CohortRevision{}, false, err
 	}
@@ -87,42 +162,12 @@ func (s *Store) EnsureExactCohortInTx(ctx context.Context, tx pgx.Tx, organizati
 	if err != nil {
 		return CohortRevision{}, false, err
 	}
-
-	cohortID := uuid.New()
-	revisionID := uuid.New()
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO entitlement_policy_cohorts (id,organization_id,name)
-		VALUES ($1,$2,$3)`, cohortID, organizationID, template.Name); err != nil {
-		return CohortRevision{}, false, fmt.Errorf("entitlements: create exact cohort identity: %w", err)
-	}
-	if !found {
-		groupID, err = insertCohortGroup(ctx, tx, organizationID, revisionID, template.Key, template.Revision, template.Name, policy)
-		if err != nil {
-			return CohortRevision{}, false, err
-		}
-	}
-	result := CohortRevision{
-		ID: revisionID, OrganizationID: organizationID, Name: template.Name, Revision: 1,
+	return CohortRevision{
+		OrganizationID: organizationID, Name: template.Name, Revision: 1,
 		AccessGroupID: groupID, SourceTemplateKey: template.Key,
 		SourceTemplateRevision: template.Revision, DerivationKind: "exact_template",
-		Policy: policy, PolicyDigest: digest, CreatedByAccountID: actorID,
-	}
-	if err := insertCohortRevision(ctx, tx, cohortID, result); err != nil {
-		return CohortRevision{}, false, err
-	}
-	if found {
-		if _, err := tx.Exec(ctx, `
-			UPDATE access_groups
-			SET managed_cohort_id=$3
-			WHERE organization_id=$1 AND id=$2`, organizationID, groupID, revisionID); err != nil {
-			return CohortRevision{}, false, fmt.Errorf("entitlements: adopt template-managed group: %w", err)
-		}
-	}
-	loaded, err := getCohort(ctx, tx, organizationID, revisionID)
-	if err != nil {
-		return CohortRevision{}, false, err
-	}
-	return loaded, true, nil
+		Policy: policy, PolicyDigest: digest,
+	}, found, nil
 }
 
 // DeriveCohortInTx creates or reuses a child cohort with a complete patched
@@ -282,10 +327,10 @@ func lockCohortOrganization(ctx context.Context, tx pgx.Tx, organizationID uuid.
 	return nil
 }
 
-func loadUnadoptedTemplateGroup(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, key string, revision int64) (int64, Policy, bool, error) {
+func loadUnadoptedTemplateGroup(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, key string, revision int64, lock bool) (int64, Policy, bool, error) {
 	var id int64
 	var policy Policy
-	err := tx.QueryRow(ctx, `
+	query := `
 		SELECT id,library_ids,playback_allowed,max_streams,max_profiles,
 		       transcode_allowed,max_transcodes,download_allowed,
 		       download_transcode_allowed,max_playback_quality,
@@ -296,8 +341,11 @@ func loadUnadoptedTemplateGroup(ctx context.Context, tx pgx.Tx, organizationID u
 		  AND managed_template_revision=$3
 		  AND managed_cohort_id IS NULL
 		ORDER BY is_default DESC,id
-		LIMIT 1
-		FOR UPDATE`, organizationID, key, revision).Scan(
+		LIMIT 1`
+	if lock {
+		query += ` FOR UPDATE`
+	}
+	err := tx.QueryRow(ctx, query, organizationID, key, revision).Scan(
 		&id, &policy.LibraryIDs, &policy.PlaybackAllowed, &policy.MaxStreams,
 		&policy.MaxProfiles, &policy.TranscodeAllowed, &policy.MaxTranscodes,
 		&policy.DownloadAllowed, &policy.DownloadTranscodeAllowed,
