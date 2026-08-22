@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
@@ -163,6 +164,7 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 			mountUnavailableAdminContextRoutes(r)
 			return
 		}
+		mountPlatformEntitlementBulkRoutes(r, accountPolicyHandler, authMW, adminMW)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(adminMW.Require)
 			if entitlementHandler != nil {
@@ -269,6 +271,60 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 				_, _ = w.Write([]byte("{\"error\":\"not_found\",\"message\":\"Administrative resource not found\"}\n"))
 			}))
 		})
+	})
+}
+
+// mountPlatformEntitlementBulkRoutes is the one v2 platform surface that may
+// authenticate with either a short-lived platform context or a narrowly
+// scoped API key. Selecting the established validator from the bearer-token
+// prefix keeps both credential formats on their normal validation path.
+func mountPlatformEntitlementBulkRoutes(r chi.Router, handler *handlers.AdminHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware) {
+	if handler == nil || authMW == nil || adminMW == nil {
+		return
+	}
+	eitherPlatformCredential := func(next http.Handler) http.Handler {
+		admin := adminMW.Require(next)
+		apiKey := authMW.RequireAuth(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			parts := strings.Fields(r.Header.Get("Authorization"))
+			if len(parts) == 2 && strings.EqualFold(parts[0], "bearer") && strings.HasPrefix(parts[1], "sa_") {
+				apiKey.ServeHTTP(w, r)
+				return
+			}
+			admin.ServeHTTP(w, r)
+		})
+	}
+	r.Group(func(r chi.Router) {
+		r.Use(eitherPlatformCredential)
+		type route struct {
+			method, pattern string
+			handler         http.HandlerFunc
+		}
+		routes := []route{
+			{http.MethodGet, "/admin/platform/organizations/{organization_id}/entitlement-cohorts", handler.HandleListPlatformEntitlementCohorts},
+			{http.MethodGet, "/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}", handler.HandleGetPlatformEntitlementCohort},
+			{http.MethodPost, "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews", handler.HandleCreatePlatformOrganizationPolicyPreview},
+			{http.MethodPost, "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs", handler.HandleCreatePlatformOrganizationPolicyJob},
+			{http.MethodGet, "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}", handler.HandleGetPlatformOrganizationPolicyJob},
+			{http.MethodPost, "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel", handler.HandleCancelPlatformOrganizationPolicyJob},
+			{http.MethodPost, "/admin/platform/accounts/entitlement-bulk/policy-previews", handler.HandleCreatePlatformDirectPolicyPreview},
+			{http.MethodPost, "/admin/platform/accounts/entitlement-bulk/policy-jobs", handler.HandleCreatePlatformDirectPolicyJob},
+			{http.MethodGet, "/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}", handler.HandleGetPlatformDirectPolicyJob},
+			{http.MethodPost, "/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel", handler.HandleCancelPlatformDirectPolicyJob},
+		}
+		for _, item := range routes {
+			item := item
+			r.Handle(item.pattern, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				if request.Method == item.method {
+					item.handler.ServeHTTP(w, request)
+					return
+				}
+				w.Header().Set("Allow", item.method)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				_, _ = w.Write([]byte("{\"error\":\"method_not_allowed\",\"message\":\"Method not allowed\"}\n"))
+			}))
+		}
 	})
 }
 

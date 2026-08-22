@@ -164,9 +164,14 @@ type AdminHandler struct {
 	// tenantStore gates tenant-scoped account creation (vondel-park growth
 	// G2); nil means tenants are not wired and an organization_id request
 	// is refused.
-	tenantStore        *tenancy.Store
-	directEntitlements DirectEntitlementProvisioner
-	accountPolicies    AccountPolicyReader
+	tenantStore                      *tenancy.Store
+	directEntitlements               DirectEntitlementProvisioner
+	accountPolicies                  AccountPolicyReader
+	platformEntitlementCohorts       PlatformEntitlementBulkCohortStore
+	platformEntitlementPeople        PlatformEntitlementBulkPeopleService
+	platformEntitlementOrganizations PlatformEntitlementBulkOrganizationStore
+	platformEntitlementAuthorizer    auth.PlatformAdminAuthorizer
+	platformEntitlementWorker        AdminPeopleWorkerWake
 }
 
 // SetProfileHandler wires the same fully configured profile handler used by
@@ -188,6 +193,23 @@ func (h *AdminHandler) SetDirectEntitlements(store DirectEntitlementProvisioner)
 // SetAccountPolicies wires authoritative platform account-policy reads.
 func (h *AdminHandler) SetAccountPolicies(store AccountPolicyReader) {
 	h.accountPolicies = store
+}
+
+// SetPlatformEntitlementBulk wires generic platform cohort discovery and the
+// policy-specific durable people workflow. The boundary intentionally exposes
+// no generic people bulk-job methods.
+func (h *AdminHandler) SetPlatformEntitlementBulk(
+	cohorts PlatformEntitlementBulkCohortStore,
+	people PlatformEntitlementBulkPeopleService,
+	organizations PlatformEntitlementBulkOrganizationStore,
+	authorizer auth.PlatformAdminAuthorizer,
+	worker AdminPeopleWorkerWake,
+) {
+	h.platformEntitlementCohorts = cohorts
+	h.platformEntitlementPeople = people
+	h.platformEntitlementOrganizations = organizations
+	h.platformEntitlementAuthorizer = authorizer
+	h.platformEntitlementWorker = worker
 }
 
 // NewAdminHandler creates a new AdminHandler backed by the given

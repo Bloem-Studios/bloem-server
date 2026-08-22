@@ -8,10 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -171,6 +173,87 @@ func TestV2AuthoritativeAccountPolicyRoutesAreMountedBehindPlatformContext(t *te
 	}
 }
 
+func TestV2PlatformEntitlementBulkRoutesUseExactMethodsWithoutRedirects(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	tokens := auth.NewAdminContextTokenService("router-entitlement-bulk-test-secret")
+	adminMW := apimw.NewAdminContextMiddleware(tokens, v2AdminTenantResolverStub{}, v2AdminMembershipStoreStub{}, v2AdminPlatformAuthorizerAllowedStub{})
+	authMW := apimw.NewAuthMiddleware(v2TokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}}, v2SessionValidator{}, nil, nil)
+	bulkStore := &v2EntitlementBulkStoreStub{organization: tenancy.Organization{ID: organizationID, Status: tenancy.OrganizationActive}}
+	handler := handlers.NewAdminHandler(nil, nil, nil)
+	handler.SetPlatformEntitlementBulk(bulkStore, bulkStore, bulkStore, v2AdminPlatformAuthorizerAllowedStub{}, nil)
+	router := chi.NewRouter()
+	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, authMW, adminMW, handler)
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopePlatform})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := "/api/v2/admin/platform/organizations/" + organizationID.String() + "/entitlement-cohorts"
+
+	for _, test := range []struct {
+		method string
+		path   string
+		want   int
+	}{
+		{method: http.MethodGet, path: path, want: http.StatusOK},
+		{method: http.MethodDelete, path: path, want: http.StatusMethodNotAllowed},
+		{method: http.MethodGet, path: path + "/", want: http.StatusNotFound},
+	} {
+		req := httptest.NewRequest(test.method, test.path, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != test.want {
+			t.Fatalf("%s %s = %d, want %d: %s", test.method, test.path, rec.Code, test.want, rec.Body.String())
+		}
+		if rec.Code >= 300 && rec.Code < 400 {
+			t.Fatalf("%s %s redirected with %d", test.method, test.path, rec.Code)
+		}
+	}
+}
+
+type v2APIKeyValidatorStub struct{ key *models.APIKey }
+
+func (s v2APIKeyValidatorStub) GetByKey(context.Context, string) (*models.APIKey, error) {
+	return s.key, nil
+}
+
+func (v2APIKeyValidatorStub) UpdateLastUsed(context.Context, int64) error { return nil }
+
+type v2APIKeyOwnerStub struct{ owner *models.User }
+
+func (s v2APIKeyOwnerStub) GetByID(context.Context, int) (*models.User, error) { return s.owner, nil }
+
+func TestV2PlatformEntitlementBulkScopedAPIKeyUsesExistingAuthentication(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	tokens := auth.NewAdminContextTokenService("router-entitlement-bulk-api-key-test-secret")
+	adminMW := apimw.NewAdminContextMiddleware(tokens, v2AdminTenantResolverStub{}, v2AdminMembershipStoreStub{}, v2AdminPlatformAuthorizerAllowedStub{})
+	key := &models.APIKey{ID: 1, UserID: 7, Key: "sa_bulk", Scopes: []string{auth.ScopeAdminEntitlementsBulk}}
+	authMW := apimw.NewAuthMiddleware(nil, nil, v2APIKeyValidatorStub{key: key}, v2APIKeyOwnerStub{owner: &models.User{ID: 7, Role: "admin", Enabled: true}})
+	bulkStore := &v2EntitlementBulkStoreStub{organization: tenancy.Organization{ID: organizationID, Status: tenancy.OrganizationActive}}
+	handler := handlers.NewAdminHandler(nil, nil, nil)
+	handler.SetPlatformEntitlementBulk(bulkStore, bulkStore, bulkStore, v2AdminPlatformAuthorizerAllowedStub{}, nil)
+	router := chi.NewRouter()
+	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, authMW, adminMW, handler)
+	path := "/api/v2/admin/platform/organizations/" + organizationID.String() + "/entitlement-cohorts"
+
+	request := httptest.NewRequest(http.MethodGet, path, nil)
+	request.Header.Set("Authorization", "Bearer sa_bulk")
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("scoped API key response = %d %s", recorder.Code, recorder.Body.String())
+	}
+
+	key.Scopes = []string{auth.ScopeAdminUsers}
+	request = httptest.NewRequest(http.MethodGet, path, nil)
+	request.Header.Set("Authorization", "Bearer sa_bulk")
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("wrong-scope API key response = %d, want 403: %s", recorder.Code, recorder.Body.String())
+	}
+}
+
 func TestV2AdminPeopleRoutesAreMountedBehindOrganizationContext(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	membershipID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
@@ -301,6 +384,46 @@ type v2AccountPolicyReaderStub struct{}
 
 func (v2AccountPolicyReaderStub) GetAccountPolicy(context.Context, uuid.UUID, int) (entitlements.AccountPolicySnapshot, error) {
 	return entitlements.AccountPolicySnapshot{ObservedAt: time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC), AccountID: 42}, nil
+}
+
+type v2EntitlementBulkStoreStub struct {
+	organization tenancy.Organization
+}
+
+func (s *v2EntitlementBulkStoreStub) ListCohorts(context.Context, uuid.UUID, bool) ([]entitlements.CohortRevision, error) {
+	return []entitlements.CohortRevision{}, nil
+}
+
+func (s *v2EntitlementBulkStoreStub) GetCohort(context.Context, uuid.UUID, uuid.UUID) (entitlements.CohortRevision, error) {
+	return entitlements.CohortRevision{}, entitlements.ErrCohortNotFound
+}
+
+func (s *v2EntitlementBulkStoreStub) DefaultOrganization(context.Context) (tenancy.Organization, error) {
+	return s.organization, nil
+}
+
+func (s *v2EntitlementBulkStoreStub) GetOrganization(context.Context, uuid.UUID) (tenancy.Organization, error) {
+	return s.organization, nil
+}
+
+func (s *v2EntitlementBulkStoreStub) CreateSelection(context.Context, uuid.UUID, adminpeople.Filter) (adminpeople.Selection, error) {
+	return adminpeople.Selection{}, nil
+}
+
+func (s *v2EntitlementBulkStoreStub) PreviewPolicy(context.Context, uuid.UUID, int, string, adminpeople.PolicyCommand) (adminpeople.PolicyPreview, error) {
+	return adminpeople.PolicyPreview{}, nil
+}
+
+func (s *v2EntitlementBulkStoreStub) EnqueuePolicyBulk(context.Context, uuid.UUID, int, adminpeople.PolicyBulkAction) (adminpeople.BulkResult, error) {
+	return adminpeople.BulkResult{}, nil
+}
+
+func (s *v2EntitlementBulkStoreStub) GetPolicyBulkJob(context.Context, uuid.UUID, string) (adminpeople.BulkResult, error) {
+	return adminpeople.BulkResult{}, nil
+}
+
+func (s *v2EntitlementBulkStoreStub) CancelPolicyBulkJob(context.Context, uuid.UUID, int, string) (adminpeople.BulkResult, error) {
+	return adminpeople.BulkResult{}, nil
 }
 
 func (v2AccountPolicyReaderStub) GetAccountPolicies(context.Context, uuid.UUID, []int) ([]entitlements.AccountPolicySnapshotResult, time.Time, error) {

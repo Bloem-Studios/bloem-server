@@ -22,6 +22,8 @@ type scopeRoute struct {
 	pattern *regexp.Regexp
 }
 
+const apiKeyScopeUUIDPattern = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
+
 var apiKeyScopeRoutes = map[string][]scopeRoute{
 	auth.ScopeAdminUsers: {
 		{http.MethodGet, regexp.MustCompile(`^/api/v1/admin/users$`)},
@@ -34,6 +36,18 @@ var apiKeyScopeRoutes = map[string][]scopeRoute{
 	auth.ScopeAdminAccessGroupsRead: {
 		{http.MethodGet, regexp.MustCompile(`^/api/v1/admin/access-groups$`)},
 		{http.MethodGet, regexp.MustCompile(`^/api/v1/admin/access-groups/[0-9]+$`)},
+	},
+	auth.ScopeAdminEntitlementsBulk: {
+		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-cohorts$`)},
+		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-cohorts/` + apiKeyScopeUUIDPattern + `$`)},
+		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-bulk/policy-previews$`)},
+		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-bulk/policy-jobs$`)},
+		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-bulk/policy-jobs/[^/]+$`)},
+		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-bulk/policy-jobs/[^/]+/cancel$`)},
+		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/accounts/entitlement-bulk/policy-previews$`)},
+		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs$`)},
+		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/[^/]+$`)},
+		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/[^/]+/cancel$`)},
 	},
 }
 

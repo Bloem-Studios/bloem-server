@@ -13,6 +13,7 @@ import (
 func TestAPIKeyScopesAllow(t *testing.T) {
 	users := []string{auth.ScopeAdminUsers}
 	groups := []string{auth.ScopeAdminAccessGroupsRead}
+	entitlementBulk := []string{auth.ScopeAdminEntitlementsBulk}
 	both := []string{auth.ScopeAdminUsers, auth.ScopeAdminAccessGroupsRead}
 
 	tests := []struct {
@@ -56,6 +57,15 @@ func TestAPIKeyScopesAllow(t *testing.T) {
 
 		{"combined scopes union", both, http.MethodGet, "/api/v1/admin/access-groups", true},
 		{"combined scopes still deny elsewhere", both, http.MethodPut, "/api/v1/admin/settings", false},
+
+		{"entitlement bulk lists cohorts", entitlementBulk, http.MethodGet, "/api/v2/admin/platform/organizations/10000000-0000-0000-0000-000000000001/entitlement-cohorts", true},
+		{"entitlement bulk gets cohort", entitlementBulk, http.MethodGet, "/api/v2/admin/platform/organizations/10000000-0000-0000-0000-000000000001/entitlement-cohorts/20000000-0000-0000-0000-000000000002", true},
+		{"entitlement bulk previews organization", entitlementBulk, http.MethodPost, "/api/v2/admin/platform/organizations/10000000-0000-0000-0000-000000000001/entitlement-bulk/policy-previews", true},
+		{"entitlement bulk gets organization job", entitlementBulk, http.MethodGet, "/api/v2/admin/platform/organizations/10000000-0000-0000-0000-000000000001/entitlement-bulk/policy-jobs/job-1", true},
+		{"entitlement bulk cancels direct job", entitlementBulk, http.MethodPost, "/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/job-1/cancel", true},
+		{"entitlement bulk denies wrong method", entitlementBulk, http.MethodDelete, "/api/v2/admin/platform/organizations/10000000-0000-0000-0000-000000000001/entitlement-cohorts", false},
+		{"entitlement bulk denies malformed organization id", entitlementBulk, http.MethodGet, "/api/v2/admin/platform/organizations/----/entitlement-cohorts", false},
+		{"entitlement bulk denies nearby account policy", entitlementBulk, http.MethodGet, "/api/v2/admin/platform/accounts/42/entitlement", false},
 	}
 
 	for _, tt := range tests {

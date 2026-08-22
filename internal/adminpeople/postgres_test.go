@@ -547,6 +547,42 @@ func TestServiceCreateSelectionCountsAndTargetsShareOneSnapshot(t *testing.T) {
 	}
 }
 
+func TestServiceCreateSelectionRequiresEveryExplicitAccountInOrganization(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	var foreignOnlyID int
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT m.account_id
+		FROM organization_memberships m
+		WHERE m.organization_id=$1
+		  AND NOT EXISTS (
+			SELECT 1 FROM organization_memberships own
+			WHERE own.organization_id=$2 AND own.account_id=m.account_id
+		  )
+		ORDER BY m.account_id
+		LIMIT 1`, fixture.orgB, fixture.orgA).Scan(&foreignOnlyID); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{
+		AccountIDs: []int{fixture.sharedAccountID, foreignOnlyID}, RequireAllAccountIDs: true,
+		Status: []tenancy.MembershipStatus{tenancy.MembershipActive},
+	})
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("foreign explicit account error = %v, want ErrNotFound", err)
+	}
+
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{
+		AccountIDs: []int{fixture.sharedAccountID, fixture.ownerID}, RequireAllAccountIDs: true,
+		Status: []tenancy.MembershipStatus{tenancy.MembershipActive},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selection.Matched != 2 || selection.Excluded != 0 {
+		t.Fatalf("selection = %#v, want exactly two scoped accounts", selection)
+	}
+}
+
 func TestServiceBulkSkipsAuthorizationStateChangedAfterSelection(t *testing.T) {
 	fixture := newPeopleFixture(t)
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET role='admin' WHERE id=$1`, fixture.ownerID); err != nil {

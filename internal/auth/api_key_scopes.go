@@ -24,6 +24,11 @@ const (
 
 	// ScopeAdminAccessGroupsRead covers read-only access-group discovery.
 	ScopeAdminAccessGroupsRead = "admin:access-groups:read"
+
+	// ScopeAdminEntitlementsBulk permits the generic platform cohort and
+	// confirmed durable bulk-policy surface. The owning account must still be
+	// an enabled platform administrator.
+	ScopeAdminEntitlementsBulk = "admin:entitlements:bulk"
 )
 
 // APIKeyScope is one scope a key may carry, paired with the description
@@ -46,6 +51,10 @@ func APIKeyScopeCatalog() []APIKeyScope {
 		{
 			Name:        ScopeAdminAccessGroupsRead,
 			Description: "Read access groups and their policies.",
+		},
+		{
+			Name:        ScopeAdminEntitlementsBulk,
+			Description: "Discover organization policy cohorts and run confirmed durable bulk entitlement jobs.",
 		},
 	}
 }

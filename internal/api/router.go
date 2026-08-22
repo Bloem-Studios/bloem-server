@@ -1201,6 +1201,17 @@ func NewRouter(deps Dependencies) chi.Router {
 			entitlementStore := entitlements.NewTemplateStore(deps.DB)
 			adminHandler.SetDirectEntitlements(entitlementStore)
 			adminHandler.SetAccountPolicies(entitlementStore)
+			platformPeople := deps.AdminPeopleService
+			if platformPeople == nil && deps.Config != nil {
+				platformPeople = adminpeople.NewService(deps.DB, deps.Config.Auth.JWTSecret)
+			}
+			platformAuthorizer := deps.PlatformAdminAuthorizer
+			if platformAuthorizer == nil {
+				platformAuthorizer = auth.NewPlatformAdminAuthorizer(userRepo)
+			}
+			if platformPeople != nil {
+				adminHandler.SetPlatformEntitlementBulk(entitlementStore, platformPeople, tenantOrgStore, platformAuthorizer, deps.AdminPeopleWorker)
+			}
 			adminTenantsHandler = handlers.NewAdminTenantsHandler(tenantOrgStore, userRepo)
 			memberAccounts := auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider)
 			memberService := tenancy.NewMemberService(

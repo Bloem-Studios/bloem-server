@@ -63,13 +63,19 @@ var (
 )
 
 type Filter struct {
-	Query       string
-	Status      []tenancy.MembershipStatus
-	GroupIDs    []int
-	ActiveSince *time.Time
-	Sort        string
-	Limit       int
-	Cursor      string
+	Query    string
+	Status   []tenancy.MembershipStatus
+	GroupIDs []int
+	// AccountIDs is an explicit Server account selector. It is canonicalized
+	// and bounded with the rest of the immutable selection input.
+	AccountIDs []int
+	// RequireAllAccountIDs makes an explicit selector fail closed when any
+	// account is absent from the requested organization scope.
+	RequireAllAccountIDs bool
+	ActiveSince          *time.Time
+	Sort                 string
+	Limit                int
+	Cursor               string
 }
 
 type ProfileSummary struct {
@@ -195,6 +201,7 @@ type canonicalFilter struct {
 	Query       string                     `json:"query,omitempty"`
 	Status      []tenancy.MembershipStatus `json:"status,omitempty"`
 	GroupIDs    []int                      `json:"group_ids,omitempty"`
+	AccountIDs  []int                      `json:"account_ids,omitempty"`
 	ActiveSince *time.Time                 `json:"active_since,omitempty"`
 	Sort        string                     `json:"sort"`
 }
@@ -219,6 +226,16 @@ func canonicalizeSelectionFilter(filter Filter) canonicalFilter {
 		value.GroupIDs = append(value.GroupIDs, id)
 	}
 	sort.Ints(value.GroupIDs)
+	accountSet := make(map[int]struct{}, len(filter.AccountIDs))
+	for _, id := range filter.AccountIDs {
+		if id > 0 {
+			accountSet[id] = struct{}{}
+		}
+	}
+	for id := range accountSet {
+		value.AccountIDs = append(value.AccountIDs, id)
+	}
+	sort.Ints(value.AccountIDs)
 	if filter.ActiveSince != nil {
 		active := filter.ActiveSince.UTC()
 		value.ActiveSince = &active
@@ -227,7 +244,7 @@ func canonicalizeSelectionFilter(filter Filter) canonicalFilter {
 }
 
 func (f canonicalFilter) toFilter() Filter {
-	return Filter{Query: f.Query, Status: f.Status, GroupIDs: f.GroupIDs, ActiveSince: f.ActiveSince, Sort: f.Sort}
+	return Filter{Query: f.Query, Status: f.Status, GroupIDs: f.GroupIDs, AccountIDs: f.AccountIDs, ActiveSince: f.ActiveSince, Sort: f.Sort}
 }
 
 func canonicalSort(value string) string {
@@ -253,6 +270,14 @@ func validateFilter(filter Filter) error {
 		}
 	}
 	for _, id := range filter.GroupIDs {
+		if id <= 0 {
+			return ErrInvalidFilter
+		}
+	}
+	if len(filter.AccountIDs) > maximumSelectionTargets || (filter.RequireAllAccountIDs && len(filter.AccountIDs) == 0) {
+		return ErrInvalidFilter
+	}
+	for _, id := range filter.AccountIDs {
 		if id <= 0 {
 			return ErrInvalidFilter
 		}
@@ -431,6 +456,10 @@ func buildPeopleConditions(organizationID uuid.UUID, filter Filter, snapshot *ti
 		args = append(args, values)
 		conditions = append(conditions, fmt.Sprintf("EXISTS (SELECT 1 FROM user_profiles p WHERE p.organization_id=m.organization_id AND p.user_id=m.account_id%s AND p.access_group_id=ANY($%d::bigint[]))", profileSnapshot, len(args)))
 	}
+	if len(filter.AccountIDs) > 0 {
+		args = append(args, filter.AccountIDs)
+		conditions = append(conditions, fmt.Sprintf("m.account_id=ANY($%d::integer[])", len(args)))
+	}
 	if filter.ActiveSince != nil {
 		args = append(args, filter.ActiveSince.UTC())
 		n := len(args)
@@ -582,6 +611,9 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 	var total int64
 	if err := tx.QueryRow(ctx, `SELECT count(*) FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE `+strings.Join(conditions, " AND "), args...).Scan(&total); err != nil {
 		return Selection{}, fmt.Errorf("count people selection: %w", err)
+	}
+	if filter.RequireAllAccountIDs && total != int64(len(canonical.AccountIDs)) {
+		return Selection{}, ErrNotFound
 	}
 	reference := uuid.New()
 	expires := snapshot.Add(selectionTTL)

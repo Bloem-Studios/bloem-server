@@ -1830,6 +1830,74 @@ validation before the lifecycle service is called.
 
 ---
 
+### Platform entitlement cohorts and bulk policy
+
+These generic routes accept Server organization UUIDs and Server account IDs only. They do not
+accept or return product, subscription, or provisioning-system identifiers.
+
+Authentication is either a validated Platform admin-context bearer token or an API key owned by
+an enabled platform administrator and carrying the exact `admin:entitlements:bulk` scope. The API
+key scope narrows access; it does not itself grant platform authority.
+
+Organization-scoped routes:
+
+- `GET /api/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts`
+- `GET /api/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}`
+- `POST /api/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews`
+- `POST /api/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs`
+- `GET /api/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}`
+- `POST /api/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel`
+
+Direct-account routes use the deployment default organization, resolved server-side:
+
+- `POST /api/v2/admin/platform/accounts/entitlement-bulk/policy-previews`
+- `POST /api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs`
+- `GET /api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}`
+- `POST /api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel`
+
+Preview request (strict JSON, unknown fields rejected, 1 MiB body limit):
+
+```json
+{
+  "account_ids": [41, 42],
+  "command": {
+    "kind": "assign_entitlement_cohort",
+    "cohort_id": "018f0000-0000-7000-8000-000000000001",
+    "include_custom_profiles": false
+  }
+}
+```
+
+`account_ids` contains 1–10,000 unique positive IDs. Every ID must resolve as an active member of
+the organization selected by the path (or of the default organization on the direct routes); any
+missing or cross-scope target collapses to the same safe `404 not_found`. A successful preview
+returns `201 {"selection": Selection, "preview": PolicyPreview}`. The selection token and preview
+confirmation token expire together and bind the exact accounts, policy command, observed policy
+state, actor, organization revision, and custom-profile choice.
+
+Enqueue accepts Task 4's policy-only command shape:
+
+```json
+{
+  "selection_token": "...",
+  "confirmation_token": "...",
+  "idempotency_key": "caller-command-123",
+  "command": { "kind": "restore_default_entitlement", "include_custom_profiles": false }
+}
+```
+
+Success is `201 {"job": BulkResult}` and wakes the shared durable people worker. Exact replay of
+the same idempotency key and command returns the original job; reusing the key for a different
+command returns `409 idempotency_conflict`. Status and cancellation call the policy-job-specific
+store methods, so a generic people job cannot be read or cancelled through these routes.
+
+Stable errors are `403 insufficient_platform_authority`, `404 not_found`, `409
+selection_expired`, `409 policy_confirmation_stale`, `409 idempotency_conflict`, `409
+job_not_cancellable`, `422 validation_failed`, `429 rate_limited` (with `Retry-After`), and `503
+entitlements_unavailable`. Operational and storage errors are never returned verbatim.
+
+---
+
 ### Audit trail
 
 Every mutation in both sections above requires an `AdminMutationActor` in the request context
