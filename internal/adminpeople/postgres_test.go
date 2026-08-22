@@ -872,6 +872,86 @@ func TestPolicyBulkJobMovesInheritedProfilesAndPreservesCustomProfiles(t *testin
 	}
 }
 
+func TestPolicyBulkConfirmationRejectsCrossOperationScope(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		previewScope PolicyOperationScope
+		enqueueScope PolicyOperationScope
+	}{
+		{name: "organization to direct accounts", previewScope: PolicyOperationScopeOrganization, enqueueScope: PolicyOperationScopeDirectAccounts},
+		{name: "direct accounts to organization", previewScope: PolicyOperationScopeDirectAccounts, enqueueScope: PolicyOperationScopeOrganization},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newPeopleFixture(t)
+			if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET role='admin' WHERE id=$1`, fixture.ownerID); err != nil {
+				t.Fatal(err)
+			}
+			selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			command := PolicyCommand{Kind: PolicyRestoreDefaultEntitlement}
+			ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityPlatformAdmin, SecurityRevision: 1, PolicyRevision: 1})
+			preview, err := fixture.service.PreviewPolicyForScope(ctx, fixture.orgA, fixture.ownerID, selection.Token, command, test.previewScope)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = fixture.service.EnqueuePolicyBulkForScope(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{
+				SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken,
+				IdempotencyKey: "cross-scope-confirmation", Command: command,
+			}, test.enqueueScope)
+			if !errors.Is(err, ErrInvalidPolicyConfirmation) {
+				t.Fatalf("cross-scope confirmation error = %v, want ErrInvalidPolicyConfirmation", err)
+			}
+		})
+	}
+}
+
+func TestPolicyBulkIdempotencyRejectsCrossOperationScopeAndPreservesSameScopeReplay(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		previewScope PolicyOperationScope
+		replayScope  PolicyOperationScope
+	}{
+		{name: "organization to direct accounts", previewScope: PolicyOperationScopeOrganization, replayScope: PolicyOperationScopeDirectAccounts},
+		{name: "direct accounts to organization", previewScope: PolicyOperationScopeDirectAccounts, replayScope: PolicyOperationScopeOrganization},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newPeopleFixture(t)
+			if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET role='admin' WHERE id=$1`, fixture.ownerID); err != nil {
+				t.Fatal(err)
+			}
+			selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			command := PolicyCommand{Kind: PolicyRestoreDefaultEntitlement}
+			ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityPlatformAdmin, SecurityRevision: 1, PolicyRevision: 1})
+			preview, err := fixture.service.PreviewPolicyForScope(ctx, fixture.orgA, fixture.ownerID, selection.Token, command, test.previewScope)
+			if err != nil {
+				t.Fatal(err)
+			}
+			action := PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "cross-scope-replay", Command: command}
+			queued, err := fixture.service.EnqueuePolicyBulkForScope(ctx, fixture.orgA, fixture.ownerID, action, test.previewScope)
+			if err != nil {
+				t.Fatal(err)
+			}
+			replayed, err := fixture.service.EnqueuePolicyBulkForScope(ctx, fixture.orgA, fixture.ownerID, action, test.previewScope)
+			if err != nil || replayed.JobID != queued.JobID {
+				t.Fatalf("same-scope replay = %+v, err=%v, want job %s", replayed, err, queued.JobID)
+			}
+			replayPreview, err := fixture.service.PreviewPolicyForScope(ctx, fixture.orgA, fixture.ownerID, selection.Token, command, test.replayScope)
+			if err != nil {
+				t.Fatal(err)
+			}
+			action.ConfirmationToken = replayPreview.ConfirmationToken
+			if _, err := fixture.service.EnqueuePolicyBulkForScope(ctx, fixture.orgA, fixture.ownerID, action, test.replayScope); !errors.Is(err, ErrBulkIdempotencyConflict) {
+				t.Fatalf("cross-scope replay error = %v, want ErrBulkIdempotencyConflict", err)
+			}
+		})
+	}
+}
+
 func TestPolicyBulkJobLookupAndCancelRejectGenericJobs(t *testing.T) {
 	fixture := newPeopleFixture(t)
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})

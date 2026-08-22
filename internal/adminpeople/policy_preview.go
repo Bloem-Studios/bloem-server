@@ -25,7 +25,7 @@ const (
 	PolicyApplyEntitlementTemplate  = "apply_entitlement_template"
 	PolicyDeriveEntitlementCohort   = "derive_entitlement_cohort"
 	PolicyRestoreDefaultEntitlement = "restore_default_entitlement"
-	policyConfirmationVersion       = 1
+	policyConfirmationVersion       = 2
 )
 
 var (
@@ -114,22 +114,37 @@ type PolicyConfirmation struct {
 	OrganizationID             uuid.UUID
 	OrganizationPolicyRevision int64
 	ExpiresAt                  time.Time
+	OperationScope             PolicyOperationScope
+	AccountTargetDigest        string
+}
+
+type PolicyOperationScope string
+
+const (
+	PolicyOperationScopeOrganization   PolicyOperationScope = "organization"
+	PolicyOperationScopeDirectAccounts PolicyOperationScope = "direct_accounts"
+)
+
+type policyOperationScopeBinding struct {
+	Kind                PolicyOperationScope `json:"kind"`
+	AccountTargetDigest string               `json:"account_target_digest,omitempty"`
 }
 
 type policyConfirmationPayload struct {
-	Version                    int                 `json:"version"`
-	SelectionID                uuid.UUID           `json:"selection_id"`
-	SelectionDigest            string              `json:"selection_digest"`
-	ObservationDigest          string              `json:"observation_digest"`
-	CommandDigest              string              `json:"command_digest"`
-	Target                     policyTargetBinding `json:"target"`
-	ActorID                    int                 `json:"actor_id"`
-	ActorAuthority             string              `json:"actor_authority"`
-	ActorMembershipID          uuid.UUID           `json:"actor_membership_id,omitempty"`
-	ActorSecurityRevision      int64               `json:"actor_security_revision"`
-	OrganizationID             uuid.UUID           `json:"organization_id"`
-	OrganizationPolicyRevision int64               `json:"organization_policy_revision"`
-	ExpiresAt                  time.Time           `json:"expires_at"`
+	Version                    int                         `json:"version"`
+	SelectionID                uuid.UUID                   `json:"selection_id"`
+	SelectionDigest            string                      `json:"selection_digest"`
+	ObservationDigest          string                      `json:"observation_digest"`
+	CommandDigest              string                      `json:"command_digest"`
+	Target                     policyTargetBinding         `json:"target"`
+	ActorID                    int                         `json:"actor_id"`
+	ActorAuthority             string                      `json:"actor_authority"`
+	ActorMembershipID          uuid.UUID                   `json:"actor_membership_id,omitempty"`
+	ActorSecurityRevision      int64                       `json:"actor_security_revision"`
+	OrganizationID             uuid.UUID                   `json:"organization_id"`
+	OrganizationPolicyRevision int64                       `json:"organization_policy_revision"`
+	OperationScope             policyOperationScopeBinding `json:"operation_scope"`
+	ExpiresAt                  time.Time                   `json:"expires_at"`
 }
 
 type policyTargetBinding struct {
@@ -154,7 +169,14 @@ type policyCommandBinding struct {
 }
 
 func (s *Service) PreviewPolicy(ctx context.Context, organizationID uuid.UUID, actorID int, selectionToken string, command PolicyCommand) (PolicyPreview, error) {
+	return s.PreviewPolicyForScope(ctx, organizationID, actorID, selectionToken, command, PolicyOperationScopeOrganization)
+}
+
+func (s *Service) PreviewPolicyForScope(ctx context.Context, organizationID uuid.UUID, actorID int, selectionToken string, command PolicyCommand, operationScope PolicyOperationScope) (PolicyPreview, error) {
 	if s == nil || s.pool == nil || organizationID == uuid.Nil || actorID <= 0 {
+		return PolicyPreview{}, ErrInvalidPolicyCommand
+	}
+	if !validPolicyOperationScope(operationScope) {
 		return PolicyPreview{}, ErrInvalidPolicyCommand
 	}
 	reference, err := s.parseSelectionReference(selectionToken)
@@ -254,12 +276,16 @@ func (s *Service) PreviewPolicy(ctx context.Context, organizationID uuid.UUID, a
 	if err != nil {
 		return PolicyPreview{}, err
 	}
+	scopeBinding, err := bindPolicyOperationScope(operationScope, record.targets)
+	if err != nil {
+		return PolicyPreview{}, err
+	}
 	payload := policyConfirmationPayload{
 		Version: policyConfirmationVersion, SelectionID: reference, SelectionDigest: selectionDigest,
 		ObservationDigest: observationDigest, CommandDigest: commandDigest, Target: target.binding(), ActorID: actor.AccountID,
 		ActorAuthority: actor.Authority, ActorMembershipID: actor.MembershipID,
 		ActorSecurityRevision: actor.SecurityRevision, OrganizationID: organizationID,
-		OrganizationPolicyRevision: actor.PolicyRevision, ExpiresAt: record.expires,
+		OrganizationPolicyRevision: actor.PolicyRevision, OperationScope: scopeBinding, ExpiresAt: record.expires,
 	}
 	preview.ConfirmationToken, err = s.signPolicyConfirmation(payload)
 	if err != nil {
@@ -424,6 +450,10 @@ func policyObservationDigest(targets []targetSnapshot, results map[int]entitleme
 }
 
 func (s *Service) ValidatePolicyConfirmation(ctx context.Context, organizationID uuid.UUID, actorID int, selectionToken string, command PolicyCommand, token string) (PolicyConfirmation, error) {
+	return s.validatePolicyConfirmation(ctx, organizationID, actorID, selectionToken, command, token, PolicyOperationScopeOrganization)
+}
+
+func (s *Service) validatePolicyConfirmation(ctx context.Context, organizationID uuid.UUID, actorID int, selectionToken string, command PolicyCommand, token string, operationScope PolicyOperationScope) (PolicyConfirmation, error) {
 	if s == nil || s.pool == nil {
 		return PolicyConfirmation{}, ErrInvalidPolicyConfirmation
 	}
@@ -432,7 +462,7 @@ func (s *Service) ValidatePolicyConfirmation(ctx context.Context, organizationID
 		return PolicyConfirmation{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	confirmation, err := s.ValidatePolicyConfirmationInTx(ctx, tx, organizationID, actorID, selectionToken, command, token)
+	confirmation, err := s.validatePolicyConfirmationInTx(ctx, tx, organizationID, actorID, selectionToken, command, token, operationScope)
 	if err != nil {
 		return PolicyConfirmation{}, err
 	}
@@ -447,8 +477,12 @@ func (s *Service) ValidatePolicyConfirmation(ctx context.Context, organizationID
 // commits. Durable job creation must call this method in its persistence
 // transaction so policy or membership changes cannot race validation.
 func (s *Service) ValidatePolicyConfirmationInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID int, selectionToken string, command PolicyCommand, token string) (PolicyConfirmation, error) {
+	return s.validatePolicyConfirmationInTx(ctx, tx, organizationID, actorID, selectionToken, command, token, PolicyOperationScopeOrganization)
+}
+
+func (s *Service) validatePolicyConfirmationInTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID int, selectionToken string, command PolicyCommand, token string, operationScope PolicyOperationScope) (PolicyConfirmation, error) {
 	invalid := func() (PolicyConfirmation, error) { return PolicyConfirmation{}, ErrInvalidPolicyConfirmation }
-	if s == nil || s.pool == nil || tx == nil || organizationID == uuid.Nil || actorID <= 0 {
+	if s == nil || s.pool == nil || tx == nil || organizationID == uuid.Nil || actorID <= 0 || !validPolicyOperationScope(operationScope) {
 		return invalid()
 	}
 	payload, err := s.parsePolicyConfirmation(token)
@@ -465,6 +499,10 @@ func (s *Service) ValidatePolicyConfirmationInTx(ctx context.Context, tx pgx.Tx,
 	}
 	selectionDigest, err := selectionPolicyDigest(record.targets)
 	if err != nil || !hmac.Equal([]byte(selectionDigest), []byte(payload.SelectionDigest)) {
+		return invalid()
+	}
+	scopeBinding, err := bindPolicyOperationScope(operationScope, record.targets)
+	if err != nil || !reflect.DeepEqual(payload.OperationScope, scopeBinding) {
 		return invalid()
 	}
 	actor, err := mutationActor(ctx, actorID)
@@ -523,8 +561,33 @@ func (s *Service) ValidatePolicyConfirmationInTx(ctx context.Context, tx pgx.Tx,
 	return PolicyConfirmation{
 		SelectionID: reference, CommandDigest: commandDigest, TargetPolicyDigest: target.PolicyDigest,
 		Actor: actor, OrganizationID: organizationID, OrganizationPolicyRevision: actor.PolicyRevision,
-		ExpiresAt: payload.ExpiresAt,
+		ExpiresAt: payload.ExpiresAt, OperationScope: operationScope, AccountTargetDigest: scopeBinding.AccountTargetDigest,
 	}, nil
+}
+
+func validPolicyOperationScope(scope PolicyOperationScope) bool {
+	return scope == PolicyOperationScopeOrganization || scope == PolicyOperationScopeDirectAccounts
+}
+
+func bindPolicyOperationScope(scope PolicyOperationScope, targets []targetSnapshot) (policyOperationScopeBinding, error) {
+	binding := policyOperationScopeBinding{Kind: scope}
+	if !validPolicyOperationScope(scope) {
+		return binding, ErrInvalidPolicyCommand
+	}
+	if scope != PolicyOperationScopeDirectAccounts {
+		return binding, nil
+	}
+	accountIDs := make([]int, len(targets))
+	for index := range targets {
+		accountIDs[index] = targets[index].AccountID
+	}
+	sort.Ints(accountIDs)
+	raw, err := json.Marshal(accountIDs)
+	if err != nil {
+		return binding, err
+	}
+	binding.AccountTargetDigest = digestBytes(raw)
+	return binding, nil
 }
 
 func policyConfirmationTargetError(err error) error {

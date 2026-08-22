@@ -414,7 +414,15 @@ func (s *v2EntitlementBulkStoreStub) PreviewPolicy(context.Context, uuid.UUID, i
 	return adminpeople.PolicyPreview{}, nil
 }
 
+func (s *v2EntitlementBulkStoreStub) PreviewPolicyForScope(context.Context, uuid.UUID, int, string, adminpeople.PolicyCommand, adminpeople.PolicyOperationScope) (adminpeople.PolicyPreview, error) {
+	return adminpeople.PolicyPreview{}, nil
+}
+
 func (s *v2EntitlementBulkStoreStub) EnqueuePolicyBulk(context.Context, uuid.UUID, int, adminpeople.PolicyBulkAction) (adminpeople.BulkResult, error) {
+	return adminpeople.BulkResult{}, nil
+}
+
+func (s *v2EntitlementBulkStoreStub) EnqueuePolicyBulkForScope(context.Context, uuid.UUID, int, adminpeople.PolicyBulkAction, adminpeople.PolicyOperationScope) (adminpeople.BulkResult, error) {
 	return adminpeople.BulkResult{}, nil
 }
 

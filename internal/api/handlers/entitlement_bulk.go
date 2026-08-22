@@ -37,8 +37,8 @@ type PlatformEntitlementBulkCohortStore interface {
 
 type PlatformEntitlementBulkPeopleService interface {
 	CreateSelection(context.Context, uuid.UUID, adminpeople.Filter) (adminpeople.Selection, error)
-	PreviewPolicy(context.Context, uuid.UUID, int, string, adminpeople.PolicyCommand) (adminpeople.PolicyPreview, error)
-	EnqueuePolicyBulk(context.Context, uuid.UUID, int, adminpeople.PolicyBulkAction) (adminpeople.BulkResult, error)
+	PreviewPolicyForScope(context.Context, uuid.UUID, int, string, adminpeople.PolicyCommand, adminpeople.PolicyOperationScope) (adminpeople.PolicyPreview, error)
+	EnqueuePolicyBulkForScope(context.Context, uuid.UUID, int, adminpeople.PolicyBulkAction, adminpeople.PolicyOperationScope) (adminpeople.BulkResult, error)
 	GetPolicyBulkJob(context.Context, uuid.UUID, string) (adminpeople.BulkResult, error)
 	CancelPolicyBulkJob(context.Context, uuid.UUID, int, string) (adminpeople.BulkResult, error)
 }
@@ -175,7 +175,7 @@ func (h *AdminHandler) handleCreatePlatformPolicyPreview(w http.ResponseWriter, 
 		h.writePlatformEntitlementBulkError(w, adminpeople.ErrNotFound)
 		return
 	}
-	preview, err := h.platformEntitlementPeople.PreviewPolicy(ctx, organizationID, actorID, selection.Token, request.Command)
+	preview, err := h.platformEntitlementPeople.PreviewPolicyForScope(ctx, organizationID, actorID, selection.Token, request.Command, platformEntitlementOperationScope(direct))
 	if err != nil {
 		h.writePlatformEntitlementBulkError(w, err)
 		return
@@ -207,7 +207,7 @@ func (h *AdminHandler) handleCreatePlatformPolicyJob(w http.ResponseWriter, r *h
 	if !decodePlatformEntitlementBulkJSON(w, r, &action) {
 		return
 	}
-	result, err := h.platformEntitlementPeople.EnqueuePolicyBulk(platformEntitlementBulkMutationContext(r, actorID), organizationID, actorID, action)
+	result, err := h.platformEntitlementPeople.EnqueuePolicyBulkForScope(platformEntitlementBulkMutationContext(r, actorID), organizationID, actorID, action, platformEntitlementOperationScope(direct))
 	if err != nil {
 		h.writePlatformEntitlementBulkError(w, err)
 		return
@@ -218,6 +218,13 @@ func (h *AdminHandler) handleCreatePlatformPolicyJob(w http.ResponseWriter, r *h
 	writeJSON(w, http.StatusCreated, struct {
 		Job adminpeople.BulkResult `json:"job"`
 	}{Job: result})
+}
+
+func platformEntitlementOperationScope(direct bool) adminpeople.PolicyOperationScope {
+	if direct {
+		return adminpeople.PolicyOperationScopeDirectAccounts
+	}
+	return adminpeople.PolicyOperationScopeOrganization
 }
 
 func (h *AdminHandler) HandleGetPlatformOrganizationPolicyJob(w http.ResponseWriter, r *http.Request) {

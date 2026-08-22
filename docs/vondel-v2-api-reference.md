@@ -1873,7 +1873,9 @@ the organization selected by the path (or of the default organization on the dir
 missing or cross-scope target collapses to the same safe `404 not_found`. A successful preview
 returns `201 {"selection": Selection, "preview": PolicyPreview}`. The selection token and preview
 confirmation token expire together and bind the exact accounts, policy command, observed policy
-state, actor, organization revision, and custom-profile choice.
+state, actor, organization revision, custom-profile choice, and route scope. Direct-account
+confirmations additionally bind a digest of the immutable Server account-ID target set; a token
+created on an organization route cannot be submitted on a direct-account route or vice versa.
 
 Enqueue accepts Task 4's policy-only command shape:
 
@@ -1888,7 +1890,7 @@ Enqueue accepts Task 4's policy-only command shape:
 
 Success is `201 {"job": BulkResult}` and wakes the shared durable people worker. Exact replay of
 the same idempotency key and command returns the original job; reusing the key for a different
-command returns `409 idempotency_conflict`. Status and cancellation call the policy-job-specific
+command, selection, or route scope returns `409 idempotency_conflict`. Status and cancellation call the policy-job-specific
 store methods, so a generic people job cannot be read or cancelled through these routes.
 
 Stable errors are `403 insufficient_platform_authority`, `404 not_found`, `409

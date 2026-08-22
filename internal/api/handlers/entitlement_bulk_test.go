@@ -37,16 +37,17 @@ func (s *platformEntitlementBulkCohortStub) GetCohort(_ context.Context, organiz
 }
 
 type platformEntitlementBulkPeopleStub struct {
-	selection   adminpeople.Selection
-	preview     adminpeople.PolicyPreview
-	job         adminpeople.BulkResult
-	err         error
-	org         uuid.UUID
-	actorID     int
-	filter      adminpeople.Filter
-	jobID       string
-	getCalls    int
-	cancelCalls int
+	selection      adminpeople.Selection
+	preview        adminpeople.PolicyPreview
+	job            adminpeople.BulkResult
+	err            error
+	org            uuid.UUID
+	actorID        int
+	filter         adminpeople.Filter
+	jobID          string
+	getCalls       int
+	cancelCalls    int
+	operationScope adminpeople.PolicyOperationScope
 }
 
 func (s *platformEntitlementBulkPeopleStub) CreateSelection(_ context.Context, organizationID uuid.UUID, filter adminpeople.Filter) (adminpeople.Selection, error) {
@@ -55,12 +56,22 @@ func (s *platformEntitlementBulkPeopleStub) CreateSelection(_ context.Context, o
 }
 
 func (s *platformEntitlementBulkPeopleStub) PreviewPolicy(_ context.Context, organizationID uuid.UUID, actorID int, _ string, _ adminpeople.PolicyCommand) (adminpeople.PolicyPreview, error) {
-	s.org, s.actorID = organizationID, actorID
+	s.org, s.actorID, s.operationScope = organizationID, actorID, adminpeople.PolicyOperationScopeOrganization
+	return s.preview, s.err
+}
+
+func (s *platformEntitlementBulkPeopleStub) PreviewPolicyForScope(_ context.Context, organizationID uuid.UUID, actorID int, _ string, _ adminpeople.PolicyCommand, operationScope adminpeople.PolicyOperationScope) (adminpeople.PolicyPreview, error) {
+	s.org, s.actorID, s.operationScope = organizationID, actorID, operationScope
 	return s.preview, s.err
 }
 
 func (s *platformEntitlementBulkPeopleStub) EnqueuePolicyBulk(_ context.Context, organizationID uuid.UUID, actorID int, _ adminpeople.PolicyBulkAction) (adminpeople.BulkResult, error) {
-	s.org, s.actorID = organizationID, actorID
+	s.org, s.actorID, s.operationScope = organizationID, actorID, adminpeople.PolicyOperationScopeOrganization
+	return s.job, s.err
+}
+
+func (s *platformEntitlementBulkPeopleStub) EnqueuePolicyBulkForScope(_ context.Context, organizationID uuid.UUID, actorID int, _ adminpeople.PolicyBulkAction, operationScope adminpeople.PolicyOperationScope) (adminpeople.BulkResult, error) {
+	s.org, s.actorID, s.operationScope = organizationID, actorID, operationScope
 	return s.job, s.err
 }
 
@@ -182,8 +193,8 @@ func TestPlatformEntitlementBulkOrganizationPreviewBindsExactAccountScope(t *tes
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want 201: %s", recorder.Code, recorder.Body.String())
 	}
-	if people.org != org || people.actorID != 7 {
-		t.Fatalf("service scope = (%s,%d), want (%s,7)", people.org, people.actorID, org)
+	if people.org != org || people.actorID != 7 || people.operationScope != adminpeople.PolicyOperationScopeOrganization {
+		t.Fatalf("service scope = (%s,%d,%s), want (%s,7,%s)", people.org, people.actorID, people.operationScope, org, adminpeople.PolicyOperationScopeOrganization)
 	}
 	if got := people.filter.AccountIDs; len(got) != 2 || got[0] != 41 || got[1] != 42 || !people.filter.RequireAllAccountIDs {
 		t.Fatalf("selection filter = %#v, want sorted strict account IDs", people.filter)
@@ -201,8 +212,8 @@ func TestPlatformEntitlementBulkDirectPreviewUsesDefaultOrganization(t *testing.
 	handler := newPlatformEntitlementBulkTestHandler(&platformEntitlementBulkCohortStub{}, people, platformEntitlementBulkOrganizationsStub{defaultOrganization: tenancy.Organization{ID: defaultOrg, Default: true, Status: tenancy.OrganizationActive}}, platformEntitlementBulkAuthorizerStub{allowed: true}, nil)
 	recorder := httptest.NewRecorder()
 	platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil).ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/v2/admin/platform/accounts/entitlement-bulk/policy-previews", strings.NewReader(`{"account_ids":[42],"command":{"kind":"restore_default_entitlement"}}`)))
-	if recorder.Code != http.StatusCreated || people.org != defaultOrg {
-		t.Fatalf("status/scope = %d/%s, want 201/%s: %s", recorder.Code, people.org, defaultOrg, recorder.Body.String())
+	if recorder.Code != http.StatusCreated || people.org != defaultOrg || people.operationScope != adminpeople.PolicyOperationScopeDirectAccounts {
+		t.Fatalf("status/scope = %d/%s/%s, want 201/%s/%s: %s", recorder.Code, people.org, people.operationScope, defaultOrg, adminpeople.PolicyOperationScopeDirectAccounts, recorder.Body.String())
 	}
 }
 
@@ -278,6 +289,21 @@ func TestPlatformEntitlementBulkPolicyJobUsesPolicyMethodsAndWakes(t *testing.T)
 	}
 	if wake.calls != 2 {
 		t.Fatalf("wake calls = %d, want 2", wake.calls)
+	}
+	if people.operationScope != adminpeople.PolicyOperationScopeOrganization {
+		t.Fatalf("operation scope = %s, want %s", people.operationScope, adminpeople.PolicyOperationScopeOrganization)
+	}
+}
+
+func TestPlatformEntitlementBulkDirectPolicyJobPassesDirectOperationScope(t *testing.T) {
+	defaultOrg := uuid.New()
+	people := &platformEntitlementBulkPeopleStub{job: adminpeople.BulkResult{JobID: "job-direct", Status: "queued"}}
+	handler := newPlatformEntitlementBulkTestHandler(&platformEntitlementBulkCohortStub{}, people, platformEntitlementBulkOrganizationsStub{defaultOrganization: tenancy.Organization{ID: defaultOrg, Default: true, Status: tenancy.OrganizationActive}}, platformEntitlementBulkAuthorizerStub{allowed: true}, nil)
+	recorder := httptest.NewRecorder()
+	body := `{"selection_token":"selection","confirmation_token":"confirmation","idempotency_key":"direct-command","command":{"kind":"restore_default_entitlement"}}`
+	platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil).ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs", strings.NewReader(body)))
+	if recorder.Code != http.StatusCreated || people.operationScope != adminpeople.PolicyOperationScopeDirectAccounts {
+		t.Fatalf("response/scope = %d/%s, want 201/%s: %s", recorder.Code, people.operationScope, adminpeople.PolicyOperationScopeDirectAccounts, recorder.Body.String())
 	}
 }
 

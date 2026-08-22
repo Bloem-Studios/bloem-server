@@ -872,16 +872,24 @@ func (s *Service) EnqueueBulk(ctx context.Context, organizationID uuid.UUID, act
 }
 
 func (s *Service) EnqueuePolicyBulk(ctx context.Context, organizationID uuid.UUID, actorID int, action PolicyBulkAction) (BulkResult, error) {
+	return s.EnqueuePolicyBulkForScope(ctx, organizationID, actorID, action, PolicyOperationScopeOrganization)
+}
+
+func (s *Service) EnqueuePolicyBulkForScope(ctx context.Context, organizationID uuid.UUID, actorID int, action PolicyBulkAction, operationScope PolicyOperationScope) (BulkResult, error) {
 	key := strings.TrimSpace(action.IdempotencyKey)
 	commandDigest, digestErr := PolicyCommandDigest(action.Command)
-	if s == nil || s.pool == nil || organizationID == uuid.Nil || actorID <= 0 || key == "" || len(key) > 128 || strings.TrimSpace(action.SelectionToken) == "" || strings.TrimSpace(action.ConfirmationToken) == "" || digestErr != nil {
+	if s == nil || s.pool == nil || organizationID == uuid.Nil || actorID <= 0 || key == "" || len(key) > 128 || strings.TrimSpace(action.SelectionToken) == "" || strings.TrimSpace(action.ConfirmationToken) == "" || digestErr != nil || !validPolicyOperationScope(operationScope) {
 		return BulkResult{}, ErrInvalidPolicyCommand
 	}
 	reference, err := s.parseSelectionReference(action.SelectionToken)
 	if err != nil {
 		return BulkResult{}, err
 	}
-	requestDigest := digestBytes([]byte(reference.String() + ":" + commandDigest))
+	receiptScope := policyOperationScopeBinding{Kind: operationScope}
+	if payload, parseErr := s.parsePolicyConfirmation(action.ConfirmationToken); parseErr == nil && payload.Version == policyConfirmationVersion && payload.SelectionID == reference && payload.OperationScope.Kind == operationScope {
+		receiptScope = payload.OperationScope
+	}
+	requestDigest := policyBulkRequestDigest(reference, commandDigest, receiptScope)
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return BulkResult{}, err
@@ -904,7 +912,7 @@ func (s *Service) EnqueuePolicyBulk(ctx context.Context, organizationID uuid.UUI
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return BulkResult{}, err
 	}
-	confirmation, err := s.ValidatePolicyConfirmationInTx(ctx, tx, organizationID, actorID, action.SelectionToken, action.Command, action.ConfirmationToken)
+	confirmation, err := s.validatePolicyConfirmationInTx(ctx, tx, organizationID, actorID, action.SelectionToken, action.Command, action.ConfirmationToken, operationScope)
 	if err != nil {
 		return BulkResult{}, err
 	}
@@ -934,7 +942,7 @@ func (s *Service) EnqueuePolicyBulk(ctx context.Context, organizationID uuid.UUI
 		}
 		return BulkResult{}, ErrInvalidPolicyConfirmation
 	}
-	actionKey := "policy:" + commandDigest
+	actionKey := "policy:" + string(operationScope) + ":" + commandDigest
 	var existing string
 	err = tx.QueryRow(ctx, `SELECT job_id FROM admin_people_bulk_jobs WHERE organization_id=$1 AND selection_reference=$2 AND action_key=$3`, organizationID, reference, actionKey).Scan(&existing)
 	if err == nil {
@@ -963,7 +971,7 @@ func (s *Service) EnqueuePolicyBulk(ctx context.Context, organizationID uuid.UUI
 	}
 	now := s.now().UTC()
 	initial := BulkResult{JobID: jobID, Status: "queued", ProgressTotal: len(record.targets), Skipped: []RecordResult{}, Failed: []RecordResult{}, TargetCohortID: target.ID, TargetCohortRevision: target.Revision, TargetGroupID: target.AccessGroupID}
-	requestJSON, _ := json.Marshal(map[string]any{"organization_id": organizationID, "selection_id": reference, "kind": action.Command.Kind, "command_digest": commandDigest})
+	requestJSON, _ := json.Marshal(map[string]any{"organization_id": organizationID, "selection_id": reference, "operation_scope": operationScope, "kind": action.Command.Kind, "command_digest": commandDigest})
 	resultJSON, _ := json.Marshal(initial)
 	if _, err = tx.Exec(ctx, `INSERT INTO admin_jobs (id,job_type,status,created_by_user_id,request_payload,result_payload,message,progress_current,progress_total,requested_at,updated_at) VALUES ($1,'organization_people_policy_bulk','queued',$2,$3,$4,'People policy bulk operation queued',0,$5,$6,$6)`, jobID, actorID, requestJSON, resultJSON, len(record.targets), now); err != nil {
 		return BulkResult{}, err
@@ -992,6 +1000,15 @@ func (s *Service) EnqueuePolicyBulk(ctx context.Context, organizationID uuid.UUI
 		return BulkResult{}, err
 	}
 	return initial, nil
+}
+
+func policyBulkRequestDigest(reference uuid.UUID, commandDigest string, operationScope policyOperationScopeBinding) string {
+	raw, _ := json.Marshal(struct {
+		SelectionID    uuid.UUID                   `json:"selection_id"`
+		CommandDigest  string                      `json:"command_digest"`
+		OperationScope policyOperationScopeBinding `json:"operation_scope"`
+	}{SelectionID: reference, CommandDigest: commandDigest, OperationScope: operationScope})
+	return digestBytes(raw)
 }
 
 func (s *Service) ProcessBulkJob(ctx context.Context, organizationID uuid.UUID, jobID string) (BulkResult, error) {
