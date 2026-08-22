@@ -86,7 +86,11 @@ func TestServiceCursorRejectsTamperingAndDifferentCanonicalFilters(t *testing.T)
 	if first.NextCursor == "" {
 		t.Fatal("missing next cursor")
 	}
-	tampered := first.NextCursor[:len(first.NextCursor)-1] + "A"
+	replacement := "A"
+	if strings.HasSuffix(first.NextCursor, replacement) {
+		replacement = "B"
+	}
+	tampered := first.NextCursor[:len(first.NextCursor)-1] + replacement
 	if _, err := fixture.service.List(fixture.ctx, fixture.orgA, Filter{Query: "example.test", Limit: 1, Sort: SortName, Cursor: tampered}); !errors.Is(err, ErrInvalidCursor) {
 		t.Fatalf("tampered cursor error = %v", err)
 	}
@@ -998,6 +1002,62 @@ func TestPolicyBulkJobReconcilesOverridesOnAlreadyAssignedCohort(t *testing.T) {
 	actual, err := store.GetAccountPolicy(fixture.ctx, fixture.orgA, fixture.sharedAccountID)
 	if err != nil || actual.Policy.MaxStreams != preview.Target.Policy.MaxStreams {
 		t.Fatalf("effective max_streams=%d err=%v, want %d", actual.Policy.MaxStreams, err, preview.Target.Policy.MaxStreams)
+	}
+}
+
+func TestPolicyBulkJobReconcilesNonNullableMaxProfilesOnAlreadyAssignedCohort(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), premium.AccessGroupID)
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET max_profiles=1 WHERE id=$1`, fixture.sharedAccountID); err != nil {
+		t.Fatal(err)
+	}
+
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1, RequestID: "policy-reconcile-max-profiles"})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.AlreadyCompliant != 0 {
+		t.Fatalf("already compliant=%d, want 0 for conflicting account max_profiles", preview.AlreadyCompliant)
+	}
+
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{
+		SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken,
+		IdempotencyKey: "policy-reconcile-max-profiles", Command: command,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || completed.Succeeded != 1 || len(completed.Skipped) != 0 {
+		t.Fatalf("completed=%+v err=%v", completed, err)
+	}
+
+	actual, err := store.GetAccountPolicy(fixture.ctx, fixture.orgA, fixture.sharedAccountID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actual.Policy.MaxProfiles != preview.Target.Policy.MaxProfiles {
+		t.Fatalf("effective max_profiles=%d, want target %d", actual.Policy.MaxProfiles, preview.Target.Policy.MaxProfiles)
+	}
+	for _, profile := range actual.Profiles {
+		if profile.InheritsAccount && profile.Policy.MaxProfiles != preview.Target.Policy.MaxProfiles {
+			t.Fatalf("inherited profile %q max_profiles=%d, want target %d", profile.ProfileID, profile.Policy.MaxProfiles, preview.Target.Policy.MaxProfiles)
+		}
+	}
+	var persisted int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT max_profiles FROM users WHERE id=$1`, fixture.sharedAccountID).Scan(&persisted); err != nil {
+		t.Fatal(err)
+	}
+	if persisted != preview.Target.Policy.MaxProfiles {
+		t.Fatalf("persisted max_profiles=%d, want target %d", persisted, preview.Target.Policy.MaxProfiles)
 	}
 }
 

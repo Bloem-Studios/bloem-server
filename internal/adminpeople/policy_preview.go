@@ -14,7 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -239,19 +241,26 @@ func (s *Service) PreviewPolicyForScope(ctx context.Context, organizationID uuid
 			continue
 		}
 		current := policyFromEffective(result.Snapshot.Policy)
-		already := (target.GroupID > 0 && snapshot.GroupID == target.GroupID) || entitlements.PolicyEqual(current, target.policy)
-		if already {
-			preview.AlreadyCompliant++
+		targetAccountMaxProfiles := membership.accountMaxProfiles
+		if target.Kind != PolicyRestoreDefaultEntitlement || target.CohortID != uuid.Nil {
+			targetAccountMaxProfiles = target.policy.MaxProfiles
+			if targetAccountMaxProfiles == 0 {
+				targetAccountMaxProfiles = 1
+			}
 		}
+		effectiveTarget := effectivePolicyTargetForAccount(target.policy, membership.accountPermissions, targetAccountMaxProfiles)
 		accountWillMove := target.GroupID == 0 || snapshot.GroupID != target.GroupID
+		profilesWillMove := false
 		for _, profile := range snapshot.Profiles {
 			if profile.InheritsAccount {
 				if accountWillMove {
 					preview.InheritedProfilesWillMove++
+					profilesWillMove = true
 				}
 			} else if command.IncludeCustomProfiles {
 				if target.GroupID == 0 || int64(profile.GroupID) != target.GroupID {
 					preview.CustomProfilesWillMove++
+					profilesWillMove = true
 				} else {
 					preview.CustomProfilesWillRemain++
 				}
@@ -259,7 +268,10 @@ func (s *Service) PreviewPolicyForScope(ctx context.Context, organizationID uuid
 				preview.CustomProfilesWillRemain++
 			}
 		}
-		accumulatePolicyDiff(diffCounts, current, target.policy)
+		if entitlements.PolicyEqual(current, effectiveTarget) && !accountWillMove && !profilesWillMove {
+			preview.AlreadyCompliant++
+		}
+		accumulatePolicyDiff(diffCounts, current, effectiveTarget)
 	}
 	fields := make([]string, 0, len(diffCounts))
 	for field, count := range diffCounts {
@@ -303,6 +315,8 @@ type policySelectionMembership struct {
 	cohortRevision         int64
 	sourceTemplateKey      string
 	sourceTemplateRevision int64
+	accountPermissions     []string
+	accountMaxProfiles     int
 }
 
 type policyObservation struct {
@@ -316,6 +330,7 @@ type policyObservation struct {
 	MembershipCohortRevision         int64                     `json:"membership_cohort_revision,omitempty"`
 	MembershipSourceTemplateKey      string                    `json:"membership_source_template_key,omitempty"`
 	MembershipSourceTemplateRevision int64                     `json:"membership_source_template_revision,omitempty"`
+	AccountPermissions               []string                  `json:"account_permissions,omitempty"`
 	ResultError                      string                    `json:"result_error,omitempty"`
 	Snapshot                         *policyAccountObservation `json:"snapshot,omitempty"`
 }
@@ -358,7 +373,8 @@ func currentPolicyMembershipsWithDB(ctx context.Context, db policyPreviewDB, org
 		       COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),
 		       COALESCE(r.revision,0),
 		       COALESCE(r.source_template_key,g.managed_template_key,''),
-		       COALESCE(r.source_template_revision,g.managed_template_revision,0)
+		       COALESCE(r.source_template_revision,g.managed_template_revision,0),
+		       u.permissions,u.max_profiles
 		FROM organization_memberships m
 		JOIN users u ON u.id=m.account_id
 		LEFT JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=u.access_group_id
@@ -375,7 +391,8 @@ func currentPolicyMembershipsWithDB(ctx context.Context, db policyPreviewDB, org
 		var membership policySelectionMembership
 		if err := rows.Scan(&accountID, &membership.id, &membership.status, &membership.revision,
 			&membership.groupID, &membership.cohortRevisionID, &membership.cohortRevision,
-			&membership.sourceTemplateKey, &membership.sourceTemplateRevision); err != nil {
+			&membership.sourceTemplateKey, &membership.sourceTemplateRevision,
+			&membership.accountPermissions, &membership.accountMaxProfiles); err != nil {
 			return nil, fmt.Errorf("scan preview membership: %w", err)
 		}
 		result[accountID] = membership
@@ -417,6 +434,7 @@ func policyObservationDigest(targets []targetSnapshot, results map[int]entitleme
 			observation.MembershipCohortRevision = membership.cohortRevision
 			observation.MembershipSourceTemplateKey = membership.sourceTemplateKey
 			observation.MembershipSourceTemplateRevision = membership.sourceTemplateRevision
+			observation.AccountPermissions = membership.accountPermissions
 		}
 		if result, ok := results[target.AccountID]; ok {
 			observation.ResultError = result.Error
@@ -1020,6 +1038,16 @@ func policyFromEffective(policy entitlements.EffectivePolicySnapshot) entitlemen
 		MaxPlaybackQuality: policy.MaxPlaybackQuality, AllowedPermissions: policy.AllowedPermissions,
 		RequestsAllowed: policy.RequestsAllowed,
 	}
+}
+
+func effectivePolicyTargetForAccount(target entitlements.Policy, accountPermissions []string, accountMaxProfiles int) entitlements.Policy {
+	effective := accesspolicy.ApplyGroupPolicy(
+		&models.User{Permissions: accountPermissions, MaxProfiles: accountMaxProfiles},
+		&accesspolicy.GroupPolicy{MaxProfiles: target.MaxProfiles, AllowedPermissions: target.AllowedPermissions},
+	)
+	target.AllowedPermissions = effective.Permissions
+	target.MaxProfiles = effective.MaxProfiles
+	return target
 }
 
 func policyView(policy entitlements.Policy) PolicyView {

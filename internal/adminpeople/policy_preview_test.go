@@ -87,7 +87,7 @@ func TestPolicyPreviewUsesImmutableAuthoritativeSelectionSnapshot(t *testing.T) 
 	}
 }
 
-func TestPolicyPreviewCountsPolicyEquivalentAccountThatMustMoveCohorts(t *testing.T) {
+func TestPolicyPreviewDoesNotCallPolicyEquivalentAccountInDifferentCohortCompliant(t *testing.T) {
 	fixture := newPeopleFixture(t)
 	store := entitlements.NewTemplateStore(fixture.pool)
 	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
@@ -132,7 +132,7 @@ func TestPolicyPreviewCountsPolicyEquivalentAccountThatMustMoveCohorts(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if preview.Target.GroupID != restricted.AccessGroupID || preview.AlreadyCompliant != 1 || preview.InheritedProfilesWillMove != 1 {
+	if preview.Target.GroupID != restricted.AccessGroupID || preview.AlreadyCompliant != 0 || preview.InheritedProfilesWillMove != 1 {
 		t.Fatalf("equivalent policy/new cohort preview = %+v", preview)
 	}
 }

@@ -10,14 +10,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/idgen"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -1532,6 +1534,11 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 		       COALESCE(r.source_template_key,g.managed_template_key,''),COALESCE(r.source_template_revision,g.managed_template_revision,0),
 		       u.library_ids IS NOT NULL OR u.max_playback_quality IS NOT NULL OR
 		       u.max_streams IS NOT NULL OR u.max_transcodes IS NOT NULL OR
+		       u.max_profiles IS DISTINCT FROM CASE
+		           WHEN g.max_profiles > 0 THEN g.max_profiles
+		           WHEN g.managed_template_key IS NOT NULL OR g.managed_cohort_id IS NOT NULL THEN 1
+		           ELSE u.max_profiles
+		       END OR
 		       u.transcode_allowed IS NOT NULL OR u.audio_transcode_allowed IS NOT NULL OR
 		       u.download_allowed IS NOT NULL OR u.download_transcode_allowed IS NOT NULL OR
 		       u.requests_allowed IS NOT NULL
@@ -1592,11 +1599,16 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	if _, err := tx.Exec(ctx, `
 		UPDATE users SET
 			access_group_id=$2,
+			max_profiles=(SELECT CASE
+				WHEN max_profiles > 0 THEN max_profiles
+				WHEN managed_template_key IS NOT NULL OR managed_cohort_id IS NOT NULL THEN 1
+				ELSE users.max_profiles
+			END FROM access_groups WHERE organization_id=$3 AND id=$2),
 			library_ids=NULL,max_playback_quality=NULL,max_streams=NULL,max_transcodes=NULL,
 			transcode_allowed=NULL,audio_transcode_allowed=NULL,download_allowed=NULL,
 			download_transcode_allowed=NULL,requests_allowed=NULL,
 			access_policy_revision=access_policy_revision+1,updated_at=now()
-		WHERE id=$1`, snapshot.AccountID, targetGroupID); err != nil {
+		WHERE id=$1`, snapshot.AccountID, targetGroupID, organizationID); err != nil {
 		return "", "", err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET security_revision=security_revision+1,updated_at=now() WHERE id=$1`, membershipID); err != nil {
@@ -1636,7 +1648,24 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	if err != nil {
 		return "", "", err
 	}
-	if !managedEffectivePolicyMatchesTarget(effectivePolicy, targetPolicy, targetAudioTranscodeAllowed) {
+	var accountPermissions []string
+	var accountMaxProfiles int
+	if err := tx.QueryRow(ctx, `SELECT permissions,max_profiles FROM users WHERE id=$1`, snapshot.AccountID).Scan(&accountPermissions, &accountMaxProfiles); err != nil {
+		return "", "", err
+	}
+	targetEffectivePolicy := accesspolicy.ApplyGroupPolicy(
+		&models.User{Permissions: accountPermissions, MaxProfiles: accountMaxProfiles},
+		&accesspolicy.GroupPolicy{
+			LibraryIDs: targetPolicy.LibraryIDs, PlaybackAllowed: targetPolicy.PlaybackAllowed,
+			MaxStreams: targetPolicy.MaxStreams, MaxProfiles: targetPolicy.MaxProfiles,
+			TranscodeAllowed: targetPolicy.TranscodeAllowed, AudioTranscodeAllowed: targetAudioTranscodeAllowed,
+			MaxTranscodes: targetPolicy.MaxTranscodes, DownloadAllowed: targetPolicy.DownloadAllowed,
+			DownloadTranscodeAllowed: targetPolicy.DownloadTranscodeAllowed,
+			MaxPlaybackQuality:       targetPolicy.MaxPlaybackQuality,
+			AllowedPermissions:       targetPolicy.AllowedPermissions, RequestsAllowed: targetPolicy.RequestsAllowed,
+		},
+	)
+	if !managedEffectivePolicyMatchesTarget(effectivePolicy, targetEffectivePolicy) {
 		return "", "", errors.New("reconcile assigned policy")
 	}
 	effectivePolicyDigest, err := entitlements.EffectivePolicyDigest(effectivePolicy)
@@ -1659,15 +1688,18 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	return "succeeded", "", nil
 }
 
-func managedEffectivePolicyMatchesTarget(effective entitlements.EffectivePolicySnapshot, target entitlements.Policy, targetAudioTranscodeAllowed bool) bool {
-	return slices.Equal(effective.LibraryIDs, target.LibraryIDs) &&
+func managedEffectivePolicyMatchesTarget(effective entitlements.EffectivePolicySnapshot, target accesspolicy.EffectiveUserPolicy) bool {
+	return reflect.DeepEqual(effective.LibraryIDs, target.LibraryIDs) &&
+		effective.PlaybackAllowed == target.PlaybackAllowed &&
 		effective.MaxStreams == target.MaxStreams &&
+		effective.MaxProfiles == target.MaxProfiles &&
 		effective.MaxTranscodes == target.MaxTranscodes &&
 		effective.TranscodeAllowed == target.TranscodeAllowed &&
-		effective.AudioTranscodeAllowed == targetAudioTranscodeAllowed &&
+		effective.AudioTranscodeAllowed == target.AudioTranscodeAllowed &&
 		effective.DownloadAllowed == target.DownloadAllowed &&
 		effective.DownloadTranscodeAllowed == target.DownloadTranscodeAllowed &&
 		effective.MaxPlaybackQuality == target.MaxPlaybackQuality &&
+		reflect.DeepEqual(effective.AllowedPermissions, target.Permissions) &&
 		effective.RequestsAllowed == target.RequestsAllowed
 }
 
