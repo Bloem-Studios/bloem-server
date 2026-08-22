@@ -79,6 +79,7 @@ import OrganizationsPage from "@/pages/admin-platform/OrganizationsPage";
 import OrganizationDetailPage from "@/pages/admin-platform/OrganizationDetailPage";
 import EntitlementTemplatesPage from "@/pages/admin-platform/EntitlementTemplatesPage";
 import DirectAccountsPage from "@/pages/admin-platform/DirectAccountsPage";
+import DirectAccountPolicyBulkPage from "@/pages/admin-platform/DirectAccountPolicyBulkPage";
 import CompatibilityApplicationsPage from "@/pages/admin-platform/CompatibilityApplicationsPage";
 import OrganizationOverviewPage from "@/pages/admin-organization/OrganizationOverviewPage";
 import PeoplePage from "@/pages/admin-organization/PeoplePage";
@@ -512,6 +513,10 @@ function AppRoutes() {
                       element={<EntitlementTemplatesPage />}
                     />
                     <Route path="platform/direct-accounts" element={<DirectAccountsPage />} />
+                    <Route
+                      path="platform/direct-accounts/bulk"
+                      element={<DirectAccountPolicyBulkPage />}
+                    />
                     <Route
                       path="platform/compatibility"
                       element={<CompatibilityApplicationsPage />}

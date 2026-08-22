@@ -27,4 +27,17 @@ describe("DirectAccountsPage", () => {
 
     expect(screen.getByText("Loaded direct account 42")).toBeInTheDocument();
   });
+
+  it("links to the explicit bulk policy workflow", () => {
+    render(
+      <MemoryRouter>
+        <DirectAccountsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: "Manage bulk policies" })).toHaveAttribute(
+      "href",
+      "/admin/platform/direct-accounts/bulk",
+    );
+  });
 });

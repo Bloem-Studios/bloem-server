@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import os from "os";
+import { configDefaults } from "vitest/config";
 import { vondelBrand } from "./vondel-brand-plugin";
 
 /// <reference types="vitest" />
@@ -70,6 +71,7 @@ export default defineConfig(({ mode }) => {
       environment: "jsdom",
       globals: true,
       setupFiles: ["./src/test-setup.ts"],
+      exclude: [...configDefaults.exclude, "e2e/**"],
     },
   };
 });

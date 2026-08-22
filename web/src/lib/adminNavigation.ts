@@ -141,6 +141,13 @@ export const ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
         href: "/admin/platform/direct-accounts",
       },
       {
+        label: "Bulk Account Policies",
+        description: "Review authoritative direct-account policy and run exact bulk assignments.",
+        keywords: ["direct accounts", "bulk", "cohorts", "policy", "entitlements"],
+        icon: GitBranch,
+        href: "/admin/platform/direct-accounts/bulk",
+      },
+      {
         label: "Dashboard",
         description: "Live sessions, content health, and server activity.",
         keywords: ["overview", "stats", "health", "scan all"],

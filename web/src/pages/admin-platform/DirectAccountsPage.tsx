@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +32,9 @@ export default function DirectAccountsPage() {
             Apply a versioned entitlement to an account managed directly by this Vondel instance.
           </p>
         </div>
+        <Button asChild variant="outline">
+          <Link to="/admin/platform/direct-accounts/bulk">Manage bulk policies</Link>
+        </Button>
       </div>
       <form
         className="surface-panel flex flex-col gap-3 rounded-2xl p-5 sm:flex-row sm:items-end"
