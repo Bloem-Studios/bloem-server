@@ -220,6 +220,9 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Reachable Go vulnerability scan
+        run: go tool govulncheck ./...
+
       # Scoped to the lines this branch touched. The repo does not pass a full
       # golangci-lint run today — there are a few hundred pre-existing findings,
       # which is why the Go half of `make lint` has never been enforced — and
