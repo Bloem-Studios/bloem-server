@@ -5,6 +5,12 @@ a **platform administrator**. They let an operator apply the same access policy
 to an organization or to one directly managed account without manually editing
 access groups and profiles.
 
+For retroactive changes to a reviewed set of existing accounts, templates are
+materialized as immutable organization policy cohorts and applied through a
+durable bulk job. See [Bulk policy cohorts](bulk-policy-cohorts.md). For release,
+migration, and bounded-canary procedures, see the
+[bulk policy release runbook](bulk-policy-cohorts-runbook.md).
+
 Open **Admin → Platform → Entitlement templates** at
 `/admin/platform/entitlement-templates`. Direct-account assignment is at
 `/admin/platform/direct-accounts`; organization assignment is on the Platform
@@ -105,6 +111,29 @@ custom groups are not changed.
 The canonical API uses `/platform/accounts/{account_id}`. The equivalent
 `/platform/users/{user_id}` routes remain available as compatibility aliases.
 
+## Apply to a reviewed cohort of accounts
+
+Do not repeat the single-account apply endpoint in a loop. Use the bulk policy
+workflow so one immutable selection, one reviewed preview, and one durable job
+cover the entire operation.
+
+- Organization administrators select people under **Admin → Organization →
+  People**, choose **Apply policy**, and may inspect immutable history under
+  **Policy Cohorts**.
+- Platform administrators use **Admin → Platform → Bulk Account Policies** for
+  an explicit list of directly managed Server account IDs.
+- Applying an exact template revision reuses the corresponding organization
+  cohort. A selection-specific patch creates a distinct derived cohort; it does
+  not revise the source template or change unselected accounts.
+- “Restore default” assigns the protected managed default. It never removes an
+  account's policy or leaves the account without an enforceable access group.
+
+The bulk preview reports current cohort distribution, exact target provenance,
+field-level differences, already-compliant accounts, inherited profiles that
+will move, and custom profiles that will remain or move. The signed confirmation
+expires and is invalidated by any material selection, command, actor, route
+scope, or policy-state change.
+
 ## Audit and reconciliation
 
 Template creation, revision, rollback-as-new-revision, clone, archive, and
@@ -120,6 +149,13 @@ the old token. Reload the target, run a new dry-run, review it, and confirm the
 new preview. If an expected built-in template is missing after an upgrade,
 verify that migration `20260821210000_enable_builtin_entitlement_templates`
 was applied and that the platform-admin context is active.
+
+For a bulk job, poll its policy-specific status route to a terminal state.
+Retry a transport failure by reading the job first, then resubmitting the exact
+same command with the same idempotency key only when no job was returned. A
+different selection, command, or operation scope requires a new key and a new
+preview. Per-account skipped/failed reason codes are safe to retain in an
+operations record; confirmation and selection tokens are not.
 
 ## API clients
 
