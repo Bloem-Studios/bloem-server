@@ -26,6 +26,8 @@ const (
 	platformEntitlementBulkFalse     = "false"
 	platformEntitlementBulkTrue      = "true"
 	platformEntitlementBulkRequest   = "request"
+	entitlementIncludeArchivedParam  = "include_archived"
+	entitlementQueryValidationField  = "query"
 )
 
 var ErrPlatformEntitlementBulkRateLimited = errors.New("platform entitlement bulk request rate limited")
@@ -82,14 +84,14 @@ func (h *AdminHandler) HandleListPlatformEntitlementCohorts(w http.ResponseWrite
 	includeArchived := false
 	query := r.URL.Query()
 	for key := range query {
-		if key != "include_archived" {
-			writeAdminValidation(w, map[string]string{"query": "contains unsupported parameters"})
+		if key != entitlementIncludeArchivedParam {
+			writeAdminValidation(w, map[string]string{entitlementQueryValidationField: "contains unsupported parameters"})
 			return
 		}
 	}
-	if raw := strings.TrimSpace(query.Get("include_archived")); raw != "" {
+	if raw := strings.TrimSpace(query.Get(entitlementIncludeArchivedParam)); raw != "" {
 		if raw != platformEntitlementBulkTrue && raw != platformEntitlementBulkFalse {
-			writeAdminValidation(w, map[string]string{"include_archived": "must be true or false"})
+			writeAdminValidation(w, map[string]string{entitlementIncludeArchivedParam: "must be true or false"})
 			return
 		}
 		includeArchived = raw == platformEntitlementBulkTrue

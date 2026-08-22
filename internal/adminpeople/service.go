@@ -49,6 +49,10 @@ const (
 	AuthorityOrganizationAdmin = "organization_admin"
 	maximumSelectionTargets    = 10000
 	defaultBulkBatchSize       = 100
+	bulkStatusCompleted        = "completed"
+	bulkStatusFailed           = "failed"
+	bulkStatusCancelled        = "cancelled" //nolint:misspell // Durable API/DB spelling.
+	auditStatusField           = "status"
 )
 
 var (
@@ -1024,7 +1028,7 @@ func (s *Service) ProcessBulkJob(ctx context.Context, organizationID uuid.UUID, 
 			}
 			return BulkResult{}, err
 		}
-		if result.Status == "completed" || result.Status == "failed" || result.Status == "cancelled" {
+		if result.Status == bulkStatusCompleted || result.Status == bulkStatusFailed || result.Status == bulkStatusCancelled {
 			return result, nil
 		}
 	}
@@ -1049,7 +1053,7 @@ func (s *Service) CancelBulkJob(ctx context.Context, organizationID uuid.UUID, a
 	} else if err != nil {
 		return BulkResult{}, err
 	}
-	if status != "completed" && status != "failed" && status != "cancelled" {
+	if status != bulkStatusCompleted && status != bulkStatusFailed && status != bulkStatusCancelled {
 		actor, err = s.resolveBulkActorSnapshot(ctx, tx, organizationID, actor)
 		if err != nil {
 			return BulkResult{}, err
@@ -1061,7 +1065,8 @@ func (s *Service) CancelBulkJob(ctx context.Context, organizationID uuid.UUID, a
 		if _, err := tx.Exec(ctx, `UPDATE admin_jobs SET status='cancelled',message='People bulk operation cancelled',error_message='',completed_at=now(),heartbeat_at=now(),updated_at=now() WHERE id=$1`, jobID); err != nil {
 			return BulkResult{}, err
 		}
-		if err := recordPeopleAudit(ctx, tx, actorID, "people.bulk_job_cancelled", "bulk_job", jobID, organizationID, 0, 0, 0, "success", nil, map[string]any{"status": "cancelled"}); err != nil {
+		// The audit action is a durable external contract and retains its original spelling.
+		if err := recordPeopleAudit(ctx, tx, actorID, "people.bulk_job_cancelled", "bulk_job", jobID, organizationID, 0, 0, 0, "success", nil, map[string]any{auditStatusField: bulkStatusCancelled}); err != nil { //nolint:misspell
 			return BulkResult{}, err
 		}
 	}
@@ -1117,7 +1122,7 @@ func (s *Service) ProcessBulkBatch(ctx context.Context, organizationID uuid.UUID
 		return BulkResult{}, err
 	}
 	ctx = WithMutationActor(ctx, actor)
-	if status == "completed" || status == "failed" || status == "cancelled" {
+	if status == bulkStatusCompleted || status == bulkStatusFailed || status == bulkStatusCancelled {
 		_ = tx.Commit(ctx)
 		return s.GetBulkJob(ctx, organizationID, jobID)
 	}
@@ -1318,7 +1323,7 @@ func (s *Service) failBulkJob(ctx context.Context, organizationID uuid.UUID, job
 	if err != nil {
 		return err
 	}
-	if status == "completed" || status == "failed" || status == "cancelled" {
+	if status == bulkStatusCompleted || status == bulkStatusFailed || status == bulkStatusCancelled {
 		return tx.Commit(ctx)
 	}
 	ctx = WithMutationActor(ctx, actor)
@@ -1354,7 +1359,7 @@ func (s *Service) FailBulkJob(ctx context.Context, organizationID uuid.UUID, job
 	} else if err != nil {
 		return err
 	}
-	if status == "completed" || status == "failed" || status == "cancelled" {
+	if status == bulkStatusCompleted || status == bulkStatusFailed || status == bulkStatusCancelled {
 		return tx.Commit(ctx)
 	}
 	attempts++
@@ -1505,7 +1510,7 @@ func (s *Service) executeBulkRecord(ctx context.Context, tx pgx.Tx, organization
 		if _, err := tx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, snapshot.AccountID); err != nil {
 			return "", "", err
 		}
-		if err := recordPeopleAudit(ctx, tx, actorID, actionName, "membership", membershipID.String(), organizationID, snapshot.AccountID, revision, revision+1, "success", map[string]any{"status": status}, map[string]any{"status": target}); err != nil {
+		if err := recordPeopleAudit(ctx, tx, actorID, actionName, "membership", membershipID.String(), organizationID, snapshot.AccountID, revision, revision+1, "success", map[string]any{auditStatusField: status}, map[string]any{auditStatusField: target}); err != nil {
 			return "", "", err
 		}
 		return "succeeded", "", nil
@@ -1789,7 +1794,7 @@ func (s *Service) UpdateMembership(ctx context.Context, organizationID uuid.UUID
 		if _, err = tx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, accountID); err != nil {
 			return PersonSummary{}, err
 		}
-		if err = recordPeopleAudit(ctx, tx, actorID, "people.membership_updated", "membership", id.String(), organizationID, accountID, revision, revision+1, "success", map[string]any{"status": current}, map[string]any{"status": status}); err != nil {
+		if err = recordPeopleAudit(ctx, tx, actorID, "people.membership_updated", "membership", id.String(), organizationID, accountID, revision, revision+1, "success", map[string]any{auditStatusField: current}, map[string]any{auditStatusField: status}); err != nil {
 			return PersonSummary{}, err
 		}
 	}

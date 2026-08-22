@@ -27,7 +27,10 @@ import (
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
-const tenantIdentityPreviousMigration = 20260812163547
+const (
+	tenantIdentityPreviousMigration = 20260812163547
+	tenantIdentityMigration         = 20260812190000
+)
 
 func TestTenantIdentityMigrationPreviousVersionIsImmediatePredecessor(t *testing.T) {
 	files, err := fs.Glob(migrations.FS, "sql/*.sql")
@@ -35,7 +38,6 @@ func TestTenantIdentityMigrationPreviousVersionIsImmediatePredecessor(t *testing
 		t.Fatalf("list embedded migrations: %v", err)
 	}
 
-	const tenantIdentityVersion int64 = 20260812190000
 	var immediatePredecessor int64
 	for _, file := range files {
 		versionText, _, ok := strings.Cut(path.Base(file), "_")
@@ -46,7 +48,7 @@ func TestTenantIdentityMigrationPreviousVersionIsImmediatePredecessor(t *testing
 		if err != nil {
 			continue
 		}
-		if version < tenantIdentityVersion && version > immediatePredecessor {
+		if version < tenantIdentityMigration && version > immediatePredecessor {
 			immediatePredecessor = version
 		}
 	}
@@ -101,7 +103,7 @@ func TestTenantIdentityMigrationBackfill(t *testing.T) {
 			seed := seedTenantIdentityLegacyState(ctx, t, pool, tt.adminCount, tt.ordinaryUserCount, tt.disabledAdminCount)
 			before := snapshotTenantIdentityLegacyState(ctx, t, pool, false)
 
-			if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+			if err := migrateTenantIdentityBoundaryUp(ctx, pool); err != nil {
 				t.Fatalf("migrate tenant identity foundation: %v", err)
 			}
 			assertTenantIdentityUpgrade(ctx, t, pool, seed, before, tt.wantOwner, tt.wantResolutionRequired)
@@ -114,7 +116,7 @@ func TestTenantIdentityMigrationBackfill(t *testing.T) {
 				t.Errorf("down migration changed legacy identity/access-group state:\n got %s\nwant %s", got, before)
 			}
 
-			if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+			if err := migrateTenantIdentityBoundaryUp(ctx, pool); err != nil {
 				t.Fatalf("re-migrate tenant identity foundation: %v", err)
 			}
 			assertTenantIdentityUpgrade(ctx, t, pool, seed, before, tt.wantOwner, tt.wantResolutionRequired)
@@ -561,6 +563,18 @@ SELECT jsonb_build_object(
 		t.Fatalf("snapshot legacy state: %v", err)
 	}
 	return snapshot
+}
+
+func migrateTenantIdentityBoundaryUp(ctx context.Context, pool *pgxpool.Pool) error {
+	provider, err := newMigrationProvider(pool, migrations.FS, "sql")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = provider.Close() }()
+	if _, err := provider.UpTo(ctx, tenantIdentityMigration); err != nil {
+		return fmt.Errorf("migrate to tenant identity boundary: %w", err)
+	}
+	return nil
 }
 
 func newTenantIdentityDisposableDatabase(t *testing.T, ctx context.Context, dsn string) *pgxpool.Pool {

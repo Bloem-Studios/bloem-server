@@ -1220,17 +1220,17 @@ func TestPolicyBulkJobRejectsPayloadMismatchAndCancelsWithoutEffects(t *testing.
 	if _, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "policy-cancel-1", Command: changed}); !errors.Is(err, ErrBulkIdempotencyConflict) {
 		t.Fatalf("payload mismatch error = %v", err)
 	}
-	cancelled, err := fixture.service.CancelBulkJob(ctx, fixture.orgA, fixture.ownerID, queued.JobID)
+	canceled, err := fixture.service.CancelBulkJob(ctx, fixture.orgA, fixture.ownerID, queued.JobID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cancelled.Status != "cancelled" || cancelled.ProgressCurrent != 0 {
-		t.Fatalf("cancelled = %+v", cancelled)
+	if canceled.Status != bulkStatusCancelled || canceled.ProgressCurrent != 0 {
+		t.Fatalf("canceled = %+v", canceled)
 	}
 	fixture.assertAccountGroup(t, fixture.sharedAccountID, int(standard.AccessGroupID))
 	replayed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
-	if err != nil || replayed.Status != "cancelled" {
-		t.Fatalf("cancelled replay = %+v, %v", replayed, err)
+	if err != nil || replayed.Status != bulkStatusCancelled {
+		t.Fatalf("canceled replay = %+v, %v", replayed, err)
 	}
 }
 

@@ -69,15 +69,15 @@ func (h *V2AdminPeopleHandler) HandleListEntitlementCohorts(w http.ResponseWrite
 	}
 	query := r.URL.Query()
 	for key := range query {
-		if key != "include_archived" {
-			writeAdminValidation(w, map[string]string{"query": "contains unsupported parameters"})
+		if key != entitlementIncludeArchivedParam {
+			writeAdminValidation(w, map[string]string{entitlementQueryValidationField: "contains unsupported parameters"})
 			return
 		}
 	}
 	includeArchived := false
-	if raw := strings.TrimSpace(query.Get("include_archived")); raw != "" {
+	if raw := strings.TrimSpace(query.Get(entitlementIncludeArchivedParam)); raw != "" {
 		if raw != platformEntitlementBulkTrue && raw != platformEntitlementBulkFalse {
-			writeAdminValidation(w, map[string]string{"include_archived": "must be true or false"})
+			writeAdminValidation(w, map[string]string{entitlementIncludeArchivedParam: "must be true or false"})
 			return
 		}
 		includeArchived = raw == platformEntitlementBulkTrue
@@ -440,7 +440,7 @@ func (h *V2AdminPeopleHandler) writeError(w http.ResponseWriter, r *http.Request
 	case errors.Is(err, adminpeople.ErrBulkIdempotencyConflict):
 		writeError(w, http.StatusConflict, "idempotency_conflict", "The idempotency key was used for a different command")
 	case errors.Is(err, adminpeople.ErrBulkJobNotCancellable):
-		writeError(w, http.StatusConflict, "job_not_cancellable", "The requested job cannot be cancelled through this endpoint")
+		writeError(w, http.StatusConflict, "job_not_cancellable", "The requested job cannot be canceled through this endpoint")
 	default:
 		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
 	}

@@ -888,10 +888,6 @@ func policyTargetLookupError(err error) error {
 	return err
 }
 
-func (s *Service) materializePreviewPolicy(ctx context.Context, policy entitlements.Policy) (entitlements.Policy, error) {
-	return materializePreviewPolicyWithDB(ctx, s.pool, policy)
-}
-
 func materializePreviewPolicyWithDB(ctx context.Context, db policyPreviewDB, policy entitlements.Policy) (entitlements.Policy, error) {
 	if policy.LibraryIDs != nil {
 		return entitlements.ApplyPolicyPatch(policy, entitlements.PolicyPatch{})
