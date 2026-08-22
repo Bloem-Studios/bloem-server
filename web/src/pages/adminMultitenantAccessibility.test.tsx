@@ -195,6 +195,7 @@ describe("multitenant administration accessibility", () => {
             expires_at: "2026-08-13T12:15:00Z",
           }}
           groups={[{ id: 1, name: "Default" }]}
+          onApplyPolicy={() => undefined}
           onAction={vi.fn()}
         />
       </>,
@@ -266,6 +267,7 @@ describe("multitenant administration responsive release snapshots", () => {
               expires_at: "2026-08-13T12:15:00Z",
             }}
             groups={[{ id: 1, name: "Default" }]}
+            onApplyPolicy={() => undefined}
             onAction={vi.fn()}
           />
         </>,

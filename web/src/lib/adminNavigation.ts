@@ -8,6 +8,7 @@ import {
   FileKey2,
   FileWarning,
   History,
+  GitBranch,
   KeyRound,
   LayoutDashboard,
   LayoutPanelTop,
@@ -67,6 +68,13 @@ export const ORGANIZATION_ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
         keywords: ["people", "memberships", "profiles"],
         icon: Users,
         href: "/admin/organization/people",
+      },
+      {
+        label: "Policy Cohorts",
+        description: "Immutable organization policy revisions and membership counts.",
+        keywords: ["entitlements", "cohorts", "policy", "revisions"],
+        icon: GitBranch,
+        href: "/admin/organization/policy-cohorts",
       },
       {
         label: "Access Groups",

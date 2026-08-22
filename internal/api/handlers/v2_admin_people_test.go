@@ -11,6 +11,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -33,6 +34,23 @@ type adminPeopleServiceStub struct {
 	err             error
 	authority       string
 }
+
+type organizationCohortStoreStub struct {
+	items []entitlements.CohortRevision
+	item  entitlements.CohortRevision
+	org   uuid.UUID
+}
+
+func (s *organizationCohortStoreStub) ListCohorts(_ context.Context, organizationID uuid.UUID, _ bool) ([]entitlements.CohortRevision, error) {
+	s.org = organizationID
+	return s.items, nil
+}
+
+func (s *organizationCohortStoreStub) GetCohort(_ context.Context, organizationID, _ uuid.UUID) (entitlements.CohortRevision, error) {
+	s.org = organizationID
+	return s.item, nil
+}
+
 type adminPeopleWakeStub struct{ calls int }
 
 func (s *adminPeopleWakeStub) Wake() { s.calls++ }
@@ -197,6 +215,34 @@ func TestV2AdminPeoplePolicyPreviewUsesImmutableSelectionAndMiddlewareActor(t *t
 	}
 	if store.organizationID != organizationID || store.actorID != 7 || store.policyCommand.TemplateKey != "premium" || store.policyCommand.TemplateRevision != 1 || store.authority != adminpeople.AuthorityOrganizationAdmin {
 		t.Fatalf("preview authority/command = %s/%d/%s/%d/%s", store.organizationID, store.actorID, store.policyCommand.TemplateKey, store.policyCommand.TemplateRevision, store.authority)
+	}
+}
+
+func TestV2AdminPeopleCohortDiscoveryUsesOnlyOrganizationContext(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	cohortID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
+	cohort := entitlements.CohortRevision{
+		ID: cohortID, OrganizationID: organizationID, Name: "Standard", Revision: 2,
+		AccessGroupID: 12, SourceTemplateKey: "standard", SourceTemplateRevision: 4,
+		DerivationKind: "exact_template", PolicyDigest: "safe-digest", MemberCount: 31,
+		Policy: entitlements.Policy{LibraryIDs: []int{1, 2}, PlaybackAllowed: true, MaxStreams: 2},
+	}
+	cohorts := &organizationCohortStoreStub{items: []entitlements.CohortRevision{cohort}, item: cohort}
+	handler := NewV2AdminPeopleHandler(&adminPeopleServiceStub{})
+	handler.SetCohortStore(cohorts)
+
+	list := adminPeopleRequest(http.MethodGet, "/api/v2/admin/organization/entitlement-cohorts?include_archived=true", "", organizationID, 7, nil)
+	listRecorder := httptest.NewRecorder()
+	handler.HandleListEntitlementCohorts(listRecorder, list)
+	if listRecorder.Code != http.StatusOK || cohorts.org != organizationID || !strings.Contains(listRecorder.Body.String(), `"member_count":31`) || !strings.Contains(listRecorder.Body.String(), `"policy_digest":"safe-digest"`) {
+		t.Fatalf("list response = %d %s, store organization=%s", listRecorder.Code, listRecorder.Body.String(), cohorts.org)
+	}
+
+	detail := adminPeopleRequest(http.MethodGet, "/api/v2/admin/organization/entitlement-cohorts/"+cohortID.String(), "", organizationID, 7, map[string]string{"cohort_id": cohortID.String()})
+	detailRecorder := httptest.NewRecorder()
+	handler.HandleGetEntitlementCohort(detailRecorder, detail)
+	if detailRecorder.Code != http.StatusOK || !strings.Contains(detailRecorder.Body.String(), `"cohort_id":"`+cohortID.String()+`"`) {
+		t.Fatalf("detail response = %d %s", detailRecorder.Code, detailRecorder.Body.String())
 	}
 }
 

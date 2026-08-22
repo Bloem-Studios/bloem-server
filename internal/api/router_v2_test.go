@@ -292,6 +292,8 @@ func TestV2AdminPeopleRoutesAreMountedBehindOrganizationContext(t *testing.T) {
 		path   string
 		body   string
 	}{
+		{http.MethodGet, "/api/v2/admin/organization/entitlement-cohorts", ""},
+		{http.MethodGet, "/api/v2/admin/organization/entitlement-cohorts/20000000-0000-0000-0000-000000000002", ""},
 		{http.MethodPost, "/api/v2/admin/organization/people/policy-jobs", `{}`},
 		{http.MethodGet, "/api/v2/admin/organization/people/policy-jobs/job-1", ""},
 		{http.MethodPost, "/api/v2/admin/organization/people/policy-jobs/job-1/cancel", `{}`},

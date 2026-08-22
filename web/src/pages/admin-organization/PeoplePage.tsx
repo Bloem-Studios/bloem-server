@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AdminV2ClientError } from "@/api/adminV2Client";
 import BulkJobResult from "@/components/admin/people/BulkJobResult";
 import BulkPeopleActionBar from "@/components/admin/people/BulkPeopleActionBar";
+import BulkPolicyDrawer from "@/components/admin/people/BulkPolicyDrawer";
 import PeopleTable from "@/components/admin/people/PeopleTable";
 import PersonDetailSheet from "@/components/admin/people/PersonDetailSheet";
 import {
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
+import { useOrganizationEntitlementCohorts } from "@/hooks/queries/admin/entitlementCohorts";
 import {
   peopleFiltersFromSearch,
   peopleFiltersToSearch,
@@ -66,6 +68,7 @@ export default function PeoplePage() {
   const [selection, setSelection] = useState<PeopleSelection | null>(null);
   const [inspected, setInspected] = useState<OrganizationPerson | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [policyDrawerOpen, setPolicyDrawerOpen] = useState(false);
   const [submittedJob, setSubmittedJob] = useState<PeopleBulkJob | null>(null);
   const [changingProfileId, setChangingProfileId] = useState<string>();
   const [groupDrafts, setGroupDrafts] = useState<Record<string, number>>({});
@@ -80,6 +83,7 @@ export default function PeoplePage() {
 
   const people = useOrganizationPeople(contextKey, filters);
   const groups = useOrganizationGroups(contextKey);
+  const cohorts = useOrganizationEntitlementCohorts(contextKey, false);
   const createSelection = useCreatePeopleSelection(contextKey);
   const createJob = useCreatePeopleBulkJob(contextKey);
   const polledJob = usePeopleBulkJob(contextKey, submittedJob?.job_id);
@@ -93,6 +97,7 @@ export default function PeoplePage() {
       previousFilter.current = filterSignature;
       setSelection(null);
       setPendingAction(null);
+      setPolicyDrawerOpen(false);
       setSubmittedJob(null);
       setCursorHistory(filters.cursor ? [undefined, filters.cursor] : [undefined]);
       setProfileConflict(null);
@@ -105,6 +110,7 @@ export default function PeoplePage() {
       previousContext.current = contextKey;
       setSelection(null);
       setPendingAction(null);
+      setPolicyDrawerOpen(false);
       setSubmittedJob(null);
       setInspected(null);
       setCursorHistory([undefined]);
@@ -435,10 +441,23 @@ export default function PeoplePage() {
         <BulkPeopleActionBar
           selection={selection}
           groups={groups.data ?? []}
+          onApplyPolicy={() => setPolicyDrawerOpen(true)}
           onAction={(kind, groupId) => setPendingAction({ kind, groupId })}
         />
       ) : null}
       {visibleJob ? <BulkJobResult job={visibleJob} /> : null}
+      {selection ? (
+        <BulkPolicyDrawer
+          open={policyDrawerOpen}
+          contextKey={contextKey}
+          organizationName={active?.name ?? "this organization"}
+          selection={selection}
+          cohorts={cohorts.data ?? []}
+          initialCohortID={searchParams.get("policy_cohort") || undefined}
+          onOpenChange={setPolicyDrawerOpen}
+          onRetrySelection={() => void selectAll()}
+        />
+      ) : null}
       <PersonDetailSheet person={inspected} onOpenChange={(open) => !open && setInspected(null)} />
 
       <AlertDialog

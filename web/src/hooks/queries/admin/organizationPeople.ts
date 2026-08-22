@@ -57,12 +57,15 @@ export interface BulkRecordResult {
 
 export interface PeopleBulkJob {
   job_id: string;
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
   progress_current: number;
   progress_total: number;
   succeeded: number;
   skipped: BulkRecordResult[];
   failed: BulkRecordResult[];
+  target_cohort_id?: string;
+  target_cohort_revision?: number;
+  target_group_id?: number;
 }
 
 export interface OrganizationOverview {

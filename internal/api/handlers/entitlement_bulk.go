@@ -66,6 +66,7 @@ type platformEntitlementCohort struct {
 	Policy                 adminpeople.PolicyView `json:"policy"`
 	PolicyDigest           string                 `json:"policy_digest"`
 	Archived               bool                   `json:"archived"`
+	MemberCount            int64                  `json:"member_count"`
 	CreatedByAccountID     int                    `json:"created_by_account_id,omitempty"`
 	CreatedAt              time.Time              `json:"created_at"`
 }
@@ -431,7 +432,7 @@ func platformEntitlementCohortFromDomain(item entitlements.CohortRevision) platf
 			DownloadAllowed: item.Policy.DownloadAllowed, DownloadTranscodeAllowed: item.Policy.DownloadTranscodeAllowed,
 			MaxPlaybackQuality: item.Policy.MaxPlaybackQuality, AllowedPermissions: append([]string{}, item.Policy.AllowedPermissions...),
 			RequestsAllowed: item.Policy.RequestsAllowed,
-		}, PolicyDigest: item.PolicyDigest, Archived: item.Archived,
+		}, PolicyDigest: item.PolicyDigest, Archived: item.Archived, MemberCount: item.MemberCount,
 		CreatedByAccountID: item.CreatedByAccountID, CreatedAt: item.CreatedAt,
 	}
 }

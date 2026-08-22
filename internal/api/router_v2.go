@@ -88,6 +88,9 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	}
 	if peopleService != nil {
 		peopleHandler = handlers.NewV2AdminPeopleHandlerWithWake(peopleService, deps.AdminPeopleWorker)
+		if deps.DB != nil {
+			peopleHandler.SetCohortStore(entitlements.NewTemplateStore(deps.DB))
+		}
 	}
 	// Compatibility Applications administration: platform-scoped lifecycle
 	// state and controls for the removable compatibility applications. The
@@ -249,6 +252,8 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 			}
 			if peopleHandler != nil {
 				people := peopleHandler
+				r.Get("/organization/entitlement-cohorts", people.HandleListEntitlementCohorts)
+				r.Get("/organization/entitlement-cohorts/{cohort_id}", people.HandleGetEntitlementCohort)
 				r.Route("/organization/people", func(r chi.Router) {
 					r.Get("/", people.HandleListPeople)
 					r.Post("/selections", people.HandleCreateSelection)

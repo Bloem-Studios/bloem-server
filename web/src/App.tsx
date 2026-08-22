@@ -82,6 +82,7 @@ import DirectAccountsPage from "@/pages/admin-platform/DirectAccountsPage";
 import CompatibilityApplicationsPage from "@/pages/admin-platform/CompatibilityApplicationsPage";
 import OrganizationOverviewPage from "@/pages/admin-organization/OrganizationOverviewPage";
 import PeoplePage from "@/pages/admin-organization/PeoplePage";
+import EntitlementCohortsPage from "@/pages/admin-organization/EntitlementCohortsPage";
 import LibrariesEntitlementsPage from "@/pages/admin-organization/LibrariesEntitlementsPage";
 import PolicyDecisionsPage from "@/pages/admin-organization/PolicyDecisionsPage";
 import InvitationsTab from "@/pages/admin-settings/InvitationsTab";
@@ -549,6 +550,10 @@ function AppRoutes() {
                   <Route element={<OrganizationContextGuard />}>
                     <Route path="organization" element={<OrganizationOverviewPage />} />
                     <Route path="organization/people" element={<PeoplePage />} />
+                    <Route
+                      path="organization/policy-cohorts"
+                      element={<EntitlementCohortsPage />}
+                    />
                     <Route path="organization/access-groups" element={<AdminAccessGroups />} />
                     <Route path="organization/libraries" element={<LibrariesEntitlementsPage />} />
                     <Route

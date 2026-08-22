@@ -11,6 +11,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -32,9 +33,16 @@ type V2AdminPeopleService interface {
 }
 
 type AdminPeopleWorkerWake interface{ Wake() }
+
+type V2AdminPeopleCohortStore interface {
+	ListCohorts(context.Context, uuid.UUID, bool) ([]entitlements.CohortRevision, error)
+	GetCohort(context.Context, uuid.UUID, uuid.UUID) (entitlements.CohortRevision, error)
+}
+
 type V2AdminPeopleHandler struct {
-	service V2AdminPeopleService
-	worker  AdminPeopleWorkerWake
+	service     V2AdminPeopleService
+	worker      AdminPeopleWorkerWake
+	cohortStore V2AdminPeopleCohortStore
 }
 
 func NewV2AdminPeopleHandler(service V2AdminPeopleService) *V2AdminPeopleHandler {
@@ -42,6 +50,89 @@ func NewV2AdminPeopleHandler(service V2AdminPeopleService) *V2AdminPeopleHandler
 }
 func NewV2AdminPeopleHandlerWithWake(service V2AdminPeopleService, worker AdminPeopleWorkerWake) *V2AdminPeopleHandler {
 	return &V2AdminPeopleHandler{service: service, worker: worker}
+}
+
+func (h *V2AdminPeopleHandler) SetCohortStore(store V2AdminPeopleCohortStore) {
+	if h != nil {
+		h.cohortStore = store
+	}
+}
+
+func (h *V2AdminPeopleHandler) HandleListEntitlementCohorts(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := h.requireOrganization(w, r)
+	if !ok {
+		return
+	}
+	if h.cohortStore == nil {
+		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
+		return
+	}
+	query := r.URL.Query()
+	for key := range query {
+		if key != "include_archived" {
+			writeAdminValidation(w, map[string]string{"query": "contains unsupported parameters"})
+			return
+		}
+	}
+	includeArchived := false
+	if raw := strings.TrimSpace(query.Get("include_archived")); raw != "" {
+		if raw != platformEntitlementBulkTrue && raw != platformEntitlementBulkFalse {
+			writeAdminValidation(w, map[string]string{"include_archived": "must be true or false"})
+			return
+		}
+		includeArchived = raw == platformEntitlementBulkTrue
+	}
+	items, err := h.cohortStore.ListCohorts(r.Context(), tenant.OrganizationID, includeArchived)
+	if err != nil {
+		h.writeCohortError(w, err)
+		return
+	}
+	cohorts := make([]platformEntitlementCohort, 0, len(items))
+	for _, item := range items {
+		if item.OrganizationID != tenant.OrganizationID {
+			h.writeCohortError(w, errors.New("cohort store returned a foreign organization"))
+			return
+		}
+		cohorts = append(cohorts, platformEntitlementCohortFromDomain(item))
+	}
+	writeJSON(w, http.StatusOK, struct {
+		Cohorts []platformEntitlementCohort `json:"cohorts"`
+	}{Cohorts: cohorts})
+}
+
+func (h *V2AdminPeopleHandler) HandleGetEntitlementCohort(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := h.requireOrganization(w, r)
+	if !ok {
+		return
+	}
+	if h.cohortStore == nil {
+		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
+		return
+	}
+	cohortID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "cohort_id")))
+	if err != nil || cohortID == uuid.Nil {
+		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")
+		return
+	}
+	item, err := h.cohortStore.GetCohort(r.Context(), tenant.OrganizationID, cohortID)
+	if err != nil || item.ID != cohortID || item.OrganizationID != tenant.OrganizationID {
+		if err == nil {
+			err = entitlements.ErrCohortNotFound
+		}
+		h.writeCohortError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, struct {
+		Cohort platformEntitlementCohort `json:"cohort"`
+	}{Cohort: platformEntitlementCohortFromDomain(item)})
+}
+
+func (h *V2AdminPeopleHandler) writeCohortError(w http.ResponseWriter, err error) {
+	if errors.Is(err, entitlements.ErrCohortNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")
+		return
+	}
+	writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
 }
 
 func (h *V2AdminPeopleHandler) HandleListPeople(w http.ResponseWriter, r *http.Request) {

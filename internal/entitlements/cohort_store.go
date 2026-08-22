@@ -33,6 +33,7 @@ type CohortRevision struct {
 	Policy                 Policy
 	PolicyDigest           string
 	Archived               bool
+	MemberCount            int64
 	CreatedByAccountID     int
 	CreatedAt              time.Time
 }
@@ -431,6 +432,11 @@ const cohortSelect = `
 	       r.max_profiles,r.transcode_allowed,r.max_transcodes,r.download_allowed,
 	       r.download_transcode_allowed,r.max_playback_quality,
 	       r.allowed_permissions,r.requests_allowed,r.policy_digest,c.archived,
+	       (SELECT count(*)
+	          FROM organization_memberships m
+	          JOIN users u ON u.id=m.account_id
+	         WHERE m.organization_id=r.organization_id
+	           AND u.access_group_id=r.access_group_id) AS member_count,
 	       r.created_by_account_id,r.created_at
 	FROM entitlement_policy_cohort_revisions r
 	JOIN entitlement_policy_cohorts c
@@ -495,7 +501,7 @@ func scanCohort(row rowScanner) (CohortRevision, error) {
 		&item.Policy.DownloadAllowed, &item.Policy.DownloadTranscodeAllowed,
 		&item.Policy.MaxPlaybackQuality, &item.Policy.AllowedPermissions,
 		&item.Policy.RequestsAllowed, &item.PolicyDigest, &item.Archived,
-		&item.CreatedByAccountID, &item.CreatedAt,
+		&item.MemberCount, &item.CreatedByAccountID, &item.CreatedAt,
 	)
 	if parentID != nil {
 		item.ParentID = *parentID

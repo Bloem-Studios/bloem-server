@@ -1153,6 +1153,14 @@ exports[`multitenant administration responsive release snapshots > captures Peop
       >
         1,234 people selected
       </strong>
+      <button
+        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
+        data-size="sm"
+        data-slot="button"
+        data-variant="default"
+      >
+        Apply policy
+      </button>
       <select
         aria-label="Assign selected people to group"
         class="border-input bg-background h-9 rounded-md border px-3 text-sm"
@@ -1447,6 +1455,14 @@ exports[`multitenant administration responsive release snapshots > captures Peop
       >
         1,234 people selected
       </strong>
+      <button
+        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
+        data-size="sm"
+        data-slot="button"
+        data-variant="default"
+      >
+        Apply policy
+      </button>
       <select
         aria-label="Assign selected people to group"
         class="border-input bg-background h-9 rounded-md border px-3 text-sm"

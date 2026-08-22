@@ -485,4 +485,60 @@ describe("PeoplePage", () => {
     expect(screen.getByText("Account 9 — authorization state changed")).toBeInTheDocument();
     expect(screen.queryByText(/^Success$/i)).not.toBeInTheDocument();
   });
+
+  it("opens the policy workspace for an immutable people selection", async () => {
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (path === "/organization/groups") return { groups: [] } as never;
+      if (path === "/organization/entitlement-cohorts?include_archived=false") {
+        return {
+          cohorts: [
+            {
+              cohort_id: "cohort-standard",
+              organization_id: "org-1",
+              name: "Standard",
+              revision: 1,
+              access_group_id: 12,
+              source_template_key: "standard",
+              source_template_revision: 4,
+              derivation_kind: "exact_template",
+              policy_digest: "digest",
+              member_count: 4,
+              archived: false,
+              created_at: "2026-08-20T10:00:00Z",
+              policy: {
+                library_ids: [1],
+                playback_allowed: true,
+                max_streams: 2,
+                max_profiles: 5,
+                transcode_allowed: true,
+                max_transcodes: 1,
+                download_allowed: false,
+                download_transcode_allowed: false,
+                max_playback_quality: "1080p",
+                allowed_permissions: [],
+                requests_allowed: true,
+              },
+            },
+          ],
+        } as never;
+      }
+      if (path === "/organization/people/selections") {
+        return {
+          selection: { token: "opaque", matched: 4, excluded: 0, expires_at: "later" },
+        } as never;
+      }
+      return { items: [person(1, "Ada")], approximate_total: 4 } as never;
+    });
+
+    renderPage("/admin/organization/people?policy_cohort=cohort-standard");
+    await screen.findAllByText("Ada");
+    fireEvent.click(screen.getByRole("button", { name: "Select all 4 results" }));
+    await screen.findByText("4 people selected");
+    fireEvent.click(screen.getByRole("button", { name: "Apply policy" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Apply entitlement policy" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/immutable selection/i)).toBeInTheDocument();
+  });
 });

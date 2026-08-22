@@ -4,10 +4,12 @@ import type { OrganizationGroup, PeopleSelection } from "@/hooks/queries/admin/o
 export default function BulkPeopleActionBar({
   selection,
   groups,
+  onApplyPolicy,
   onAction,
 }: {
   selection: PeopleSelection;
   groups: OrganizationGroup[];
+  onApplyPolicy(): void;
   onAction(
     kind: "assign_group" | "suspend_memberships" | "reactivate_memberships",
     groupId?: number,
@@ -21,6 +23,9 @@ export default function BulkPeopleActionBar({
       <strong className="mr-auto text-sm">
         {selection.matched.toLocaleString()} people selected
       </strong>
+      <Button size="sm" onClick={onApplyPolicy}>
+        Apply policy
+      </Button>
       {groups.length > 0 ? (
         <select
           aria-label="Assign selected people to group"
