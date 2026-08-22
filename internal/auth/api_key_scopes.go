@@ -54,7 +54,7 @@ func APIKeyScopeCatalog() []APIKeyScope {
 		},
 		{
 			Name:        ScopeAdminEntitlementsBulk,
-			Description: "Discover organization policy cohorts and run confirmed durable bulk entitlement jobs.",
+			Description: "Read authoritative account policies, discover organization policy cohorts, and run confirmed durable bulk entitlement jobs.",
 		},
 	}
 }

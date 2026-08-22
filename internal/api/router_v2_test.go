@@ -254,6 +254,58 @@ func TestV2PlatformEntitlementBulkScopedAPIKeyUsesExistingAuthentication(t *test
 	}
 }
 
+func TestV2AuthoritativeAccountPolicyReadsAcceptOnlyEntitlementBulkScopedAPIKey(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	tokens := auth.NewAdminContextTokenService("router-account-policy-api-key-test-secret")
+	platformAuthorizer := v2AdminPlatformAuthorizerAllowedStub{}
+	adminMW := apimw.NewAdminContextMiddleware(tokens, v2AdminTenantResolverStub{}, v2AdminMembershipStoreStub{}, platformAuthorizer)
+	key := &models.APIKey{ID: 1, UserID: 7, Key: "sa_bulk", Scopes: []string{auth.ScopeAdminEntitlementsBulk}}
+	authMW := apimw.NewAuthMiddleware(nil, nil, v2APIKeyValidatorStub{key: key}, v2APIKeyOwnerStub{owner: &models.User{ID: 7, Role: "admin", Enabled: true}})
+	handler := handlers.NewAdminHandler(nil, nil, nil)
+	handler.SetAccountPolicies(v2AccountPolicyReaderStub{})
+	handler.SetPlatformEntitlementAuthorizer(platformAuthorizer)
+	router := chi.NewRouter()
+	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, authMW, adminMW, handler)
+
+	reads := []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodGet, "/api/v2/admin/platform/accounts/42/entitlement", ""},
+		{http.MethodGet, "/api/v2/admin/platform/organizations/" + organizationID.String() + "/accounts/42/entitlement", ""},
+		{http.MethodPost, "/api/v2/admin/platform/accounts/entitlement-snapshots", `{"account_ids":[42]}`},
+		{http.MethodPost, "/api/v2/admin/platform/organizations/" + organizationID.String() + "/entitlement-snapshots", `{"account_ids":[42]}`},
+	}
+	for _, item := range reads {
+		req := httptest.NewRequest(item.method, item.path, strings.NewReader(item.body))
+		req.Header.Set("Authorization", "Bearer sa_bulk")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("scoped read %s %s = %d, want 200: %s", item.method, item.path, rec.Code, rec.Body.String())
+		}
+	}
+
+	key.Scopes = []string{auth.ScopeAdminUsers}
+	wrongScope := httptest.NewRequest(http.MethodGet, reads[0].path, nil)
+	wrongScope.Header.Set("Authorization", "Bearer sa_bulk")
+	wrongScopeRec := httptest.NewRecorder()
+	router.ServeHTTP(wrongScopeRec, wrongScope)
+	if wrongScopeRec.Code != http.StatusForbidden {
+		t.Fatalf("wrong-scope read = %d, want 403: %s", wrongScopeRec.Code, wrongScopeRec.Body.String())
+	}
+
+	key.Scopes = []string{auth.ScopeAdminEntitlementsBulk}
+	mutation := httptest.NewRequest(http.MethodPost, "/api/v2/admin/platform/accounts/42/entitlement/apply", strings.NewReader(`{}`))
+	mutation.Header.Set("Authorization", "Bearer sa_bulk")
+	mutationRec := httptest.NewRecorder()
+	router.ServeHTTP(mutationRec, mutation)
+	if mutationRec.Code != http.StatusUnauthorized {
+		t.Fatalf("account policy mutation = %d, want 401: %s", mutationRec.Code, mutationRec.Body.String())
+	}
+}
+
 func TestV2AdminPeopleRoutesAreMountedBehindOrganizationContext(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	membershipID := uuid.MustParse("20000000-0000-0000-0000-000000000002")

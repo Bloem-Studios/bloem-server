@@ -40,6 +40,8 @@ var apiKeyScopeRoutes = map[string][]scopeRoute{
 	auth.ScopeAdminEntitlementsBulk: {
 		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-cohorts$`)},
 		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-cohorts/` + apiKeyScopeUUIDPattern + `$`)},
+		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/accounts/[0-9]+/entitlement$`)},
+		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-snapshots$`)},
 		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-bulk/policy-previews$`)},
 		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-bulk/policy-jobs$`)},
 		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/platform/organizations/` + apiKeyScopeUUIDPattern + `/entitlement-bulk/policy-jobs/[^/]+$`)},
@@ -48,6 +50,8 @@ var apiKeyScopeRoutes = map[string][]scopeRoute{
 		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs$`)},
 		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/[^/]+$`)},
 		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/[^/]+/cancel$`)},
+		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/platform/accounts/[0-9]+/entitlement$`)},
+		{http.MethodPost, regexp.MustCompile(`^/api/v2/admin/platform/accounts/entitlement-snapshots$`)},
 	},
 }
 

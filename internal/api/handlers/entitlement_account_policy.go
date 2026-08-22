@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/google/uuid"
 )
@@ -111,9 +109,7 @@ func (h *AdminHandler) handleGetAccountPolicySnapshots(w http.ResponseWriter, r 
 }
 
 func (h *AdminHandler) requirePlatformAccountPolicies(w http.ResponseWriter, r *http.Request) bool {
-	claims, ok := middleware.GetAdminContextClaims(r.Context())
-	if !ok || claims.Scope != auth.AdminScopePlatform || claims.AccountID <= 0 {
-		writeError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
+	if _, ok := h.requirePlatformEntitlementActor(w, r, "Account entitlement policies are unavailable"); !ok {
 		return false
 	}
 	if h == nil || h.accountPolicies == nil {

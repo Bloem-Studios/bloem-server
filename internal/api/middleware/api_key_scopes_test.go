@@ -63,9 +63,13 @@ func TestAPIKeyScopesAllow(t *testing.T) {
 		{"entitlement bulk previews organization", entitlementBulk, http.MethodPost, "/api/v2/admin/platform/organizations/10000000-0000-0000-0000-000000000001/entitlement-bulk/policy-previews", true},
 		{"entitlement bulk gets organization job", entitlementBulk, http.MethodGet, "/api/v2/admin/platform/organizations/10000000-0000-0000-0000-000000000001/entitlement-bulk/policy-jobs/job-1", true},
 		{"entitlement bulk cancels direct job", entitlementBulk, http.MethodPost, "/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/job-1/cancel", true},
+		{"entitlement bulk reads direct account policy", entitlementBulk, http.MethodGet, "/api/v2/admin/platform/accounts/42/entitlement", true},
+		{"entitlement bulk reads organization account policy", entitlementBulk, http.MethodGet, "/api/v2/admin/platform/organizations/10000000-0000-0000-0000-000000000001/accounts/42/entitlement", true},
+		{"entitlement bulk reads direct account snapshots", entitlementBulk, http.MethodPost, "/api/v2/admin/platform/accounts/entitlement-snapshots", true},
+		{"entitlement bulk reads organization account snapshots", entitlementBulk, http.MethodPost, "/api/v2/admin/platform/organizations/10000000-0000-0000-0000-000000000001/entitlement-snapshots", true},
 		{"entitlement bulk denies wrong method", entitlementBulk, http.MethodDelete, "/api/v2/admin/platform/organizations/10000000-0000-0000-0000-000000000001/entitlement-cohorts", false},
 		{"entitlement bulk denies malformed organization id", entitlementBulk, http.MethodGet, "/api/v2/admin/platform/organizations/----/entitlement-cohorts", false},
-		{"entitlement bulk denies nearby account policy", entitlementBulk, http.MethodGet, "/api/v2/admin/platform/accounts/42/entitlement", false},
+		{"entitlement bulk denies account policy mutation", entitlementBulk, http.MethodPost, "/api/v2/admin/platform/accounts/42/entitlement/apply", false},
 	}
 
 	for _, tt := range tests {

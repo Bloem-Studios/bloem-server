@@ -30,6 +30,12 @@ type accountPolicyReaderStub struct {
 	bulkCalls      int
 }
 
+type accountPolicyPlatformAuthorizerStub struct{ allowed bool }
+
+func (s accountPolicyPlatformAuthorizerStub) IsPlatformAdmin(context.Context, int) (bool, error) {
+	return s.allowed, nil
+}
+
 func (s *accountPolicyReaderStub) GetAccountPolicy(_ context.Context, organizationID uuid.UUID, accountID int) (entitlements.AccountPolicySnapshot, error) {
 	s.organizationID = organizationID
 	s.accountID = accountID
@@ -106,6 +112,43 @@ func TestAccountPolicyReadUsesOnlyAuthoritativePathScope(t *testing.T) {
 	accountPolicyRequireEqual(t, true, policy["audio_transcode_allowed"])
 	if _, ok := policy["LibraryIDs"]; ok {
 		t.Fatalf("policy unexpectedly exposes Go field name: %v", policy)
+	}
+}
+
+func TestAccountPolicyReadScopedAPIKeyRequiresCurrentPlatformAdministrator(t *testing.T) {
+	organizationID := uuid.New()
+	for _, test := range []struct {
+		name       string
+		role       string
+		authorized bool
+		want       int
+	}{
+		{name: "current platform administrator", role: "admin", authorized: true, want: http.StatusOK},
+		{name: "non-admin owner", role: "user", authorized: true, want: http.StatusForbidden},
+		{name: "platform authority revoked", role: "admin", authorized: false, want: http.StatusForbidden},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store := &accountPolicyReaderStub{snapshot: entitlements.AccountPolicySnapshot{AccountID: 42}}
+			handler := &AdminHandler{}
+			handler.SetAccountPolicies(store)
+			handler.SetPlatformEntitlementAuthorizer(accountPolicyPlatformAuthorizerStub{allowed: test.authorized})
+			request := httptest.NewRequest(http.MethodGet, "/organizations/"+organizationID.String()+"/accounts/42/entitlement", nil)
+			request = request.WithContext(middleware.SetClaims(request.Context(), &auth.Claims{
+				UserID:       7,
+				Role:         test.role,
+				TokenType:    auth.TokenTypeAPIKey,
+				APIKeyScopes: []string{auth.ScopeAdminEntitlementsBulk},
+			}))
+			recorder := httptest.NewRecorder()
+			accountPolicyRouter(handler, auth.AdminContextClaims{}).ServeHTTP(recorder, request)
+			accountPolicyRequireEqual(t, test.want, recorder.Code, recorder.Body.String())
+			if test.want == http.StatusOK {
+				accountPolicyRequireEqual(t, organizationID, store.organizationID)
+				accountPolicyRequireEqual(t, 42, store.accountID)
+			} else {
+				accountPolicyRequireEqual(t, 0, store.singleCalls)
+			}
+		})
 	}
 }
 

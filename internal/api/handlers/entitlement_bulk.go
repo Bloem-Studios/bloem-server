@@ -300,6 +300,10 @@ func (h *AdminHandler) requirePlatformEntitlementBulk(w http.ResponseWriter, r *
 		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Bulk entitlement policies are unavailable")
 		return 0, false
 	}
+	return h.requirePlatformEntitlementActor(w, r, "Bulk entitlement policies are unavailable")
+}
+
+func (h *AdminHandler) requirePlatformEntitlementActor(w http.ResponseWriter, r *http.Request, unavailableMessage string) (int, bool) {
 	if claims, ok := middleware.GetAdminContextClaims(r.Context()); ok && claims.Scope == auth.AdminScopePlatform && claims.AccountID > 0 {
 		return claims.AccountID, true
 	}
@@ -308,13 +312,13 @@ func (h *AdminHandler) requirePlatformEntitlementBulk(w http.ResponseWriter, r *
 		writeError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
 		return 0, false
 	}
-	if h.platformEntitlementAuthorizer == nil {
-		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Bulk entitlement policies are unavailable")
+	if h == nil || h.platformEntitlementAuthorizer == nil {
+		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", unavailableMessage)
 		return 0, false
 	}
 	allowed, err := h.platformEntitlementAuthorizer.IsPlatformAdmin(r.Context(), claims.UserID)
 	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Bulk entitlement policies are unavailable")
+		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", unavailableMessage)
 		return 0, false
 	}
 	if !allowed {

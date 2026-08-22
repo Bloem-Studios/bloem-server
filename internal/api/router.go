@@ -1209,6 +1209,7 @@ func NewRouter(deps Dependencies) chi.Router {
 			if platformAuthorizer == nil {
 				platformAuthorizer = auth.NewPlatformAdminAuthorizer(userRepo)
 			}
+			adminHandler.SetPlatformEntitlementAuthorizer(platformAuthorizer)
 			if platformPeople != nil {
 				adminHandler.SetPlatformEntitlementBulk(entitlementStore, platformPeople, tenantOrgStore, platformAuthorizer, deps.AdminPeopleWorker)
 			}

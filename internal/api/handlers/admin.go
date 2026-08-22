@@ -195,6 +195,13 @@ func (h *AdminHandler) SetAccountPolicies(store AccountPolicyReader) {
 	h.accountPolicies = store
 }
 
+// SetPlatformEntitlementAuthorizer wires the current platform-admin check used
+// by long-lived scoped API keys. Admin-context tokens are revalidated by their
+// middleware instead.
+func (h *AdminHandler) SetPlatformEntitlementAuthorizer(authorizer auth.PlatformAdminAuthorizer) {
+	h.platformEntitlementAuthorizer = authorizer
+}
+
 // SetPlatformEntitlementBulk wires generic platform cohort discovery and the
 // policy-specific durable people workflow. The boundary intentionally exposes
 // no generic people bulk-job methods.

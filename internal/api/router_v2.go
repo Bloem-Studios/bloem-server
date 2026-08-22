@@ -167,7 +167,7 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 			mountUnavailableAdminContextRoutes(r)
 			return
 		}
-		mountPlatformEntitlementBulkRoutes(r, accountPolicyHandler, authMW, adminMW)
+		mountPlatformEntitlementScopedRoutes(r, accountPolicyHandler, authMW, adminMW)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(adminMW.Require)
 			if entitlementHandler != nil {
@@ -189,13 +189,6 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 				r.Get("/platform/users/{user_id}/entitlement", entitlement.HandleGetAccountEntitlement)
 				r.Post("/platform/users/{user_id}/entitlement/dry-run", entitlement.HandleAccountDryRun)
 				r.Post("/platform/users/{user_id}/entitlement/apply", entitlement.HandleAccountApply)
-			}
-			if accountPolicyHandler != nil {
-				policies := accountPolicyHandler
-				r.Get("/platform/accounts/{account_id}/entitlement", policies.HandleGetAccountPolicy)
-				r.Get("/platform/organizations/{organization_id}/accounts/{account_id}/entitlement", policies.HandleGetOrganizationAccountPolicy)
-				r.Post("/platform/accounts/entitlement-snapshots", policies.HandleGetAccountPolicySnapshots)
-				r.Post("/platform/organizations/{organization_id}/entitlement-snapshots", policies.HandleGetOrganizationAccountPolicySnapshots)
 			}
 			if organizationHandler != nil {
 				organization := organizationHandler
@@ -279,11 +272,12 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 	})
 }
 
-// mountPlatformEntitlementBulkRoutes is the one v2 platform surface that may
-// authenticate with either a short-lived platform context or a narrowly
-// scoped API key. Selecting the established validator from the bearer-token
-// prefix keeps both credential formats on their normal validation path.
-func mountPlatformEntitlementBulkRoutes(r chi.Router, handler *handlers.AdminHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware) {
+// mountPlatformEntitlementScopedRoutes is the one v2 platform surface that
+// may authenticate with either a short-lived platform context or a narrowly
+// scoped API key. It contains only authoritative policy reads and the bulk
+// workflow. Selecting the established validator from the bearer-token prefix
+// keeps both credential formats on their normal validation path.
+func mountPlatformEntitlementScopedRoutes(r chi.Router, handler *handlers.AdminHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware) {
 	if handler == nil || authMW == nil || adminMW == nil {
 		return
 	}
@@ -306,6 +300,10 @@ func mountPlatformEntitlementBulkRoutes(r chi.Router, handler *handlers.AdminHan
 			handler         http.HandlerFunc
 		}
 		routes := []route{
+			{http.MethodGet, "/admin/platform/accounts/{account_id}/entitlement", handler.HandleGetAccountPolicy},
+			{http.MethodGet, "/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement", handler.HandleGetOrganizationAccountPolicy},
+			{http.MethodPost, "/admin/platform/accounts/entitlement-snapshots", handler.HandleGetAccountPolicySnapshots},
+			{http.MethodPost, "/admin/platform/organizations/{organization_id}/entitlement-snapshots", handler.HandleGetOrganizationAccountPolicySnapshots},
 			{http.MethodGet, "/admin/platform/organizations/{organization_id}/entitlement-cohorts", handler.HandleListPlatformEntitlementCohorts},
 			{http.MethodGet, "/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}", handler.HandleGetPlatformEntitlementCohort},
 			{http.MethodPost, "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews", handler.HandleCreatePlatformOrganizationPolicyPreview},
