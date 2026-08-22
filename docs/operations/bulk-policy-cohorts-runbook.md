@@ -9,6 +9,12 @@ Production push, deployment, migration, and canary mutations require an
 authorized operator. Completing the source review does not authorize those
 actions.
 
+The Task 8 source review passed focused feature gates, but it did **not** pass
+the full required repository suite: known compile and handler/access failures
+remained. That is not a release-green result. Do not deploy this feature until
+those failures are resolved (or the owning maintainers update the requirements)
+and the complete required suite passes on the exact release artifact.
+
 ## 1. Freeze the reviewed artifact
 
 - Record `git rev-parse HEAD` as the intended release SHA.
@@ -20,16 +26,25 @@ actions.
   git merge-base --is-ancestor origin/main HEAD
   ```
 
-- Run the repository release gates from `CONTRIBUTING.md`, the focused bulk
-  policy suites, the migration refusal tests, and the Playwright canary journey.
+- Run the complete repository release gates from `CONTRIBUTING.md`, then the
+  focused bulk policy suites, migration refusal tests, and Playwright canary
+  journey. Focused feature passes do not substitute for the complete suite.
+- Confirm the reviewed artifact includes the post-Task 4 corrections that hash
+  the complete authoritative effective policy in assignment audits (including
+  the audio-transcode gate) and permit `admin:entitlements:bulk` API keys to use
+  the authoritative single-account and snapshot read routes only while their
+  owner remains an enabled platform administrator. Run their focused
+  regressions against the exact artifact.
 - Back up PostgreSQL and verify that the backup is readable before changing the
   deployed image.
 - Choose an immutable container tag or digest built from the exact reviewed
   SHA. Do not deploy `latest` for a canary that must be attributable.
 
-Stop if the branch cannot fast-forward the default branch, a changed-code gate
-fails, the database backup is unavailable, or the image provenance does not
-match the reviewed SHA.
+Stop if the branch cannot fast-forward the default branch, any required or
+focused gate fails, the database backup is unavailable, or the image
+provenance does not match the reviewed SHA. A failure documented as a known
+baseline is still a failed release gate until it is fixed or the requirement is
+explicitly changed by its owner.
 
 ## 2. Assess migration and rollback readiness
 
@@ -91,7 +106,10 @@ Before mutation:
 - inventory inherited and custom profiles;
 - choose one enabled exact template revision whose temporary behavior is known;
 - choose a known media item and an allowed/denied behavior for playback
-  validation; and
+  validation;
+- record that item's `content_id` and optional `file_id`, plus one download
+  quality whose expected result exercises either the original-download or
+  transcoded-download gate; and
 - keep `include_custom_profiles=false` for the first canary unless movement of
   custom profiles is itself the behavior under test.
 
@@ -150,9 +168,30 @@ Read the account authoritatively again and require:
 
 Authenticate as the test account and verify one ordinary profile read plus a
 playback start against the chosen media item. Confirm the result matches the
-new playback/library/quality/transcode/download gates. Check the administrative
-audit view for the job and assignment events, expected revisions, safe result
-counts, and absence of credentials or raw infrastructure errors.
+new playback, library, quality, and stream-transcode gates. Playback does not
+prove either download gate.
+
+Exercise the download API separately with the same test account and profile:
+
+1. Read `GET /api/v1/downloads/capability` and require
+   `download_allowed`, `quality_presets`, and `transcode_user_allowed` to agree
+   with the authoritative effective policy and server-level feature state.
+2. Submit exactly one `POST /api/v1/downloads` for the recorded `content_id`
+   (and `file_id` when needed) using the chosen `quality`. Use `original` to
+   exercise the original-download gate or a listed bitrate preset to exercise
+   the transcoded-download gate.
+3. For an allowed case, require `202`, record the safe download ID, requested
+   and effective quality, then delete the canary row with
+   `DELETE /api/v1/downloads/{id}` and require `204`. For an expected denial,
+   require `403` with the appropriate stable `forbidden` or
+   `transcode_disabled` code and require that no download row was created.
+
+Check the administrative audit view for the job and assignment events,
+expected revisions, safe result counts, and absence of credentials or raw
+infrastructure errors. Require the assignment audit's
+`effective_policy_digest` to describe the complete post-assignment effective
+policy, including the audio-transcode gate, rather than only the durable cohort
+projection.
 
 Record the post-apply observed-policy digest using the same local command as
 the before state.
@@ -165,9 +204,10 @@ state was the managed default. Never approximate a custom or legacy state with
 a template.
 
 Confirm the second reviewed job with a new idempotency key, poll it to terminal,
-and repeat the authoritative policy, profile, playback, and audit checks. The
-restored policy digest and profile assignments must equal the captured before
-state, except for expected monotonic revision/timestamp changes.
+and repeat the authoritative policy, profile, playback, download capability,
+actual download-route, and audit checks. The restored policy digest and profile
+assignments must equal the captured before state, except for expected monotonic
+revision/timestamp changes. Remove any successful restore-check download row.
 
 If the original state cannot be represented by a safe reviewed command, stop
 before the first mutation and choose another canary account.
@@ -180,6 +220,11 @@ Record this checklist without credentials or personal data:
 | --- | --- |
 | Reviewed/deployed full SHA | |
 | Immutable image digest | |
+| Complete required repository suite | pass/fail; no baseline waiver implied |
+| Focused bulk/migration/browser suites | pass/fail |
+| Complete effective-policy audit digest fix present | yes/no; audio-transcode regression result |
+| Scoped API-key authoritative read fix present | yes/no; single/snapshot regression result |
+| Scoped API-key canary (when API-key automation is used) | owner currently enabled platform admin; single/snapshot reads pass/fail |
 | Build endpoint revision match | yes/no |
 | Health and readiness timestamps | |
 | Migration versions/status | |
@@ -190,13 +235,16 @@ Record this checklist without credentials or personal data:
 | Apply job ID and succeeded/skipped/failed counts | |
 | Post-apply group/cohort/template and observed-policy digest | |
 | Profile and playback checks | pass/fail + safe notes |
+| Download capability and actual route check | quality; expected/actual status; safe download ID removed |
 | Restore job ID and succeeded/skipped/failed counts | |
 | Restored group/cohort/template and observed-policy digest | |
 | Audit evidence checked | yes/no |
 | Rollback eligibility/refusal condition | |
 | Operator and observation-window end | |
 
-Proceed beyond the bounded canary only when the exact build is healthy, both
-jobs are terminal with expected counts, authoritative state was restored, and
-audit evidence is complete. Otherwise stop broader application, leave no new
-jobs queued, and follow the pre-agreed roll-forward or backup-restore path.
+Proceed beyond the bounded canary only when the complete required repository
+suite and all focused gates passed on the exact artifact, the build is healthy,
+both jobs are terminal with expected counts, the actual download-route checks
+match policy, authoritative state was restored, and audit evidence is complete.
+Otherwise stop broader application, leave no new jobs queued, and follow the
+pre-agreed roll-forward or backup-restore path.
