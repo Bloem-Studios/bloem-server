@@ -120,12 +120,14 @@ func TestAccountPolicyReadScopedAPIKeyRequiresCurrentPlatformAdministrator(t *te
 	for _, test := range []struct {
 		name       string
 		role       string
+		scopes     []string
 		authorized bool
 		want       int
 	}{
-		{name: "current platform administrator", role: "admin", authorized: true, want: http.StatusOK},
-		{name: "non-admin owner", role: "user", authorized: true, want: http.StatusForbidden},
-		{name: "platform authority revoked", role: "admin", authorized: false, want: http.StatusForbidden},
+		{name: "current platform administrator", role: "admin", scopes: []string{auth.ScopeAdminEntitlementsBulk}, authorized: true, want: http.StatusOK},
+		{name: "unscoped legacy administrator key", role: "admin", authorized: true, want: http.StatusOK},
+		{name: "non-admin owner", role: "user", scopes: []string{auth.ScopeAdminEntitlementsBulk}, authorized: true, want: http.StatusForbidden},
+		{name: "platform authority revoked", role: "admin", scopes: []string{auth.ScopeAdminEntitlementsBulk}, authorized: false, want: http.StatusForbidden},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			store := &accountPolicyReaderStub{snapshot: entitlements.AccountPolicySnapshot{AccountID: 42}}
@@ -137,7 +139,7 @@ func TestAccountPolicyReadScopedAPIKeyRequiresCurrentPlatformAdministrator(t *te
 				UserID:       7,
 				Role:         test.role,
 				TokenType:    auth.TokenTypeAPIKey,
-				APIKeyScopes: []string{auth.ScopeAdminEntitlementsBulk},
+				APIKeyScopes: test.scopes,
 			}))
 			recorder := httptest.NewRecorder()
 			accountPolicyRouter(handler, auth.AdminContextClaims{}).ServeHTTP(recorder, request)

@@ -310,7 +310,8 @@ func (h *AdminHandler) requirePlatformEntitlementActor(w http.ResponseWriter, r 
 		return claims.AccountID, true
 	}
 	claims := middleware.GetClaims(r.Context())
-	if claims == nil || claims.TokenType != auth.TokenTypeAPIKey || claims.UserID <= 0 || claims.Role != models.RoleAdmin || !slices.Contains(claims.APIKeyScopes, auth.ScopeAdminEntitlementsBulk) {
+	if claims == nil || claims.TokenType != auth.TokenTypeAPIKey || claims.UserID <= 0 || claims.Role != models.RoleAdmin ||
+		(len(claims.APIKeyScopes) > 0 && !slices.Contains(claims.APIKeyScopes, auth.ScopeAdminEntitlementsBulk)) {
 		writeError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
 		return 0, false
 	}

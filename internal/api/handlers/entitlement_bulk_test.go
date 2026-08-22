@@ -167,6 +167,7 @@ func TestPlatformEntitlementBulkRequiresPlatformAdministratorOrScopedAPIKey(t *t
 		{name: "organization context rejected", claims: auth.AdminContextClaims{Scope: auth.AdminScopeOrganization, AccountID: 7}, want: http.StatusForbidden},
 		{name: "platform context allowed", claims: auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, want: http.StatusCreated},
 		{name: "scoped platform api key allowed", apiKey: &auth.Claims{UserID: 7, Role: "admin", TokenType: auth.TokenTypeAPIKey, APIKeyScopes: []string{"admin:entitlements:bulk"}}, want: http.StatusCreated},
+		{name: "unscoped legacy platform api key allowed", apiKey: &auth.Claims{UserID: 7, Role: "admin", TokenType: auth.TokenTypeAPIKey}, want: http.StatusCreated},
 		{name: "wrong api key scope rejected", apiKey: &auth.Claims{UserID: 7, Role: "admin", TokenType: auth.TokenTypeAPIKey, APIKeyScopes: []string{"admin:users"}}, want: http.StatusForbidden},
 	} {
 		t.Run(test.name, func(t *testing.T) {
