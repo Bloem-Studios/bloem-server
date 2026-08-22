@@ -9,11 +9,10 @@ Production push, deployment, migration, and canary mutations require an
 authorized operator. Completing the source review does not authorize those
 actions.
 
-The Task 8 source review passed focused feature gates, but it did **not** pass
-the full required repository suite: known compile and handler/access failures
-remained. That is not a release-green result. Do not deploy this feature until
-those failures are resolved (or the owning maintainers update the requirements)
-and the complete required suite passes on the exact release artifact.
+The compile, handler, access, and web-harness failures found during the Task 8
+source review were corrected before release preparation. That historical fix is
+not a standing waiver: every release artifact must still pass the complete
+required repository suite and the focused gates below before deployment.
 
 ## 1. Freeze the reviewed artifact
 
