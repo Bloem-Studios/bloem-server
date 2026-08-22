@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -835,6 +836,115 @@ func TestPolicyBulkJobMovesInheritedProfilesAndPreservesCustomProfiles(t *testin
 	}
 }
 
+func TestPolicyBulkJobLookupAndCancelRejectGenericJobs(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1})
+	generic, err := fixture.service.EnqueueBulk(ctx, fixture.orgA, fixture.ownerID, BulkAction{SelectionToken: selection.Token, Kind: BulkSuspendMemberships})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.service.GetPolicyBulkJob(ctx, fixture.orgA, generic.JobID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("generic job policy lookup error=%v", err)
+	}
+	if _, err := fixture.service.CancelPolicyBulkJob(ctx, fixture.orgA, fixture.ownerID, generic.JobID); !errors.Is(err, ErrBulkJobNotCancellable) {
+		t.Fatalf("generic job policy cancellation error=%v", err)
+	}
+	observed, err := fixture.service.GetBulkJob(ctx, fixture.orgA, generic.JobID)
+	if err != nil || observed.Status != "queued" {
+		t.Fatalf("generic job changed=%+v err=%v", observed, err)
+	}
+}
+
+func TestPolicyBulkJobMovesCustomProfilesWhenConfirmed(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	customGroup := fixture.addGroup(t, fixture.orgA, "Confirmed custom", false)
+	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Confirmed custom profile", customGroup)
+	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), standard.AccessGroupID)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID, IncludeCustomProfiles: true}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1, RequestID: "policy-custom-confirmed"})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.CustomProfilesWillMove != 1 || preview.CustomProfilesWillRemain != 0 {
+		t.Fatalf("custom preview move/remain=%d/%d", preview.CustomProfilesWillMove, preview.CustomProfilesWillRemain)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "policy-custom-confirmed", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || completed.Succeeded != 1 {
+		t.Fatalf("completed=%+v err=%v", completed, err)
+	}
+	fixture.assertAccountGroup(t, fixture.sharedAccountID, int(premium.AccessGroupID))
+	fixture.assertProfileGroup(t, fixture.sharedAccountID, fixture.profileA, int(premium.AccessGroupID))
+	fixture.assertProfileGroup(t, fixture.sharedAccountID, customProfile, int(premium.AccessGroupID))
+}
+
+func TestPolicyBulkJobRestartResumesWithoutRepeatingCompletedTargets(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	accountIDs := make([]int, 0, 3)
+	for index := 1; index <= 3; index++ {
+		accountID, _ := fixture.addAccount(t, fixture.orgA, fmt.Sprintf("policy-restart-%d@example.test", index), fmt.Sprintf("Policy Restart %d", index), fmt.Sprintf("Policy Restart Profile %d", index), int(standard.AccessGroupID), false)
+		accountIDs = append(accountIDs, accountID)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=ANY($1::integer[])`, accountIDs, standard.AccessGroupID); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "policy-restart-"})
+	if err != nil || selection.Matched != 3 {
+		t.Fatalf("selection=%+v err=%v", selection, err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1, RequestID: "policy-restart"})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "policy-restart", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := fixture.service.ProcessBulkBatch(ctx, fixture.orgA, queued.JobID, 1)
+	if err != nil || first.Status != "running" || first.ProgressCurrent != 1 || first.Succeeded != 1 {
+		t.Fatalf("first batch=%+v err=%v", first, err)
+	}
+	restarted := NewService(fixture.pool, "people-postgres-test-secret")
+	completed, err := restarted.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || completed.Status != "completed" || completed.ProgressCurrent != 3 || completed.Succeeded != 3 {
+		t.Fatalf("restarted completion=%+v err=%v", completed, err)
+	}
+	replayed, err := restarted.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
+	if err != nil || replayed.Succeeded != 3 {
+		t.Fatalf("replay=%+v err=%v", replayed, err)
+	}
+	var assignmentAudits, attemptedOnce int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM admin_audit_events WHERE action='people.bulk_policy_assigned' AND after_state->>'job_id'=$1`, queued.JobID).Scan(&assignmentAudits); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM admin_people_bulk_targets WHERE job_id=$1 AND attempts=1 AND status='succeeded'`, queued.JobID).Scan(&attemptedOnce); err != nil {
+		t.Fatal(err)
+	}
+	if assignmentAudits != 3 || attemptedOnce != 3 {
+		t.Fatalf("assignment audits=%d attempted once=%d", assignmentAudits, attemptedOnce)
+	}
+}
+
 func TestPolicyBulkJobRejectsPayloadMismatchAndCancelsWithoutEffects(t *testing.T) {
 	fixture := newPeopleFixture(t)
 	store := entitlements.NewTemplateStore(fixture.pool)
@@ -908,6 +1018,94 @@ func TestPolicyBulkJobFailureSchedulesSafeBackoff(t *testing.T) {
 	}
 	if status != "queued" || safeError != "executor_failure" || storedCode != "executor_failure" || attempts != 1 || !delayed {
 		t.Fatalf("retry state = %q/%q/%q/%d/%v", status, safeError, storedCode, attempts, delayed)
+	}
+}
+
+func TestPolicyBulkJobPrefetchedReplicaHonorsRetryBackoff(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), standard.AccessGroupID)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "policy-prefetched-backoff", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefetched, err := fixture.service.ListRunnableBulkJobs(ctx, 10)
+	if err != nil || len(prefetched) != 1 || prefetched[0].JobID != queued.JobID {
+		t.Fatalf("prefetched=%+v err=%v", prefetched, err)
+	}
+	if err := fixture.service.FailBulkJob(ctx, fixture.orgA, queued.JobID, errors.New("replica one failed")); err != nil {
+		t.Fatal(err)
+	}
+	replica := NewService(fixture.pool, "people-postgres-test-secret")
+	result, err := replica.ProcessBulkBatch(ctx, prefetched[0].OrganizationID, prefetched[0].JobID, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != "queued" || result.ProgressCurrent != 0 || result.Succeeded != 0 {
+		t.Fatalf("backed-off prefetched result=%+v", result)
+	}
+	fixture.assertAccountGroup(t, fixture.sharedAccountID, int(standard.AccessGroupID))
+}
+
+func TestPolicyBulkJobFailureExhaustionWritesTerminalAudit(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	store := entitlements.NewTemplateStore(fixture.pool)
+	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyAssignEntitlementCohort, CohortID: premium.ID}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityOrganizationAdmin, MembershipID: fixture.ownerMembershipID, SecurityRevision: 1, PolicyRevision: 1, RequestID: "policy-exhaustion"})
+	preview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, selection.Token, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulk(ctx, fixture.orgA, fixture.ownerID, PolicyBulkAction{SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken, IdempotencyKey: "policy-exhaustion", Command: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var previousRetry time.Time
+	for attempt := 1; attempt <= 5; attempt++ {
+		if err := fixture.service.FailBulkJob(ctx, fixture.orgA, queued.JobID, errors.New("private executor failure")); err != nil {
+			t.Fatal(err)
+		}
+		var status, safeError string
+		var attempts int
+		var nextRetry time.Time
+		if err := fixture.pool.QueryRow(fixture.ctx, `SELECT j.status,j.error_message,b.attempt_count,b.next_attempt_at FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1`, queued.JobID).Scan(&status, &safeError, &attempts, &nextRetry); err != nil {
+			t.Fatal(err)
+		}
+		if attempts != attempt || safeError != "executor_failure" {
+			t.Fatalf("attempt %d state=%s/%s/%d", attempt, status, safeError, attempts)
+		}
+		if attempt < 5 {
+			if status != "queued" || (!previousRetry.IsZero() && !nextRetry.After(previousRetry)) {
+				t.Fatalf("attempt %d retry=%s previous=%s status=%s", attempt, nextRetry, previousRetry, status)
+			}
+			previousRetry = nextRetry
+		} else if status != "failed" {
+			t.Fatalf("terminal status=%s", status)
+		}
+	}
+	var failedAudits int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM admin_audit_events WHERE target_type='bulk_job' AND target_id=$1 AND action='people.bulk_job_failed' AND outcome='failure'`, queued.JobID).Scan(&failedAudits); err != nil {
+		t.Fatal(err)
+	}
+	if failedAudits != 1 {
+		t.Fatalf("terminal failure audits=%d", failedAudits)
 	}
 }
 

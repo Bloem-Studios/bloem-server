@@ -59,6 +59,7 @@ var (
 	ErrInvalidBulkAction         = errors.New("invalid people bulk action")
 	ErrAuthorizationStateChanged = errors.New("authorization state changed")
 	ErrBulkIdempotencyConflict   = errors.New("people bulk idempotency conflict")
+	ErrBulkJobNotCancellable     = errors.New("people bulk job is not cancellable through this endpoint")
 )
 
 type Filter struct {
@@ -1020,6 +1021,24 @@ func (s *Service) CancelBulkJob(ctx context.Context, organizationID uuid.UUID, a
 	return s.GetBulkJob(ctx, organizationID, jobID)
 }
 
+func (s *Service) CancelPolicyBulkJob(ctx context.Context, organizationID uuid.UUID, actorID int, jobID string) (BulkResult, error) {
+	if s == nil || s.pool == nil || organizationID == uuid.Nil || actorID <= 0 || strings.TrimSpace(jobID) == "" {
+		return BulkResult{}, ErrNotFound
+	}
+	var actionKind string
+	err := s.pool.QueryRow(ctx, `SELECT b.action_kind FROM admin_people_bulk_jobs b WHERE b.job_id=$1 AND b.organization_id=$2`, jobID, organizationID).Scan(&actionKind)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return BulkResult{}, ErrNotFound
+	}
+	if err != nil {
+		return BulkResult{}, err
+	}
+	if !isPolicyBulkAction(actionKind) {
+		return BulkResult{}, ErrBulkJobNotCancellable
+	}
+	return s.CancelBulkJob(ctx, organizationID, actorID, jobID)
+}
+
 func (s *Service) ProcessBulkBatch(ctx context.Context, organizationID uuid.UUID, jobID string, batchSize int) (BulkResult, error) {
 	if s == nil || s.pool == nil || organizationID == uuid.Nil || jobID == "" {
 		return BulkResult{}, ErrNotFound
@@ -1052,7 +1071,17 @@ func (s *Service) ProcessBulkBatch(ctx context.Context, organizationID uuid.UUID
 		_ = tx.Commit(ctx)
 		return s.GetBulkJob(ctx, organizationID, jobID)
 	}
-	isPolicy := action.Kind == PolicyAssignEntitlementCohort || action.Kind == PolicyApplyEntitlementTemplate || action.Kind == PolicyDeriveEntitlementCohort || action.Kind == PolicyRestoreDefaultEntitlement
+	var runnable bool
+	if err := tx.QueryRow(ctx, `SELECT next_attempt_at<=now() AND cancel_requested_at IS NULL FROM admin_people_bulk_jobs WHERE job_id=$1`, jobID).Scan(&runnable); err != nil {
+		return BulkResult{}, err
+	}
+	if !runnable {
+		if err := tx.Commit(ctx); err != nil {
+			return BulkResult{}, err
+		}
+		return s.GetBulkJob(ctx, organizationID, jobID)
+	}
+	isPolicy := isPolicyBulkAction(action.Kind)
 	if isPolicy && (targetGroupID == nil || *targetGroupID <= 0 || json.Unmarshal(actionPayload, &policyCommand) != nil) {
 		return BulkResult{}, fmt.Errorf("decode policy bulk action")
 	}
@@ -1269,7 +1298,8 @@ func (s *Service) FailBulkJob(ctx context.Context, organizationID uuid.UUID, job
 	defer func() { _ = tx.Rollback(ctx) }()
 	var status string
 	var attempts int
-	if err := tx.QueryRow(ctx, `SELECT j.status,b.attempt_count FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1 AND b.organization_id=$2 FOR UPDATE OF j,b`, jobID, organizationID).Scan(&status, &attempts); errors.Is(err, pgx.ErrNoRows) {
+	var actor MutationActor
+	if err := tx.QueryRow(ctx, `SELECT j.status,b.attempt_count,b.actor_account_id,b.actor_authority,b.actor_membership_id,b.actor_security_revision,b.organization_policy_revision,COALESCE(b.request_id,'') FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1 AND b.organization_id=$2 FOR UPDATE OF j,b`, jobID, organizationID).Scan(&status, &attempts, &actor.AccountID, &actor.Authority, &actor.MembershipID, &actor.SecurityRevision, &actor.PolicyRevision, &actor.RequestID); errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
 	} else if err != nil {
 		return err
@@ -1283,6 +1313,10 @@ func (s *Service) FailBulkJob(ctx context.Context, organizationID uuid.UUID, job
 			return err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE admin_jobs SET status='failed',message='People bulk operation failed',error_message='executor_failure',completed_at=now(),heartbeat_at=now(),updated_at=now() WHERE id=$1`, jobID); err != nil {
+			return err
+		}
+		ctx = WithMutationActor(ctx, actor)
+		if err := recordPeopleAudit(ctx, tx, actor.AccountID, "people.bulk_job_failed", "bulk_job", jobID, organizationID, 0, 0, 0, "failure", nil, map[string]any{"error": "executor_failure", "attempts": attempts}); err != nil {
 			return err
 		}
 		return tx.Commit(ctx)
@@ -1587,6 +1621,25 @@ func (s *Service) GetBulkJob(ctx context.Context, organizationID uuid.UUID, jobI
 		return BulkResult{}, err
 	}
 	return result, nil
+}
+
+func (s *Service) GetPolicyBulkJob(ctx context.Context, organizationID uuid.UUID, jobID string) (BulkResult, error) {
+	if s == nil || s.pool == nil || organizationID == uuid.Nil || strings.TrimSpace(jobID) == "" {
+		return BulkResult{}, ErrNotFound
+	}
+	var actionKind string
+	err := s.pool.QueryRow(ctx, `SELECT b.action_kind FROM admin_people_bulk_jobs b WHERE b.job_id=$1 AND b.organization_id=$2`, jobID, organizationID).Scan(&actionKind)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !isPolicyBulkAction(actionKind)) {
+		return BulkResult{}, ErrNotFound
+	}
+	if err != nil {
+		return BulkResult{}, err
+	}
+	return s.GetBulkJob(ctx, organizationID, jobID)
+}
+
+func isPolicyBulkAction(kind string) bool {
+	return kind == PolicyAssignEntitlementCohort || kind == PolicyApplyEntitlementTemplate || kind == PolicyDeriveEntitlementCohort || kind == PolicyRestoreDefaultEntitlement
 }
 
 func (s *Service) UpdateMembership(ctx context.Context, organizationID uuid.UUID, actorID, accountID int, expectedRevision int64, status tenancy.MembershipStatus) (PersonSummary, error) {

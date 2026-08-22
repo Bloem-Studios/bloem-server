@@ -17,19 +17,21 @@ import (
 )
 
 type adminPeopleServiceStub struct {
-	organizationID uuid.UUID
-	actorID        int
-	accountID      int
-	calls          int
-	person         adminpeople.PersonSummary
-	page           adminpeople.Page
-	selection      adminpeople.Selection
-	result         adminpeople.BulkResult
-	policyPreview  adminpeople.PolicyPreview
-	policyCommand  adminpeople.PolicyCommand
-	policyAction   adminpeople.PolicyBulkAction
-	err            error
-	authority      string
+	organizationID  uuid.UUID
+	actorID         int
+	accountID       int
+	calls           int
+	person          adminpeople.PersonSummary
+	page            adminpeople.Page
+	selection       adminpeople.Selection
+	result          adminpeople.BulkResult
+	policyPreview   adminpeople.PolicyPreview
+	policyCommand   adminpeople.PolicyCommand
+	policyAction    adminpeople.PolicyBulkAction
+	policyJobErr    error
+	policyCancelErr error
+	err             error
+	authority       string
 }
 type adminPeopleWakeStub struct{ calls int }
 
@@ -93,6 +95,20 @@ func (s *adminPeopleServiceStub) GetBulkJob(_ context.Context, org uuid.UUID, _ 
 	s.calls++
 	s.organizationID = org
 	return s.result, s.err
+}
+func (s *adminPeopleServiceStub) GetPolicyBulkJob(_ context.Context, org uuid.UUID, _ string) (adminpeople.BulkResult, error) {
+	s.calls++
+	s.organizationID = org
+	return s.result, s.policyJobErr
+}
+func (s *adminPeopleServiceStub) CancelPolicyBulkJob(ctx context.Context, org uuid.UUID, actorID int, _ string) (adminpeople.BulkResult, error) {
+	s.calls++
+	s.organizationID = org
+	s.actorID = actorID
+	if actor, ok := adminpeople.MutationActorFromContext(ctx); ok {
+		s.authority = actor.Authority
+	}
+	return s.result, s.policyCancelErr
 }
 func (s *adminPeopleServiceStub) UpdateMembership(ctx context.Context, org uuid.UUID, actorID, accountID int, _ int64, _ tenancy.MembershipStatus) (adminpeople.PersonSummary, error) {
 	s.calls++
@@ -194,6 +210,28 @@ func TestV2AdminPeoplePolicyJobEnqueuesConfirmedCommandAndWakesWorker(t *testing
 	handler.HandleCreatePolicyJob(rec, req)
 	if rec.Code != http.StatusCreated || wake.calls != 1 || store.policyAction.ConfirmationToken != "confirmed" || store.policyAction.IdempotencyKey != "command-1" || store.policyAction.Command.TemplateKey != "premium" {
 		t.Fatalf("response=%d %s wakes=%d action=%+v", rec.Code, rec.Body.String(), wake.calls, store.policyAction)
+	}
+}
+
+func TestV2AdminPeoplePolicyJobRoutesRejectWrongJobKind(t *testing.T) {
+	organizationID := uuid.New()
+	store := &adminPeopleServiceStub{
+		result:          adminpeople.BulkResult{JobID: "generic-job", Status: "queued"},
+		policyJobErr:    adminpeople.ErrNotFound,
+		policyCancelErr: adminpeople.ErrBulkJobNotCancellable,
+	}
+	handler := NewV2AdminPeopleHandler(store)
+	getReq := adminPeopleRequest(http.MethodGet, "/api/v2/admin/organization/people/policy-jobs/generic-job", "", organizationID, 7, map[string]string{"job_id": "generic-job"})
+	getRec := httptest.NewRecorder()
+	handler.HandleGetPolicyJob(getRec, getReq)
+	if getRec.Code != http.StatusNotFound || !strings.Contains(getRec.Body.String(), `"error":"not_found"`) {
+		t.Fatalf("wrong-kind policy status=%d %s", getRec.Code, getRec.Body.String())
+	}
+	cancelReq := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/policy-jobs/generic-job/cancel", `{}`, organizationID, 7, map[string]string{"job_id": "generic-job"})
+	cancelRec := httptest.NewRecorder()
+	handler.HandleCancelPolicyJob(cancelRec, cancelReq)
+	if cancelRec.Code != http.StatusConflict || !strings.Contains(cancelRec.Body.String(), `"error":"job_not_cancellable"`) {
+		t.Fatalf("wrong-kind policy cancel=%d %s", cancelRec.Code, cancelRec.Body.String())
 	}
 }
 

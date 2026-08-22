@@ -252,7 +252,7 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 					r.Post("/selections", people.HandleCreateSelection)
 					r.Post("/policy-previews", people.HandleCreatePolicyPreview)
 					r.Post("/policy-jobs", people.HandleCreatePolicyJob)
-					r.Get("/policy-jobs/{job_id}", people.HandleGetBulkJob)
+					r.Get("/policy-jobs/{job_id}", people.HandleGetPolicyJob)
 					r.Post("/policy-jobs/{job_id}/cancel", people.HandleCancelPolicyJob)
 					r.Post("/bulk-jobs", people.HandleCreateBulkJob)
 					r.Get("/bulk-jobs/{job_id}", people.HandleGetBulkJob)
