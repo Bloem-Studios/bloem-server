@@ -89,8 +89,11 @@ Feature detection. Auth required; no profile needed.
 | `200` | Capability document |
 | `401` `unauthorized` | No authenticated user |
 
-v3 is the server's only playback protocol, so `enabled` is constant `true` and
-the document is always the full one:
+v3 is the server's only playback protocol, so `enabled` is constant `true`.
+Most features describe binary support. One token,
+`header_authenticated_media_ready_v1`, describes deployment readiness and is
+present only while the administrator setting
+`playback.header_authenticated_media_mode` is `single_or_affine`:
 
 ```json
 {
@@ -99,13 +102,15 @@ the document is always the full one:
   "features": ["playback_plan_v3", "neutral_playback_v3_contract_v1", "layout_aware_passthrough", "playback_route_diagnostics",
                "device_quirks_v1", "seek_reanchor_v1", "output_change_v1", "direct_stream_resume_v1",
                "header_authenticated_media_v1", "authorized_media_origins_v1", "software_video_decode_v1",
+               "header_authenticated_media_ready_v1",
                "plan_source_duration_v1"],
   "deliveries": ["original_http", "server_remux_progressive", "server_remux_hls", "server_transcode_hls"],
   "transformations": [{"name": "audio_to_aac", "executor": "server", "recipe_version": "1", "validated_claims": ["audio_decode"]}]
 }
 ```
 
-The twelve feature strings above are the full set this server version advertises:
+The document contains twelve stable binary-support tokens plus the dynamic
+readiness token:
 
 | Feature | What it promises |
 | --- | --- |
@@ -120,6 +125,7 @@ The twelve feature strings above are the full set this server version advertises
 | `header_authenticated_media_v1` | An opted-in client receives media URLs without signed credentials in their query or path, and authenticates every media request with its normal Authorization header (§4.1) |
 | `authorized_media_origins_v1` | Meaningful only with the token above: the client also honors credential-free absolute media URLs on server-designated proxy origins, which restores distributed egress for a header-authenticated attempt (§4.1) |
 | `software_video_decode_v1` | Exact/platform-attested clients may qualify bounded `video_decode[]` entries with `hardware: false` for direct/original delivery; without the opt-in those evidence tiers remain hardware-only (§3) |
+| `header_authenticated_media_ready_v1` | This deployment, not merely this binary, is configured to serve header-authenticated attempts safely. Its absence forces legacy media authentication even when both client and server understand the transport (§4.1) |
 | `plan_source_duration_v1` | `source.duration_seconds` is populated when known, so its absence means *unknown* rather than *unsupported* (§5) |
 
 That last one is the reason feature detection is a list and not a version
@@ -188,6 +194,15 @@ authorization record.
 
 A client generates a fresh `playback_attempt_id` per user-initiated playback and
 reuses it only to retry a request whose response it did not receive.
+
+**Accepted feature authority.** Every decision may include
+`negotiated_client_features`, the canonical feature set accepted for that
+attempt. It is the authority for transport behavior; `server_features` only
+describes what the deployment can offer. Start persists the accepted set, and
+replan, idempotent replay, reconstructed responses, and terminal decisions echo
+the same attempt-sticky value. Older Silo-compatible clients may omit the new
+tokens and ignore this additive response field; they continue to receive signed
+legacy media URLs.
 
 **Omission is a request, not a default.** Two start fields mean "you decide" when
 absent, and the server answers from stored user state rather than from a
@@ -475,10 +490,13 @@ re-request headers from `header_refresh_url` rather than restarting playback.
 ### 4.1 Header-authenticated media URLs
 
 `header_authenticated_media_v1` is an engine-neutral client opt-in. A client
-uses it only after the server advertises the same token, then includes it in the
-top-level `client_features` on start and replan requests. It negotiates *how*
-media URLs authenticate; `authorized_media_origins_v1` (below) separately
-negotiates *which origins* may serve them.
+uses it only after the server advertises both that binary-support token and
+`header_authenticated_media_ready_v1`, then includes it in the top-level
+`client_features` on start and replan requests. The server removes it when the
+deployment is not ready and reports the exact accepted set in
+`negotiated_client_features`. It negotiates *how* media URLs authenticate;
+`authorized_media_origins_v1` (below) separately negotiates *which origins* may
+serve them and is never accepted without the header-authenticated mode.
 
 With `header_authenticated_media_v1` alone, the server returns only relative
 URLs on the authenticated API origin:
@@ -557,6 +575,13 @@ since they reconstruct anywhere. Proxy-origin URLs
 shared grant store rather than from an API process's memory. Moving session
 state into shared storage is the fix, and until it lands this constraint is
 part of the deployment contract.
+
+The setting defaults to `disabled`. Enable it only when media routes use one API
+replica or verified session affinity. Rollback is immediate for new attempts:
+set the mode back to `disabled`, verify the readiness token disappears from the
+capability response, and clients will negotiate fresh signed legacy attempts.
+Already-started attempts retain their durable accepted feature set until they
+end; changing authentication mid-attempt is forbidden.
 
 ### 4.2 Media and subtitle URL query parameters
 

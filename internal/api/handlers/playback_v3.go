@@ -488,8 +488,13 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
+	requestedClientFeatures := append([]string(nil), req.ClientFeatures...)
 	headerAuthReady := h.headerAuthenticatedMediaReady(r.Context())
 	req.ClientFeatures = playback.NegotiateClientFeaturesV3(req.ClientFeatures, headerAuthReady)
+	if playback.HasFeatureV3(requestedClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3) &&
+		!playback.HasFeatureV3(req.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3) {
+		playback.RecordMediaAuthReadinessDowngrade(playback.MediaAuthDowngradeDeploymentNotReady)
+	}
 	profileID := apimw.GetProfileID(r.Context())
 	if profileID == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "X-Profile-Id header is required")
@@ -847,6 +852,7 @@ func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr
 		return playback.DecisionResponseV3{}, &transportErrorV3{reason: "internal_error", message: "Failed to persist the playback plan.", cause: err}
 	}
 	transport.commit()
+	playback.RecordMediaAuthAttempt(mediaAuthMetricModeV3(mode))
 	// Start-side effects belong after both the attempt and transport commits:
 	// retries that lose the idempotency race must not emit duplicate provider
 	// scrobbles or analysis work for the short-lived session they roll back.
@@ -3682,6 +3688,16 @@ func decisionResponseForFeaturesV3(response playback.DecisionResponseV3, feature
 	response.ServerFeatures = playback.DeploymentFeaturesV3(playback.HasFeatureV3(features, playback.FeatureHeaderAuthenticatedMediaV3))
 	response.NegotiatedClientFeatures = append([]string(nil), features...)
 	return response
+}
+
+func mediaAuthMetricModeV3(mode mediaAuthModeV3) playback.MediaAuthModeV3 {
+	if !mode.headerAuth {
+		return playback.MediaAuthLegacy
+	}
+	if mode.proxyEgress {
+		return playback.MediaAuthHeaderProxy
+	}
+	return playback.MediaAuthHeaderAPI
 }
 
 func normalizeDecisionResponseV3(response playback.DecisionResponseV3) playback.DecisionResponseV3 {

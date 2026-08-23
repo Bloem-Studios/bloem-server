@@ -21,6 +21,7 @@ const KEYS = [
   "playback.transcode_enabled",
   "playback.local_transcode_fallback",
   "playback.proxy_policy",
+  "playback.header_authenticated_media_mode",
   "allow_4k_transcode",
   "enable_transcode_throttle",
   "transcode_throttle_seconds",
@@ -185,6 +186,17 @@ export default function PlaybackSettings() {
             hint="Controls when pooled proxy nodes serve media streams. Always: every delivery routes through a proxy when one is available. Transcode only: direct play and audio remux stay on this server; only transcoded (HLS) output uses a proxy. Never: proxy nodes are never used for streaming — this server relays transcode-node output itself. Use Transcode only or Never for a remote transcode node that does not share this server's media storage."
             value={form.getValue("playback.proxy_policy") || "always"}
             onChange={(v) => form.setValue("playback.proxy_policy", v)}
+          />
+          <SettingField
+            label="Header-Authenticated Media"
+            type="select"
+            options={[
+              { value: "disabled", label: "Disabled" },
+              { value: "single_or_affine", label: "Single replica or session-affine" },
+            ]}
+            hint="Enable only when media routes use one API replica or verified session affinity. Tokenless API-origin sessions cannot reconstruct on another replica."
+            value={form.getValue("playback.header_authenticated_media_mode") || "disabled"}
+            onChange={(v) => form.setValue("playback.header_authenticated_media_mode", v)}
           />
           <SettingField
             label="Allow 4K Transcoding"

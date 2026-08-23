@@ -1,5 +1,10 @@
 # Feature Changelog
 
+## 2026-08-24
+
+### Gate header-authenticated media on deployment readiness
+Playback protocol v3 now separates binary support from safe deployment readiness. The new `playback.header_authenticated_media_mode` admin setting defaults to `disabled`; `single_or_affine` publishes `header_authenticated_media_ready_v1` only for deployments with one API replica or verified media-route affinity. Start decisions persist and echo `negotiated_client_features`, and every replan, replay, reconstructed response, and terminal decision keeps that accepted attempt authority. Older Silo-compatible clients omit the additive tokens and continue to receive signed legacy URLs unchanged. Bounded Prometheus counters report committed legacy/API-header/proxy-header modes and readiness downgrades without recording URLs, credentials, profile identifiers, or arbitrary error text.
+
 ## 2026-08-23
 
 ### Serve tokenless playback from proxy nodes again
