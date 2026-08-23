@@ -377,10 +377,12 @@ func TestAdvertisedListsMatchTheGoldenFixtures(t *testing.T) {
 	assertStringsEqual(t, "capability fixture deliveries", capability.Deliveries, deliveriesV3)
 
 	var decision struct {
-		ServerFeatures []string `json:"server_features"`
+		ServerFeatures           []string `json:"server_features"`
+		NegotiatedClientFeatures []string `json:"negotiated_client_features"`
 	}
 	mustUnmarshalGolden(t, "decision_response.json", &decision)
 	assertStringsEqual(t, "decision fixture server_features", decision.ServerFeatures, playback.ServerFeaturesV3())
+	assertStringsEqual(t, "decision fixture negotiated_client_features", decision.NegotiatedClientFeatures, []string{playback.FeaturePlaybackPlanV3})
 }
 
 // TestResponseSchemaRequiredFieldsMatchGoTags derives the required set from the

@@ -14,6 +14,9 @@
     "software_video_decode_v1",
     "plan_source_duration_v1"
   ],
+	"negotiated_client_features": [
+	  "playback_plan_v3"
+	],
   "outcome": "playable",
   "session_id": "11111111-1111-4111-8111-111111111111",
   "playback_plan": {

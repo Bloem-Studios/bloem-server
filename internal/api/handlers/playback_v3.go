@@ -471,7 +471,7 @@ func (h *PlaybackHandler) HandlePlaybackCapabilityV3(w http.ResponseWriter, r *h
 		return
 	}
 	response := playback.CapabilityResponseV3{Enabled: true, ProtocolVersions: []int{playback.ProtocolV3}}
-	response.Features = playback.ServerFeaturesV3()
+	response.Features = playback.DeploymentFeaturesV3(h.headerAuthenticatedMediaReady(r.Context()))
 	response.Deliveries = []playback.DeliveryV3{playback.DeliveryOriginalHTTPV3, playback.DeliveryRemuxProgressiveV3, playback.DeliveryRemuxHLSV3, playback.DeliveryTranscodeHLSV3}
 	response.Transformations = h.transformationRegistryV3(r.Context()).Advertised()
 	writeJSON(w, http.StatusOK, response)
@@ -488,6 +488,8 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
+	headerAuthReady := h.headerAuthenticatedMediaReady(r.Context())
+	req.ClientFeatures = playback.NegotiateClientFeaturesV3(req.ClientFeatures, headerAuthReady)
 	profileID := apimw.GetProfileID(r.Context())
 	if profileID == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "X-Profile-Id header is required")
@@ -519,7 +521,10 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 			return
 		}
 		if _, sessionErr := h.sessionMgr.GetSession(existing.SessionID); sessionErr != nil {
-			writeJSON(w, http.StatusCreated, playback.NewTerminalResponseV3("session_expired", "The playback session for this attempt has ended.", true))
+			writeJSON(w, http.StatusCreated, decisionResponseForFeaturesV3(
+				playback.NewTerminalResponseV3("session_expired", "The playback session for this attempt has ended.", true),
+				existing.NormalizedRequest.ClientFeatures,
+			))
 			return
 		}
 		writeJSON(w, http.StatusCreated, response)
@@ -814,7 +819,7 @@ func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr
 		abort()
 		return playback.DecisionResponseV3{}, subtitleArtifactErrorV3("Failed to prepare the selected subtitle artifact.", err)
 	}
-	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: playback.ServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: session.ID, PlaybackPlan: result.Plan}
+	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: playback.DeploymentFeaturesV3(playback.HasFeatureV3(req.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3)), NegotiatedClientFeatures: append([]string(nil), req.ClientFeatures...), Outcome: playback.OutcomePlayableV3, SessionID: session.ID, PlaybackPlan: result.Plan}
 	record := playback.AttemptRecordV3{PlaybackAttemptID: req.PlaybackAttemptID, SessionID: session.ID, UserID: userID, ProfileID: profileID, RequestedMediaFileID: requestedFile.ID, EffectiveMediaFileID: effectiveFile.ID, CurrentPlanID: result.Plan.PlanID, CurrentPlan: *result.Plan, FrozenRecipe: frozenRecipe, NormalizedRequest: req, StartResponse: response, RequestDigest: requestDigests.current, ExpiresAt: time.Now().Add(playback.MaxTokenTTL)}
 	if err := h.updateV3SessionState(r.Context(), session, effectiveFile, result, transport, mode); err != nil {
 		transport.rollback()
@@ -2253,7 +2258,10 @@ func (h *PlaybackHandler) HandleReplanPlaybackV3(w http.ResponseWriter, r *http.
 		if transport != nil {
 			transport.rollback()
 		}
-		response := playback.NewTerminalResponseV3(replanErr.reason, replanErr.message, replanErr.retryable)
+		response := decisionResponseForFeaturesV3(
+			playback.NewTerminalResponseV3(replanErr.reason, replanErr.message, replanErr.retryable),
+			record.NormalizedRequest.ClientFeatures,
+		)
 		encoded, _ := json.Marshal(response)
 		terminalRecord := *record
 		terminalRecord.CurrentReplanRequestID = req.ReplanRequestID
@@ -2611,7 +2619,10 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		result = escalated
 	}
 	if result.Terminal != nil {
-		return playback.NewTerminalResponseV3(result.Terminal.Reason, result.Terminal.Message, result.Terminal.Retryable), *record, nil, nil
+		return decisionResponseForFeaturesV3(
+			playback.NewTerminalResponseV3(result.Terminal.Reason, result.Terminal.Message, result.Terminal.Retryable),
+			start.ClientFeatures,
+		), *record, nil, nil
 	}
 	session, err := h.sessionMgr.GetSession(record.SessionID)
 	if err != nil {
@@ -2692,7 +2703,7 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 			}
 		}
 	}
-	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: playback.ServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: session.ID, PlaybackPlan: result.Plan}
+	response := playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: playback.DeploymentFeaturesV3(playback.HasFeatureV3(start.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3)), NegotiatedClientFeatures: append([]string(nil), start.ClientFeatures...), Outcome: playback.OutcomePlayableV3, SessionID: session.ID, PlaybackPlan: result.Plan}
 	updated := *record
 	updated.CurrentPlanID = result.Plan.PlanID
 	updated.CurrentPlan = *result.Plan
@@ -3595,6 +3606,7 @@ func sessionStartErrorV3(err error) *transportErrorV3 {
 }
 
 func (h *PlaybackHandler) persistTerminalStartDecisionV3(ctx context.Context, userID int, profileID string, req playback.StartRequestV3, requestDigests playbackStartRequestDigestsV3, requestedFileID, effectiveFileID int, response playback.DecisionResponseV3) (playback.DecisionResponseV3, error) {
+	response = decisionResponseForFeaturesV3(response, req.ClientFeatures)
 	record := playback.AttemptRecordV3{
 		PlaybackAttemptID:    req.PlaybackAttemptID,
 		UserID:               userID,
@@ -3641,7 +3653,12 @@ func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.De
 		return playback.DecisionResponseV3{}
 	}
 	if record.StartResponse.Outcome != "" || record.StartResponse.Terminal != nil || record.StartResponse.PlaybackPlan != nil {
-		return normalizeDecisionResponseV3(record.StartResponse)
+		response := normalizeDecisionResponseV3(record.StartResponse)
+		if response.NegotiatedClientFeatures == nil {
+			response.NegotiatedClientFeatures = append([]string(nil), record.NormalizedRequest.ClientFeatures...)
+		}
+		response.ServerFeatures = playback.DeploymentFeaturesV3(playback.HasFeatureV3(record.NormalizedRequest.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3))
+		return response
 	}
 	plan := record.CurrentPlan
 	if plan.AppliedQuirks == nil {
@@ -3650,7 +3667,21 @@ func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.De
 	if plan.RuntimeCorrections == nil {
 		plan.RuntimeCorrections = []string{}
 	}
-	return normalizeDecisionResponseV3(playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: playback.ServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: record.SessionID, PlaybackPlan: &plan})
+	return normalizeDecisionResponseV3(playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: playback.DeploymentFeaturesV3(playback.HasFeatureV3(record.NormalizedRequest.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3)), NegotiatedClientFeatures: append([]string(nil), record.NormalizedRequest.ClientFeatures...), Outcome: playback.OutcomePlayableV3, SessionID: record.SessionID, PlaybackPlan: &plan})
+}
+
+func (h *PlaybackHandler) headerAuthenticatedMediaReady(ctx context.Context) bool {
+	if h.SettingsRepo == nil {
+		return false
+	}
+	value, err := h.SettingsRepo.Get(ctx, "playback.header_authenticated_media_mode")
+	return err == nil && strings.TrimSpace(value) == "single_or_affine"
+}
+
+func decisionResponseForFeaturesV3(response playback.DecisionResponseV3, features []string) playback.DecisionResponseV3 {
+	response.ServerFeatures = playback.DeploymentFeaturesV3(playback.HasFeatureV3(features, playback.FeatureHeaderAuthenticatedMediaV3))
+	response.NegotiatedClientFeatures = append([]string(nil), features...)
+	return response
 }
 
 func normalizeDecisionResponseV3(response playback.DecisionResponseV3) playback.DecisionResponseV3 {

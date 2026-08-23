@@ -30,7 +30,7 @@
     },
     "features": {
       "type": "array",
-      "description": "Server feature flags. The list grows additively within v3, so an unrecognized entry is expected and must be ignored, not treated as an error.",
+      "description": "Server feature flags. The list grows additively within v3, so an unrecognized entry is expected and must be ignored, not treated as an error. header_authenticated_media_ready_v1 appears only when deployment readiness is enabled.",
       "minItems": 8,
       "uniqueItems": true,
       "allOf": [
@@ -44,7 +44,9 @@
         { "contains": { "const": "plan_source_duration_v1" } }
       ],
       "items": {
-        "type": "string"
+		"type": "string",
+		"minLength": 1,
+		"maxLength": 128
       }
     },
     "deliveries": {

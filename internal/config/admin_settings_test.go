@@ -225,6 +225,7 @@ func TestNormalizeAdminSettingRejectsInvalidValues(t *testing.T) {
 		{key: "theme.catalog_url", value: "http://raw.githubusercontent.com/Silo-Server/silo-themes/main/catalog.json"},
 		{key: "theme.catalog_url", value: "https://example.com/catalog.json"},
 		{key: "redis.url", value: "not-a-url"},
+		{key: "playback.header_authenticated_media_mode", value: "always"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.key, func(t *testing.T) {
@@ -232,6 +233,25 @@ func TestNormalizeAdminSettingRejectsInvalidValues(t *testing.T) {
 				t.Fatalf("NormalizeAdminSetting(%q, %q) returned nil error", tc.key, tc.value)
 			}
 		})
+	}
+}
+
+func TestNormalizeHeaderAuthenticatedMediaMode(t *testing.T) {
+	for _, test := range []struct {
+		raw  string
+		want string
+	}{
+		{"", "disabled"},
+		{" disabled ", "disabled"},
+		{" single_or_affine ", "single_or_affine"},
+	} {
+		got, err := NormalizeAdminSetting("playback.header_authenticated_media_mode", test.raw)
+		if err != nil {
+			t.Fatalf("NormalizeAdminSetting(%q): %v", test.raw, err)
+		}
+		if got != test.want {
+			t.Fatalf("NormalizeAdminSetting(%q) = %q, want %q", test.raw, got, test.want)
+		}
 	}
 }
 

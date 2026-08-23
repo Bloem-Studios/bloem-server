@@ -17,10 +17,23 @@
     "server_features": {
       "type": "array",
       "description": "Additive feature tokens supported by this server. Unknown entries must be ignored.",
+	  "uniqueItems": true,
       "items": {
-        "type": "string"
+		"type": "string",
+		"minLength": 1,
+		"maxLength": 128
       }
     },
+	"negotiated_client_features": {
+	  "type": "array",
+	  "description": "Attempt-sticky client features accepted by the server. Replans and replayed decisions echo this exact authority.",
+	  "uniqueItems": true,
+	  "items": {
+		"type": "string",
+		"minLength": 1,
+		"maxLength": 128
+	  }
+	},
     "outcome": {
       "type": "string",
       "enum": [

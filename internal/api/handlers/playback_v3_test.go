@@ -478,6 +478,33 @@ func TestHandlePlaybackCapabilityV3AdvertisesTheFinalizedContract(t *testing.T) 
 	}
 }
 
+func TestHandlePlaybackCapabilityV3AdvertisesHeaderAuthenticationReadinessFromSettings(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		value string
+		want  bool
+	}{
+		{"default disabled", "", false},
+		{"explicit disabled", "disabled", false},
+		{"enabled", "single_or_affine", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			handler := NewPlaybackHandler(playback.NewSessionManager(0, 0))
+			handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"playback.header_authenticated_media_mode": test.value}}
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/playback/capability", nil).WithContext(newAuthorizedPlaybackContext())
+			rr := httptest.NewRecorder()
+			handler.HandlePlaybackCapabilityV3(rr, req)
+			var response playback.CapabilityResponseV3
+			if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if got := playback.HasFeatureV3(response.Features, playback.FeatureHeaderAuthenticatedMediaReadyV3); got != test.want {
+				t.Fatalf("readiness = %v, want %v; features = %v", got, test.want, response.Features)
+			}
+		})
+	}
+}
+
 func TestHandleStartPlaybackV3ReturnsExecutableDirectPlan(t *testing.T) {
 	file := v3HandlerFixtureFile(t)
 	manager := playback.NewSessionManager(0, 0)
@@ -526,7 +553,11 @@ func TestHandleStartPlaybackV3NegotiatesHeaderAuthenticatedDirectAndSubtitleURLs
 			manager := playback.NewSessionManager(0, 0)
 			handler := NewPlaybackHandler(manager, testPlaybackFileResolver{file: file})
 			handler.JWTSecret = "test-stream-signing-secret"
-			handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"allow_4k_transcode": "true"}}
+			settings := map[string]string{"allow_4k_transcode": "true"}
+			if test.optIn {
+				settings["playback.header_authenticated_media_mode"] = "single_or_affine"
+			}
+			handler.SettingsRepo = &mutablePlaybackSettingsV3{values: settings}
 			handler.ItemAccess = allowAllPlaybackItemAccess{}
 
 			start := v3HandlerStartRequest()
@@ -570,6 +601,9 @@ func TestHandleStartPlaybackV3NegotiatesHeaderAuthenticatedDirectAndSubtitleURLs
 			if test.optIn && !playback.HasFeatureV3(response.ServerFeatures, playback.FeatureHeaderAuthenticatedMediaV3) {
 				t.Fatalf("server features = %v, want %q", response.ServerFeatures, playback.FeatureHeaderAuthenticatedMediaV3)
 			}
+			if got := playback.HasFeatureV3(response.NegotiatedClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3); got != test.optIn {
+				t.Fatalf("negotiated header authentication = %v, want %v; features = %v", got, test.optIn, response.NegotiatedClientFeatures)
+			}
 		})
 	}
 }
@@ -579,7 +613,10 @@ func TestHandleReplanPlaybackV3CannotDowngradeHeaderAuthenticatedAttempt(t *test
 	manager := playback.NewSessionManager(0, 0)
 	handler := NewPlaybackHandler(manager, testPlaybackFileResolver{file: file})
 	handler.JWTSecret = "test-stream-signing-secret"
-	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"allow_4k_transcode": "true"}}
+	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{
+		"allow_4k_transcode":                       "true",
+		"playback.header_authenticated_media_mode": "single_or_affine",
+	}}
 	handler.ItemAccess = allowAllPlaybackItemAccess{}
 
 	start := v3HandlerStartRequest()
@@ -621,6 +658,9 @@ func TestHandleReplanPlaybackV3CannotDowngradeHeaderAuthenticatedAttempt(t *test
 	}
 	if !playback.HasFeatureV3(record.NormalizedRequest.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3) {
 		t.Fatalf("durable client features = %v, secure transport mode was downgraded", record.NormalizedRequest.ClientFeatures)
+	}
+	if !playback.HasFeatureV3(replanned.NegotiatedClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3) {
+		t.Fatalf("replan negotiated features = %v, want durable header authentication", replanned.NegotiatedClientFeatures)
 	}
 }
 
