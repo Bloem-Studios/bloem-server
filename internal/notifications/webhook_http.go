@@ -10,8 +10,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/outbound"
 )
 
 const (
@@ -39,53 +40,18 @@ func newWebhookHTTPClient(allowPrivate func() bool) *http.Client {
 }
 
 // newNotificationHTTPClient builds a delivery client with non-overridable TLS
-// verification, bounded redirects, and a dialer Control hook that re-validates
-// every resolved address at connect time (DNS rebinding mitigation — the guard
-// runs on the address actually being connected to, each redirect hop included).
+// verification, bounded redirects, and the shared outbound transport, which
+// validates every DNS answer and dials only an address from that exact answer
+// set. Every redirect is independently validated.
 // Callers may use a longer total timeout when an upstream service has its own
 // request deadline that must expire before Silo gives up waiting for a response.
 func newNotificationHTTPClient(allowPrivate func() bool, requestTimeout time.Duration) *http.Client {
-	dialer := &net.Dialer{
-		Timeout: 5 * time.Second,
-		Control: func(network, address string, _ syscall.RawConn) error {
-			if allowPrivate != nil && allowPrivate() {
-				return nil
-			}
-			host, _, err := net.SplitHostPort(address)
-			if err != nil {
-				return fmt.Errorf("webhook dial: %w", err)
-			}
-			ip := net.ParseIP(host)
-			if ip == nil || !webhookIPAllowed(ip) {
-				return errPrivateDestination
-			}
-			return nil
-		},
-	}
-	transport := &http.Transport{
-		DialContext:           dialer.DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          16,
-		IdleConnTimeout:       60 * time.Second,
-		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: requestTimeout,
-	}
-	return &http.Client{
-		Timeout:   requestTimeout,
-		Transport: transport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= webhookMaxRedirects {
-				return errors.New("too many redirects")
-			}
-			if req.URL.Scheme != schemeHTTPS {
-				return errors.New("redirect to non-https destination")
-			}
-			return nil
-		},
-	}
+	policy := outbound.PublicHTTPSPolicy().WithPrivateAccess(allowPrivate)
+	policy.MaxRedirects = webhookMaxRedirects
+	return outbound.NewClient(policy, outbound.WithTimeout(requestTimeout)).HTTPClient()
 }
 
-var errPrivateDestination = errors.New("destination resolves to a private or special-use network")
+var errPrivateDestination = outbound.ErrPrivateDestination
 
 // sendWebhook POSTs body to url with the given extra headers and classifies
 // the outcome. Success is any 2xx. The response body is drained (bounded) and
@@ -187,6 +153,8 @@ func classifyWebhookError(err error) string {
 	case strings.Contains(message, "too many redirects"):
 		return "too many redirects"
 	case strings.Contains(message, "redirect to non-https"):
+		return "redirect to non-https destination"
+	case strings.Contains(message, "URL scheme"):
 		return "redirect to non-https destination"
 	case strings.Contains(message, "timeout") || strings.Contains(message, "deadline"):
 		return "request timed out"

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"strings"
 	"testing"
 	"time"
@@ -41,46 +40,6 @@ func TestWebhookCreateAndTestBlockedWhenDisabled(t *testing.T) {
 	}
 	if _, err := service.Test(ctx, "profile", "hook-id"); !errors.Is(err, ErrWebhooksDisabled) {
 		t.Fatalf("Test error = %v, want ErrWebhooksDisabled", err)
-	}
-}
-
-func TestWebhookIPAllowed(t *testing.T) {
-	denied := []string{
-		"0.1.2.3",
-		"10.1.2.3",
-		"100.64.0.1",   // CGNAT
-		"127.0.0.1",    // loopback
-		"169.254.1.1",  // link-local
-		"172.16.0.1",   // private
-		"192.0.0.1",    // IETF
-		"192.0.2.1",    // TEST-NET-1
-		"198.51.100.1", // TEST-NET-2
-		"203.0.113.1",  // TEST-NET-3
-		"192.88.99.1",  // 6to4 anycast
-		"192.168.1.1",  // private
-		"198.18.0.1",   // benchmarking
-		"198.19.255.1", // benchmarking upper half
-		"224.0.0.1",    // multicast
-		"255.255.255.255",
-		"::1",
-		"fc00::1",            // ULA
-		"fe80::1",            // link-local
-		"2001:db8::1",        // documentation
-		"64:ff9b::7f00:1",    // NAT64-mapped loopback
-		"::ffff:127.0.0.1",   // v4-mapped loopback (the classic bypass)
-		"::ffff:192.168.0.5", // v4-mapped private
-	}
-	for _, raw := range denied {
-		if webhookIPAllowed(net.ParseIP(raw)) {
-			t.Errorf("webhookIPAllowed(%q) = true, want denied", raw)
-		}
-	}
-
-	allowed := []string{"1.1.1.1", "8.8.8.8", "151.101.1.69", "2606:4700::1111"}
-	for _, raw := range allowed {
-		if !webhookIPAllowed(net.ParseIP(raw)) {
-			t.Errorf("webhookIPAllowed(%q) = false, want allowed", raw)
-		}
 	}
 }
 
