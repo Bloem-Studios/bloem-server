@@ -15,7 +15,7 @@ import type {
   ScanRun,
   TaskInfo,
 } from "@/api/types";
-import { api, getAccessToken } from "@/api/client";
+import { api } from "@/api/client";
 import {
   applyNotificationCreated,
   applyNotificationRead,
@@ -72,33 +72,18 @@ const DASHBOARD_QUERY_KEYS = [
   adminKeys.users(),
 ] as const;
 
-function buildEventsUrl(
-  token: string | null,
-  location: Pick<Location, "protocol" | "host">,
-  ticket?: string | null,
-) {
+function buildEventsUrl(location: Pick<Location, "protocol" | "host">, ticket: string) {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   const search = new URLSearchParams();
-  if (token) {
-    search.set("token", token);
-  }
-  if (ticket) {
-    search.set("ticket", ticket);
-  }
+  search.set("ticket", ticket);
   return `${protocol}//${location.host}/api/v1/events/ws${search.toString() ? `?${search.toString()}` : ""}`;
 }
 
 /**
- * Mints a short-lived single-use websocket ticket binding the connection to
- * the active profile (required for the notifications channel). Returns null
- * when no profile is active or the mint fails — the connection then proceeds
- * unbound, and the subscribed-message handler retries the binding with
- * backoff when the notifications subscription is rejected.
+ * Mints the short-lived single-use ticket that authenticates the websocket.
+ * When a profile is active, the normal API request context binds it too.
  */
-async function mintEventsTicket(hasProfile: boolean): Promise<string | null> {
-  if (!hasProfile) {
-    return null;
-  }
+async function mintEventsTicket(): Promise<string> {
   try {
     const response = await api<{ ticket: string }>("/events/ws-ticket", {
       method: "POST",
@@ -107,9 +92,10 @@ async function mintEventsTicket(hasProfile: boolean): Promise<string | null> {
       // ever scheduled — realtime would stay "connecting" forever.
       signal: AbortSignal.timeout(10_000),
     });
-    return response.ticket || null;
+    if (!response.ticket) throw new Error("missing websocket ticket");
+    return response.ticket;
   } catch {
-    return null;
+    throw new Error("websocket ticket unavailable");
   }
 }
 
@@ -777,25 +763,23 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
       setConnectionState("connecting");
       helloReceivedRef.current = false;
 
-      // The ticket binds the connection to the active profile so the server
-      // can authorize the notifications channel. Failure degrades gracefully
-      // to an unbound connection; without a profile we connect synchronously.
-      if (!activeProfileIDRef.current) {
-        openSocket(null);
-        return;
-      }
-      void mintEventsTicket(true).then((ticket) => {
-        if (closedByEffect) {
-          return;
-        }
-        openSocket(ticket);
-      });
+      void mintEventsTicket()
+        .then((ticket) => {
+          if (closedByEffect) {
+            return;
+          }
+          openSocket(ticket);
+        })
+        .catch(() => {
+          setConnectionState("disconnected");
+          scheduleReconnect();
+        });
     };
 
-    const openSocket = (ticket: string | null) => {
+    const openSocket = (ticket: string) => {
       let socket: WebSocket;
       try {
-        socket = new WebSocket(buildEventsUrl(getAccessToken(), window.location, ticket));
+        socket = new WebSocket(buildEventsUrl(window.location, ticket));
       } catch {
         setConnectionState("disconnected");
         scheduleReconnect();

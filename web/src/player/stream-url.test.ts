@@ -2,31 +2,24 @@ import { describe, expect, it } from "vitest";
 import { buildPlayerStreamUrl } from "./stream-url";
 
 describe("buildPlayerStreamUrl", () => {
-  it("joins the access token with `&` when the stream path already has `?st=`", () => {
+  it("preserves only the scoped stream token", () => {
     const url = buildPlayerStreamUrl(
       "https://api.example.com",
       "/api/v1/playback/stream/abc.m3u8?st=streamtoken123",
-      "jwt-access-token",
     );
 
     const parsed = new URL(url);
     // Both params must survive as separate query keys.
     expect(parsed.searchParams.get("st")).toBe("streamtoken123");
-    expect(parsed.searchParams.get("token")).toBe("jwt-access-token");
+    expect(parsed.searchParams.has("token")).toBe(false);
   });
 
-  it("uses `?` when the stream path has no existing query string", () => {
-    const url = buildPlayerStreamUrl(
-      "https://api.example.com",
-      "/api/v1/playback/stream/abc.m3u8",
-      "jwt-access-token",
-    );
+  it("does not add a general credential when no scoped token is present", () => {
+    const url = buildPlayerStreamUrl("https://api.example.com", "/api/v1/playback/stream/abc.m3u8");
 
-    expect(url).toBe(
-      "https://api.example.com/api/v1/playback/stream/abc.m3u8?token=jwt-access-token",
-    );
+    expect(url).toBe("https://api.example.com/api/v1/playback/stream/abc.m3u8");
     const parsed = new URL(url);
-    expect(parsed.searchParams.get("token")).toBe("jwt-access-token");
+    expect(parsed.searchParams.has("token")).toBe(false);
   });
 
   it("preserves a server-anchored seek param instead of synthesizing one", () => {
@@ -36,12 +29,11 @@ describe("buildPlayerStreamUrl", () => {
     const url = buildPlayerStreamUrl(
       "https://api.example.com",
       "/api/v1/playback/stream/abc.m3u8?st=streamtoken123&seek=12.500",
-      "jwt-access-token",
     );
 
     const parsed = new URL(url);
     expect(parsed.searchParams.get("st")).toBe("streamtoken123");
-    expect(parsed.searchParams.get("token")).toBe("jwt-access-token");
+    expect(parsed.searchParams.has("token")).toBe(false);
     expect(parsed.searchParams.get("seek")).toBe("12.500");
   });
 
@@ -49,7 +41,6 @@ describe("buildPlayerStreamUrl", () => {
     const url = buildPlayerStreamUrl(
       "https://api.example.com",
       "/api/v1/playback/proxy/sometoken/abc.m3u8",
-      null,
     );
 
     expect(url).toBe("https://api.example.com/api/v1/playback/proxy/sometoken/abc.m3u8");

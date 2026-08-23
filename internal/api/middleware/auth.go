@@ -55,6 +55,11 @@ type AuthMiddleware struct {
 	// request is refused until a guard is installed. A fixture that wants an
 	// unrestricted middleware installs an explicit allow-all guard.
 	directProfileRoutes DirectProfileRouteGuard
+	audienceTickets     auth.AudienceTicketStore
+}
+
+func (am *AuthMiddleware) SetAudienceTicketStore(store auth.AudienceTicketStore) {
+	am.audienceTickets = store
 }
 
 // DirectProfileRouteGuard reports whether a direct-profile session may use the
@@ -96,15 +101,39 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		var claims *auth.Claims
 		token, ok := extractBearerToken(r)
 		if !ok {
-			writeUnauthorized(w, "Missing or malformed authorization header")
-			return
-		}
-
-		var claims *auth.Claims
-
-		if strings.HasPrefix(token, "sa_") {
+			ticket := strings.TrimSpace(r.URL.Query().Get("ticket"))
+			audience, resourceID, routeOK := audienceTicketRoute(r)
+			if ticket == "" || !routeOK || am.audienceTickets == nil {
+				writeUnauthorized(w, "Missing or malformed authorization header")
+				return
+			}
+			principal, err := am.audienceTickets.Consume(r.Context(), ticket, audience, resourceID)
+			if err != nil {
+				writeUnauthorized(w, "Invalid or expired audience ticket")
+				return
+			}
+			if principal.SessionID != "" {
+				valid, err := am.checkSession(r.Context(), principal.SessionID)
+				if err != nil || !valid {
+					writeUnauthorized(w, "Session is no longer valid")
+					return
+				}
+			}
+			claims = &auth.Claims{
+				UserID:     principal.AccountID,
+				Role:       principal.Role,
+				SessionID:  principal.SessionID,
+				ProfileID:  principal.ProfileID,
+				TokenType:  principal.TokenType,
+				AuthMethod: auth.AuthMethodAudienceTicket,
+			}
+			if principal.ProfileID != "" {
+				r.Header.Set("X-Profile-Id", principal.ProfileID)
+			}
+		} else if strings.HasPrefix(token, "sa_") {
 			// API key authentication.
 			if am.apiKeyValidator == nil {
 				writeUnauthorized(w, "API key authentication not available")
@@ -336,9 +365,8 @@ func (am *AuthMiddleware) checkSession(ctx context.Context, sessionID string) (b
 	return am.sessionValidator.IsValid(ctx, sessionID)
 }
 
-// extractBearerToken extracts a JWT from the request. It checks (in order):
-//  1. Authorization: Bearer <token> header
-//  2. ?token=<token> query parameter (for native media elements that can't set headers)
+// extractBearerToken extracts a JWT or API key only from the Authorization
+// header. General credentials are never accepted from URLs.
 func extractBearerToken(r *http.Request) (string, bool) {
 	// Try Authorization header first.
 	if header := r.Header.Get("Authorization"); header != "" {
@@ -350,12 +378,29 @@ func extractBearerToken(r *http.Request) (string, bool) {
 		}
 	}
 
-	// Fall back to query parameter (used by <video> / <audio> src URLs).
-	if token := r.URL.Query().Get("token"); token != "" {
-		return token, true
-	}
-
 	return "", false
+}
+
+func audienceTicketRoute(r *http.Request) (auth.Audience, string, bool) {
+	path := strings.TrimSuffix(r.URL.Path, "/")
+	if strings.HasSuffix(path, "/events/ws") {
+		return auth.AudienceEventsWS, "", true
+	}
+	const roomMarker = "/watch-together/rooms/"
+	if index := strings.LastIndex(path, roomMarker); index >= 0 && strings.HasSuffix(path, "/ws") {
+		resource := strings.TrimSuffix(path[index+len(roomMarker):], "/ws")
+		if resource != "" && !strings.Contains(resource, "/") {
+			return auth.AudienceWatchTogetherWS, resource, true
+		}
+	}
+	const playbackMarker = "/playback/sessions/"
+	if index := strings.LastIndex(path, playbackMarker); index >= 0 && strings.HasSuffix(path, "/control/ws") {
+		resource := strings.TrimSuffix(path[index+len(playbackMarker):], "/control/ws")
+		if resource != "" && !strings.Contains(resource, "/") {
+			return auth.AudiencePlaybackControlWS, resource, true
+		}
+	}
+	return "", "", false
 }
 
 // errorResponse is the JSON structure for error responses.

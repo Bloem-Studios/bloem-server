@@ -18,8 +18,7 @@ const (
 )
 
 // NotificationsHandler serves the profile-scoped notification inbox,
-// preferences, capability, and websocket-ticket endpoints. All routes are
-// mounted behind RequireProfile.
+// preferences, and capability endpoints.
 type NotificationsHandler struct {
 	system *notifications.System
 	hub    *evt.Hub
@@ -416,24 +415,5 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		Webhooks:    webhooks,
 		Email:       email,
 		Discord:     discordCap,
-	})
-}
-
-// HandleMintWSTicket handles POST /events/ws-ticket: mints a short-lived
-// single-use websocket handshake ticket bound to (user, profile). Long-lived
-// tokens must never ride the websocket query string — reverse-proxy access
-// logs capture it.
-func (h *NotificationsHandler) HandleMintWSTicket(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	profileID := apimw.GetProfileID(r.Context())
-
-	ticket, ttl, err := h.system.Tickets.Mint(r.Context(), userID, profileID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mint websocket ticket")
-		return
-	}
-	writeJSON(w, http.StatusOK, wsTicketResponse{
-		Ticket:    ticket,
-		ExpiresIn: int(ttl.Seconds()),
 	})
 }

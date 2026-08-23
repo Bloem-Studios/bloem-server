@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
@@ -42,6 +43,45 @@ func (c *sessionRealtimeConn) WritePing() error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
 	return writeWebSocketControl(c.conn, websocket.PingMessage, nil)
+}
+
+// HandleMintSessionWSTicket mints a single-use ticket bound to the exact
+// playback session after applying the same ownership check as the socket.
+func (h *PlaybackHandler) HandleMintSessionWSTicket(w http.ResponseWriter, r *http.Request) {
+	claims := apimw.GetClaims(r.Context())
+	sessionID := chi.URLParam(r, "session_id")
+	if h == nil || h.sessionMgr == nil || h.AudienceTickets == nil {
+		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Playback websocket tickets are unavailable")
+		return
+	}
+	if claims == nil || claims.UserID == 0 || sessionID == "" {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
+		return
+	}
+	session, err := h.sessionMgr.GetSession(sessionID)
+	if err != nil {
+		writePlaybackSessionNotFound(w)
+		return
+	}
+	if !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, claims.UserID) {
+		writeError(w, http.StatusForbidden, "forbidden", "Playback session access denied")
+		return
+	}
+	ticket, ttl, err := h.AudienceTickets.Mint(r.Context(), auth.AudienceTicket{
+		Audience:   auth.AudiencePlaybackControlWS,
+		AccountID:  claims.UserID,
+		ProfileID:  session.ProfileID,
+		ResourceID: sessionID,
+		Role:       claims.Role,
+		SessionID:  claims.SessionID,
+		TokenType:  claims.TokenType,
+		AuthMethod: claims.AuthMethod,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mint websocket ticket")
+		return
+	}
+	writeJSON(w, http.StatusOK, wsTicketResponse{Ticket: ticket, ExpiresIn: int(ttl.Seconds())})
 }
 
 // HandleSessionWebSocket handles GET /playback/ws/{session_id}.

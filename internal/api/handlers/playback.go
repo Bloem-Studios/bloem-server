@@ -19,6 +19,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/config"
@@ -178,6 +179,7 @@ type PlaybackHandler struct {
 	SubtitleRepo            subtitles.Repository // optional; enables downloaded subtitles in playback
 	RealtimeHub             *playback.RealtimeHub
 	CommandTracker          *playback.CommandTracker
+	AudienceTickets         auth.AudienceTicketStore
 	CommandDispatcher       *playback.CommandDispatcher
 	// PlaybackConfig returns the current playback config (ffmpeg path,
 	// hwaccel, transcode dir). Wired to the live config in integrated mode

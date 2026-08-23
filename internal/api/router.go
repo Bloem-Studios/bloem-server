@@ -252,6 +252,12 @@ func (d *Dependencies) CurrentConfig() *config.Config {
 // mounted at the root level when deps.ABSHandler is non-nil.
 func NewRouter(deps Dependencies) chi.Router {
 	r := chi.NewRouter()
+	audienceTickets := auth.NewAudienceTicketStore(deps.RedisClient)
+	if deps.Notifications != nil && deps.Notifications.AudienceTickets != nil {
+		audienceTickets = deps.Notifications.AudienceTickets
+	} else if deps.Notifications != nil {
+		deps.Notifications.AudienceTickets = audienceTickets
+	}
 
 	// Standard middleware.
 	r.Use(middleware.RequestID)
@@ -472,6 +478,7 @@ func NewRouter(deps Dependencies) chi.Router {
 			authHandler.SetAccessGroupProvider(accessGroupStore)
 		}
 		authMiddleware = apimw.NewAuthMiddleware(jwtService, sessionRepo, apiKeyRepo, userRepo)
+		authMiddleware.SetAudienceTicketStore(audienceTickets)
 		// Default-deny for direct-profile sessions. Installed here, at the one
 		// place claims are resolved, so a route is out of reach until
 		// directProfileAllowedRoutes names it.
@@ -1163,6 +1170,7 @@ func NewRouter(deps Dependencies) chi.Router {
 				viewerResolver,
 				roomTokenService,
 			)
+			watchTogetherHandler.Tickets = audienceTickets
 		}
 	}
 
@@ -2252,7 +2260,9 @@ func NewRouter(deps Dependencies) chi.Router {
 						historyImportSvc,
 					)
 					eventsHandler.SetNotificationsSystem(deps.Notifications)
+					eventsHandler.SetAudienceTicketStore(audienceTickets)
 					r.Get("/events/ws", eventsHandler.HandleWebSocket)
+					r.Post("/events/ws-ticket", eventsHandler.HandleMintWSTicket)
 					r.Get("/events/capability", eventsHandler.HandleCapability)
 				}
 
@@ -2263,7 +2273,6 @@ func NewRouter(deps Dependencies) chi.Router {
 						deps.Notifications.SetImageResolver(detailSvc)
 					}
 					notificationsHandler := handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub)
-					r.With(apimw.RequireProfile).Post("/events/ws-ticket", notificationsHandler.HandleMintWSTicket)
 					r.With(apimw.RequireProfile).Post("/devices/push/apple", notificationsHandler.HandleRegisterApplePushDevice)
 					// Discord DM channel: the linked identity and mode hang off
 					// the login account, not a profile, so these stay outside
@@ -2887,6 +2896,7 @@ func NewRouter(deps Dependencies) chi.Router {
 
 				// Playback routes.
 				if playbackHandler != nil {
+					playbackHandler.AudienceTickets = audienceTickets
 					playbackHandler.ItemAccess = itemRepo
 					playbackHandler.EpisodeLookup = episodeRepo
 					playbackHandler.ExtraLookup = extraRepo
@@ -2902,6 +2912,7 @@ func NewRouter(deps Dependencies) chi.Router {
 						r.Get("/transcode/{session_id}/segment/{name}", playbackHandler.HandleGetTranscodeSegment)
 
 						// Playback realtime control socket — needs auth but not profile.
+						r.Post("/sessions/{session_id}/control/ws-ticket", playbackHandler.HandleMintSessionWSTicket)
 						r.Get("/sessions/{session_id}/control/ws", playbackHandler.HandleSessionWebSocket)
 
 						// All mutation routes require profile auth.
@@ -2923,6 +2934,7 @@ func NewRouter(deps Dependencies) chi.Router {
 							r.Use(apimw.RequireProfile)
 							r.Post("/rooms", watchTogetherHandler.HandleCreateRoom)
 							r.Post("/join", watchTogetherHandler.HandleJoinRoom)
+							r.Post("/rooms/{room_id}/ws-ticket", watchTogetherHandler.HandleMintRoomWSTicket)
 							r.Get("/rooms/{room_id}", watchTogetherHandler.HandleGetRoom)
 							r.Put("/rooms/{room_id}/selection", watchTogetherHandler.HandleSelectRoomItem)
 							r.Patch("/rooms/{room_id}/policy", watchTogetherHandler.HandleUpdateRoomPolicy)

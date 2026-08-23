@@ -35,6 +35,10 @@ vi.mock("@/hooks/usePageActivity", () => ({
   usePageActivity: () => mockState.pageActivity,
 }));
 
+vi.mock("@/api/client", () => ({
+  api: vi.fn(async () => ({ ticket: "single-use-ticket" })),
+}));
+
 vi.mock("react-router", () => ({
   useLocation: () => ({ pathname: "/" }),
 }));
@@ -68,22 +72,28 @@ class FakeWebSocket {
 }
 
 describe("buildEventsUrl", () => {
-  it("includes auth token and websocket scheme", () => {
+  it("uses only the single-use ticket and websocket scheme", () => {
     expect(
-      buildEventsUrl("token-123", {
-        protocol: "https:",
-        host: "example.com",
-      }),
-    ).toBe("wss://example.com/api/v1/events/ws?token=token-123");
+      buildEventsUrl(
+        {
+          protocol: "https:",
+          host: "example.com",
+        },
+        "single-use-ticket",
+      ),
+    ).toBe("wss://example.com/api/v1/events/ws?ticket=single-use-ticket");
   });
 
-  it("omits the query string when no token is available", () => {
+  it("never places the account token in the URL", () => {
     expect(
-      buildEventsUrl(null, {
-        protocol: "http:",
-        host: "localhost:5173",
-      }),
-    ).toBe("ws://localhost:5173/api/v1/events/ws");
+      buildEventsUrl(
+        {
+          protocol: "http:",
+          host: "localhost:5173",
+        },
+        "single-use-ticket",
+      ),
+    ).toBe("ws://localhost:5173/api/v1/events/ws?ticket=single-use-ticket");
   });
 });
 
@@ -185,7 +195,7 @@ describe("RealtimeEventsProvider", () => {
     vi.unstubAllGlobals();
   });
 
-  it("ignores stale close events from intentionally closed sockets", () => {
+  it("ignores stale close events from intentionally closed sockets", async () => {
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -199,6 +209,9 @@ describe("RealtimeEventsProvider", () => {
         </RealtimeEventsProvider>
       </QueryClientProvider>,
     );
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     expect(FakeWebSocket.instances).toHaveLength(1);
     const firstSocket = FakeWebSocket.instances[0];
@@ -216,6 +229,9 @@ describe("RealtimeEventsProvider", () => {
         </QueryClientProvider>,
       );
     });
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     act(() => {
       mockState.pageActivity = {
@@ -229,6 +245,9 @@ describe("RealtimeEventsProvider", () => {
           </RealtimeEventsProvider>
         </QueryClientProvider>,
       );
+    });
+    await act(async () => {
+      await Promise.resolve();
     });
 
     expect(FakeWebSocket.instances).toHaveLength(2);

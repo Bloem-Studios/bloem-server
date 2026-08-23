@@ -70,7 +70,7 @@ const srtTrack: PlayerSubtitleInfo = {
   codec: "subrip",
   label: "English",
   source: "embedded",
-  url: "/api/v1/stream/x/subtitles/1?token=abc",
+  url: "/api/v1/stream/x/subtitles/1?st=scoped-stream-token",
 };
 
 const fetchMock = vi.fn();

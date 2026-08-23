@@ -336,11 +336,7 @@ export function useAudiobookPlayback({
       pendingLocalSeekRef.current = plan.timeline.player_start_seconds;
       setSessionState({
         sessionId: sessionId ?? null,
-        streamUrl: buildPlayerStreamUrl(
-          config.apiBaseUrl,
-          plan.stream.url,
-          config.getAccessToken(),
-        ),
+        streamUrl: buildPlayerStreamUrl(config.apiBaseUrl, plan.stream.url),
       });
       void reportRouteEventV3(config, {
         event: "plan_selected",

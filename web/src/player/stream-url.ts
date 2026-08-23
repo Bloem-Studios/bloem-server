@@ -28,31 +28,13 @@ export function preconnectToStreamOrigin(streamUrl: string): void {
 }
 
 /**
- * Makes a server-issued stream path loadable by a native media element, which
- * cannot set an Authorization header, by appending the access token as a query
- * parameter.
- *
  * Under protocol v3 the plan's `stream.url` is already fully anchored by the
- * server — the seek position, the stream token, and every other routing
- * decision are baked in. This helper must not add playback semantics of its
- * own; it only carries authentication.
+ * own or append general account credentials.
  */
-export function buildPlayerStreamUrl(
-  apiBaseUrl: string,
-  streamPath: string,
-  token: string | null,
-): string {
+export function buildPlayerStreamUrl(apiBaseUrl: string, streamPath: string): string {
   const base =
     streamPath.startsWith("http://") || streamPath.startsWith("https://")
       ? streamPath
       : `${apiBaseUrl}${streamPath}`;
-  if (!token) {
-    return base;
-  }
-  const query = new URLSearchParams({ token }).toString();
-  // The backend stream URL may already carry its own query string (e.g. the
-  // `?st=<streamtoken>` reconstruct token for integrated-mode direct/remux).
-  // Join with `&` in that case so we don't clobber it into `st=X?token=Y`.
-  const separator = base.includes("?") ? "&" : "?";
-  return `${base}${separator}${query}`;
+  return base;
 }

@@ -73,21 +73,27 @@ type activeScanLister interface {
 }
 
 type EventsHandler struct {
-	hub            *evt.Hub
-	jobs           *AdminJobsHandler
-	admin          *AdminHandler
-	tasks          taskInfoLister
-	scans          *evt.ScanRegistry
-	persistedScans activeScanLister
-	historyImports historyImportActiveLister
-	notifications  *notifications.System
+	hub             *evt.Hub
+	jobs            *AdminJobsHandler
+	admin           *AdminHandler
+	tasks           taskInfoLister
+	scans           *evt.ScanRegistry
+	persistedScans  activeScanLister
+	historyImports  historyImportActiveLister
+	notifications   *notifications.System
+	audienceTickets auth.AudienceTicketStore
 }
 
-// SetNotificationsSystem wires the user-notification system: websocket
-// handshake tickets and the notifications channel snapshot.
+// SetNotificationsSystem wires the user-notification channel snapshot.
 func (h *EventsHandler) SetNotificationsSystem(system *notifications.System) {
 	if h != nil {
 		h.notifications = system
+	}
+}
+
+func (h *EventsHandler) SetAudienceTicketStore(store auth.AudienceTicketStore) {
+	if h != nil {
+		h.audienceTickets = store
 	}
 }
 
@@ -111,6 +117,30 @@ func NewEventsHandler(
 	}
 }
 
+// HandleMintWSTicket mints the short-lived, single-use credential used only
+// for the events websocket handshake.
+func (h *EventsHandler) HandleMintWSTicket(w http.ResponseWriter, r *http.Request) {
+	claims := apimw.GetClaims(r.Context())
+	if claims == nil || h == nil || h.audienceTickets == nil {
+		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Websocket tickets are unavailable")
+		return
+	}
+	ticket, ttl, err := h.audienceTickets.Mint(r.Context(), auth.AudienceTicket{
+		Audience:   auth.AudienceEventsWS,
+		AccountID:  claims.UserID,
+		ProfileID:  apimw.GetProfileID(r.Context()),
+		Role:       claims.Role,
+		SessionID:  claims.SessionID,
+		TokenType:  claims.TokenType,
+		AuthMethod: claims.AuthMethod,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mint websocket ticket")
+		return
+	}
+	writeJSON(w, http.StatusOK, wsTicketResponse{Ticket: ticket, ExpiresIn: int(ttl.Seconds())})
+}
+
 func (h *EventsHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	if h == nil || h.hub == nil {
 		http.Error(w, "events unavailable", http.StatusServiceUnavailable)
@@ -123,26 +153,9 @@ func (h *EventsHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Browsers cannot set custom headers on websocket handshakes, so profile
-	// identity arrives as a short-lived single-use ticket minted via
-	// POST /events/ws-ticket. A connection without a ticket stays unbound and
-	// simply cannot subscribe to the profile-scoped notifications channel.
-	boundProfileID := ""
-	if ticket := r.URL.Query().Get("ticket"); ticket != "" && h.notifications != nil {
-		ticketUserID, ticketProfileID, ok := h.notifications.Tickets.Consume(r.Context(), ticket)
-		if ok && ticketUserID == claims.UserID {
-			boundProfileID = ticketProfileID
-		} else {
-			// Expired, reused, consumed on a different node, or minted for
-			// another user: degrade to an unbound connection instead of
-			// failing the handshake. The binding grants nothing on its own —
-			// the client retries it when its notifications subscription is
-			// rejected — whereas a hard 403 would take down every realtime
-			// channel over a notifications-only concern.
-			slog.WarnContext(r.Context(), "events: websocket ticket rejected; connection unbound", "component", "api",
-				"user_id", claims.UserID)
-		}
-	}
+	// RequireAuth has already atomically consumed the route-bound ticket and
+	// reconstructed its authenticated principal.
+	boundProfileID := claims.ProfileID
 
 	conn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {

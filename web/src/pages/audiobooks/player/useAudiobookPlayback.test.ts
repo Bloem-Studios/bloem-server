@@ -227,12 +227,12 @@ describe("useAudiobookPlayback", () => {
     expect(result.current.chapters[1]!.start_seconds).toBe(300);
   });
 
-  it("starts a playback session and builds a tokenized stream URL", async () => {
+  it("starts a playback session without exposing the account token", async () => {
     const { result } = renderAudiobookPlayback();
 
     await flushAsyncWork();
 
-    expect(result.current.streamUrl).toBe("/api/v1/stream/session-1?token=token");
+    expect(result.current.streamUrl).toBe("/api/v1/stream/session-1");
 
     const startCall = vi
       .mocked(fetch)
@@ -419,7 +419,7 @@ describe("useAudiobookPlayback", () => {
 
     await flushAsyncWork();
 
-    expect(result.current.streamUrl).toBe("/api/v1/stream/session-1?token=token");
+    expect(result.current.streamUrl).toBe("/api/v1/stream/session-1");
     expect(result.current.currentTime).toBe(450);
     expect(result.current.duration).toBe(600);
 

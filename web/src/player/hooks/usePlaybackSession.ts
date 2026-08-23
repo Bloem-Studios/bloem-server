@@ -131,7 +131,6 @@ function mapSubtitleInventory(
   mediaFileId: number,
   config: PlayerConfig,
 ): PlayerSubtitleInfo[] {
-  const token = config.getAccessToken();
   return inventory.map((item) => ({
     index: item.combined_index,
     media_file_id: mediaFileId,
@@ -143,9 +142,9 @@ function mapSubtitleInventory(
     source: subtitleSourceOf(item.source),
     forced: item.forced,
     hearing_impaired: item.hearing_impaired,
-    url: item.url ? buildPlayerStreamUrl(config.apiBaseUrl, item.url, token) : "",
+    url: item.url ? buildPlayerStreamUrl(config.apiBaseUrl, item.url) : "",
     font_bundle_url: item.font_bundle_url
-      ? buildPlayerStreamUrl(config.apiBaseUrl, item.font_bundle_url, token)
+      ? buildPlayerStreamUrl(config.apiBaseUrl, item.font_bundle_url)
       : undefined,
   }));
 }
@@ -169,7 +168,7 @@ function planToSessionState(
   return {
     plan,
     planRevision,
-    streamUrl: buildPlayerStreamUrl(config.apiBaseUrl, plan.stream.url, config.getAccessToken()),
+    streamUrl: buildPlayerStreamUrl(config.apiBaseUrl, plan.stream.url),
     sessionId,
     playbackAttemptId,
     mediaFileId: plan.effective_media_file_id,

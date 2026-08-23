@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiClientError, getAccessToken, getProfileToken } from "@/api/client";
+import { api, ApiClientError } from "@/api/client";
 import {
   closeWatchTogetherRoom,
   type CreateWatchTogetherSuggestionInput,
@@ -18,7 +18,6 @@ import {
   type WatchTogetherRoomSnapshot,
   type WatchTogetherSuggestion,
 } from "@/lib/watchTogether";
-import { storage } from "@/utils/storage";
 
 export type WatchTogetherConnectionState = "disconnected" | "connecting" | "connected";
 
@@ -74,14 +73,7 @@ function closedReasonFromRoomFetchError(error: unknown): string | null {
   }
 }
 
-function buildRoomWebSocketUrl(
-  apiBaseUrl: string,
-  roomId: string,
-  roomToken: string,
-  accessToken: string | null,
-  profileId: string | null,
-  profileToken: string | null,
-) {
+export function buildRoomWebSocketUrl(apiBaseUrl: string, roomId: string, ticket: string) {
   if (typeof window === "undefined") {
     return "";
   }
@@ -91,17 +83,19 @@ function buildRoomWebSocketUrl(
     : new URL(apiBaseUrl, window.location.origin).toString();
   const wsBase = apiBase.replace(/^http/, "ws");
   const url = new URL(`${wsBase}/watch-together/rooms/${roomId}/ws`);
-  url.searchParams.set("room_token", roomToken);
-  if (accessToken) {
-    url.searchParams.set("token", accessToken);
-  }
-  if (profileId) {
-    url.searchParams.set("profile_id", profileId);
-  }
-  if (profileToken) {
-    url.searchParams.set("profile_token", profileToken);
-  }
+  url.searchParams.set("ticket", ticket);
   return url.toString();
+}
+
+async function mintRoomWebSocketTicket(roomId: string, roomToken: string): Promise<string> {
+  const response = await api<{ ticket: string }>(`/watch-together/rooms/${roomId}/ws-ticket`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ room_access_token: roomToken }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ticket) throw new Error("missing websocket ticket");
+  return response.ticket;
 }
 
 export function useWatchTogetherRoomConnection({
@@ -231,130 +225,131 @@ export function useWatchTogetherRoomConnection({
 
       setConnectionState("connecting");
 
-      let socket: WebSocket;
-      try {
-        socket = new WebSocket(
-          buildRoomWebSocketUrl(
-            "/api/v1",
-            roomId,
-            roomToken,
-            getAccessToken(),
-            storage.get(storage.KEYS.PROFILE_ID),
-            getProfileToken(),
-          ),
-        );
-      } catch {
-        scheduleReconnect();
-        return;
-      }
-
-      socketRef.current = socket;
-
-      socket.addEventListener("open", () => {
-        if (disposed) {
-          socket.close();
-          return;
-        }
-        attempt = 0;
-        setConnectionState("connected");
-        sendPing();
-        pingTimer = window.setInterval(sendPing, pingIntervalMs);
-      });
-
-      socket.addEventListener("message", (event) => {
-        let message: Record<string, unknown>;
-        try {
-          message = JSON.parse(String(event.data)) as Record<string, unknown>;
-        } catch {
-          return;
-        }
-
-        switch (message.type) {
-          case "snapshot": {
-            const payload = message.room as WatchTogetherRoomSnapshot | undefined;
-            if (payload) {
-              setRoom(payload);
-            }
+      void mintRoomWebSocketTicket(roomId, roomToken)
+        .then((ticket) => {
+          if (disposed) return;
+          let socket: WebSocket;
+          try {
+            socket = new WebSocket(buildRoomWebSocketUrl("/api/v1", roomId, ticket));
+          } catch {
+            scheduleReconnect();
             return;
           }
-          case "suggestions_update": {
-            const payload = message.suggestions as WatchTogetherSuggestion[] | undefined;
-            if (payload) {
-              // Server broadcasts strip voted_by_me (it's relative to the requester).
-              // Merge from our local state so each user's votes are preserved.
-              setSuggestions((prev) => {
-                const prevVotes = new Set(prev.filter((s) => s.voted_by_me).map((s) => s.id));
-                return payload.map((s) => ({
-                  ...s,
-                  voted_by_me: prevVotes.has(s.id),
-                }));
-              });
-            }
-            return;
-          }
-          case "room_closed":
-            setRoom(null);
-            markClosed(typeof message.reason === "string" ? message.reason : "room_closed");
-            socket.close();
-            return;
-          case "transport_command": {
-            const payload = message.command as WatchTogetherTransportCommand | undefined;
-            if (payload) {
-              setTransportCommand(payload);
-            }
-            return;
-          }
-          case "pong":
-            if (
-              typeof message.client_sent_at === "string" &&
-              typeof message.server_received_at === "string" &&
-              typeof message.server_sent_at === "string"
-            ) {
-              const sentAt = Date.parse(message.client_sent_at);
-              const serverReceivedAt = Date.parse(message.server_received_at);
-              const serverSentAt = Date.parse(message.server_sent_at);
-              const receivedAt = Date.now();
-              if (
-                Number.isFinite(sentAt) &&
-                Number.isFinite(serverReceivedAt) &&
-                Number.isFinite(serverSentAt)
-              ) {
-                const offset = (serverReceivedAt - sentAt + (serverSentAt - receivedAt)) / 2;
-                setServerTimeOffsetMs(offset);
-              }
-            }
-            return;
-          case "error": {
-            // Defense in depth: some server paths report terminal conditions
-            // as an error message instead of (or before) room_closed.
-            if (message.code === "not_found" || message.code === "gone") {
-              setRoom(null);
-              markClosed(message.code === "gone" ? "ended" : "not_found");
+
+          socketRef.current = socket;
+
+          socket.addEventListener("open", () => {
+            if (disposed) {
               socket.close();
-            } else {
-              console.warn("[watch-together]", message.code ?? "error", message.message ?? "");
+              return;
             }
-            return;
+            attempt = 0;
+            setConnectionState("connected");
+            sendPing();
+            pingTimer = window.setInterval(sendPing, pingIntervalMs);
+          });
+
+          socket.addEventListener("message", (event) => {
+            let message: Record<string, unknown>;
+            try {
+              message = JSON.parse(String(event.data)) as Record<string, unknown>;
+            } catch {
+              return;
+            }
+
+            switch (message.type) {
+              case "snapshot": {
+                const payload = message.room as WatchTogetherRoomSnapshot | undefined;
+                if (payload) {
+                  setRoom(payload);
+                }
+                return;
+              }
+              case "suggestions_update": {
+                const payload = message.suggestions as WatchTogetherSuggestion[] | undefined;
+                if (payload) {
+                  // Server broadcasts strip voted_by_me (it's relative to the requester).
+                  // Merge from our local state so each user's votes are preserved.
+                  setSuggestions((prev) => {
+                    const prevVotes = new Set(prev.filter((s) => s.voted_by_me).map((s) => s.id));
+                    return payload.map((s) => ({
+                      ...s,
+                      voted_by_me: prevVotes.has(s.id),
+                    }));
+                  });
+                }
+                return;
+              }
+              case "room_closed":
+                setRoom(null);
+                markClosed(typeof message.reason === "string" ? message.reason : "room_closed");
+                socket.close();
+                return;
+              case "transport_command": {
+                const payload = message.command as WatchTogetherTransportCommand | undefined;
+                if (payload) {
+                  setTransportCommand(payload);
+                }
+                return;
+              }
+              case "pong":
+                if (
+                  typeof message.client_sent_at === "string" &&
+                  typeof message.server_received_at === "string" &&
+                  typeof message.server_sent_at === "string"
+                ) {
+                  const sentAt = Date.parse(message.client_sent_at);
+                  const serverReceivedAt = Date.parse(message.server_received_at);
+                  const serverSentAt = Date.parse(message.server_sent_at);
+                  const receivedAt = Date.now();
+                  if (
+                    Number.isFinite(sentAt) &&
+                    Number.isFinite(serverReceivedAt) &&
+                    Number.isFinite(serverSentAt)
+                  ) {
+                    const offset = (serverReceivedAt - sentAt + (serverSentAt - receivedAt)) / 2;
+                    setServerTimeOffsetMs(offset);
+                  }
+                }
+                return;
+              case "error": {
+                // Defense in depth: some server paths report terminal conditions
+                // as an error message instead of (or before) room_closed.
+                if (message.code === "not_found" || message.code === "gone") {
+                  setRoom(null);
+                  markClosed(message.code === "gone" ? "ended" : "not_found");
+                  socket.close();
+                } else {
+                  console.warn("[watch-together]", message.code ?? "error", message.message ?? "");
+                }
+                return;
+              }
+              default:
+            }
+          });
+
+          socket.addEventListener("close", () => {
+            if (socketRef.current === socket) {
+              socketRef.current = null;
+            }
+            if (pingTimer !== null) {
+              window.clearInterval(pingTimer);
+              pingTimer = null;
+            }
+            setConnectionState("disconnected");
+            scheduleReconnect();
+          });
+
+          socket.addEventListener("error", () => {
+            socket.close();
+          });
+        })
+        .catch(() => {
+          if (!disposed) {
+            setConnectionState("disconnected");
+            scheduleReconnect();
           }
-          default:
-        }
-      });
-
-      socket.addEventListener("close", () => {
-        if (socketRef.current === socket) {
-          socketRef.current = null;
-        }
-        if (pingTimer !== null) {
-          window.clearInterval(pingTimer);
-          pingTimer = null;
-        }
-        setConnectionState("disconnected");
-        scheduleReconnect();
-      });
-
-      socket.addEventListener("error", () => {
-        socket.close();
-      });
+        });
     };
 
     connect();

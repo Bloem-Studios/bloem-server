@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
 func intPtr(v int) *int { return &v }
@@ -194,20 +196,20 @@ func TestMemoryTicketStore(t *testing.T) {
 	store := NewTicketStore(nil)
 	ctx := context.Background()
 
-	ticket, ttl, err := store.Mint(ctx, 7, "profile-1")
+	ticket, ttl, err := store.Mint(ctx, auth.AudienceTicket{Audience: auth.AudienceEventsWS, AccountID: 7, ProfileID: "profile-1"})
 	if err != nil || ticket == "" || ttl <= 0 {
 		t.Fatalf("mint failed: %q %v %v", ticket, ttl, err)
 	}
 
-	userID, profileID, ok := store.Consume(ctx, ticket)
-	if !ok || userID != 7 || profileID != "profile-1" {
-		t.Fatalf("consume returned %d %q %v", userID, profileID, ok)
+	principal, err := store.Consume(ctx, ticket, auth.AudienceEventsWS, "")
+	if err != nil || principal.AccountID != 7 || principal.ProfileID != "profile-1" {
+		t.Fatalf("consume returned %#v %v", principal, err)
 	}
 
-	if _, _, ok := store.Consume(ctx, ticket); ok {
+	if _, err := store.Consume(ctx, ticket, auth.AudienceEventsWS, ""); err == nil {
 		t.Fatal("tickets must be single-use")
 	}
-	if _, _, ok := store.Consume(ctx, "unknown"); ok {
+	if _, err := store.Consume(ctx, "unknown", auth.AudienceEventsWS, ""); err == nil {
 		t.Fatal("unknown tickets must be rejected")
 	}
 }

@@ -96,7 +96,7 @@ const directPlan = fixturePlanV3({
 function playerProps(overrides: Partial<Parameters<typeof VideoPlayer>[0]> = {}) {
   return {
     title: "Test movie",
-    streamUrl: "/api/v1/stream/session-1?token=token",
+    streamUrl: "/api/v1/stream/session-1?st=scoped-stream-token",
     plan: directPlan,
     planRevision: 1,
     sessionId: "session-1",

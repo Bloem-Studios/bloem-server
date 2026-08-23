@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { api } from "@/api/client";
 import { usePlayerConfig } from "../context/PlayerConfigContext";
 import {
   buildPlaybackRealtimeAck,
@@ -23,16 +24,14 @@ interface UsePlaybackRealtimeResult {
 
 const reconnectDelays = [500, 1_000, 2_000, 5_000];
 
-export function createPlaybackRealtimeUrlFactory(
+export function buildPlaybackRealtimeUrl(
   apiBaseUrl: string,
   sessionId: string,
-  getAccessToken: () => string | null,
-): () => string {
+  ticket: string,
+): string {
   const wsBase = apiBaseUrl.replace(/^http/, "ws");
-  return () => {
-    const token = getAccessToken();
-    return `${wsBase}/playback/sessions/${sessionId}/control/ws${token ? `?token=${token}` : ""}`;
-  };
+  const search = new URLSearchParams({ ticket });
+  return `${wsBase}/playback/sessions/${sessionId}/control/ws?${search.toString()}`;
 }
 
 export function usePlaybackRealtime({
@@ -60,12 +59,6 @@ export function usePlaybackRealtime({
       return;
     }
 
-    const getWsUrl = createPlaybackRealtimeUrlFactory(
-      config.apiBaseUrl,
-      sessionId,
-      config.getAccessToken,
-    );
-
     let disposed = false;
     let attempt = 0;
     let socket: WebSocket | null = null;
@@ -78,12 +71,19 @@ export function usePlaybackRealtime({
       reconnectTimer = window.setTimeout(connect, delay);
     };
 
-    const connect = () => {
+    const connect = async () => {
       if (disposed) return;
       setConnectionState("connecting");
 
       try {
-        socket = new WebSocket(getWsUrl());
+        const response = await api<{ ticket: string }>(
+          `/playback/sessions/${sessionId}/control/ws-ticket`,
+          { method: "POST" },
+        );
+        if (disposed) return;
+        socket = new WebSocket(
+          buildPlaybackRealtimeUrl(config.apiBaseUrl, sessionId, response.ticket),
+        );
       } catch {
         scheduleReconnect();
         return;
@@ -148,7 +148,7 @@ export function usePlaybackRealtime({
       });
     };
 
-    connect();
+    void connect();
 
     return () => {
       disposed = true;
