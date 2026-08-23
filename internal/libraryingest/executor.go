@@ -449,7 +449,7 @@ func scopeMatchPaths(folder *models.MediaFolder, mode scopeMode, scopePath strin
 	// be created for unlinked files. Skip concurrent matching; the post-scan
 	// drain handles these libraries correctly.
 	switch strings.ToLower(strings.TrimSpace(folder.Type)) {
-	case "audiobook", "audiobooks", "podcast", "podcasts", "ebook", "ebooks", "manga", "comics":
+	case "audiobook", "audiobooks", "podcast", "podcasts", "music", "songs", "ebook", "ebooks", "manga", "comics":
 		return nil
 	}
 	switch mode {

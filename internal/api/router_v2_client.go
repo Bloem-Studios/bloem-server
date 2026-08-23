@@ -6,6 +6,7 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/music"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
@@ -33,6 +34,7 @@ type v2ClientSurface struct {
 	watch    *handlers.WatchHandler
 	progress *handlers.ProgressHandler
 	persons  *handlers.PersonDetailHandler
+	music    *handlers.MusicHandler
 
 	auth      *apimw.AuthMiddleware
 	tenant    *apimw.TenantMiddleware
@@ -73,6 +75,7 @@ func newV2ClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantM
 	if deps.DB == nil || deps.UserStoreProvider == nil {
 		return surface
 	}
+	surface.music = handlers.NewNativeMusicHandler(music.NewPostgresRepository(deps.DB))
 
 	// The Watch documents both TV clients consume. They need a catalog, a
 	// media-file repository and a progress store; without any one of them there
@@ -162,7 +165,7 @@ func (s v2ClientSurface) mount(r chi.Router) {
 	if s.identity != nil {
 		r.Get("/server/identity", s.identity.HandleGetServerIdentity)
 	}
-	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil) {
+	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.music == nil) {
 		return
 	}
 
@@ -200,6 +203,12 @@ func (s v2ClientSurface) mount(r chi.Router) {
 		}
 		if s.persons != nil {
 			r.Get("/persons/{person_id}", s.persons.HandleGetPersonDetail)
+		}
+		if s.music != nil {
+			r.Get("/music/status", s.music.HandleStatus)
+			r.Get("/music/artists", s.music.HandleArtists)
+			r.Get("/music/artists/{id}", s.music.HandleArtist)
+			r.Get("/music/albums/{id}", s.music.HandleAlbum)
 		}
 	})
 }

@@ -55,6 +55,7 @@ const (
 	// websocket's declared-channel handshake, reported in detail as
 	// declared_channels on /events/capability.
 	featureDeclaredEventChannels = "declared_event_channels"
+	featureMusicCatalogV1        = "music_catalog_v1"
 )
 
 // mediaTypesServed are the item types this build can serve to clients — a
@@ -73,6 +74,7 @@ var mediaTypesServed = []string{
 	itemTypeAudiobook,
 	itemTypeEbook,
 	itemTypeManga,
+	"music_album",
 }
 
 // v2CapabilityTokens is assembled once: the document describes the build, not
@@ -93,7 +95,7 @@ func buildV2CapabilityTokens() []string {
 	}
 	add(playbackFeatures...)
 	add(featureDeclaredEventChannels)
-	add(featureWatchDocumentV1, featureDevicePairingV1, featureProgressSyncV1)
+	add(featureWatchDocumentV1, featureDevicePairingV1, featureProgressSyncV1, featureMusicCatalogV1)
 	return tokens
 }
 

@@ -83,7 +83,7 @@ explicitly, and it is worth stating precisely because it is easy to get backward
   requires a **tenant-selected session** — `apimw.AdminContextMiddleware`, fed by a short-lived
   token minted from `POST /api/v2/admin/session` (documented below), which carries organization,
   membership and policy/security revision claims.
-- **The native client surface** (`server/identity`, `watch/*`, `sync/progress`, `persons/{id}`)
+- **The native client surface** (`server/identity`, `watch/*`, `sync/progress`, `persons/{id}`, `music/*`)
   **deliberately does not** require that tenant-selected session. Quoting the source comment on
   `v2ClientSurface`: *"A viewer's session is not tenant-selected — no login endpoint mints
   organization, membership or revision claims — so these routes take the same legacy tenant
@@ -737,6 +737,37 @@ own "year" sort — not re-sorted client-side by this handler).
 "/api/v2/persons/"`). `vondel-android`: `HttpPersonSource.kt` (`PERSON_PATH_PREFIX =
 "/api/v2/persons/"`; file doc comment: *"One person's own page, read from a Vondel server's native
 `GET /api/v2/persons/{person_id}`."*).
+
+---
+
+### Music
+
+Music is a Vondel-native extension and is deliberately absent from the frozen
+Silo-compatible `/api/v1` projection. Clients discover build support through
+the `music_catalog_v1` feature token and discover usable profile-scoped content
+through `GET /api/v2/music/status`.
+
+All routes below use the native authenticated viewer group (`RequireAuth`,
+legacy tenant projection, viewer policy scope, and `RequireProfile`). Every
+query requires membership in the requested positive `library_id`; disabled or
+out-of-scope libraries answer as not found.
+
+- `GET /api/v2/music/status` returns `{"available":true|false,"library_ids":[...]}`.
+  A library is advertised only when it is enabled and has at least one present
+  track.
+- `GET /api/v2/music/artists?library_id={id}&cursor={opaque}` returns a page of
+  artists with `items` and an optional `next_cursor`.
+- `GET /api/v2/music/artists/{id}?library_id={id}` returns an `artist` and its
+  ordered, non-empty `albums`.
+- `GET /api/v2/music/albums/{id}?library_id={id}` returns an `album` and its
+  ordered present `tracks`. Each track carries the positive `media_file_id`
+  used by the existing playback-start contract.
+
+Music libraries use the dedicated `music` (or `songs`) library type. The
+scanner reads embedded artist/album/title/year/disc/track tags, falls back to
+the `Artist/Album/file` layout when tags are absent, and never sends music
+through movie, series, or audiobook matching. Removing files removes their
+track visibility and reconciles the album membership.
 
 ---
 

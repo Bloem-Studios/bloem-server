@@ -44,6 +44,11 @@ func TestPredicates(t *testing.T) {
 		{"IsPodcast", IsPodcast, "audiobooks", false},
 		{"IsPodcast", IsPodcast, "", false},
 
+		{"IsMusic", IsMusic, "music", true},
+		{"IsMusic", IsMusic, " Songs ", true},
+		{"IsMusic", IsMusic, "audio", false},
+		{"IsMusic", IsMusic, "audiobooks", false},
+
 		{"IsEbook", IsEbook, "ebooks", true},
 		{"IsEbook", IsEbook, "ebook", true},
 		{"IsEbook", IsEbook, "Ebook", true},
@@ -75,6 +80,9 @@ func TestOf(t *testing.T) {
 	}
 	if got := Of("movies"); got != (Kinds{Movie: true}) {
 		t.Errorf("Of(movies) = %+v", got)
+	}
+	if got := Of(" music "); got != (Kinds{Music: true}) {
+		t.Errorf("Of(music) = %+v", got)
 	}
 	if got := Of("unknown"); got != (Kinds{}) {
 		t.Errorf("Of(unknown) = %+v", got)

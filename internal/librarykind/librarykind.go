@@ -22,6 +22,7 @@ type Kinds struct {
 	Audiobook bool
 	Ebook     bool
 	Podcast   bool
+	Music     bool
 	Manga     bool
 }
 
@@ -34,6 +35,7 @@ func Of(libraryType string) Kinds {
 		Audiobook: IsAudiobook(libraryType),
 		Ebook:     IsEbook(libraryType),
 		Podcast:   IsPodcast(libraryType),
+		Music:     IsMusic(libraryType),
 		Manga:     IsManga(libraryType),
 	}
 }
@@ -91,6 +93,18 @@ func IsEbook(libraryType string) bool {
 func IsPodcast(libraryType string) bool {
 	switch normalize(libraryType) {
 	case "podcast", "podcasts":
+		return true
+	default:
+		return false
+	}
+}
+
+// IsMusic reports whether the library is a dedicated music library. Generic
+// "audio" remains unknown because it cannot truthfully distinguish music from
+// spoken-word libraries.
+func IsMusic(libraryType string) bool {
+	switch normalize(libraryType) {
+	case "music", "songs":
 		return true
 	default:
 		return false

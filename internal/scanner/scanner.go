@@ -335,6 +335,13 @@ func (s *Scanner) ScanFolder(ctx context.Context, folder *models.MediaFolder) (*
 		return &ScanResult{}, nil
 	}
 
+	if librarykind.IsMusic(folder.Type) {
+		if err := s.ScanMusicFolder(watchCtx, folder, true); err != nil {
+			return nil, err
+		}
+		return &ScanResult{}, nil
+	}
+
 	if librarykind.IsManga(folder.Type) {
 		if err := s.ScanMangaFolder(watchCtx, folder); err != nil {
 			return nil, err
@@ -367,6 +374,12 @@ func (s *Scanner) ScanSubtree(ctx context.Context, folder *models.MediaFolder, s
 			return nil, err
 		}
 		if err := s.syncFolderScopedAudioLibraryState(watchCtx, folder.ID); err != nil {
+			return nil, err
+		}
+		return &ScanResult{}, nil
+	}
+	if librarykind.IsMusic(folder.Type) {
+		if err := s.ScanMusicFolder(watchCtx, scopedFolderPaths(folder, []string{cleanSubtree}), false); err != nil {
 			return nil, err
 		}
 		return &ScanResult{}, nil
@@ -414,6 +427,7 @@ const (
 	walkModeMovie                     // movie library: video extensions + sample/extra skipping
 	walkModeAudiobook                 // audiobook library: audio extensions, no skipping
 	walkModePodcast                   // podcast library: audio extensions, no skipping
+	walkModeMusic                     // music library: audio extensions, no skipping
 	walkModeEbook                     // ebook library: ebook extensions, no skipping
 )
 
@@ -428,6 +442,8 @@ func walkModeFor(folderType string) walkMode {
 		return walkModeAudiobook
 	case librarykind.IsPodcast(folderType):
 		return walkModePodcast
+	case librarykind.IsMusic(folderType):
+		return walkModeMusic
 	case librarykind.IsEbook(folderType):
 		return walkModeEbook
 	case librarykind.IsManga(folderType):
@@ -442,7 +458,7 @@ func walkModeFor(folderType string) walkMode {
 // the file types this walk mode is looking for.
 func (m walkMode) acceptsExt(ext string) bool {
 	switch m {
-	case walkModeAudiobook, walkModePodcast:
+	case walkModeAudiobook, walkModePodcast, walkModeMusic:
 		return audioExtensions[ext]
 	case walkModeEbook:
 		return ebookExtensions[ext]
@@ -2204,7 +2220,7 @@ func (s *Scanner) syncFolderScopedAudioLibraryState(ctx context.Context, folderI
 		  AND mf.missing_since IS NULL
 		  AND mf.content_id IS NOT NULL
 		  AND COALESCE(mf.canonical_root_path, '') <> ''
-		  AND mi.type IN ('audiobook', 'podcast')
+		  AND mi.type IN ('audiobook', 'podcast', 'music_album')
 		ON CONFLICT (media_folder_id, canonical_root_path)
 		DO UPDATE SET content_id = EXCLUDED.content_id,
 			last_seen_at = NOW()
@@ -2357,6 +2373,36 @@ func (s *Scanner) ScanFile(ctx context.Context, filePath string, folder *models.
 			return err
 		}
 		return s.syncFolderScopedAudioLibraryState(ctx, folder.ID)
+	}
+	if librarykind.IsMusic(folder.Type) {
+		if !SupportsAudioFile(cleanFile) {
+			return fmt.Errorf("unrecognized audio extension: %s", strings.ToLower(filepath.Ext(cleanFile)))
+		}
+		if _, err := os.Stat(cleanFile); errors.Is(err, os.ErrNotExist) {
+			if s.fileRepo == nil {
+				return nil
+			}
+			existing, lookupErr := s.fileRepo.GetByPath(ctx, cleanFile)
+			if errors.Is(lookupErr, ErrFileNotFound) {
+				return nil
+			}
+			if lookupErr != nil {
+				return lookupErr
+			}
+			if err := s.fileRepo.MarkMissing(ctx, existing.ID, time.Now().UTC()); err != nil {
+				return err
+			}
+			if _, err := s.fileRepo.Pool().Exec(ctx, `DELETE FROM music_tracks WHERE media_file_id = $1`, existing.ID); err != nil {
+				return fmt.Errorf("delete vanished music track: %w", err)
+			}
+			if _, err := s.fileRepo.Pool().Exec(ctx, `DELETE FROM music_albums ma WHERE NOT EXISTS (SELECT 1 FROM music_tracks mt WHERE mt.album_id = ma.content_id)`); err != nil {
+				return fmt.Errorf("delete empty music album: %w", err)
+			}
+			return s.syncFolderScopedAudioLibraryState(ctx, folder.ID)
+		} else if err != nil {
+			return fmt.Errorf("stat music file %s: %w", cleanFile, err)
+		}
+		return s.ScanMusicFolder(ctx, scopedFolderPaths(folder, []string{filepath.Dir(cleanFile)}), false)
 	}
 	if librarykind.IsManga(folder.Type) {
 		if !SupportsEbookFile(cleanFile) {

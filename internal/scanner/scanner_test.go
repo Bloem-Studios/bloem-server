@@ -274,6 +274,23 @@ func TestScanFolderEbookLibraryRoutesToEbookScanner(t *testing.T) {
 	}
 }
 
+func TestScanFolderMusicLibraryRoutesToDedicatedScanner(t *testing.T) {
+	scanner := &Scanner{}
+	result, err := scanner.ScanFolder(context.Background(), &models.MediaFolder{
+		Type:  " music ",
+		Paths: []string{t.TempDir()},
+	})
+	if err != nil {
+		t.Fatalf("ScanFolder music error = %v, want nil", err)
+	}
+	if result == nil {
+		t.Fatal("ScanFolder music result = nil, want empty result")
+	}
+	if got := walkModeFor("songs"); got != walkModeMusic {
+		t.Fatalf("walkModeFor(songs) = %v, want music", got)
+	}
+}
+
 func TestScanSubtreeEbookLibraryRoutesToEbookScanner(t *testing.T) {
 	subtree := t.TempDir()
 
