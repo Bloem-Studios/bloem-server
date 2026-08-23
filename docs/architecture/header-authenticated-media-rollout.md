@@ -87,6 +87,15 @@ and creates a legacy attempt. It must not create a partly tokenless attempt and
 must not fail an otherwise playable request. A replan cannot change the
 security mode chosen at start.
 
+Every playable start and replan decision includes the additive field
+`negotiated_client_features`. It is the normalized, attempt-sticky feature set
+the server actually accepted, not a copy of the request. Clients use this field
+as the authority for the attempt's security mode. They never infer negotiation
+from URL shape, the presence of headers, or a prior capability response. A
+readiness change between capability discovery and start therefore produces an
+explicit legacy decision rather than an ambiguous one. Replans echo the same
+accepted sticky features from the durable attempt.
+
 `authorized_media_origins_v1` is accepted only when all of these are true:
 
 1. `header_authenticated_media_v1` is accepted for the attempt;
@@ -248,6 +257,7 @@ The change is additive at the API boundary:
 
 - one new capability token;
 - one new admin setting;
+- one `negotiated_client_features` decision field;
 - no removed or repurposed fields;
 - no changed status meaning for legacy attempts.
 
@@ -304,6 +314,7 @@ sessions cannot currently reconstruct on a different API replica.
 - capability response distinguishes binary support from deployment readiness;
 - readiness defaults disabled and validates only the documented values;
 - stale opt-in requests downgrade atomically to legacy when readiness is off;
+- start and replan decisions echo the accepted sticky feature set;
 - header-auth and authorized-origin features remain sticky across replans;
 - proxy-origin selection requires the negotiated pair;
 - capability and decision fixtures include the readiness behavior;
