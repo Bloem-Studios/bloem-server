@@ -9,7 +9,7 @@ import (
 )
 
 // UserDB wraps a per-user SQLite database connection with WAL mode and
-// appropriate PRAGMAs for concurrent access and Litestream compatibility.
+// appropriate PRAGMAs for safe access by the owning process.
 type UserDB struct {
 	DB     *sql.DB
 	Path   string

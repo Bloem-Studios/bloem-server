@@ -46,17 +46,7 @@ const PRIVATE_S3_KEYS = [
   "s3.private_secret_key",
 ] as const;
 
-const KEYS = [
-  ...PUBLIC_S3_KEYS,
-  ...PRIVATE_S3_KEYS,
-  "s3.user_db_endpoint",
-  "s3.user_db_region",
-  "s3.user_db_path_style",
-  "s3.user_db_bucket",
-  "s3.user_db_key_prefix",
-  "s3.user_db_access_key",
-  "s3.user_db_secret_key",
-];
+const KEYS = [...PUBLIC_S3_KEYS, ...PRIVATE_S3_KEYS];
 
 function KeyPrefixField({
   id,
@@ -288,9 +278,6 @@ export default function StorageSettings() {
           <TabsList className="surface-panel-subtle h-auto gap-1 rounded-[1.1rem] border-0 bg-transparent p-1">
             <TabsTrigger value="public">Public Assets</TabsTrigger>
             <TabsTrigger value="private">Private Internal</TabsTrigger>
-            <TabsTrigger value="userdb" disabled title="Reserved for future Litestream replication">
-              User DB
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="public" className="space-y-1 pt-4">
@@ -482,53 +469,6 @@ export default function StorageSettings() {
               result={privateConnectionResult}
               isPending={privateCheckConnection.isPending}
               disabled={form.isSaving}
-            />
-          </TabsContent>
-
-          <TabsContent value="userdb" className="space-y-1 pt-4 opacity-50">
-            <p className="text-muted-foreground mb-4 text-sm">
-              Reserved for Litestream user database replication. Not currently in use.
-            </p>
-            <SettingField
-              label="Endpoint"
-              value={form.getValue("s3.user_db_endpoint")}
-              onChange={(v) => form.setValue("s3.user_db_endpoint", v)}
-              disabled
-            />
-            <SettingField
-              label="Region"
-              value={form.getValue("s3.user_db_region")}
-              onChange={(v) => form.setValue("s3.user_db_region", v)}
-              disabled
-            />
-            <SettingField
-              label="Path Style"
-              type="toggle"
-              value={form.getValue("s3.user_db_path_style")}
-              onChange={(v) => form.setValue("s3.user_db_path_style", v)}
-              disabled
-            />
-            <SettingField
-              label="Bucket"
-              value={form.getValue("s3.user_db_bucket")}
-              onChange={(v) => form.setValue("s3.user_db_bucket", v)}
-              disabled
-            />
-            <SettingField
-              label="Access Key"
-              type="password"
-              value={form.getValue("s3.user_db_access_key")}
-              onChange={(v) => form.setValue("s3.user_db_access_key", v)}
-              sensitiveConfigured={form.sensitiveConfigured.includes("s3.user_db_access_key")}
-              disabled
-            />
-            <SettingField
-              label="Secret Key"
-              type="password"
-              value={form.getValue("s3.user_db_secret_key")}
-              onChange={(v) => form.setValue("s3.user_db_secret_key", v)}
-              sensitiveConfigured={form.sensitiveConfigured.includes("s3.user_db_secret_key")}
-              disabled
             />
           </TabsContent>
         </Tabs>

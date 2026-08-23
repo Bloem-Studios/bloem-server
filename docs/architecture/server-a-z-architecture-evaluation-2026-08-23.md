@@ -138,6 +138,11 @@ or execution registry, but not the admission authority.
 
 ### S-04 — SQLite user state is not replicated
 
+Resolution (2026-08-23): SQLite is now fenced to one durable node identity and
+one active process before local user databases open. Misleading Litestream/S3
+configuration and the no-op replicator were removed. SQLite remains local and
+non-replicated; clustered deployments must use PostgreSQL.
+
 The repository describes Postgres/S3/Redis and horizontal scale as foundational,
 yet `userdb.backend=sqlite` is a supported configuration and the deployment
 guide tells operators to persist `/var/lib/silo/userdb`.

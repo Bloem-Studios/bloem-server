@@ -42,7 +42,6 @@ var adminSettingDefaults = map[string]string{
 	"s3.public_token_param":    "verify",
 	"s3.public_token_ttl":      "10800",
 	"s3.private_path_style":    "true",
-	"s3.user_db_path_style":    "true",
 	"userdb.backend":           "postgres",
 	"userdb.pool_max_open":     "500",
 	"userdb.idle_timeout":      "12h",
@@ -295,7 +294,7 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 		"notifications.server_channels.mention_requesters", "notifications.web_push_enabled",
 		"notifications.apple_push_delivery_enabled", "notifications.android_push_delivery_enabled",
 		"catalog.search.meilisearch.semantic_enabled", "catalog.search.meilisearch.binary_quantized",
-		"s3.public_path_style", "s3.private_path_style", "s3.user_db_path_style":
+		"s3.public_path_style", "s3.private_path_style":
 		return normalizeAdminBool(key, value)
 
 	case "database.max_connections":
@@ -424,7 +423,7 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 	case "ai.base_url", "ai.asr_base_url", "recommendations.embedding_base_url",
 		"jellyfin_compat.public_url", "notifications.email.external_url",
 		"s3.public_endpoint", "s3.public_read_endpoint", "s3.private_endpoint",
-		"s3.user_db_endpoint", "catalog.search.meilisearch.url":
+		"catalog.search.meilisearch.url":
 		return normalizeAdminURL(key, value)
 	case "redis.url":
 		return NormalizeRedisURL(value)

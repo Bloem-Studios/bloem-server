@@ -49,10 +49,4 @@ var (
 		Name: "streamapp_matcher_resolved_total",
 		Help: "Total number of resolved matcher operations.",
 	}, []string{"step", "provider_slug"})
-
-	// LitestreamSyncErrors counts the total number of Litestream sync errors.
-	LitestreamSyncErrors = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "streamapp_litestream_sync_errors_total",
-		Help: "Total number of Litestream sync errors.",
-	})
 )

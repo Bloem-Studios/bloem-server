@@ -443,14 +443,14 @@ export const ADMIN_SETTINGS_GROUPS: AdminSettingsSearchGroup[] = [
       {
         id: "database",
         label: "Database",
-        description: "Postgres, Redis, user database pooling, and Litestream settings.",
+        description: "Postgres, Redis, and user database pooling settings.",
         keywords: [
           "postgres",
           "redis",
           "connection url",
           "user db",
           "pool",
-          "litestream",
+          "single node sqlite",
           "stale grace",
         ],
         settings: settingIndex(
@@ -460,7 +460,6 @@ export const ADMIN_SETTINGS_GROUPS: AdminSettingsSearchGroup[] = [
           "User DB Backend",
           "Pool Max Open",
           "Idle Timeout",
-          "Litestream Sync Interval",
           "Stale Grace Seconds",
         ),
         icon: Database,

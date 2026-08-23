@@ -125,10 +125,16 @@ SILO_DATA_ROOT=/srv/silo
 in their library records.
 
 Durable application state lives in PostgreSQL. Redis holds coordination and
-cache-style data. Transcode output is local and transient. If
-`userdb.backend=sqlite` is selected, local user state is also written under
-`/var/lib/silo/userdb` and must be included in the deployment's persistence and
-backup design.
+cache-style data. Transcode output is local and transient.
+
+PostgreSQL is the required user-state backend for any deployment that may run
+more than one Silo application process. SQLite user state is a deliberately
+single-node mode: local files are written under `/var/lib/silo/userdb`, there is
+no built-in S3/Litestream replication, and startup reserves one durable
+`SILO_NODE_NAME` in PostgreSQL. A second process using that identity, or a
+different node trying to use the same SQLite deployment, fails startup before
+opening user databases. After an unclean stop, wait at least 45 seconds for the
+old heartbeat to become stale before restarting the same node identity.
 
 The default Compose file does not persist that SQLite path. Before enabling the
 SQLite backend, add this volume to the `silo` service in a deployment override:
@@ -141,6 +147,15 @@ services:
 ```
 
 Validate the merged Compose configuration before recreating the container.
+Back up the complete directory as one unit while Silo is stopped. Do not place
+the directory on independently mounted replica-local volumes.
+
+Moving a SQLite deployment to another node is an explicit maintenance
+operation: stop the old process, copy and verify the complete userdb directory,
+update the singleton owner in PostgreSQL, and only then start the replacement
+with its stable `SILO_NODE_NAME`. Never run the old and replacement processes
+concurrently. Prefer migrating user state to PostgreSQL instead of performing
+repeated handoffs.
 
 ### Published ports
 

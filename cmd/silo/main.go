@@ -948,6 +948,11 @@ func main() {
 	needsScanner := mode == "integrated" || mode == "api"
 	needsUserDB := mode == "integrated" || mode == "api"
 	needsWorkers := mode == "integrated" || mode == "api"
+	if needsUserDB {
+		if err := userdb.EnforceClusterSafeBackend(appCtx, pool, cfg.UserDB.Backend, nodeID, mode); err != nil {
+			log.Fatalf("user database topology validation: %v", err)
+		}
+	}
 
 	bootstrapSensitiveConfigured := map[string]bool{}
 	bootstrapSensitiveValues := map[string]string{}
@@ -3229,18 +3234,6 @@ func configureS3Clients(cfg *config.Config, deps *api.Dependencies) {
 		}
 	}
 
-	if s3UserDB := newS3ClientIfConfigured(s3client.BucketConfig{
-		Endpoint:  cfg.S3.UserDB.Endpoint,
-		Region:    cfg.S3.UserDB.Region,
-		Bucket:    cfg.S3.UserDB.Bucket,
-		KeyPrefix: cfg.S3.UserDB.KeyPrefix,
-		AccessKey: cfg.S3.UserDB.AccessKey,
-		SecretKey: cfg.S3.UserDB.SecretKey,
-		PathStyle: cfg.S3.UserDB.PathStyle,
-	}); s3UserDB != nil {
-		deps.S3UserDB = s3UserDB
-		slog.Info("S3 user-db client configured", "bucket", s3UserDB.Bucket())
-	}
 }
 
 type pluginImageResolverCapabilityStore interface {

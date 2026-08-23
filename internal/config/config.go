@@ -97,15 +97,6 @@ type s3ConfigRaw struct {
 	OperationalTokenSecret    string `yaml:"operational_token_secret"`
 	OperationalTokenParam     string `yaml:"operational_token_param"`
 	OperationalTokenTTL       int    `yaml:"operational_token_ttl"`
-
-	// User DB
-	UserDBEndpoint  string `yaml:"user_db_endpoint"`
-	UserDBRegion    string `yaml:"user_db_region"`
-	UserDBPathStyle bool   `yaml:"user_db_path_style"`
-	UserDBBucket    string `yaml:"user_db_bucket"`
-	UserDBKeyPrefix string `yaml:"user_db_key_prefix"`
-	UserDBAccessKey string `yaml:"user_db_access_key"`
-	UserDBSecretKey string `yaml:"user_db_secret_key"`
 }
 
 // UserDBConfig holds per-user database pool settings.
@@ -113,7 +104,6 @@ type UserDBConfig struct {
 	Backend           string        `yaml:"backend"` // "postgres" (default) or "sqlite"
 	PoolMaxOpen       int           `yaml:"pool_max_open"`
 	IdleTimeout       time.Duration `yaml:"-"`
-	LitestreamSync    time.Duration `yaml:"-"`
 	StaleGraceSeconds int           `yaml:"stale_grace_seconds"`
 }
 
@@ -122,7 +112,6 @@ type userDBConfigRaw struct {
 	Backend           string `yaml:"backend"`
 	PoolMaxOpen       int    `yaml:"pool_max_open"`
 	IdleTimeout       string `yaml:"idle_timeout"`
-	LitestreamSync    string `yaml:"litestream_sync"`
 	StaleGraceSeconds int    `yaml:"stale_grace_seconds"`
 }
 
@@ -498,14 +487,12 @@ func setDefaults() *configRaw {
 			PublicPathStyle:       true,
 			PrivatePathStyle:      true,
 			OperationalPathStyle:  true,
-			UserDBPathStyle:       true,
 			MetadataPresignExpiry: "4h",
 		},
 		UserDB: userDBConfigRaw{
 			Backend:           "postgres",
 			PoolMaxOpen:       500,
 			IdleTimeout:       "12h",
-			LitestreamSync:    "1s",
 			StaleGraceSeconds: 120,
 		},
 		Scanner: scannerConfigRaw{

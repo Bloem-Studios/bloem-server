@@ -45,7 +45,7 @@ var SensitiveSettingKeys = map[string]bool{
 	// Audiobookshelf-compat HMAC signing key (generated + persisted as hex).
 	"audiobooks.abs.jwt_secret": true,
 
-	// S3 — public assets, private internal, user DB, plus the legacy
+	// S3 — public assets and private internal, plus the legacy
 	// "operational" aliases db_loader still reads as fallbacks (L155-192;
 	// migration 086 copied but did not delete them).
 	"s3.public_access_key":        true,
@@ -53,8 +53,6 @@ var SensitiveSettingKeys = map[string]bool{
 	"s3.public_token_secret":      true,
 	"s3.private_access_key":       true,
 	"s3.private_secret_key":       true,
-	"s3.user_db_access_key":       true,
-	"s3.user_db_secret_key":       true,
 	"s3.operational_access_key":   true,
 	"s3.operational_secret_key":   true,
 	"s3.operational_token_secret": true,

@@ -104,7 +104,6 @@ type Dependencies struct {
 	FrontendFS                   fs.FS
 	S3Public                     *s3client.Client                 // public assets bucket client (may be nil)
 	S3Private                    *s3client.Client                 // private internal bucket client (may be nil)
-	S3UserDB                     *s3client.Client                 // user-db bucket client (may be nil)
 	BrandingService              *branding.Service                // white-label branding (nil when DB unavailable)
 	FolderRepo                   *catalog.FolderRepository        // media folder repository (may be nil)
 	FileRepo                     *scanner.FileRepository          // media file repository (may be nil)

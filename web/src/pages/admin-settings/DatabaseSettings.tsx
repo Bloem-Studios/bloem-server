@@ -135,6 +135,10 @@ export default function DatabaseSettings() {
           />
           {form.getValue("userdb.backend") === "sqlite" && (
             <>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                SQLite is local, non-replicated, and limited to one stable Silo node. Use Postgres
+                for multi-replica deployments.
+              </p>
               <SettingField
                 label="Pool Max Open"
                 type="number"

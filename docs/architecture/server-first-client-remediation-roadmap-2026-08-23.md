@@ -171,9 +171,10 @@ successful participant recovery.
 ## M2.5: Cluster-safe persistence posture
 
 Remove any configuration that implies node-local SQLite is replicated safely.
-Clustered startup must reject SQLite-backed user state. Single-node SQLite may
-remain an explicitly local mode if supported, but enabling a second replica
-must require a shared database.
+SQLite remains an explicitly local mode protected by a PostgreSQL-backed,
+durable single-node ownership claim and active-process heartbeat fence. A
+second process or a different node must fail before opening local user state;
+multi-replica deployments require the shared PostgreSQL backend.
 
 Startup validation, deployment examples, and operator documentation must all
 express the same rule.
