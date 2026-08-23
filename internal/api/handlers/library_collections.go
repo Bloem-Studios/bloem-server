@@ -30,6 +30,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/collections/templates"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/s3client"
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
@@ -44,6 +45,7 @@ type LibraryCollectionHandler struct {
 	detailSvc             *catalog.DetailService
 	presignTTL            time.Duration
 	httpClient            *http.Client
+	artworkClient         *outbound.Client
 	s3GP                  *s3client.Client
 	FrontendFS            fs.FS
 	SectionRepo           *sections.Repository
@@ -85,10 +87,14 @@ func NewLibraryCollectionHandler(
 	itemRepo *catalog.ItemRepository,
 	presignTTL time.Duration,
 	httpClient *http.Client,
+	artworkClient *outbound.Client,
 	s3GP *s3client.Client,
 ) *LibraryCollectionHandler {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
+	}
+	if artworkClient == nil {
+		artworkClient = outbound.NewClient(outbound.PublicHTTPPolicy())
 	}
 
 	return &LibraryCollectionHandler{
@@ -97,6 +103,7 @@ func NewLibraryCollectionHandler(
 		itemRepo:         itemRepo,
 		presignTTL:       presignTTL,
 		httpClient:       httpClient,
+		artworkClient:    artworkClient,
 		s3GP:             s3GP,
 		TemplateRegistry: templates.Default,
 	}
@@ -1197,7 +1204,7 @@ func (h *LibraryCollectionHandler) HandleCreateAdminCollection(w http.ResponseWr
 		return
 	}
 	if err := h.processArtworkInputs(r, collection.ID, req.PosterSourceURL, req.BackdropSourceURL); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to process uploaded images")
+		writeCollectionArtworkError(w, err, "Failed to process uploaded images")
 		return
 	}
 	if posterStored || r.MultipartForm != nil || strings.TrimSpace(req.PosterSourceURL) != "" || strings.TrimSpace(req.BackdropSourceURL) != "" {
@@ -1300,7 +1307,7 @@ func (h *LibraryCollectionHandler) HandleUpdateAdminCollection(w http.ResponseWr
 	}
 
 	if err := h.processArtworkInputs(r, collectionID, pointerStringValue(req.PosterSourceURL), pointerStringValue(req.BackdropSourceURL)); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to process uploaded images")
+		writeCollectionArtworkError(w, err, "Failed to process uploaded images")
 		return
 	}
 
@@ -2951,7 +2958,7 @@ func (h *LibraryCollectionHandler) HandleImportMDBList(w http.ResponseWriter, r 
 	// Process admin artwork before sync so maybeGenerateCollage sees the
 	// uploaded poster and skips collage generation.
 	if err := h.processArtworkInputs(r, collection.ID, req.PosterSourceURL, req.BackdropSourceURL); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to process uploaded images")
+		writeCollectionArtworkError(w, err, "Failed to process uploaded images")
 		return
 	}
 
@@ -3006,7 +3013,7 @@ func (h *LibraryCollectionHandler) HandleImportTMDBCollection(w http.ResponseWri
 	// Process admin artwork before sync so maybeGenerateCollage sees the
 	// uploaded poster and skips collage generation.
 	if err := h.processArtworkInputs(r, collection.ID, req.PosterSourceURL, req.BackdropSourceURL); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to process uploaded images")
+		writeCollectionArtworkError(w, err, "Failed to process uploaded images")
 		return
 	}
 
@@ -3121,7 +3128,7 @@ func (h *LibraryCollectionHandler) HandleImportTraktCollection(w http.ResponseWr
 		return
 	}
 	if err := h.processArtworkInputs(r, collection.ID, req.PosterSourceURL, req.BackdropSourceURL); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to process uploaded images")
+		writeCollectionArtworkError(w, err, "Failed to process uploaded images")
 		return
 	}
 
@@ -3717,7 +3724,7 @@ func (h *LibraryCollectionHandler) processArtworkInputs(r *http.Request, collect
 			if sourceByType[imageType] == "" {
 				continue
 			}
-			fileData, err = downloadCollectionImageURL(r.Context(), h.httpClient, sourceByType[imageType])
+			fileData, err = downloadCollectionImageURL(r.Context(), h.artworkClient, sourceByType[imageType])
 			if err != nil {
 				return fmt.Errorf("%s source: %w", imageType, err)
 			}

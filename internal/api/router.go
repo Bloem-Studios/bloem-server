@@ -55,6 +55,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/onboarding"
 	"github.com/Silo-Server/silo-server/internal/opslog"
+	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/playback/planstore"
 	"github.com/Silo-Server/silo-server/internal/plugins"
@@ -867,6 +868,10 @@ func NewRouter(deps Dependencies) chi.Router {
 	var profileHandler *handlers.ProfileHandler
 	var personalDataHandler *handlers.PersonalDataHandler
 	var progressHandler *handlers.ProgressHandler
+	collectionArtworkClient := outbound.NewClient(
+		outbound.PublicHTTPPolicy(),
+		outbound.WithTimeout(30*time.Second),
+	)
 	var collectionHandler *handlers.CollectionHandler
 	var settingsHandler *handlers.SettingsHandler
 	var settingValuesHandler *handlers.SettingValuesHandler
@@ -921,6 +926,7 @@ func NewRouter(deps Dependencies) chi.Router {
 			progressHandler.LibraryLookup = catalog.NewLibraryItemRepository(deps.DB)
 		}
 		collectionHandler = handlers.NewCollectionHandler(deps.UserStoreProvider)
+		collectionHandler.ArtworkClient = collectionArtworkClient
 		if deps.DB != nil {
 			collectionHandler.Executor = &catalog.QueryExecutor{Pool: deps.DB}
 		}
@@ -1669,6 +1675,7 @@ func NewRouter(deps Dependencies) chi.Router {
 			itemRepo,
 			4*time.Hour,
 			nil,
+			collectionArtworkClient,
 			deps.S3Public,
 		)
 		libraryCollectionHandler.FrontendFS = deps.FrontendFS

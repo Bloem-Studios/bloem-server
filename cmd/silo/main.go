@@ -86,6 +86,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/nodesessions"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/opslog"
+	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/partman"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/pluginhost"
@@ -2745,6 +2746,7 @@ func main() {
 				itemRepo,
 				4*time.Hour,
 				nil,
+				outbound.NewClient(outbound.PublicHTTPPolicy(), outbound.WithTimeout(30*time.Second)),
 				deps.S3Public,
 			)
 			collectionHandler.FrontendFS = deps.FrontendFS

@@ -15,6 +15,7 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/collectionutil"
+	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/s3client"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -26,13 +27,16 @@ type CollectionHandler struct {
 	LibraryCollections collectionPreferenceLibraryReader
 	Executor           *catalog.QueryExecutor
 	S3GP               *s3client.Client
-	HTTPClient         *http.Client
+	ArtworkClient      *outbound.Client
 	PresignTTL         time.Duration
 }
 
 // NewCollectionHandler creates a new CollectionHandler.
 func NewCollectionHandler(provider userstore.UserStoreProvider) *CollectionHandler {
-	return &CollectionHandler{storeProvider: provider}
+	return &CollectionHandler{
+		storeProvider: provider,
+		ArtworkClient: outbound.NewClient(outbound.PublicHTTPPolicy()),
+	}
 }
 
 // --- Request/Response types ---
@@ -308,7 +312,7 @@ func (h *CollectionHandler) HandleCreateCollection(w http.ResponseWriter, r *htt
 	}
 
 	if err := h.processCollectionPoster(r, store, collection.ID, profileID, req.PosterSourceURL); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		writeCollectionArtworkError(w, err, "Failed to process collection artwork")
 		return
 	}
 	if h.posterInputProvided(r, req.PosterSourceURL) {
@@ -474,7 +478,7 @@ func (h *CollectionHandler) HandleUpdateCollection(w http.ResponseWriter, r *htt
 			writeError(w, http.StatusForbidden, "forbidden", "Only the creator can edit this collection")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+		writeCollectionArtworkError(w, err, "Failed to process collection artwork")
 		return
 	}
 
@@ -1041,7 +1045,7 @@ func (h *CollectionHandler) processCollectionPoster(
 		if source == "" {
 			return nil
 		}
-		downloaded, err := downloadCollectionImageURL(r.Context(), h.HTTPClient, source)
+		downloaded, err := downloadCollectionImageURL(r.Context(), h.ArtworkClient, source)
 		if err != nil {
 			return fmt.Errorf("poster source: %w", err)
 		}

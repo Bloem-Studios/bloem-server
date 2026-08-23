@@ -2,14 +2,17 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
-	"net/url"
 	"strings"
 
+	"github.com/h2non/bimg"
+
 	"github.com/Silo-Server/silo-server/internal/imageutil"
+	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/s3client"
 )
 
@@ -23,6 +26,8 @@ const (
 
 	collectionImageMaxBytes = 10 << 20 // 10 MB
 )
+
+var errCollectionArtworkInput = errors.New("invalid collection artwork input")
 
 // storeBundledCollectionPosterIfS3Configured stores a built-in collection
 // template poster in S3 when public asset storage is configured. Non-S3
@@ -66,56 +71,64 @@ func readCollectionImageMultipart(r *http.Request, fieldName string) ([]byte, er
 	switch header.Header.Get("Content-Type") {
 	case "image/jpeg", "image/png", "image/webp":
 	default:
-		return nil, fmt.Errorf("unsupported image type: %s", header.Header.Get("Content-Type"))
+		return nil, fmt.Errorf("%w: unsupported image type: %s", errCollectionArtworkInput, header.Header.Get("Content-Type"))
 	}
 	if header.Size > collectionImageMaxBytes {
-		return nil, fmt.Errorf("file exceeds 10 MB limit")
+		return nil, fmt.Errorf("%w: file exceeds 10 MB limit", errCollectionArtworkInput)
 	}
 
-	data := make([]byte, header.Size)
-	if _, err := io.ReadFull(file, data); err != nil {
+	data, err := io.ReadAll(io.LimitReader(file, collectionImageMaxBytes+1))
+	if err != nil {
 		return nil, fmt.Errorf("reading file: %w", err)
+	}
+	if len(data) > collectionImageMaxBytes {
+		return nil, fmt.Errorf("%w: file exceeds 10 MB limit", errCollectionArtworkInput)
+	}
+	if err := validateCollectionImageData(data); err != nil {
+		return nil, fmt.Errorf("%w: %v", errCollectionArtworkInput, err)
 	}
 	return data, nil
 }
 
 // downloadCollectionImageURL fetches an image from an http(s) URL with size
 // limits.
-func downloadCollectionImageURL(ctx context.Context, client *http.Client, rawURL string) ([]byte, error) {
-	parsed, err := url.Parse(strings.TrimSpace(rawURL))
-	if err != nil {
-		return nil, fmt.Errorf("invalid URL: %w", err)
-	}
-	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return nil, fmt.Errorf("image source URL must use http or https")
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("building request: %w", err)
-	}
+func downloadCollectionImageURL(ctx context.Context, client *outbound.Client, rawURL string) ([]byte, error) {
 	if client == nil {
-		client = http.DefaultClient
+		return nil, fmt.Errorf("outbound image client is required")
 	}
-	resp, err := client.Do(req)
+	response, err := client.Fetch(ctx, outbound.Request{
+		URL:      strings.TrimSpace(rawURL),
+		MaxBytes: collectionImageMaxBytes,
+		Statuses: map[int]struct{}{http.StatusOK: {}},
+	})
 	if err != nil {
-		return nil, fmt.Errorf("downloading image: %w", err)
+		return nil, fmt.Errorf("%w: downloading image: %w", errCollectionArtworkInput, err)
 	}
-	defer resp.Body.Close()
+	if err := validateCollectionImageData(response.Body); err != nil {
+		return nil, fmt.Errorf("%w: %v", errCollectionArtworkInput, err)
+	}
+	return response.Body, nil
+}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("image source returned status %d", resp.StatusCode)
+func validateCollectionImageData(data []byte) error {
+	contentType := http.DetectContentType(data)
+	switch contentType {
+	case "image/jpeg", "image/png", "image/webp":
+	default:
+		return fmt.Errorf("unsupported image type: %s", contentType)
 	}
-	if resp.ContentLength > collectionImageMaxBytes {
-		return nil, fmt.Errorf("image exceeds 10 MB limit")
+	if _, err := bimg.NewImage(data).Size(); err != nil {
+		return fmt.Errorf("invalid image: %w", err)
 	}
-	data, err := io.ReadAll(io.LimitReader(resp.Body, collectionImageMaxBytes+1))
-	if err != nil {
-		return nil, fmt.Errorf("reading image response: %w", err)
+	return nil
+}
+
+func writeCollectionArtworkError(w http.ResponseWriter, err error, internalMessage string) {
+	if errors.Is(err, errCollectionArtworkInput) {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid collection artwork")
+		return
 	}
-	if len(data) > collectionImageMaxBytes {
-		return nil, fmt.Errorf("image exceeds 10 MB limit")
-	}
-	return data, nil
+	writeError(w, http.StatusInternalServerError, "internal_error", internalMessage)
 }
 
 // uploadCollectionImageVariants generates resized variants for the given
