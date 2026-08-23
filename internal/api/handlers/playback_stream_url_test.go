@@ -69,7 +69,7 @@ func TestPrepareIdentityTransportV3EmitsASignedStreamURL(t *testing.T) {
 
 	r := httptest.NewRequest("GET", "/", nil)
 	file := &models.MediaFile{ID: 42}
-	transport, transportErr := handler.prepareIdentityTransportV3(r, session, file, result, preparedTimelineV3{})
+	transport, transportErr := handler.prepareIdentityTransportV3(r, session, file, result, preparedTimelineV3{}, mediaAuthModeV3{})
 	if transportErr != nil {
 		t.Fatalf("prepareIdentityTransportV3: %v", transportErr)
 	}
