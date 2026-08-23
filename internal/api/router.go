@@ -1165,12 +1165,32 @@ func NewRouter(deps Dependencies) chi.Router {
 				watchtogether.NewProfileNameResolver(deps.UserStoreProvider),
 			)
 			watchTogetherService.SetPool(deps.DB)
-			watchTogetherHandler = handlers.NewWatchTogetherHandler(
-				watchTogetherService,
-				viewerResolver,
-				roomTokenService,
-			)
-			watchTogetherHandler.Tickets = audienceTickets
+			if deps.RedisClient != nil && strings.TrimSpace(deps.NodeID) != "" {
+				distributedContext := deps.AppContext
+				if distributedContext == nil {
+					distributedContext = context.Background()
+				}
+				if err := watchTogetherService.SetDistributedRuntime(
+					distributedContext,
+					deps.NodeID,
+					watchtogether.NewPostgresRoomOwner(deps.DB),
+					watchtogether.NewRedisRoomRelay(deps.RedisClient),
+				); err != nil {
+					slog.Error("watch together distributed runtime unavailable", "error", err)
+					watchTogetherService.Close()
+					watchTogetherService = nil
+				}
+			}
+			if watchTogetherService == nil {
+				watchTogetherHandler = nil
+			} else {
+				watchTogetherHandler = handlers.NewWatchTogetherHandler(
+					watchTogetherService,
+					viewerResolver,
+					roomTokenService,
+				)
+				watchTogetherHandler.Tickets = audienceTickets
+			}
 		}
 	}
 

@@ -99,6 +99,7 @@ type Snapshot struct {
 	AnchorPositionSeconds   float64            `json:"anchor_position_seconds"`
 	AnchorUpdatedAt         string             `json:"anchor_updated_at"`
 	Generation              int64              `json:"generation"`
+	OwnerGeneration         int64              `json:"owner_generation,omitempty"`
 	MemberCount             int                `json:"member_count"`
 	HostConnected           bool               `json:"host_connected"`
 	SelfRole                MemberRole         `json:"self_role"`
@@ -152,6 +153,7 @@ type StateReport struct {
 
 type TransportCommand struct {
 	CommandID         string            `json:"command_id"`
+	OwnerGeneration   int64             `json:"owner_generation,omitempty"`
 	SessionID         string            `json:"session_id,omitempty"`
 	SelectionRevision int64             `json:"selection_revision"`
 	Action            TransportAction   `json:"action"`

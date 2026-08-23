@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -14,11 +16,15 @@ const watchTogetherRelayChannel = "vondel:watch-together:commands:v1"
 var ErrRoomRelayUnavailable = errors.New("watch together room relay unavailable")
 
 type Command struct {
-	RoomID     string          `json:"room_id"`
-	Generation int64           `json:"generation"`
-	CommandID  string          `json:"command_id"`
-	Kind       string          `json:"kind"`
-	Payload    json.RawMessage `json:"payload,omitempty"`
+	RoomID        string          `json:"room_id"`
+	Generation    int64           `json:"generation"`
+	CommandID     string          `json:"command_id"`
+	Kind          string          `json:"kind"`
+	OriginNodeID  string          `json:"origin_node_id,omitempty"`
+	TargetNodeID  string          `json:"target_node_id,omitempty"`
+	MemberKey     string          `json:"member_key,omitempty"`
+	CorrelationID string          `json:"correlation_id,omitempty"`
+	Payload       json.RawMessage `json:"payload,omitempty"`
 }
 
 type RelaySubscription interface {
@@ -28,6 +34,7 @@ type RelaySubscription interface {
 type RoomRelay interface {
 	Publish(context.Context, Command) error
 	Subscribe(context.Context, func(Command)) (RelaySubscription, error)
+	Claim(context.Context, string, int64, string, time.Duration) (bool, error)
 }
 
 type RedisRoomRelay struct {
@@ -36,6 +43,14 @@ type RedisRoomRelay struct {
 
 func NewRedisRoomRelay(client *redis.Client) *RedisRoomRelay {
 	return &RedisRoomRelay{client: client}
+}
+
+func (relay *RedisRoomRelay) Claim(ctx context.Context, roomID string, generation int64, commandID string, ttl time.Duration) (bool, error) {
+	if relay == nil || relay.client == nil || roomID == "" || generation <= 0 || commandID == "" || ttl <= 0 {
+		return false, ErrRoomRelayUnavailable
+	}
+	key := fmt.Sprintf("vondel:watch-together:claim:v1:%s:%d:%s", roomID, generation, commandID)
+	return relay.client.SetNX(ctx, key, "1", ttl).Result()
 }
 
 func (relay *RedisRoomRelay) Publish(ctx context.Context, command Command) error {

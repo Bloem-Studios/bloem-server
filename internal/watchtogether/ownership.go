@@ -14,6 +14,7 @@ var (
 	ErrRoomOwned                   = errors.New("watch together room has another owner")
 	ErrRoomOwnerGenerationMismatch = errors.New("watch together room owner generation mismatch")
 	ErrRoomOwnershipInvalid        = errors.New("watch together room ownership is invalid")
+	ErrStaleRoomOwnerGeneration    = errors.New("watch together room owner generation is stale")
 )
 
 type Ownership struct {
@@ -25,6 +26,7 @@ type Ownership struct {
 
 type RoomOwner interface {
 	Acquire(context.Context, string, string, time.Time) (Ownership, error)
+	Current(context.Context, string) (Ownership, error)
 	Renew(context.Context, Ownership, time.Time) (Ownership, error)
 	Release(context.Context, Ownership) error
 }
@@ -35,6 +37,25 @@ type PostgresRoomOwner struct {
 
 func NewPostgresRoomOwner(pool *pgxpool.Pool) *PostgresRoomOwner {
 	return &PostgresRoomOwner{pool: pool}
+}
+
+func (owner *PostgresRoomOwner) Current(ctx context.Context, roomID string) (Ownership, error) {
+	if owner == nil || owner.pool == nil || roomID == "" {
+		return Ownership{}, ErrRoomOwnershipInvalid
+	}
+	var current Ownership
+	err := owner.pool.QueryRow(ctx, `
+		SELECT room_id, node_id, generation, lease_until
+		FROM watch_together_room_owners
+		WHERE room_id = $1 AND lease_until > now()`, roomID,
+	).Scan(&current.RoomID, &current.NodeID, &current.Generation, &current.LeaseUntil)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Ownership{}, ErrRoomOwnerGenerationMismatch
+	}
+	if err != nil {
+		return Ownership{}, fmt.Errorf("read current room ownership: %w", err)
+	}
+	return current, nil
 }
 
 func (owner *PostgresRoomOwner) Acquire(ctx context.Context, roomID, nodeID string, leaseUntil time.Time) (Ownership, error) {

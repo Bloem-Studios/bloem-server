@@ -128,6 +128,28 @@ type Registration struct {
 	connection RoomConnection
 }
 
+// ValidateOwnerGeneration fences generation-aware client messages. Generation
+// zero remains accepted during the rolling client migration; once supplied,
+// the value must match the ingress replica's current owner view exactly.
+func (s *Service) ValidateOwnerGeneration(reg *Registration, generation int64) error {
+	if generation == 0 {
+		return nil
+	}
+	if s == nil || reg == nil {
+		return ErrRoomForbidden
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	live := s.rooms[reg.roomID]
+	if live == nil {
+		return ErrRoomNotFound
+	}
+	if live.ownership.Generation != generation {
+		return ErrStaleRoomOwnerGeneration
+	}
+	return nil
+}
+
 type memberState struct {
 	userID      int
 	profileID   string
@@ -145,6 +167,7 @@ type memberState struct {
 
 type liveRoom struct {
 	room           Room
+	ownership      Ownership
 	members        map[string]*memberState
 	hostCloseTimer *time.Timer
 	waitingTimer   *time.Timer
@@ -183,6 +206,15 @@ type Service struct {
 	tryLockFunc func(ctx context.Context, key int64) (*dblock.Lock, bool, error)
 
 	janitorStop chan struct{}
+
+	distributedMu     sync.Mutex
+	nodeID            string
+	owner             RoomOwner
+	relay             RoomRelay
+	relaySubscription RelaySubscription
+	ownerLease        time.Duration
+	pendingMu         sync.Mutex
+	pendingRelay      map[string]chan relayedRoomResponse
 
 	mu    sync.Mutex
 	rooms map[string]*liveRoom
@@ -224,8 +256,9 @@ func NewService(
 		now: func() time.Time {
 			return time.Now().UTC()
 		},
-		janitorStop: make(chan struct{}),
-		rooms:       make(map[string]*liveRoom),
+		janitorStop:  make(chan struct{}),
+		rooms:        make(map[string]*liveRoom),
+		pendingRelay: make(map[string]chan relayedRoomResponse),
 	}
 	go s.runJanitor()
 	return s
@@ -252,6 +285,27 @@ func (s *Service) Close() {
 	default:
 		close(s.janitorStop)
 	}
+	s.mu.Lock()
+	owned := make([]Ownership, 0, len(s.rooms))
+	for _, live := range s.rooms {
+		if live != nil && live.ownership.NodeID == s.nodeID && live.ownership.Generation > 0 {
+			owned = append(owned, live.ownership)
+		}
+	}
+	s.mu.Unlock()
+	if s.owner != nil {
+		releaseContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		for _, ownership := range owned {
+			_ = s.owner.Release(releaseContext, ownership)
+		}
+		cancel()
+	}
+	s.distributedMu.Lock()
+	if s.relaySubscription != nil {
+		_ = s.relaySubscription.Close()
+		s.relaySubscription = nil
+	}
+	s.distributedMu.Unlock()
 }
 
 func (s *Service) CreateRoom(ctx context.Context, input CreateRoomInput) (*Room, error) {
@@ -289,11 +343,18 @@ func (s *Service) CreateRoom(ctx context.Context, input CreateRoomInput) (*Room,
 	}
 
 	s.mu.Lock()
-	s.rooms[created.ID] = &liveRoom{
+	live := &liveRoom{
 		room:    *created,
 		members: make(map[string]*memberState),
 	}
+	s.rooms[created.ID] = live
 	s.mu.Unlock()
+	if _, err := s.ensureRoomOwnership(ctx, live); err != nil {
+		s.mu.Lock()
+		delete(s.rooms, created.ID)
+		s.mu.Unlock()
+		return nil, err
+	}
 	return created, nil
 }
 
@@ -327,7 +388,6 @@ func (s *Service) Snapshot(ctx context.Context, roomID string, userID int, profi
 	if err != nil {
 		return Snapshot{}, err
 	}
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.buildSnapshotLocked(live, userID, profileID), nil
@@ -371,6 +431,9 @@ func (s *Service) Connect(
 	snapshot := s.buildSnapshotLocked(live, userID, profileID)
 	dispatches := s.prepareSnapshotDispatchesLocked(live)
 	s.mu.Unlock()
+	if err := s.publishPresence(ctx, live, memberKey, current, true); err != nil {
+		return nil, Snapshot{}, err
+	}
 
 	if previousConn != nil {
 		_ = previousConn.Close()
@@ -398,11 +461,13 @@ func (s *Service) Disconnect(reg *Registration, explicitLeave bool) {
 	}
 
 	isHost := member.userID == live.room.HostUserID && member.profileID == live.room.HostProfileID
+	isLocalOwner := s.owner == nil || live.ownership.NodeID == s.nodeID
 	member.connection = nil
 	member.sessionID = ""
 	delete(live.members, reg.memberKey)
+	remotePresence := member
 
-	if isHost {
+	if isHost && isLocalOwner {
 		if explicitLeave {
 			s.mu.Unlock()
 			_ = s.CloseRoom(context.Background(), reg.roomID, member.userID, member.profileID)
@@ -414,9 +479,15 @@ func (s *Service) Disconnect(reg *Registration, explicitLeave bool) {
 		roomID := reg.roomID
 		hostUserID := live.room.HostUserID
 		hostProfileID := live.room.HostProfileID
+		ownerGeneration := live.ownership.Generation
 		live.hostCloseTimer = time.AfterFunc(s.hostDisconnectTTL, func() {
-			s.closeIfHostStillDisconnected(roomID, hostUserID, hostProfileID)
+			s.closeIfHostStillDisconnected(roomID, hostUserID, hostProfileID, ownerGeneration)
 		})
+	}
+	if !isLocalOwner {
+		s.mu.Unlock()
+		_ = s.publishPresence(context.Background(), live, reg.memberKey, remotePresence, false, explicitLeave)
+		return
 	}
 
 	// A departing member may have been the last participant the room was
@@ -426,6 +497,7 @@ func (s *Service) Disconnect(reg *Registration, explicitLeave bool) {
 		dispatches = s.prepareSnapshotDispatchesLocked(live)
 	}
 	s.mu.Unlock()
+	_ = s.publishPresence(context.Background(), live, reg.memberKey, remotePresence, false, explicitLeave)
 	s.runDispatches(dispatches)
 	s.runCommandDispatches(commandDispatches)
 }
@@ -433,12 +505,12 @@ func (s *Service) Disconnect(reg *Registration, explicitLeave bool) {
 // closeIfHostStillDisconnected closes a room after the host-disconnect grace
 // period, unless the host reconnected while the timer was in flight
 // (Timer.Stop cannot recall a callback that already fired).
-func (s *Service) closeIfHostStillDisconnected(roomID string, hostUserID int, hostProfileID string) {
+func (s *Service) closeIfHostStillDisconnected(roomID string, hostUserID int, hostProfileID string, ownerGeneration int64) {
 	s.mu.Lock()
 	live := s.rooms[roomID]
 	// A nil live room means nobody (host included) is connected; closing is
 	// safe. Only a live room with the host re-connected aborts the close.
-	if live != nil && s.hostConnectedLocked(live) {
+	if live != nil && (s.hostConnectedLocked(live) || (s.owner != nil && (live.ownership.NodeID != s.nodeID || live.ownership.Generation != ownerGeneration))) {
 		s.mu.Unlock()
 		return
 	}
@@ -461,7 +533,6 @@ func (s *Service) AttachSessionForConnection(
 	if err != nil {
 		return Snapshot{}, err
 	}
-
 	session, err := s.sessions.GetSession(sessionID)
 	if err != nil {
 		return Snapshot{}, err
@@ -471,6 +542,11 @@ func (s *Service) AttachSessionForConnection(
 	}
 	if err := s.validateSessionContent(ctx, room, session); err != nil {
 		return Snapshot{}, err
+	}
+	if forwarded, snapshot, err := s.forwardConnectionRequest(ctx, live, reg, "attach_session", relayedConnectionRequest{
+		UserID: userID, ProfileID: profileID, SessionID: sessionID,
+	}); forwarded {
+		return snapshot, err
 	}
 
 	s.mu.Lock()
@@ -527,6 +603,11 @@ func (s *Service) HandleTransportRequestForConnection(
 	_, live, err := s.getOrLoadLiveRoom(ctx, reg.roomID)
 	if err != nil {
 		return Snapshot{}, err
+	}
+	if forwarded, snapshot, err := s.forwardConnectionRequest(ctx, live, reg, "transport_request", relayedConnectionRequest{
+		UserID: userID, ProfileID: profileID, Transport: &request,
+	}); forwarded {
+		return snapshot, err
 	}
 
 	s.mu.Lock()
@@ -625,6 +706,11 @@ func (s *Service) HandleStateReportForConnection(
 	if err != nil {
 		return Snapshot{}, err
 	}
+	if forwarded, snapshot, err := s.forwardConnectionRequest(ctx, live, reg, "state_report", relayedConnectionRequest{
+		UserID: userID, ProfileID: profileID, State: &report,
+	}); forwarded {
+		return snapshot, err
+	}
 
 	var dispatches []snapshotDispatch
 	var correctionDispatches []commandDispatch
@@ -664,6 +750,7 @@ func (s *Service) HandleStateReportForConnection(
 	} else if !isHost && (pauseMismatch || drift > 1.0) {
 		correctionDispatches = s.targetedCommandDispatchesLocked(live, report.SessionID, TransportCommand{
 			CommandID:         uuid.NewString(),
+			OwnerGeneration:   live.ownership.Generation,
 			SelectionRevision: live.room.SelectionRevision,
 			Action: func() TransportAction {
 				if live.room.PlaybackState == RoomPlaybackStatePlaying {
@@ -704,6 +791,11 @@ func (s *Service) HandleReadyForConnection(
 	_, live, err := s.getOrLoadLiveRoom(ctx, reg.roomID)
 	if err != nil {
 		return Snapshot{}, err
+	}
+	if forwarded, snapshot, err := s.forwardConnectionRequest(ctx, live, reg, "ready", relayedConnectionRequest{
+		UserID: userID, ProfileID: profileID, State: &report,
+	}); forwarded {
+		return snapshot, err
 	}
 
 	var dispatches []snapshotDispatch
@@ -750,6 +842,11 @@ func (s *Service) HandleBufferingForConnection(
 	_, live, err := s.getOrLoadLiveRoom(ctx, reg.roomID)
 	if err != nil {
 		return Snapshot{}, err
+	}
+	if forwarded, snapshot, err := s.forwardConnectionRequest(ctx, live, reg, "buffering", relayedConnectionRequest{
+		UserID: userID, ProfileID: profileID, State: &report,
+	}); forwarded {
+		return snapshot, err
 	}
 
 	var dispatches []snapshotDispatch
@@ -810,7 +907,7 @@ func (s *Service) HandleBufferingForConnection(
 }
 
 func (s *Service) HandlePingForConnection(
-	_ context.Context,
+	ctx context.Context,
 	reg *Registration,
 	userID int,
 	profileID string,
@@ -819,13 +916,18 @@ func (s *Service) HandlePingForConnection(
 	if reg == nil {
 		return ErrRoomForbidden
 	}
+	_, live, err := s.getOrLoadLiveRoom(ctx, reg.roomID)
+	if err != nil {
+		return err
+	}
+	if forwarded, _, err := s.forwardConnectionRequest(ctx, live, reg, "ping", relayedConnectionRequest{
+		UserID: userID, ProfileID: profileID, PingMS: pingMS,
+	}); forwarded {
+		return err
+	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	live := s.rooms[reg.roomID]
-	if live == nil {
-		return ErrRoomNotFound
-	}
 	member := live.members[buildMemberKey(userID, profileID)]
 	if member == nil || member.connection == nil || member.connection != reg.connection {
 		return ErrRoomForbidden
@@ -853,6 +955,11 @@ func (s *Service) UpdatePolicy(
 	_, live, err := s.getOrLoadLiveRoom(ctx, roomID)
 	if err != nil {
 		return Snapshot{}, err
+	}
+	if forwarded, snapshot, err := s.forwardRoomRequest(ctx, live, "update_policy", relayedRoomRequest{
+		UserID: userID, ProfileID: profileID, Policy: policy,
+	}); forwarded {
+		return snapshot, err
 	}
 
 	s.mu.Lock()
@@ -927,6 +1034,11 @@ func (s *Service) selectItem(
 	_, live, err := s.getOrLoadLiveRoom(ctx, roomID)
 	if err != nil {
 		return Snapshot{}, err
+	}
+	if forwarded, snapshot, err := s.forwardRoomRequest(ctx, live, "select_item", relayedRoomRequest{
+		UserID: userID, ProfileID: profileID, Selection: &input, ViaVote: viaVote,
+	}); forwarded {
+		return snapshot, err
 	}
 
 	s.mu.Lock()
@@ -1013,9 +1125,19 @@ func (s *Service) CloseRoom(ctx context.Context, roomID string, userID int, prof
 		return fmt.Errorf("watch together service unavailable")
 	}
 
+	room, live, err := s.getOrLoadLiveRoom(ctx, roomID)
+	if err != nil {
+		return err
+	}
+	if forwarded, _, err := s.forwardRoomRequest(ctx, live, "close_room", relayedRoomRequest{
+		UserID: userID, ProfileID: profileID,
+	}); forwarded {
+		return err
+	}
+
 	var roomForAuth *Room
 	s.mu.Lock()
-	live := s.rooms[roomID]
+	live = s.rooms[roomID]
 	if live != nil {
 		roomCopy := live.room
 		roomForAuth = &roomCopy
@@ -1023,11 +1145,7 @@ func (s *Service) CloseRoom(ctx context.Context, roomID string, userID int, prof
 	s.mu.Unlock()
 
 	if roomForAuth == nil {
-		var err error
-		roomForAuth, err = s.GetRoom(ctx, roomID)
-		if err != nil {
-			return err
-		}
+		roomForAuth = room
 	}
 
 	if roomForAuth.HostUserID != userID || roomForAuth.HostProfileID != profileID {
@@ -1035,7 +1153,7 @@ func (s *Service) CloseRoom(ctx context.Context, roomID string, userID int, prof
 	}
 
 	closedAt := s.now()
-	room, err := s.repo.CloseRoom(ctx, roomID, closedAt)
+	room, err = s.repo.CloseRoom(ctx, roomID, closedAt)
 	if err != nil {
 		return err
 	}
@@ -1147,8 +1265,9 @@ func (s *Service) armWaitingDeadlineLocked(live *liveRoom) {
 	live.waitingEpoch++
 	epoch := live.waitingEpoch
 	roomID := live.room.ID
+	ownerGeneration := live.ownership.Generation
 	live.waitingTimer = time.AfterFunc(waitingResumeDeadline, func() {
-		s.handleWaitingDeadline(roomID, epoch)
+		s.handleWaitingDeadline(roomID, epoch, ownerGeneration)
 	})
 }
 
@@ -1163,10 +1282,11 @@ func (s *Service) disarmWaitingDeadlineLocked(live *liveRoom) {
 // handleWaitingDeadline fires when a waiting period outlives
 // waitingResumeDeadline: members that never became ready stop blocking the
 // readiness barrier (ignoreWait) and playback resumes for everyone else.
-func (s *Service) handleWaitingDeadline(roomID string, epoch int64) {
+func (s *Service) handleWaitingDeadline(roomID string, epoch int64, ownerGeneration int64) {
 	s.mu.Lock()
 	live := s.rooms[roomID]
-	if live == nil || live.waitingEpoch != epoch || live.room.PlaybackState != RoomPlaybackStateWaiting {
+	if live == nil || live.waitingEpoch != epoch || live.room.PlaybackState != RoomPlaybackStateWaiting ||
+		(s.owner != nil && (live.ownership.NodeID != s.nodeID || live.ownership.Generation != ownerGeneration)) {
 		s.mu.Unlock()
 		return
 	}
@@ -1334,6 +1454,9 @@ func (s *Service) getOrLoadLiveRoom(ctx context.Context, roomID string) (*Room, 
 		if roomCopy.Phase == RoomPhaseEnded {
 			return nil, nil, ErrRoomClosed
 		}
+		if _, err := s.ensureRoomOwnership(ctx, live); err != nil {
+			return nil, nil, err
+		}
 		return &roomCopy, live, nil
 	}
 	s.mu.Unlock()
@@ -1344,9 +1467,12 @@ func (s *Service) getOrLoadLiveRoom(ctx context.Context, roomID string) (*Room, 
 	}
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if live := s.rooms[roomID]; live != nil {
 		roomCopy := live.room
+		s.mu.Unlock()
+		if _, err := s.ensureRoomOwnership(ctx, live); err != nil {
+			return nil, nil, err
+		}
 		return &roomCopy, live, nil
 	}
 
@@ -1355,6 +1481,10 @@ func (s *Service) getOrLoadLiveRoom(ctx context.Context, roomID string) (*Room, 
 		members: make(map[string]*memberState),
 	}
 	s.rooms[roomID] = live
+	s.mu.Unlock()
+	if _, err := s.ensureRoomOwnership(ctx, live); err != nil {
+		return nil, nil, err
+	}
 	return room, live, nil
 }
 
@@ -1449,6 +1579,7 @@ func (s *Service) buildSnapshotLocked(live *liveRoom, userID int, profileID stri
 		AnchorPositionSeconds:   s.expectedPositionLocked(live),
 		AnchorUpdatedAt:         live.room.AnchorUpdatedAt.UTC().Format(time.RFC3339),
 		Generation:              live.room.Generation,
+		OwnerGeneration:         live.ownership.Generation,
 		MemberCount:             s.connectedMemberCountLocked(live),
 		HostConnected:           s.hostConnectedLocked(live),
 		SelfRole:                roleFor(live.room, userID, profileID),
@@ -1480,8 +1611,9 @@ func (s *Service) prepareSnapshotDispatchesLocked(live *liveRoom) []snapshotDisp
 		dispatches = append(dispatches, snapshotDispatch{
 			conn: member.connection,
 			payload: map[string]any{
-				"type": "snapshot",
-				"room": s.buildSnapshotLocked(live, member.userID, member.profileID),
+				"type":             "snapshot",
+				"owner_generation": live.ownership.Generation,
+				"room":             s.buildSnapshotLocked(live, member.userID, member.profileID),
 			},
 		})
 	}
@@ -1497,8 +1629,9 @@ func (s *Service) prepareRoomClosedDispatchesLocked(live *liveRoom) []snapshotDi
 		dispatches = append(dispatches, snapshotDispatch{
 			conn: member.connection,
 			payload: map[string]any{
-				"type":   "room_closed",
-				"reason": "host_left",
+				"type":             "room_closed",
+				"owner_generation": live.ownership.Generation,
+				"reason":           "host_left",
 			},
 		})
 	}
@@ -1613,8 +1746,9 @@ func (s *Service) targetedCommandDispatchesLocked(
 			conn:      member.connection,
 			memberKey: memberKey,
 			payload: map[string]any{
-				"type":    "transport_command",
-				"command": payload,
+				"type":             "transport_command",
+				"owner_generation": live.ownership.Generation,
+				"command":          payload,
 			},
 		})
 	}
@@ -1634,6 +1768,7 @@ func (s *Service) transportCommandDispatchesLocked(
 		}
 		command := TransportCommand{
 			CommandID:         uuid.NewString(),
+			OwnerGeneration:   live.ownership.Generation,
 			SessionID:         member.sessionID,
 			SelectionRevision: live.room.SelectionRevision,
 			Action:            action,
@@ -1646,8 +1781,9 @@ func (s *Service) transportCommandDispatchesLocked(
 			conn:      member.connection,
 			memberKey: memberKey,
 			payload: map[string]any{
-				"type":    "transport_command",
-				"command": command,
+				"type":             "transport_command",
+				"owner_generation": live.ownership.Generation,
+				"command":          command,
 			},
 		})
 	}
@@ -1698,6 +1834,7 @@ func (s *Service) syncMemberToRoomLocked(live *liveRoom, sessionID string) []com
 	}
 	return s.targetedCommandDispatchesLocked(live, sessionID, TransportCommand{
 		CommandID:         uuid.NewString(),
+		OwnerGeneration:   live.ownership.Generation,
 		SelectionRevision: live.room.SelectionRevision,
 		Action:            action,
 		PositionSeconds:   math.Max(0, position),
@@ -1784,13 +1921,8 @@ func (s *Service) CreateSuggestion(
 
 	s.mu.Lock()
 	live = s.rooms[roomID]
-	if live != nil {
-		dispatches := s.prepareSuggestionDispatchesLocked(live, suggestions)
-		s.mu.Unlock()
-		s.runDispatches(dispatches)
-	} else {
-		s.mu.Unlock()
-	}
+	s.mu.Unlock()
+	s.dispatchSuggestionUpdate(ctx, live, suggestions)
 
 	return suggestions, nil
 }
@@ -1851,13 +1983,8 @@ func (s *Service) DeleteSuggestion(
 
 	s.mu.Lock()
 	live = s.rooms[roomID]
-	if live != nil {
-		dispatches := s.prepareSuggestionDispatchesLocked(live, suggestions)
-		s.mu.Unlock()
-		s.runDispatches(dispatches)
-	} else {
-		s.mu.Unlock()
-	}
+	s.mu.Unlock()
+	s.dispatchSuggestionUpdate(ctx, live, suggestions)
 
 	return suggestions, nil
 }
@@ -1898,13 +2025,8 @@ func (s *Service) Vote(
 
 	s.mu.Lock()
 	live = s.rooms[roomID]
-	if live != nil {
-		dispatches := s.prepareSuggestionDispatchesLocked(live, suggestions)
-		s.mu.Unlock()
-		s.runDispatches(dispatches)
-	} else {
-		s.mu.Unlock()
-	}
+	s.mu.Unlock()
+	s.dispatchSuggestionUpdate(ctx, live, suggestions)
 
 	return suggestions, nil
 }
@@ -1945,13 +2067,8 @@ func (s *Service) Unvote(
 
 	s.mu.Lock()
 	live = s.rooms[roomID]
-	if live != nil {
-		dispatches := s.prepareSuggestionDispatchesLocked(live, suggestions)
-		s.mu.Unlock()
-		s.runDispatches(dispatches)
-	} else {
-		s.mu.Unlock()
-	}
+	s.mu.Unlock()
+	s.dispatchSuggestionUpdate(ctx, live, suggestions)
 
 	return suggestions, nil
 }
@@ -2062,8 +2179,9 @@ func (s *Service) prepareSuggestionDispatchesLocked(live *liveRoom, suggestions 
 		dispatches = append(dispatches, snapshotDispatch{
 			conn: member.connection,
 			payload: map[string]any{
-				"type":        "suggestions_update",
-				"suggestions": broadcast,
+				"type":             "suggestions_update",
+				"owner_generation": live.ownership.Generation,
+				"suggestions":      broadcast,
 			},
 		})
 	}

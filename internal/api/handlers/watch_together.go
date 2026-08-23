@@ -75,7 +75,8 @@ type watchTogetherSuggestionsResponse struct {
 }
 
 type watchTogetherClientMessage struct {
-	Type string `json:"type"`
+	Type            string `json:"type"`
+	OwnerGeneration int64  `json:"owner_generation,omitempty"`
 }
 
 type watchTogetherAttachMessage struct {
@@ -763,8 +764,9 @@ func (h *WatchTogetherHandler) HandleRoomWebSocket(w http.ResponseWriter, r *htt
 	_ = realtimeConn.WritePing()
 
 	if err := realtimeConn.WriteJSON(map[string]any{
-		"type": "snapshot",
-		"room": snapshot,
+		"type":             "snapshot",
+		"owner_generation": snapshot.OwnerGeneration,
+		"room":             snapshot,
 	}); err != nil {
 		return
 	}
@@ -791,6 +793,9 @@ func (h *WatchTogetherHandler) handleRoomClientMessage(
 ) error {
 	var base watchTogetherClientMessage
 	if err := json.Unmarshal(data, &base); err != nil {
+		return err
+	}
+	if err := h.Service.ValidateOwnerGeneration(reg, base.OwnerGeneration); err != nil {
 		return err
 	}
 
@@ -867,8 +872,9 @@ func (h *WatchTogetherHandler) handleRoomClientMessage(
 		// latency for command scheduling is measured server-side from
 		// protocol-level ping/pong.
 		now := time.Now().UTC()
-		return rc.WriteJSON(map[string]string{
+		return rc.WriteJSON(map[string]any{
 			"type":               "pong",
+			"owner_generation":   base.OwnerGeneration,
 			"client_sent_at":     msg.ClientSentAt,
 			"server_received_at": now.Format(time.RFC3339Nano),
 			"server_sent_at":     time.Now().UTC().Format(time.RFC3339Nano),
