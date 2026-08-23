@@ -826,16 +826,42 @@ func encodeBundle(bundle Bundle) ([]byte, error) {
 	return raw.Bytes(), nil
 }
 
+const (
+	MaxCompressedBundleBytes int64 = 64 << 20
+	MaxExpandedBundleBytes   int64 = 512 << 20
+)
+
+// ValidateBundle verifies that data is one bounded catalog-seed gzip member.
+func ValidateBundle(data []byte) error {
+	_, err := decodeBundleWithinLimits(data, MaxCompressedBundleBytes, MaxExpandedBundleBytes)
+	return err
+}
+
 func decodeBundle(data []byte) (*Bundle, error) {
-	gz, err := gzip.NewReader(bytes.NewReader(data))
+	return decodeBundleWithinLimits(data, MaxCompressedBundleBytes, MaxExpandedBundleBytes)
+}
+
+func decodeBundleWithinLimits(data []byte, maxCompressed, maxExpanded int64) (*Bundle, error) {
+	if int64(len(data)) > maxCompressed {
+		return nil, fmt.Errorf("%w: compressed catalog seed exceeds %d bytes", ErrInvalidBundle, maxCompressed)
+	}
+	compressed := bytes.NewReader(data)
+	gz, err := gzip.NewReader(compressed)
 	if err != nil {
 		return nil, fmt.Errorf("%w: opening catalog seed bundle: %v", ErrInvalidBundle, err)
 	}
 	defer gz.Close()
+	gz.Multistream(false)
 
-	payload, err := io.ReadAll(gz)
+	payload, err := io.ReadAll(io.LimitReader(gz, maxExpanded+1))
 	if err != nil {
 		return nil, fmt.Errorf("%w: reading catalog seed bundle: %v", ErrInvalidBundle, err)
+	}
+	if int64(len(payload)) > maxExpanded {
+		return nil, fmt.Errorf("%w: expanded catalog seed exceeds %d bytes", ErrInvalidBundle, maxExpanded)
+	}
+	if compressed.Len() != 0 {
+		return nil, fmt.Errorf("%w: catalog seed contains additional gzip members or trailing data", ErrInvalidBundle)
 	}
 
 	var bundle Bundle

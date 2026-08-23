@@ -2,13 +2,13 @@ package adminjob
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,8 +26,6 @@ type ArtifactStore interface {
 	UploadFile(ctx context.Context, bucket, key, path, contentType string) (int64, error)
 	DeleteObject(ctx context.Context, bucket, key string) error
 }
-
-const remoteCatalogImportTimeout = 10 * time.Minute
 
 // Maximum wall-clock time a single admin job execution may run before its
 // context is cancelled. This is the safety net that prevents a hung
@@ -592,18 +590,6 @@ func (r *Runner) executeCatalogImport(job *models.AdminJob) {
 			r.failJob(job.ID, 0, 0, "Catalog import failed", fmt.Sprintf("reading local file: %v", err))
 			return
 		}
-	} else if req.RemoteURL != "" {
-		if err := r.repo.UpdateProgress(ctx, job.ID, 0, 0, "Downloading catalog import source"); err != nil {
-			slog.Warn("admin jobs: failed to update remote import progress", "job_id", job.ID, "error", err)
-		} else {
-			r.publishJobByID(ctx, notifications.TypeJobProgress, job.ID)
-		}
-		var err error
-		data, err = downloadRemoteCatalogSeed(ctx, req.RemoteURL)
-		if err != nil {
-			r.failJob(job.ID, 0, 0, "Catalog import failed", err.Error())
-			return
-		}
 	} else {
 		if r.store == nil {
 			r.failJob(job.ID, 0, 0, "Catalog import failed", "private internal S3 is not configured")
@@ -629,6 +615,10 @@ func (r *Runner) executeCatalogImport(job *models.AdminJob) {
 				}
 			}()
 		}
+	}
+	if err := verifyCatalogSeedDigest(data, req.SourceSHA256); err != nil {
+		r.failJob(job.ID, 0, 0, "Catalog import failed", err.Error())
+		return
 	}
 
 	var (
@@ -667,42 +657,19 @@ func (r *Runner) executeCatalogImport(job *models.AdminJob) {
 	r.publishJobByID(completeCtx, notifications.TypeJobCompleted, job.ID)
 }
 
-func downloadRemoteCatalogSeed(ctx context.Context, remoteURL string) ([]byte, error) {
-	parsed, err := url.Parse(remoteURL)
-	if err != nil {
-		return nil, fmt.Errorf("invalid remote URL: %w", err)
+func verifyCatalogSeedDigest(data []byte, expected string) error {
+	if expected == "" {
+		return nil
 	}
-	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return nil, fmt.Errorf("invalid remote URL scheme")
+	want, err := hex.DecodeString(expected)
+	if err != nil || len(want) != sha256.Size {
+		return fmt.Errorf("catalog import source digest is invalid")
 	}
-	if !strings.HasSuffix(strings.ToLower(parsed.Path), ".json.gz") {
-		return nil, fmt.Errorf("remote URL must point to a .json.gz file")
+	actual := sha256.Sum256(data)
+	if subtle.ConstantTimeCompare(actual[:], want) != 1 {
+		return fmt.Errorf("catalog import source digest mismatch")
 	}
-
-	reqCtx, cancel := context.WithTimeout(ctx, remoteCatalogImportTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, remoteURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("building remote import request: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("downloading remote catalog seed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("downloading remote catalog seed: unexpected status %d", resp.StatusCode)
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading remote catalog seed: %w", err)
-	}
-
-	return data, nil
+	return nil
 }
 
 func (r *Runner) executeItemRefresh(job *models.AdminJob) {

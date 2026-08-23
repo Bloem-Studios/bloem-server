@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +24,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/notifications"
+	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/s3client"
 )
 
@@ -34,16 +38,27 @@ type CatalogSeedArtifactStore interface {
 	PublicURL(bucket, key string) (string, error)
 }
 
+type catalogSeedStagingStore interface {
+	Bucket() string
+	UploadFile(ctx context.Context, bucket, key, path, contentType string) (int64, error)
+}
+
 type CatalogSeedHandler struct {
 	service        *catalogseed.Service
 	jobRepo        *adminjob.Repository
 	store          CatalogSeedArtifactStore
 	localImportDir string
+	remoteClient   *outbound.Client
 	RealtimeHub    *notifications.Hub
 }
 
 func NewCatalogSeedHandler(service *catalogseed.Service, jobRepo *adminjob.Repository, store CatalogSeedArtifactStore) *CatalogSeedHandler {
-	return &CatalogSeedHandler{service: service, jobRepo: jobRepo, store: store}
+	return &CatalogSeedHandler{
+		service:      service,
+		jobRepo:      jobRepo,
+		store:        store,
+		remoteClient: outbound.NewClient(outbound.PublicHTTPPolicy(), outbound.WithTimeout(remoteCatalogSeedTimeout)),
+	}
 }
 
 type exportCatalogSeedRequest struct {
@@ -314,7 +329,12 @@ func (h *CatalogSeedHandler) HandleCreateImportJob(w http.ResponseWriter, r *htt
 
 	remoteURL := r.FormValue("remote_url")
 	if remoteURL != "" {
-		if _, err := readImportDataFromRemoteURL(r.Context(), remoteURL); err != nil {
+		if h.store == nil {
+			writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Remote catalog import jobs require the private internal S3 bucket")
+			return
+		}
+		data, err := fetchRemoteCatalogSeed(r.Context(), h.remoteClient, remoteURL)
+		if err != nil {
 			if errors.Is(err, errCatalogSeedImportInvalidRemoteURL) {
 				writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 				return
@@ -322,18 +342,28 @@ func (h *CatalogSeedHandler) HandleCreateImportJob(w http.ResponseWriter, r *htt
 			writeError(w, http.StatusBadRequest, "bad_request", "Failed to load catalog seed source")
 			return
 		}
+		sourceBucket, sourceKey, sourceSHA256, err := stageRemoteCatalogSeed(r.Context(), h.store, data)
+		if err != nil {
+			log.Printf("catalog import remote staging failed: %v", err)
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to stage catalog seed source")
+			return
+		}
 
 		job, err := h.jobRepo.Create(r.Context(), adminjob.CreateJobInput{
 			JobType:         adminjob.JobTypeCatalogImport,
 			CreatedByUserID: currentAdminUserID(r),
 			RequestPayload: adminjob.CatalogImportRequest{
-				RemoteURL:   remoteURL,
-				SourceLabel: remoteURL,
-				Options:     opts,
+				SourceBucket:  sourceBucket,
+				SourceKey:     sourceKey,
+				SourceSHA256:  sourceSHA256,
+				SourceLabel:   remoteCatalogSeedLabel(remoteURL),
+				CleanupSource: true,
+				Options:       opts,
 			},
 			Message: "Queued catalog import from remote URL",
 		})
 		if err != nil {
+			_ = h.store.DeleteObject(context.Background(), sourceBucket, sourceKey)
 			var conflict *adminjob.ActiveJobConflictError
 			if errors.As(err, &conflict) {
 				jobsHandler := NewAdminJobsHandler(h.jobRepo, h.store)
@@ -586,7 +616,7 @@ func (h *CatalogSeedHandler) readImportData(r *http.Request) ([]byte, error) {
 	case hasLocal:
 		return readLocalImportFile(localPath)
 	case hasRemoteURL:
-		return readImportDataFromRemoteURL(r.Context(), remoteURL)
+		return fetchRemoteCatalogSeed(r.Context(), h.remoteClient, remoteURL)
 	case hasArtifact:
 		return h.readImportDataFromArtifactKey(r.Context(), artifactKey)
 	default:
@@ -613,7 +643,7 @@ func (h *CatalogSeedHandler) readImportDataFromArtifactKey(ctx context.Context, 
 	return h.store.GetObject(ctx, h.store.Bucket(), artifactKey)
 }
 
-func readImportDataFromRemoteURL(ctx context.Context, remoteURL string) ([]byte, error) {
+func fetchRemoteCatalogSeed(ctx context.Context, client *outbound.Client, remoteURL string) ([]byte, error) {
 	parsed, err := url.Parse(remoteURL)
 	if err != nil {
 		return nil, errCatalogSeedImportInvalidRemoteURL
@@ -625,27 +655,63 @@ func readImportDataFromRemoteURL(ctx context.Context, remoteURL string) ([]byte,
 		return nil, errCatalogSeedImportInvalidRemoteURL
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, remoteURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("building remote catalog seed request: %w", err)
+	if client == nil {
+		return nil, fmt.Errorf("remote catalog seed client is not configured")
 	}
-
-	client := &http.Client{Timeout: remoteCatalogSeedTimeout}
-	resp, err := client.Do(req)
+	response, err := client.Fetch(ctx, outbound.Request{
+		URL:      remoteURL,
+		MaxBytes: catalogseed.MaxCompressedBundleBytes,
+		Statuses: map[int]struct{}{http.StatusOK: {}},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("downloading remote catalog seed: %w", err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("downloading remote catalog seed: unexpected status %d", resp.StatusCode)
+	if response.FinalURL == nil || !strings.HasSuffix(strings.ToLower(response.FinalURL.Path), ".json.gz") {
+		return nil, errCatalogSeedImportInvalidRemoteURL
 	}
+	if err := catalogseed.ValidateBundle(response.Body); err != nil {
+		return nil, err
+	}
+	return response.Body, nil
+}
 
-	data, err := io.ReadAll(resp.Body)
+func remoteCatalogSeedLabel(remoteURL string) string {
+	parsed, err := url.Parse(remoteURL)
 	if err != nil {
-		return nil, fmt.Errorf("reading remote catalog seed: %w", err)
+		return "remote catalog seed"
 	}
-	return data, nil
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	parsed.User = nil
+	return parsed.String()
+}
+
+func stageRemoteCatalogSeed(ctx context.Context, store catalogSeedStagingStore, data []byte) (string, string, string, error) {
+	digest := sha256.Sum256(data)
+	digestHex := hex.EncodeToString(digest[:])
+	var nonce [16]byte
+	if _, err := rand.Read(nonce[:]); err != nil {
+		return "", "", "", fmt.Errorf("generating staged catalog seed key: %w", err)
+	}
+	key := fmt.Sprintf("%simports/%x/%s.json.gz", catalogSeedImportPrefix, nonce, digestHex)
+	temp, err := os.CreateTemp("", "vondel-catalog-seed-*.json.gz")
+	if err != nil {
+		return "", "", "", fmt.Errorf("creating staged catalog seed file: %w", err)
+	}
+	tempPath := temp.Name()
+	defer os.Remove(tempPath)
+	if _, err := temp.Write(data); err != nil {
+		_ = temp.Close()
+		return "", "", "", fmt.Errorf("writing staged catalog seed file: %w", err)
+	}
+	if err := temp.Close(); err != nil {
+		return "", "", "", fmt.Errorf("closing staged catalog seed file: %w", err)
+	}
+	bucket := store.Bucket()
+	if _, err := store.UploadFile(ctx, bucket, key, tempPath, "application/gzip"); err != nil {
+		return "", "", "", fmt.Errorf("uploading staged catalog seed: %w", err)
+	}
+	return bucket, key, digestHex, nil
 }
 
 func (h *CatalogSeedHandler) resolveImportJobSource(r *http.Request) (bucket string, key string, label string, cleanup bool, err error) {
