@@ -72,7 +72,11 @@ type Session struct {
 	// remoteTransport marks a session whose media bytes are served by another
 	// node, so this server never sees the transport request that would
 	// otherwise keep it alive. See SetRemoteTransport.
-	remoteTransport bool
+	remoteTransport                bool
+	reservationGeneration          int64
+	reservationLeaseUntil          time.Time
+	reservationRequest             ReservationRequest
+	replacementReservationPrevious *ReservationRequest
 }
 
 // SessionStreamState stores the mutable stream-specific details that can
@@ -142,6 +146,7 @@ type SessionReplacementRollback struct {
 	previousPaused               bool
 	restoreProgress              bool
 	previousReplacementMethod    PlayMethod
+	previousReservationRequest   *ReservationRequest
 }
 
 // ErrSessionReplacementSuperseded means a replacement rollback would overwrite
@@ -243,16 +248,19 @@ func ClientInfoFromContext(ctx context.Context) ClientInfo {
 
 // SessionManager tracks active playback sessions and enforces stream limits.
 type SessionManager struct {
-	sessions         map[string]*Session
-	mu               sync.RWMutex
-	maxStreams       int
-	maxTranscodes    int
-	contextProvider  SessionContextProvider
-	limitProvider    SessionLimitProvider
-	admissionDecider AdmissionDecider
-	activeGrace      time.Duration
-	pausedGrace      time.Duration
-	expireHook       func(*Session)
+	sessions             map[string]*Session
+	mu                   sync.RWMutex
+	maxStreams           int
+	maxTranscodes        int
+	contextProvider      SessionContextProvider
+	limitProvider        SessionLimitProvider
+	admissionDecider     AdmissionDecider
+	activeGrace          time.Duration
+	pausedGrace          time.Duration
+	expireHook           func(*Session)
+	reservationStore     ReservationStore
+	reservationLease     time.Duration
+	reservationLifecycle sync.Mutex
 }
 
 // SessionLimits stores per-user admission limits. Zero values mean unlimited.
@@ -342,11 +350,23 @@ const (
 // maxTranscodes limits concurrent transcode streams per user.
 func NewSessionManager(maxStreams, maxTranscodes int) *SessionManager {
 	return &SessionManager{
-		sessions:      make(map[string]*Session),
-		maxStreams:    maxStreams,
-		maxTranscodes: maxTranscodes,
-		activeGrace:   DefaultActiveSessionGrace,
-		pausedGrace:   DefaultPausedSessionGrace,
+		sessions:         make(map[string]*Session),
+		maxStreams:       maxStreams,
+		maxTranscodes:    maxTranscodes,
+		activeGrace:      DefaultActiveSessionGrace,
+		pausedGrace:      DefaultPausedSessionGrace,
+		reservationLease: 2 * time.Minute,
+	}
+}
+
+// SetReservationStore installs the shared fleet admission authority. A nil
+// store keeps the in-memory single-node behavior used by isolated tests.
+func (m *SessionManager) SetReservationStore(store ReservationStore, lease time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.reservationStore = store
+	if lease > 0 {
+		m.reservationLease = lease
 	}
 }
 
@@ -507,6 +527,11 @@ func (m *SessionManager) StartSessionWithFilesContext(
 	if limits.PlaybackDisabled {
 		return nil, ErrPlaybackNotAllowed
 	}
+	if limits.TenantID != "" && limits.TenantFrozen {
+		return nil, ErrTenantFrozen
+	}
+	candidate := newSession(ctx, userID, profileID, effectiveFileID, requestedFileID, method, transcodeAudio)
+	candidate.TenantID = limits.TenantID
 
 	for {
 		m.mu.Lock()
@@ -516,11 +541,19 @@ func (m *SessionManager) StartSessionWithFilesContext(
 				m.mu.Unlock()
 				return nil, err
 			}
-			s := newSession(ctx, userID, profileID, effectiveFileID, requestedFileID, method, transcodeAudio)
-			s.TenantID = limits.TenantID
-			m.sessions[s.ID] = s
 			m.mu.Unlock()
-			return s, nil
+			if err := m.acquireFleetReservation(ctx, candidate, limits); err != nil {
+				return nil, err
+			}
+			m.mu.Lock()
+			if err := m.inlineAdmissionErrorLocked(userID, method, transcodeAudio, limits); err != nil {
+				m.mu.Unlock()
+				m.releaseFleetReservation(candidate)
+				return nil, err
+			}
+			m.sessions[candidate.ID] = candidate
+			m.mu.Unlock()
+			return candidate, nil
 		}
 		activeStreams := m.activeCountLocked(userID)
 		activeTranscodes := m.transcodeCountLocked(userID)
@@ -545,24 +578,164 @@ func (m *SessionManager) StartSessionWithFilesContext(
 		if !decision.Allowed {
 			return nil, admissionDenyError(decision.ReasonCode)
 		}
+		if err := m.acquireFleetReservation(ctx, candidate, limits); err != nil {
+			return nil, err
+		}
 
 		m.mu.Lock()
 		if activeStreams != m.activeCountLocked(userID) || activeTranscodes != m.transcodeCountLocked(userID) {
 			m.mu.Unlock()
+			m.releaseFleetReservation(candidate)
 			continue
 		}
 		// The tenant gate runs even on the decider path: the shared pool
 		// and the frozen flag are sold entitlements, not per-account policy.
 		if err := m.tenantAdmissionErrorLocked(method, limits); err != nil {
 			m.mu.Unlock()
+			m.releaseFleetReservation(candidate)
 			return nil, err
 		}
-		s := newSession(ctx, userID, profileID, effectiveFileID, requestedFileID, method, transcodeAudio)
-		s.TenantID = limits.TenantID
-		m.sessions[s.ID] = s
+		m.sessions[candidate.ID] = candidate
 		m.mu.Unlock()
-		return s, nil
+		return candidate, nil
 	}
+}
+
+func (m *SessionManager) acquireFleetReservation(ctx context.Context, session *Session, limits SessionLimits) error {
+	m.mu.RLock()
+	store := m.reservationStore
+	lease := m.reservationLease
+	m.mu.RUnlock()
+	if store == nil {
+		return nil
+	}
+	request := ReservationRequest{
+		SessionID:         session.ID,
+		AccountID:         session.UserID,
+		ProfileID:         session.ProfileID,
+		TenantID:          limits.TenantID,
+		IsTranscode:       session.PlayMethod == PlayTranscode,
+		AccountStreams:    limits.MaxStreams,
+		AccountTranscodes: limits.MaxTranscodes,
+		TenantTranscodes:  limits.TenantMaxTranscodes,
+		LeaseUntil:        time.Now().Add(lease),
+	}
+	reservation, err := store.Acquire(ctx, request)
+	if err != nil {
+		return err
+	}
+	session.reservationGeneration = reservation.Generation
+	session.reservationLeaseUntil = reservation.LeaseUntil
+	session.reservationRequest = request
+	return nil
+}
+
+func (m *SessionManager) releaseFleetReservation(session *Session) {
+	if session == nil || session.reservationGeneration <= 0 {
+		return
+	}
+	m.mu.RLock()
+	store := m.reservationStore
+	m.mu.RUnlock()
+	if store == nil {
+		return
+	}
+	if err := store.Release(context.Background(), session.ID, session.reservationGeneration); err != nil && !errors.Is(err, ErrReservationGenerationMismatch) {
+		slog.Warn("failed to release playback reservation", "component", "playback", "session", session.ID, "generation", session.reservationGeneration, "error", err)
+	}
+}
+
+func (m *SessionManager) renewFleetReservation(session *Session) error {
+	if session == nil || session.reservationGeneration <= 0 {
+		return nil
+	}
+	m.mu.RLock()
+	store := m.reservationStore
+	lease := m.reservationLease
+	m.mu.RUnlock()
+	if store == nil {
+		return nil
+	}
+	if session.reservationLeaseUntil.After(time.Now().Add(lease / 2)) {
+		return nil
+	}
+	leaseUntil := time.Now().Add(lease)
+	reservation, err := store.Renew(context.Background(), session.ID, session.reservationGeneration, leaseUntil)
+	if errors.Is(err, ErrReservationGenerationMismatch) {
+		request := session.reservationRequest
+		request.LeaseUntil = leaseUntil
+		reservation, err = store.Acquire(context.Background(), request)
+	}
+	if err != nil {
+		slog.Warn("failed to renew playback reservation", "component", "playback", "session", session.ID, "generation", session.reservationGeneration, "error", err)
+		if !session.reservationLeaseUntil.After(time.Now()) || errors.Is(err, ErrTooManyStreams) || errors.Is(err, ErrTooManyTranscodes) || errors.Is(err, ErrTenantTranscodesExceeded) {
+			return err
+		}
+		return nil
+	}
+	m.mu.Lock()
+	if current := m.sessions[session.ID]; current != nil && current.reservationGeneration == session.reservationGeneration {
+		current.reservationGeneration = reservation.Generation
+		current.reservationLeaseUntil = reservation.LeaseUntil
+		current.reservationRequest = session.reservationRequest
+		current.reservationRequest.LeaseUntil = reservation.LeaseUntil
+	}
+	m.mu.Unlock()
+	return nil
+}
+
+// reserveFleetReplacementLocked changes the shared reservation before a
+// direct/remux session is allowed to become a transcode (or vice versa).
+// Callers hold m.mu so the local session cannot publish a method that differs
+// from the fleet reservation while the database transaction is in flight.
+func (m *SessionManager) reserveFleetReplacementLocked(ctx context.Context, session *Session, method PlayMethod, limits SessionLimits) error {
+	if m.reservationStore == nil || session == nil {
+		return nil
+	}
+	requestedTranscode := method == PlayTranscode
+	if session.reservationGeneration > 0 && session.reservationRequest.IsTranscode == requestedTranscode {
+		return nil
+	}
+	previous := session.reservationRequest
+	request := ReservationRequest{
+		SessionID:         session.ID,
+		AccountID:         session.UserID,
+		ProfileID:         session.ProfileID,
+		TenantID:          limits.TenantID,
+		IsTranscode:       requestedTranscode,
+		AccountStreams:    limits.MaxStreams,
+		AccountTranscodes: limits.MaxTranscodes,
+		TenantTranscodes:  limits.TenantMaxTranscodes,
+		LeaseUntil:        time.Now().Add(m.reservationLease),
+	}
+	reservation, err := m.reservationStore.Acquire(ctx, request)
+	if err != nil {
+		return err
+	}
+	if session.reservationGeneration > 0 {
+		copy := previous
+		session.replacementReservationPrevious = &copy
+	}
+	session.reservationGeneration = reservation.Generation
+	session.reservationLeaseUntil = reservation.LeaseUntil
+	session.reservationRequest = request
+	return nil
+}
+
+func (m *SessionManager) restoreFleetReplacementLocked(session *Session, previous *ReservationRequest) error {
+	if m.reservationStore == nil || session == nil || previous == nil {
+		return nil
+	}
+	request := *previous
+	request.LeaseUntil = time.Now().Add(m.reservationLease)
+	reservation, err := m.reservationStore.Acquire(context.Background(), request)
+	if err != nil {
+		return err
+	}
+	session.reservationGeneration = reservation.Generation
+	session.reservationLeaseUntil = reservation.LeaseUntil
+	session.reservationRequest = request
+	return nil
 }
 
 func (m *SessionManager) inlineAdmissionErrorLocked(userID int, method PlayMethod, transcodeAudio bool, limits SessionLimits) error {
@@ -732,33 +905,57 @@ func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s 
 	if err != nil {
 		return nil, err
 	}
+	m.reservationLifecycle.Lock()
+	defer m.reservationLifecycle.Unlock()
 
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if existing, ok := m.sessions[s.ID]; ok {
+		m.mu.Unlock()
 		return existing, nil
 	}
 	if limits.PlaybackDisabled {
+		m.mu.Unlock()
 		return nil, ErrPlaybackNotAllowed
 	}
 
 	// The session being reconstructed is not yet in the map, so the live counts
 	// reflect the user's *other* sessions; admitting one more must stay within cap.
 	if err := transcodingDisabledError(s.PlayMethod == PlayTranscode, s.TranscodeAudio, limits); err != nil {
+		m.mu.Unlock()
 		return nil, err
 	}
 	if limits.MaxStreams > 0 && m.activeCountLocked(s.UserID) >= limits.MaxStreams {
+		m.mu.Unlock()
 		return nil, ErrTooManyStreams
 	}
 	if s.PlayMethod == PlayTranscode && limits.MaxTranscodes > 0 &&
 		m.transcodeCountLocked(s.UserID) >= limits.MaxTranscodes {
+		m.mu.Unlock()
 		return nil, ErrTooManyTranscodes
 	}
 	if err := m.tenantAdmissionErrorLocked(s.PlayMethod, limits); err != nil {
+		m.mu.Unlock()
 		return nil, err
 	}
 	s.TenantID = limits.TenantID
+	m.mu.Unlock()
+
+	if err := m.acquireFleetReservation(ctx, s, limits); err != nil {
+		return nil, err
+	}
+	m.mu.Lock()
+	if existing, ok := m.sessions[s.ID]; ok {
+		existing.reservationGeneration = s.reservationGeneration
+		existing.reservationLeaseUntil = s.reservationLeaseUntil
+		existing.reservationRequest = s.reservationRequest
+		m.mu.Unlock()
+		return existing, nil
+	}
+	if err := m.inlineAdmissionErrorLocked(s.UserID, s.PlayMethod, s.TranscodeAudio, limits); err != nil {
+		m.mu.Unlock()
+		m.releaseFleetReservation(s)
+		return nil, err
+	}
 
 	now := time.Now()
 	if s.StartedAt.IsZero() {
@@ -767,6 +964,7 @@ func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s 
 	s.UpdatedAt = now
 	s.LastActivityAt = now
 	m.sessions[s.ID] = s
+	m.mu.Unlock()
 	return s, nil
 }
 
@@ -860,6 +1058,10 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 				m.mu.Unlock()
 				return err
 			}
+			if err := m.reserveFleetReplacementLocked(ctx, stillCurrent, method, limits); err != nil {
+				m.mu.Unlock()
+				return err
+			}
 			stillCurrent.replacementPlayMethod = method
 			m.mu.Unlock()
 			return nil
@@ -883,6 +1085,10 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 				m.mu.Unlock()
 				return err
 			}
+			if err := m.reserveFleetReplacementLocked(ctx, stillCurrent, method, limits); err != nil {
+				m.mu.Unlock()
+				return err
+			}
 			stillCurrent.replacementPlayMethod = method
 			m.mu.Unlock()
 			return nil
@@ -896,10 +1102,23 @@ func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID 
 // after a replacement fails before UpdateStreamState commits its new method.
 func (m *SessionManager) CancelReplacementReservation(sessionID string) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	if session := m.sessions[sessionID]; session != nil {
-		session.replacementPlayMethod = ""
+	session := m.sessions[sessionID]
+	if session == nil {
+		m.mu.Unlock()
+		return
 	}
+	previous := session.replacementReservationPrevious
+	if err := m.restoreFleetReplacementLocked(session, previous); err != nil {
+		copy := *session
+		delete(m.sessions, sessionID)
+		m.mu.Unlock()
+		m.releaseFleetReservation(&copy)
+		slog.Warn("failed to restore playback reservation after cancelled replacement; session removed", "component", "playback", "session", sessionID, "error", err)
+		return
+	}
+	session.replacementReservationPrevious = nil
+	session.replacementPlayMethod = ""
+	m.mu.Unlock()
 }
 
 func transcodingDisabledError(requiresVideoTranscode, requiresAudioTranscode bool, limits SessionLimits) error {
@@ -915,10 +1134,9 @@ func transcodingDisabledError(requiresVideoTranscode, requiresAudioTranscode boo
 // UpdateProgress updates the playback position and pause state for a session.
 func (m *SessionManager) UpdateProgress(sessionID string, position float64, isPaused bool) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	s, ok := m.sessions[sessionID]
 	if !ok {
+		m.mu.Unlock()
 		return ErrSessionNotFound
 	}
 
@@ -926,6 +1144,12 @@ func (m *SessionManager) UpdateProgress(sessionID string, position float64, isPa
 	s.IsPaused = isPaused
 	s.streamRevision++
 	m.touchSessionLocked(s)
+	copy := *s
+	m.mu.Unlock()
+	if err := m.renewFleetReservation(&copy); err != nil {
+		_ = m.StopSession(sessionID)
+		return err
+	}
 	return nil
 }
 
@@ -1016,6 +1240,7 @@ func applySessionStreamStateLocked(s *Session, state SessionStreamState) {
 		// unrelated legacy stream updates arriving mid-replan must not release
 		// the slot and let a concurrent admission race past the transcode cap.
 		s.replacementPlayMethod = ""
+		s.replacementReservationPrevious = nil
 	}
 }
 
@@ -1122,6 +1347,7 @@ func (m *SessionManager) applyReplacementLocked(
 		previousEffectiveMediaFileID: s.MediaFileID,
 		previousStreamState:          snapshotSessionStreamStateLocked(s),
 		previousReplacementMethod:    s.replacementPlayMethod,
+		previousReservationRequest:   s.replacementReservationPrevious,
 	}
 	if replacement.PositionSeconds != nil {
 		rollback.previousPosition = s.Position
@@ -1147,14 +1373,21 @@ func (m *SessionManager) applyReplacementLocked(
 // newer session mutation has superseded it.
 func (m *SessionManager) RollbackReplacement(sessionID string, rollback SessionReplacementRollback) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	s, ok := m.sessions[sessionID]
 	if !ok {
+		m.mu.Unlock()
 		return ErrSessionNotFound
 	}
 	if rollback.sessionID != sessionID || rollback.appliedRevision == 0 || s.streamRevision != rollback.appliedRevision {
+		m.mu.Unlock()
 		return ErrSessionReplacementSuperseded
+	}
+	if err := m.restoreFleetReplacementLocked(s, rollback.previousReservationRequest); err != nil {
+		copy := *s
+		delete(m.sessions, sessionID)
+		m.mu.Unlock()
+		m.releaseFleetReservation(&copy)
+		return fmt.Errorf("restore playback reservation during rollback: %w", err)
 	}
 	s.MediaFileID = rollback.previousEffectiveMediaFileID
 	restoreSessionStreamStateLocked(s, rollback.previousStreamState)
@@ -1163,8 +1396,10 @@ func (m *SessionManager) RollbackReplacement(sessionID string, rollback SessionR
 		s.IsPaused = rollback.previousPaused
 	}
 	s.replacementPlayMethod = rollback.previousReplacementMethod
+	s.replacementReservationPrevious = nil
 	s.streamRevision++
 	m.touchSessionLocked(s)
+	m.mu.Unlock()
 	return nil
 }
 
@@ -1295,14 +1530,19 @@ func (m *SessionManager) SetProgressPersistenceDisabled(sessionID string, disabl
 // any other playback state.
 func (m *SessionManager) TouchActivity(sessionID string) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	s, ok := m.sessions[sessionID]
 	if !ok {
+		m.mu.Unlock()
 		return ErrSessionNotFound
 	}
 
 	m.touchSessionLocked(s)
+	copy := *s
+	m.mu.Unlock()
+	if err := m.renewFleetReservation(&copy); err != nil {
+		_ = m.StopSession(sessionID)
+		return err
+	}
 	return nil
 }
 
@@ -1310,15 +1550,20 @@ func (m *SessionManager) TouchActivity(sessionID string) error {
 // for the session and refreshes its activity timestamp.
 func (m *SessionManager) BeginTransport(sessionID string) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	s, ok := m.sessions[sessionID]
 	if !ok {
+		m.mu.Unlock()
 		return ErrSessionNotFound
 	}
 
 	s.activeTransportCount++
 	m.touchSessionLocked(s)
+	copy := *s
+	m.mu.Unlock()
+	if err := m.renewFleetReservation(&copy); err != nil {
+		_ = m.StopSession(sessionID)
+		return err
+	}
 	return nil
 }
 
@@ -1371,13 +1616,15 @@ func (m *SessionManager) EndTransport(sessionID string) error {
 // StopSession removes a session from the manager.
 func (m *SessionManager) StopSession(sessionID string) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if _, ok := m.sessions[sessionID]; !ok {
+	session, ok := m.sessions[sessionID]
+	if !ok {
+		m.mu.Unlock()
 		return ErrSessionNotFound
 	}
-
 	delete(m.sessions, sessionID)
+	copy := *session
+	m.mu.Unlock()
+	m.releaseFleetReservation(&copy)
 	return nil
 }
 
@@ -1539,6 +1786,9 @@ func (m *SessionManager) CleanInactive(activeIdle, pausedIdle time.Duration) []*
 	}
 	hook := m.expireHook
 	m.mu.Unlock()
+	for _, session := range expired {
+		m.releaseFleetReservation(session)
+	}
 
 	if hook != nil {
 		for _, s := range expired {

@@ -1900,6 +1900,9 @@ func main() {
 
 	// Step 6: Create playback session manager and wire into dependencies.
 	sessionMgr := playback.NewSessionManager(6, 2) // defaults from plan: max_streams=6, max_transcodes=2
+	if deps.DB != nil {
+		sessionMgr.SetReservationStore(playback.NewPostgresReservationStore(deps.DB), 2*time.Minute)
+	}
 	var compatTerminalRecoveryReady <-chan struct{}
 	if userStoreProvider != nil {
 		deps.UserStoreProvider = userStoreProvider
