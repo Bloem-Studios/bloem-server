@@ -57,9 +57,9 @@ type StateProvider interface {
 const (
 	// internalIdentityHeader carries the gateway-signed request identity. Any
 	// caller-supplied value is discarded before forwarding.
-	internalIdentityHeader = "X-Vondel-Internal-Identity"
+	internalIdentityHeader = "X-Bloem-Internal-Identity"
 	// traceHeader propagates one trace identifier across the boundary.
-	traceHeader = "X-Vondel-Trace-Id"
+	traceHeader = "X-Bloem-Trace-Id"
 
 	defaultMaxRequestBytes  = int64(32 << 20)
 	defaultUpstreamTimeout  = 90 * time.Second

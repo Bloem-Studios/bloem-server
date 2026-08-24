@@ -538,7 +538,7 @@ func withBearer(token string) reqOpt {
 }
 
 func withSubjectToken(token string) reqOpt {
-	return func(r *http.Request) { r.Header.Set("X-Vondel-Subject-Token", token) }
+	return func(r *http.Request) { r.Header.Set("X-Bloem-Subject-Token", token) }
 }
 
 func withIdempotencyKey(key string) reqOpt {

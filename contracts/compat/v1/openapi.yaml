@@ -1109,7 +1109,7 @@ components:
         minLength: 1
         maxLength: 200
     SubjectToken:
-      name: X-Vondel-Subject-Token
+      name: X-Bloem-Subject-Token
       in: header
       required: true
       description: >

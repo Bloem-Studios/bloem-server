@@ -483,7 +483,7 @@ func probePublicPort(t *testing.T, client *http.Client, base string, cases []str
 		if resp.Header.Get("Retry-After") == "" {
 			t.Fatalf("%s carries no Retry-After; that is not the gateway answering", tc.path)
 		}
-		if resp.Header.Get("X-Vondel-Trace-Id") == "" {
+		if resp.Header.Get("X-Bloem-Trace-Id") == "" {
 			t.Fatalf("%s carries no gateway trace header; that is not the gateway answering", tc.path)
 		}
 		var payload struct {

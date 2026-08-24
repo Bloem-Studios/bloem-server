@@ -120,7 +120,7 @@ func (c *Client) call(ctx context.Context, spec callSpec, out any) error {
 		req.Header.Set("Authorization", "Bearer "+c.ServiceToken)
 	}
 	if spec.subjectToken != "" {
-		req.Header.Set("X-Vondel-Subject-Token", spec.subjectToken)
+		req.Header.Set("X-Bloem-Subject-Token", spec.subjectToken)
 	}
 	if spec.mutates {
 		req.Header.Set("Idempotency-Key", c.IdempotencyKeys())

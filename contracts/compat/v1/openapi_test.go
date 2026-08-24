@@ -355,7 +355,7 @@ func TestSecurityIsBearerEverywhereExceptEnrollment(t *testing.T) {
 }
 
 // TestSubjectOperationsRequireTheSubjectTokenHeader: operations marked
-// subject-scoped resolve their subject from the X-Vondel-Subject-Token
+// subject-scoped resolve their subject from the X-Bloem-Subject-Token
 // header and must declare it required.
 func TestSubjectOperationsRequireTheSubjectTokenHeader(t *testing.T) {
 	found := 0
@@ -365,8 +365,8 @@ func TestSubjectOperationsRequireTheSubjectTokenHeader(t *testing.T) {
 			continue
 		}
 		found++
-		if !op.RequiresHeader("X-Vondel-Subject-Token") {
-			t.Errorf("%s %s is subject-scoped and must require X-Vondel-Subject-Token", op.Method, op.Path)
+		if !op.RequiresHeader("X-Bloem-Subject-Token") {
+			t.Errorf("%s %s is subject-scoped and must require X-Bloem-Subject-Token", op.Method, op.Path)
 		}
 	}
 	if found == 0 {

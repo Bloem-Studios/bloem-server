@@ -30,7 +30,7 @@ func newServer(t *testing.T, status int, response any) (*httptest.Server, *[]rec
 			path:           r.URL.Path,
 			query:          r.URL.RawQuery,
 			authorization:  r.Header.Get("Authorization"),
-			subjectToken:   r.Header.Get("X-Vondel-Subject-Token"),
+			subjectToken:   r.Header.Get("X-Bloem-Subject-Token"),
 			idempotencyKey: r.Header.Get("Idempotency-Key"),
 		}
 		if r.Body != nil {

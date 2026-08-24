@@ -110,8 +110,8 @@ func newFakeCompanion(name string) *fakeCompanion {
 			Path:     r.URL.Path,
 			RawPath:  r.URL.EscapedPath(),
 			Query:    r.URL.RawQuery,
-			Identity: r.Header.Get("X-Vondel-Internal-Identity"),
-			Trace:    r.Header.Get("X-Vondel-Trace-Id"),
+			Identity: r.Header.Get("X-Bloem-Internal-Identity"),
+			Trace:    r.Header.Get("X-Bloem-Trace-Id"),
 			Host:     r.Host,
 		})
 		companion.mu.Unlock()
@@ -991,7 +991,7 @@ func TestCompatibilityFoundation(t *testing.T) {
 		f := newFoundationFixture(t)
 		companion := f.enrollAndActivate("jellyfin", "jellyfin-cursor", []string{"identity", "catalog"})
 		subjectToken := f.subjectToken(companion.Token)
-		headers := map[string]string{"Authorization": "Bearer " + companion.Token, "X-Vondel-Subject-Token": subjectToken}
+		headers := map[string]string{"Authorization": "Bearer " + companion.Token, "X-Bloem-Subject-Token": subjectToken}
 
 		first := f.requireStatus(f.do(http.MethodGet, "/api/internal/compat/v1/catalog/items", "", headers), http.StatusOK)
 		firstPage := f.object(first)
@@ -1027,7 +1027,7 @@ func TestCompatibilityFoundation(t *testing.T) {
 		f := newFoundationFixture(t)
 		companion := f.enrollAndActivate("jellyfin", "jellyfin-pin", []string{"identity"})
 		subjectToken := f.subjectToken(companion.Token)
-		headers := map[string]string{"Authorization": "Bearer " + companion.Token, "X-Vondel-Subject-Token": subjectToken}
+		headers := map[string]string{"Authorization": "Bearer " + companion.Token, "X-Bloem-Subject-Token": subjectToken}
 
 		wrong := f.do(http.MethodPost, "/api/internal/compat/v1/identity/pin/verify",
 			fmt.Sprintf(`{"profile_id":%q,"pin":"0000"}`, foundationKidsProfileID),
@@ -1054,7 +1054,7 @@ func TestCompatibilityFoundation(t *testing.T) {
 		f := newFoundationFixture(t)
 		companion := f.enrollAndActivate("jellyfin", "jellyfin-revoke-subject", []string{"identity"})
 		subjectToken := f.subjectToken(companion.Token)
-		headers := map[string]string{"Authorization": "Bearer " + companion.Token, "X-Vondel-Subject-Token": subjectToken}
+		headers := map[string]string{"Authorization": "Bearer " + companion.Token, "X-Bloem-Subject-Token": subjectToken}
 
 		f.requireStatus(f.do(http.MethodGet, "/api/internal/compat/v1/identity/subject", "", headers), http.StatusOK)
 

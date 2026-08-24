@@ -596,7 +596,7 @@ func TestProxyStripsHopByHopAndSignsIdentity(t *testing.T) {
 	req.Header.Set("Proxy-Authorization", "Basic evil")
 	req.Header.Set("Trailer", "Expires")
 	// A spoofed internal identity must never survive to the companion.
-	req.Header.Set("X-Vondel-Internal-Identity", "forged")
+	req.Header.Set("X-Bloem-Internal-Identity", "forged")
 	rec := httptest.NewRecorder()
 	gateway.ServeHTTP(rec, req)
 
@@ -611,7 +611,7 @@ func TestProxyStripsHopByHopAndSignsIdentity(t *testing.T) {
 		}
 	}
 
-	identity := sent.Header.Get("X-Vondel-Internal-Identity")
+	identity := sent.Header.Get("X-Bloem-Internal-Identity")
 	if identity == "" || identity == "forged" {
 		t.Fatalf("upstream identity %q must be gateway-signed, never caller-supplied", identity)
 	}
@@ -628,11 +628,11 @@ func TestProxyStripsHopByHopAndSignsIdentity(t *testing.T) {
 		t.Fatalf("identity payload %q must bind the application kind", payload)
 	}
 
-	trace := sent.Header.Get("X-Vondel-Trace-Id")
+	trace := sent.Header.Get("X-Bloem-Trace-Id")
 	if trace == "" {
 		t.Fatal("upstream request must carry a trace id")
 	}
-	if rec.Header().Get("X-Vondel-Trace-Id") != trace {
+	if rec.Header().Get("X-Bloem-Trace-Id") != trace {
 		t.Fatal("the client response must echo the same trace id")
 	}
 	if rec.Header().Get("Keep-Alive") != "" {

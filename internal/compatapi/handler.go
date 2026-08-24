@@ -24,7 +24,7 @@ import (
 const (
 	// subjectTokenHeader carries the audience-bound subject token; it is the
 	// only channel through which a subject is ever named.
-	subjectTokenHeader = "X-Vondel-Subject-Token"
+	subjectTokenHeader = "X-Bloem-Subject-Token"
 	idempotencyHeader  = "Idempotency-Key"
 	traceHeader        = "X-Trace-Id"
 
