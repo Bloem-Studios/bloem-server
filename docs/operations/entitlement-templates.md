@@ -18,7 +18,7 @@ organization detail page under **Tenant entitlement**.
 
 ## Do not confuse the two entitlement systems
 
-Vondel Server uses the word “entitlement” for two related but different
+Bloem Server uses the word “entitlement” for two related but different
 controls:
 
 - A **policy entitlement template** defines what members may do: playback,
@@ -85,7 +85,7 @@ invalidate the affected authorization state.
    not silently removed from existing targets.
 
 Rollback is also immutable: choose an older revision in History and create a
-new latest revision from it. Vondel never edits or deletes historical policy.
+new latest revision from it. Bloem never edits or deletes historical policy.
 
 ## Apply to an organization
 
@@ -97,7 +97,7 @@ new latest revision from it. Vondel never edits or deletes historical policy.
 4. Confirm within ten minutes. The signed confirmation is bound to the actor,
    target, exact template revision, and previewed state.
 
-Apply updates only Vondel's managed default group and its assigned profiles.
+Apply updates only Bloem's managed default group and its assigned profiles.
 Custom groups are preserved. Repeating the same idempotency key returns the
 stored result; reusing it for another template or revision is rejected.
 

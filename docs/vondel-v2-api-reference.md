@@ -1,6 +1,6 @@
-# Vondel Server — Native /api/v2 Reference
+# Bloem Server — Native /api/v2 Reference
 
-A wire-level reference for `vondel-server`'s native `/api/v2` API surface — the Vondel-specific
+A wire-level reference for `bloem-server`'s native `/api/v2` API surface — the Bloem-specific
 extensions layered on top of the frozen, Silo-compatible `/api/v1` projection documented
 separately (see [Silo API Reference](https://github.com/Vondel-Media/silo-api-reference), also
 mirrored at `vondel-android/docs/silo-api-reference.md`). Compiled 2026-08-20 by reading
@@ -664,9 +664,9 @@ listeners) via the events hub.
 - Otherwise `200` always, with per-item `error` entries inside `results` for item-level problems —
   a batch with some bad items and some good ones is not failed wholesale.
 
-**Clients.** **Neither native client was found calling this v2 endpoint.** `vondel-android`'s
+**Clients.** **Neither native client was found calling this v2 endpoint.** `bloem-android`'s
 `HttpProgressSyncSource.kt` explicitly targets **`POST /api/v1/sync/progress`** — its own doc
-comment reads: *"Pushes locally-recorded checkpoints to a Vondel server's `POST
+comment reads: *"Pushes locally-recorded checkpoints to a Bloem server's `POST
 /api/v1/sync/progress` — the real…"* (the v1 route, not this v2 one), despite the file living in
 a module whose sibling watch/person sources are on `/api/v2`. `vondel-apple` has no
 `sync/progress` call under any API version in the source tree searched — its
@@ -733,16 +733,16 @@ own "year" sort — not re-sorted client-side by this handler).
   (route would actually be unmounted in that case — `deps.PersonRepo == nil` skips mounting
   `surface.persons` entirely — so this is a defensive path, not a live response).
 
-**Clients.** Both. `vondel-apple`: `HTTPPersonSource.swift` (`personPrefix =
-"/api/v2/persons/"`). `vondel-android`: `HttpPersonSource.kt` (`PERSON_PATH_PREFIX =
-"/api/v2/persons/"`; file doc comment: *"One person's own page, read from a Vondel server's native
+**Clients.** Both. `bloem-apple`: `HTTPPersonSource.swift` (`personPrefix =
+"/api/v2/persons/"`). `bloem-android`: `HttpPersonSource.kt` (`PERSON_PATH_PREFIX =
+"/api/v2/persons/"`; file doc comment: *"One person's own page, read from a Bloem server's native
 `GET /api/v2/persons/{person_id}`."*).
 
 ---
 
 ### Music
 
-Music is a Vondel-native extension and is deliberately absent from the frozen
+Music is a Bloem-native extension and is deliberately absent from the frozen
 Silo-compatible `/api/v1` projection. Clients discover build support through
 the `music_catalog_v1` feature token and discover usable profile-scoped content
 through `GET /api/v2/music/status`.
@@ -1628,19 +1628,19 @@ Handler: `handlers.V2AdminCompatibilityHandler`, built from `deps.CompatApplicat
 **What this actually is.** A "compatibility application" is *not* a Radarr/Sonarr-style third-party
 metadata integration, and it is not a plugin in the `silo-plugin-sdk` sense. Per
 `internal/compatapp/types.go`'s package doc: it is one of two specific, reviewed **companion
-services** — `vondel-jellyfin` and `vondel-audiobookshelf` (`compatapp.KindJellyfin` /
+services** — `bloem-jellyfin` and `bloem-audiobookshelf` (`compatapp.KindJellyfin` /
 `compatapp.KindAudiobookshelf`, run as separate Docker containers alongside the main server, per
 the `docker-compose.<kind>.yml` overlay files `operatorCommands` references) — that speak a
 *third-party client's native wire protocol* (Jellyfin's API, Audiobookshelf's API) on the front end
-so existing Jellyfin/Audiobookshelf apps can point at a Vondel-managed library, while talking to
-Vondel itself on the back end through a separate, closed, versioned **private compatibility API**
+so existing Jellyfin/Audiobookshelf apps can point at a Bloem-managed library, while talking to
+Bloem itself on the back end through a separate, closed, versioned **private compatibility API**
 (`contracts/compat/v1/openapi.yaml`) authenticated with its own enrollment/credential system (this
 package, `internal/compatapp`). This admin surface is the control plane for that trust
 relationship: which companion instances exist, what capability slices of the private API each was
 granted, and whether each is currently enabled, healthy, or revoked. It never touches an
 application/media table directly and never talks to Docker — per the router's own mount comment,
 "the handler consumes the lifecycle service; it never writes application tables and never touches
-Docker," and per `operatorCommands`' comment, Vondel only *displays* the exact Docker/Compose
+Docker," and per `operatorCommands`' comment, Bloem only *displays* the exact Docker/Compose
 commands an operator (or their deployment controller) should run — install/update/rollback/remove —
 it has no Docker socket and performs no container mutation itself.
 

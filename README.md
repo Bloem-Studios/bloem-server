@@ -1,8 +1,8 @@
-# Vondel Server
+# Bloem Server
 
-Vondel Server is a public tracking fork of
+Bloem Server is a public tracking fork of
 [Silo Server](https://github.com/Silo-Server/silo-server), maintained by
-Vondel Media. It retains upstream Git history, module paths, protocol
+Bloem Studios. It retains upstream Git history, module paths, protocol
 identifiers, and environment-variable names so upstream commits remain
 mergeable and existing Silo-compatible clients keep working against it. See
 [FORK.md](FORK.md) for provenance, deliberate divergence, and the
@@ -12,12 +12,12 @@ The operational documentation below follows upstream closely, since most of
 it — deployment, configuration, self-hosting — applies identically to both
 projects. Technical names such as `SILO_DATA_ROOT` remain compatibility
 contracts; the distributed web application and visual assets identify the
-product as Vondel, per [TRADEMARK.md](TRADEMARK.md)'s rebranding requirement
+product as Bloem, per [TRADEMARK.md](TRADEMARK.md)'s rebranding requirement
 for forks.
 
 ## Credit where it's due
 
-Vondel Server exists because [Silo Server](https://github.com/Silo-Server/silo-server)
+Bloem Server exists because [Silo Server](https://github.com/Silo-Server/silo-server)
 does. The scanner, catalog, playback pipeline, plugin runtime, and the large
 majority of this codebase's day-to-day behavior are Silo's own design and
 implementation, licensed AGPL-3.0-or-later, carried forward here with its
@@ -31,7 +31,7 @@ the [Prairie Server](https://github.com/Prairie-Server/prairie-server)
 subsystem; see `docs/livetv/prairie-source-manifest.tsv` for the pinned
 source this was adapted from.
 
-## What Vondel adds on top of Silo
+## What Bloem adds on top of Silo
 
 This fork stays close to upstream deliberately (see FORK.md for why), and
 adds a focused set of its own capabilities alongside it:
@@ -46,7 +46,7 @@ adds a focused set of its own capabilities alongside it:
   [the operator runbook](docs/architecture/opa-tenant-authorization.md).
 - Revisioned **entitlement templates** for consistently applying playback,
   stream, profile, transcode, download, request, permission, quality, and
-  library policy to an organization or a directly managed account. Vondel
+  library policy to an organization or a directly managed account. Bloem
   ships Browse-only, Viewer, Standard, Premium, and Reseller Member starting
   points; platform admins can create, revise, clone, archive, preview, and
   apply templates from the web console. See the
@@ -67,11 +67,11 @@ adds a focused set of its own capabilities alongside it:
 - A native client API surface — richer Watch documents (cast/crew, chapter
   and skip-intro markers, file editions, server-side search, poster
   resolution), a person-detail endpoint, and a batch-resolved
-  similar-items endpoint — built to serve Vondel's own native Android/Apple
+  similar-items endpoint — built to serve Bloem's own native Android/Apple
   clients, verified against real contract-conformance and install/scan
   acceptance test suites (`internal/clientcontract`, `internal/acceptance`).
 - A private plugin SDK, catalog, and first-party plugin set.
-- Product identity: Vondel naming and branding in user-facing copy, applied
+- Product identity: Bloem naming and branding in user-facing copy, applied
   at build time so upstream source stays mergeable (see FORK.md).
 
 Unless called out above, the feature list below, deployment, and configuration
@@ -373,7 +373,7 @@ Technical notes:
 
 ## Contributing & Development
 
-Vondel Server is open source under the same terms as Silo. See
+Bloem Server is open source under the same terms as Silo. See
 [DEVELOPMENT.md](DEVELOPMENT.md) for building from source in a dev workflow,
 running tests, database migrations, and project layout, and
 [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations and merge
@@ -383,7 +383,7 @@ Since this is a tracking fork (see FORK.md), a change that belongs in Silo's
 own scanner, catalog, playback, or plugin runtime is generally better
 contributed upstream to [Silo Server](https://github.com/Silo-Server/silo-server)
 directly, where it benefits every downstream project, not just this one.
-Contributions to Vondel-specific areas — the `/api/v2` tenant foundation, the
+Contributions to Bloem-specific areas — the `/api/v2` tenant foundation, the
 plugin SDK/catalog, or the client-contract test suites — belong here.
 
 ## License & Trademarks

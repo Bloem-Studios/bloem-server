@@ -1,4 +1,4 @@
-# Opt-in overlay: vondel-jellyfin, the private Jellyfin-protocol compatibility
+# Opt-in overlay: bloem-jellyfin, the private Jellyfin-protocol compatibility
 # companion.
 #
 # Activate (from the repository root, together with the base file):
@@ -6,72 +6,72 @@
 #   docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml up -d
 #
 # Deployment contract (docs/operations/compatibility-applications.md):
-#   - The companion runs on the internal vondel-compat network only. It has no
-#     host ports; Jellyfin clients reach it exclusively through Vondel's
+#   - The companion runs on the internal bloem-compat network only. It has no
+#     host ports; Jellyfin clients reach it exclusively through Bloem's
 #     gateway at the canonical public address (fixed protocol routes and /web).
-#   - It receives NO Vondel database, Redis, media filesystem, Docker socket,
-#     SECRET_KEY, provider credential, or tuner credential. Its only Vondel
+#   - It receives NO Bloem database, Redis, media filesystem, Docker socket,
+#     SECRET_KEY, provider credential, or tuner credential. Its only Bloem
 #     contact is the private compatibility API over this network.
 #   - Its persistence is disposable protocol state in a companion-owned named
 #     volume (SQLite with WAL). Removing the volume loses only protocol state;
-#     canonical media state lives in Vondel.
+#     canonical media state lives in Bloem.
 #   - Enrollment uses a single-use token mounted as a Docker secret file at
-#     /run/secrets/vondel_compat_enrollment — never an environment value.
+#     /run/secrets/bloem_compat_enrollment — never an environment value.
 #     Create the token in Admin -> Compatibility Applications, write it to the
 #     file below, enroll, then delete the file.
 #   - The image is private. `docker login ghcr.io` with read access to
-#     ghcr.io/vondel-media is required before pulling.
+#     ghcr.io/bloem-studios is required before pulling.
 #
 # Structure is enforced by scripts/verify-compat-compose.sh.
 
 networks:
-  vondel-compat:
+  bloem-compat:
     # Internal: members get no host-port publishing and no outbound access.
-    # The companion talks to Vondel, and nothing else.
+    # The companion talks to Bloem, and nothing else.
     internal: true
 
 volumes:
   # Disposable protocol state only (client token correlation, display
   # preferences, protocol caches, event cursors). Safe to delete when the
   # companion is uninstalled.
-  vondel-jellyfin-state:
+  bloem-jellyfin-state:
 
 secrets:
-  vondel_jellyfin_enrollment:
+  bloem_jellyfin_enrollment:
     # Single-use enrollment token issued by Admin -> Compatibility Applications.
     # Write it to this file (chmod 600) before `up`, delete it after enrollment
     # succeeds. The .secrets/ directory is gitignored.
-    file: ${VONDEL_JELLYFIN_ENROLLMENT_FILE:-./.secrets/compat/vondel-jellyfin-enrollment.token}
+    file: ${BLOEM_JELLYFIN_ENROLLMENT_FILE:-./.secrets/compat/bloem-jellyfin-enrollment.token}
 
 services:
   silo:
-    # Vondel joins the private companion network (for the gateway and the
+    # Bloem joins the private companion network (for the gateway and the
     # private compatibility API) while keeping its normal networking.
     networks:
       default: {}
-      vondel-compat: {}
+      bloem-compat: {}
 
-  vondel-jellyfin:
+  bloem-jellyfin:
     # Pin a version or digest for deterministic change control, e.g.
-    # VONDEL_JELLYFIN_IMAGE=ghcr.io/vondel-media/vondel-jellyfin@sha256:...
-    image: ${VONDEL_JELLYFIN_IMAGE:-ghcr.io/vondel-media/vondel-jellyfin:latest}
+    # BLOEM_JELLYFIN_IMAGE=ghcr.io/bloem-studios/bloem-jellyfin@sha256:...
+    image: ${BLOEM_JELLYFIN_IMAGE:-ghcr.io/bloem-studios/bloem-jellyfin:latest}
     restart: unless-stopped
     networks:
-      vondel-compat:
+      bloem-compat:
         aliases:
-          - vondel-jellyfin
+          - bloem-jellyfin
     environment:
-      # Base URL of Vondel's listener on the private network; the companion
+      # Base URL of Bloem's listener on the private network; the companion
       # calls /api/internal/compat/v1 beneath it.
-      VONDEL_COMPAT_API_BASE_URL: http://silo:8080
+      BLOEM_COMPAT_API_BASE_URL: http://silo:8080
       # Where the single-use enrollment token is mounted (Docker secret).
-      VONDEL_COMPAT_ENROLLMENT_FILE: /run/secrets/vondel_compat_enrollment
+      BLOEM_COMPAT_ENROLLMENT_FILE: /run/secrets/bloem_compat_enrollment
       # Companion-owned disposable state directory (named volume below).
-      VONDEL_COMPAT_STATE_DIR: /var/lib/vondel-compat
+      BLOEM_COMPAT_STATE_DIR: /var/lib/bloem-compat
     secrets:
-      - source: vondel_jellyfin_enrollment
-        target: vondel_compat_enrollment
+      - source: bloem_jellyfin_enrollment
+        target: bloem_compat_enrollment
     volumes:
-      - vondel-jellyfin-state:/var/lib/vondel-compat
+      - bloem-jellyfin-state:/var/lib/bloem-compat
     security_opt:
       - no-new-privileges:true

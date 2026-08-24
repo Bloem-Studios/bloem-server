@@ -1,4 +1,4 @@
-# Vondel Private Plugin Inventory
+# Bloem Private Plugin Inventory
 
 Verified on 2026-08-12. The active private plugin and future catalog scope contains exactly six retained plugins: TMDB, TVDB, Ebook Metadata, Audiobook Metadata, Manga Metadata, and Autoscan ARR.
 

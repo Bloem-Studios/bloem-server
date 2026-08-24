@@ -1,15 +1,15 @@
 # Jellyfin/Emby and Audiobookshelf Compatibility
 
-Vondel's Jellyfin/Emby and Audiobookshelf compatibility surfaces are built
+Bloem's Jellyfin/Emby and Audiobookshelf compatibility surfaces are built
 into this server. They are not separate applications, containers, or images
 — there is nothing to install, enroll, or pull from a registry.
 
 - **Jellyfin/Emby** — the Jellyfin/Emby protocol, served at the server's own
-  canonical address (`https://vondel.example/`, same as the native web app
+  canonical address (`https://bloem.example/`, same as the native web app
   and API). Real third-party apps confirmed working against it include
   VidHub, Findroid, and Infuse.
 - **Audiobookshelf** — the Audiobookshelf protocol, served at
-  `https://vondel.example/abs`.
+  `https://bloem.example/abs`.
 
 Both are **enabled by default** and reachable **on the server's own address —
 no extra ports, no reverse-proxy rules, no separate host to run.** Either can
@@ -19,7 +19,7 @@ be turned off from **Admin → Settings → Compatibility** if you don't need it
 
 Requests to the Jellyfin/Emby and Audiobookshelf protocol path families are
 matched by a fixed, reviewed routing table and dispatched directly, in the
-same process, to Vondel's own built-in Jellyfin-compatible and
+same process, to Bloem's own built-in Jellyfin-compatible and
 Audiobookshelf-compatible handlers — the same request-hardening (path
 traversal checks, size limits) applies as everywhere else on the server, but
 there is no separate service, no network hop, and no enrollment lifecycle

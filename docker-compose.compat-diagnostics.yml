@@ -17,32 +17,32 @@
 # Running only one companion? Both overlays must still be listed (this file
 # names both services), so name the services you actually want on `up`, e.g.:
 #
-#   ... up -d silo vondel-audiobookshelf
+#   ... up -d silo bloem-audiobookshelf
 #
 # Notes:
 #   - Publishing a port requires a non-internal network, so this override also
 #     attaches each companion to the default bridge network. That temporarily
-#     relaxes the no-egress isolation of vondel-compat; remove the override
+#     relaxes the no-egress isolation of bloem-compat; remove the override
 #     (run `up -d --remove-orphans` without this file) as soon as debugging is
 #     done.
 #   - Bindings are loopback-only by construction. Do not change 127.0.0.1;
 #     scripts/verify-compat-compose.sh rejects anything else.
 
 services:
-  vondel-audiobookshelf:
+  bloem-audiobookshelf:
     networks:
-      vondel-compat:
+      bloem-compat:
         aliases:
-          - vondel-audiobookshelf
+          - bloem-audiobookshelf
       default: {}
     ports:
-      - "127.0.0.1:${VONDEL_AUDIOBOOKSHELF_DIAG_PORT:-13379}:8080"
+      - "127.0.0.1:${BLOEM_AUDIOBOOKSHELF_DIAG_PORT:-13379}:8080"
 
-  vondel-jellyfin:
+  bloem-jellyfin:
     networks:
-      vondel-compat:
+      bloem-compat:
         aliases:
-          - vondel-jellyfin
+          - bloem-jellyfin
       default: {}
     ports:
-      - "127.0.0.1:${VONDEL_JELLYFIN_DIAG_PORT:-8098}:8080"
+      - "127.0.0.1:${BLOEM_JELLYFIN_DIAG_PORT:-8098}:8080"

@@ -13,7 +13,7 @@
 # Notes:
 # - Linux only. Docker Desktop (macOS/Windows) host networking is not a real
 #   LAN attach — use URL probe for Dispatcharr / enter the HDHR discover URL.
-# - With network_mode: host, published `ports:` are ignored; Vondel listens on
+# - With network_mode: host, published `ports:` are ignored; Bloem listens on
 #   host :8080 (and JF/ABS ports if enabled). Point clients at that host port,
 #   or put a reverse proxy on the host in front of it.
 # - postgres/redis stay on the compose network but publish 5432/6379 to the host,

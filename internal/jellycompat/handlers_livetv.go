@@ -185,7 +185,7 @@ func (h *LiveTVHandler) HandleInfo(w http.ResponseWriter, r *http.Request) {
 		IsEnabled:    true,
 		EnabledUsers: []string{},
 		Services: []liveTVServiceInfoDTO{{
-			Name:      "Vondel",
+			Name:      "Bloem",
 			Status:    status,
 			IsVisible: true,
 			Tuners:    tunerNames,

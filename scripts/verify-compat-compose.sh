@@ -3,7 +3,7 @@
 #
 # Renders every supported Compose file combination with `docker compose config`
 # and enforces the deployment rulings from
-# docs/superpowers/specs/2026-08-12-vondel-compatibility-sidecars-design.md.
+# docs/superpowers/specs/2026-08-12-bloem-compatibility-sidecars-design.md.
 #
 # THE SCAN IS DEFAULT-DENY AT THE SERVICE LEVEL AND AT THE TOP LEVEL.
 #
@@ -36,35 +36,35 @@
 # `{external: true, name: attacker_shared_bridge}` — directly, or through an
 # `include:` directive — and move postgres, redis, silo and meilisearch onto an
 # attacker-named network with ZERO service-level change; and it could give
-# vondel-compat an arbitrary driver/driver_opts/ipam. Every service-level check
+# bloem-compat an arbitrary driver/driver_opts/ipam. Every service-level check
 # passed on all three.
 #
 # Permitting a key is not permitting any value, so each allowed key that can
 # carry risk keeps a value-level check:
 #
-#   - image      — must be a private ghcr.io/vondel-media image, never a build;
+#   - image      — must be a private ghcr.io/bloem-studios image, never a build;
 #   - ports      — none at all, except the diagnostics override, which may bind
 #                  127.0.0.1 only;
-#   - networks   — exactly the internal vondel-compat network (plus the default
+#   - networks   — exactly the internal bloem-compat network (plus the default
 #                  bridge in the diagnostics override, which publishing needs),
-#                  and for silo exactly {default, vondel-compat} with no
+#                  and for silo exactly {default, bloem-compat} with no
 #                  per-network options;
 #   - volumes    — locally defined named volumes only: no bind mounts, no
 #                  external/aliased volumes, no driver_opts;
 #   - secrets    — exactly one enrollment secret, mounted at
-#                  /run/secrets/vondel_compat_enrollment and backed by the
+#                  /run/secrets/bloem_compat_enrollment and backed by the
 #                  committed ./.secrets/compat file, not an arbitrary host path;
 #   - security_opt — exactly no-new-privileges:true; never unconfined seccomp,
 #                  AppArmor, system paths, or label:disable;
-#   - environment — no Vondel database/Redis/signing/provider/tuner or
+#   - environment — no Bloem database/Redis/signing/provider/tuner or
 #                  credential-shaped keys, and no DSN-shaped values.
 #
-# The Vondel service is checked separately, because it legitimately owns media
+# The Bloem service is checked separately, because it legitimately owns media
 # mounts and the database: it must not gain the companion enrollment secret,
-# and its network membership is pinned to exactly {default, vondel-compat} with
-# no options on vondel-compat. Exempting silo.networks wholesale let an overlay
+# and its network membership is pinned to exactly {default, bloem-compat} with
+# no options on bloem-compat. Exempting silo.networks wholesale let an overlay
 # attach silo to an `external: true` network belonging to another stack, and let
-# silo claim aliases such as `postgres` or `redis` on vondel-compat — which is
+# silo claim aliases such as `postgres` or `redis` on bloem-compat — which is
 # service impersonation on the very network the companions trust.
 #
 # BASE SERVICES. docker-compose.yml is not trusted implicitly. Its services are
@@ -82,7 +82,7 @@
 # directory contains a .env: once with --env-file /dev/null, judging the values
 # the repository commits, and once with the operator's .env, judging the values
 # that deployment will actually use. Without the second pass an operator .env
-# setting VONDEL_JELLYFIN_ENROLLMENT_FILE=/etc/passwd reproduced, invisibly, the
+# setting BLOEM_JELLYFIN_ENROLLMENT_FILE=/etc/passwd reproduced, invisibly, the
 # exact tamper the committed-defaults pass catches. Failure messages therefore
 # say a value must "resolve to" something, not that it is committed as such; the
 # combination label carries a ".env" suffix on the second pass.
@@ -147,7 +147,7 @@ done
 
 # Fixed project name for rendering; locally defined volumes render with this
 # prefix, which the state-volume locality check relies on.
-project_name="vondel-compat-verify"
+project_name="bloem-compat-verify"
 
 failures=0
 
@@ -233,17 +233,17 @@ check_service_key_allowlist() {
 # verify_compat_network_membership <rendered-json> <combo-label> <expected-json>
 # Withholding a DSN is not a boundary; REACHABILITY is. Nothing stopped an
 # overlay from attaching postgres and redis to the companion network, which
-# would hand a companion Vondel's database (compose defaults silo/silo) and an
+# would hand a companion Bloem's database (compose defaults silo/silo) and an
 # unauthenticated Redis while every environment check still passed. The set of
-# services on vondel-compat is therefore pinned: Vondel plus this combination's
+# services on bloem-compat is therefore pinned: Bloem plus this combination's
 # companions, nobody else.
 verify_compat_network_membership() {
 	local json=$1 label=$2 expected=$3
 	local actual
 	actual=$(jq -c '[.services | to_entries[]
-		| select((.value.networks // {}) | has("vondel-compat")) | .key] | sort' <<<"$json")
+		| select((.value.networks // {}) | has("bloem-compat")) | .key] | sort' <<<"$json")
 	if [[ "$actual" != "$(jq -c 'sort' <<<"$expected")" ]]; then
-		fail "[$label] services attached to vondel-compat must be exactly $(jq -c 'sort' <<<"$expected"), found $actual"
+		fail "[$label] services attached to bloem-compat must be exactly $(jq -c 'sort' <<<"$expected"), found $actual"
 	fi
 }
 
@@ -263,9 +263,9 @@ verify_compat_network_membership() {
 # remove. Both are now "overlay modified base network default".
 #
 # <expected-new-json> is an object keyed by section, e.g.
-#   {"services": ["vondel-jellyfin"], "networks": ["vondel-compat"],
-#    "volumes": ["vondel-jellyfin-state"],
-#    "secrets": ["vondel_jellyfin_enrollment"], "configs": []}
+#   {"services": ["bloem-jellyfin"], "networks": ["bloem-compat"],
+#    "volumes": ["bloem-jellyfin-state"],
+#    "secrets": ["bloem_jellyfin_enrollment"], "configs": []}
 # Every section must be listed; a missing section is treated as "adds nothing".
 verify_overlay_delta() {
 	local base_json=$1 combo_json=$2 label=$3 expected_new=$4
@@ -312,10 +312,10 @@ verify_overlay_delta() {
 
 # verify_top_level_networks <rendered-json> <combo-label> <expected-keys-json>
 # The delta above pins base networks against the base render, but a network the
-# overlay legitimately ADDS (vondel-compat) has nothing to be diffed against, so
+# overlay legitimately ADDS (bloem-compat) has nothing to be diffed against, so
 # it gets the same treatment every companion service gets: a key allowlist plus
 # a pinned name. `driver: macvlan` with `driver_opts.parent: eth0` on
-# vondel-compat is a bridge onto the host LAN and passed every other check;
+# bloem-compat is a bridge onto the host LAN and passed every other check;
 # `external: true` with a `name:` aliases somebody else's network under ours.
 # Both are denied here by not being on the list, along with ipam, attachable,
 # labels, enable_ipv6 and whatever Compose adds next.
@@ -405,7 +405,7 @@ verify_service_set() {
 #
 #   - healthcheck.test is arbitrary command execution inside the companion,
 #     the same capability `command`/`entrypoint` are denied for. A CMD-SHELL
-#     probe can read /run/secrets/vondel_compat_enrollment and post it to a
+#     probe can read /run/secrets/bloem_compat_enrollment and post it to a
 #     service it shares a network with.
 #   - labels are inert only if nothing on the host consumes them. A Traefik
 #     router label republishes an internal companion on public ingress,
@@ -478,7 +478,7 @@ declared_filter='.value != null and .value != [] and .value != {}'
 # AppArmor, unconfined system paths, label:disable — turns the sandbox off.
 required_security_opt_json='["no-new-privileges:true"]'
 
-# Environment keys a companion must never receive: Vondel's own service
+# Environment keys a companion must never receive: Bloem's own service
 # configuration, anything database/connection shaped (DB_*, PG*, CONN*),
 # anything provider/tuner/signing shaped, and anything credential-shaped
 # (secrets travel as files, never as environment values).
@@ -504,22 +504,22 @@ verify_companion() {
 			"[$s.ports // [] | .[] | .host_ip] | length > 0 and all(. == \"127.0.0.1\")" \
 			"$svc diagnostic ports must all bind 127.0.0.1"
 		check "$json" "$label" \
-			"$s.networks | keys | sort == [\"default\", \"vondel-compat\"]" \
-			"$svc must attach exactly the vondel-compat and default networks in diagnostics mode"
+			"$s.networks | keys | sort == [\"default\", \"bloem-compat\"]" \
+			"$svc must attach exactly the bloem-compat and default networks in diagnostics mode"
 	else
 		check "$json" "$label" \
 			"($s.ports // []) | length == 0" \
 			"$svc must publish no host ports outside the diagnostics override"
 		check "$json" "$label" \
-			"$s.networks | keys == [\"vondel-compat\"]" \
-			"$svc must attach only the vondel-compat network"
+			"$s.networks | keys == [\"bloem-compat\"]" \
+			"$svc must attach only the bloem-compat network"
 	fi
 
 	check "$json" "$label" \
-		".networks[\"vondel-compat\"].internal == true" \
-		"the vondel-compat network must be internal"
+		".networks[\"bloem-compat\"].internal == true" \
+		"the bloem-compat network must be internal"
 	check "$json" "$label" \
-		"$s.networks[\"vondel-compat\"].aliases == [\"$svc\"]" \
+		"$s.networks[\"bloem-compat\"].aliases == [\"$svc\"]" \
 		"$svc must declare its private network alias"
 
 	# privileged, cap_add, devices, device_cgroup_rules, volumes_from, tmpfs,
@@ -536,8 +536,8 @@ verify_companion() {
 		"$svc security_opt must be exactly no-new-privileges:true (no unconfined seccomp/AppArmor/system paths, no label:disable)"
 
 	check "$json" "$label" \
-		"$s.image | test(\"^ghcr\\\\.io/vondel-media/$svc(:|@|$)\")" \
-		"$svc image must resolve to the private ghcr.io/vondel-media registry"
+		"$s.image | test(\"^ghcr\\\\.io/bloem-studios/$svc(:|@|$)\")" \
+		"$svc image must resolve to the private ghcr.io/bloem-studios registry"
 
 	check "$json" "$label" \
 		"($s.volumes // []) | all(.type == \"volume\")" \
@@ -563,7 +563,7 @@ verify_companion() {
 
 	check "$json" "$label" \
 		"($s.environment // {}) | keys | all(test(\$forbidden; \"\") | not)" \
-		"$svc must not receive Vondel database/Redis/signing/provider/tuner or credential-shaped environment keys"
+		"$svc must not receive Bloem database/Redis/signing/provider/tuner or credential-shaped environment keys"
 	check "$json" "$label" \
 		"($s.environment // {}) | [.[]] | all(
 			(tostring | ascii_downcase) as \$v |
@@ -584,7 +584,7 @@ verify_companion() {
 	# blast radius, since a companion has no reason to hold connection settings
 	# for anything at all.
 	check "$json" "$label" \
-		"[.services | keys[] | select(startswith(\"vondel-\") | not)] as \$svcnames |
+		"[.services | keys[] | select(startswith(\"bloem-\") | not)] as \$svcnames |
 			($s.environment // {}) | [.[]] | all(
 				(tostring) as \$v |
 				((\$v | test(\"^[A-Za-z0-9._-]+$\")) and (\$svcnames | index(\$v))) | not
@@ -597,8 +597,8 @@ verify_companion() {
 		"$svc environment keys together look like split connection settings"
 
 	check "$json" "$label" \
-		"($s.secrets // []) | length == 1 and .[0].target == \"vondel_compat_enrollment\"" \
-		"$svc must mount exactly one enrollment secret at /run/secrets/vondel_compat_enrollment"
+		"($s.secrets // []) | length == 1 and .[0].target == \"bloem_compat_enrollment\"" \
+		"$svc must mount exactly one enrollment secret at /run/secrets/bloem_compat_enrollment"
 	check "$json" "$label" \
 		"(($s.secrets // []) | .[0].source // \"\") | length > 0" \
 		"$svc enrollment secret must name a source"
@@ -614,7 +614,7 @@ verify_companion() {
 	# resolved against the compose directory the way Compose resolves it.
 	#
 	# "resolve to", not "is": the committed value is interpolated from
-	# VONDEL_*_ENROLLMENT_FILE, so an operator .env can move it. That is exactly
+	# BLOEM_*_ENROLLMENT_FILE, so an operator .env can move it. That is exactly
 	# why this scan makes a second pass over the operator's .env — a defaults-only
 	# scan reported this check green while the deployment mounted /etc/passwd.
 	check "$json" "$label" \
@@ -623,28 +623,28 @@ verify_companion() {
 		"$svc enrollment secret must resolve to the committed ./.secrets/compat/$svc-enrollment.token file"
 }
 
-# Invariants for the Vondel service when companions are present.
-#   verify_vondel <json> <label>
+# Invariants for the Bloem service when companions are present.
+#   verify_bloem <json> <label>
 #
 # silo.networks is the one key the overlay delta lets an overlay touch, so it is
 # pinned here rather than merely sampled. Checking only has("default") and
-# has("vondel-compat") allowed BOTH halves of the key to be abused: an extra
+# has("bloem-compat") allowed BOTH halves of the key to be abused: an extra
 # network entry (`lateral: {external: true, name: attacker_stack_default}`)
-# bridged silo into another stack, and options on the vondel-compat entry let
+# bridged silo into another stack, and options on the bloem-compat entry let
 # silo claim aliases such as `postgres` or `redis` on the network the companions
 # resolve names over. Exact set, no options.
-verify_vondel() {
+verify_bloem() {
 	local json=$1 label=$2
 	check "$json" "$label" \
-		'(.services.silo.networks // {}) | keys | sort == ["default", "vondel-compat"]' \
-		"the Vondel service must join exactly the default and vondel-compat networks"
+		'(.services.silo.networks // {}) | keys | sort == ["default", "bloem-compat"]' \
+		"the Bloem service must join exactly the default and bloem-compat networks"
 	check "$json" "$label" \
-		'((.services.silo.networks["vondel-compat"] // {}) == {})
+		'((.services.silo.networks["bloem-compat"] // {}) == {})
 			and ((.services.silo.networks["default"] // {}) == {})' \
-		"the Vondel service must declare no network options (no aliases impersonating another service, no per-network overrides)"
+		"the Bloem service must declare no network options (no aliases impersonating another service, no per-network overrides)"
 	check "$json" "$label" \
-		'[.services.silo.secrets // [] | .[] | .target] | index("vondel_compat_enrollment") == null' \
-		"the Vondel service must not receive the companion enrollment secret"
+		'[.services.silo.secrets // [] | .[] | .target] | index("bloem_compat_enrollment") == null' \
+		"the Bloem service must not receive the companion enrollment secret"
 }
 
 echo "verify-compat-compose: scanning rendered configurations in $compose_dir"
@@ -652,36 +652,36 @@ echo "verify-compat-compose: scanning rendered configurations in $compose_dir"
 # Each combination declares the exact service set it may render: the base stack
 # plus the companions its overlays activate, and nothing else.
 base_only='["postgres", "redis", "silo", "meilisearch"]'
-with_abs='["postgres", "redis", "silo", "meilisearch", "vondel-audiobookshelf"]'
-with_jf='["postgres", "redis", "silo", "meilisearch", "vondel-jellyfin"]'
-with_both='["postgres", "redis", "silo", "meilisearch", "vondel-audiobookshelf", "vondel-jellyfin"]'
+with_abs='["postgres", "redis", "silo", "meilisearch", "bloem-audiobookshelf"]'
+with_jf='["postgres", "redis", "silo", "meilisearch", "bloem-jellyfin"]'
+with_both='["postgres", "redis", "silo", "meilisearch", "bloem-audiobookshelf", "bloem-jellyfin"]'
 
 # The top-level networks each combination may render.
 nets_base='["default"]'
-nets_compat='["default", "vondel-compat"]'
+nets_compat='["default", "bloem-compat"]'
 
 # The complete set of top-level entries each overlay combination may ADD to the
 # base render. Everything not listed here — in any of the five sections — is a
 # finding, and every base entry must survive unchanged.
 delta_abs='{
-	"services": ["vondel-audiobookshelf"],
-	"networks": ["vondel-compat"],
-	"volumes": ["vondel-audiobookshelf-state"],
-	"secrets": ["vondel_audiobookshelf_enrollment"],
+	"services": ["bloem-audiobookshelf"],
+	"networks": ["bloem-compat"],
+	"volumes": ["bloem-audiobookshelf-state"],
+	"secrets": ["bloem_audiobookshelf_enrollment"],
 	"configs": []
 }'
 delta_jf='{
-	"services": ["vondel-jellyfin"],
-	"networks": ["vondel-compat"],
-	"volumes": ["vondel-jellyfin-state"],
-	"secrets": ["vondel_jellyfin_enrollment"],
+	"services": ["bloem-jellyfin"],
+	"networks": ["bloem-compat"],
+	"volumes": ["bloem-jellyfin-state"],
+	"secrets": ["bloem_jellyfin_enrollment"],
 	"configs": []
 }'
 delta_both='{
-	"services": ["vondel-audiobookshelf", "vondel-jellyfin"],
-	"networks": ["vondel-compat"],
-	"volumes": ["vondel-audiobookshelf-state", "vondel-jellyfin-state"],
-	"secrets": ["vondel_audiobookshelf_enrollment", "vondel_jellyfin_enrollment"],
+	"services": ["bloem-audiobookshelf", "bloem-jellyfin"],
+	"networks": ["bloem-compat"],
+	"volumes": ["bloem-audiobookshelf-state", "bloem-jellyfin-state"],
+	"secrets": ["bloem_audiobookshelf_enrollment", "bloem_jellyfin_enrollment"],
 	"configs": []
 }'
 
@@ -698,11 +698,11 @@ scan_combinations() {
 	verify_service_set "$base_json" "base$sfx" "$base_only"
 	verify_top_level_networks "$base_json" "base$sfx" "$nets_base"
 	check "$base_json" "base$sfx" \
-		'.services | keys | all(test("^vondel-(audiobookshelf|jellyfin)$") | not)' \
+		'.services | keys | all(test("^bloem-(audiobookshelf|jellyfin)$") | not)' \
 		"the base compose file must not define companion services; activation is overlay-only"
 
 	# Combination B: base + audiobookshelf. KEEP THIS COMBINATION. It is the only
-	# one that can catch `internal: true` turned to `false` on vondel-compat in
+	# one that can catch `internal: true` turned to `false` on bloem-compat in
 	# the audiobookshelf overlay: both overlays define that network, so in every
 	# combination that also loads the jellyfin overlay the later definition wins
 	# and silently restores internal: true. A "simplification" that drops the
@@ -711,9 +711,9 @@ scan_combinations() {
 	verify_service_set "$json" "audiobookshelf$sfx" "$with_abs"
 	verify_top_level_networks "$json" "audiobookshelf$sfx" "$nets_compat"
 	verify_overlay_delta "$base_json" "$json" "audiobookshelf$sfx" "$delta_abs"
-	verify_compat_network_membership "$json" "audiobookshelf$sfx" '["silo", "vondel-audiobookshelf"]'
-	verify_companion "$json" "audiobookshelf$sfx" "vondel-audiobookshelf" "no"
-	verify_vondel "$json" "audiobookshelf$sfx"
+	verify_compat_network_membership "$json" "audiobookshelf$sfx" '["silo", "bloem-audiobookshelf"]'
+	verify_companion "$json" "audiobookshelf$sfx" "bloem-audiobookshelf" "no"
+	verify_bloem "$json" "audiobookshelf$sfx"
 
 	# Combination C: base + jellyfin. Symmetrically, the only combination that can
 	# catch the same tamper in the jellyfin overlay.
@@ -721,19 +721,19 @@ scan_combinations() {
 	verify_service_set "$json" "jellyfin$sfx" "$with_jf"
 	verify_top_level_networks "$json" "jellyfin$sfx" "$nets_compat"
 	verify_overlay_delta "$base_json" "$json" "jellyfin$sfx" "$delta_jf"
-	verify_compat_network_membership "$json" "jellyfin$sfx" '["silo", "vondel-jellyfin"]'
-	verify_companion "$json" "jellyfin$sfx" "vondel-jellyfin" "no"
-	verify_vondel "$json" "jellyfin$sfx"
+	verify_compat_network_membership "$json" "jellyfin$sfx" '["silo", "bloem-jellyfin"]'
+	verify_companion "$json" "jellyfin$sfx" "bloem-jellyfin" "no"
+	verify_bloem "$json" "jellyfin$sfx"
 
 	# Combination D: base + both companions.
 	json=$(render "$base_file" "$abs_file" "$jf_file")
 	verify_service_set "$json" "both$sfx" "$with_both"
 	verify_top_level_networks "$json" "both$sfx" "$nets_compat"
 	verify_overlay_delta "$base_json" "$json" "both$sfx" "$delta_both"
-	verify_compat_network_membership "$json" "both$sfx" '["silo", "vondel-audiobookshelf", "vondel-jellyfin"]'
-	verify_companion "$json" "both$sfx" "vondel-audiobookshelf" "no"
-	verify_companion "$json" "both$sfx" "vondel-jellyfin" "no"
-	verify_vondel "$json" "both$sfx"
+	verify_compat_network_membership "$json" "both$sfx" '["silo", "bloem-audiobookshelf", "bloem-jellyfin"]'
+	verify_companion "$json" "both$sfx" "bloem-audiobookshelf" "no"
+	verify_companion "$json" "both$sfx" "bloem-jellyfin" "no"
+	verify_bloem "$json" "both$sfx"
 
 	# Combination E: base + both companions + diagnostics override. The delta is
 	# taken against the BASE render, like every other combination: the diagnostics
@@ -747,10 +747,10 @@ scan_combinations() {
 	verify_service_set "$diag_json" "diagnostics$sfx" "$with_both"
 	verify_top_level_networks "$diag_json" "diagnostics$sfx" "$nets_compat"
 	verify_overlay_delta "$base_json" "$diag_json" "diagnostics$sfx" "$delta_both"
-	verify_compat_network_membership "$diag_json" "diagnostics$sfx" '["silo", "vondel-audiobookshelf", "vondel-jellyfin"]'
-	verify_companion "$diag_json" "diagnostics$sfx" "vondel-audiobookshelf" "yes"
-	verify_companion "$diag_json" "diagnostics$sfx" "vondel-jellyfin" "yes"
-	verify_vondel "$diag_json" "diagnostics$sfx"
+	verify_compat_network_membership "$diag_json" "diagnostics$sfx" '["silo", "bloem-audiobookshelf", "bloem-jellyfin"]'
+	verify_companion "$diag_json" "diagnostics$sfx" "bloem-audiobookshelf" "yes"
+	verify_companion "$diag_json" "diagnostics$sfx" "bloem-jellyfin" "yes"
+	verify_bloem "$diag_json" "diagnostics$sfx"
 }
 
 # Pass 1: committed defaults only.

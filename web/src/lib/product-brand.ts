@@ -1,7 +1,7 @@
 /**
  * The product's name, applied at BUILD TIME rather than written into the source.
  *
- * Vondel Server is a tracking fork of Silo Server (see FORK.md): upstream's
+ * Bloem Server is a tracking fork of Silo Server (see FORK.md): upstream's
  * history is merged continuously, so every line this fork edits is a line that
  * conflicts on some future merge. Renaming the product in the source would mean
  * editing ~87 web files — and they are precisely the files upstream edits most,
@@ -16,7 +16,7 @@
  */
 
 /** What this build calls itself. */
-export const PRODUCT_NAME = "Vondel";
+export const PRODUCT_NAME = "Bloem";
 
 /** Upstream's name for itself, as it appears in prose. */
 const UPSTREAM_NAME = "Silo";

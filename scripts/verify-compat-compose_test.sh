@@ -201,25 +201,25 @@ expect_scan_failure \
 	"must publish no host ports outside the diagnostics override"
 
 expect_scan_failure \
-	"detects a Vondel database URL in companion environment" \
+	"detects a Bloem database URL in companion environment" \
 	"$abs_file" \
-	"/VONDEL_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/vondel_compat_enrollment/a\\
+	"/BLOEM_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/bloem_compat_enrollment/a\\
       DATABASE_URL: postgres://silo:silo@postgres:5432/silo
 " \
-	"must not receive Vondel database/Redis/signing/provider/tuner or credential-shaped environment keys"
+	"must not receive Bloem database/Redis/signing/provider/tuner or credential-shaped environment keys"
 
 expect_scan_failure \
-	"detects the Vondel SECRET_KEY in companion environment" \
+	"detects the Bloem SECRET_KEY in companion environment" \
 	"$jf_file" \
-	"/VONDEL_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/vondel_compat_enrollment/a\\
+	"/BLOEM_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/bloem_compat_enrollment/a\\
       SECRET_KEY: not-allowed-here
 " \
-	"must not receive Vondel database/Redis/signing/provider/tuner or credential-shaped environment keys"
+	"must not receive Bloem database/Redis/signing/provider/tuner or credential-shaped environment keys"
 
 expect_scan_failure \
 	"detects a Docker socket mount" \
 	"$abs_file" \
-	"/- vondel-audiobookshelf-state:\/var\/lib\/vondel-compat/a\\
+	"/- bloem-audiobookshelf-state:\/var\/lib\/bloem-compat/a\\
       - /var/run/docker.sock:/var/run/docker.sock
 " \
 	"may mount only named volumes"
@@ -227,7 +227,7 @@ expect_scan_failure \
 expect_scan_failure \
 	"detects a media bind mount" \
 	"$jf_file" \
-	"/- vondel-jellyfin-state:\/var\/lib\/vondel-compat/a\\
+	"/- bloem-jellyfin-state:\/var\/lib\/bloem-compat/a\\
       - /mnt/media:/mnt/media:ro
 " \
 	"may mount only named volumes"
@@ -251,8 +251,8 @@ expect_scan_failure \
 expect_scan_failure \
 	"detects a public image source" \
 	"$abs_file" \
-	"s|ghcr.io/vondel-media/vondel-audiobookshelf:latest|docker.io/library/audiobookshelf:latest|" \
-	"image must resolve to the private ghcr.io/vondel-media registry"
+	"s|ghcr.io/bloem-studios/bloem-audiobookshelf:latest|docker.io/library/audiobookshelf:latest|" \
+	"image must resolve to the private ghcr.io/bloem-studios registry"
 
 expect_scan_failure \
 	"detects a non-loopback diagnostic binding" \
@@ -264,26 +264,26 @@ expect_scan_failure \
 	"detects a companion escaping the internal network" \
 	"$abs_file" \
 	"s|internal: true|internal: false|" \
-	"the vondel-compat network must be internal"
+	"the bloem-compat network must be internal"
 
 expect_scan_failure \
 	"detects a companion joining the default network outside diagnostics" \
 	"$abs_file" \
-	"/- vondel-audiobookshelf$/a\\
+	"/- bloem-audiobookshelf$/a\\
       default: {}
 " \
-	"must attach only the vondel-compat network"
+	"must attach only the bloem-compat network"
 
 expect_scan_failure \
 	"detects a renamed enrollment secret target" \
 	"$jf_file" \
-	"s|target: vondel_compat_enrollment|target: some_other_secret|" \
-	"must mount exactly one enrollment secret at /run/secrets/vondel_compat_enrollment"
+	"s|target: bloem_compat_enrollment|target: some_other_secret|" \
+	"must mount exactly one enrollment secret at /run/secrets/bloem_compat_enrollment"
 
 expect_scan_failure \
 	"detects an environment-backed enrollment secret" \
 	"$abs_file" \
-	"s|file: \${VONDEL_AUDIOBOOKSHELF_ENROLLMENT_FILE:-.*}|environment: VONDEL_AUDIOBOOKSHELF_ENROLLMENT|" \
+	"s|file: \${BLOEM_AUDIOBOOKSHELF_ENROLLMENT_FILE:-.*}|environment: BLOEM_AUDIOBOOKSHELF_ENROLLMENT|" \
 	"must be file-backed, never environment-backed"
 
 expect_scan_failure \
@@ -314,7 +314,7 @@ expect_scan_failure \
 expect_scan_failure \
 	"detects an external state volume aliasing a host volume" \
 	"$abs_file" \
-	"/^  vondel-audiobookshelf-state:$/a\\
+	"/^  bloem-audiobookshelf-state:$/a\\
     external: true
 " \
 	"state volumes must be locally defined"
@@ -322,7 +322,7 @@ expect_scan_failure \
 expect_scan_failure \
 	"detects an explicitly named state volume aliasing another volume" \
 	"$jf_file" \
-	"/^  vondel-jellyfin-state:$/a\\
+	"/^  bloem-jellyfin-state:$/a\\
     name: shared-host-media
 " \
 	"state volumes must be locally defined"
@@ -330,15 +330,15 @@ expect_scan_failure \
 expect_scan_failure \
 	"detects a keyword-form database key in companion environment" \
 	"$abs_file" \
-	"/VONDEL_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/vondel_compat_enrollment/a\\
+	"/BLOEM_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/bloem_compat_enrollment/a\\
       DB_HOST: postgres
 " \
-	"must not receive Vondel database/Redis/signing/provider/tuner or credential-shaped environment keys"
+	"must not receive Bloem database/Redis/signing/provider/tuner or credential-shaped environment keys"
 
 expect_scan_failure \
 	"detects a libpq keyword DSN in companion environment" \
 	"$jf_file" \
-	"/VONDEL_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/vondel_compat_enrollment/a\\
+	"/BLOEM_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/bloem_compat_enrollment/a\\
       STATE_BACKEND: host=postgres user=silo password=silo dbname=silo
 " \
 	"must not carry database/Redis URLs or keyword-form (libpq) DSNs"
@@ -456,7 +456,7 @@ expect_scan_failure \
 expect_scan_failure \
 	"detects a DSN split across innocuously named environment keys" \
 	"$abs_file" \
-	"/VONDEL_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/vondel_compat_enrollment/a\\
+	"/BLOEM_COMPAT_ENROLLMENT_FILE: \/run\/secrets\/bloem_compat_enrollment/a\\
       STORE_HOST: postgres\\
       STORE_DBNAME: silo\\
       STORE_USER: silo\\
@@ -511,7 +511,7 @@ expect_scan_failure \
 	"$jf_file" \
 	"\$a\\
 \\
-  vondel-jellyfin-helper:\\
+  bloem-jellyfin-helper:\\
     image: alpine:latest\\
     privileged: true\\
     pid: host\\
@@ -521,7 +521,7 @@ expect_scan_failure \
       - /var/run/docker.sock:/var/run/docker.sock\\
     command: [\"sleep\", \"infinity\"]
 " \
-	"unexpected service(s) in the rendered configuration: vondel-jellyfin-helper"
+	"unexpected service(s) in the rendered configuration: bloem-jellyfin-helper"
 
 # The sharper version of the same finding: this service declares ONLY keys that
 # are on the companion key allowlist (image, volumes), so the key check clears
@@ -532,12 +532,12 @@ expect_scan_failure \
 	"$abs_file" \
 	"\$a\\
 \\
-  vondel-audiobookshelf-sidecar:\\
+  bloem-audiobookshelf-sidecar:\\
     image: alpine:latest\\
     volumes:\\
       - /var/run/docker.sock:/var/run/docker.sock
 " \
-	"unexpected service(s) in the rendered configuration: vondel-audiobookshelf-sidecar"
+	"unexpected service(s) in the rendered configuration: bloem-audiobookshelf-sidecar"
 
 # A service hidden behind a Compose profile renders only when that profile is
 # enabled, so it would be invisible to a scan that renders the default set.
@@ -546,13 +546,13 @@ expect_scan_failure \
 	"$jf_file" \
 	"\$a\\
 \\
-  vondel-jellyfin-debug:\\
+  bloem-jellyfin-debug:\\
     image: alpine:latest\\
     profiles: [debug]\\
     volumes:\\
       - /var/run/docker.sock:/var/run/docker.sock
 " \
-	"unexpected service(s) in the rendered configuration: vondel-jellyfin-debug"
+	"unexpected service(s) in the rendered configuration: bloem-jellyfin-debug"
 
 # --- Values behind allowed keys ----------------------------------------------
 
@@ -564,7 +564,7 @@ expect_scan_failure \
 	"$jf_file" \
 	"/$service_anchor/a\\
     healthcheck:\\
-      test: [\"CMD-SHELL\", \"cat /run/secrets/vondel_compat_enrollment | wget -qO- --post-data=@- http://silo:8080/\"]
+      test: [\"CMD-SHELL\", \"cat /run/secrets/bloem_compat_enrollment | wget -qO- --post-data=@- http://silo:8080/\"]
 " \
 	"outside the companion allowlist: healthcheck"
 
@@ -585,7 +585,7 @@ expect_scan_failure \
 expect_scan_failure \
 	"detects an enrollment secret backed by an arbitrary host file" \
 	"$jf_file" \
-	"s|file: \${VONDEL_JELLYFIN_ENROLLMENT_FILE:-.*}|file: /etc/passwd|" \
+	"s|file: \${BLOEM_JELLYFIN_ENROLLMENT_FILE:-.*}|file: /etc/passwd|" \
 	"enrollment secret must resolve to the committed"
 
 # The same defeat one level indirect: leave the committed secret alone, add a
@@ -593,9 +593,9 @@ expect_scan_failure \
 expect_scan_failure \
 	"detects a swapped source naming a host-backed secret" \
 	"$abs_file" \
-	"s|source: vondel_audiobookshelf_enrollment|source: vondel_audiobookshelf_alt|;
+	"s|source: bloem_audiobookshelf_enrollment|source: bloem_audiobookshelf_alt|;
 	 s|^secrets:\$|secrets:\\
-  vondel_audiobookshelf_alt:\\
+  bloem_audiobookshelf_alt:\\
     file: /etc/hosts|" \
 	"enrollment secret must resolve to the committed"
 
@@ -635,14 +635,14 @@ expect_scan_failure_built \
 	build_include_external_network \
 	"overlay modified base network default"
 
-# vondel-compat is ADDED by the overlay, so the delta has nothing to compare it
+# bloem-compat is ADDED by the overlay, so the delta has nothing to compare it
 # against; the top-level network key allowlist is what rejects this. macvlan
 # with a parent interface bridges the "internal" companion network straight onto
 # the host LAN.
 expect_scan_failure \
-	"detects a macvlan driver bridging vondel-compat onto the host LAN" \
+	"detects a macvlan driver bridging bloem-compat onto the host LAN" \
 	"$jf_file" \
-	"/^  vondel-compat:\$/a\\
+	"/^  bloem-compat:\$/a\\
     driver: macvlan\\
     driver_opts:\\
       parent: eth0
@@ -657,7 +657,7 @@ expect_scan_failure \
 	"$abs_file" \
 	"/^volumes:\$/a\\
   attacker-cache:
-s|^      - vondel-audiobookshelf-state:/var/lib/vondel-compat\$|      - vondel-audiobookshelf-state:/var/lib/vondel-compat\\
+s|^      - bloem-audiobookshelf-state:/var/lib/bloem-compat\$|      - bloem-audiobookshelf-state:/var/lib/bloem-compat\\
       - attacker-cache:/var/cache/attacker|" \
 	"overlay added unexpected volume(s)"
 
@@ -667,12 +667,12 @@ expect_scan_failure \
 	"/^secrets:\$/a\\
   attacker_hosts:\\
     file: /etc/hosts
-s|^      - source: vondel_jellyfin_enrollment\$|      - source: attacker_hosts\\
+s|^      - source: bloem_jellyfin_enrollment\$|      - source: attacker_hosts\\
         target: attacker_hosts\\
-      - source: vondel_jellyfin_enrollment|" \
+      - source: bloem_jellyfin_enrollment|" \
 	"overlay added unexpected secret(s)"
 
-# --- The Vondel service's own network membership -----------------------------
+# --- The Bloem service's own network membership -----------------------------
 #
 # silo.networks is the one key an overlay may touch, so both halves of it are
 # pinned. Neither of these adds, removes, or otherwise alters any service.
@@ -689,13 +689,13 @@ s|^      default: {}\$|      default: {}\\
 	"top-level networks must be exactly"
 
 expect_scan_failure \
-	"detects silo claiming a base service's alias on vondel-compat" \
+	"detects silo claiming a base service's alias on bloem-compat" \
 	"$jf_file" \
-	"s|^      vondel-compat: {}\$|      vondel-compat:\\
+	"s|^      bloem-compat: {}\$|      bloem-compat:\\
         aliases:\\
           - postgres\\
           - redis|" \
-	"the Vondel service must declare no network options"
+	"the Bloem service must declare no network options"
 
 # --- The base file is not a trusted input ------------------------------------
 #
@@ -721,13 +721,13 @@ expect_scan_failure \
 # catches in the committed defaults.
 build_env_redirecting_secret() {
 	local dir=$1
-	printf 'VONDEL_JELLYFIN_ENROLLMENT_FILE=/etc/passwd\n' >"$dir/.env"
+	printf 'BLOEM_JELLYFIN_ENROLLMENT_FILE=/etc/passwd\n' >"$dir/.env"
 	return 0
 }
 expect_scan_failure_built \
 	"detects an operator .env redirecting the enrollment secret to a host file" \
 	build_env_redirecting_secret \
-	"[jellyfin .env] vondel-jellyfin enrollment secret must resolve to the committed"
+	"[jellyfin .env] bloem-jellyfin enrollment secret must resolve to the committed"
 
 # --- Summary -----------------------------------------------------------------
 
