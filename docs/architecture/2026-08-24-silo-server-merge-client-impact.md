@@ -1,6 +1,6 @@
 # Silo playback merge impact on Vondel clients
 
-Status: implementation handoff  
+Status: implementation handoff
 Audited: 2026-08-24
 
 ## Revisions
