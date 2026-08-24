@@ -52,7 +52,7 @@ func TestV2CapabilitiesExactContract(t *testing.T) {
 		`"feature_tokens":["playback_plan_v3","neutral_playback_v3_contract_v1","layout_aware_passthrough",` +
 		`"playback_route_diagnostics","device_quirks_v1","seek_reanchor_v1","output_change_v1",` +
 		`"direct_stream_resume_v1","header_authenticated_media_v1","authorized_media_origins_v1",` +
-		`"software_video_decode_v1","plan_source_duration_v1","declared_event_channels",` +
+		`"software_video_decode_v1","plan_invalidated_v1","plan_source_duration_v1","declared_event_channels",` +
 		`"watch_document_v1","device_pairing_v1","progress_sync_v1","music_catalog_v1"]}`
 	if strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("body = %s, want %s", rec.Body.String(), want)
