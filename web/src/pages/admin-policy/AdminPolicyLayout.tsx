@@ -96,7 +96,7 @@ export default function AdminPolicyLayout() {
         <div className="space-y-3">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Policy</h1>
           <p className="page-subtitle text-sm sm:text-base">
-            Platform access rules: the Vondel baseline and the global restrictions layered over it.
+            Platform access rules: the Bloem baseline and the global restrictions layered over it.
           </p>
         </div>
       </div>

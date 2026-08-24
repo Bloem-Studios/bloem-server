@@ -13,18 +13,22 @@ func newSnapshot(name string) Snapshot {
 }
 
 func TestRenderIndexHTMLReplacesTitle(t *testing.T) {
-	in := []byte(`<html><head><title>Silo</title></head><body></body></html>`)
+	// RenderIndexHTML runs against the built, brand-transformed shell in
+	// production -- web/index.html's raw "Silo" placeholder becomes the
+	// configured PRODUCT_NAME at build time before this ever runs, so the
+	// fixture here represents post-transform output, not raw source.
+	in := []byte(`<html><head><title>Bloem</title></head><body></body></html>`)
 	out := string(RenderIndexHTML(in, newSnapshot("Acme Media")))
 	if !strings.Contains(out, "<title>Acme Media</title>") {
 		t.Fatalf("title not replaced: %q", out)
 	}
-	if strings.Contains(out, "<title>Silo</title>") {
+	if strings.Contains(out, "<title>Bloem</title>") {
 		t.Fatalf("default title still present: %q", out)
 	}
 }
 
 func TestRenderIndexHTMLEscapesTitle(t *testing.T) {
-	in := []byte(`<title>Silo</title></head>`)
+	in := []byte(`<title>Bloem</title></head>`)
 	out := string(RenderIndexHTML(in, newSnapshot(`A&B<script>`)))
 	if strings.Contains(out, "<script>") {
 		t.Fatalf("title not escaped: %q", out)
@@ -78,8 +82,14 @@ func TestRenderIndexHTMLAgainstRealShell(t *testing.T) {
 	if !strings.Contains(string(data), indexFaviconLink) {
 		t.Fatalf("web/index.html no longer contains the expected favicon link %q; update indexFaviconLink", indexFaviconLink)
 	}
+
+	// RenderIndexHTML runs against the built, brand-transformed shell in
+	// production (web/index.html's raw "Silo" placeholder becomes the
+	// configured PRODUCT_NAME at build time before this ever runs) --
+	// simulate that transform's output rather than feeding it raw source.
+	built := strings.Replace(string(data), "<title>Silo</title>", "<title>Bloem</title>", 1)
 	snap := Snapshot{ServerName: "Acme", assets: map[AssetKind]string{KindFavicon: "f00.png"}}
-	out := string(RenderIndexHTML(data, snap))
+	out := string(RenderIndexHTML([]byte(built), snap))
 	if !strings.Contains(out, "<title>Acme</title>") {
 		t.Fatalf("title not replaced in real shell")
 	}

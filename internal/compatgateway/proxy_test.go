@@ -109,7 +109,7 @@ func newTestGateway(t *testing.T, states StateProvider, transport http.RoundTrip
 
 // --- Static route table -----------------------------------------------------
 
-// The gateway owns a compile-time route table. Native surfaces — the Vondel
+// The gateway owns a compile-time route table. Native surfaces — the Bloem
 // application at "/", /api/v1/**, /api/v2/**, and /metrics — must never appear
 // in it, and no gateway prefix may shadow them.
 func TestRouteTableNeverClaimsNativeSurfaces(t *testing.T) {
@@ -906,7 +906,7 @@ func TestRedirectsRemainSameOrigin(t *testing.T) {
 
 // --- Composed public root (gateway ahead of the SPA fallback) ---------------
 
-// spaMarker stands in for the Vondel SPA fallback and records what reached it.
+// spaMarker stands in for the Bloem SPA fallback and records what reached it.
 type spaMarker struct {
 	mu    sync.Mutex
 	paths []string

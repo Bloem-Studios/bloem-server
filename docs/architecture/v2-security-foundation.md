@@ -1,6 +1,6 @@
-# Vondel v2 security foundation
+# Bloem v2 security foundation
 
-Vondel retains the Silo-compatible `/api/v1` account login, profile picker,
+Bloem retains the Silo-compatible `/api/v1` account login, profile picker,
 PIN unlock, token refresh, and administrative projection. The native
 `/api/v2` namespace is a separate additive boundary. Its discovery and
 administration surface exposes:
@@ -203,7 +203,7 @@ update affects exactly one row. Re-run the verification queries afterward.
 Rollback is allowed only before operators or later phases start writing
 non-default organizations, organization-specific profile group assignments,
 resource ownership, or entitlements that cannot be represented by v1. Take a
-tested backup, stop Vondel, and roll back the application binary and schema
+tested backup, stop Bloem, and roll back the application binary and schema
 together. Keeping a new binary against the old schema is unsupported.
 
 From a matching source checkout with the deployment environment file:

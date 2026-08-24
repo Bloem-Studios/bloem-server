@@ -207,12 +207,12 @@ func (s foundationStates) ApplicationStatus(ctx context.Context, kind compatgate
 
 // foundationSubjects exists because no production SubjectService adapter
 // exists yet (see the file header): cmd/silo never wires compatapi's
-// identity surface to Vondel's real auth service. It is a working fake, the
+// identity surface to Bloem's real auth service. It is a working fake, the
 // same kind foundationCatalog already is, one household with a PIN-free
 // reader profile and a PIN-protected kids profile. It proves every behavior
 // compatapi itself owns — subject token minting, per-request
 // revalidation, PIN enforcement, profile switching, revocation — for real;
-// it does not, and cannot, prove real Vondel password verification, which
+// it does not, and cannot, prove real Bloem password verification, which
 // is a separate, still-missing production seam.
 type foundationSubjectsState struct {
 	mu      sync.Mutex
@@ -1106,7 +1106,7 @@ func (f *foundationFixture) enrollAndActivate(kind, instanceID string, capabilit
 
 // requireGatewayError asserts the compatgateway error shape, which is
 // deliberately not the compatapi error envelope: the gateway answers for
-// companions that never got to speak Vondel's private API at all.
+// companions that never got to speak Bloem's private API at all.
 func (f *foundationFixture) requireGatewayError(response foundationResponse, wantStatus int, wantCode string) {
 	f.t.Helper()
 	f.requireStatus(response, wantStatus)

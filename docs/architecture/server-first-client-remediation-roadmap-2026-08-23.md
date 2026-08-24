@@ -7,7 +7,7 @@
 ## Goal
 
 Close the server security and distributed-ownership blockers first, then finish
-Watch Together, audiobooks, music, and ebooks across the required Vondel
+Watch Together, audiobooks, music, and ebooks across the required Bloem
 clients against stable, explicit server contracts.
 
 This roadmap is the durable program contract. Detailed implementation steps,

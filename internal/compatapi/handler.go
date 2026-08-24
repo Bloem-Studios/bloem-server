@@ -278,7 +278,7 @@ func (h *Handler) endpoint(op Operation, fn endpointFunc) http.HandlerFunc {
 				h.writeError(w, r, http.StatusServiceUnavailable, "unavailable", "subject resolution is unavailable")
 				return
 			}
-			// Vondel reauthorizes at its boundary: the token is only a
+			// Bloem reauthorizes at its boundary: the token is only a
 			// pointer to the subject, never the authority for it.
 			current, err := h.svc.Subjects.CurrentSubject(r.Context(), claims.Subject.subject())
 			if err != nil {

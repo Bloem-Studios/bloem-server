@@ -8,7 +8,7 @@ import (
 
 // State operations adapt the canonical subject-owned state: progress,
 // watched, favorites, bookmarks, collections, playlists, and downloads.
-// Everything remains owned by Vondel; companions keep no authoritative copy.
+// Everything remains owned by Bloem; companions keep no authoritative copy.
 
 func (h *Handler) stateService(w http.ResponseWriter, r *http.Request) (StateService, bool) {
 	if h.svc.State == nil {

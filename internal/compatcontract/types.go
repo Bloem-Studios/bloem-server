@@ -1,5 +1,5 @@
 // Package compatcontract executes protocol fixtures against a compatibility
-// listener. It deliberately contains no Vondel-domain dependencies so the
+// listener. It deliberately contains no Bloem-domain dependencies so the
 // same fixtures can characterize embedded handlers and extracted sidecars.
 package compatcontract
 

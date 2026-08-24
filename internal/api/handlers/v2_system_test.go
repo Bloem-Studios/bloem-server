@@ -123,7 +123,7 @@ func TestV2OrganizationsReturnsOnlyActiveMembershipsAndOrganizations(t *testing.
 			{ID: uuid.New(), OrganizationID: ownerlessID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "user", SecurityRevision: 1},
 		},
 		organizations: map[uuid.UUID]tenancy.Organization{
-			activeID:    {ID: activeID, Slug: "vondel", Name: "Vondel", Status: tenancy.OrganizationActive, OwnerAccountID: &ownerAccountID, PolicyRevision: 9, Default: true},
+			activeID:    {ID: activeID, Slug: "bloem", Name: "Bloem", Status: tenancy.OrganizationActive, OwnerAccountID: &ownerAccountID, PolicyRevision: 9, Default: true},
 			hiddenID:    {ID: hiddenID, Slug: "hidden", Name: "Hidden", Status: tenancy.OrganizationSuspended, PolicyRevision: 3},
 			ownerlessID: {ID: ownerlessID, Slug: "ownerless", Name: "Ownerless", Status: tenancy.OrganizationActive, PolicyRevision: 1},
 		},
@@ -145,7 +145,7 @@ func TestV2OrganizationsReturnsOnlyActiveMembershipsAndOrganizations(t *testing.
 		t.Fatalf("organizations = %#v, want exactly one", body.Organizations)
 	}
 	organization := body.Organizations[0]
-	if organization["id"] != activeID.String() || organization["membership_id"] != activeMembershipID.String() || organization["name"] != "Vondel" {
+	if organization["id"] != activeID.String() || organization["membership_id"] != activeMembershipID.String() || organization["name"] != "Bloem" {
 		t.Fatalf("organization = %#v", organization)
 	}
 	for _, forbidden := range []string{"owner_email", "owner_account_id", "member_count", "members"} {

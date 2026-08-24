@@ -18,7 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// mountV2 mounts the native Vondel API independently from the Silo-compatible
+// mountV2 mounts the native Bloem API independently from the Silo-compatible
 // /api/v1 projection. Organization listing is account-authenticated but occurs
 // before a tenant is selected; future organization-bound routes must add
 // tenantMW.RequireV2.

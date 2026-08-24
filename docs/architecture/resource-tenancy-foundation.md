@@ -1,6 +1,6 @@
 # Resource tenancy foundation
 
-Migration `20260813090000_resource_tenancy_roots.sql` establishes Vondel's
+Migration `20260813090000_resource_tenancy_roots.sql` establishes Bloem's
 first resource-isolation boundary. It does not enable organization-private
 resource creation, add public API fields, or activate row-level security.
 

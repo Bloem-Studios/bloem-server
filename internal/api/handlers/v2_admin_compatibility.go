@@ -15,7 +15,7 @@ import (
 
 // The Compatibility Applications admin surface. It is read-and-decide only:
 // it lists lifecycle state, creates enrollments, and enables/disables/
-// rotates/revokes through the application lifecycle service. Vondel never
+// rotates/revokes through the application lifecycle service. Bloem never
 // controls Docker — the surface displays exact operator commands and performs
 // no container mutation.
 
@@ -331,7 +331,7 @@ func (h *V2AdminCompatibilityHandler) writeServiceError(w http.ResponseWriter, e
 }
 
 // canonicalURL is the address a client of this application should use. Both
-// applications share Vondel's canonical public origin.
+// applications share Bloem's canonical public origin.
 func (h *V2AdminCompatibilityHandler) canonicalURL(kind string) string {
 	base := h.publicURL
 	if base == "" {
@@ -344,7 +344,7 @@ func (h *V2AdminCompatibilityHandler) canonicalURL(kind string) string {
 }
 
 // operatorCommands are the exact commands an operator (or their deployment
-// controller) runs. Vondel displays them and never executes them: it has no
+// controller) runs. Bloem displays them and never executes them: it has no
 // Docker socket and performs no container mutation.
 func operatorCommands(kind string) compatibilityCommands {
 	overlay := fmt.Sprintf("docker-compose.%s.yml", kind)

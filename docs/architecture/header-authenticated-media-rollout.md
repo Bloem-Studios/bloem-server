@@ -9,7 +9,7 @@ the protocol-v3 feature tokens `software_video_decode_v1`,
 The existing protocol contract remains authoritative for wire shapes and
 attempt-sticky behavior. This document adds the deployment-readiness,
 client-ownership, security, recovery, and rollout rules needed before the
-first-party Vondel clients advertise those features in production.
+first-party Bloem clients advertise those features in production.
 
 ## Goals
 
@@ -250,7 +250,7 @@ capability-aware replan, but it cannot change the attempt's security mode.
 ## Compatibility
 
 Existing Silo-compatible clients that omit these feature tokens continue to
-receive legacy signed media URLs. Existing first-party Vondel clients remain
+receive legacy signed media URLs. Existing first-party Bloem clients remain
 functional while the readiness setting is disabled.
 
 The change is additive at the API boundary:

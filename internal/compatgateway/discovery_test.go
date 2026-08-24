@@ -14,7 +14,7 @@ func newTestDiscovery(t *testing.T, states StateProvider) *Discovery {
 	return NewDiscovery(DiscoveryConfig{
 		PublicAddress: "https://vondel.example",
 		ServerID:      "compat-server-id",
-		ServerName:    "Vondel",
+		ServerName:    "Bloem",
 		States:        states,
 	})
 }
@@ -101,7 +101,7 @@ func TestDiscoveryRateLimits(t *testing.T) {
 	discovery := NewDiscovery(DiscoveryConfig{
 		PublicAddress: "https://vondel.example",
 		ServerID:      "compat-server-id",
-		ServerName:    "Vondel",
+		ServerName:    "Bloem",
 		States:        availableJellyfin(),
 		RateLimit:     2,
 		RateWindow:    time.Minute,

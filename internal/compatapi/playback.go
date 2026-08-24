@@ -9,7 +9,7 @@ import (
 // Playback operations plan, authorize, and track playback. Media bytes never
 // travel through this API: successful starts carry short-lived,
 // audience-bound, same-origin delivery grants the client fetches directly
-// from Vondel.
+// from Bloem.
 
 func (h *Handler) playbackService(w http.ResponseWriter, r *http.Request) (PlaybackService, bool) {
 	if h.svc.Playback == nil {

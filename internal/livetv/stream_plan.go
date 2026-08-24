@@ -34,7 +34,7 @@ type SourceCodecs struct {
 }
 
 // BroadcastSourceCodecs is what an ATSC 1.0 tuner emits: MPEG-2 video with
-// AC-3 audio, up to 5.1. Vondel does not probe the tuner before tuning (that
+// AC-3 audio, up to 5.1. Bloem does not probe the tuner before tuning (that
 // would burn a tuner and add seconds to every channel change), so this is the
 // assumed source. Assuming broadcast codecs is the safe direction: a client
 // that cannot decode them gets a transcode it can always play, while a client

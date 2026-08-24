@@ -2,7 +2,7 @@
 
 Status: architecture audit of `origin/main` at `e88a3588` on 2026-08-23.
 
-This review applies the same standard used for the Vondel native clients: find
+This review applies the same standard used for the Bloem native clients: find
 places where runtime truth has been replaced by declarations, where several
 components claim authority over the same decision, and where a local lifecycle
 is mistaken for a system lifecycle. It covers the Go API and workers, storage,

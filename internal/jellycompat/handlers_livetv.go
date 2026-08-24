@@ -343,7 +343,7 @@ func (h *LiveTVHandler) HandleRecommendedPrograms(w http.ResponseWriter, r *http
 	})
 }
 
-// livetvOwner resolves the mapped Vondel app user for Live TV ownership checks.
+// livetvOwner resolves the mapped Bloem app user for Live TV ownership checks.
 // Fail closed: unmapped / missing sessions are unauthorized (same as stream file).
 func (h *LiveTVHandler) livetvOwner(w http.ResponseWriter, r *http.Request) (userID int, profileID string, ok bool) {
 	session := SessionFromContext(r.Context())
@@ -446,7 +446,7 @@ func (h *LiveTVHandler) HandleTimer(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, h.timerDTO(*rec))
 	case http.MethodPost:
-		// Jellyfin updates timers in place; Vondel cancels and recreates when
+		// Jellyfin updates timers in place; Bloem cancels and recreates when
 		// schedule fields change. Absent body fields keep the existing timer.
 		existing, err := h.findRecording(r.Context(), timerID, userID, profileID, enforceOwner)
 		if err != nil {
@@ -1153,7 +1153,7 @@ type liveStreamReconnectOpts struct {
 //
 // jellyfin#11415: HDHomeRun (and similar tuner) streams can emit corrupt TS
 // during weak signal; stock Jellyfin treats the upstream EOF/error as terminal
-// and the client stays on a black screen until the channel is reopened. Vondel
+// and the client stays on a black screen until the channel is reopened. Bloem
 // keeps the client connection and liveStreamId stable, backing off briefly and
 // reopening the source URL so playback can recover without a full retune dance.
 func copyLiveStreamWithReconnect(

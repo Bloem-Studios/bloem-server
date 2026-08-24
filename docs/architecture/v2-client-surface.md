@@ -1,9 +1,9 @@
-# Vondel v2 client surface
+# Bloem v2 client surface
 
-`/api/v1` is the Silo-compatible projection. `/api/v2` is the native Vondel
+`/api/v1` is the Silo-compatible projection. `/api/v2` is the native Bloem
 API. Anything this project invents for its own clients belongs on v2, because
 a deployment must stay usable by upstream Silo clients that will never learn a
-Vondel-only field, value, or route.
+Bloem-only field, value, or route.
 
 That rule is enforced, not merely written down:
 `internal/api/v1_route_surface_test.go` walks the mounted route tree and

@@ -1,6 +1,6 @@
 # Live TV tuner discovery (HDHomeRun + Dispatcharr)
 
-Vondel can discover Live TV tuners from **Admin → Live TV → Tuners**:
+Bloem can discover Live TV tuners from **Admin → Live TV → Tuners**:
 
 | Mode | What it finds | Requirements |
 | --- | --- | --- |
@@ -9,11 +9,11 @@ Vondel can discover Live TV tuners from **Admin → Live TV → Tuners**:
 
 Candidates are verified over HTTP before you click **Add**. Existing tuners are marked **Added**.
 
-Manual add takes a single **tuner URL** (base URL or host). Vondel probes the usual `discover.json` locations, including Dispatcharr’s `/hdhr/` path, then stores the device identity and base URL from the response. You do not need a separate discover URL or device ID.
+Manual add takes a single **tuner URL** (base URL or host). Bloem probes the usual `discover.json` locations, including Dispatcharr’s `/hdhr/` path, then stores the device identity and base URL from the response. You do not need a separate discover URL or device ID.
 
 ## Docker: enable LAN UDP discovery
 
-Default `docker-compose.yml` runs Vondel in **bridge** networking. Bridge mode typically **cannot** send SiliconDust discovery broadcasts to your LAN, so **Discover on LAN** returns no devices (URL probe still works).
+Default `docker-compose.yml` runs Bloem in **bridge** networking. Bridge mode typically **cannot** send SiliconDust discovery broadcasts to your LAN, so **Discover on LAN** returns no devices (URL probe still works).
 
 ### Linux: use the Live TV compose override
 
@@ -44,7 +44,7 @@ docker compose -f docker-compose.yml -f docker-compose.nvidia.yml -f docker-comp
 `network_mode: host` does **not** attach the container to your real LAN. Prefer:
 
 1. **Probe URL** with your Dispatcharr base (`http://dispatcharr.local:9191`) or HDHR IP (`http://192.168.1.50`)
-2. Or run Vondel **from source on the host** (not in Docker) if you need UDP discovery
+2. Or run Bloem **from source on the host** (not in Docker) if you need UDP discovery
 
 ### Bare metal / from source
 
@@ -52,7 +52,7 @@ No special config — UDP discovery uses the host network stack directly.
 
 ## Dispatcharr
 
-Dispatcharr exposes HDHomeRun-compatible endpoints (commonly under `/hdhr/`). Vondel probes:
+Dispatcharr exposes HDHomeRun-compatible endpoints (commonly under `/hdhr/`). Bloem probes:
 
 - `{base}/hdhr/discover.json`
 - `{base}/discover.json`

@@ -53,7 +53,7 @@ func LiveHLSDeliveryID(rawURL string) (string, bool) {
 // ungated; an encode costs a CPU core (or an NVENC session) apiece.
 const DefaultMaxLiveTranscodes = 3
 
-// HLSBridge packages a tuner's MPEG-TS into sliding-window HLS for Vondel
+// HLSBridge packages a tuner's MPEG-TS into sliding-window HLS for Bloem
 // clients, copying the broadcast streams when the client can decode them and
 // re-encoding the ones it cannot.
 type HLSBridge struct {

@@ -72,7 +72,7 @@ the legacy single-organization schema. Before any non-default organization,
 organization-specific profile group assignment, resource owner, or entitlement
 is relied upon, stop writes, keep a tested backup, and roll the application and
 schema back together using the procedure in
-[Vondel v2 security foundation](v2-security-foundation.md). After that boundary
+[Bloem v2 security foundation](v2-security-foundation.md). After that boundary
 is crossed, use restore/recovery planning; schema rollback would discard tenant
 meaning even if legacy rows survive.
 

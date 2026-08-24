@@ -73,7 +73,7 @@ describe("CompatibilityApplicationsPage", () => {
     ).toBeInTheDocument();
 
     // The administration surface reports and instructs; it never mutates
-    // containers. Every request goes to the Vondel admin API and rendering
+    // containers. Every request goes to the Bloem admin API and rendering
     // performs no mutation at all.
     const calls = vi.mocked(adminV2Api).mock.calls;
     expect(calls.length).toBeGreaterThan(0);

@@ -534,7 +534,7 @@ func (s *Store) applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organiz
 				playback_allowed,download_allowed,download_transcode_allowed,max_streams,
 				max_profiles,transcode_allowed,max_transcodes,allowed_permissions,
 				requests_allowed,managed_template_key,managed_template_revision
-			) VALUES ($1,$2,'Managed direct-account Vondel entitlement.',false,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+			) VALUES ($1,$2,'Managed direct-account Bloem entitlement.',false,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
 			RETURNING id`, organizationID, "Managed Entitlement "+template.Key+" r"+fmt.Sprint(template.Revision),
 			effectivePolicy.LibraryIDs, effectivePolicy.MaxPlaybackQuality,
 			effectivePolicy.PlaybackAllowed, effectivePolicy.DownloadAllowed,
@@ -1065,7 +1065,7 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 				transcode_allowed, max_transcodes, allowed_permissions,
 				requests_allowed, managed_template_key, managed_template_revision
 			)
-			VALUES ($1, $2, 'Managed from a Vondel entitlement template.', true, $3,
+			VALUES ($1, $2, 'Managed from a Bloem entitlement template.', true, $3,
 			        $4, $5, $6, $7, $8, $9, $10, $11, $12,
 			        $13, $14, $15)
 			RETURNING id`,
@@ -1126,7 +1126,7 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 	} else {
 		if _, err := tx.Exec(ctx, `
 			UPDATE access_groups
-			SET description='Managed from a Vondel entitlement template.',
+			SET description='Managed from a Bloem entitlement template.',
 			    is_default=true, library_ids=$3, max_playback_quality=$4,
 			    playback_allowed=$5, download_allowed=$6,
 			    download_transcode_allowed=$7, max_streams=$8,

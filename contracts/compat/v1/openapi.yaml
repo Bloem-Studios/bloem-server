@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: Vondel Private Compatibility Service API
+  title: Bloem Private Compatibility Service API
   version: 1.0.0
   description: >
-    Private, capability-scoped API consumed exclusively by enrolled Vondel
-    compatibility applications (vondel-audiobookshelf, vondel-jellyfin). It is
+    Private, capability-scoped API consumed exclusively by enrolled Bloem
+    compatibility applications (bloem-audiobookshelf, bloem-jellyfin). It is
     served below /api/internal/compat/v1 and is never part of the public route
     surface: the edge gateway must not forward /api/internal/** from public
     ingress. Every operation authenticates the calling application, enforces

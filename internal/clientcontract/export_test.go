@@ -242,7 +242,7 @@ func startVondelServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 		"auth.jwt_secret":                "fixture-jwt-secret-at-least-thirty-two-characters",
 		"rate_limit.enabled":             "false",
 		"download.enabled":               "true",
-		"jellyfin_compat.server_name":    "Vondel Contract Fixture",
+		"jellyfin_compat.server_name":    "Bloem Contract Fixture",
 		"jellyfin_compat.server_id":      "fixture-server-0001",
 		"playback.transcode_enabled":     "false",
 		"download.transcode_enabled":     "false",

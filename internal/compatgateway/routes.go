@@ -1,9 +1,9 @@
 // Package compatgateway implements the fixed-path edge gateway that fronts
-// the removable compatibility applications on Vondel's canonical public
+// the removable compatibility applications on Bloem's canonical public
 // address. Route ownership is compile-time, reviewed configuration: Jellyfin
 // owns its explicit protocol route families plus /web, Audiobookshelf owns
 // only /audiobookshelf/**, and nothing can add a route at runtime. Native
-// surfaces — the Vondel application at "/", /api/v1/**, /api/v2/**, and
+// surfaces — the Bloem application at "/", /api/v1/**, /api/v2/**, and
 // /metrics — are never claimed.
 package compatgateway
 
@@ -57,7 +57,7 @@ const (
 // both and strips them on the way upstream.
 var legacyJellyfinPrefixes = []string{embyPrefix, jellyfinPrefix}
 
-// reservedNativeSegments are first path segments the native Vondel
+// reservedNativeSegments are first path segments the native Bloem
 // application keeps even though a compatibility family carries the same
 // name. Ownership is case-insensitive, and these three SPA client routes —
 // /search, /library/:id, /livetv — sit exactly under the /Search, /Library,
@@ -88,7 +88,7 @@ var reservedNativeSegments = map[string]bool{
 // the first-segment closure of the embedded Jellyfin-compatibility listener:
 // system, users, items, sessions, and Live TV families, their satellite
 // families, and the Jellyfin Web application at /web. The native application
-// root "/" is deliberately absent — Vondel owns it.
+// root "/" is deliberately absent — Bloem owns it.
 var jellyfinPrefixes = []string{
 	"/Artists",
 	"/Branding",
@@ -178,7 +178,7 @@ func firstSegment(path string) string {
 
 // WithFrontendFallback composes the public root handler for the canonical
 // origin: paths the fixed route table owns are answered by the gateway,
-// everything else — the Vondel SPA shell, its assets, and every native
+// everything else — the Bloem SPA shell, its assets, and every native
 // client route — by fallback. cmd/silo mounts this at "/" on the public
 // listener: that mux hands only /api/** to the chi router, so the gateway's
 // families are claimed here, ahead of the SPA fallback, or not at all. A nil

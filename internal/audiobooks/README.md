@@ -1,7 +1,7 @@
 # audiobooks
 
 A real, in-process implementation of the Audiobookshelf protocol, letting
-Audiobookshelf-compatible apps connect to a Vondel server for audiobook and
+Audiobookshelf-compatible apps connect to a Bloem server for audiobook and
 podcast playback. Originally a plugin (`silo-plugin-audiobooks`), absorbed
 into this first-party package — see [`doc.go`](doc.go).
 

@@ -40,7 +40,7 @@ export function LiveTVTranscodingTab() {
       <div className="mb-6 space-y-2">
         <h2 className="text-xl font-semibold tracking-tight">Transcoding</h2>
         <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-          How Vondel delivers live channels. Clients that can decode the broadcast get it untouched;
+          How Bloem delivers live channels. Clients that can decode the broadcast get it untouched;
           everything else is re-encoded, which needs to keep pace with the feed.
         </p>
       </div>
@@ -137,7 +137,7 @@ export function LiveTVTranscodingTab() {
           <div className="space-y-3 py-2">
             <p className="text-muted-foreground text-sm leading-relaxed">
               Some discontinued HDHomeRun models (EXTEND) could transcode on the device itself.
-              Vondel only uses it when a tuner advertises the capability — current models ignore the
+              Bloem only uses it when a tuner advertises the capability — current models ignore the
               request and keep sending MPEG-2.
             </p>
             {tuners.isLoading ? (
@@ -176,7 +176,7 @@ export function LiveTVTranscodingTab() {
             )}
             {deviceTranscodeTuners.length === 0 && (tuners.data ?? []).length > 0 && (
               <p className="text-muted-foreground text-xs">
-                No tuner reports device-side transcoding, so Vondel transcodes on the server.
+                No tuner reports device-side transcoding, so Bloem transcodes on the server.
               </p>
             )}
           </div>

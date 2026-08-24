@@ -80,7 +80,7 @@ type Tuner struct {
 	LastError    string     `json:"last_error"`
 	LastScanAt   *time.Time `json:"last_scan_at,omitempty"`
 	// TranscodeCodecs are the device-side transcode profiles the tuner
-	// advertises. Empty on every current model, which is why Vondel
+	// advertises. Empty on every current model, which is why Bloem
 	// transcodes on the server instead.
 	TranscodeCodecs []string `json:"transcode_codecs"`
 }
@@ -180,7 +180,7 @@ type LiveSession struct {
 	// authenticated proxy path (or empty) so clients never receive tuner URLs.
 	StreamURL string `json:"-"`
 	// Transport is "mpegts" for the session proxy or "hls" when a playback
-	// bridge remuxes into the normal Vondel player pipeline.
+	// bridge remuxes into the normal Bloem player pipeline.
 	Transport  string     `json:"transport,omitempty"`
 	Note       string     `json:"note,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`

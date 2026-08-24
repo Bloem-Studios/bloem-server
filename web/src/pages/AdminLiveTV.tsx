@@ -105,7 +105,7 @@ function TunersTab() {
       <div className="max-w-2xl space-y-4">
         <p className="text-muted-foreground text-sm">
           Auto-discover SiliconDust HDHomeRun tuners on the LAN (UDP) and probe a Dispatcharr URL
-          for its HDHomeRun emulation (`/hdhr/discover.json`). Vondel scans the lineup after you add
+          for its HDHomeRun emulation (`/hdhr/discover.json`). Bloem scans the lineup after you add
           a candidate. Docker bridge networking usually blocks UDP discovery — on Linux enable{" "}
           <code className="text-xs">docker-compose.livetv.yml</code> (host networking; see{" "}
           <code className="text-xs">docs/livetv-tuner-discovery.md</code>) or use probe URL.
@@ -186,7 +186,7 @@ function TunersTab() {
 
       <div className="max-w-xl space-y-4">
         <p className="text-muted-foreground text-sm">
-          Or add manually with a tuner base URL or host. Vondel probes{" "}
+          Or add manually with a tuner base URL or host. Bloem probes{" "}
           <code className="text-xs">discover.json</code> (including Dispatcharr{" "}
           <code className="text-xs">/hdhr/</code>) and stores the device identity from the response.
         </p>

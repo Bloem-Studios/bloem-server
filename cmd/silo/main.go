@@ -504,7 +504,7 @@ func runCompatWebCommand(ctx context.Context, args []string) error {
 
 // publicMux composes the public listener: Prometheus metrics, the chi API
 // router for /api/**, the fixed-path compatibility gateway for the reviewed
-// route families, and the Vondel SPA for everything else.
+// route families, and the Bloem SPA for everything else.
 //
 // The layering matters and is why this is a named function rather than a few
 // lines inside main: only /api/** reaches the chi router, so the gateway's

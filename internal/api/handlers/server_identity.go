@@ -11,7 +11,7 @@ import (
 
 // serverAPIMajorVersions are the API major versions this build serves. Both are
 // mounted unconditionally: /api/v1 is the Silo-compatible projection, /api/v2 is
-// the native Vondel API. Clients use the list to decide whether a discovered
+// the native Bloem API. Clients use the list to decide whether a discovered
 // server is worth connecting to at all; everything finer-grained is
 // feature-detected through GET /api/v2/capabilities, never inferred from a
 // version.

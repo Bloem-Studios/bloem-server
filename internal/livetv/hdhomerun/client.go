@@ -33,7 +33,7 @@ type DeviceInfo struct {
 	// TranscodeCodecs lists the device-side transcode profiles the tuner
 	// advertises ("heavy", "mobile", "internet480", …). Only the discontinued
 	// EXTEND ever shipped them; current models omit the field and silently
-	// ignore a ?transcode= query, so Vondel must never send one unless the
+	// ignore a ?transcode= query, so Bloem must never send one unless the
 	// device says it is supported.
 	TranscodeCodecs []string
 }
@@ -127,12 +127,12 @@ func (b *lineupBool) UnmarshalJSON(data []byte) error {
 }
 
 type lineupJSON struct {
-	// SiliconDust lineup.json fields used by Vondel:
+	// SiliconDust lineup.json fields used by Bloem:
 	// GuideNumber is the channel's display number (for example "7.1").
 	// GuideName is the callsign/display name shown by HDHomeRun clients.
 	// URL is the MPEG-TS HTTP stream URL for the channel.
 	// HD marks high-definition channels.
-	// Favorite marks channels favorited on the HDHomeRun device; Vondel stores
+	// Favorite marks channels favorited on the HDHomeRun device; Bloem stores
 	// all discovered channels and may use this as a future default filter.
 	GuideNumber string     `json:"GuideNumber"`
 	GuideName   string     `json:"GuideName"`

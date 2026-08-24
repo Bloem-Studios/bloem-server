@@ -58,7 +58,7 @@ func TestV2AdminSessionMintsOrganizationContextForOrganizationAdmin(t *testing.T
 		adminSessionMembershipStoreStub{membership: tenancy.Membership{
 			ID: membershipID, OrganizationID: organizationID, AccountID: 41,
 			Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11,
-		}, organization: tenancy.Organization{ID: organizationID, Name: "Vondel", Status: tenancy.OrganizationActive}}, adminSessionPlatformAuthorizerStub{},
+		}, organization: tenancy.Organization{ID: organizationID, Name: "Bloem", Status: tenancy.OrganizationActive}}, adminSessionPlatformAuthorizerStub{},
 	)
 	req := httptest.NewRequest(http.MethodPost, "/api/v2/admin/session", strings.NewReader(`{"scope":"organization","organization_id":"`+organizationID.String()+`"}`))
 	req.Header.Set("Content-Type", "application/json")
@@ -88,7 +88,7 @@ func TestV2AdminSessionMintsOrganizationContextForOrganizationAdmin(t *testing.T
 	}
 	if claims.Scope != auth.AdminScopeOrganization || claims.AccountID != 41 || claims.OrganizationID != organizationID || claims.MembershipID != membershipID ||
 		body.Context.Scope != auth.AdminScopeOrganization || body.Context.OrganizationID != organizationID.String() || body.Context.MembershipID != membershipID.String() ||
-		body.Context.Name != "Vondel" || body.Context.Status != "active" {
+		body.Context.Name != "Bloem" || body.Context.Status != "active" {
 		t.Fatalf("claims/context = %#v %#v", claims, body.Context)
 	}
 }
@@ -97,7 +97,7 @@ func TestV2AdminSessionRecordsPlatformAuthorityInsideOrganizationContext(t *test
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	membershipID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
 	tokens := auth.NewAdminContextTokenService("admin-session-test-secret")
-	handler := NewAdminContextSessionHandler(tokens, adminSessionResolverStub{tenant: tenancy.Context{AccountID: 41, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11}}, adminSessionMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 41, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}, organization: tenancy.Organization{ID: organizationID, Name: "Vondel", Status: tenancy.OrganizationActive}}, adminSessionPlatformAuthorizerStub{allowed: true})
+	handler := NewAdminContextSessionHandler(tokens, adminSessionResolverStub{tenant: tenancy.Context{AccountID: 41, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11}}, adminSessionMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 41, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}, organization: tenancy.Organization{ID: organizationID, Name: "Bloem", Status: tenancy.OrganizationActive}}, adminSessionPlatformAuthorizerStub{allowed: true})
 	req := httptest.NewRequest(http.MethodPost, "/api/v2/admin/session", strings.NewReader(`{"scope":"organization","organization_id":"`+organizationID.String()+`"}`))
 	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41}))
 	rec := httptest.NewRecorder()
@@ -175,7 +175,7 @@ func TestV2AdminSessionRejectsNonAdminOrganizationMembership(t *testing.T) {
 		adminSessionResolverStub{tenant: tenancy.Context{AccountID: 41, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11}},
 		adminSessionMembershipStoreStub{
 			membership:   tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 41, Status: tenancy.MembershipActive, LegacyRole: "user", SecurityRevision: 11},
-			organization: tenancy.Organization{ID: organizationID, Name: "Vondel", Status: tenancy.OrganizationActive},
+			organization: tenancy.Organization{ID: organizationID, Name: "Bloem", Status: tenancy.OrganizationActive},
 		},
 		adminSessionPlatformAuthorizerStub{},
 	)

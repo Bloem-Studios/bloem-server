@@ -213,7 +213,7 @@ func TestCompatibilityAdminListsReadOnlyState(t *testing.T) {
 	if row.CanonicalURL != "https://vondel.example/" {
 		t.Fatalf("canonical url %q", row.CanonicalURL)
 	}
-	// Administration shows exact operator commands; Vondel never runs them.
+	// Administration shows exact operator commands; Bloem never runs them.
 	for name, command := range map[string]string{
 		"install": row.Commands.Install, "update": row.Commands.Update,
 		"rollback": row.Commands.Rollback, "remove": row.Commands.Remove,

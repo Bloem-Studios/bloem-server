@@ -302,7 +302,7 @@ function ApplicationCard({ application }: { application: CompatibilityApplicatio
 
       <section className="space-y-3">
         <p className="text-muted-foreground text-sm">
-          Run these on the host (or through your deployment controller). Vondel displays them and
+          Run these on the host (or through your deployment controller). Bloem displays them and
           never runs Docker itself.
         </p>
         <CommandRow label="Install" command={application.commands.install} />
@@ -355,7 +355,7 @@ export default function CompatibilityApplicationsPage() {
           </h1>
           <p className="page-subtitle text-sm sm:text-base">
             Enroll, enable, and monitor the removable Jellyfin and Audiobookshelf applications.
-            Containers are operated on the host; Vondel shows the exact commands and never runs
+            Containers are operated on the host; Bloem shows the exact commands and never runs
             them.
           </p>
         </div>

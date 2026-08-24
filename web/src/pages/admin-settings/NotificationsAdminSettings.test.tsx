@@ -108,7 +108,7 @@ describe("NotificationsAdminSettings", () => {
     expect(screen.getByText(/delivered by APNs or FCM/)).toBeInTheDocument();
     expect(screen.getByText("Relay configured")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /Vondel Push Relay/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Bloem Push Relay/ }));
 
     expect(screen.getByText("Privacy disclosure")).toBeInTheDocument();
     expect(screen.getByText("Apple Push (APNs)")).toBeInTheDocument();
@@ -119,7 +119,7 @@ describe("NotificationsAdminSettings", () => {
     expect(screen.getByText("Deployment ID")).toBeInTheDocument();
     expect(screen.getByText("Rotate credential")).toBeInTheDocument();
     expect(screen.getByText("Credential: cap_v1_test")).toBeInTheDocument();
-    expect(screen.getByText(/Vondel renews automatically/)).toBeInTheDocument();
+    expect(screen.getByText(/Bloem renews automatically/)).toBeInTheDocument();
     expect(screen.queryByText("Relay API Key")).not.toBeInTheDocument();
     expect(screen.queryByText("Smoke Test Profile ID")).not.toBeInTheDocument();
     expect(screen.queryByText("Server Device ID")).not.toBeInTheDocument();

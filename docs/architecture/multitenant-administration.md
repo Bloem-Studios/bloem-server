@@ -1,6 +1,6 @@
 # Multitenant administration
 
-Vondel has one administration shell with two explicit authority contexts. A
+Bloem has one administration shell with two explicit authority contexts. A
 Platform context manages organizations and platform-wide operations. An
 Organization context manages only the selected tenant's people, profiles,
 groups, libraries, entitlements, invitations, and policy-decision evidence.

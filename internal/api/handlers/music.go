@@ -22,7 +22,7 @@ type MusicHandler struct {
 	native bool
 }
 
-// NewNativeMusicHandler serves the Vondel-only /api/v2 contract. Viewer scope
+// NewNativeMusicHandler serves the Bloem-only /api/v2 contract. Viewer scope
 // is already resolved by the native client middleware, so it never depends on
 // or changes the Silo-compatible Items handler.
 func NewNativeMusicHandler(repo music.Repository) *MusicHandler {

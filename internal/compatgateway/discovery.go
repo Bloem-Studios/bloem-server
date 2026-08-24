@@ -9,11 +9,11 @@ import (
 )
 
 // DiscoveryConfig configures the optional Jellyfin LAN discovery relay. The
-// relay exists because companions have no public ports: Vondel answers the
+// relay exists because companions have no public ports: Bloem answers the
 // Jellyfin discovery probe on their behalf, advertising only the canonical
 // public address and the stable compatibility server ID.
 type DiscoveryConfig struct {
-	// PublicAddress is the canonical Vondel HTTPS address to advertise.
+	// PublicAddress is the canonical Bloem HTTPS address to advertise.
 	PublicAddress string
 	// ServerID is the stable Jellyfin-compatibility server identifier.
 	ServerID string

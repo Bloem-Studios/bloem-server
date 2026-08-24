@@ -30,7 +30,7 @@ Open **Admin → Platform → Entitlement templates**. Every template controls:
 - media requests; and
 - allowed access-group permissions.
 
-Vondel includes Browse-only, Viewer, Standard, Premium, and Reseller Member
+Bloem includes Browse-only, Viewer, Standard, Premium, and Reseller Member
 starting points. They can be revised or cloned to fit an installation's own
 plans.
 

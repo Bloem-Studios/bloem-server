@@ -1,5 +1,5 @@
 /**
- * Vondel service worker: displays Web Push notifications and routes clicks.
+ * Bloem service worker: displays Web Push notifications and routes clicks.
  * Payloads arrive end-to-end encrypted (RFC 8291); by the time the push
  * event fires the browser has decrypted them for us.
  */
@@ -19,7 +19,7 @@ self.addEventListener("push", (event) => {
   } catch {
     data = {};
   }
-  const title = data.title || "Vondel";
+  const title = data.title || "Bloem";
   const options = {
     body: data.body || "",
     icon: data.icon || "/web-app-icon-192.png",

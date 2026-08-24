@@ -9,10 +9,10 @@ describe("applyBrand", () => {
   it("rebrands the product name in prose", () => {
     expect(
       applyBrand('"Pause could not reach the player directly. Silo will end the session."'),
-    ).toBe('"Pause could not reach the player directly. Vondel will end the session."');
-    expect(applyBrand("Managed by Silo")).toBe("Managed by Vondel");
+    ).toBe('"Pause could not reach the player directly. Bloem will end the session."');
+    expect(applyBrand("Managed by Silo")).toBe("Managed by Bloem");
     expect(applyBrand("Silo will download it server-side before importing.")).toBe(
-      "Vondel will download it server-side before importing.",
+      "Bloem will download it server-side before importing.",
     );
   });
 
@@ -42,33 +42,33 @@ describe("applyBrand", () => {
   // A brand at the very start of a string has nothing before it to anchor on,
   // which is the case a naive lookbehind-free pattern drops.
   it("rebrands at the start of a line", () => {
-    expect(applyBrand("Silo is running.")).toBe("Vondel is running.");
+    expect(applyBrand("Silo is running.")).toBe("Bloem is running.");
   });
 
   // Possessives and punctuation are still prose.
   it("rebrands before punctuation", () => {
-    expect(applyBrand("filled from Silo's config")).toBe("filled from Vondel's config");
-    expect(applyBrand("powered by Silo.")).toBe("powered by Vondel.");
-    expect(applyBrand("(Silo)")).toBe("(Vondel)");
+    expect(applyBrand("filled from Silo's config")).toBe("filled from Bloem's config");
+    expect(applyBrand("powered by Silo.")).toBe("powered by Bloem.");
+    expect(applyBrand("(Silo)")).toBe("(Bloem)");
   });
 
   // Two in one string, which a non-global pattern would half-do.
   it("rebrands every occurrence", () => {
-    expect(applyBrand("Silo starts, then Silo stops.")).toBe("Vondel starts, then Vondel stops.");
+    expect(applyBrand("Silo starts, then Silo stops.")).toBe("Bloem starts, then Bloem stops.");
   });
 
   it("takes the name it is given", () => {
     expect(applyBrand("Silo is running.", "Meridian")).toBe("Meridian is running.");
   });
 
-  it("ships Vondel public identity without restricted Silo brand assets", () => {
+  it("ships Bloem public identity without restricted Silo brand assets", () => {
     const publicPath = (name: string) => resolve(process.cwd(), "public", name);
     const manifest = JSON.parse(readFileSync(publicPath("site.webmanifest"), "utf8"));
-    expect(manifest.name).toBe("Vondel");
-    expect(manifest.short_name).toBe("Vondel");
+    expect(manifest.name).toBe("Bloem");
+    expect(manifest.short_name).toBe("Bloem");
 
     const serviceWorker = readFileSync(publicPath("sw.js"), "utf8");
-    expect(serviceWorker).toContain('data.title || "Vondel"');
+    expect(serviceWorker).toContain('data.title || "Bloem"');
     expect(serviceWorker).not.toContain('data.title || "Silo"');
 
     for (const restricted of ["silo-icon-1024.png", "silo-wordmark-sidebar.png"]) {

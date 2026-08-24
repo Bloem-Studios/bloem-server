@@ -1,7 +1,7 @@
 # jellycompat
 
 A real, in-process implementation of the Jellyfin/Emby protocol, letting
-third-party Jellyfin/Emby-compatible apps browse and stream from a Vondel
+third-party Jellyfin/Emby-compatible apps browse and stream from a Bloem
 server. Verified working against real clients: **VidHub** and **Findroid**
 (named directly in quirk-handling code and tests, e.g.
 `audio_profile_streams_test.go`, `audiobook_exclusion_test.go`).

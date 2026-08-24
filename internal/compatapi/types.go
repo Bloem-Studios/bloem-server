@@ -196,7 +196,7 @@ type ProfileTile struct {
 }
 
 // SubjectService owns end-user authentication and per-request subject
-// revalidation. Vondel remains authoritative: CurrentSubject is consulted on
+// revalidation. Bloem remains authoritative: CurrentSubject is consulted on
 // every subject-scoped request, so profile or organization suspension,
 // password reset, policy revision, or device revocation invalidates access
 // without trusting companion cache state.
@@ -299,7 +299,7 @@ type SearchQuery struct {
 
 // DeliveryGrant is a short-lived, single-purpose, audience-bound, same-origin
 // media delivery authorization. Media bytes never round-trip through this
-// API; the companion or its client fetches the granted Vondel URL directly.
+// API; the companion or its client fetches the granted Bloem URL directly.
 type DeliveryGrant struct {
 	URL       string    `json:"url"`
 	Method    string    `json:"method"`
@@ -398,7 +398,7 @@ type Download struct {
 
 // StateService is the narrow canonical-state surface: progress, watched
 // state, favorites, bookmarks, collections, playlists, and downloads all
-// remain owned by Vondel.
+// remain owned by Bloem.
 type StateService interface {
 	Progress(ctx context.Context, subject Subject, itemID string) (Progress, error)
 	SetProgress(ctx context.Context, subject Subject, itemID string, p ProgressUpdate) (Progress, error)
