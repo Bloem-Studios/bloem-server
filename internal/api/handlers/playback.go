@@ -275,6 +275,21 @@ type sessionExpirationHookSetter interface {
 	SetExpirationHook(func(*playback.Session))
 }
 
+// strictReconstructAdmission reports the operator's admission posture for a
+// reconstruct whose limit provider could not be evaluated. Defaults to upstream
+// Silo's fail-open behaviour when the setting is unset or unreadable — a
+// settings-store outage must not itself become the reason playback is refused.
+func (h *PlaybackHandler) strictReconstructAdmission() bool {
+	if h.SettingsRepo == nil {
+		return false
+	}
+	v, err := h.SettingsRepo.Get(context.Background(), config.PlaybackStrictReconstructAdmissionSettingKey)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(v), "true")
+}
+
 // NewPlaybackHandler creates a new PlaybackHandler backed by the given
 // session manager. Pass optional FilePathResolver to enable stream_url
 // and subtitle_urls in start playback responses.
@@ -293,6 +308,7 @@ func NewPlaybackHandler(sessionMgr SessionManagerInterface, opts ...FilePathReso
 	// field-ordering hazard during router setup.
 	h.tm.JWTSecretFn = func() string { return h.JWTSecret }
 	h.tm.LogSinkFn = func() playback.FFmpegLogSink { return h.FFmpegLogSink }
+	h.tm.StrictAdmissionFn = func() bool { return h.strictReconstructAdmission() }
 	h.tm.Config = func() playback.TranscodeRuntimeConfig {
 		c := h.playbackConfig()
 		return playback.TranscodeRuntimeConfig{

@@ -831,6 +831,21 @@ func (h *PlaybackHandler) allow4KVideoTranscode(ctx context.Context) bool {
 	return v == "true"
 }
 
+// strictReconstructAdmission reports the operator's admission posture for a
+// reconstruct whose limit provider could not be evaluated. Defaults to upstream
+// Silo's fail-open behaviour when the setting is unset or unreadable — a
+// settings-store outage must not itself become the reason playback is refused.
+func (h *PlaybackHandler) strictReconstructAdmission() bool {
+	if h.SettingsRepo == nil {
+		return false
+	}
+	v, err := h.SettingsRepo.Get(context.Background(), config.PlaybackStrictReconstructAdmissionSettingKey)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(v), "true")
+}
+
 func is4KResolution(res string) bool {
 	return access.CompareQuality(res, "2160p") >= 0
 }
@@ -874,6 +889,7 @@ func NewPlaybackHandler(
 	// Wire the shared transcode manager with closures so it reads the handler's
 	// (late-set) JWTSecret lazily, matching the native handler.
 	h.tm.JWTSecretFn = func() string { return h.JWTSecret }
+	h.tm.StrictAdmissionFn = func() bool { return h.strictReconstructAdmission() }
 	h.tm.Config = func() playback.TranscodeRuntimeConfig {
 		return playback.TranscodeRuntimeConfig{
 			TranscodeDir: h.TranscodeDir,

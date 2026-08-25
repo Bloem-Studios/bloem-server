@@ -440,9 +440,10 @@ func TestReconstructSession_AdmissionCap(t *testing.T) {
 }
 
 // A transient limit-PROVIDER failure during reconstruct (e.g. a Postgres error
-// in the post-restart wave) must NOT collapse into a permanent 404. The session
-// must be admitted (fail open) so a user within their limits keeps playing.
-func TestReconstructSession_ProviderErrorFailsClosed(t *testing.T) {
+// in the post-restart wave) must NOT collapse into a permanent 404 by default.
+// The session is admitted (fail open, matching upstream Silo) so a user within
+// their limits keeps playing.
+func TestReconstructSession_ProviderErrorFailsOpenByDefault(t *testing.T) {
 	ctx := context.Background()
 	reg := &fakeSessionRegistry{
 		limitsErr: fmt.Errorf("load session limits for user 7: %w",
@@ -453,17 +454,41 @@ func TestReconstructSession_ProviderErrorFailsClosed(t *testing.T) {
 
 	card := NewDirectRecipeCard("a", 7, "p", 100)
 	got := m.ReconstructSession(ctx, "a", 7, card)
-	if got != nil {
-		t.Fatalf("limit-provider error must fail closed, got session %+v", got)
+	if got == nil {
+		t.Fatal("limit-provider error must fail open by default, got no session")
 	}
-	if _, err := reg.GetSession("a"); err == nil {
-		t.Fatal("failed-closed session was unexpectedly registered")
+	if _, err := reg.GetSession("a"); err != nil {
+		t.Fatalf("failed-open session was not registered: %v", err)
 	}
 }
 
-// LoadOrReconstructSession must surface the fail-open admission as SessionLoaded
-// (not SessionMissing -> 404) when the limit provider is transiently unavailable.
-func TestLoadOrReconstructSession_ProviderErrorFailsClosed(t *testing.T) {
+// With playback.strict_reconstruct_admission enabled, the same unevaluated-limit
+// case must refuse instead. This is Bloem's deliberate divergence from upstream,
+// expressed as an operator setting rather than a fork of the admission path.
+func TestReconstructSession_ProviderErrorFailsClosedUnderStrictAdmission(t *testing.T) {
+	ctx := context.Background()
+	reg := &fakeSessionRegistry{
+		limitsErr: fmt.Errorf("load session limits for user 7: %w",
+			errors.Join(ErrLimitProviderUnavailable, errors.New("db timeout"))),
+	}
+	m := NewTranscodeManager()
+	m.Sessions = reg
+	m.StrictAdmissionFn = func() bool { return true }
+
+	card := NewDirectRecipeCard("a", 7, "p", 100)
+	got := m.ReconstructSession(ctx, "a", 7, card)
+	if got != nil {
+		t.Fatalf("strict admission must refuse an unevaluated limit provider, got session %+v", got)
+	}
+	if _, err := reg.GetSession("a"); err == nil {
+		t.Fatal("refused session was unexpectedly registered")
+	}
+}
+
+// LoadOrReconstructSession must surface the default fail-open admission as a
+// loaded session rather than SessionMissing -> 404 when the limit provider is
+// transiently unavailable.
+func TestLoadOrReconstructSession_ProviderErrorFailsOpenByDefault(t *testing.T) {
 	ctx := context.Background()
 	reg := &fakeSessionRegistry{
 		limitsErr: errors.Join(ErrLimitProviderUnavailable, errors.New("db timeout")),
@@ -473,8 +498,25 @@ func TestLoadOrReconstructSession_ProviderErrorFailsClosed(t *testing.T) {
 
 	card := NewDirectRecipeCard("s", 5, "p", 77)
 	got, status := m.LoadOrReconstructSession(ctx, reg.GetSession, "s", 5, &card)
+	if status == SessionMissing || got == nil {
+		t.Fatalf("provider error must fail open by default, got status=%v session=%+v", status, got)
+	}
+}
+
+// ...and must yield SessionMissing under the strict posture.
+func TestLoadOrReconstructSession_ProviderErrorFailsClosedUnderStrictAdmission(t *testing.T) {
+	ctx := context.Background()
+	reg := &fakeSessionRegistry{
+		limitsErr: errors.Join(ErrLimitProviderUnavailable, errors.New("db timeout")),
+	}
+	m := NewTranscodeManager()
+	m.Sessions = reg
+	m.StrictAdmissionFn = func() bool { return true }
+
+	card := NewDirectRecipeCard("s", 5, "p", 77)
+	got, status := m.LoadOrReconstructSession(ctx, reg.GetSession, "s", 5, &card)
 	if status != SessionMissing || got != nil {
-		t.Fatalf("provider error must yield SessionMissing, got status=%v session=%+v", status, got)
+		t.Fatalf("strict admission must yield SessionMissing, got status=%v session=%+v", status, got)
 	}
 }
 

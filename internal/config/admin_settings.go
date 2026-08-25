@@ -31,6 +31,18 @@ const (
 const (
 	PlaybackLocalTranscodeFallbackSettingKey = "playback.local_transcode_fallback"
 	Allow4KTranscodeSettingKey               = "allow_4k_transcode"
+
+	// PlaybackStrictReconstructAdmissionSettingKey makes playback-session
+	// reconstruction fail CLOSED when the per-user limit provider cannot be
+	// evaluated at all (as opposed to returning a genuine over-cap denial).
+	//
+	// Default "false" matches upstream Silo: a transient provider error admits
+	// the session ungated rather than turning a recoverable dependency failure
+	// into a permanent 404 mid-playback. Set "true" for the stricter posture,
+	// where no session is ever admitted without its limits actually checked —
+	// at the cost of refusing playback to within-limit users during a database
+	// blip, which is exactly when a post-restart reconstruct wave happens.
+	PlaybackStrictReconstructAdmissionSettingKey = "playback.strict_reconstruct_admission"
 )
 
 // ArtworkStorageReconcileCheckpointKey is machine-managed task state. It is
@@ -70,33 +82,34 @@ var adminSettingDefaults = map[string]string{
 	"markers.mode":          "local",
 	"markers.lazy_playback": "false",
 
-	"playback.ffmpeg_path":                     "/usr/lib/jellyfin-ffmpeg/ffmpeg",
-	playbackTranscodeDirSettingKey:             DefaultTranscodeDir,
-	"playback.hw_accel":                        "auto",
-	"playback.transcode_enabled":               "true",
-	PlaybackLocalTranscodeFallbackSettingKey:   "true",
-	"playback.proxy_policy":                    "always",
-	"playback.header_authenticated_media_mode": "disabled",
-	"playback.chapter_thumbnail_workers":       "1",
-	"playback.chapter_thumbnail_execution":     "local",
-	"playback.chapter_thumbnail_node_capacity": "1",
-	"playback.chapter_thumbnail_hdr_policy":    "best_effort",
-	chapterThumbnailSoftwareToneMapKey:         "false",
-	PlaybackTranscodeHardwareToneMapSettingKey: "false",
-	PlaybackTranscodeSoftwareToneMapSettingKey: "false",
-	"playback.watched_threshold":               "90",
-	"playback.min_resume_threshold":            "5",
-	Allow4KTranscodeSettingKey:                 "false",
-	"enable_transcode_throttle":                "false",
-	"transcode_throttle_seconds":               "300",
-	"livetv.dvr_path":                          DefaultLiveTVDVRPath,
-	"livetv.max_transcodes":                    "3",
-	"livetv.hw_accel":                          DefaultLiveTVHWAccel,
-	"livetv.hw_decode":                         DefaultLiveTVHWDecode,
-	"livetv.encoder_preset":                    DefaultLiveTVEncoderPreset,
-	"livetv.framerate_cap":                     DefaultLiveTVFrameRateCap,
-	"livetv.max_resolution":                    DefaultLiveTVMaxResolution,
-	"livetv.play_method":                       DefaultLiveTVPlayMethod,
+	"playback.ffmpeg_path":                       "/usr/lib/jellyfin-ffmpeg/ffmpeg",
+	playbackTranscodeDirSettingKey:               DefaultTranscodeDir,
+	"playback.hw_accel":                          "auto",
+	"playback.transcode_enabled":                 "true",
+	PlaybackLocalTranscodeFallbackSettingKey:     "true",
+	"playback.proxy_policy":                      "always",
+	"playback.header_authenticated_media_mode":   "disabled",
+	"playback.chapter_thumbnail_workers":         "1",
+	"playback.chapter_thumbnail_execution":       "local",
+	"playback.chapter_thumbnail_node_capacity":   "1",
+	"playback.chapter_thumbnail_hdr_policy":      "best_effort",
+	chapterThumbnailSoftwareToneMapKey:           "false",
+	PlaybackTranscodeHardwareToneMapSettingKey:   "false",
+	PlaybackTranscodeSoftwareToneMapSettingKey:   "false",
+	PlaybackStrictReconstructAdmissionSettingKey: "false",
+	"playback.watched_threshold":                 "90",
+	"playback.min_resume_threshold":              "5",
+	Allow4KTranscodeSettingKey:                   "false",
+	"enable_transcode_throttle":                  "false",
+	"transcode_throttle_seconds":                 "300",
+	"livetv.dvr_path":                            DefaultLiveTVDVRPath,
+	"livetv.max_transcodes":                      "3",
+	"livetv.hw_accel":                            DefaultLiveTVHWAccel,
+	"livetv.hw_decode":                           DefaultLiveTVHWDecode,
+	"livetv.encoder_preset":                      DefaultLiveTVEncoderPreset,
+	"livetv.framerate_cap":                       DefaultLiveTVFrameRateCap,
+	"livetv.max_resolution":                      DefaultLiveTVMaxResolution,
+	"livetv.play_method":                         DefaultLiveTVPlayMethod,
 
 	"audiobookshelf_compat.enabled":           "true",
 	"jellyfin_compat.enabled":                 "true",
@@ -304,6 +317,7 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 	case "metadata.cache_images", "playback.transcode_enabled", PlaybackLocalTranscodeFallbackSettingKey,
 		chapterThumbnailSoftwareToneMapKey, PlaybackTranscodeHardwareToneMapSettingKey,
 		PlaybackTranscodeSoftwareToneMapSettingKey,
+		PlaybackStrictReconstructAdmissionSettingKey,
 		Allow4KTranscodeSettingKey, "enable_transcode_throttle", "audiobookshelf_compat.enabled",
 		"jellyfin_compat.enabled", "jellyfin_compat.web_enabled", "recommendations.enabled",
 		"subtitle_ai.enabled", "subtitle_ai.transcribe_enabled", "metadata_ai.enabled",

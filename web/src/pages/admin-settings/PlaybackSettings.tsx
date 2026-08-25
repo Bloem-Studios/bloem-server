@@ -21,6 +21,7 @@ const KEYS = [
   "playback.transcode_enabled",
   "playback.local_transcode_fallback",
   "playback.proxy_policy",
+  "playback.strict_reconstruct_admission",
   "playback.header_authenticated_media_mode",
   "playback.transcode_hardware_tone_map_enabled",
   "playback.transcode_software_tone_map_enabled",
@@ -176,6 +177,13 @@ export default function PlaybackSettings() {
             hint="When no eligible transcode node is available, transcode on this server instead. Disable to keep all transcoding on dedicated nodes — playback that requires transcoding fails while no node is eligible."
             value={form.getValue("playback.local_transcode_fallback") || "true"}
             onChange={(v) => form.setValue("playback.local_transcode_fallback", v)}
+          />
+          <SettingField
+            label="Strict Reconstruct Admission"
+            type="toggle"
+            hint="When a playback session is rebuilt after a restart and the per-user stream limits cannot be read at all (for example a brief database outage), refuse the session instead of admitting it ungated. Off — the default — admits it, so a transient outage does not stop playback for users who are within their limits; the cap re-applies on their next new session. On is the stricter posture: no session is ever admitted without its limits actually checked, at the cost of refusing within-limit users during exactly the outage that triggers a reconstruct wave."
+            value={form.getValue("playback.strict_reconstruct_admission") || "false"}
+            onChange={(v) => form.setValue("playback.strict_reconstruct_admission", v)}
           />
           <SettingField
             label="Proxy Streaming Policy"

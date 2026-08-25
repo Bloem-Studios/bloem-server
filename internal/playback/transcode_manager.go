@@ -73,6 +73,19 @@ type TranscodeManager struct {
 	// StartThrottler optionally starts the segment throttler for a (re)started
 	// transcode, reading the embedding handler's settings. No-op when nil.
 	StartThrottler func(ctx context.Context, ts *TranscodeSession)
+	// StrictAdmissionFn reports whether reconstruct admission fails CLOSED when
+	// the limit provider itself cannot be evaluated. Nil or false is upstream
+	// Silo's behaviour: admit the session ungated rather than collapse a
+	// transient dependency error into a permanent 404. True is the stricter
+	// Bloem posture — never admit a session whose limits were never checked,
+	// accepting that a Postgres blip during a post-restart reconstruct wave
+	// stops playback for users who are in fact within their limits.
+	//
+	// This is a deliberate, operator-visible divergence
+	// (playback.strict_reconstruct_admission), not a silent fork of upstream's
+	// admission code. Keeping it as a runtime branch rather than an edit to the
+	// shared path is what stops it re-conflicting on every upstream merge.
+	StrictAdmissionFn func() bool
 
 	// Package-private execution seams keep reconstruction lifecycle tests
 	// deterministic without invoking a host FFmpeg binary. Production always
@@ -126,6 +139,17 @@ func NewTranscodeManager() *TranscodeManager {
 		transcodes:          make(map[string]*TranscodeSession),
 		reconstructInFlight: make(map[string]struct{}),
 	}
+}
+
+// strictAdmission reports whether reconstruct admission should fail closed on an
+// unevaluated limit provider. Defaults to false (upstream behaviour) when the
+// hook is unwired, so a manager built without settings access is never
+// accidentally stricter than Silo.
+func (m *TranscodeManager) strictAdmission() bool {
+	if m.StrictAdmissionFn == nil {
+		return false
+	}
+	return m.StrictAdmissionFn()
 }
 
 func (m *TranscodeManager) jwtSecret() string {
@@ -657,11 +681,21 @@ func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str
 			return nil, nil, false
 		}
 		// Otherwise the limit provider itself could not be evaluated (e.g. a
-		// transient Postgres error during a post-restart reconstruct wave). Fail
-		// open and admit the session WITHOUT the limit gate: denying here would
-		// collapse a recoverable dependency error into a permanent 404 and stop
-		// playback for a user who is within their limits. The cap will re-apply on
-		// the next fresh StartSession once the provider recovers.
+		// transient Postgres error during a post-restart reconstruct wave).
+		if m.strictAdmission() {
+			// Operator has opted into the strict posture: a session whose limits
+			// were never evaluated is never admitted, even at the cost of refusing
+			// playback to users who are within their caps.
+			slog.WarnContext(ctx, "playback session reconstruct refused: limits unevaluated and strict admission is enabled", "component", "playback",
+				"session", sessionID, "playback_session_id", sessionID,
+				"user", card.UserID, "method", method, "error", err)
+			return nil, nil, false
+		}
+		// Default (upstream Silo) behaviour: fail open and admit the session
+		// WITHOUT the limit gate. Denying here would collapse a recoverable
+		// dependency error into a permanent 404 and stop playback for a user who
+		// is within their limits. The cap re-applies on the next fresh
+		// StartSession once the provider recovers.
 		slog.WarnContext(ctx, "playback session reconstruct admitting despite unevaluated limits (degraded; limit provider unavailable)", "component", "playback",
 			"session", sessionID, "playback_session_id", sessionID,
 			"user", card.UserID, "method", method, "error", err)
