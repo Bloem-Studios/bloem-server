@@ -74,7 +74,7 @@ describe("applyBrand", () => {
     for (const restricted of ["silo-icon-1024.png", "silo-wordmark-sidebar.png"]) {
       expect(existsSync(publicPath(restricted))).toBe(false);
     }
-    for (const owned of ["vondel-icon-1024.png", "vondel-wordmark-sidebar.png"]) {
+    for (const owned of ["bloem-icon-1024.png", "bloem-wordmark-sidebar.png"]) {
       expect(existsSync(publicPath(owned))).toBe(true);
     }
 
@@ -82,8 +82,8 @@ describe("applyBrand", () => {
       resolve(process.cwd(), "src/components/SiloBrand.tsx"),
       "utf8",
     );
-    expect(brandComponent).toContain('"/vondel-wordmark-sidebar.png"');
-    expect(brandComponent).toContain('"/vondel-icon-1024.png"');
+    expect(brandComponent).toContain('"/bloem-wordmark-sidebar.png"');
+    expect(brandComponent).toContain('"/bloem-icon-1024.png"');
     expect(brandComponent).not.toContain('"/silo-wordmark-sidebar.png"');
     expect(brandComponent).not.toContain('"/silo-icon-1024.png"');
   });
