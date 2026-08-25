@@ -525,7 +525,7 @@ func NewRouter(deps Dependencies) chi.Router {
 			tenantStore := tenancy.NewStore(deps.DB)
 			sessionTenants = tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore)
 			// The SAME store also answers the park tenant quota/freeze lookup
-			// (vondel-park growth G2) — a different question from the OPA
+			// (bloem-park growth G2) — a different question from the OPA
 			// policy subject resolution above, but the same organizations
 			// table, so one Store instance answers both.
 			tenantOrgStore = tenantStore
@@ -1257,7 +1257,7 @@ func NewRouter(deps Dependencies) chi.Router {
 		adminHandler.SetProfileHandler(profileHandler)
 		adminHandler.SetMembershipProvisioner(deps.MembershipProvisioner)
 		if deps.DB != nil {
-			// The tenant admin API (vondel-park growth G2): a park tenant is
+			// The tenant admin API (bloem-park growth G2): a park tenant is
 			// an organization, so the same tenancy.Store the OPA subject
 			// resolution above uses also answers this.
 			tenantOrgStore := tenancy.NewStore(deps.DB)
@@ -3132,7 +3132,7 @@ func NewRouter(deps Dependencies) chi.Router {
 							r.Use(requireActingAdmin)
 
 							if adminTenantsHandler != nil {
-								// Tenants (vondel-park growth G2): the
+								// Tenants (bloem-park growth G2): the
 								// contract park's media adapter speaks.
 								r.Post("/tenants", adminTenantsHandler.HandleCreate)
 								r.Get("/tenants", adminTenantsHandler.HandleList)
@@ -3701,7 +3701,7 @@ func playbackSessionLimitProvider(
 			TranscodingDisabled:      !effective.TranscodeAllowed,
 			AudioTranscodingDisabled: !effective.AudioTranscodeAllowed,
 		}
-		// Park tenant entitlements (vondel-park growth G2): the shared
+		// Park tenant entitlements (bloem-park growth G2): the shared
 		// transcode pool and the frozen flag ride the same lookup, keyed by
 		// account rather than by the active-profile policy subject above —
 		// a park tenant's quota is sold per account, not per profile.

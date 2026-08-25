@@ -1,6 +1,6 @@
 // Package compatapi implements the private Compatibility Service API v1
 // consumed exclusively by enrolled compatibility applications
-// (vondel-audiobookshelf, vondel-jellyfin).
+// (bloem-audiobookshelf, bloem-jellyfin).
 //
 // The package is a policy-enforcing adapter layer: every handler
 // authenticates the calling application, validates the operation's
@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-// Capability slugs. They must match the x-vondel-capability values in the
+// Capability slugs. They must match the x-bloem-capability values in the
 // OpenAPI contract and the capability vocabulary of the enrollment service.
 const (
 	// CapabilityService is the implicit base capability every enrolled

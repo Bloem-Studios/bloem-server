@@ -372,7 +372,7 @@ func newTenancyDisposableDatabase(t *testing.T, ctx context.Context, dsn string)
 	if _, err := rand.Read(random[:]); err != nil {
 		t.Fatalf("generate database name: %v", err)
 	}
-	name := "vondel_tenancy_" + hex.EncodeToString(random[:])
+	name := "bloem_tenancy_" + hex.EncodeToString(random[:])
 
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {

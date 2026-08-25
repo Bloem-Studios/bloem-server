@@ -343,7 +343,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 
 func newWatchDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	pool := newDisposableAPIDatabase(t, "vondel_watch_", false)
+	pool := newDisposableAPIDatabase(t, "bloem_watch_", false)
 	if err := database.RunMigrations(context.Background(), pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
@@ -477,9 +477,9 @@ func assertWatchDocumentConforms(t *testing.T, body []byte) map[string]any {
 func watchContractsCheckout(t *testing.T) string {
 	t.Helper()
 	candidates := []string{
-		os.Getenv("VONDEL_CONTRACTS_ROOT"),
-		os.Getenv("VONDEL_CLIENT_CONTRACTS_DIR"),
-		filepath.Join("..", "..", "..", "vondel-client-contracts"),
+		os.Getenv("BLOEM_CONTRACTS_ROOT"),
+		os.Getenv("BLOEM_CLIENT_CONTRACTS_DIR"),
+		filepath.Join("..", "..", "..", "bloem-client-contracts"),
 	}
 	var looked []string
 	for _, candidate := range candidates {
@@ -495,7 +495,7 @@ func watchContractsCheckout(t *testing.T) string {
 			return abs
 		}
 	}
-	t.Skipf("watch document schema unavailable: set VONDEL_CONTRACTS_ROOT to a vondel-client-contracts checkout (looked in %s)",
+	t.Skipf("watch document schema unavailable: set BLOEM_CONTRACTS_ROOT to a bloem-client-contracts checkout (looked in %s)",
 		strings.Join(looked, ", "))
 	return ""
 }

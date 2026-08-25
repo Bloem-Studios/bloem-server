@@ -42,7 +42,7 @@ Organization administrators use:
 Platform administrators use **Admin → Platform → Bulk Account Policies** for an
 explicit list of directly managed Server account IDs. Equivalent organization
 and direct-account APIs are documented in the
-[native `/api/v2` reference](../vondel-v2-api-reference.md#platform-entitlement-cohorts-and-bulk-policy).
+[native `/api/v2` reference](../bloem-v2-api-reference.md#platform-entitlement-cohorts-and-bulk-policy).
 
 Authoritative platform reads are:
 

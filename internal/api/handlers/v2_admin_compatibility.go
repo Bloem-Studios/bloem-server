@@ -335,7 +335,7 @@ func (h *V2AdminCompatibilityHandler) writeServiceError(w http.ResponseWriter, e
 func (h *V2AdminCompatibilityHandler) canonicalURL(kind string) string {
 	base := h.publicURL
 	if base == "" {
-		base = "https://vondel.example"
+		base = "https://bloem.example"
 	}
 	if kind == compatKindAudiobookshelf {
 		return base + "/audiobookshelf"
@@ -348,7 +348,7 @@ func (h *V2AdminCompatibilityHandler) canonicalURL(kind string) string {
 // Docker socket and performs no container mutation.
 func operatorCommands(kind string) compatibilityCommands {
 	overlay := fmt.Sprintf("docker-compose.%s.yml", kind)
-	service := "vondel-" + kind
+	service := "bloem-" + kind
 	compose := fmt.Sprintf("docker compose -f docker-compose.yml -f %s", overlay)
 	return compatibilityCommands{
 		Install:  compose + " up -d",

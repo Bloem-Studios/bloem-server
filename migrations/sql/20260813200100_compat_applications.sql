@@ -2,8 +2,8 @@
 -- +goose StatementBegin
 -- Companion enrollment and revocable service trust.
 --
--- A compat application is one enrolled companion instance (vondel-jellyfin or
--- vondel-audiobookshelf). Its kind and instance identity are immutable after
+-- A compat application is one enrolled companion instance (bloem-jellyfin or
+-- bloem-audiobookshelf). Its kind and instance identity are immutable after
 -- enrollment; everything the server needs to refuse it later — enablement,
 -- revocation, granted capabilities, the API range it registered, an optional
 -- bound client-certificate fingerprint — lives on the row. Secrets are never
@@ -40,7 +40,7 @@ CREATE TABLE public.compat_applications (
 -- Instance identity and kind are fixed at enrollment. Enforcing it here means
 -- a write that never passes through the service cannot re-point an issued
 -- credential at a different companion identity.
-CREATE FUNCTION public.vondel_compat_application_identity_guard()
+CREATE FUNCTION public.bloem_compat_application_identity_guard()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -57,7 +57,7 @@ $$;
 
 CREATE TRIGGER compat_applications_identity_guard
 BEFORE UPDATE ON public.compat_applications
-FOR EACH ROW EXECUTE FUNCTION public.vondel_compat_application_identity_guard();
+FOR EACH ROW EXECUTE FUNCTION public.bloem_compat_application_identity_guard();
 
 CREATE TABLE public.compat_application_enrollments (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -112,7 +112,7 @@ CREATE INDEX compat_application_audit_application_idx
     ON public.compat_application_audit (application_id, id)
     WHERE application_id IS NOT NULL;
 
-CREATE FUNCTION public.vondel_reject_compat_audit_mutation()
+CREATE FUNCTION public.bloem_reject_compat_audit_mutation()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -123,17 +123,17 @@ $$;
 
 CREATE TRIGGER compat_application_audit_immutable
 BEFORE UPDATE OR DELETE ON public.compat_application_audit
-FOR EACH ROW EXECUTE FUNCTION public.vondel_reject_compat_audit_mutation();
+FOR EACH ROW EXECUTE FUNCTION public.bloem_reject_compat_audit_mutation();
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 DROP TRIGGER IF EXISTS compat_application_audit_immutable ON public.compat_application_audit;
-DROP FUNCTION IF EXISTS public.vondel_reject_compat_audit_mutation();
+DROP FUNCTION IF EXISTS public.bloem_reject_compat_audit_mutation();
 DROP TABLE IF EXISTS public.compat_application_audit;
 DROP TABLE IF EXISTS public.compat_application_credentials;
 DROP TABLE IF EXISTS public.compat_application_enrollments;
 DROP TRIGGER IF EXISTS compat_applications_identity_guard ON public.compat_applications;
-DROP FUNCTION IF EXISTS public.vondel_compat_application_identity_guard();
+DROP FUNCTION IF EXISTS public.bloem_compat_application_identity_guard();
 DROP TABLE IF EXISTS public.compat_applications;
 -- +goose StatementEnd

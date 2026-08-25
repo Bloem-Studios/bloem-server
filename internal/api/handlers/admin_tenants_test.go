@@ -1,6 +1,6 @@
 package handlers_test
 
-// The tenant admin API's wire contract — the exact JSON vondel-park's media
+// The tenant admin API's wire contract — the exact JSON bloem-park's media
 // adapter speaks. Field names here are pinned on BOTH sides (the adapter's
 // own test fakes this shape); changing one without the other strands
 // provisioning.

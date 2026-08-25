@@ -658,8 +658,8 @@ func loadContractOperations(t *testing.T) map[string]contractOperation {
 			if !ok {
 				continue
 			}
-			capability, _ := op["x-vondel-capability"].(string)
-			subject, _ := op["x-vondel-subject"].(bool)
+			capability, _ := op["x-bloem-capability"].(string)
+			subject, _ := op["x-bloem-subject"].(bool)
 			key := strings.ToUpper(method) + " " + path
 			out[key] = contractOperation{
 				Method:     strings.ToUpper(method),
@@ -920,7 +920,7 @@ func TestRenewIssuesAFreshCredential(t *testing.T) {
 // binding) and the companion's image digest.
 func TestEnrollForwardsConnectionStateAndImageDigest(t *testing.T) {
 	f := newFixture(t, nil)
-	peer := &tls.ConnectionState{ServerName: "vondel-test-peer"}
+	peer := &tls.ConnectionState{ServerName: "bloem-test-peer"}
 	rec := f.do(t, http.MethodPost, "/enroll", map[string]any{
 		"secret":       "enroll-secret",
 		"kind":         "jellyfin",
@@ -930,7 +930,7 @@ func TestEnrollForwardsConnectionStateAndImageDigest(t *testing.T) {
 		"api":          map[string]int{"min": 1, "max": 1},
 	}, withIdempotencyKey("enroll-tls"), withTLS(peer))
 	requireStatus(t, rec, http.StatusCreated)
-	if f.enroller.lastPeerTLS == nil || f.enroller.lastPeerTLS.ServerName != "vondel-test-peer" {
+	if f.enroller.lastPeerTLS == nil || f.enroller.lastPeerTLS.ServerName != "bloem-test-peer" {
 		t.Fatalf("enroller saw peer TLS %+v, want the request's connection state", f.enroller.lastPeerTLS)
 	}
 	if f.enroller.lastReq.ImageDigest != "sha256:cafef00d" {

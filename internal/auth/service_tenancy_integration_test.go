@@ -163,7 +163,7 @@ func newAuthTenancyDisposableDatabase(t *testing.T, ctx context.Context, dsn str
 	if _, err := rand.Read(random[:]); err != nil {
 		t.Fatalf("generate database name: %v", err)
 	}
-	name := "vondel_auth_tenancy_" + hex.EncodeToString(random[:])
+	name := "bloem_auth_tenancy_" + hex.EncodeToString(random[:])
 
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {

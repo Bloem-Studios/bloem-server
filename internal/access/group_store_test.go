@@ -633,7 +633,7 @@ func prepareAccessGroupTestDatabase(ctx context.Context, dsn string) (*pgxpool.C
 	if _, err := rand.Read(random[:]); err != nil {
 		return nil, nil, fmt.Errorf("generate disposable database name: %w", err)
 	}
-	name := "vondel_access_groups_" + hex.EncodeToString(random[:])
+	name := "bloem_access_groups_" + hex.EncodeToString(random[:])
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse maintenance database URL: %w", err)

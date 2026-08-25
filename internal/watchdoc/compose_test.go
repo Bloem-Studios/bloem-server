@@ -18,12 +18,12 @@ import (
 )
 
 // contractsRootEnv is the environment variable that points at the
-// vondel-client-contracts checkout holding the versioned Watch schema. The
+// bloem-client-contracts checkout holding the versioned Watch schema. The
 // documents these tests build are only worth anything if they are validated
 // against the schema both TV clients compile their decoders from, so the
 // schema is read from the contracts repository rather than restated here as a
 // hand-written field list that could drift away from it.
-const contractsRootEnv = "VONDEL_CONTRACTS_ROOT"
+const contractsRootEnv = "BLOEM_CONTRACTS_ROOT"
 
 // contractsRoot locates the contracts checkout: the environment variable
 // first, then the variable the repository's existing conformance test already
@@ -34,8 +34,8 @@ func contractsRoot(t *testing.T) string {
 	t.Helper()
 	candidates := []string{
 		os.Getenv(contractsRootEnv),
-		os.Getenv("VONDEL_CLIENT_CONTRACTS_DIR"),
-		filepath.Join("..", "..", "..", "vondel-client-contracts"),
+		os.Getenv("BLOEM_CLIENT_CONTRACTS_DIR"),
+		filepath.Join("..", "..", "..", "bloem-client-contracts"),
 	}
 	var looked []string
 	for _, candidate := range candidates {
@@ -51,7 +51,7 @@ func contractsRoot(t *testing.T) string {
 			return abs
 		}
 	}
-	t.Skipf("watch document schema unavailable: set %s to a vondel-client-contracts checkout (looked in %s)",
+	t.Skipf("watch document schema unavailable: set %s to a bloem-client-contracts checkout (looked in %s)",
 		contractsRootEnv, strings.Join(looked, ", "))
 	return ""
 }

@@ -32,7 +32,7 @@ var adminUserResourceRouteContract = []struct {
 }
 
 func TestAdminUserResourceRoutesUseProductionAdminBoundary(t *testing.T) {
-	pool := newDisposableAPIDatabase(t, "vondel_admin_user_routes_", true)
+	pool := newDisposableAPIDatabase(t, "bloem_admin_user_routes_", true)
 	if err := database.RunMigrations(context.Background(), pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestAdminUserResourceRoutesUseProductionAdminBoundary(t *testing.T) {
 
 func TestProfileRoutesWithoutS3PreserveNilAvatarStore(t *testing.T) {
 	ctx := context.Background()
-	pool := newDisposableAPIDatabase(t, "vondel_no_s3_profiles_", true)
+	pool := newDisposableAPIDatabase(t, "bloem_no_s3_profiles_", true)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}

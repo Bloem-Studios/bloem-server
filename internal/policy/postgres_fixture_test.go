@@ -70,7 +70,7 @@ func TestPolicyStoreUsesDisposableMigratedDatabase(t *testing.T) {
 	if currentDatabase == maintenanceConfig.ConnConfig.Database {
 		t.Fatalf("policy-store test database = maintenance database %q", currentDatabase)
 	}
-	if currentDatabase != policyStoreTestDatabaseName || !strings.HasPrefix(currentDatabase, "vondel_policy_store_") {
+	if currentDatabase != policyStoreTestDatabaseName || !strings.HasPrefix(currentDatabase, "bloem_policy_store_") {
 		t.Fatalf("policy-store test database = %q, want exact disposable child %q", currentDatabase, policyStoreTestDatabaseName)
 	}
 	if policyTable == nil || *policyTable != "policy_documents" {
@@ -135,7 +135,7 @@ func preparePolicyStoreTestDatabase(
 	if _, err := rand.Read(random[:]); err != nil {
 		return nil, "", nil, fmt.Errorf("generate disposable database name: %w", err)
 	}
-	name := "vondel_policy_store_" + hex.EncodeToString(random[:])
+	name := "bloem_policy_store_" + hex.EncodeToString(random[:])
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, "", nil, fmt.Errorf("parse maintenance database URL: %w", err)

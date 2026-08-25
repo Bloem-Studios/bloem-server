@@ -8,7 +8,7 @@ var (
 	ErrTooManyStreams    = errors.New("too many concurrent streams")
 	ErrTooManyTranscodes = errors.New("too many concurrent transcodes")
 	// ErrTenantTranscodesExceeded is the TENANT organization's shared
-	// transcode pool running dry (vondel-park growth G2) — distinct from
+	// transcode pool running dry (bloem-park growth G2) — distinct from
 	// the per-user cap so a member can tell "you hit your limit" from
 	// "your server is busy".
 	ErrTenantTranscodesExceeded = errors.New("tenant transcode capacity exhausted")

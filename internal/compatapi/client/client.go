@@ -29,7 +29,7 @@ import (
 // Client calls the private compatibility API.
 type Client struct {
 	// BaseURL is the mount point, e.g.
-	// http://vondel:8080/api/internal/compat/v1.
+	// http://bloem:8080/api/internal/compat/v1.
 	BaseURL string
 	// HTTPClient defaults to a client with a 30 second timeout.
 	HTTPClient *http.Client

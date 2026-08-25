@@ -47,7 +47,7 @@ ALTER TABLE public.compat_applications
 -- Replaces the identity guard with one that also derives the revision. It
 -- stays a single BEFORE UPDATE trigger so there is no ordering question
 -- between an identity check and a revision bump.
-CREATE OR REPLACE FUNCTION public.vondel_compat_application_identity_guard()
+CREATE OR REPLACE FUNCTION public.bloem_compat_application_identity_guard()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -87,7 +87,7 @@ $$;
 
 -- +goose Down
 -- +goose StatementBegin
-CREATE OR REPLACE FUNCTION public.vondel_compat_application_identity_guard()
+CREATE OR REPLACE FUNCTION public.bloem_compat_application_identity_guard()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$

@@ -12,7 +12,7 @@ import (
 func newTestDiscovery(t *testing.T, states StateProvider) *Discovery {
 	t.Helper()
 	return NewDiscovery(DiscoveryConfig{
-		PublicAddress: "https://vondel.example",
+		PublicAddress: "https://bloem.example",
 		ServerID:      "compat-server-id",
 		ServerName:    "Bloem",
 		States:        states,
@@ -21,7 +21,7 @@ func newTestDiscovery(t *testing.T, states StateProvider) *Discovery {
 
 func availableJellyfin() *fakeStates {
 	states := &fakeStates{}
-	endpoint, _ := url.Parse("http://vondel-jellyfin:8096")
+	endpoint, _ := url.Parse("http://bloem-jellyfin:8096")
 	states.set(KindJellyfin, availableStatus(endpoint))
 	return states
 }
@@ -61,7 +61,7 @@ func TestDiscoveryDisclosesOnlyTheCanonicalAddress(t *testing.T) {
 	if len(payload) != 3 {
 		t.Fatalf("response must carry exactly Address, Id, Name; got %s", response)
 	}
-	if payload["Address"] != "https://vondel.example" {
+	if payload["Address"] != "https://bloem.example" {
 		t.Fatalf("advertised address %q must be the canonical public one", payload["Address"])
 	}
 	if payload["Id"] != "compat-server-id" {
@@ -72,7 +72,7 @@ func TestDiscoveryDisclosesOnlyTheCanonicalAddress(t *testing.T) {
 // The relay responds only while an enrolled Jellyfin companion is enabled,
 // healthy, and compatible; every other state stays silent.
 func TestDiscoveryStaysSilentWhenJellyfinIsUnavailable(t *testing.T) {
-	endpoint, _ := url.Parse("http://vondel-jellyfin:8096")
+	endpoint, _ := url.Parse("http://bloem-jellyfin:8096")
 	cases := map[string]Status{
 		"absent":       {},
 		"disabled":     {Known: true, Enrolled: true, Healthy: true, APICompatible: true, Endpoint: endpoint},
@@ -99,7 +99,7 @@ func TestDiscoveryStaysSilentWhenJellyfinIsUnavailable(t *testing.T) {
 func TestDiscoveryRateLimits(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	discovery := NewDiscovery(DiscoveryConfig{
-		PublicAddress: "https://vondel.example",
+		PublicAddress: "https://bloem.example",
 		ServerID:      "compat-server-id",
 		ServerName:    "Bloem",
 		States:        availableJellyfin(),

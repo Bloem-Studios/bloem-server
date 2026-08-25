@@ -24,18 +24,18 @@ import (
 	"github.com/Silo-Server/silo-server/internal/watchdoc"
 )
 
-// watchContractsRootEnv points at the vondel-client-contracts checkout holding
+// watchContractsRootEnv points at the bloem-client-contracts checkout holding
 // the versioned Watch schema. Endpoint bodies are validated against that
 // schema rather than a hand-written field list, so a response the TV clients
 // would refuse fails here first.
-const watchContractsRootEnv = "VONDEL_CONTRACTS_ROOT"
+const watchContractsRootEnv = "BLOEM_CONTRACTS_ROOT"
 
 func watchContractsRoot(t *testing.T) string {
 	t.Helper()
 	candidates := []string{
 		os.Getenv(watchContractsRootEnv),
-		os.Getenv("VONDEL_CLIENT_CONTRACTS_DIR"),
-		filepath.Join("..", "..", "..", "..", "vondel-client-contracts"),
+		os.Getenv("BLOEM_CLIENT_CONTRACTS_DIR"),
+		filepath.Join("..", "..", "..", "..", "bloem-client-contracts"),
 	}
 	var looked []string
 	for _, candidate := range candidates {
@@ -51,7 +51,7 @@ func watchContractsRoot(t *testing.T) string {
 			return abs
 		}
 	}
-	t.Skipf("watch document schema unavailable: set %s to a vondel-client-contracts checkout (looked in %s)",
+	t.Skipf("watch document schema unavailable: set %s to a bloem-client-contracts checkout (looked in %s)",
 		watchContractsRootEnv, strings.Join(looked, ", "))
 	return ""
 }

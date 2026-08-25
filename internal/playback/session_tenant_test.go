@@ -1,6 +1,6 @@
 package playback_test
 
-// Park tenant organization enforcement at playback admission (vondel-park
+// Park tenant organization enforcement at playback admission (bloem-park
 // growth G2): the tenant's transcode pool is SHARED across its accounts, a
 // frozen tenant plays nothing, and an account with no tenant is untouched.
 // These are sold entitlements, so the gate holds on the inline path and the

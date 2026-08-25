@@ -5,7 +5,7 @@
 -- application would reduce to nothing survives a direct SQL write. btrim's
 -- default set is spaces only, which lets a tab, a newline, or a non-breaking
 -- space through; the set below is the whitespace Go trims.
-CREATE FUNCTION public.vondel_login_whitespace()
+CREATE FUNCTION public.bloem_login_whitespace()
 RETURNS text
 LANGUAGE sql
 IMMUTABLE
@@ -13,20 +13,20 @@ AS $$
     SELECT U&' \0009\000A\000B\000C\000D\0085\00A0\1680\2000\2001\2002\2003\2004\2005\2006\2007\2008\2009\200A\2028\2029\202F\205F\3000'
 $$;
 
-CREATE FUNCTION public.vondel_login_text_blank(value text)
+CREATE FUNCTION public.bloem_login_text_blank(value text)
 RETURNS boolean
 LANGUAGE sql
 IMMUTABLE
 AS $$
-    SELECT value IS NULL OR btrim(value, public.vondel_login_whitespace()) = ''
+    SELECT value IS NULL OR btrim(value, public.bloem_login_whitespace()) = ''
 $$;
 
-CREATE FUNCTION public.vondel_normalize_login_email(value text)
+CREATE FUNCTION public.bloem_normalize_login_email(value text)
 RETURNS text
 LANGUAGE sql
 IMMUTABLE
 AS $$
-    SELECT lower(btrim(value, public.vondel_login_whitespace()))
+    SELECT lower(btrim(value, public.bloem_login_whitespace()))
 $$;
 
 ALTER TABLE public.user_profiles
@@ -43,8 +43,8 @@ ALTER TABLE public.user_profiles
         CHECK (
             (login_email IS NULL AND password_hash IS NULL)
             OR (
-                NOT public.vondel_login_text_blank(login_email)
-                AND NOT public.vondel_login_text_blank(password_hash)
+                NOT public.bloem_login_text_blank(login_email)
+                AND NOT public.bloem_login_text_blank(password_hash)
             )
         );
 
@@ -57,7 +57,7 @@ ALTER TABLE public.auth_sessions
     ADD CONSTRAINT auth_sessions_direct_profile_binding_check CHECK (
         (auth_method = 'account' AND profile_id IS NULL AND profile_credential_revision IS NULL) OR
         (auth_method = 'direct_profile' AND profile_id IS NOT NULL AND profile_credential_revision IS NOT NULL
-         AND NOT public.vondel_login_text_blank(device_id))
+         AND NOT public.bloem_login_text_blank(device_id))
     ),
     ADD CONSTRAINT auth_sessions_user_profile_fkey
         FOREIGN KEY (user_id, profile_id)
@@ -70,7 +70,7 @@ CREATE INDEX auth_sessions_direct_profile_idx
 
 CREATE TABLE public.login_email_registry (
     normalized_email text PRIMARY KEY
-        CHECK (normalized_email = public.vondel_normalize_login_email(normalized_email)),
+        CHECK (normalized_email = public.bloem_normalize_login_email(normalized_email)),
     account_id integer REFERENCES public.users(id) ON DELETE CASCADE,
     profile_user_id integer,
     profile_id text,
@@ -86,11 +86,11 @@ CREATE TABLE public.login_email_registry (
 );
 
 INSERT INTO public.login_email_registry (normalized_email, account_id)
-SELECT public.vondel_normalize_login_email(email), id
+SELECT public.bloem_normalize_login_email(email), id
 FROM public.users
-WHERE NOT public.vondel_login_text_blank(email);
+WHERE NOT public.bloem_login_text_blank(email);
 
-CREATE FUNCTION public.vondel_sync_account_login_email_registry()
+CREATE FUNCTION public.bloem_sync_account_login_email_registry()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -108,9 +108,9 @@ BEGIN
         WHERE account_id = OLD.id;
     END IF;
 
-    IF TG_OP <> 'DELETE' AND NOT public.vondel_login_text_blank(NEW.email) THEN
+    IF TG_OP <> 'DELETE' AND NOT public.bloem_login_text_blank(NEW.email) THEN
         INSERT INTO public.login_email_registry (normalized_email, account_id)
-        VALUES (public.vondel_normalize_login_email(NEW.email), NEW.id);
+        VALUES (public.bloem_normalize_login_email(NEW.email), NEW.id);
     END IF;
     RETURN COALESCE(NEW, OLD);
 END;
@@ -118,9 +118,9 @@ $$;
 
 CREATE TRIGGER users_login_email_registry_sync
 AFTER INSERT OR UPDATE OF email OR DELETE ON public.users
-FOR EACH ROW EXECUTE FUNCTION public.vondel_sync_account_login_email_registry();
+FOR EACH ROW EXECUTE FUNCTION public.bloem_sync_account_login_email_registry();
 
-CREATE FUNCTION public.vondel_sync_profile_login_email_registry()
+CREATE FUNCTION public.bloem_sync_profile_login_email_registry()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -137,7 +137,7 @@ BEGIN
     END IF;
     IF TG_OP <> 'DELETE' AND NEW.login_email IS NOT NULL THEN
         INSERT INTO public.login_email_registry (normalized_email, profile_user_id, profile_id)
-        VALUES (public.vondel_normalize_login_email(NEW.login_email), NEW.user_id, NEW.id);
+        VALUES (public.bloem_normalize_login_email(NEW.login_email), NEW.user_id, NEW.id);
     END IF;
     RETURN COALESCE(NEW, OLD);
 END;
@@ -145,7 +145,7 @@ $$;
 
 CREATE TRIGGER user_profiles_login_email_registry_sync
 AFTER INSERT OR UPDATE OF login_email, password_hash OR DELETE ON public.user_profiles
-FOR EACH ROW EXECUTE FUNCTION public.vondel_sync_profile_login_email_registry();
+FOR EACH ROW EXECUTE FUNCTION public.bloem_sync_profile_login_email_registry();
 
 -- credential_revision is what revokes a direct profile session: a session
 -- carries the revision it authenticated against, and login and refresh both
@@ -154,7 +154,7 @@ FOR EACH ROW EXECUTE FUNCTION public.vondel_sync_profile_login_email_registry();
 -- every old session valid, so the rotation is enforced here instead. The
 -- increment is forced rather than trusted, so a writer that supplies its own
 -- credential_revision cannot hold the revision still.
-CREATE FUNCTION public.vondel_rotate_profile_credential_revision()
+CREATE FUNCTION public.bloem_rotate_profile_credential_revision()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -168,11 +168,11 @@ $$;
 
 CREATE TRIGGER user_profiles_rotate_credential_revision
 BEFORE UPDATE OF login_email, password_hash ON public.user_profiles
-FOR EACH ROW EXECUTE FUNCTION public.vondel_rotate_profile_credential_revision();
+FOR EACH ROW EXECUTE FUNCTION public.bloem_rotate_profile_credential_revision();
 
 -- Rotating a credential also ends the sessions it authenticated, in the same
 -- transaction as the write that rotated it.
-CREATE FUNCTION public.vondel_revoke_rotated_profile_sessions()
+CREATE FUNCTION public.bloem_revoke_rotated_profile_sessions()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -191,19 +191,19 @@ $$;
 
 CREATE TRIGGER user_profiles_revoke_rotated_sessions
 AFTER UPDATE OF login_email, password_hash ON public.user_profiles
-FOR EACH ROW EXECUTE FUNCTION public.vondel_revoke_rotated_profile_sessions();
+FOR EACH ROW EXECUTE FUNCTION public.bloem_revoke_rotated_profile_sessions();
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 DROP TRIGGER IF EXISTS users_login_email_registry_sync ON public.users;
-DROP FUNCTION IF EXISTS public.vondel_sync_account_login_email_registry();
+DROP FUNCTION IF EXISTS public.bloem_sync_account_login_email_registry();
 DROP TRIGGER IF EXISTS user_profiles_login_email_registry_sync ON public.user_profiles;
-DROP FUNCTION IF EXISTS public.vondel_sync_profile_login_email_registry();
+DROP FUNCTION IF EXISTS public.bloem_sync_profile_login_email_registry();
 DROP TRIGGER IF EXISTS user_profiles_rotate_credential_revision ON public.user_profiles;
-DROP FUNCTION IF EXISTS public.vondel_rotate_profile_credential_revision();
+DROP FUNCTION IF EXISTS public.bloem_rotate_profile_credential_revision();
 DROP TRIGGER IF EXISTS user_profiles_revoke_rotated_sessions ON public.user_profiles;
-DROP FUNCTION IF EXISTS public.vondel_revoke_rotated_profile_sessions();
+DROP FUNCTION IF EXISTS public.bloem_revoke_rotated_profile_sessions();
 DROP TABLE IF EXISTS public.login_email_registry;
 
 DROP INDEX IF EXISTS public.auth_sessions_direct_profile_idx;
@@ -221,7 +221,7 @@ ALTER TABLE public.user_profiles
     DROP COLUMN IF EXISTS password_hash,
     DROP COLUMN IF EXISTS login_email;
 
-DROP FUNCTION IF EXISTS public.vondel_normalize_login_email(text);
-DROP FUNCTION IF EXISTS public.vondel_login_text_blank(text);
-DROP FUNCTION IF EXISTS public.vondel_login_whitespace();
+DROP FUNCTION IF EXISTS public.bloem_normalize_login_email(text);
+DROP FUNCTION IF EXISTS public.bloem_login_text_blank(text);
+DROP FUNCTION IF EXISTS public.bloem_login_whitespace();
 -- +goose StatementEnd

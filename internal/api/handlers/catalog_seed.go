@@ -694,7 +694,7 @@ func stageRemoteCatalogSeed(ctx context.Context, store catalogSeedStagingStore, 
 		return "", "", "", fmt.Errorf("generating staged catalog seed key: %w", err)
 	}
 	key := fmt.Sprintf("%simports/%x/%s.json.gz", catalogSeedImportPrefix, nonce, digestHex)
-	temp, err := os.CreateTemp("", "vondel-catalog-seed-*.json.gz")
+	temp, err := os.CreateTemp("", "bloem-catalog-seed-*.json.gz")
 	if err != nil {
 		return "", "", "", fmt.Errorf("creating staged catalog seed file: %w", err)
 	}

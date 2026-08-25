@@ -1,4 +1,4 @@
-# Silo playback merge impact on Vondel clients
+# Silo playback merge impact on Bloem clients
 
 Status: implementation handoff
 Audited: 2026-08-24
@@ -6,10 +6,10 @@ Audited: 2026-08-24
 ## Revisions
 
 - Silo server `upstream/main`: `820eef7792d24e2b5af789e448906481bd560296`
-- Vondel server baseline: `781c651366dfdc2c7f5f35aaf67b772a1018620f`
-- Vondel Android baseline: `52436d3271a0c656f9b77b78aeb84f9116cd6a6c`
-- Vondel Apple baseline: `dcbfc080c7b272961763d4632cfddf9970fb73f5`
-- Vondel client contracts baseline: `25ee952aa51acdea6c06546d8c3bad668bf7f566`
+- Bloem server baseline: `781c651366dfdc2c7f5f35aaf67b772a1018620f`
+- Bloem Android baseline: `52436d3271a0c656f9b77b78aeb84f9116cd6a6c`
+- Bloem Apple baseline: `dcbfc080c7b272961763d4632cfddf9970fb73f5`
+- Bloem client contracts baseline: `25ee952aa51acdea6c06546d8c3bad668bf7f566`
 
 The relevant upstream merges are Silo PR #734 (`6f8db023`, optimistic
 H.264 remux copy-safety) and PR #737 (`820eef77`, client-managed original
@@ -17,7 +17,7 @@ HDR and selected-audio delivery claims).
 
 ## Compatibility conclusion
 
-Both changes are additive. Existing Vondel clients omit the new feature and
+Both changes are additive. Existing Bloem clients omit the new feature and
 claims, so they remain correct. The main user-visible risk is Android: when an
 optimistic remux is invalidated, Media3 can report a non-recoverable source
 failure and require manual Retry. Apple already maps a failed load to one
@@ -81,13 +81,13 @@ Required order:
 
 ## Server integration invariants
 
-Upstream playback changes overlap Vondel's header-authenticated media and
+Upstream playback changes overlap Bloem's header-authenticated media and
 proxy-policy work. Integration must preserve:
 
 - deployment-gated `header_authenticated_media_ready_v1`;
 - `authorized_media_origins_v1` and the configured proxy policy;
 - sticky negotiated attempt features and credential-free media URLs;
-- Vondel fleet admission/reservation release during session invalidation; and
+- Bloem fleet admission/reservation release during session invalidation; and
 - the PR #734 database migration that persists the multiple-PPS verdict.
 
 Roll out in dependency order: server persistence and legacy stop, shared

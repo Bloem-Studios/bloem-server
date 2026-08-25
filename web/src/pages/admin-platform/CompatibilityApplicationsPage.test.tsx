@@ -27,15 +27,15 @@ const jellyfinApplication = {
   active_sessions: 3,
   capabilities: ["identity.exchange", "catalog.read"],
   revision: 7,
-  canonical_url: "https://vondel.example/",
+  canonical_url: "https://bloem.example/",
   commands: {
     install: "docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml up -d",
     update:
-      "docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml pull vondel-jellyfin && docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml up -d vondel-jellyfin",
+      "docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml pull bloem-jellyfin && docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml up -d bloem-jellyfin",
     rollback:
-      "Pin the previous image digest for vondel-jellyfin in docker-compose.jellyfin.yml, then run: docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml up -d vondel-jellyfin",
+      "Pin the previous image digest for bloem-jellyfin in docker-compose.jellyfin.yml, then run: docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml up -d bloem-jellyfin",
     remove:
-      "docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml rm -sf vondel-jellyfin",
+      "docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml rm -sf bloem-jellyfin",
   },
 };
 
@@ -67,7 +67,7 @@ describe("CompatibilityApplicationsPage", () => {
     expect(screen.getByText("1.4.2")).toBeInTheDocument();
     expect(screen.getByText("sha256:abcdef0123")).toBeInTheDocument();
     expect(screen.getByText("1.0 – 1.3")).toBeInTheDocument();
-    expect(screen.getByText("https://vondel.example/")).toBeInTheDocument();
+    expect(screen.getByText("https://bloem.example/")).toBeInTheDocument();
     expect(
       screen.getByText("docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml up -d"),
     ).toBeInTheDocument();

@@ -111,7 +111,7 @@ func (r *Repository) create(ctx context.Context, organizationID uuid.UUID, input
 
 	_, err = tx.Exec(ctx, `
 		UPDATE invitations SET revoked_at = now(), updated_at = now()
-		WHERE organization_id = COALESCE($1, public.vondel_default_organization_id())
+		WHERE organization_id = COALESCE($1, public.bloem_default_organization_id())
 		  AND email = $2 AND accepted_at IS NULL AND revoked_at IS NULL`,
 		nullableOrganizationID(organizationID), input.Email)
 	if err != nil {
@@ -123,7 +123,7 @@ func (r *Repository) create(ctx context.Context, organizationID uuid.UUID, input
 			INSERT INTO invitations (
 				organization_id, email, token_hash, role, access_group_id, library_ids,
 				create_profile, show_tour, note, invited_by, expires_at
-			) VALUES (COALESCE($1, public.vondel_default_organization_id()), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			) VALUES (COALESCE($1, public.bloem_default_organization_id()), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			RETURNING *
 		)
 		SELECT `+invitationColumns+` FROM inserted i LEFT JOIN users u ON u.id = i.invited_by`,
@@ -142,7 +142,7 @@ func (r *Repository) create(ctx context.Context, organizationID uuid.UUID, input
 
 // GetByID retrieves an invitation by its numeric ID.
 func (r *Repository) GetByID(ctx context.Context, id int64) (*models.Invitation, error) {
-	row := r.pool.QueryRow(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.id = $1 AND i.organization_id=public.vondel_default_organization_id()`, id)
+	row := r.pool.QueryRow(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.id = $1 AND i.organization_id=public.bloem_default_organization_id()`, id)
 	return scanInvitation(row)
 }
 
@@ -160,7 +160,7 @@ func (r *Repository) List(ctx context.Context) ([]*models.Invitation, error) {
 // ListForOrganization returns only invitations in one organization. A nil
 // identifier is the legacy default-organization projection.
 func (r *Repository) ListForOrganization(ctx context.Context, organizationID uuid.UUID) ([]*models.Invitation, error) {
-	rows, err := r.pool.Query(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.organization_id=COALESCE($1,public.vondel_default_organization_id()) ORDER BY i.created_at DESC`, nullableOrganizationID(organizationID))
+	rows, err := r.pool.Query(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.organization_id=COALESCE($1,public.bloem_default_organization_id()) ORDER BY i.created_at DESC`, nullableOrganizationID(organizationID))
 	if err != nil {
 		return nil, fmt.Errorf("listing invitations: %w", err)
 	}
@@ -208,7 +208,7 @@ func (r *Repository) Accept(ctx context.Context, tokenHash string, userID int) e
 func (r *Repository) Revoke(ctx context.Context, id int64) error {
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE invitations SET revoked_at = now(), updated_at = now()
-		WHERE id = $1 AND organization_id=public.vondel_default_organization_id() AND accepted_at IS NULL AND revoked_at IS NULL`, id)
+		WHERE id = $1 AND organization_id=public.bloem_default_organization_id() AND accepted_at IS NULL AND revoked_at IS NULL`, id)
 	if err != nil {
 		return fmt.Errorf("revoking invitation: %w", err)
 	}
@@ -223,7 +223,7 @@ func (r *Repository) Revoke(ctx context.Context, id int64) error {
 // Delete removes an invitation row entirely. Used by admins to clear
 // history; revocation is the normal path.
 func (r *Repository) Delete(ctx context.Context, id int64) error {
-	tag, err := r.pool.Exec(ctx, `DELETE FROM invitations WHERE id = $1 AND organization_id=public.vondel_default_organization_id()`, id)
+	tag, err := r.pool.Exec(ctx, `DELETE FROM invitations WHERE id = $1 AND organization_id=public.bloem_default_organization_id()`, id)
 	if err != nil {
 		return fmt.Errorf("deleting invitation: %w", err)
 	}

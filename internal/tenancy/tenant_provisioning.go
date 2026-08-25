@@ -1,7 +1,7 @@
 package tenancy
 
-// Tenant provisioning (vondel-park growth G2, spec: vondel-park
-// docs/superpowers/specs/2026-08-17-vondel-tenant-provisioning-design.md).
+// Tenant provisioning (bloem-park growth G2, spec: bloem-park
+// docs/superpowers/specs/2026-08-17-bloem-tenant-provisioning-design.md).
 //
 // A park-sold tenant IS an organization: organizations are the tenancy
 // boundary already, so this grafts a quota and an external claim onto the

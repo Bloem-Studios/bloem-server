@@ -28,7 +28,7 @@ SELECT 'organization', id
 FROM public.organizations
 ORDER BY id;
 
-CREATE FUNCTION public.vondel_create_organization_resource_owner()
+CREATE FUNCTION public.bloem_create_organization_resource_owner()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -41,9 +41,9 @@ $$;
 
 CREATE TRIGGER organizations_create_resource_owner
 AFTER INSERT ON public.organizations
-FOR EACH ROW EXECUTE FUNCTION public.vondel_create_organization_resource_owner();
+FOR EACH ROW EXECUTE FUNCTION public.bloem_create_organization_resource_owner();
 
-CREATE FUNCTION public.vondel_platform_resource_owner_id()
+CREATE FUNCTION public.bloem_platform_resource_owner_id()
 RETURNS uuid
 LANGUAGE sql
 STABLE
@@ -63,7 +63,7 @@ WITH ordered_roots AS (
     ORDER BY id
 )
 UPDATE public.media_folders AS roots
-SET owner_id = public.vondel_platform_resource_owner_id()
+SET owner_id = public.bloem_platform_resource_owner_id()
 FROM ordered_roots
 WHERE roots.id = ordered_roots.id;
 
@@ -73,7 +73,7 @@ WITH ordered_roots AS (
     ORDER BY id
 )
 UPDATE public.plugin_installations AS roots
-SET owner_id = public.vondel_platform_resource_owner_id()
+SET owner_id = public.bloem_platform_resource_owner_id()
 FROM ordered_roots
 WHERE roots.id = ordered_roots.id;
 
@@ -89,14 +89,14 @@ END;
 $$;
 
 ALTER TABLE public.media_folders
-    ALTER COLUMN owner_id SET DEFAULT public.vondel_platform_resource_owner_id(),
+    ALTER COLUMN owner_id SET DEFAULT public.bloem_platform_resource_owner_id(),
     ALTER COLUMN owner_id SET NOT NULL,
     ADD CONSTRAINT media_folders_owner_id_fkey
         FOREIGN KEY (owner_id) REFERENCES public.resource_owners(id) ON DELETE RESTRICT,
     ADD CONSTRAINT media_folders_id_owner_id_key UNIQUE (id, owner_id);
 
 ALTER TABLE public.plugin_installations
-    ALTER COLUMN owner_id SET DEFAULT public.vondel_platform_resource_owner_id(),
+    ALTER COLUMN owner_id SET DEFAULT public.bloem_platform_resource_owner_id(),
     ALTER COLUMN owner_id SET NOT NULL,
     ADD CONSTRAINT plugin_installations_owner_id_fkey
         FOREIGN KEY (owner_id) REFERENCES public.resource_owners(id) ON DELETE RESTRICT,
@@ -389,7 +389,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION public.vondel_entitle_default_organization_media_folder()
+CREATE FUNCTION public.bloem_entitle_default_organization_media_folder()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -424,9 +424,9 @@ $$;
 
 CREATE TRIGGER media_folders_entitle_default_organization
 AFTER INSERT ON public.media_folders
-FOR EACH ROW EXECUTE FUNCTION public.vondel_entitle_default_organization_media_folder();
+FOR EACH ROW EXECUTE FUNCTION public.bloem_entitle_default_organization_media_folder();
 
-CREATE FUNCTION public.vondel_entitle_default_organization_plugin_installation()
+CREATE FUNCTION public.bloem_entitle_default_organization_plugin_installation()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -461,15 +461,15 @@ $$;
 
 CREATE TRIGGER plugin_installations_entitle_default_organization
 AFTER INSERT ON public.plugin_installations
-FOR EACH ROW EXECUTE FUNCTION public.vondel_entitle_default_organization_plugin_installation();
+FOR EACH ROW EXECUTE FUNCTION public.bloem_entitle_default_organization_plugin_installation();
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 DROP TRIGGER IF EXISTS plugin_installations_entitle_default_organization ON public.plugin_installations;
-DROP FUNCTION IF EXISTS public.vondel_entitle_default_organization_plugin_installation();
+DROP FUNCTION IF EXISTS public.bloem_entitle_default_organization_plugin_installation();
 DROP TRIGGER IF EXISTS media_folders_entitle_default_organization ON public.media_folders;
-DROP FUNCTION IF EXISTS public.vondel_entitle_default_organization_media_folder();
+DROP FUNCTION IF EXISTS public.bloem_entitle_default_organization_media_folder();
 
 DROP TABLE IF EXISTS public.resource_tenancy_migration_ledger;
 DROP TABLE IF EXISTS public.organization_entitlements;
@@ -492,8 +492,8 @@ ALTER TABLE public.media_folders
     DROP CONSTRAINT IF EXISTS media_folders_owner_id_fkey,
     DROP COLUMN IF EXISTS owner_id;
 
-DROP FUNCTION IF EXISTS public.vondel_platform_resource_owner_id();
+DROP FUNCTION IF EXISTS public.bloem_platform_resource_owner_id();
 DROP TRIGGER IF EXISTS organizations_create_resource_owner ON public.organizations;
-DROP FUNCTION IF EXISTS public.vondel_create_organization_resource_owner();
+DROP FUNCTION IF EXISTS public.bloem_create_organization_resource_owner();
 DROP TABLE IF EXISTS public.resource_owners;
 -- +goose StatementEnd

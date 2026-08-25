@@ -50,8 +50,8 @@ const acceptanceAPIKey = "acceptance-api-key"
 func TestRetainedProvidersInstallAndMatchDeterministically(t *testing.T) {
 	pool := newAcceptanceDatabase(t)
 	fixtures := newProviderFixtures(t)
-	tmdbBinary := buildProvider(t, "../../../vondel-plugin-tmdb", "github.com/Vondel-Media/vondel-plugin-tmdb/provider.defaultBaseURL", fixtures.server.URL)
-	tvdbBinary := buildProvider(t, "../../../vondel-plugin-tvdb", "github.com/Vondel-Media/vondel-plugin-tvdb/provider.defaultBaseURL", fixtures.server.URL)
+	tmdbBinary := buildProvider(t, "../../../bloem-plugin-tmdb", "github.com/Bloem-Media/bloem-plugin-tmdb/provider.defaultBaseURL", fixtures.server.URL)
+	tvdbBinary := buildProvider(t, "../../../bloem-plugin-tvdb", "github.com/Bloem-Media/bloem-plugin-tvdb/provider.defaultBaseURL", fixtures.server.URL)
 	static := newStaticCatalog(t, tmdbBinary, tvdbBinary)
 
 	repositories := plugins.NewRepositoryStore(pool)
@@ -140,9 +140,9 @@ func TestRetainedProvidersInstallAndMatchDeterministically(t *testing.T) {
 
 func newAcceptanceDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	adminDSN := os.Getenv("VONDEL_ACCEPTANCE_ADMIN_DATABASE_URL")
+	adminDSN := os.Getenv("BLOEM_ACCEPTANCE_ADMIN_DATABASE_URL")
 	if adminDSN == "" {
-		t.Fatal("VONDEL_ACCEPTANCE_ADMIN_DATABASE_URL is required")
+		t.Fatal("BLOEM_ACCEPTANCE_ADMIN_DATABASE_URL is required")
 	}
 	u, err := url.Parse(adminDSN)
 	if err != nil {
@@ -156,8 +156,8 @@ func newAcceptanceDatabase(t *testing.T) *pgxpool.Pool {
 	if _, err := rand.Read(suffix[:]); err != nil {
 		t.Fatal(err)
 	}
-	name := "vondel_acceptance_" + hex.EncodeToString(suffix[:])
-	if name == maintenance || !strings.HasPrefix(name, "vondel_acceptance_") {
+	name := "bloem_acceptance_" + hex.EncodeToString(suffix[:])
+	if name == maintenance || !strings.HasPrefix(name, "bloem_acceptance_") {
 		t.Fatal("unsafe generated database name")
 	}
 	admin, err := pgx.Connect(context.Background(), adminDSN)

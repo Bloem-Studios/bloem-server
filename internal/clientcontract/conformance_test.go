@@ -20,10 +20,10 @@ func TestDisposableDatabaseNamesAreUniqueAndGuarded(t *testing.T) {
 	if first == second {
 		t.Fatalf("generated duplicate database name %q", first)
 	}
-	if !regexp.MustCompile(`^vondel_client_contract_[a-f0-9]{16}$`).MatchString(first) {
+	if !regexp.MustCompile(`^bloem_client_contract_[a-f0-9]{16}$`).MatchString(first) {
 		t.Fatalf("database name %q is outside the cleanup namespace", first)
 	}
-	for _, unsafe := range []string{"postgres", "vondel", "vondel_client_contract_", "vondel_client_contract_bad-name", ""} {
+	for _, unsafe := range []string{"postgres", "bloem", "bloem_client_contract_", "bloem_client_contract_bad-name", ""} {
 		if err := validateDisposableDatabaseName(unsafe); err == nil {
 			t.Errorf("unsafe database name %q passed cleanup validation", unsafe)
 		}
@@ -76,7 +76,7 @@ func TestDisposableDatabaseMigratesSeedsRunsAndDrops(t *testing.T) {
 	})
 
 	migrateAndSeed(t, ctx, db.pool)
-	server := startVondelServer(t, db.pool)
+	server := startBloemServer(t, db.pool)
 	setupFixtureAccount(t, server.URL)
 	seedAccountScopedFixtures(t, ctx, db.pool)
 	runContractsCLI(t, contractsDir, server.URL)
@@ -88,8 +88,8 @@ func TestDisposableDatabaseMigratesSeedsRunsAndDrops(t *testing.T) {
 }
 
 func TestOfficialSiloPinnedBaseline(t *testing.T) {
-	if os.Getenv("VONDEL_RUN_OFFICIAL_SILO_BASELINE") != "1" {
-		t.Skip("set VONDEL_RUN_OFFICIAL_SILO_BASELINE=1 to run pinned official-Silo compatibility")
+	if os.Getenv("BLOEM_RUN_OFFICIAL_SILO_BASELINE") != "1" {
+		t.Skip("set BLOEM_RUN_OFFICIAL_SILO_BASELINE=1 to run pinned official-Silo compatibility")
 	}
 	dsn := os.Getenv("SILO_CLIENT_CONTRACT_ADMIN_URL")
 	if dsn == "" {

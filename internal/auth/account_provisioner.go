@@ -49,7 +49,7 @@ type CreateAccountInput struct {
 }
 
 // CreateDefaultProfile is createDefaultProfile, exported for
-// AdminHandler.HandleCreateUser's park-tenant branch (vondel-park growth
+// AdminHandler.HandleCreateUser's park-tenant branch (bloem-park growth
 // G2): that path provisions its own membership directly against a specific
 // organization instead of going through CreateAccount's default-membership
 // step, but still wants the identical default-profile creation (and the

@@ -17,7 +17,7 @@ import (
 
 const (
 	DefaultBaseURL = "https://json.schedulesdirect.org/20141201"
-	DefaultUA      = "Bloem/1.0 (Live TV guide; https://github.com/Vondel-Media/vondel-server)"
+	DefaultUA      = "Bloem/1.0 (Live TV guide; https://github.com/Bloem-Studios/bloem-server)"
 	maxBatch       = 5000
 )
 

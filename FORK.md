@@ -16,7 +16,7 @@ git remote set-url --push upstream DISABLED
 ```
 
 An earlier attempt imported the tree as a zero-parent root commit with the Go
-module path renamed to `github.com/Vondel-Media/vondel-server`. That is a hard
+module path renamed to `github.com/Bloem-Studios/bloem-server`. That is a hard
 fork, and it cost more than it bought: the rename touched 1,178 files, which
 makes every future upstream change a conflict, while the features Bloem adds —
 Live TV chief among them — are additive packages that merge cleanly without it.
@@ -93,4 +93,4 @@ their Silo names.
 
 Clients are NOT forks. `bloem-apple` and `bloem-android` are clean-room
 projects built from documented server interfaces — see
-`docs/superpowers/specs/2026-08-12-vondel-clean-room-clients-design.md`.
+`docs/superpowers/specs/2026-08-12-bloem-clean-room-clients-design.md`.

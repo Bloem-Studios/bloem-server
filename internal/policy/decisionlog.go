@@ -388,7 +388,7 @@ func (l *DecisionLogger) insertBatch(ctx context.Context, entries []Entry) error
 			b.WriteString(", ")
 		}
 		base := i * 16
-		fmt.Fprintf(&b, "($%d, COALESCE($%d, public.vondel_default_organization_id()), $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d::jsonb, $%d::jsonb, $%d)",
+		fmt.Fprintf(&b, "($%d, COALESCE($%d, public.bloem_default_organization_id()), $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d::jsonb, $%d::jsonb, $%d)",
 			base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9, base+10, base+11, base+12, base+13, base+14, base+15, base+16)
 		args = append(args,
 			e.Timestamp,

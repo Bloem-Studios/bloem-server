@@ -55,7 +55,7 @@ breathing room.
 
 App icons sit on an opaque `#101827` rounded plate rather than shipping
 transparent: a transparent mark disappears against either a light tab strip or a
-dark launcher, and the plate is what the existing Silo/Vondel icons used.
+dark launcher, and the plate is what the existing Silo/Bloem icons used.
 
 | File | Size | Mark weight |
 |---|---|---|

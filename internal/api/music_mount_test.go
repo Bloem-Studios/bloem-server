@@ -12,7 +12,7 @@ import (
 )
 
 func TestMusicRoutesMountOnlyOnNativeV2(t *testing.T) {
-	pool := newDisposableAPIDatabase(t, "vondel_music_routes_", false)
+	pool := newDisposableAPIDatabase(t, "bloem_music_routes_", false)
 	router := NewRouter(Dependencies{
 		DB:                pool,
 		FileRepo:          scanner.NewFileRepository(pool),

@@ -1,6 +1,6 @@
 // Package compatapp owns companion enrollment and revocable service trust for
-// the removable compatibility applications (vondel-audiobookshelf and
-// vondel-jellyfin). An administrator mints a short-lived single-use enrollment
+// the removable compatibility applications (bloem-audiobookshelf and
+// bloem-jellyfin). An administrator mints a short-lived single-use enrollment
 // secret carrying a reviewed capability grant; the companion redeems it once
 // for an immutable application identity and a renewable short-lived service
 // credential. Raw secrets leave this package exactly once, at issuance; only
@@ -34,7 +34,7 @@ var knownKinds = map[Kind]struct{}{
 // never receive an authorization the reviewer could not have understood.
 //
 // The vocabulary is the OpenAPI contract's (contracts/compat/v1/openapi.yaml,
-// the frozen public artifact): one slug per x-vondel-capability value. The
+// the frozen public artifact): one slug per x-bloem-capability value. The
 // contract's implicit "service" capability — enrollment, renewal, health —
 // belongs to every enrolled application and is deliberately not grantable
 // here. A lockstep test in internal/compatapi pins the two vocabularies to

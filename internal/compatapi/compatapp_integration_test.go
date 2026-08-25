@@ -98,7 +98,7 @@ func newCompatAPIDisposableDatabase(t *testing.T, ctx context.Context, dsn strin
 	if _, err := rand.Read(random[:]); err != nil {
 		t.Fatalf("generate database name: %v", err)
 	}
-	name := "vondel_compatapi_" + hex.EncodeToString(random[:])
+	name := "bloem_compatapi_" + hex.EncodeToString(random[:])
 
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
@@ -288,7 +288,7 @@ func TestRealServiceErrorEnvelopes(t *testing.T) {
 // connection state.
 func TestRealServiceMTLSBindingAndRenewal(t *testing.T) {
 	f := newIntegrationFixture(t)
-	peer := integrationPeerTLS(t, "vondel-audiobookshelf")
+	peer := integrationPeerTLS(t, "bloem-audiobookshelf")
 	enrollment := f.mustCreateEnrollment(t, compatapp.KindAudiobookshelf, CapabilityCatalog)
 
 	rec := f.do(t, http.MethodPost, "/enroll",

@@ -30,7 +30,7 @@ const AuthMethodDirectProfile = "direct_profile"
 var bcryptCompare = bcrypt.CompareHashAndPassword
 
 var unknownLoginDummyHash = func() []byte {
-	hash, err := bcrypt.GenerateFromPassword([]byte("vondel-unknown-login-equalizer"), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte("bloem-unknown-login-equalizer"), bcrypt.DefaultCost)
 	if err != nil {
 		panic(err)
 	}
@@ -190,7 +190,7 @@ func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, pass
 		JOIN organization_memberships memberships
 		  ON memberships.organization_id = profiles.organization_id
 		 AND memberships.account_id = profiles.user_id
-		WHERE registry.normalized_email = public.vondel_normalize_login_email($1)`, email).Scan(
+		WHERE registry.normalized_email = public.bloem_normalize_login_email($1)`, email).Scan(
 		&subject.AccountID,
 		&subject.ProfileID,
 		&subject.OrganizationID,

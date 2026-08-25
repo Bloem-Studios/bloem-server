@@ -19,7 +19,7 @@ type Session struct {
 	ID     string
 	UserID int
 	// TenantID scopes this session's transcode to its tenant organization's
-	// shared pool (vondel-park growth G2); "" for an account with no tenant.
+	// shared pool (bloem-park growth G2); "" for an account with no tenant.
 	TenantID             string
 	ProfileID            string
 	MediaFileID          int
@@ -281,7 +281,7 @@ type SessionLimits struct {
 	PlaybackDisabled         bool
 	TranscodingDisabled      bool
 	AudioTranscodingDisabled bool
-	// Tenant organization entitlements (vondel-park growth G2). TenantID ""
+	// Tenant organization entitlements (bloem-park growth G2). TenantID ""
 	// means the account belongs to no park tenant and none of it applies.
 	// TenantMaxTranscodes is a pool SHARED by every account in the tenant;
 	// TenantFrozen denies all playback outright.

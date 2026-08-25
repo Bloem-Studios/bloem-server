@@ -41,7 +41,7 @@ var adminTenantMemberRouteContract = []struct {
 }
 
 func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
-	pool := newDisposableAPIDatabase(t, "vondel_admin_tenant_members_", true)
+	pool := newDisposableAPIDatabase(t, "bloem_admin_tenant_members_", true)
 	if err := database.RunMigrations(context.Background(), pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}

@@ -500,8 +500,8 @@ func TestMatchPath(t *testing.T) {
 func TestUnownedPathsNeverProxy(t *testing.T) {
 	transport := &recordingTransport{}
 	states := &fakeStates{}
-	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
-	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
+	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://bloem-audiobookshelf:13378")))
 	gateway := newTestGateway(t, states, transport)
 
 	for _, path := range []string{"/", "/api/v1/auth/login", "/api/v1/items", "/api/v2/organizations", "/metrics", "/unknown"} {
@@ -520,7 +520,7 @@ func TestUnownedPathsNeverProxy(t *testing.T) {
 // is enrolled, enabled, healthy, and API-compatible, its paths answer
 // compatibility_unavailable and nothing reaches an endpoint.
 func TestUnavailableStatesDoNotProxy(t *testing.T) {
-	endpoint := mustParseURL(t, "http://vondel-jellyfin:8096")
+	endpoint := mustParseURL(t, "http://bloem-jellyfin:8096")
 	cases := map[string]Status{
 		"unknown":      {},
 		"unenrolled":   {Known: true, Endpoint: endpoint},
@@ -584,7 +584,7 @@ func TestProxyStripsHopByHopAndSignsIdentity(t *testing.T) {
 		},
 	}
 	states := &fakeStates{}
-	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
 	secret := []byte("gateway-test-secret")
 	gateway := New(Config{States: states, Transport: transport, IdentitySecret: secret})
 
@@ -646,7 +646,7 @@ func TestProxyStripsHopByHopAndSignsIdentity(t *testing.T) {
 func TestAudiobookshelfPrefixIsStripped(t *testing.T) {
 	transport := &recordingTransport{}
 	states := &fakeStates{}
-	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://bloem-audiobookshelf:13378")))
 	gateway := newTestGateway(t, states, transport)
 
 	rec := httptest.NewRecorder()
@@ -661,7 +661,7 @@ func TestAudiobookshelfPrefixIsStripped(t *testing.T) {
 	if got := upstream[0].URL.RawQuery; got != "x=1" {
 		t.Fatalf("upstream query %q, want x=1", got)
 	}
-	if got := upstream[0].URL.Host; got != "vondel-audiobookshelf:13378" {
+	if got := upstream[0].URL.Host; got != "bloem-audiobookshelf:13378" {
 		t.Fatalf("upstream host %q", got)
 	}
 }
@@ -669,7 +669,7 @@ func TestAudiobookshelfPrefixIsStripped(t *testing.T) {
 func TestJellyfinPathIsForwardedVerbatim(t *testing.T) {
 	transport := &recordingTransport{}
 	states := &fakeStates{}
-	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
 	gateway := newTestGateway(t, states, transport)
 
 	rec := httptest.NewRecorder()
@@ -685,7 +685,7 @@ func TestJellyfinPathIsForwardedVerbatim(t *testing.T) {
 func TestRequestBodyLimit(t *testing.T) {
 	transport := &recordingTransport{}
 	states := &fakeStates{}
-	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
 	gateway := New(Config{
 		States:          states,
 		Transport:       transport,
@@ -720,7 +720,7 @@ func TestUpstreamDeadline(t *testing.T) {
 		},
 	}
 	states := &fakeStates{}
-	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
 	gateway := New(Config{
 		States:          states,
 		Transport:       transport,
@@ -756,7 +756,7 @@ func TestCircuitBreakerIsolatesTheFailingApplication(t *testing.T) {
 		respond: func(r *http.Request) (*http.Response, error) {
 			mu.Lock()
 			defer mu.Unlock()
-			if r.URL.Host == "vondel-jellyfin:8096" {
+			if r.URL.Host == "bloem-jellyfin:8096" {
 				jellyfinDials++
 				return nil, errors.New("connection refused")
 			}
@@ -766,8 +766,8 @@ func TestCircuitBreakerIsolatesTheFailingApplication(t *testing.T) {
 		},
 	}
 	states := &fakeStates{}
-	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
-	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
+	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://bloem-audiobookshelf:13378")))
 	gateway := New(Config{
 		States:           states,
 		Transport:        transport,
@@ -824,7 +824,7 @@ func TestCircuitClosesAfterCooldown(t *testing.T) {
 		},
 	}
 	states := &fakeStates{}
-	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
 	gateway := New(Config{
 		States:           states,
 		Transport:        transport,
@@ -864,7 +864,7 @@ func TestRedirectsRemainSameOrigin(t *testing.T) {
 			rec := httptest.NewRecorder()
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/absolute"):
-				rec.Header().Set("Location", "http://vondel-audiobookshelf:13378/login")
+				rec.Header().Set("Location", "http://bloem-audiobookshelf:13378/login")
 			case strings.HasPrefix(r.URL.Path, "/relative"):
 				rec.Header().Set("Location", "/login")
 			default:
@@ -875,7 +875,7 @@ func TestRedirectsRemainSameOrigin(t *testing.T) {
 		},
 	}
 	states := &fakeStates{}
-	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://bloem-audiobookshelf:13378")))
 	gateway := newTestGateway(t, states, transport)
 
 	// An absolute redirect to the private endpoint is rewritten onto the
@@ -928,8 +928,8 @@ func (s *spaMarker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func TestWithFrontendFallbackSplitsOwnership(t *testing.T) {
 	transport := &recordingTransport{}
 	states := &fakeStates{}
-	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
-	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
+	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://bloem-audiobookshelf:13378")))
 	gateway := newTestGateway(t, states, transport)
 	spa := &spaMarker{}
 	composed := WithFrontendFallback(gateway, spa)
@@ -1027,7 +1027,7 @@ func TestBackslashRedirectIsRefused(t *testing.T) {
 		},
 	}
 	states := &fakeStates{}
-	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
 	gateway := newTestGateway(t, states, transport)
 
 	rec := httptest.NewRecorder()
@@ -1054,7 +1054,7 @@ func TestChunkedRequestBodyLimit(t *testing.T) {
 		},
 	}
 	states := &fakeStates{}
-	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
 	gateway := New(Config{
 		States:          states,
 		Transport:       transport,
@@ -1095,8 +1095,8 @@ func TestStrippedFamiliesPreservePathEncoding(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			transport := &recordingTransport{}
 			states := &fakeStates{}
-			states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
-			states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+			states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
+			states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://bloem-audiobookshelf:13378")))
 			gateway := newTestGateway(t, states, transport)
 
 			rec := httptest.NewRecorder()
@@ -1125,8 +1125,8 @@ func TestDotSegmentPathsAreRefused(t *testing.T) {
 	} {
 		transport := &recordingTransport{}
 		states := &fakeStates{}
-		states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
-		states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+		states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
+		states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://bloem-audiobookshelf:13378")))
 		gateway := newTestGateway(t, states, transport)
 
 		rec := httptest.NewRecorder()
@@ -1151,8 +1151,8 @@ func TestInconsistentlyEncodedPrefixIsRefused(t *testing.T) {
 	} {
 		transport := &recordingTransport{}
 		states := &fakeStates{}
-		states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
-		states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+		states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
+		states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://bloem-audiobookshelf:13378")))
 		gateway := newTestGateway(t, states, transport)
 
 		rec := httptest.NewRecorder()
@@ -1177,8 +1177,8 @@ func TestObfuscatedDotSegmentsAreRefused(t *testing.T) {
 	} {
 		transport := &recordingTransport{}
 		states := &fakeStates{}
-		states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
-		states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://vondel-audiobookshelf:13378")))
+		states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
+		states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://bloem-audiobookshelf:13378")))
 		gateway := newTestGateway(t, states, transport)
 
 		rec := httptest.NewRecorder()
@@ -1351,7 +1351,7 @@ func TestUnregisteredLocalHandlerStillFailsClosed(t *testing.T) {
 func TestLocalHandlerTakesPriorityOverRoutableStates(t *testing.T) {
 	transport := &recordingTransport{}
 	states := &fakeStates{}
-	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://vondel-jellyfin:8096")))
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
 	jf := &recordingHandler{body: "jellyfin-local"}
 	gateway := New(Config{
 		States:         states,

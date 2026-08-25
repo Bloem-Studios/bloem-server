@@ -43,7 +43,7 @@ func TestMultitenantAdminTwoOrganizationIsolation(t *testing.T) {
 func newMultitenantAdminAcceptanceFixture(t *testing.T) *multitenantAdminAcceptanceFixture {
 	t.Helper()
 	ctx := context.Background()
-	pool := newDisposableAPIDatabase(t, "vondel_multitenant_admin_", true)
+	pool := newDisposableAPIDatabase(t, "bloem_multitenant_admin_", true)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}

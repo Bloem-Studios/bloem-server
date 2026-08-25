@@ -1896,7 +1896,7 @@ func newPeopleDisposableDatabase(t *testing.T, ctx context.Context, dsn string) 
 	if _, err := rand.Read(random[:]); err != nil {
 		t.Fatal(err)
 	}
-	name := "vondel_adminpeople_" + hex.EncodeToString(random[:])
+	name := "bloem_adminpeople_" + hex.EncodeToString(random[:])
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		t.Fatal(err)

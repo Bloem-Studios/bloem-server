@@ -518,7 +518,7 @@ func newProfileIdentityTestUser(t *testing.T) (*pgxpool.Pool, int) {
 	if _, err := rand.Read(random); err != nil {
 		t.Fatalf("generate database name: %v", err)
 	}
-	name := "vondel_tenancy_" + hex.EncodeToString(random)
+	name := "bloem_tenancy_" + hex.EncodeToString(random)
 	admin, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		t.Fatalf("connect maintenance database: %v", err)

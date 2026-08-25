@@ -16,9 +16,9 @@ import (
 type AppKind string
 
 const (
-	// KindJellyfin is the removable vondel-jellyfin application.
+	// KindJellyfin is the removable bloem-jellyfin application.
 	KindJellyfin AppKind = "jellyfin"
-	// KindAudiobookshelf is the removable vondel-audiobookshelf application.
+	// KindAudiobookshelf is the removable bloem-audiobookshelf application.
 	KindAudiobookshelf AppKind = "audiobookshelf"
 )
 

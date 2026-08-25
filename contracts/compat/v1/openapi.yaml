@@ -20,7 +20,7 @@ security:
 
 # Reusable blocks -----------------------------------------------------------
 
-x-vondel-error-responses: &stdErrors
+x-bloem-error-responses: &stdErrors
   "400":
     $ref: "#/components/responses/BadRequest"
   "401":
@@ -34,7 +34,7 @@ x-vondel-error-responses: &stdErrors
   "503":
     $ref: "#/components/responses/Unavailable"
 
-x-vondel-error-responses-with-404: &stdErrorsWith404
+x-bloem-error-responses-with-404: &stdErrorsWith404
   <<: *stdErrors
   "404":
     $ref: "#/components/responses/NotFound"
@@ -45,7 +45,7 @@ paths:
     post:
       operationId: enroll
       summary: Exchange a one-use enrollment secret for a service credential.
-      x-vondel-capability: service
+      x-bloem-capability: service
       security: []
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -68,7 +68,7 @@ paths:
     post:
       operationId: renewCredential
       summary: Renew the short-lived service credential.
-      x-vondel-capability: service
+      x-bloem-capability: service
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       responses:
@@ -89,7 +89,7 @@ paths:
         status. Without a status the heartbeat is contact-only and recorded as
         unknown; a status outside the vocabulary is refused before anything is
         recorded.
-      x-vondel-capability: service
+      x-bloem-capability: service
       parameters:
         - name: status
           in: query
@@ -117,7 +117,7 @@ paths:
         profile) and legacy account login (username or email resolving the
         remembered or default profile). The companion forwards the submitted
         password transiently and must never persist, hash, cache, or log it.
-      x-vondel-capability: identity
+      x-bloem-capability: identity
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -139,8 +139,8 @@ paths:
     get:
       operationId: introspectSubject
       summary: Return the authoritative facts for the presented subject token.
-      x-vondel-capability: identity
-      x-vondel-subject: true
+      x-bloem-capability: identity
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
       responses:
@@ -160,8 +160,8 @@ paths:
         Unknown devices receive an empty list; there is no public profile
         directory. Only profiles the authenticated account and device grant
         allow are returned.
-      x-vondel-capability: identity
-      x-vondel-subject: true
+      x-bloem-capability: identity
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
       responses:
@@ -177,8 +177,8 @@ paths:
     post:
       operationId: verifyProfilePin
       summary: Verify a profile switching PIN on a trusted device.
-      x-vondel-capability: identity
-      x-vondel-subject: true
+      x-bloem-capability: identity
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -202,8 +202,8 @@ paths:
         A PIN-protected profile requires its PIN; an unprotected profile
         switches without one. The previous subject token is not revoked by the
         switch itself.
-      x-vondel-capability: identity
-      x-vondel-subject: true
+      x-bloem-capability: identity
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -226,8 +226,8 @@ paths:
     post:
       operationId: logout
       summary: End the subject's session and revoke the subject token.
-      x-vondel-capability: identity
-      x-vondel-subject: true
+      x-bloem-capability: identity
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -241,8 +241,8 @@ paths:
     get:
       operationId: listLibraries
       summary: Libraries visible to the subject.
-      x-vondel-capability: catalog
-      x-vondel-subject: true
+      x-bloem-capability: catalog
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
       responses:
@@ -258,9 +258,9 @@ paths:
     get:
       operationId: listItems
       summary: Browse catalog items with signed cursors.
-      x-vondel-capability: catalog
-      x-vondel-subject: true
-      x-vondel-list: true
+      x-bloem-capability: catalog
+      x-bloem-subject: true
+      x-bloem-list: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/Cursor"
@@ -290,8 +290,8 @@ paths:
     get:
       operationId: getItem
       summary: Item detail.
-      x-vondel-capability: catalog
-      x-vondel-subject: true
+      x-bloem-capability: catalog
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/ItemID"
@@ -308,9 +308,9 @@ paths:
     get:
       operationId: listItemChildren
       summary: Seasons, episodes, chapters, or tracks of an item.
-      x-vondel-capability: catalog
-      x-vondel-subject: true
-      x-vondel-list: true
+      x-bloem-capability: catalog
+      x-bloem-subject: true
+      x-bloem-list: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/ItemID"
@@ -329,9 +329,9 @@ paths:
     get:
       operationId: searchItems
       summary: Search the catalog.
-      x-vondel-capability: catalog
-      x-vondel-subject: true
-      x-vondel-list: true
+      x-bloem-capability: catalog
+      x-bloem-subject: true
+      x-bloem-list: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/Cursor"
@@ -353,8 +353,8 @@ paths:
     get:
       operationId: getPerson
       summary: Person detail.
-      x-vondel-capability: catalog
-      x-vondel-subject: true
+      x-bloem-capability: catalog
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - name: personID
@@ -375,8 +375,8 @@ paths:
     get:
       operationId: resolveArtwork
       summary: Resolve artwork to a short-lived, audience-bound delivery grant.
-      x-vondel-capability: catalog
-      x-vondel-subject: true
+      x-bloem-capability: catalog
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/ItemID"
@@ -399,8 +399,8 @@ paths:
     get:
       operationId: getProgress
       summary: Playback or reading progress for an item.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/ItemID"
@@ -415,8 +415,8 @@ paths:
     put:
       operationId: setProgress
       summary: Update progress for an item.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -440,8 +440,8 @@ paths:
     put:
       operationId: setWatched
       summary: Mark an item watched or unwatched.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -461,9 +461,9 @@ paths:
     get:
       operationId: listFavorites
       summary: The subject's favorite items.
-      x-vondel-capability: state
-      x-vondel-subject: true
-      x-vondel-list: true
+      x-bloem-capability: state
+      x-bloem-subject: true
+      x-bloem-list: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/Cursor"
@@ -481,8 +481,8 @@ paths:
     put:
       operationId: setFavorite
       summary: Set or clear an item's favorite flag.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -502,8 +502,8 @@ paths:
     get:
       operationId: listBookmarks
       summary: Bookmarks, optionally filtered to one item.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - name: item_id
@@ -521,8 +521,8 @@ paths:
     post:
       operationId: createBookmark
       summary: Create a bookmark.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -545,8 +545,8 @@ paths:
     delete:
       operationId: deleteBookmark
       summary: Delete a bookmark.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -564,9 +564,9 @@ paths:
     get:
       operationId: listCollections
       summary: Collections visible to the subject.
-      x-vondel-capability: state
-      x-vondel-subject: true
-      x-vondel-list: true
+      x-bloem-capability: state
+      x-bloem-subject: true
+      x-bloem-list: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/Cursor"
@@ -584,8 +584,8 @@ paths:
     get:
       operationId: getCollection
       summary: Collection detail.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - name: collectionID
@@ -606,9 +606,9 @@ paths:
     get:
       operationId: listPlaylists
       summary: The subject's playlists.
-      x-vondel-capability: state
-      x-vondel-subject: true
-      x-vondel-list: true
+      x-bloem-capability: state
+      x-bloem-subject: true
+      x-bloem-list: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/Cursor"
@@ -624,8 +624,8 @@ paths:
     post:
       operationId: createPlaylist
       summary: Create a playlist.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -648,8 +648,8 @@ paths:
     put:
       operationId: updatePlaylist
       summary: Replace a playlist's name and items.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -671,8 +671,8 @@ paths:
     delete:
       operationId: deletePlaylist
       summary: Delete a playlist.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -686,8 +686,8 @@ paths:
     get:
       operationId: listDownloads
       summary: The subject's downloads on the bound device.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
       responses:
@@ -701,8 +701,8 @@ paths:
     post:
       operationId: createDownload
       summary: Request a download for offline use.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -725,8 +725,8 @@ paths:
     delete:
       operationId: deleteDownload
       summary: Remove a download.
-      x-vondel-capability: state
-      x-vondel-subject: true
+      x-bloem-capability: state
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -745,8 +745,8 @@ paths:
     post:
       operationId: planPlayback
       summary: Plan playback for an item and device capabilities.
-      x-vondel-capability: playback
-      x-vondel-subject: true
+      x-bloem-capability: playback
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -769,8 +769,8 @@ paths:
     get:
       operationId: listPlaybackSessions
       summary: The subject's live playback sessions.
-      x-vondel-capability: playback
-      x-vondel-subject: true
+      x-bloem-capability: playback
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
       responses:
@@ -784,8 +784,8 @@ paths:
     post:
       operationId: startPlaybackSession
       summary: Start playback, receiving a delivery grant.
-      x-vondel-capability: playback
-      x-vondel-subject: true
+      x-bloem-capability: playback
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -808,8 +808,8 @@ paths:
     get:
       operationId: getPlaybackSession
       summary: Session state, for recovery after companion restart.
-      x-vondel-capability: playback
-      x-vondel-subject: true
+      x-bloem-capability: playback
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/SessionID"
@@ -826,8 +826,8 @@ paths:
     post:
       operationId: reportPlaybackProgress
       summary: Report playback progress for a session.
-      x-vondel-capability: playback
-      x-vondel-subject: true
+      x-bloem-capability: playback
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -847,8 +847,8 @@ paths:
     post:
       operationId: stopPlaybackSession
       summary: Stop a playback session.
-      x-vondel-capability: playback
-      x-vondel-subject: true
+      x-bloem-capability: playback
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -863,9 +863,9 @@ paths:
     get:
       operationId: listLiveTvChannels
       summary: Live TV channels visible to the subject.
-      x-vondel-capability: livetv
-      x-vondel-subject: true
-      x-vondel-list: true
+      x-bloem-capability: livetv
+      x-bloem-subject: true
+      x-bloem-list: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/Cursor"
@@ -883,9 +883,9 @@ paths:
     get:
       operationId: getLiveTvGuide
       summary: Guide entries for a time window.
-      x-vondel-capability: livetv
-      x-vondel-subject: true
-      x-vondel-list: true
+      x-bloem-capability: livetv
+      x-bloem-subject: true
+      x-bloem-list: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/Cursor"
@@ -917,8 +917,8 @@ paths:
     get:
       operationId: listLiveTvTuners
       summary: Tuner availability (never tuner credentials).
-      x-vondel-capability: livetv
-      x-vondel-subject: true
+      x-bloem-capability: livetv
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
       responses:
@@ -934,8 +934,8 @@ paths:
     post:
       operationId: authorizeLiveTvStream
       summary: Authorize a live stream, receiving a delivery grant.
-      x-vondel-capability: livetv
-      x-vondel-subject: true
+      x-bloem-capability: livetv
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -958,8 +958,8 @@ paths:
     get:
       operationId: listDvrRules
       summary: DVR rules visible to the subject.
-      x-vondel-capability: livetv
-      x-vondel-subject: true
+      x-bloem-capability: livetv
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
       responses:
@@ -973,8 +973,8 @@ paths:
     post:
       operationId: createDvrRule
       summary: Create a DVR rule.
-      x-vondel-capability: livetv
-      x-vondel-subject: true
+      x-bloem-capability: livetv
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -997,8 +997,8 @@ paths:
     delete:
       operationId: deleteDvrRule
       summary: Delete a DVR rule.
-      x-vondel-capability: livetv
-      x-vondel-subject: true
+      x-bloem-capability: livetv
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -1016,9 +1016,9 @@ paths:
     get:
       operationId: listRecordings
       summary: Recordings visible to the subject.
-      x-vondel-capability: livetv
-      x-vondel-subject: true
-      x-vondel-list: true
+      x-bloem-capability: livetv
+      x-bloem-subject: true
+      x-bloem-list: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/Cursor"
@@ -1036,8 +1036,8 @@ paths:
     get:
       operationId: getRecording
       summary: Recording detail.
-      x-vondel-capability: livetv
-      x-vondel-subject: true
+      x-bloem-capability: livetv
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/RecordingID"
@@ -1052,8 +1052,8 @@ paths:
     delete:
       operationId: deleteRecording
       summary: Delete a recording.
-      x-vondel-capability: livetv
-      x-vondel-subject: true
+      x-bloem-capability: livetv
+      x-bloem-subject: true
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - $ref: "#/components/parameters/SubjectToken"
@@ -1072,9 +1072,9 @@ paths:
         Returns events the subject may observe. When the requested cursor has
         fallen out of the retained window the batch sets resync and supplies a
         fresh cursor; the companion must perform a bounded resynchronization.
-      x-vondel-capability: events
-      x-vondel-subject: true
-      x-vondel-list: true
+      x-bloem-capability: events
+      x-bloem-subject: true
+      x-bloem-list: true
       parameters:
         - $ref: "#/components/parameters/SubjectToken"
         - $ref: "#/components/parameters/Cursor"

@@ -103,7 +103,7 @@ type HLSBridgeOptions struct {
 func NewHLSBridge(opts HLSBridgeOptions) *HLSBridge {
 	root := opts.Root
 	if root == "" {
-		root = filepath.Join(os.TempDir(), "vondel-transcode")
+		root = filepath.Join(os.TempDir(), "bloem-transcode")
 	}
 	settings := opts.Settings
 	if settings == nil {

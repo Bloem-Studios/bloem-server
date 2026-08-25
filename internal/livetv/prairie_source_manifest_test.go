@@ -44,7 +44,7 @@ func TestPrairieSourceManifest(t *testing.T) {
 		}
 		seen[target] = true
 		switch class {
-		case "imported", "adapted", "omitted", "vondel-created":
+		case "imported", "adapted", "omitted", "bloem-created":
 		default:
 			t.Fatalf("target %q has invalid classification %q", target, class)
 		}
@@ -53,9 +53,9 @@ func TestPrairieSourceManifest(t *testing.T) {
 				t.Fatalf("manifest target %q does not exist as a file", target)
 			}
 		}
-		if class == "vondel-created" {
+		if class == "bloem-created" {
 			if source != "-" || blob != "-" {
-				t.Fatalf("Vondel-created target %q must not claim a Prairie blob", target)
+				t.Fatalf("Bloem-created target %q must not claim a Prairie blob", target)
 			}
 		} else if len(blob) != 40 || strings.Trim(blob, "0123456789abcdef") != "" {
 			t.Fatalf("target %q has invalid Git blob SHA %q", target, blob)

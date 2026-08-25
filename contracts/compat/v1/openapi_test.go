@@ -220,8 +220,8 @@ func TestContractIsOpenAPI31(t *testing.T) {
 
 func TestOperationsDeclareCapabilityIdempotencyAndErrors(t *testing.T) {
 	for _, op := range loadOperations(t) {
-		if op.Extension("x-vondel-capability") == "" {
-			t.Errorf("%s %s must declare x-vondel-capability", op.Method, op.Path)
+		if op.Extension("x-bloem-capability") == "" {
+			t.Errorf("%s %s must declare x-bloem-capability", op.Method, op.Path)
 		}
 		requireResponses(t, op, 401, 403, 409, 429, 503)
 		if op.Mutates() && !op.RequiresHeader("Idempotency-Key") {
@@ -232,7 +232,7 @@ func TestOperationsDeclareCapabilityIdempotencyAndErrors(t *testing.T) {
 
 func TestOperationCapabilitiesAreKnown(t *testing.T) {
 	for _, op := range loadOperations(t) {
-		if capability := op.Extension("x-vondel-capability"); !knownCapabilities[capability] {
+		if capability := op.Extension("x-bloem-capability"); !knownCapabilities[capability] {
 			t.Errorf("%s %s declares unknown capability %q", op.Method, op.Path, capability)
 		}
 	}
@@ -272,7 +272,7 @@ func TestNoCallerSelectedSubjectParameters(t *testing.T) {
 func TestListOperationsUseSignedCursors(t *testing.T) {
 	found := 0
 	for _, op := range loadOperations(t) {
-		if list, _ := op.raw["x-vondel-list"].(bool); !list {
+		if list, _ := op.raw["x-bloem-list"].(bool); !list {
 			continue
 		}
 		found++
@@ -281,7 +281,7 @@ func TestListOperationsUseSignedCursors(t *testing.T) {
 		}
 	}
 	if found == 0 {
-		t.Fatal("the contract must mark its list operations with x-vondel-list")
+		t.Fatal("the contract must mark its list operations with x-bloem-list")
 	}
 }
 
@@ -360,7 +360,7 @@ func TestSecurityIsBearerEverywhereExceptEnrollment(t *testing.T) {
 func TestSubjectOperationsRequireTheSubjectTokenHeader(t *testing.T) {
 	found := 0
 	for _, op := range loadOperations(t) {
-		subjectScoped, _ := op.raw["x-vondel-subject"].(bool)
+		subjectScoped, _ := op.raw["x-bloem-subject"].(bool)
 		if !subjectScoped {
 			continue
 		}
@@ -370,6 +370,6 @@ func TestSubjectOperationsRequireTheSubjectTokenHeader(t *testing.T) {
 		}
 	}
 	if found == 0 {
-		t.Fatal("the contract must mark its subject-scoped operations with x-vondel-subject")
+		t.Fatal("the contract must mark its subject-scoped operations with x-bloem-subject")
 	}
 }

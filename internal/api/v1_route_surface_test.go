@@ -31,9 +31,9 @@ import (
 // adminTenantMemberRouteContract. Regenerate deliberately, never merely to
 // make a failure go away:
 //
-//	VONDEL_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
+//	BLOEM_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
 const (
-	v1RouteGoldenEnv      = "VONDEL_UPDATE_V1_ROUTE_GOLDEN"
+	v1RouteGoldenEnv      = "BLOEM_UPDATE_V1_ROUTE_GOLDEN"
 	v1RouteGoldenMinimal  = "testdata/v1_routes_no_dependencies.txt"
 	v1RouteGoldenDatabase = "testdata/v1_routes_with_database.txt"
 )
@@ -51,7 +51,7 @@ func TestV1RouteSurfaceIsUnchanged(t *testing.T) {
 // `handler != nil` guard that a dependency-free router leaves unmounted, so
 // without this the guard above would miss most of the API.
 func TestV1RouteSurfaceWithADatabaseIsUnchanged(t *testing.T) {
-	pool := newDisposableAPIDatabase(t, "vondel_v1_routes_", false)
+	pool := newDisposableAPIDatabase(t, "bloem_v1_routes_", false)
 	provider := pgstore.NewPostgresProvider(pool)
 	bootstrap := v1TenancyBootstrap{store: tenancy.NewStore(pool)}
 	// A fixed set of dependencies: the golden describes what these mount, so

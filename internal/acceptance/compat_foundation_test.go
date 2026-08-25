@@ -1,7 +1,7 @@
 //go:build integration
 
 // Foundation acceptance for the removable compatibility applications
-// (Tasks 1-6 of docs/superpowers/plans/2026-08-13-vondel-compatibility-1-foundation.md).
+// (Tasks 1-6 of docs/superpowers/plans/2026-08-13-bloem-compatibility-1-foundation.md).
 //
 // WHAT THIS DRIVES. One disposable PostgreSQL database, the real migrations,
 // the real enrollment/trust service (internal/compatapp), the real private
@@ -446,7 +446,7 @@ func newFoundationFixture(t *testing.T) *foundationFixture {
 	frontend := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, "<!doctype html><title>vondel</title>")
+		_, _ = io.WriteString(w, "<!doctype html><title>bloem</title>")
 	})
 	mux := http.NewServeMux()
 	mux.Handle("/api/", router)
@@ -595,7 +595,7 @@ func newFoundationDatabase(t *testing.T) *pgxpool.Pool {
 	if _, err := rand.Read(random[:]); err != nil {
 		t.Fatalf("generate disposable database name: %v", err)
 	}
-	name := "vondel_compat_foundation_" + hex.EncodeToString(random[:])
+	name := "bloem_compat_foundation_" + hex.EncodeToString(random[:])
 
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
@@ -884,7 +884,7 @@ func TestCompatibilityFoundation(t *testing.T) {
 
 		response := f.requireStatus(f.do(http.MethodGet, "/", "", nil), http.StatusOK)
 
-		if !strings.Contains(string(response.Body), "vondel") {
+		if !strings.Contains(string(response.Body), "bloem") {
 			t.Fatalf("GET / body = %s, want the native frontend fallback", response.Body)
 		}
 		if f.jellyfin.count() != 0 || f.audiobookshelf.count() != 0 {
@@ -935,7 +935,7 @@ func TestCompatibilityFoundation(t *testing.T) {
 		f.audiobookshelf.stop()
 
 		native := f.requireStatus(f.do(http.MethodGet, "/", "", nil), http.StatusOK)
-		if !strings.Contains(string(native.Body), "vondel") {
+		if !strings.Contains(string(native.Body), "bloem") {
 			t.Fatalf("GET / body = %s, want the native frontend fallback even with both companions stopped", native.Body)
 		}
 

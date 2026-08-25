@@ -107,7 +107,7 @@ func compatTestApplication() CompatibilityApplication {
 }
 
 func newCompatRouter(service CompatibilityApplicationService) chi.Router {
-	handler := NewV2AdminCompatibilityHandler(service, "https://vondel.example")
+	handler := NewV2AdminCompatibilityHandler(service, "https://bloem.example")
 	r := chi.NewRouter()
 	r.Get("/applications", handler.HandleListApplications)
 	r.Post("/enrollments", handler.HandleCreateEnrollment)
@@ -210,7 +210,7 @@ func TestCompatibilityAdminListsReadOnlyState(t *testing.T) {
 		t.Fatalf("sessions/contact/revision missing: %+v", row)
 	}
 	// The Jellyfin canonical client URL is the same-origin public address.
-	if row.CanonicalURL != "https://vondel.example/" {
+	if row.CanonicalURL != "https://bloem.example/" {
 		t.Fatalf("canonical url %q", row.CanonicalURL)
 	}
 	// Administration shows exact operator commands; Bloem never runs them.
@@ -223,20 +223,20 @@ func TestCompatibilityAdminListsReadOnlyState(t *testing.T) {
 		}
 	}
 	// The state volume is Compose-project-prefixed, so a literal
-	// "docker volume rm vondel-jellyfin-state" fails as typed. The command
+	// "docker volume rm bloem-jellyfin-state" fails as typed. The command
 	// must resolve the real name through `docker volume ls` instead.
-	if strings.Contains(row.Commands.Remove, "docker volume rm vondel-jellyfin-state") {
+	if strings.Contains(row.Commands.Remove, "docker volume rm bloem-jellyfin-state") {
 		t.Fatalf("remove command %q names an unprefixed volume that does not exist", row.Commands.Remove)
 	}
 	if !strings.Contains(row.Commands.Remove, "docker volume ls") ||
-		!strings.Contains(row.Commands.Remove, "vondel-jellyfin-state") {
+		!strings.Contains(row.Commands.Remove, "bloem-jellyfin-state") {
 		t.Fatalf("remove command %q must resolve the project-prefixed state volume via docker volume ls", row.Commands.Remove)
 	}
 	// --filter name= is an unanchored substring match: unanchored it selects
 	// every Compose project's copy, and it yields an empty argument when
 	// nothing matches. The filter must be anchored and the result piped
 	// through xargs -r so no match removes nothing.
-	if !strings.Contains(row.Commands.Remove, "_vondel-jellyfin-state$") {
+	if !strings.Contains(row.Commands.Remove, "_bloem-jellyfin-state$") {
 		t.Fatalf("remove command %q must anchor the volume filter", row.Commands.Remove)
 	}
 	if !strings.Contains(row.Commands.Remove, "xargs -r docker volume rm") {
@@ -264,7 +264,7 @@ func TestCompatibilityAdminAudiobookshelfCanonicalURL(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if response.Applications[0].CanonicalURL != "https://vondel.example/audiobookshelf" {
+	if response.Applications[0].CanonicalURL != "https://bloem.example/audiobookshelf" {
 		t.Fatalf("canonical url %q", response.Applications[0].CanonicalURL)
 	}
 }

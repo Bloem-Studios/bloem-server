@@ -1,5 +1,5 @@
 -- +goose Up
--- vondel-park growth G2: a park-sold tenant IS an organization — the
+-- bloem-park growth G2: a park-sold tenant IS an organization — the
 -- external_service_id claim, its slots/transcodes quota, and why it is
 -- suspended (if it is) ride on the tenancy boundary that already exists
 -- rather than a parallel entity. A regular (non-tenant) organization

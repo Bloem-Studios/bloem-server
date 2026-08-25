@@ -264,7 +264,7 @@ func newCompatAdapterDisposableDatabase(t *testing.T, ctx context.Context, dsn s
 	if _, err := rand.Read(random[:]); err != nil {
 		t.Fatalf("generate database name: %v", err)
 	}
-	name := "vondel_compatadmin_" + hex.EncodeToString(random[:])
+	name := "bloem_compatadmin_" + hex.EncodeToString(random[:])
 
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {

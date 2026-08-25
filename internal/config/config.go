@@ -182,7 +182,7 @@ type LiveTVConfig struct {
 }
 
 const (
-	DefaultLiveTVDVRPath       = "/var/lib/vondel/dvr"
+	DefaultLiveTVDVRPath       = "/var/lib/bloem/dvr"
 	DefaultLiveTVMaxTranscodes = 3
 	DefaultLiveTVHWAccel       = "auto"
 	DefaultLiveTVHWDecode      = "auto"

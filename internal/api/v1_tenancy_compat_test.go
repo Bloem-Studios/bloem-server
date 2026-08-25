@@ -410,7 +410,7 @@ func stripDynamicV1Fields(value any) {
 func newV1TenancyDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	ctx := context.Background()
-	pool := newDisposableAPIDatabase(t, "vondel_tenancy_", false)
+	pool := newDisposableAPIDatabase(t, "bloem_tenancy_", false)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}

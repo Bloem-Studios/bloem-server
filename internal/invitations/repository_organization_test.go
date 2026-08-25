@@ -67,7 +67,7 @@ func newInvitationOrganizationDatabase(t *testing.T, ctx context.Context) *pgxpo
 	if _, err := rand.Read(random[:]); err != nil {
 		t.Fatal(err)
 	}
-	name := "vondel_invitations_" + hex.EncodeToString(random[:])
+	name := "bloem_invitations_" + hex.EncodeToString(random[:])
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		t.Fatal(err)

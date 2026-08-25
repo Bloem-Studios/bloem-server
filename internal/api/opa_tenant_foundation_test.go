@@ -42,7 +42,7 @@ const opaTenantIdentityPredecessor int64 = 20260812163547
 // availability bound or organization-qualified group lookup makes it fail.
 func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	ctx := context.Background()
-	pool := newDisposableAPIDatabase(t, "vondel_opa_foundation_", true)
+	pool := newDisposableAPIDatabase(t, "bloem_opa_foundation_", true)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}

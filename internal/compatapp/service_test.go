@@ -608,7 +608,7 @@ func TestRotateAndRevokeAreIndependentPerApplication(t *testing.T) {
 func TestAuthenticateBindsEnrolledPeerCertificate(t *testing.T) {
 	ctx := context.Background()
 	service := newCompatAppService(t)
-	boundPeer := newTestPeerTLS(t, "vondel-jellyfin")
+	boundPeer := newTestPeerTLS(t, "bloem-jellyfin")
 	otherPeer := newTestPeerTLS(t, "impostor")
 
 	enrollment := mustCreateEnrollment(t, service, KindJellyfin)
@@ -721,7 +721,7 @@ func newCompatAppDisposableDatabase(t *testing.T, ctx context.Context, dsn strin
 	if _, err := rand.Read(random[:]); err != nil {
 		t.Fatalf("generate database name: %v", err)
 	}
-	name := "vondel_compatapp_" + hex.EncodeToString(random[:])
+	name := "bloem_compatapp_" + hex.EncodeToString(random[:])
 
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {

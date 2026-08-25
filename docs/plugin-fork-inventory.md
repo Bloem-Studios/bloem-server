@@ -15,12 +15,12 @@ Each downloaded `checksums.txt` has a strict three-entry bijection using bare as
 
 | Plugin | Private release | Peeled `origin/main` commit | Exact-head CI | Exact-tag release run | Self-manifest |
 | --- | --- | --- | --- | --- | --- |
-| TMDB | [`v1.2.23`](https://github.com/Vondel-Media/vondel-plugin-tmdb/releases/tag/v1.2.23) | `9ce9b82ef529aa8112aa814dcc89a422d4443eb0` | [`31612837393`](https://github.com/Vondel-Media/vondel-plugin-tmdb/actions/runs/31612837393) | [`31613669453`](https://github.com/Vondel-Media/vondel-plugin-tmdb/actions/runs/31613669453) | `silo.tmdb` / `1.2.23` |
-| TVDB | [`v1.2.27`](https://github.com/Vondel-Media/vondel-plugin-tvdb/releases/tag/v1.2.27) | `a2cc114d7d4c8eaab911a18a289c522813d1ab9d` | [`31615200219`](https://github.com/Vondel-Media/vondel-plugin-tvdb/actions/runs/31615200219) | [`31615507041`](https://github.com/Vondel-Media/vondel-plugin-tvdb/actions/runs/31615507041) | `silo.tvdb` / `1.2.27` |
-| Ebook Metadata | [`v0.1.3`](https://github.com/Vondel-Media/vondel-plugin-ebook-metadata/releases/tag/v0.1.3) | `22a1c8b77e2827b77d3ce96144924494548c01d1` | [`31612866065`](https://github.com/Vondel-Media/vondel-plugin-ebook-metadata/actions/runs/31612866065) | [`31613699932`](https://github.com/Vondel-Media/vondel-plugin-ebook-metadata/actions/runs/31613699932) | `silo.ebook-metadata` / `0.1.3` |
-| Audiobook Metadata | [`v0.1.6`](https://github.com/Vondel-Media/vondel-plugin-audiobook-metadata/releases/tag/v0.1.6) | `7bc466cec0e455ca63c6aafc13d13cbc531bc623` | [`31612879674`](https://github.com/Vondel-Media/vondel-plugin-audiobook-metadata/actions/runs/31612879674) | [`31613716200`](https://github.com/Vondel-Media/vondel-plugin-audiobook-metadata/actions/runs/31613716200) | `silo.audiobook-metadata` / `0.1.6` |
-| Manga Metadata | [`v0.1.3`](https://github.com/Vondel-Media/vondel-plugin-manga-metadata/releases/tag/v0.1.3) | `03fd668f7234cc2624d1d0f6aef98abd66b8f8c5` | [`31612894814`](https://github.com/Vondel-Media/vondel-plugin-manga-metadata/actions/runs/31612894814) | [`31613733260`](https://github.com/Vondel-Media/vondel-plugin-manga-metadata/actions/runs/31613733260) | `silo.manga-metadata` / `0.1.3` |
-| Autoscan ARR | [`v0.1.4`](https://github.com/Vondel-Media/vondel-plugin-autoscan-arr/releases/tag/v0.1.4) | `f11998586b51e0c413f82c7d01aa7239d5cb526a` | [`31612907100`](https://github.com/Vondel-Media/vondel-plugin-autoscan-arr/actions/runs/31612907100) | [`31613748655`](https://github.com/Vondel-Media/vondel-plugin-autoscan-arr/actions/runs/31613748655) | `silo.autoscan.arr` / `0.1.4` |
+| TMDB | [`v1.2.23`](https://github.com/Bloem-Media/bloem-plugin-tmdb/releases/tag/v1.2.23) | `9ce9b82ef529aa8112aa814dcc89a422d4443eb0` | [`31612837393`](https://github.com/Bloem-Media/bloem-plugin-tmdb/actions/runs/31612837393) | [`31613669453`](https://github.com/Bloem-Media/bloem-plugin-tmdb/actions/runs/31613669453) | `silo.tmdb` / `1.2.23` |
+| TVDB | [`v1.2.27`](https://github.com/Bloem-Media/bloem-plugin-tvdb/releases/tag/v1.2.27) | `a2cc114d7d4c8eaab911a18a289c522813d1ab9d` | [`31615200219`](https://github.com/Bloem-Media/bloem-plugin-tvdb/actions/runs/31615200219) | [`31615507041`](https://github.com/Bloem-Media/bloem-plugin-tvdb/actions/runs/31615507041) | `silo.tvdb` / `1.2.27` |
+| Ebook Metadata | [`v0.1.3`](https://github.com/Bloem-Media/bloem-plugin-ebook-metadata/releases/tag/v0.1.3) | `22a1c8b77e2827b77d3ce96144924494548c01d1` | [`31612866065`](https://github.com/Bloem-Media/bloem-plugin-ebook-metadata/actions/runs/31612866065) | [`31613699932`](https://github.com/Bloem-Media/bloem-plugin-ebook-metadata/actions/runs/31613699932) | `silo.ebook-metadata` / `0.1.3` |
+| Audiobook Metadata | [`v0.1.6`](https://github.com/Bloem-Media/bloem-plugin-audiobook-metadata/releases/tag/v0.1.6) | `7bc466cec0e455ca63c6aafc13d13cbc531bc623` | [`31612879674`](https://github.com/Bloem-Media/bloem-plugin-audiobook-metadata/actions/runs/31612879674) | [`31613716200`](https://github.com/Bloem-Media/bloem-plugin-audiobook-metadata/actions/runs/31613716200) | `silo.audiobook-metadata` / `0.1.6` |
+| Manga Metadata | [`v0.1.3`](https://github.com/Bloem-Media/bloem-plugin-manga-metadata/releases/tag/v0.1.3) | `03fd668f7234cc2624d1d0f6aef98abd66b8f8c5` | [`31612894814`](https://github.com/Bloem-Media/bloem-plugin-manga-metadata/actions/runs/31612894814) | [`31613733260`](https://github.com/Bloem-Media/bloem-plugin-manga-metadata/actions/runs/31613733260) | `silo.manga-metadata` / `0.1.3` |
+| Autoscan ARR | [`v0.1.4`](https://github.com/Bloem-Media/bloem-plugin-autoscan-arr/releases/tag/v0.1.4) | `f11998586b51e0c413f82c7d01aa7239d5cb526a` | [`31612907100`](https://github.com/Bloem-Media/bloem-plugin-autoscan-arr/actions/runs/31612907100) | [`31613748655`](https://github.com/Bloem-Media/bloem-plugin-autoscan-arr/actions/runs/31613748655) | `silo.autoscan.arr` / `0.1.4` |
 
 ## Verified asset hashes
 
@@ -35,16 +35,16 @@ Each downloaded `checksums.txt` has a strict three-entry bijection using bare as
 
 ## Provenance and authorization
 
-Every repository has a clean Vondel root with no upstream Git history or tags reachable from it, uses its `github.com/Vondel-Media/...` module path, pins private SDK `v0.13.3` without a `replace` directive, and keeps its upstream remote fetch-only. The common preserved AGPL license file has SHA-256 `be81e1ded9055f0a6c6ea337716140e73fc10a3d18a482f5ade024364cc0f2e0`.
+Every repository has a clean Bloem root with no upstream Git history or tags reachable from it, uses its `github.com/Bloem-Media/...` module path, pins private SDK `v0.13.3` without a `replace` directive, and keeps its upstream remote fetch-only. The common preserved AGPL license file has SHA-256 `be81e1ded9055f0a6c6ea337716140e73fc10a3d18a482f5ade024364cc0f2e0`.
 
-| Plugin | Vondel root | Pinned upstream snapshot | AGPL authorization status |
+| Plugin | Bloem root | Pinned upstream snapshot | AGPL authorization status |
 | --- | --- | --- | --- |
 | TMDB | `cad31a3a683b50107a126dd7a252c48527c10cfe` | `Silo-Server/silo-plugin-metadata-tmdb@v1.2.21` (`7bae6ba7d99f49587128dfcb0a56bee6800c6ad0`) | Upstream AGPL-3.0-or-later preserved byte-for-byte |
 | TVDB | `084b05a2d2b3d218168e379574e73d9e529f9672` | `Silo-Server/silo-plugin-metadata-tvdb@v1.2.24` (`a04e5a21427e2d9c2f63522603190c81f0017da8`) | Upstream AGPL-3.0-or-later preserved byte-for-byte |
-| Ebook Metadata | `5583aaf95fe3690f9be4f32df03da6f276c6688f` | `Silo-Server/silo-plugin-metadata-ebook@v0.1.1` (`70d8acb4dbb68f8cc594099258211cd9a3a3082f`) | Project-owner authorization to copy, modify, and license the Vondel copy under AGPL-3.0-or-later |
+| Ebook Metadata | `5583aaf95fe3690f9be4f32df03da6f276c6688f` | `Silo-Server/silo-plugin-metadata-ebook@v0.1.1` (`70d8acb4dbb68f8cc594099258211cd9a3a3082f`) | Project-owner authorization to copy, modify, and license the Bloem copy under AGPL-3.0-or-later |
 | Audiobook Metadata | `5c35b8cf1e6cc56b0f2eb232f0f8e389a5c146ea` | `Silo-Server/silo-plugin-metadata-audiobook@v0.1.4` (`f85c630ecbbe5ef760cae1af4b8fdfb1d666397c`) | Upstream AGPL-3.0-only preserved; release remains under that authorization |
 | Manga Metadata | `600c4981452a587359e4f94a431c4ba7843b7a1c` | `Silo-Server/silo-plugin-metadata-manga@v0.1.1` (`1458a58663081bff45da3230f783d55d4955852a`) | Upstream AGPL-3.0-only preserved; MangaBaka data remains CC BY-NC-SA 4.0 |
-| Autoscan ARR | `bde63ecf3f9e74d4bb84c696a54edc17b2f101ff` | `Silo-Server/silo-plugin-autoscan-arr@v0.1.2` (`7987ddae852549f5f2ef4e00b6f25dfa5497ddad`) | Project-owner authorization to copy, modify, and license the Vondel copy under AGPL-3.0-or-later |
+| Autoscan ARR | `bde63ecf3f9e74d4bb84c696a54edc17b2f101ff` | `Silo-Server/silo-plugin-autoscan-arr@v0.1.2` (`7987ddae852549f5f2ef4e00b6f25dfa5497ddad`) | Project-owner authorization to copy, modify, and license the Bloem copy under AGPL-3.0-or-later |
 
 ## Compatibility and security invariants
 

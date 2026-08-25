@@ -2,13 +2,13 @@
 
 A wire-level reference for `bloem-server`'s native `/api/v2` API surface — the Bloem-specific
 extensions layered on top of the frozen, Silo-compatible `/api/v1` projection documented
-separately (see [Silo API Reference](https://github.com/Vondel-Media/silo-api-reference), also
-mirrored at `vondel-android/docs/silo-api-reference.md`). Compiled 2026-08-20 by reading
-`vondel-server`'s actual Go source directly — route tables, handlers, and the domain packages
-each handler calls into — cross-checked against real usage in `vondel-android` and `vondel-apple`.
+separately (see [Silo API Reference](https://github.com/Bloem-Media/silo-api-reference), also
+mirrored at `bloem-android/docs/silo-api-reference.md`). Compiled 2026-08-20 by reading
+`bloem-server`'s actual Go source directly — route tables, handlers, and the domain packages
+each handler calls into — cross-checked against real usage in `bloem-android` and `bloem-apple`.
 
 **This is a private, proprietary API.** Unlike `/api/v1`, none of this surface is meant to be
-Silo-compatible or externally stable — `vondel-server`'s own `AGENTS.md` calls the whole repo "a
+Silo-compatible or externally stable — `bloem-server`'s own `AGENTS.md` calls the whole repo "a
 VERY EARLY WIP" and explicitly welcomes sweeping changes. Treat this document as a snapshot of
 2026-08-20's implementation, not a frozen contract — re-derive it from source before relying on
 any exact field name or error code in new work.
@@ -44,8 +44,8 @@ clients depend on"), and splits into two genuinely different surfaces:
 
 - **`POST /api/v2/sync/progress` is not called by either native client today**, despite offering a
   richer per-item result vocabulary (`updated`/`ignored`/`error`) than the `/api/v1` equivalent —
-  `vondel-android`'s `HttpProgressSyncSource.kt` explicitly targets `/api/v1/sync/progress`
-  instead, and no `sync/progress` call of any version exists in `vondel-apple`. Worth a deliberate
+  `bloem-android`'s `HttpProgressSyncSource.kt` explicitly targets `/api/v1/sync/progress`
+  instead, and no `sync/progress` call of any version exists in `bloem-apple`. Worth a deliberate
   decision on whether clients should migrate to the v2 endpoint, not treated as fixed here.
 - Two independent optimistic-concurrency revision counters exist in the Organization Administration
   surface (a group/invitation mutation checks the org's `tenant.PolicyRevision`; an entitlement
@@ -176,9 +176,9 @@ Field notes:
 
 **Errors.** None — the handler cannot fail.
 
-**Clients.** `vondel-apple`'s `ServerIdentityProbe.swift` calls `/api/v2/capabilities` (constant
+**Clients.** `bloem-apple`'s `ServerIdentityProbe.swift` calls `/api/v2/capabilities` (constant
 `Endpoints.capabilities`) alongside identity, as part of server-discovery/compatibility probing.
-No confirmed `vondel-android` call to this specific path was found in the source tree searched
+No confirmed `bloem-android` call to this specific path was found in the source tree searched
 (android's compatibility probing lives in `SiloCompatibilityProbe.kt`, which targets `/api/v1`
 surfaces).
 
@@ -231,7 +231,7 @@ error entry.
   nil server-wide (in that fallback case even auth is skipped — every request, authenticated or
   not, gets this same `503`).
 
-**Clients.** Not observed called from `vondel-android` or `vondel-apple` native-client source
+**Clients.** Not observed called from `bloem-android` or `bloem-apple` native-client source
 (grepped both repos for `/api/v2/organizations`). This is an admin/tenant-web-UI surface, not part
 of the TV/phone Watch experience.
 
@@ -316,7 +316,7 @@ Scope-specific behavior:
 - `503 {"error":"tenant_unavailable", ...}` — handler not fully wired, token mint/parse failure, or
   any other tenancy-store read error. Also the fixed response when `session == nil` server-wide.
 
-**Clients.** Not observed called from `vondel-android` or `vondel-apple` native-client source. This
+**Clients.** Not observed called from `bloem-android` or `bloem-apple` native-client source. This
 is the admin-elevation surface for the tenant/admin web UI, not the TV/phone Watch experience.
 
 ---
@@ -358,8 +358,8 @@ string, because it would silently re-key state the client already has stored aga
 Triggers: no identity resolver or setup reporter wired (nil DB), the identity resolver failed, or
 the setup-state read failed.
 
-**Clients.** Called by both. `vondel-apple`: `ServerIdentityProbe.swift` (`Endpoints.identity =
-"/api/v2/server/identity"`). `vondel-android`: `ServerIdentityProbe.kt`
+**Clients.** Called by both. `bloem-apple`: `ServerIdentityProbe.swift` (`Endpoints.identity =
+"/api/v2/server/identity"`). `bloem-android`: `ServerIdentityProbe.kt`
 (`"$origin/api/v2/server/identity"`). Both use it as the first step of server
 discovery/compatibility probing before any authenticated call.
 
@@ -492,8 +492,8 @@ covering the union's requested content ids, `featured_content_id` chosen by the 
   (nil reader) — the route itself is unmounted in that case, so this path is effectively dead code
   guarding against future wiring mistakes rather than a live response.
 
-**Clients.** Both. `vondel-apple`: `HTTPWatchCatalogSource.swift` (`Endpoints.home =
-"/api/v2/watch/home"`). `vondel-android`: `HttpWatchCatalogSource.kt` (`HOME_PATH =
+**Clients.** Both. `bloem-apple`: `HTTPWatchCatalogSource.swift` (`Endpoints.home =
+"/api/v2/watch/home"`). `bloem-android`: `HttpWatchCatalogSource.kt` (`HOME_PATH =
 "/api/v2/watch/home"`); its own file comment states *"The native client surface lives on
 `/api/v2`; `/api/v1` is a frozen Silo-compatible projection."*
 
@@ -527,8 +527,8 @@ equal to `content_id` when the item survived composition, `progress` for every c
 - `500 {"error":"internal_error","message":"Failed to compose the Watch item document"}`.
 - `503` unavailable — same as home.
 
-**Clients.** Both. `vondel-apple`: `HTTPWatchCatalogSource.swift` (`Endpoints.itemPrefix =
-"/api/v2/watch/items/"`). `vondel-android`: `HttpWatchCatalogSource.kt` (`ITEM_PATH_PREFIX =
+**Clients.** Both. `bloem-apple`: `HTTPWatchCatalogSource.swift` (`Endpoints.itemPrefix =
+"/api/v2/watch/items/"`). `bloem-android`: `HttpWatchCatalogSource.kt` (`ITEM_PATH_PREFIX =
 "/api/v2/watch/items/"`).
 
 ---
@@ -567,8 +567,8 @@ shape, deduplicated by `content_id` (keeping the first, best-ranked occurrence).
   composition failure after a successful search.
 - `503` unavailable (no reader) — same as home.
 
-**Clients.** Both. `vondel-apple`: `HTTPWatchCatalogSource.swift` (`Endpoints.searchPath =
-"/api/v2/watch/search"`). `vondel-android`: `HttpWatchCatalogSource.kt` (`SEARCH_PATH =
+**Clients.** Both. `bloem-apple`: `HTTPWatchCatalogSource.swift` (`Endpoints.searchPath =
+"/api/v2/watch/search"`). `bloem-android`: `HttpWatchCatalogSource.kt` (`SEARCH_PATH =
 "/api/v2/watch/search"`).
 
 ---
@@ -668,7 +668,7 @@ listeners) via the events hub.
 `HttpProgressSyncSource.kt` explicitly targets **`POST /api/v1/sync/progress`** — its own doc
 comment reads: *"Pushes locally-recorded checkpoints to a Bloem server's `POST
 /api/v1/sync/progress` — the real…"* (the v1 route, not this v2 one), despite the file living in
-a module whose sibling watch/person sources are on `/api/v2`. `vondel-apple` has no
+a module whose sibling watch/person sources are on `/api/v2`. `bloem-apple` has no
 `sync/progress` call under any API version in the source tree searched — its
 `WatchProgressCoordinator`/`WatchProgressStore` did not resolve to an HTTP call in this pass (it
 may write through per-session `/api/v1/playback/{session_id}/progress` heartbeats instead, or be
@@ -790,7 +790,7 @@ Everything in this section is mounted under `r.Route("/admin", …)` in `mountV2
 - Group and invitation mutations check `expected_revision` against the **organization's** `tenant.PolicyRevision` (`requireOrganizationRevision`). A mismatch is `409 authorization_state_changed` with the current `policy_revision`.
 - Library entitlement mutations check `expected_revision` against that **specific entitlement row's** `security_revision` (`organization_entitlements.security_revision`), not the org-wide policy revision. A mismatch is also `409 authorization_state_changed`, with `current_revision` reflecting the entitlement's own revision, sourced from the tenant context's `SecurityRevision` field in the response envelope (see the endpoint entries below for the exact shape).
 
-**Clients**: grepped both `vondel-android` and `vondel-apple` for every literal path in this section (`organization/overview`, `organization/groups`, `organization/libraries`, `organization/entitlements`, `organization/invitations`, `organization/policy-decisions`) — zero references in either repository. This entire section (Organization + Policy Explain) is admin-console/web-only; no native client calls any endpoint documented here.
+**Clients**: grepped both `bloem-android` and `bloem-apple` for every literal path in this section (`organization/overview`, `organization/groups`, `organization/libraries`, `organization/entitlements`, `organization/invitations`, `organization/policy-decisions`) — zero references in either repository. This entire section (Organization + Policy Explain) is admin-console/web-only; no native client calls any endpoint documented here.
 
 ---
 
@@ -1205,8 +1205,8 @@ Handler: `handlers.V2AdminPlatformHandler`, built from a `*tenancy.Store` (satis
 `AdminReauthenticationVerifier`, used only by ownership transfer). Mounted whenever `deps.DB != nil`
 — i.e. in every real deployment with a database; there is no separate flag that disables it.
 
-Only reachable by clients: **no** — confirmed by grepping both `vondel-android` and
-`vondel-apple` for `admin/platform`, `platform/organizations`, and `platform/compatibility`; there
+Only reachable by clients: **no** — confirmed by grepping both `bloem-android` and
+`bloem-apple` for `admin/platform`, `platform/organizations`, and `platform/compatibility`; there
 are zero matches in either repository. This surface is platform-operator / admin-console-only, not
 called by any first-party native client.
 
@@ -1653,7 +1653,7 @@ the server has no database pool at all — a degraded/no-DB boot mode, not a nor
 toggle.
 
 Only reachable by clients: **no** — same grep as Platform, above, found zero references to
-`platform/compatibility` in either `vondel-android` or `vondel-apple`.
+`platform/compatibility` in either `bloem-android` or `bloem-apple`.
 
 **Two reviewed kinds only**: `"jellyfin"` and `"audiobookshelf"` (`compatibilityKinds` map in the
 handler, mirroring `compatapp.knownKinds`). Any other value is rejected before the lifecycle
@@ -1703,14 +1703,14 @@ application as:
   "canonical_url": "string",
   "commands": {
     "install": "docker compose -f docker-compose.yml -f docker-compose.<kind>.yml up -d",
-    "update": "docker compose ... pull vondel-<kind> && docker compose ... up -d vondel-<kind>",
-    "rollback": "Pin the previous image digest for vondel-<kind> in docker-compose.<kind>.yml, then run: docker compose ... up -d vondel-<kind>",
-    "remove": "docker compose ... rm -sf vondel-<kind>  # discard its disposable protocol state: docker volume ls -q --filter name='_vondel-<kind>-state$' | xargs -r docker volume rm"
+    "update": "docker compose ... pull bloem-<kind> && docker compose ... up -d bloem-<kind>",
+    "rollback": "Pin the previous image digest for bloem-<kind> in docker-compose.<kind>.yml, then run: docker compose ... up -d bloem-<kind>",
+    "remove": "docker compose ... rm -sf bloem-<kind>  # discard its disposable protocol state: docker volume ls -q --filter name='_bloem-<kind>-state$' | xargs -r docker volume rm"
   }
 }
 ```
 `canonical_url` is `{PublicURL}/audiobookshelf` for the Audiobookshelf companion, or bare
-`{PublicURL}/` for Jellyfin (falls back to `https://vondel.example` if `PublicURL` is unset).
+`{PublicURL}/` for Jellyfin (falls back to `https://bloem.example` if `PublicURL` is unset).
 `commands` is purely informational text for an operator to copy/paste or for a deployment
 controller to run — the server never executes any of it.
 
@@ -1950,12 +1950,12 @@ that the way the tenancy store enforces it for Platform routes.
 
 ## People Administration (native /api/v2/admin/organization/people)
 
-Source of truth read directly from `vondel-server` (`~/projects/vondel/vondel-server`):
+Source of truth read directly from `bloem-server` (`~/projects/bloem/bloem-server`):
 route table `internal/api/router_v2.go` (`mountV2Routes`, people block ~lines 208-221),
 handler `internal/api/handlers/v2_admin_people.go` (`V2AdminPeopleHandler`), service/store
 `internal/adminpeople/service.go` (`adminpeople.Service`), and durable-job worker
 `internal/adminpeople/worker.go` (`adminpeople.Worker`). Cross-checked against
-`~/projects/vondel-android` and `~/projects/vondel-apple` — see **Clients** below.
+`~/projects/bloem-android` and `~/projects/bloem-apple` — see **Clients** below.
 
 This surface is **organization-admin-scoped bulk people management**, not household/self-service
 profile management (that's the `/api/v1` `PUT /profiles/{id}` flow, documented separately —
@@ -2080,7 +2080,7 @@ type ProfileSummary struct {
   key, HMAC-signed with a key derived from `Config.Auth.JWTSecret` (`sha256(secret)` — see
   `adminpeople.NewService`).
 - **Errors**: `422 validation_failed` (bad query params/filter/cursor), `503 tenant_unavailable`.
-- **Clients**: none. `grep -rl "organization/people"` over `vondel-android` and `vondel-apple`
+- **Clients**: none. `grep -rl "organization/people"` over `bloem-android` and `bloem-apple`
   finds no matches in either repo — this endpoint (and the whole People Administration surface)
   is not called by either native client. Presumed admin-console/web-only; no admin web UI source
   was inspected as part of this pass.
@@ -2416,7 +2416,7 @@ struct {
 ### Summary: what's genuinely unclear / not fully determinable from this pass
 
 - The admin web console (if any) that actually drives this API was not located/inspected as part
-  of this task — only `vondel-android` and `vondel-apple` were checked, and both come back empty.
+  of this task — only `bloem-android` and `bloem-apple` were checked, and both come back empty.
   If a web admin UI exists in a separate repo, it was out of scope here.
 - Resolved: `cmd/silo/main.go` always constructs the worker (`adminpeople.NewWorker(adminPeopleService, adminpeople.WorkerOptions{})`,
   i.e. default options — 30s recovery interval, 1h cleanup interval, batch size 100) and starts

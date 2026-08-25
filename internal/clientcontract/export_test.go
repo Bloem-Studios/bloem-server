@@ -41,7 +41,7 @@ import (
 
 const officialSiloBaselineCommit = "1dcdd4b27ab5fcd697a32fc20f20c2400ca24688"
 
-var disposableDatabasePattern = regexp.MustCompile(`^vondel_client_contract_[a-f0-9]{16}$`)
+var disposableDatabasePattern = regexp.MustCompile(`^bloem_client_contract_[a-f0-9]{16}$`)
 
 type disposableDatabase struct {
 	name    string
@@ -57,7 +57,7 @@ func newDisposableDatabaseName() (string, error) {
 	if _, err := rand.Read(random); err != nil {
 		return "", fmt.Errorf("generate database suffix: %w", err)
 	}
-	return "vondel_client_contract_" + hex.EncodeToString(random), nil
+	return "bloem_client_contract_" + hex.EncodeToString(random), nil
 }
 
 func validateDisposableDatabaseName(name string) error {
@@ -236,7 +236,7 @@ ON CONFLICT (id) DO NOTHING`, userID, profileID); err != nil {
 	}
 }
 
-func startVondelServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
+func startBloemServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	t.Helper()
 	cfg, err := config.LoadFromDB(map[string]string{
 		"auth.jwt_secret":                "fixture-jwt-secret-at-least-thirty-two-characters",
@@ -312,9 +312,9 @@ func setupFixtureAccountResponse(t *testing.T, baseURL string) (int, string) {
 
 func contractsRepository(t *testing.T) string {
 	t.Helper()
-	path := os.Getenv("VONDEL_CLIENT_CONTRACTS_DIR")
+	path := os.Getenv("BLOEM_CLIENT_CONTRACTS_DIR")
 	if path == "" {
-		path = filepath.Join("..", "..", "..", "vondel-client-contracts")
+		path = filepath.Join("..", "..", "..", "bloem-client-contracts")
 	}
 	abs, err := filepath.Abs(path)
 	if err != nil {
@@ -344,7 +344,7 @@ func runContractsReport(t *testing.T, contractsDir, baseURL string) contractsRep
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "go", "run", "./cmd/vondel-client-conformance", "-base-url", baseURL, "-fixtures", contractsDir, "-timeout", "30s")
+	cmd := exec.CommandContext(ctx, "go", "run", "./cmd/bloem-client-conformance", "-base-url", baseURL, "-fixtures", contractsDir, "-timeout", "30s")
 	cmd.Dir = contractsDir
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -424,7 +424,7 @@ func runOfficialSiloBaseline(t *testing.T, ctx context.Context, adminURL, contra
 	})
 	migrateOfficialSchema(t, ctx, db.pool, worktree)
 	seedInventedMedia(t, ctx, db.pool)
-	provisioner := startVondelServer(t, db.pool)
+	provisioner := startBloemServer(t, db.pool)
 	setupFixtureAccount(t, provisioner.URL)
 	seedAccountScopedFixtures(t, ctx, db.pool)
 	provisioner.Close()

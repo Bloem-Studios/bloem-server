@@ -13,7 +13,7 @@ fails with the route named. Regenerate the goldens only when a v1 change is
 genuinely intended, and only after the change is agreed:
 
 ```bash
-VONDEL_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
+BLOEM_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
 ```
 
 ## Routes

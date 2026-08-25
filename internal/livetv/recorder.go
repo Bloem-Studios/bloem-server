@@ -29,7 +29,7 @@ type Recorder struct {
 // NewRecorder creates a DVR recorder writing under root.
 func NewRecorder(service *Service, root, ffmpegPath string) *Recorder {
 	if root == "" {
-		root = filepath.Join(os.TempDir(), "vondel-dvr")
+		root = filepath.Join(os.TempDir(), "bloem-dvr")
 	}
 	return &Recorder{
 		service:    service,

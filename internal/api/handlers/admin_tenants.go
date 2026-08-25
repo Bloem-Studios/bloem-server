@@ -1,6 +1,6 @@
 package handlers
 
-// The tenant admin API (vondel-park growth G2): the contract vondel-park's
+// The tenant admin API (bloem-park growth G2): the contract bloem-park's
 // media adapter speaks — create (idempotent on the external service claim),
 // list/get with live usage, limits in place, freeze/thaw, destroy. Park only
 // STATES entitlements here; enforcement lives at membership provisioning

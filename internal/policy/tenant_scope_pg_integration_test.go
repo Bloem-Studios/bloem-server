@@ -240,7 +240,7 @@ func newTask5PolicyTestDatabase(t *testing.T, ctx context.Context) *pgxpool.Pool
 	if _, err := rand.Read(random[:]); err != nil {
 		t.Fatalf("generate disposable database name: %v", err)
 	}
-	name := "vondel_task5_policy_" + hex.EncodeToString(random[:])
+	name := "bloem_task5_policy_" + hex.EncodeToString(random[:])
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		t.Fatalf("parse test database URL: %v", err)

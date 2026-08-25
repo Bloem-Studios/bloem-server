@@ -1,10 +1,10 @@
 -- +goose Up
 -- +goose StatementBegin
 ALTER TABLE public.invitations
-    ADD COLUMN organization_id uuid DEFAULT public.vondel_default_organization_id();
+    ADD COLUMN organization_id uuid DEFAULT public.bloem_default_organization_id();
 
 UPDATE public.invitations
-SET organization_id = public.vondel_default_organization_id()
+SET organization_id = public.bloem_default_organization_id()
 WHERE organization_id IS NULL;
 
 ALTER TABLE public.invitations
@@ -24,11 +24,11 @@ CREATE INDEX invitations_organization_created_idx
     ON public.invitations (organization_id, created_at DESC, id DESC);
 
 ALTER TABLE public.policy_decisions
-    ADD COLUMN organization_id uuid DEFAULT public.vondel_default_organization_id(),
+    ADD COLUMN organization_id uuid DEFAULT public.bloem_default_organization_id(),
     ADD COLUMN membership_id uuid;
 
 UPDATE public.policy_decisions
-SET organization_id = public.vondel_default_organization_id()
+SET organization_id = public.bloem_default_organization_id()
 WHERE organization_id IS NULL;
 
 UPDATE public.policy_decisions AS decisions

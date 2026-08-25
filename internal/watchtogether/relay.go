@@ -11,7 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const watchTogetherRelayChannel = "vondel:watch-together:commands:v1"
+const watchTogetherRelayChannel = "bloem:watch-together:commands:v1"
 
 var ErrRoomRelayUnavailable = errors.New("watch together room relay unavailable")
 
@@ -49,7 +49,7 @@ func (relay *RedisRoomRelay) Claim(ctx context.Context, roomID string, generatio
 	if relay == nil || relay.client == nil || roomID == "" || generation <= 0 || commandID == "" || ttl <= 0 {
 		return false, ErrRoomRelayUnavailable
 	}
-	key := fmt.Sprintf("vondel:watch-together:claim:v1:%s:%d:%s", roomID, generation, commandID)
+	key := fmt.Sprintf("bloem:watch-together:claim:v1:%s:%d:%s", roomID, generation, commandID)
 	return relay.client.SetNX(ctx, key, "1", ttl).Result()
 }
 

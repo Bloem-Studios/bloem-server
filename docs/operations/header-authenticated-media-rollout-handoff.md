@@ -7,7 +7,7 @@ Date: 2026-08-24
 The server, shared contracts, Android clients, and Apple clients now implement
 the same additive playback negotiation contract. Header-authenticated media is
 still disabled by default. Legacy signed playback remains the compatibility
-path for Silo clients and for Vondel clients that do not negotiate the new
+path for Silo clients and for Bloem clients that do not negotiate the new
 features.
 
 The implementation is fail-closed:
@@ -23,23 +23,23 @@ The implementation is fail-closed:
 
 ## Repository commits
 
-### `vondel-client-contracts`
+### `bloem-client-contracts`
 
 - `25ee952` — `feat(playback): define authenticated media negotiation`
 
-### `vondel-server`
+### `bloem-server`
 
 - `d2589e56` — `docs(playback): design authenticated media rollout`
 - `107a7ef0` — `docs(playback): clarify negotiated feature authority`
 - `0a0d1609` — `feat(playback): gate authenticated media by deployment readiness`
 - `eaeae929` — `feat(playback): expose authenticated media rollout controls`
 
-### `vondel-android`
+### `bloem-android`
 
 - `c5f199f` — `feat(playback): negotiate runtime Android playback features`
 - `52436d3` — `feat(playback): secure Android authenticated media loading`
 
-### `vondel-apple`
+### `bloem-apple`
 
 - `0fa7ddc` — `feat(playback): negotiate runtime Apple playback features`
 - `dcbfc08` — `feat(playback): secure Apple authenticated media loading`
@@ -70,7 +70,7 @@ media implementation.
 - No Silo server protocol behavior is removed or repurposed.
 - Unknown client tokens remain ignored under the current additive contract.
 - Clients that omit the new tokens continue on legacy signed playback.
-- A server without the readiness capability naturally keeps new Vondel
+- A server without the readiness capability naturally keeps new Bloem
   clients in legacy mode.
 - Jellyfin compatibility is unaffected because this negotiation applies only
   to the native playback-v3 API.

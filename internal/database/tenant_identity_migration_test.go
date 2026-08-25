@@ -532,11 +532,11 @@ SELECT EXISTS (
 		}
 	}
 	var functionExists bool
-	if err := pool.QueryRow(ctx, `SELECT to_regprocedure('public.vondel_default_organization_id()') IS NOT NULL`).Scan(&functionExists); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT to_regprocedure('public.bloem_default_organization_id()') IS NOT NULL`).Scan(&functionExists); err != nil {
 		t.Fatalf("check default organization function after down migration: %v", err)
 	}
 	if functionExists {
-		t.Error("down migration left vondel_default_organization_id() behind")
+		t.Error("down migration left bloem_default_organization_id() behind")
 	}
 }
 
@@ -583,7 +583,7 @@ func newTenantIdentityDisposableDatabase(t *testing.T, ctx context.Context, dsn 
 	if _, err := rand.Read(random[:]); err != nil {
 		t.Fatalf("generate database name: %v", err)
 	}
-	name := "vondel_tenant_identity_" + hex.EncodeToString(random[:])
+	name := "bloem_tenant_identity_" + hex.EncodeToString(random[:])
 
 	adminConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {

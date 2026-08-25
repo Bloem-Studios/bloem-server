@@ -161,7 +161,7 @@ type AdminHandler struct {
 	OnServerSettingUpdated       func(ctx context.Context, key, value string)
 	RestartStatus                *ServerRestartStatusTracker
 	CatalogSearchStatus          catalog.CatalogSearchStatusProvider
-	// tenantStore gates tenant-scoped account creation (vondel-park growth
+	// tenantStore gates tenant-scoped account creation (bloem-park growth
 	// G2); nil means tenants are not wired and an organization_id request
 	// is refused.
 	tenantStore                      *tenancy.Store
@@ -265,7 +265,7 @@ type createUserRequest struct {
 	DownloadAllowed          *bool                  `json:"download_allowed,omitempty"`
 	DownloadTranscodeAllowed *bool                  `json:"download_transcode_allowed,omitempty"`
 	// OrganizationID provisions this account into a specific tenant
-	// organization (vondel-park growth G2) instead of the deployment's
+	// organization (bloem-park growth G2) instead of the deployment's
 	// default one. The tenant's slot quota is enforced here: a full or
 	// frozen tenant refuses.
 	OrganizationID              *uuid.UUID `json:"organization_id,omitempty"`
@@ -999,7 +999,7 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 }
 
 // createTenantUser creates an account inside a specific tenant organization
-// (vondel-park growth G2) rather than the deployment's default one —
+// (bloem-park growth G2) rather than the deployment's default one —
 // AccountProvisioner.CreateAccount always provisions the default
 // organization, so this replicates its steps against tenancy.Store's
 // tenant-specific ones instead, with the same cleanup-on-failure shape.
