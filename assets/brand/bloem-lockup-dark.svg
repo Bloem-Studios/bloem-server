@@ -5,10 +5,10 @@
 <defs>
   <linearGradient id="upperWarm" x1="0" y1="1" x2="0" y2="0">
     <stop offset="0%" stop-color="#F2F2F2"/>
-    <stop offset="26%" stop-color="#F2F2F2"/>
-    <stop offset="46%" stop-color="#FA6400"/>
-    <stop offset="72%" stop-color="#FF5A0F"/>
-    <stop offset="100%" stop-color="#FFA608"/>
+    <stop offset="38%" stop-color="#F2F2F2"/>
+    <stop offset="60%" stop-color="#8f1918"/>
+    <stop offset="78%" stop-color="#ff3515"/>
+    <stop offset="100%" stop-color="#ff9f08"/>
   </linearGradient>
 
   <linearGradient id="diamondWarm" x1="0" y1="1" x2="0" y2="0">

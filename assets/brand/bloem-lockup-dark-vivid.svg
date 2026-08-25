@@ -4,11 +4,11 @@
 <title id="title">Bloem</title>
 <defs>
   <linearGradient id="upperWarm" x1="0" y1="1" x2="0" y2="0">
-    <stop offset="0%" stop-color="#242424"/>
-    <stop offset="38%" stop-color="#242424"/>
-    <stop offset="60%" stop-color="#8f1918"/>
-    <stop offset="78%" stop-color="#ff3515"/>
-    <stop offset="100%" stop-color="#ff9f08"/>
+    <stop offset="0%" stop-color="#F2F2F2"/>
+    <stop offset="26%" stop-color="#F2F2F2"/>
+    <stop offset="46%" stop-color="#FA6400"/>
+    <stop offset="72%" stop-color="#FF5A0F"/>
+    <stop offset="100%" stop-color="#FFA608"/>
   </linearGradient>
 
   <linearGradient id="diamondWarm" x1="0" y1="1" x2="0" y2="0">
@@ -17,9 +17,9 @@
   </linearGradient>
 
   <style>
-  .base { fill:none; stroke:#242424; stroke-width:7.5; stroke-linecap:butt; stroke-linejoin:round; }
+  .base { fill:none; stroke:#F2F2F2; stroke-width:7.5; stroke-linecap:butt; stroke-linejoin:round; }
   .warm { fill:none; stroke:url(#upperWarm); stroke-width:7.5; stroke-linecap:butt; stroke-linejoin:round; opacity:1; }
-  .diamond-base { fill:none; stroke:#242424; stroke-width:7.5; stroke-linejoin:miter; }
+  .diamond-base { fill:none; stroke:#F2F2F2; stroke-width:7.5; stroke-linejoin:miter; }
   .diamond-warm { fill:none; stroke:url(#diamondWarm); stroke-width:7.5; stroke-linejoin:miter; opacity:1; }
   .pixel { opacity:1; }
 </style></defs>
@@ -81,27 +81,27 @@
 <rect class="pixel p1" x="267" y="120" width="14" height="14" fill="#ff9d08"/>
 <rect class="pixel p2" x="301" y="135" width="11" height="11" fill="#ff6511"/>
 <rect class="pixel p3" x="286" y="157" width="12" height="12" fill="#ff4a15"/>
-<rect class="pixel p4" x="339" y="153" width="10" height="10" fill="#7c211d"/>
+<rect class="pixel p4" x="339" y="153" width="10" height="10" fill="#C98A80"/>
 <rect class="pixel p5" x="256" y="164" width="10" height="10" fill="#ff6a0e"/>
-<rect class="pixel p6" x="312" y="172" width="11" height="11" fill="#5e2723"/>
-<rect class="pixel p7" x="365" y="163" width="10" height="10" fill="#5a2623"/>
-<rect class="pixel p8" x="282" y="193" width="11" height="11" fill="#6c2824"/>
-<rect class="pixel p9" x="335" y="198" width="11" height="11" fill="#3d2928"/>
-<rect class="pixel p10" x="305" y="216" width="10" height="10" fill="#292929"/>
-<rect class="pixel p11" x="344" y="219" width="9" height="9" fill="#303030"/>
+<rect class="pixel p6" x="312" y="172" width="11" height="11" fill="#B08079"/>
+<rect class="pixel p7" x="365" y="163" width="10" height="10" fill="#A87C76"/>
+<rect class="pixel p8" x="282" y="193" width="11" height="11" fill="#BE8B84"/>
+<rect class="pixel p9" x="335" y="198" width="11" height="11" fill="#8E8B8A"/>
+<rect class="pixel p10" x="305" y="216" width="10" height="10" fill="#7A7A7A"/>
+<rect class="pixel p11" x="344" y="219" width="9" height="9" fill="#6E6E6E"/>
 
   </g>
   <g transform="translate(430,110) scale(0.98)">
 
-<g fill="none" stroke="#101827" stroke-width="16" stroke-linecap="butt" stroke-linejoin="miter">
+<g fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="butt" stroke-linejoin="miter">
   <path d="M8,0 V101" />
   <path d="M0,8 H107 A16,16 0 0 1 123,24 V34 A16,16 0 0 1 107,50 H0" />
   <path d="M0,50 H112 A16,16 0 0 1 128,66 V77 A16,16 0 0 1 112,93 H0" />
   <path d="M223,0 V77 A16,16 0 0 0 239,93 H340" />
   <rect x="427" y="8" width="128" height="85" rx="20" ry="20" />
   <rect x="643" y="0"  width="135" height="16" fill="#FA6400" stroke="none" />
-  <rect x="643" y="42" width="135" height="16" fill="#101827" stroke="none" />
-  <rect x="643" y="85" width="135" height="16" fill="#101827" stroke="none" />
+  <rect x="643" y="42" width="135" height="16" fill="#FFFFFF" stroke="none" />
+  <rect x="643" y="85" width="135" height="16" fill="#FFFFFF" stroke="none" />
   <path d="M861,0 V101" />
   <path d="M998,0 V101" />
   <path d="M862,0 L929,80 L996,0" />

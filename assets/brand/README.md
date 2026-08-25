@@ -34,6 +34,23 @@ The mark is thin-stroked and carries eleven small dissolve pixels. Rendered at
 single asset cannot serve both a 1024px app icon and a 16px favicon. Each weight
 is the same drawing with the detail budget matched to the size.
 
+### Gradient variants: classic vs vivid
+
+Two bloom treatments are kept, and both are maintained:
+
+- **classic** (`bloem-mark-detail-*`, `bloem-lockup-{dark,light}.svg`) — the
+  original storyboard gradient, which passes through a dark maroon (`#8f1918`)
+  at mid-petal on its way from the pale base to the amber tip.
+- **vivid** (`*-vivid.svg`) — the same drawing with that stop replaced by
+  saturated `#FA6400` and the pale base shortened from 38% to 26%, so the
+  petals hold colour over more of their length. This is what the shipped icons
+  render from, because the maroon band read as muddy at sidebar and favicon
+  sizes.
+
+`-tight` marks the viewBox cropped to the ink; use those for anything composited
+onto an icon plate, and the untrimmed originals where the artwork needs its own
+breathing room.
+
 ## Rendered output (`png/`)
 
 App icons sit on an opaque `#101827` rounded plate rather than shipping
