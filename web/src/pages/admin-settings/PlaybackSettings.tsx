@@ -22,6 +22,8 @@ const KEYS = [
   "playback.local_transcode_fallback",
   "playback.proxy_policy",
   "playback.header_authenticated_media_mode",
+  "playback.transcode_hardware_tone_map_enabled",
+  "playback.transcode_software_tone_map_enabled",
   "allow_4k_transcode",
   "enable_transcode_throttle",
   "transcode_throttle_seconds",
@@ -197,6 +199,20 @@ export default function PlaybackSettings() {
             hint="Enable only when media routes use one API replica or verified session affinity. Tokenless API-origin sessions cannot reconstruct on another replica."
             value={form.getValue("playback.header_authenticated_media_mode") || "disabled"}
             onChange={(v) => form.setValue("playback.header_authenticated_media_mode", v)}
+          />
+          <SettingField
+            label="Enable Hardware HDR Tone Mapping"
+            type="toggle"
+            hint="Allows validated local or remote GPU executors to convert HDR video to SDR when transcoding."
+            value={form.getValue("playback.transcode_hardware_tone_map_enabled") || "false"}
+            onChange={(v) => form.setValue("playback.transcode_hardware_tone_map_enabled", v)}
+          />
+          <SettingField
+            label="Enable Software HDR Tone Mapping"
+            type="toggle"
+            hint="Allows the CPU to convert HDR video to SDR when transcoding. This can be very CPU-intensive."
+            value={form.getValue("playback.transcode_software_tone_map_enabled") || "false"}
+            onChange={(v) => form.setValue("playback.transcode_software_tone_map_enabled", v)}
           />
           <SettingField
             label="Allow 4K Transcoding"

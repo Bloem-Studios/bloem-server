@@ -51,6 +51,25 @@ const ProxyGrantKeyPrefix = "silo:proxygrant:"
 // still drive a reconstruct, so the recipe is safe to lapse.
 const DefaultTTL = playback.MaxTokenTTL
 
+const (
+	toneMapEnvelopeVersion     = 1
+	audioRecipeEnvelopeVersion = 2
+)
+
+type toneMapEnvelope struct {
+	Version int                 `json:"version"`
+	Recipe  playback.RecipeCard `json:"tone_map_recipe"`
+}
+
+// audioRecipeEnvelope deliberately uses a shape and version that pre-v2
+// readers reject. Those readers ignore SourceAudioChannels when decoding a
+// flat card, which would let a rolled-back proxy or transcode node recreate
+// the old quiet downmix from a current grant or restart recipe.
+type audioRecipeEnvelope struct {
+	Version int                 `json:"version"`
+	Recipe  playback.RecipeCard `json:"audio_recipe"`
+}
+
 // Store is the Redis-backed recipe store shared by central (writer) and the
 // nodes (readers). One instance owns exactly one key prefix; see NewStore and
 // NewProxyGrantStore for the two uses.
@@ -95,7 +114,7 @@ func (s *Store) Put(ctx context.Context, sessionID string, card playback.RecipeC
 	if s == nil || s.rdb == nil || sessionID == "" {
 		return nil
 	}
-	data, err := json.Marshal(card)
+	data, err := marshalCard(card)
 	if err != nil {
 		return err
 	}
@@ -116,12 +135,69 @@ func (s *Store) Get(ctx context.Context, sessionID string) (*playback.RecipeCard
 		}
 		return nil, false
 	}
-	var card playback.RecipeCard
-	if err := json.Unmarshal(data, &card); err != nil {
-		slog.WarnContext(ctx, "decode node recipe failed", "component", "noderecipe", "key_prefix", s.prefix, "error", err, "playback_session_id", sessionID)
+	card, ok := unmarshalCard(data)
+	if !ok {
+		slog.WarnContext(ctx, "decode node recipe failed", "component", "noderecipe", "key_prefix", s.prefix, "playback_session_id", sessionID)
 		return nil, false
 	}
 	return &card, true
+}
+
+func marshalCard(card playback.RecipeCard) ([]byte, error) {
+	// Audio takes precedence when a card also tone-maps: a v1 tone-map-aware
+	// reader understands that envelope but not the byte-affecting audio field.
+	if audioRecipeCard(card) {
+		return json.Marshal(audioRecipeEnvelope{Version: audioRecipeEnvelopeVersion, Recipe: card})
+	}
+	// SourceAudioChannels only has byte-affecting meaning as part of the exact
+	// v2 recipe. Do not leak a partial recipe through a legacy flat card or
+	// tone-map envelope where an older executor could interpret it broadly.
+	card.SourceAudioChannels = 0
+	if toneMapCard(card) {
+		return json.Marshal(toneMapEnvelope{Version: toneMapEnvelopeVersion, Recipe: card})
+	}
+	return json.Marshal(card)
+}
+
+func unmarshalCard(data []byte) (playback.RecipeCard, bool) {
+	var header struct {
+		Version       int             `json:"version"`
+		ToneMapRecipe json.RawMessage `json:"tone_map_recipe"`
+		AudioRecipe   json.RawMessage `json:"audio_recipe"`
+	}
+	if err := json.Unmarshal(data, &header); err != nil {
+		return playback.RecipeCard{}, false
+	}
+	var card playback.RecipeCard
+	if header.Version != 0 || len(header.ToneMapRecipe) != 0 || len(header.AudioRecipe) != 0 {
+		switch header.Version {
+		case toneMapEnvelopeVersion:
+			if len(header.ToneMapRecipe) == 0 || len(header.AudioRecipe) != 0 || json.Unmarshal(header.ToneMapRecipe, &card) != nil || !toneMapCard(card) {
+				return playback.RecipeCard{}, false
+			}
+		case audioRecipeEnvelopeVersion:
+			if len(header.AudioRecipe) == 0 || len(header.ToneMapRecipe) != 0 || json.Unmarshal(header.AudioRecipe, &card) != nil || !audioRecipeCard(card) {
+				return playback.RecipeCard{}, false
+			}
+		default:
+			return playback.RecipeCard{}, false
+		}
+		return card, true
+	}
+	if err := json.Unmarshal(data, &card); err != nil {
+		return playback.RecipeCard{}, false
+	}
+	return card, true
+}
+
+func toneMapCard(card playback.RecipeCard) bool {
+	return card.ToneMapPolicy != "" || card.ToneMapMode != "" || card.ToneMapSourceKind != "" ||
+		card.ToneMapRecipeVersion != "" || card.ToneMapPreflightRequired || !card.ToneMapSourceRevision.IsZero() ||
+		card.ToneMapDVConfigPresent || card.ToneMapDVBLCompatIDPresent || card.ToneMapDVBLPresent || card.ToneMapDVRPUPresent
+}
+
+func audioRecipeCard(card playback.RecipeCard) bool {
+	return card.TranscodeAudio && playback.IsAudioToAACStereoDownmixV3(card.SourceAudioChannels, card.TargetCodecAudio, card.TargetAudioChannels)
 }
 
 // Delete removes the stored recipe for sessionID so an explicitly-stopped

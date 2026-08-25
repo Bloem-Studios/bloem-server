@@ -218,6 +218,7 @@ export function useAudiobookPlayback({
   // against `audio/mp4` as well as `video/mp4`, so an audio-only source is
   // described honestly without a second detection path.
   const capabilityProbe = useCodecDetection();
+  const capabilitiesSettled = capabilityProbe.settled;
   const clientCapabilities = useMemo(
     () => buildClientCapabilitiesV3(capabilityProbe),
     [capabilityProbe],
@@ -526,6 +527,7 @@ export function useAudiobookPlayback({
       playbackAttemptIdRef.current = null;
       return;
     }
+    if (!capabilitiesSettled) return;
 
     let canceled = false;
     let startedSessionId: string | null = null;
@@ -630,6 +632,7 @@ export function useAudiobookPlayback({
     adoptPlan,
     clientCapabilities,
     clientPlaybackContext,
+    capabilitiesSettled,
     config,
     fileId,
     sourceRevision,

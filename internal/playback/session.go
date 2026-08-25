@@ -12,6 +12,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+
+	"github.com/Silo-Server/silo-server/internal/tonemap"
 )
 
 // Session represents an active playback session.
@@ -46,14 +48,16 @@ type Session struct {
 	TranscodeTransportID string // remote node process identity; empty means session ID
 	AudioTrackIndex      int
 
-	StreamBitrateKbps      int    // currently delivered bitrate, when known
-	TargetResolution       string // requested output resolution for transcodes
-	TargetVideoCodec       string // requested output video codec for transcodes
-	TargetAudioCodec       string // requested output audio codec when audio is transcoded
-	TargetAudioChannels    int    // requested encoded audio channel count
-	TargetAudioBitrateKbps int    // requested encoded audio bitrate cap
-	TargetBitrateKbps      int    // requested output bitrate cap for transcodes
-	TranscodeHWAccel       string // effective hardware acceleration mode for transcodes
+	StreamBitrateKbps      int          // currently delivered bitrate, when known
+	TargetResolution       string       // requested output resolution for transcodes
+	TargetVideoCodec       string       // requested output video codec for transcodes
+	TargetAudioCodec       string       // requested output audio codec when audio is transcoded
+	SourceAudioChannels    int          // selected source track channels; zero means unknown/legacy
+	TargetAudioChannels    int          // requested encoded audio channel count
+	TargetAudioBitrateKbps int          // requested encoded audio bitrate cap
+	TargetBitrateKbps      int          // requested output bitrate cap for transcodes
+	TranscodeHWAccel       string       // effective hardware acceleration mode for transcodes
+	ToneMapMode            tonemap.Mode // effective HDR-to-SDR executor for transcodes
 
 	// Byte-affecting transcode recipe fields the offloaded restart path needs to
 	// rebuild the exact same stream after an audio switch. Local transcodes read
@@ -102,10 +106,12 @@ type SessionStreamState struct {
 	TargetResolution          string
 	TargetVideoCodec          string
 	TargetAudioCodec          string
+	SourceAudioChannels       int
 	TargetAudioChannels       int
 	TargetAudioBitrateKbps    int
 	TargetBitrateKbps         int
 	TranscodeHWAccel          string
+	ToneMapMode               tonemap.Mode
 	TranscodeNodeURL          string
 	TranscodeTransportID      string
 	TranscodeRouteSet         bool
@@ -979,6 +985,44 @@ func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s 
 	return s, nil
 }
 
+// RollbackReconstructedToneMap removes a failed tone-map reconstruction only
+// while expected is still the exact session registered by that attempt. A
+// concurrently started or reconstructed successor under the same ID is left
+// untouched.
+func (m *SessionManager) RollbackReconstructedToneMap(expected *Session) bool {
+	if expected == nil || expected.ID == "" {
+		return false
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.sessions[expected.ID] != expected {
+		return false
+	}
+	delete(m.sessions, expected.ID)
+	return true
+}
+
+// ConfirmReconstructedToneMap publishes the executor selected by a successful
+// runtime reconstruction only while expected still owns the session ID. It
+// returns the current session so callers yield to a concurrent legitimate
+// successor instead of overwriting it with stale execution facts.
+func (m *SessionManager) ConfirmReconstructedToneMap(expected *Session, mode tonemap.Mode) *Session {
+	if expected == nil || expected.ID == "" {
+		return nil
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	current := m.sessions[expected.ID]
+	if current == expected {
+		if current.ToneMapMode != mode {
+			current.ToneMapMode = mode
+			current.streamRevision++
+		}
+		m.touchSessionLocked(current)
+	}
+	return current
+}
+
 func (m *SessionManager) limitsForUser(ctx context.Context, userID int, profileID string) (SessionLimits, error) {
 	m.mu.RLock()
 	provider := m.limitProvider
@@ -1203,6 +1247,7 @@ func (m *SessionManager) UpdateStreamState(sessionID string, state SessionStream
 	return nil
 }
 
+// applySessionStreamStateLocked applies a complete stream snapshot while the manager lock is held.
 func applySessionStreamStateLocked(s *Session, state SessionStreamState) {
 	if state.PlayMethod != "" {
 		s.PlayMethod = state.PlayMethod
@@ -1211,8 +1256,17 @@ func applySessionStreamStateLocked(s *Session, state SessionStreamState) {
 		s.BasePlayMethod = state.BasePlayMethod
 	}
 	s.AudioTrackIndex = state.AudioTrackIndex
-	s.TranscodeAudio = state.TranscodeAudio
 	if state.TranscodeRouteSet {
+		// These fields are one byte-affecting audio recipe. A full route snapshot
+		// owns the whole tuple and can deliberately clear it; legacy partial
+		// updates must not leave a frozen surround source paired with zero-value
+		// codec, channel, or transcode facts.
+		s.TranscodeAudio = state.TranscodeAudio
+		s.TargetAudioCodec = state.TargetAudioCodec
+		s.SourceAudioChannels = state.SourceAudioChannels
+		s.TargetAudioChannels = state.TargetAudioChannels
+		s.TargetAudioBitrateKbps = state.TargetAudioBitrateKbps
+
 		// A full v3 route description owns the DV mode outright: a replan from
 		// a DV strip remux to an SDR source must clear the stale mode or every
 		// later remux request fails the profile check. Legacy partial updates
@@ -1234,11 +1288,9 @@ func applySessionStreamStateLocked(s *Session, state SessionStreamState) {
 	s.StreamBitrateKbps = state.StreamBitrateKbps
 	s.TargetResolution = state.TargetResolution
 	s.TargetVideoCodec = state.TargetVideoCodec
-	s.TargetAudioCodec = state.TargetAudioCodec
-	s.TargetAudioChannels = state.TargetAudioChannels
-	s.TargetAudioBitrateKbps = state.TargetAudioBitrateKbps
 	s.TargetBitrateKbps = state.TargetBitrateKbps
 	s.TranscodeHWAccel = state.TranscodeHWAccel
+	s.ToneMapMode = state.ToneMapMode
 	if state.TranscodeRouteSet {
 		s.TranscodeNodeURL = state.TranscodeNodeURL
 		s.TranscodeTransportID = state.TranscodeTransportID
@@ -1258,6 +1310,7 @@ func applySessionStreamStateLocked(s *Session, state SessionStreamState) {
 	}
 }
 
+// snapshotSessionStreamStateLocked captures replaceable stream fields while the manager lock is held.
 func snapshotSessionStreamStateLocked(s *Session) SessionStreamState {
 	return SessionStreamState{
 		PlayMethod:                s.PlayMethod,
@@ -1273,10 +1326,12 @@ func snapshotSessionStreamStateLocked(s *Session) SessionStreamState {
 		TargetResolution:          s.TargetResolution,
 		TargetVideoCodec:          s.TargetVideoCodec,
 		TargetAudioCodec:          s.TargetAudioCodec,
+		SourceAudioChannels:       s.SourceAudioChannels,
 		TargetAudioChannels:       s.TargetAudioChannels,
 		TargetAudioBitrateKbps:    s.TargetAudioBitrateKbps,
 		TargetBitrateKbps:         s.TargetBitrateKbps,
 		TranscodeHWAccel:          s.TranscodeHWAccel,
+		ToneMapMode:               s.ToneMapMode,
 		TranscodeNodeURL:          s.TranscodeNodeURL,
 		TranscodeTransportID:      s.TranscodeTransportID,
 		TranscodeRouteSet:         true,
@@ -1288,6 +1343,7 @@ func snapshotSessionStreamStateLocked(s *Session) SessionStreamState {
 	}
 }
 
+// restoreSessionStreamStateLocked restores replaceable stream fields while the manager lock is held.
 func restoreSessionStreamStateLocked(s *Session, state SessionStreamState) {
 	s.PlayMethod = state.PlayMethod
 	s.BasePlayMethod = state.BasePlayMethod
@@ -1302,10 +1358,12 @@ func restoreSessionStreamStateLocked(s *Session, state SessionStreamState) {
 	s.TargetResolution = state.TargetResolution
 	s.TargetVideoCodec = state.TargetVideoCodec
 	s.TargetAudioCodec = state.TargetAudioCodec
+	s.SourceAudioChannels = state.SourceAudioChannels
 	s.TargetAudioChannels = state.TargetAudioChannels
 	s.TargetAudioBitrateKbps = state.TargetAudioBitrateKbps
 	s.TargetBitrateKbps = state.TargetBitrateKbps
 	s.TranscodeHWAccel = state.TranscodeHWAccel
+	s.ToneMapMode = state.ToneMapMode
 	s.TranscodeNodeURL = state.TranscodeNodeURL
 	s.TranscodeTransportID = state.TranscodeTransportID
 	s.RequireMediaAuthorization = state.RequireMediaAuthorization
@@ -1422,10 +1480,10 @@ func (m *SessionManager) RollbackReplacement(sessionID string, rollback SessionR
 
 // SetTranscodeStreamDetails records the actual encode decisions of a running
 // transcode on the session — video copy vs re-encode, and whether audio is
-// re-encoded — so session sync and the admin activity views classify the
-// stream by what ffmpeg is doing rather than by the transport method alone
-// (an HLS session with copied video is a repackage, not a video transcode).
-func (m *SessionManager) SetTranscodeStreamDetails(sessionID, targetVideoCodec, targetAudioCodec string, transcodeAudio bool) error {
+// re-encoded — together with the confirmed hardware and tone-map executors —
+// so session sync and the admin activity views describe what ffmpeg is doing
+// rather than relying on requested transport defaults.
+func (m *SessionManager) SetTranscodeStreamDetails(sessionID, targetVideoCodec, targetAudioCodec string, transcodeAudio bool, hwAccel string, toneMapMode tonemap.Mode) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -1437,6 +1495,8 @@ func (m *SessionManager) SetTranscodeStreamDetails(sessionID, targetVideoCodec, 
 	s.TargetVideoCodec = targetVideoCodec
 	s.TargetAudioCodec = targetAudioCodec
 	s.TranscodeAudio = transcodeAudio
+	s.TranscodeHWAccel = hwAccel
+	s.ToneMapMode = toneMapMode
 	m.touchSessionLocked(s)
 	return nil
 }
@@ -1682,6 +1742,36 @@ func (m *SessionManager) WatchTransportStop(sessionID string) (<-chan struct{}, 
 }
 
 func (m *SessionManager) releaseTransportStop(sessionID string, stop chan struct{}) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	watchers, ok := m.transportStops[sessionID]
+	if !ok {
+		return
+	}
+	delete(watchers, stop)
+	if len(watchers) == 0 {
+		delete(m.transportStops, sessionID)
+	}
+}
+
+// stopTransportsLocked signals every transport registered for the session. The
+// close is cheap and never blocks, and the watchers it wakes cancel an ffmpeg
+// rather than calling back into the manager, so it is safe to do under the lock.
+func (m *SessionManager) stopTransportsLocked(sessionID string) {
+	watchers, ok := m.transportStops[sessionID]
+	if !ok {
+		return
+	}
+	delete(m.transportStops, sessionID)
+	for stop := range watchers {
+		close(stop)
+	}
+}
+
+// StopSession removes a session from the manager and interrupts any media
+// transport it is still serving.
+func (m *SessionManager) StopSession(sessionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
