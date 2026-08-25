@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="50 56 336 306" role="img" aria-labelledby="title">
+<title id="title">Bloem</title>
+<defs>
+  <linearGradient id="upperWarm" x1="0" y1="1" x2="0" y2="0">
+    <stop offset="0%" stop-color="#242424"/>
+    <stop offset="38%" stop-color="#242424"/>
+    <stop offset="60%" stop-color="#8f1918"/>
+    <stop offset="78%" stop-color="#ff3515"/>
+    <stop offset="100%" stop-color="#ff9f08"/>
+  </linearGradient>
+
+  <linearGradient id="diamondWarm" x1="0" y1="1" x2="0" y2="0">
+    <stop offset="0%" stop-color="#ff5a12"/>
+    <stop offset="100%" stop-color="#ffad08"/>
+  </linearGradient>
+
+  <style>
+  .base { fill:none; stroke:#242424; stroke-width:7.5; stroke-linecap:butt; stroke-linejoin:round; }
+  .warm { fill:none; stroke:url(#upperWarm); stroke-width:7.5; stroke-linecap:butt; stroke-linejoin:round; opacity:1; }
+  .diamond-base { fill:none; stroke:#242424; stroke-width:7.5; stroke-linejoin:miter; }
+  .diamond-warm { fill:none; stroke:url(#diamondWarm); stroke-width:7.5; stroke-linejoin:miter; opacity:1; }
+  .pixel { opacity:1; }
+</style></defs>
+
+<!-- Lower structure: copied to match the approved storyboard proportions -->
+<path class="base draw stem"
+      d="M168 355 L168 196"/>
+
+<path class="base draw leaf-left"
+      d="M165 353
+         C121 353 78 329 56 263
+         C107 266 148 297 165 342"/>
+
+<path class="base draw leaf-right"
+      d="M171 353
+         C215 353 258 329 280 263
+         C229 266 188 297 171 342"/>
+
+<!-- Left petal: tall, elegant, with inward taper at the center -->
+<path class="base draw petal-left"
+      d="M168 266
+         C118 260 87 224 87 177
+         L87 108
+         C126 120 155 145 168 187"/>
+
+<!-- Right side deliberately open for the pixel breakup -->
+<path class="base draw petal-right-top"
+      d="M168 187
+         C184 146 214 120 249 108
+         L249 157"/>
+
+<path class="base draw petal-right-low"
+      d="M249 195
+         C247 231 220 258 174 266"/>
+
+<!-- Warm color draws over exactly the same upper geometry -->
+<path class="warm"
+      d="M168 266
+         C118 260 87 224 87 177
+         L87 108
+         C126 120 155 145 168 187"/>
+
+<path class="warm"
+      d="M168 187
+         C184 146 214 120 249 108
+         L249 157"/>
+
+<path class="warm"
+      d="M249 195
+         C247 231 220 258 174 266"/>
+
+<!-- Diamond crown -->
+<path class="diamond-base"
+      d="M168 62 L202 97 L168 132 L134 97 Z"/>
+<path class="diamond-warm"
+      d="M168 62 L202 97 L168 132 L134 97 Z"/>
+
+<!-- Sparse pixel field matching the approved final frame -->
+<rect class="pixel p1" x="267" y="120" width="14" height="14" fill="#ff9d08"/>
+<rect class="pixel p2" x="301" y="135" width="11" height="11" fill="#ff6511"/>
+<rect class="pixel p3" x="286" y="157" width="12" height="12" fill="#ff4a15"/>
+<rect class="pixel p4" x="339" y="153" width="10" height="10" fill="#7c211d"/>
+<rect class="pixel p5" x="256" y="164" width="10" height="10" fill="#ff6a0e"/>
+<rect class="pixel p6" x="312" y="172" width="11" height="11" fill="#5e2723"/>
+<rect class="pixel p7" x="365" y="163" width="10" height="10" fill="#5a2623"/>
+<rect class="pixel p8" x="282" y="193" width="11" height="11" fill="#6c2824"/>
+<rect class="pixel p9" x="335" y="198" width="11" height="11" fill="#3d2928"/>
+<rect class="pixel p10" x="305" y="216" width="10" height="10" fill="#292929"/>
+<rect class="pixel p11" x="344" y="219" width="9" height="9" fill="#303030"/>
+</svg>
