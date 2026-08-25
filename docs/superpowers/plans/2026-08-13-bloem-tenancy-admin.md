@@ -1,8 +1,8 @@
-# Vondel Tenancy Administration Implementation Plan
+# Bloem Tenancy Administration Implementation Plan
 
 > **Status:** Superseded. Do not execute this plan. Its `/api/v10` and parallel
 > administration-enforcement assumptions were replaced by
-> `docs/superpowers/specs/2026-08-13-vondel-opa-centered-multitenant-authorization-design.md`.
+> `docs/superpowers/specs/2026-08-13-bloem-opa-centered-multitenant-authorization-design.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,7 +12,7 @@
 
 **Tech Stack:** Go 1.26, chi, pgx/PostgreSQL 18, Goose SQL migrations, React 19, TypeScript, TanStack Query, Vitest, Testing Library, Playwright-compatible browser tests.
 
-**Spec:** `docs/superpowers/specs/2026-08-13-vondel-tenancy-admin-design.md`
+**Spec:** `docs/superpowers/specs/2026-08-13-bloem-tenancy-admin-design.md`
 
 ## Global Constraints
 
@@ -784,7 +784,7 @@ git commit -m "test(tenancy): verify administration end to end"
 ## Final Review Gate
 
 - [ ] Confirm every commit is on top of current `origin/main`, the worktree is clean, and no migration version collision was introduced.
-- [ ] Confirm the production Vondel database is not migrated until exact-head CI and Docker builds pass.
+- [ ] Confirm the production Bloem database is not migrated until exact-head CI and Docker builds pass.
 - [ ] Request an independent spec-compliance review focused on authorization, non-disclosure, idempotency, ownership immutability, bundle immutability, and restart recovery.
-- [ ] Deploy the exact reviewed image to the empty Vondel server, allow normal startup migrations, verify `/api/v1/health`, v10 capability discovery, platform-admin workspace, organization-admin read-only workspace, and migration counts.
+- [ ] Deploy the exact reviewed image to the empty Bloem server, allow normal startup migrations, verify `/api/v1/health`, v10 capability discovery, platform-admin workspace, organization-admin read-only workspace, and migration counts.
 - [ ] Record the deployed commit and image in the host's `DEPLOYMENT` file without storing credentials in the repository.

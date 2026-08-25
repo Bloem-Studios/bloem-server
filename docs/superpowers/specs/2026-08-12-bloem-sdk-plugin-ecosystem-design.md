@@ -1,21 +1,21 @@
-# Vondel SDK and Plugin Ecosystem Design
+# Bloem SDK and Plugin Ecosystem Design
 
 ## Objective
 
-Create a Vondel-owned plugin ecosystem that follows Silo's proven structure,
+Create a Bloem-owned plugin ecosystem that follows Silo's proven structure,
 supports media scanning before native clients exist, and remains compatible
-with both Vondel Server and official Silo servers.
+with both Bloem Server and official Silo servers.
 
 The first end-to-end success criterion is:
 
-> A fresh Vondel Server installation can load the Vondel catalog, install
-> Vondel-published metadata plugins, add media libraries, scan them, and store
+> A fresh Bloem Server installation can load the Bloem catalog, install
+> Bloem-published metadata plugins, add media libraries, scan them, and store
 > matched metadata and artwork.
 
 ## Compatibility strategy
 
 The ecosystem will use a compatibility mirror rather than introduce a new
-plugin protocol. Public project and repository names become Vondel names, but
+plugin protocol. Public project and repository names become Bloem names, but
 wire and persistence contracts remain stable where changing them would break
 existing installations or official Silo servers.
 
@@ -28,33 +28,33 @@ The initial releases retain:
   `scan_source.v1`;
 - existing configuration keys and stored installation identities.
 
-These identifiers are compatibility contracts, not Vondel product branding.
+These identifiers are compatibility contracts, not Bloem product branding.
 User-facing names, repository names, documentation, release ownership, and
-catalog URLs will use Vondel.
+catalog URLs will use Bloem.
 
 ## Repository family
 
-The first wave creates these private repositories in `Vondel-Media`:
+The first wave creates these private repositories in `Bloem-Studios`:
 
-1. `vondel-plugin-sdk`
-2. `vondel-plugins`
-3. `vondel-plugin-metadb`
-4. `vondel-plugin-tmdb`
-5. `vondel-plugin-tvdb`
-6. `vondel-plugin-audiobook-metadata`
-7. `vondel-plugin-ebook-metadata`
-8. `vondel-plugin-manga-metadata`
-9. `vondel-plugin-autoscan-arr`
+1. `bloem-plugin-sdk`
+2. `bloem-plugins`
+3. `bloem-plugin-metadb`
+4. `bloem-plugin-tmdb`
+5. `bloem-plugin-tvdb`
+6. `bloem-plugin-audiobook-metadata`
+7. `bloem-plugin-ebook-metadata`
+8. `bloem-plugin-manga-metadata`
+9. `bloem-plugin-autoscan-arr`
 
 The SDK and catalog retain their upstream Apache-2.0 licenses. Plugin forks
 retain their respective upstream licenses, including AGPL-3.0-or-later where
 applicable. The project owner has separately authorized the Ebook Metadata and
 Autoscan ARR imports under AGPL-3.0-or-later; those two repositories remain
 permanently private. Every repository will include a notice naming its Silo upstream,
-the imported revision, material Vondel modifications, and the lack of Silo
+the imported revision, material Bloem modifications, and the lack of Silo
 affiliation or endorsement.
 
-Each repository begins with a clean Vondel root commit so reserved Silo visual
+Each repository begins with a clean Bloem root commit so reserved Silo visual
 assets and unrelated historical automation are not republished through the new
 Git history. Required copyright and license notices remain in the source
 snapshot and root notice.
@@ -65,7 +65,7 @@ Creating the repositories does not authorize publishing any component.
 
 ## SDK architecture
 
-`vondel-plugin-sdk` becomes the Vondel module consumed by Vondel-owned plugins.
+`bloem-plugin-sdk` becomes the Bloem module consumed by Bloem-owned plugins.
 It contains the generated protobuf API, capability constants, manifest tools,
 runtime scaffolding, host callback client, and reference examples already
 proven upstream.
@@ -73,39 +73,39 @@ proven upstream.
 The Go module path changes to:
 
 ```text
-github.com/Vondel-Media/vondel-plugin-sdk
+github.com/Bloem-Studios/bloem-plugin-sdk
 ```
 
-Generated Go imports and Vondel plugin source imports follow the new module
+Generated Go imports and Bloem plugin source imports follow the new module
 path. The protobuf package/service names and serialized field numbers remain
 unchanged. A compatibility test will launch one test plugin built with the
-Vondel SDK against the Vondel host and an unmodified official Silo Server build
-at the upstream revision from which Vondel forked. Serialized host fixtures
+Bloem SDK against the Bloem host and an unmodified official Silo Server build
+at the upstream revision from which Bloem forked. Serialized host fixtures
 provide faster contract checks between those end-to-end runs.
 
-Vondel Server will move from the upstream SDK dependency to a tagged Vondel SDK
+Bloem Server will move from the upstream SDK dependency to a tagged Bloem SDK
 release only after the SDK's parity and wire-compatibility suites pass.
 
 ## Catalog architecture
 
-`vondel-plugins` is the canonical Vondel catalog and catalog tooling repository.
-Its manifest points exclusively to Vondel-owned repositories, release assets,
+`bloem-plugins` is the canonical Bloem catalog and catalog tooling repository.
+Its manifest points exclusively to Bloem-owned repositories, release assets,
 and checksums. It never silently proxies mutable upstream binaries.
 
 During private development, integration tests consume the catalog from a local
-checkout or an authenticated staging endpoint. Vondel Server's public defaults
+checkout or an authenticated staging endpoint. Bloem Server's public defaults
 must not reference a private GitHub URL or require an organization credential.
 No private repository token may be embedded in a server binary, image, catalog,
 test fixture, or committed configuration.
 
-The catalog updater receives release dispatches from Vondel plugin repositories,
+The catalog updater receives release dispatches from Bloem plugin repositories,
 fetches the tagged manifest and checksums, validates supported platforms and
 capabilities, and updates the catalog through a reviewable commit. Repository
-tokens and dispatch secrets use Vondel-specific names.
+tokens and dispatch secrets use Bloem-specific names.
 
-Vondel Server's default catalog URL will switch to the Vondel catalog only after
+Bloem Server's default catalog URL will switch to the Bloem catalog only after
 the initial provider releases exist and the owner approves publication. Until
-then, released Vondel Server builds keep their existing catalog behavior, while
+then, released Bloem Server builds keep their existing catalog behavior, while
 private integration environments opt into the staging catalog explicitly.
 Operators may still add the official Silo catalog as a custom source where the
 server permits custom catalogs.
@@ -139,7 +139,7 @@ secrets.
 
 ## Data flow
 
-1. Vondel Server downloads the Vondel catalog.
+1. Bloem Server downloads the Bloem catalog.
 2. The administrator selects a plugin release appropriate for the host OS and
    architecture.
 3. The server verifies the published checksum and introspects the embedded
@@ -159,12 +159,12 @@ secrets.
 
 Releases occur in this order:
 
-1. Tag `vondel-plugin-sdk` in its private repository.
+1. Tag `bloem-plugin-sdk` in its private repository.
 2. Build MetaDB, TMDB, and TVDB against that exact SDK tag.
 3. Create private multi-platform release artifacts and checksums.
-4. Update the private `vondel-plugins` staging catalog with those verified
+4. Update the private `bloem-plugins` staging catalog with those verified
    releases.
-5. Switch Vondel Server's SDK dependency and private integration configuration;
+5. Switch Bloem Server's SDK dependency and private integration configuration;
    defer changing its public default catalog URL.
 6. Run the clean-install movie and series scan acceptance suite.
 7. Repeat the plugin release/catalog process for audiobook, ebook, manga, and
@@ -208,11 +208,11 @@ field numbers, manifest keys, and capability values.
 
 The ecosystem integration suite covers:
 
-- building a self-describing plugin with the tagged Vondel SDK;
-- installing it on Vondel Server;
+- building a self-describing plugin with the tagged Bloem SDK;
+- installing it on Bloem Server;
 - installing the same test binary on the pinned unmodified official Silo Server
   build;
-- installing MetaDB, TMDB, and TVDB through the Vondel catalog;
+- installing MetaDB, TMDB, and TVDB through the Bloem catalog;
 - scanning representative movie and episodic file layouts;
 - persisting titles, external IDs, posters, backdrops, seasons, and episodes;
 - rescanning without duplicating catalog identities;
@@ -240,9 +240,9 @@ artifact becomes public, the release checklist must confirm:
   reserved Silo artwork exist in current files or reachable Git history;
 - public release assets and checksums are rebuilt from reviewed commits;
 - catalog URLs resolve without private credentials;
-- Vondel and pinned official Silo compatibility suites pass against those exact
+- Bloem and pinned official Silo compatibility suites pass against those exact
   public candidate binaries;
-- documentation clearly identifies Vondel as independent and credits each Silo
+- documentation clearly identifies Bloem as independent and credits each Silo
   upstream;
 - the owner explicitly approves the repositories and release artifacts to be
   made public.
@@ -253,9 +253,9 @@ CI or completing the implementation plan.
 ## Completion criteria
 
 The private first wave is complete when all nine repositories exist privately
-under `Vondel-Media`, their attribution and licenses are correct, release
+under `Bloem-Studios`, their attribution and licenses are correct, release
 automation produces private verified assets, the staging catalog references
-only Vondel-controlled releases, Vondel Server consumes the tagged SDK and
+only Bloem-controlled releases, Bloem Server consumes the tagged SDK and
 staging catalog in integration environments, and the full media scan acceptance
 matrix passes for the initial plugin set. Public release readiness is tracked
 separately and requires the publication gate above.

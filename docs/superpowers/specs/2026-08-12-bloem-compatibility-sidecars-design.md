@@ -1,4 +1,4 @@
-# Vondel External Compatibility Applications Design
+# Bloem External Compatibility Applications Design
 
 **Original date:** 2026-08-12
 
@@ -6,34 +6,34 @@
 
 **Status:** Approved
 
-**Scope:** Extract the embedded Jellyfin and Audiobookshelf compatibility surfaces from Vondel Server into independently deployed, removable applications.
+**Scope:** Extract the embedded Jellyfin and Audiobookshelf compatibility surfaces from Bloem Server into independently deployed, removable applications.
 
 ## Decision
 
-Vondel Server remains the authoritative media server. Jellyfin and Audiobookshelf compatibility become two optional applications:
+Bloem Server remains the authoritative media server. Jellyfin and Audiobookshelf compatibility become two optional applications:
 
-- `vondel-jellyfin`
-- `vondel-audiobookshelf`
+- `bloem-jellyfin`
+- `bloem-audiobookshelf`
 
-They translate external protocols into a private, versioned Vondel Compatibility Service API. They do not read or write Vondel's database, Redis, media filesystem, Docker socket, signing secrets, or provider credentials. Removing either application must leave native Vondel and all canonical user media state intact.
+They translate external protocols into a private, versioned Bloem Compatibility Service API. They do not read or write Bloem's database, Redis, media filesystem, Docker socket, signing secrets, or provider credentials. Removing either application must leave native Bloem and all canonical user media state intact.
 
-Both applications use the same public address as Vondel:
+Both applications use the same public address as Bloem:
 
-- Native Vondel API and Web: `https://vondel.example/`
-- Jellyfin clients: `https://vondel.example/`
-- Jellyfin Web: `https://vondel.example/web`
-- Audiobookshelf clients: `https://vondel.example/audiobookshelf`
+- Native Bloem API and Web: `https://bloem.example/`
+- Jellyfin clients: `https://bloem.example/`
+- Jellyfin Web: `https://bloem.example/web`
+- Audiobookshelf clients: `https://bloem.example/audiobookshelf`
 
-Vondel's normal HTTPS listener owns public ingress and forwards only an audited, fixed set of compatibility paths. The companion containers expose no host HTTP ports by default.
+Bloem's normal HTTPS listener owns public ingress and forwards only an audited, fixed set of compatibility paths. The companion containers expose no host HTTP ports by default.
 
-This extraction applies only to compatibility facades. Native audiobook, ebook, manga, comic, podcast, movie, series, music, radio, Live TV, playback, and library behavior remains in Vondel Server. Plex import/sync and ARR webhooks remain outside this extraction.
+This extraction applies only to compatibility facades. Native audiobook, ebook, manga, comic, podcast, movie, series, music, radio, Live TV, playback, and library behavior remains in Bloem Server. Plex import/sync and ARR webhooks remain outside this extraction.
 
 ## Goals
 
 - Make Jellyfin and Audiobookshelf compatibility separately installable, upgradeable, disableable, and removable.
 - Preserve observable behavior required by official and widely used third-party clients.
-- Use one canonical Vondel address without fragile client-header detection.
-- Make Vondel the sole authority for authentication, profiles, tenancy, authorization, media state, playback, and Live TV.
+- Use one canonical Bloem address without fragile client-header detection.
+- Make Bloem the sole authority for authentication, profiles, tenancy, authorization, media state, playback, and Live TV.
 - Preserve legacy account login while adding optional direct profile login.
 - Enforce organization, profile, adult-content, device, and policy boundaries identically across native and compatibility clients.
 - Give each application an independent failure, credential, persistence, and release boundary.
@@ -44,7 +44,7 @@ This extraction applies only to compatibility facades. Native audiobook, ebook, 
 - Move native media-domain behavior into a compatibility application.
 - Give a compatibility application direct database or filesystem access.
 - Preserve active compatibility tokens during extraction; one fresh client login is acceptable.
-- Give Vondel control of the Docker socket or an equivalent host-management capability.
+- Give Bloem control of the Docker socket or an equivalent host-management capability.
 - Guess a protocol from user-agent strings, request bodies, or other mutable client hints.
 - Expose a public profile directory.
 - Make the compatibility applications public repositories or artifacts.
@@ -53,27 +53,27 @@ This extraction applies only to compatibility facades. Native audiobook, ebook, 
 
 ### Public ingress
 
-Vondel remains the only public HTTP service. Its edge gateway routes requests through a version-controlled allowlist:
+Bloem remains the only public HTTP service. Its edge gateway routes requests through a version-controlled allowlist:
 
 ```text
 Client
   |
-  +-- native paths ------------------------------> Vondel native handlers
+  +-- native paths ------------------------------> Bloem native handlers
   |
-  +-- Jellyfin protocol paths --> vondel-jellyfin --> private Vondel API
+  +-- Jellyfin protocol paths --> bloem-jellyfin --> private Bloem API
   |
-  +-- /audiobookshelf/** -------> vondel-audiobookshelf --> private Vondel API
+  +-- /audiobookshelf/** -------> bloem-audiobookshelf --> private Bloem API
 ```
 
-Native routes include `/api/v1/**`, `/api/v2/**`, and the Vondel application at `/`. Jellyfin owns `/web` while enabled plus its explicit protocol route families for system, users, items, sessions, and Live TV. Audiobookshelf owns only `/audiobookshelf/**`; the gateway strips the fixed prefix when required by its protocol adapter.
+Native routes include `/api/v1/**`, `/api/v2/**`, and the Bloem application at `/`. Jellyfin owns `/web` while enabled plus its explicit protocol route families for system, users, items, sessions, and Live TV. Audiobookshelf owns only `/audiobookshelf/**`; the gateway strips the fixed prefix when required by its protocol adapter.
 
 The route table is data-driven, reviewed, and tested for overlap. Unknown paths never fall from one authentication surface into another. The gateway strips hop-by-hop headers, applies request-size and timeout limits, propagates a trace identifier, and supplies a signed internal request identity. A companion cannot add a route at runtime.
 
-When an application is missing, disabled, revoked, unhealthy, or API-incompatible, only its paths return a protocol-appropriate `compatibility_unavailable` response. Native Vondel remains healthy.
+When an application is missing, disabled, revoked, unhealthy, or API-incompatible, only its paths return a protocol-appropriate `compatibility_unavailable` response. Native Bloem remains healthy.
 
-### Vondel Server
+### Bloem Server
 
-Vondel owns:
+Bloem owns:
 
 - accounts, profiles, credentials, device trust, sessions, organization membership, and policy;
 - libraries, catalog, search, metadata, artwork, collections, playlists, favorites, bookmarks, and recommendations;
@@ -91,13 +91,13 @@ Each application:
 - implements exactly one external protocol;
 - translates protocol requests and responses without owning media-server policy;
 - authenticates with its own scoped service identity;
-- exchanges external user credentials with Vondel without storing, hashing, or logging them;
+- exchanges external user credentials with Bloem without storing, hashing, or logging them;
 - stores only disposable protocol state;
-- consumes subject-filtered Vondel events with resumable cursors;
-- returns same-origin, short-lived Vondel delivery URLs for media whenever its client protocol permits;
+- consumes subject-filtered Bloem events with resumable cursors;
+- returns same-origin, short-lived Bloem delivery URLs for media whenever its client protocol permits;
 - has no dependency on the other compatibility application.
 
-Media bytes must not make a needless round trip through a companion. The companion requests a device- and audience-bound delivery grant; the client then fetches the same-origin Vondel URL. Proxying through a companion is allowed only when its external protocol requires proxy semantics and must be bounded, cancellable, and slow-client tested.
+Media bytes must not make a needless round trip through a companion. The companion requests a device- and audience-bound delivery grant; the client then fetches the same-origin Bloem URL. Proxying through a companion is allowed only when its external protocol requires proxy semantics and must be bounded, cancellable, and slow-client tested.
 
 ## Identity and Authentication
 
@@ -122,7 +122,7 @@ Per-profile switching PINs retain their current semantics. A PIN protects profil
 - **Unknown Jellyfin device:** The public user list is empty. After account/device authentication, only the device's authorized profile tiles are returned.
 - **Audiobookshelf:** Direct profile login is preferred. Legacy account login resolves the remembered/default profile because the protocol has no reliable general-purpose profile picker.
 
-Companions see a submitted password transiently because they terminate the external protocol request and immediately forward the credential exchange to Vondel. They must not persist, hash, cache, inspect beyond required protocol decoding, or log the password. Transport between a remote companion and Vondel is mutually authenticated and encrypted.
+Companions see a submitted password transiently because they terminate the external protocol request and immediately forward the credential exchange to Bloem. They must not persist, hash, cache, inspect beyond required protocol decoding, or log the password. Transport between a remote companion and Bloem is mutually authenticated and encrypted.
 
 Every effective compatibility session is bound to:
 
@@ -132,7 +132,7 @@ Every effective compatibility session is bound to:
 - membership, security, account-policy, and organization-policy revisions;
 - expiry and revocation identity.
 
-Vondel reauthorizes at its API boundary. Profile or organization suspension, password reset, policy revision, device revocation, or companion revocation invalidates access without trusting companion cache state.
+Bloem reauthorizes at its API boundary. Profile or organization suspension, password reset, policy revision, device revocation, or companion revocation invalidates access without trusting companion cache state.
 
 ## Compatibility Service API
 
@@ -159,14 +159,14 @@ Each companion has a separate immutable instance identity and capability grant.
 1. An administrator creates a short-lived, single-use enrollment token.
 2. Same-host Compose mounts it as a Docker secret, never an environment variable.
 3. The companion registers its identity, API range, version, and requested capabilities.
-4. Vondel grants only the reviewed capabilities and issues renewable short-lived service credentials.
+4. Bloem grants only the reviewed capabilities and issues renewable short-lived service credentials.
 5. The enrollment token is destroyed after use.
 
 Same-host deployments use a private container network plus application-layer service authentication. Remote deployments additionally require mutually authenticated HTTPS. Credentials are independently rotatable and revocable. Compromise of one companion must not grant administration, another companion's capabilities, or arbitrary user access.
 
 ## Data Ownership and Retention
 
-Canonical state remains in Vondel, including progress, bookmarks, favorites, collections, playlists, downloads, Live TV recordings/rules, and all identity/policy state.
+Canonical state remains in Bloem, including progress, bookmarks, favorites, collections, playlists, downloads, Live TV recordings/rules, and all identity/policy state.
 
 Companions may persist only protocol-specific state such as:
 
@@ -176,9 +176,9 @@ Companions may persist only protocol-specific state such as:
 - Socket.IO/WebSocket bookkeeping;
 - protocol translation caches and resumable event cursors.
 
-This state is disposable. The default deployment uses SQLite in a companion-owned named volume with WAL enabled. Replicated or larger deployments may use a separate PostgreSQL database owned solely by that companion. A companion may share a PostgreSQL server, but never Vondel's database, schema, or database credential.
+This state is disposable. The default deployment uses SQLite in a companion-owned named volume with WAL enabled. Replicated or larger deployments may use a separate PostgreSQL database owned solely by that companion. A companion may share a PostgreSQL server, but never Bloem's database, schema, or database credential.
 
-Disabling a companion preserves its volume. Explicit uninstall may remove it. Reinstallation can require login and reset client-specific presentation preferences, while canonical Vondel state reappears unchanged.
+Disabling a companion preserves its volume. Explicit uninstall may remove it. Reinstallation can require login and reset client-specific presentation preferences, while canonical Bloem state reappears unchanged.
 
 ## Deployment and Configuration
 
@@ -193,9 +193,9 @@ docker compose \
 
 The companion services expose no host HTTP ports by default. An explicitly documented diagnostic override may bind loopback-only ports. Direct public companion exposure is unsupported.
 
-Examples may use the `latest` stable channel. Every companion performs an API-range handshake before readiness, and an incompatible image fails closed. Vondel displays the resolved version and image digest. Operators who require deterministic change control may pin a version or digest.
+Examples may use the `latest` stable channel. Every companion performs an API-range handshake before readiness, and an incompatible image fails closed. Bloem displays the resolved version and image digest. Operators who require deterministic change control may pin a version or digest.
 
-Vondel never mounts or accesses the Docker socket. The admin UI reports an available update and supplies exact Compose update/rollback commands; the operator or an external deployment controller executes them.
+Bloem never mounts or accesses the Docker socket. The admin UI reports an available update and supplies exact Compose update/rollback commands; the operator or an external deployment controller executes them.
 
 ### Admin experience
 
@@ -208,29 +208,29 @@ Admin -> Compatibility Applications displays:
 - the canonical client URL to copy;
 - installation, update, rollback, and removal instructions.
 
-Starting a container does not automatically claim public routes. An administrator must enroll it and explicitly enable routing after Vondel verifies health and API compatibility.
+Starting a container does not automatically claim public routes. An administrator must enroll it and explicitly enable routing after Bloem verifies health and API compatibility.
 
 ## Jellyfin LAN Discovery
 
-Vondel's edge gateway provides a small optional Jellyfin discovery relay because companions have no public ports.
+Bloem's edge gateway provides a small optional Jellyfin discovery relay because companions have no public ports.
 
 - It responds only while an enrolled Jellyfin companion is enabled, healthy, and compatible.
-- It advertises the canonical Vondel HTTPS address and stable Jellyfin-compatibility server ID.
+- It advertises the canonical Bloem HTTPS address and stable Jellyfin-compatibility server ID.
 - It discloses no users, profiles, organizations, internal addresses, or topology.
 - Responses are rate-limited to avoid amplification abuse.
 - Operators may bind selected interfaces or disable discovery.
 - Manual server-address entry always remains supported.
 
-Audiobookshelf continues to use its explicit `https://vondel.example/audiobookshelf` address.
+Audiobookshelf continues to use its explicit `https://bloem.example/audiobookshelf` address.
 
 ## Failure Behavior
 
-- Vondel starts and serves native clients with zero, one, or both companions absent.
+- Bloem starts and serves native clients with zero, one, or both companions absent.
 - Companion health is circuit-broken; failures do not cascade into native handlers.
 - Unsupported API versions fail closed with an actionable operator error.
 - Event gaps cause bounded resynchronization using a durable cursor.
 - Deadlines and playback cancellation propagate across the boundary.
-- Existing Vondel-issued media deliveries may finish after companion failure; no new authorization is issued through an unhealthy companion.
+- Existing Bloem-issued media deliveries may finish after companion failure; no new authorization is issued through an unhealthy companion.
 - WebSocket and Socket.IO clients receive protocol-appropriate closure and may reconnect after recovery.
 - Logs share a trace identifier and redact credentials, cookies, tokens, signed URLs, and sensitive query data.
 
@@ -238,16 +238,16 @@ Audiobookshelf continues to use its explicit `https://vondel.example/audiobooksh
 
 1. Freeze the observable embedded Jellyfin and Audiobookshelf behavior with protocol fixtures and black-box acceptance tests.
 2. Define and implement the minimum Compatibility Service API required by those fixtures.
-3. Create private `vondel-audiobookshelf` and `vondel-jellyfin` repositories with appropriate provenance and license notices.
+3. Create private `bloem-audiobookshelf` and `bloem-jellyfin` repositories with appropriate provenance and license notices.
 4. Extract Audiobookshelf first because it is smaller and already has the collision-free `/audiobookshelf` public boundary.
 5. Run the embedded and external Audiobookshelf implementations against the same suite, then switch only its route.
 6. Extract Jellyfin by domain: identity, catalog, playback, sessions/events, Live TV, then Jellyfin Web.
 7. Switch the fixed Jellyfin route table only after the external application passes the full suite.
 8. Require one fresh client login at each cutover. Do not migrate active compatibility tokens or reusable credentials.
-9. Remove embedded listeners, handlers, installers, implementation packages, compatibility-specific wiring, and direct compatibility database access from the Vondel binary.
+9. Remove embedded listeners, handlers, installers, implementation packages, compatibility-specific wiring, and direct compatibility database access from the Bloem binary.
 10. Retain old protocol-state tables as inert rollback data for one release, then remove them in a later migration. Canonical media state is never removed.
 
-There are no shared-database dual writes. Vondel remains authoritative throughout.
+There are no shared-database dual writes. Bloem remains authoritative throughout.
 
 ## Verification and Release Gates
 
@@ -263,23 +263,23 @@ The extraction is complete only when automated black-box tests cover:
 - playback planning, direct play, transcoding, seeking, subtitles, cancellation, recovery, and session reporting;
 - Jellyfin Live TV discovery, guide, streaming, DVR rules, recording, and recordings;
 - Audiobookshelf playback, offline/download metadata, progress, bookmarks, and Socket.IO;
-- event reconnect, gaps, companion restart, Vondel restart, slow clients, and unavailable dependencies;
+- event reconnect, gaps, companion restart, Bloem restart, slow clients, and unavailable dependencies;
 - credential rotation, incompatible API ranges, disabled routing, and companion removal;
 - official client behavior where automation is practical, backed by deterministic captured protocol fixtures elsewhere.
 
 Additional structural gates prove:
 
-- both companions have no Vondel database credential, Redis credential, media-data mount, Docker socket, or signing secret;
+- both companions have no Bloem database credential, Redis credential, media-data mount, Docker socket, or signing secret;
 - only fixed public paths can reach a companion;
-- native Vondel conformance remains green with both companions stopped;
-- the final Vondel binary contains neither embedded compatibility implementation;
+- native Bloem conformance remains green with both companions stopped;
+- the final Bloem binary contains neither embedded compatibility implementation;
 - uninstalling a companion loses only disposable protocol state;
 - source, image, log, and redirect scans do not leak credentials or signed resources.
 
 ### Foundation gate status
 
 The foundation (Tasks 1-6 plus the required CI gate in Task 7 of
-`docs/superpowers/plans/2026-08-13-vondel-compatibility-1-foundation.md`) is
+`docs/superpowers/plans/2026-08-13-bloem-compatibility-1-foundation.md`) is
 implemented. Extraction itself — the two companion repositories, the actual
 route cutover, and everything else in Extraction and Cutover above — remains
 not started. `internal/acceptance/compat_foundation_test.go`
@@ -311,7 +311,7 @@ gate and remain open follow-up work: `cmd/silo` never sets
 unreachable in a running server; and no production `SubjectService` or
 `CatalogService` adapter exists, so login/profile/catalog behavior is proven
 against the real `compatapi` handler code with a working test-double
-identity and catalog provider, not against Vondel's real password
+identity and catalog provider, not against Bloem's real password
 verification or adult-content policy. Adult-content non-disclosure and the
 private API's own disabled-route behavior are not yet covered for the same
 reason and remain open.
@@ -319,7 +319,7 @@ reason and remain open.
 ## Documentation Deliverables
 
 - Operator guide for enabling, enrolling, updating, rolling back, disabling, and uninstalling each companion.
-- Jellyfin client guide using the canonical Vondel address and LAN discovery.
+- Jellyfin client guide using the canonical Bloem address and LAN discovery.
 - Audiobookshelf client guide using the `/audiobookshelf` suffix.
 - Profile login guide covering direct credentials, legacy accounts, trusted devices, and per-profile PINs.
 - Remote companion guide covering mTLS, firewalling, credential rotation, and health checks.

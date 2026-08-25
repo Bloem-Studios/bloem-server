@@ -1,8 +1,8 @@
-# Vondel Tenant and Identity Foundation Implementation Plan
+# Bloem Tenant and Identity Foundation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add the tenant and identity roots required by Vondel's security model, migrate every existing installation into one default organization, and expose a read-only `/api/v10` foundation without changing Silo `/api/v1` behavior.
+**Goal:** Add the tenant and identity roots required by Bloem's security model, migrate every existing installation into one default organization, and expose a read-only `/api/v10` foundation without changing Silo `/api/v1` behavior.
 
 **Architecture:** PostgreSQL becomes authoritative for organizations, protected ownership, memberships, and profile organization/access-group identity. A focused `internal/tenancy` package owns these concepts; auth and API code consume its typed interfaces. The migration is expand-only, legacy columns and token behavior remain intact, and ambiguous existing ownership prevents v10 activation without blocking v1 compatibility.
 
@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Preserve complete current Silo `/api/v1` account login, profile switching, profile PIN, playback, and legacy admin behavior.
-- Native Vondel routes use `/api/v10`; `/api/v1` remains the compatibility surface.
+- Native Bloem routes use `/api/v10`; `/api/v1` remains the compatibility surface.
 - Exactly one platform owner exists after ownership activation; exactly one owner exists for each active organization.
 - Account email and future direct-profile aliases share one case-insensitive global namespace and cannot collide.
 - Administrative authority belongs to memberships; media identity belongs to profiles.
@@ -561,7 +561,7 @@ git commit -m "feat(access): assign access groups to tenant profiles"
 **Files:**
 - Create: `internal/api/v1_tenancy_compat_test.go`
 - Create: `docs/architecture/v10-security-foundation.md`
-- Modify: `docs/superpowers/specs/2026-08-12-vondel-profile-login-and-shared-devices-design.md`
+- Modify: `docs/superpowers/specs/2026-08-12-bloem-profile-login-and-shared-devices-design.md`
 
 **Interfaces:**
 - Produces the phase acceptance gate and operator runbook.
@@ -608,7 +608,7 @@ commands from a fresh disposable database. Expected: every command exits 0.
 - [ ] **Step 5: Commit the acceptance boundary**
 
 ```bash
-git add internal/api/v1_tenancy_compat_test.go docs/architecture/v10-security-foundation.md docs/superpowers/specs/2026-08-12-vondel-profile-login-and-shared-devices-design.md
+git add internal/api/v1_tenancy_compat_test.go docs/architecture/v10-security-foundation.md docs/superpowers/specs/2026-08-12-bloem-profile-login-and-shared-devices-design.md
 git commit -m "test(tenancy): lock v1 compatibility and migration gates"
 ```
 

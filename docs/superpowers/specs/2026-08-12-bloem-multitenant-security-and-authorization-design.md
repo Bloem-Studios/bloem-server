@@ -1,7 +1,7 @@
-# Vondel Multi-Tenant Security and Authorization Design
+# Bloem Multi-Tenant Security and Authorization Design
 
 **Date:** 2026-08-12
-**Status:** Superseded by `2026-08-13-vondel-opa-centered-multitenant-authorization-design.md`
+**Status:** Superseded by `2026-08-13-bloem-opa-centered-multitenant-authorization-design.md`
 **API boundary:** Historical proposal; do not implement the `/api/v10` boundary
 **Related prior work:** [Silo Server PR #251 — Add ACL access management](https://github.com/Silo-Server/silo-server/pull/251)
 
@@ -15,7 +15,7 @@ The design must:
 
 - preserve existing Silo client login, profile switching, profile PIN, playback,
   and legacy administration behavior;
-- provide Vondel clients with organizations, direct-profile login, shared-device
+- provide Bloem clients with organizations, direct-profile login, shared-device
   enrollment, delegated administration, and precise capabilities;
 - separate administrative authority from media consumption;
 - enforce organization isolation below the policy layer;
@@ -41,14 +41,14 @@ The design must:
 6. Tenant ownership and isolation are enforced in Go and PostgreSQL before OPA
    evaluates a resource decision.
 7. `/api/v1` remains the Silo-compatible projection. `/api/v10` is the native
-   Vondel platform contract.
+   Bloem platform contract.
 8. MFA is not globally mandatory. Platform and organization policy may require
    it specifically for administrative mode.
 
 ## Terminology and hierarchy
 
 ```text
-Vondel deployment
+Bloem deployment
 ├── platform owner
 ├── delegated platform operators
 ├── platform-owned libraries, tuners, plugins, and policy ceilings
@@ -162,7 +162,7 @@ profile receives no administrative authority.
 
 ## Administrative roles
 
-Vondel provides editable-by-cloning built-in templates:
+Bloem provides editable-by-cloning built-in templates:
 
 - **Full Administrator:** all organization-delegable capabilities, excluding
   ownership and protected recovery actions.
@@ -183,7 +183,7 @@ Vondel provides editable-by-cloning built-in templates:
 - **Support Operator:** temporary authority delivered through a support session.
 
 An account may hold multiple assignments. Applicable grants combine by union,
-but each grant retains its resource scope. Vondel must never flatten scoped
+but each grant retains its resource scope. Bloem must never flatten scoped
 assignments into an unscoped capability set.
 
 There are no per-user deny overrides in the role editor. Additional restrictions
@@ -235,7 +235,7 @@ platform entitlement to organization
 
 ## OPA architecture
 
-Vondel embeds the OPA Go library in each application node. It does not require an
+Bloem embeds the OPA Go library in each application node. It does not require an
 OPA server or a network policy-decision call for normal requests.
 
 Each node holds prepared, typed Rego queries built from a cryptographically
@@ -254,7 +254,7 @@ policy revision, and decision metadata.
 
 The final decision applies these layers:
 
-1. immutable Vondel safety rules;
+1. immutable Bloem safety rules;
 2. platform policy ceiling;
 3. organization administrative grants;
 4. scoped role assignments;
@@ -370,7 +370,7 @@ customer-managed keys without requiring a separate database for every tenant.
 
 ## Audit model
 
-Vondel always records denials, administrative actions, policy changes, role
+Bloem always records denials, administrative actions, policy changes, role
 assignments, support access, ownership events, authentication failures,
 adult-content access, exports, and secret access. Routine successful media
 decisions may be sampled at a configurable rate. Ordinary viewing activity is
@@ -407,7 +407,7 @@ The v1 surface preserves current Silo behavior:
 Hidden organizations, profiles, libraries, adult resources, and capabilities
 are omitted rather than returned as discoverable denied objects.
 
-### Native Vondel `/api/v10`
+### Native Bloem `/api/v10`
 
 The v10 surface exposes organizations, memberships, direct-profile login,
 device enrollment, shared-device profile switching, admin mode, scoped roles,
@@ -480,7 +480,7 @@ The implementation is not complete until it passes:
   poisoning tests;
 - full Silo client contracts for login, profile switching, PINs, playback, and
   compatible administration;
-- Vondel client contracts for organization switching, direct-profile login,
+- Bloem client contracts for organization switching, direct-profile login,
   capabilities, admin mode, and step-up;
 - load tests for thousands of concurrent sessions and high-cardinality audit
   ingestion; and

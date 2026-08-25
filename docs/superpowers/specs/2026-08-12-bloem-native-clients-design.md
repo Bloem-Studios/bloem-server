@@ -1,14 +1,14 @@
-# Vondel Native Clients Design
+# Bloem Native Clients Design
 
 **Date:** 2026-08-12  
-**Repositories:** `Vondel-Media/vondel-apple`, `Vondel-Media/vondel-android`  
+**Repositories:** `Bloem-Studios/bloem-apple`, `Bloem-Studios/bloem-android`  
 **Visibility:** Private, with no planned public transition
 
 ## Goal
 
-Create complete, independent Vondel-native Apple and Android client repositories from exact upstream Silo snapshots. The clients keep full feature and protocol compatibility with Vondel Server and official Silo servers while using new Vondel product, package, signing, and future store identities.
+Create complete, independent Bloem-native Apple and Android client repositories from exact upstream Silo snapshots. The clients keep full feature and protocol compatibility with Bloem Server and official Silo servers while using new Bloem product, package, signing, and future store identities.
 
-The result is not a GitHub fork network and does not preserve upstream Git history or release tags. Each Vondel repository starts with a clean root commit containing the complete reviewed source tree plus the required rebrand, attribution, security, and private-CI changes.
+The result is not a GitHub fork network and does not preserve upstream Git history or release tags. Each Bloem repository starts with a clean root commit containing the complete reviewed source tree plus the required rebrand, attribution, security, and private-CI changes.
 
 ## Source snapshots
 
@@ -23,39 +23,39 @@ The Apple snapshot contains the iOS, tvOS, and early macOS targets. The Android 
 
 The private target repositories are:
 
-- `Vondel-Media/vondel-apple`
-- `Vondel-Media/vondel-android`
+- `Bloem-Studios/bloem-apple`
+- `Bloem-Studios/bloem-android`
 
-Each repository is initialized with a clean Vondel root rather than created through GitHub's fork mechanism. A `NOTICE` file records the upstream URL, exact source commit, AGPL basis, material Vondel changes, and independent/non-endorsed status. The upstream `LICENSE` remains byte-identical, and all third-party notices and vendored licenses remain intact.
+Each repository is initialized with a clean Bloem root rather than created through GitHub's fork mechanism. A `NOTICE` file records the upstream URL, exact source commit, AGPL basis, material Bloem changes, and independent/non-endorsed status. The upstream `LICENSE` remains byte-identical, and all third-party notices and vendored licenses remain intact.
 
 Each local repository has:
 
-- `origin` pointing to the private Vondel repository;
+- `origin` pointing to the private Bloem repository;
 - `upstream` pointing to the Silo source for fetch only;
 - a disabled upstream push URL;
 - no imported upstream branches, tags, releases, or reachable Git history.
 
 ## Product and build identity
 
-All user-facing product identity becomes **Vondel**. Silo logos, wordmarks, store badges/links, official signing identities, and Silo-controlled release destinations are removed or replaced before the first Vondel commit.
+All user-facing product identity becomes **Bloem**. Silo logos, wordmarks, store badges/links, official signing identities, and Silo-controlled release destinations are removed or replaced before the first Bloem commit.
 
-New identifiers use the `media.vondel` reverse-DNS root:
+New identifiers use the `media.bloem` reverse-DNS root:
 
 ### Apple
 
-- Primary application base: `media.vondel.app`
+- Primary application base: `media.bloem.app`
 - tvOS, notification, downloads activity, Top Shelf, and other extension identifiers use deterministic target suffixes under that base.
-- Keychain access groups, app groups, associated domains, URL schemes, and signing configuration use Vondel-owned identifiers.
-- Project, scheme, target, executable/archive names, display names, generated project configuration, Fastlane metadata, tests, and documentation use Vondel naming.
+- Keychain access groups, app groups, associated domains, URL schemes, and signing configuration use Bloem-owned identifiers.
+- Project, scheme, target, executable/archive names, display names, generated project configuration, Fastlane metadata, tests, and documentation use Bloem naming.
 - No upstream Apple team ID, provisioning profile, App Store Connect key, TestFlight URL, or match repository is retained.
 
 ### Android
 
-- Shared phone/TV Play application ID: `media.vondel.app`
-- Kotlin/Java package root: `media.vondel`
-- Module namespaces remain distinct beneath the Vondel root so generated resources do not collide.
+- Shared phone/TV Play application ID: `media.bloem.app`
+- Kotlin/Java package root: `media.bloem`
+- Module namespaces remain distinct beneath the Bloem root so generated resources do not collide.
 - Phone and TV retain the upstream paired-listing feature-filter model and non-colliding version-code strategy.
-- Gradle project name, manifests, resources, services, providers, deep links, ProGuard rules, tests, Fastlane metadata, and documentation use Vondel naming.
+- Gradle project name, manifests, resources, services, providers, deep links, ProGuard rules, tests, Fastlane metadata, and documentation use Bloem naming.
 - No upstream Play service account, signing keystore identity, store listing URL, or release destination is retained.
 
 These are new application identities. They are not in-place upgrades of official Silo apps; users install and authenticate them separately.
@@ -64,15 +64,15 @@ These are new application identities. They are not in-place upgrades of official
 
 The rebrand must not change the server protocol. Existing `/api/v1/*` REST and WebSocket contracts, media/download semantics, authentication flows, cast/discovery frames, persisted API field names, and compatibility identifiers remain unchanged where they are wire or storage contracts.
 
-Referential language such as “compatible with Silo servers” is permitted in compatibility documentation and connection UI. It must not present Vondel as official Silo software or use Silo as the product identity.
+Referential language such as “compatible with Silo servers” is permitted in compatibility documentation and connection UI. It must not present Bloem as official Silo software or use Silo as the product identity.
 
 Internal Silo-named source symbols are renamed when they are application identity rather than protocol contracts. A compatibility allowlist documents each intentionally preserved Silo string and why it is required. Generic blanket exemptions are not allowed.
 
 ## Visual assets
 
-Silo-owned logos, wordmarks, icons, and store imagery are excluded from the Vondel roots. Existing non-brand UI assets may be retained only when their license/notice permits it and they do not create confusing similarity.
+Silo-owned logos, wordmarks, icons, and store imagery are excluded from the Bloem roots. Existing non-brand UI assets may be retained only when their license/notice permits it and they do not create confusing similarity.
 
-The initial import may use a clearly Vondel-labeled neutral development icon if a final Vondel icon set is not yet available. A development placeholder cannot be submitted to a store. Final production icon/splash/store art is a separate brand-art deliverable and must pass the same asset provenance guard before release.
+The initial import may use a clearly Bloem-labeled neutral development icon if a final Bloem icon set is not yet available. A development placeholder cannot be submitted to a store. Final production icon/splash/store art is a separate brand-art deliverable and must pass the same asset provenance guard before release.
 
 ## Automation and privacy
 
@@ -84,7 +84,7 @@ Both repositories remain private. The initial automation provides private valida
 - Android unit tests, lint/static checks, and debug builds without signing;
 - source and workflow guards for public visibility changes, releases, registries, store submission, signing material, and credential-bearing URLs.
 
-Upstream release, TestFlight, App Store Connect, Google Play, public GitHub Release, and sideload publication workflows are removed or disabled. No tag or Vondel release is created during import. Store automation may be designed later after Vondel-owned developer accounts, signing identities, and private release policy exist.
+Upstream release, TestFlight, App Store Connect, Google Play, public GitHub Release, and sideload publication workflows are removed or disabled. No tag or Bloem release is created during import. Store automation may be designed later after Bloem-owned developer accounts, signing identities, and private release policy exist.
 
 ## Import verification
 
@@ -93,7 +93,7 @@ Each import produces machine-checkable evidence for:
 1. exact upstream commit and complete tracked-tree inventory;
 2. byte-identical AGPL and preserved third-party notices;
 3. a documented diff classifying every excluded or modified upstream file;
-4. Vondel repository/package/bundle/application identity;
+4. Bloem repository/package/bundle/application identity;
 5. absence of Silo visual-brand files and unjustified user-facing Silo branding;
 6. absence of embedded credentials, signing material, upstream team/store IDs, and public publication paths;
 7. compatibility allowlist coverage for preserved wire/storage strings;
@@ -113,10 +113,10 @@ Apple and Android imports are independent and may be prepared in parallel, but e
 5. run local build/test gates;
 6. commit and push each clean root;
 7. require exact-head private CI success;
-8. record both client repos in the Vondel inventory without claiming store readiness.
+8. record both client repos in the Bloem inventory without claiming store readiness.
 
 ## Acceptance criteria
 
-The native-client import is complete when both private Vondel repositories contain the full retained client source at the pinned snapshots, have independent Vondel build/store identities, preserve required official-server compatibility, retain all license obligations, contain no Silo visual identity or publication credentials, pass available platform tests/builds and privacy guards, and are synchronized to private `origin/main` with no tags or releases.
+The native-client import is complete when both private Bloem repositories contain the full retained client source at the pinned snapshots, have independent Bloem build/store identities, preserve required official-server compatibility, retain all license obligations, contain no Silo visual identity or publication credentials, pass available platform tests/builds and privacy guards, and are synchronized to private `origin/main` with no tags or releases.
 
 App Store, TestFlight, Google Play, F-Droid, and public binary distribution are explicitly outside this import phase.

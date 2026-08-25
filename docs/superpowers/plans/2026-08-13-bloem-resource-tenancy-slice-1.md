@@ -1,4 +1,4 @@
-# Vondel Resource Tenancy Slice 1 Implementation Plan
+# Bloem Resource Tenancy Slice 1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Go 1.26, PostgreSQL 16+, pgx v5, Goose migrations, google/uuid, existing disposable-database harness.
 
-**Spec:** `docs/superpowers/specs/2026-08-13-vondel-resource-tenancy-design.md`
+**Spec:** `docs/superpowers/specs/2026-08-13-bloem-resource-tenancy-design.md`
 
 ## Global Constraints
 
@@ -46,7 +46,7 @@
 **Interfaces:**
 - Produces `resource_owners`, `entitlement_bundles`, `entitlement_bundle_versions`, `entitlement_bundle_members`, `organization_entitlements`, and `resource_tenancy_migration_ledger`.
 - Produces non-null `media_folders.owner_id` and `plugin_installations.owner_id`.
-- Produces `vondel_platform_resource_owner_id()` plus typed compatibility-entitlement triggers for platform-only legacy root creation.
+- Produces `bloem_platform_resource_owner_id()` plus typed compatibility-entitlement triggers for platform-only legacy root creation.
 - Consumes the default organization created by migration `20260812190000`.
 
 - [ ] **Step 1: Write the populated-upgrade RED test**
@@ -127,7 +127,7 @@ CREATE UNIQUE INDEX resource_owners_one_platform_idx
     ON public.resource_owners(kind) WHERE kind = 'platform';
 ```
 
-Insert the singleton platform owner and one organization owner for every existing organization. Add a typed `AFTER INSERT` organization trigger that creates exactly one organization owner for every later organization. Add `vondel_platform_resource_owner_id()` as a stable SQL function that selects the singleton platform owner.
+Insert the singleton platform owner and one organization owner for every existing organization. Add a typed `AFTER INSERT` organization trigger that creates exactly one organization owner for every later organization. Add `bloem_platform_resource_owner_id()` as a stable SQL function that selects the singleton platform owner.
 
 Create a versioned bundle core:
 
@@ -172,7 +172,7 @@ never point at a nonexistent revision.
 
 - [ ] **Step 5: Add typed roots and backfill them**
 
-Add nullable `owner_id` columns to `media_folders` and `plugin_installations`, backfill every row with the platform owner in deterministic primary-key order, verify no nulls, then set both columns `NOT NULL DEFAULT public.vondel_platform_resource_owner_id()`. Add `UNIQUE (id, owner_id)` to both tables and foreign keys to `resource_owners(id)`.
+Add nullable `owner_id` columns to `media_folders` and `plugin_installations`, backfill every row with the platform owner in deterministic primary-key order, verify no nulls, then set both columns `NOT NULL DEFAULT public.bloem_platform_resource_owner_id()`. Add `UNIQUE (id, owner_id)` to both tables and foreign keys to `resource_owners(id)`.
 
 The temporary default is deliberately platform-only. There is no organization-private create API in this slice, and callers cannot supply an organization identity through legacy v1 input.
 
@@ -525,9 +525,9 @@ git diff --check
 
 Expected: all commands exit 0.
 
-- [ ] **Step 3: Run populated Vondel preflight without mutation**
+- [ ] **Step 3: Run populated Bloem preflight without mutation**
 
-Against the Vondel development database, execute read-only queries that record current folder/plugin counts and prove the tenant identity foundation has exactly one default organization. Do not apply the migration to the persistent development database in this slice's implementation worktree.
+Against the Bloem development database, execute read-only queries that record current folder/plugin counts and prove the tenant identity foundation has exactly one default organization. Do not apply the migration to the persistent development database in this slice's implementation worktree.
 
 - [ ] **Step 4: Commit documentation**
 

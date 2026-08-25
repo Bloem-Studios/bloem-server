@@ -1,6 +1,6 @@
-# SDD ledger — plan: docs/superpowers/plans/2026-08-13-vondel-opa-tenant-foundation.md
+# SDD ledger — plan: docs/superpowers/plans/2026-08-13-bloem-opa-tenant-foundation.md
 
-Workspace: `/Users/jimcole/projects/vondel-server/.worktrees/opa-tenant-foundation`
+Workspace: `/Users/jimcole/projects/bloem-server/.worktrees/opa-tenant-foundation`
 Branch: `feature/opa-tenant-foundation`
 Merge base: `0d4747da1b186ca801ac79f71a6a59bf3a596f17`
 

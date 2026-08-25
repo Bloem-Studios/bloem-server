@@ -359,7 +359,7 @@ git commit -m "feat: execute durable bulk policy jobs"
 - Create: `internal/api/handlers/entitlement_bulk_test.go`
 - Modify: `internal/api/handlers/admin.go`
 - Modify: `internal/api/router.go`
-- Modify: `docs/vondel-v2-api-reference.md`
+- Modify: `docs/bloem-v2-api-reference.md`
 
 **Interfaces:**
 - Consumes: cohort store, policy preview service, durable people worker wake.
@@ -392,7 +392,7 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add internal/api/handlers/entitlement_bulk.go internal/api/handlers/entitlement_bulk_test.go internal/api/handlers/admin.go internal/api/router.go docs/vondel-v2-api-reference.md
+git add internal/api/handlers/entitlement_bulk.go internal/api/handlers/entitlement_bulk_test.go internal/api/handlers/admin.go internal/api/router.go docs/bloem-v2-api-reference.md
 git commit -m "feat: expose platform bulk policy APIs"
 ```
 

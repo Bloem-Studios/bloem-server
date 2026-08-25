@@ -1,8 +1,8 @@
-# Vondel Clean-Room Native Clients Implementation Plan
+# Bloem Clean-Room Native Clients Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build original, native Vondel clients for all Apple and Android targets with complete Watch, Listen, Read and Live TV/DVR support, while retaining documented compatibility with Vondel and official Silo servers.
+**Goal:** Build original, native Bloem clients for all Apple and Android targets with complete Watch, Listen, Read and Live TV/DVR support, while retaining documented compatibility with Bloem and official Silo servers.
 
 **Architecture:** A platform-neutral contracts repository defines server schemas, invented fixtures and conformance behavior. Empty Apple and Android repositories independently implement those contracts using SwiftUI/native Apple media frameworks and Kotlin/Compose/Media3; they share no UI or application runtime. TV is the first production-complete vertical slice, but submission is blocked until the full media/platform matrix passes.
 
@@ -10,14 +10,14 @@
 
 ## Global Constraints
 
-- Create new private zero-parent repositories `Vondel-Media/vondel-client-contracts`, `Vondel-Media/vondel-apple`, and `Vondel-Media/vondel-android`.
+- Create new private zero-parent repositories `Bloem-Studios/bloem-client-contracts`, `Bloem-Studios/bloem-apple`, and `Bloem-Studios/bloem-android`.
 - Never add either `silo-*-reference` repository as a remote, dependency, submodule, build input or source generator.
 - No reference source, assets, layouts, internal symbols, tests, filenames or package structure may be copied.
 - The only shared boundary is documented server contracts plus deterministic invented fixtures.
 - Support movies, episodic television, music, audiobooks, ebooks and manga on iPhone, iPad, macOS, Apple TV, Android phone, Android tablet and Android TV before store submission.
 - Support Live TV guide, tune, timeshift, one-off/series DVR, conflicts and recordings on all seven targets before store submission.
-- Implement both Vondel and capability-compatible official Silo server connections.
-- Use `media.vondel.app` application identities and `media.vondel` source namespaces.
+- Implement both Bloem and capability-compatible official Silo server connections.
+- Use `media.bloem.app` application identities and `media.bloem` source namespaces.
 - Use AGPL-3.0-or-later and record every dependency/asset license.
 - Keep repositories private and publication workflows disabled until the final acceptance task explicitly enables signed store delivery.
 - Never claim store approval is guaranteed; build auditable evidence of original implementation and value.
@@ -29,7 +29,7 @@
 - Tasks 3 and 4 run in parallel after Task 2.
 - Task 5 runs in parallel per platform after both foundations expose the same route semantics.
 - Tasks 6–10 are vertical feature slices; Apple and Android implementations run in parallel within each slice, while Watch, Listen, Read and Live TV coordinators remain isolated.
-- Task 10 depends on the Vondel Live TV server/contracts plan reaching its contract handoff; Task 11 begins only after Tasks 6–10 are green on every target.
+- Task 10 depends on the Bloem Live TV server/contracts plan reaching its contract handoff; Task 11 begins only after Tasks 6–10 are green on every target.
 
 ---
 
@@ -70,7 +70,7 @@ go test ./internal/originality -count=1
 **Files:**
 - Create contracts: `schema/openapi.yaml`, `schema/events/*.schema.json`, `schema/playback/*.schema.json`, `schema/offline/*.schema.json`
 - Create contracts: `fixtures/{identity,auth,catalog,watch,listen,read,playback,offline,errors}/*.json`
-- Create contracts: `cmd/vondel-client-conformance/main.go`, `internal/conformance/{client.go,suite.go,report.go}`
+- Create contracts: `cmd/bloem-client-conformance/main.go`, `internal/conformance/{client.go,suite.go,report.go}`
 - Create server: `internal/clientcontract/export_test.go`, `internal/clientcontract/conformance_test.go`
 
 **Interfaces:**
@@ -78,16 +78,16 @@ go test ./internal/originality -count=1
 
 - [ ] Write failing schema tests for identity/capabilities, login/refresh/profile, catalog/search, six media types, progress, playback plan, WebSocket events and offline bundles using invented IDs such as movie `4242`, series `8080`, album `313`, audiobook `2718`, ebook `1618` and manga `5772`.
 - [ ] Run `go test ./internal/conformance ./schema -count=1` and record RED failures for absent schemas.
-- [ ] Write the schemas from Vondel Server route and API documentation, not client reference models; include required/optional fields, enum values and explicit forward-compatible unknown-field behavior.
-- [ ] Implement a disposable-server runner that creates a unique database, migrates it, seeds invented media, starts Vondel on a loopback port, runs all contract cases, then validates and drops only the generated database.
+- [ ] Write the schemas from Bloem Server route and API documentation, not client reference models; include required/optional fields, enum values and explicit forward-compatible unknown-field behavior.
+- [ ] Implement a disposable-server runner that creates a unique database, migrates it, seeds invented media, starts Bloem on a loopback port, runs all contract cases, then validates and drops only the generated database.
 - [ ] Add an official-Silo compatibility job that runs the same baseline contract subset against pinned Silo Server commit `1dcdd4b27ab5fcd697a32fc20f20c2400ca24688`.
 - [ ] Commit/push contracts and server harness; require exact-head CI green in both repositories.
 
 ### Task 3: Establish Apple Targets, Identity and Connection Foundation
 
 **Files:**
-- Create Apple: `project.yml`, `Config/*.xcconfig`, `Sources/VondelCore/{Contract,Connection,Identity,Storage}/**`
-- Create Apple: `Apps/{iOS,tvOS,macOS}/**`, `Tests/VondelCoreTests/**`, `UITests/**`
+- Create Apple: `project.yml`, `Config/*.xcconfig`, `Sources/BloemCore/{Contract,Connection,Identity,Storage}/**`
+- Create Apple: `Apps/{iOS,tvOS,macOS}/**`, `Tests/BloemCoreTests/**`, `UITests/**`
 
 **Interfaces:**
 - Produces `ServerGateway`, `CapabilitySet`, `AccountScope`, `SecureAccountVault` and scoped local-store protocols.
@@ -102,7 +102,7 @@ func testProfileSwitchRejectsPreviousScopeResult() async throws {
 }
 ```
 
-- [ ] Create XcodeGen targets for iOS/iPadOS, tvOS and macOS using bundle IDs beneath `media.vondel.app`; generate the project and verify target/product identity without signing.
+- [ ] Create XcodeGen targets for iOS/iPadOS, tvOS and macOS using bundle IDs beneath `media.bloem.app`; generate the project and verify target/product identity without signing.
 - [ ] Implement URL validation, capability probe, authentication/refresh, Keychain vault and scoped SQLite/SwiftData store from contracts fixtures.
 - [ ] Create original platform-native connection/profile UI and accessibility identifiers; do not inspect reference screen structure.
 - [ ] Run unit/UI tests and unsigned target builds, originality scan and dependency license audit; commit/push and require exact-head CI green.
@@ -127,7 +127,7 @@ func testProfileSwitchRejectsPreviousScopeResult() async throws {
 }
 ```
 
-- [ ] Configure mobile/tablet and Android TV apps with `media.vondel.app` identity and distinct module namespaces beneath `media.vondel`.
+- [ ] Configure mobile/tablet and Android TV apps with `media.bloem.app` identity and distinct module namespaces beneath `media.bloem`.
 - [ ] Implement validated URL connection, capability probe, authentication/refresh, Android Keystore vault and scoped Room storage from contract fixtures.
 - [ ] Create original Compose connection/profile surfaces separately optimized for touch and TV focus.
 - [ ] Run unit/instrumented/focus tests, lint and unsigned debug builds, originality scan and dependency license audit; commit/push and require exact-head CI green.
@@ -135,7 +135,7 @@ func testProfileSwitchRejectsPreviousScopeResult() async throws {
 ### Task 5: Build Original Design Systems and Navigation on Every Target
 
 **Files:**
-- Create Apple: `Sources/VondelDesign/**`, `Sources/VondelNavigation/**`, snapshot and accessibility tests
+- Create Apple: `Sources/BloemDesign/**`, `Sources/BloemNavigation/**`, snapshot and accessibility tests
 - Create Android: `:design-system`, `:navigation`, screenshot and focus tests
 - Create dossier: `docs/originality/visual-system.md`
 
@@ -143,7 +143,7 @@ func testProfileSwitchRejectsPreviousScopeResult() async throws {
 - Produces original tokens/components and route IDs `now`, `watch`, `listen`, `read`, `library`, `search`, `settings`.
 
 - [ ] Write RED snapshot/focus tests for phone bottom navigation, tablet/macOS adaptive columns, TV spatial navigation and the seven route IDs.
-- [ ] Implement Vondel-owned typography, color, spacing, motion, focus, artwork and empty/error/loading primitives without reference assets or component layouts.
+- [ ] Implement Bloem-owned typography, color, spacing, motion, focus, artwork and empty/error/loading primitives without reference assets or component layouts.
 - [ ] Implement adaptive navigation shells on all seven form factors; TV focus order must be explicitly modeled rather than derived from phone ordering.
 - [ ] Generate visual evidence from invented demo media and run perceptual/reference similarity checks; resolve every unexplained high-similarity result.
 - [ ] Commit/push Apple and Android design/navigation slices with exact-head CI green.
@@ -159,7 +159,7 @@ func testProfileSwitchRejectsPreviousScopeResult() async throws {
 - Produces movie/series browsing, details, direct play/remux/transcode selection, subtitles/audio/chapters/HDR, progress and next-up behavior.
 
 - [ ] Add RED contract and platform tests for invented movie `4242`, series `8080`, season 1/episode 1, three playback modes, subtitle/audio selection, progress/resume, timeout and recovery.
-- [ ] Implement TV catalog/detail/focus flows first using original editorial composition, then implement phone/tablet/macOS variants from the Vondel design system.
+- [ ] Implement TV catalog/detail/focus flows first using original editorial composition, then implement phone/tablet/macOS variants from the Bloem design system.
 - [ ] Implement independent Apple and Android playback coordinators that validate server plans and map them to AVFoundation/Core Media or Media3 routes.
 - [ ] Run codec/container/subtitle/HDR/network-transition matrices against controlled media and assert no credentials or media URLs appear in logs.
 - [ ] Commit/push both Watch slices and require exact-head CI green.
@@ -220,11 +220,11 @@ func testProfileSwitchRejectsPreviousScopeResult() async throws {
 - Consume contracts: `schema/livetv/*.schema.json`, `fixtures/livetv/*.json`
 
 **Interfaces:**
-- Consumes the capability-gated Vondel Live TV API produced by `2026-08-12-vondel-prairie-livetv.md` Task 9.
+- Consumes the capability-gated Bloem Live TV API produced by `2026-08-12-bloem-prairie-livetv.md` Task 9.
 - Produces original guide, live player, timeshift, DVR and recordings experiences on all seven targets.
 
 - [ ] Write RED contract/platform tests using invented channels `KVDL-7`/`KVDL-12` for capability-hidden behavior, guide windows, tune, heartbeat, pause/resume/seek-live, record/cancel, series rules, conflicts and completed/failed recordings.
-- [ ] Implement original TV-first spatial guide grids and channel/player overlays independently in SwiftUI and Compose; do not inspect Prairie/Silo client source or reuse Vondel web layouts.
+- [ ] Implement original TV-first spatial guide grids and channel/player overlays independently in SwiftUI and Compose; do not inspect Prairie/Silo client source or reuse Bloem web layouts.
 - [ ] Implement touch/keyboard adaptations for iPhone, iPad, macOS, Android phone and Android tablet from each platform's design system.
 - [ ] Integrate live playback plans with the independent Apple/Android playback coordinators; protect short-lived tokens, recover sessions and surface typed tuner/guide/disk/conflict errors.
 - [ ] Implement profile-scoped DVR rule/conflict/recordings flows and capability-negative behavior for official Silo servers without Live TV.
@@ -240,10 +240,10 @@ func testProfileSwitchRejectsPreviousScopeResult() async throws {
 **Interfaces:**
 - Produces signed evidence that gates—but does not guarantee—store submission.
 
-- [ ] Run the disposable-server conformance suite for all six library media types plus Live TV/DVR against Vondel and the capability-supported baseline subset against official Silo commit `1dcdd4b27ab5fcd697a32fc20f20c2400ca24688`.
+- [ ] Run the disposable-server conformance suite for all six library media types plus Live TV/DVR against Bloem and the capability-supported baseline subset against official Silo commit `1dcdd4b27ab5fcd697a32fc20f20c2400ca24688`.
 - [ ] Run the complete device/form-factor matrix for iPhone, iPad, macOS, Apple TV, Android phone, Android tablet and Android TV, including Watch, Listen, Read, Live TV/DVR, offline and identity switching.
 - [ ] Run accessibility, localization, privacy, security, dependency-license, credential, originality source/asset and visual-composition gates.
-- [ ] Create Vondel-owned icons/screenshots/previews with invented demo media, accurate privacy/support URLs and stable reviewer credentials/demo server.
+- [ ] Create Bloem-owned icons/screenshots/previews with invented demo media, accurate privacy/support URLs and stable reviewer credentials/demo server.
 - [ ] Generate the originality dossier from Git history, specifications, provenance ledgers, similarity reports, dependencies and build/test results; require zero unexplained findings.
 - [ ] Add store signing/submission only in isolated protected workflows after all gates pass; keep credentials environment-scoped and never available to pull-request code.
 - [ ] Commit/push final evidence and record exact commits/runs in `docs/client-release-inventory.md` without claiming approval before the stores decide.

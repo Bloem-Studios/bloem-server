@@ -1,12 +1,12 @@
-# Vondel Ebook and Autoscan Authorized Import Design
+# Bloem Ebook and Autoscan Authorized Import Design
 
 ## Decision and authorization
 
 The project owner states that they control the licensing rights required to
 copy, modify, and license the Ebook Metadata and Autoscan ARR upstream source.
-The owner directs Vondel to import both codebases, license the Vondel copies
+The owner directs Bloem to import both codebases, license the Bloem copies
 under **GNU Affero General Public License v3.0 or later
-(`AGPL-3.0-or-later`)**, and keep both Vondel repositories permanently private.
+(`AGPL-3.0-or-later`)**, and keep both Bloem repositories permanently private.
 
 This decision replaces the permission-gate treatment recorded during the
 initial source-fork phase. The existing four-file gate roots contain no
@@ -20,7 +20,7 @@ upstream source and may be advanced normally; no history rewrite is required.
   `7987ddae852549f5f2ef4e00b6f25dfa5497ddad`.
 
 The snapshots are imported with `git archive`; upstream Git history and tags
-are not added to the Vondel repositories. The existing Vondel gate commits
+are not added to the Bloem repositories. The existing Bloem gate commits
 remain the zero-parent roots and the authorized imports are normal descendant
 commits.
 
@@ -30,11 +30,11 @@ Before source is committed, each repository receives the complete
 AGPL-3.0-or-later license text and an updated `UPSTREAM.md`/`NOTICE` recording:
 
 - exact upstream repository, tag, and commit;
-- the owner's authorization to create and license the Vondel copy;
-- material Vondel changes;
-- Vondel's independence and lack of upstream affiliation or endorsement.
+- the owner's authorization to create and license the Bloem copy;
+- material Bloem changes;
+- Bloem's independence and lack of upstream affiliation or endorsement.
 
-Existing upstream copyright notices remain intact. Vondel does not claim that
+Existing upstream copyright notices remain intact. Bloem does not claim that
 the upstream repositories themselves were previously offered under AGPL.
 
 ## Compatibility and identity
@@ -51,14 +51,14 @@ The imports preserve the existing compatibility contracts:
   request/configuration semantics.
 
 Repository, module, presentation, publisher, documentation, support, and
-source URLs become Vondel identities. Both Go modules pin
-`github.com/Vondel-Media/vondel-plugin-sdk v0.13.3` without a `replace`
+source URLs become Bloem identities. Both Go modules pin
+`github.com/Bloem-Studios/bloem-plugin-sdk v0.13.3` without a `replace`
 directive.
 
 ## Private automation and releases
 
 Both repositories use the same trusted private-SDK CI boundary as the reviewed
-Vondel plugins:
+Bloem plugins:
 
 1. `pull_request_target` runs the trusted base workflow with minimal read
    permissions.
@@ -74,7 +74,7 @@ and private repository visibility. Releases contain exactly three platform
 binaries plus `checksums.txt`. No workflow may change visibility, publish to a
 public registry, or dispatch to a Silo repository.
 
-First Vondel release versions are patch bumps:
+First Bloem release versions are patch bumps:
 
 - Ebook Metadata `v0.1.2`;
 - Autoscan ARR `v0.1.3`.
@@ -100,6 +100,6 @@ continues to own validation, rewrites, suppression, and scan enqueueing.
 
 This design is complete when both private repositories contain the authorized
 source and AGPL-3.0-or-later license, pass review and CI, publish verified
-private releases, appear in the private Vondel catalog/materialized staging
+private releases, appear in the private Bloem catalog/materialized staging
 tree, and pass their deterministic acceptance tests. Public release is
 permanently out of scope for these two repositories.

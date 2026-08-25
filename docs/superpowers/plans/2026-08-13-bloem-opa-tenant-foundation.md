@@ -1,4 +1,4 @@
-# Vondel OPA Tenant Foundation Implementation Plan
+# Bloem OPA Tenant Foundation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Go 1.26, PostgreSQL 18, pgx, Goose SQL migrations, embedded OPA/Rego, chi, GitHub Actions
 
-**Spec:** `docs/superpowers/specs/2026-08-13-vondel-opa-centered-multitenant-authorization-design.md`
+**Spec:** `docs/superpowers/specs/2026-08-13-bloem-opa-centered-multitenant-authorization-design.md`
 
 ## Global Constraints
 
@@ -100,7 +100,7 @@ plans, written only after this increment is green, cover:
 - Modify: `internal/api/v1_tenancy_compat_test.go`
 - Modify: `.github/workflows/ci.yml`
 - Modify: `FORK.md`
-- Modify: `docs/superpowers/specs/2026-08-13-vondel-resource-tenancy-design.md`
+- Modify: `docs/superpowers/specs/2026-08-13-bloem-resource-tenancy-design.md`
 
 **Interfaces:**
 
@@ -171,7 +171,7 @@ Run:
 
 ```bash
 GOWORK=off go test ./internal/tenancy ./internal/resourcetenancy ./internal/api ./internal/api/handlers ./internal/api/middleware -run 'TestV1|TestV2|TestTenant' -count=1
-rg -n 'V10|v10|/api/v10' internal cmd .github FORK.md docs/architecture docs/superpowers/specs/2026-08-13-vondel-resource-tenancy-design.md
+rg -n 'V10|v10|/api/v10' internal cmd .github FORK.md docs/architecture docs/superpowers/specs/2026-08-13-bloem-resource-tenancy-design.md
 git diff --check
 ```
 
@@ -180,7 +180,7 @@ Expected: tests pass; the scan has no API-v10 results unrelated to third-party v
 - [ ] **Step 6: Commit**
 
 ```bash
-git add internal/api internal/tenancy internal/resourcetenancy .github/workflows/ci.yml FORK.md docs/architecture docs/superpowers/specs/2026-08-13-vondel-resource-tenancy-design.md
+git add internal/api internal/tenancy internal/resourcetenancy .github/workflows/ci.yml FORK.md docs/architecture docs/superpowers/specs/2026-08-13-bloem-resource-tenancy-design.md
 git commit -m "refactor(api): align tenant foundation on v2"
 ```
 
@@ -806,7 +806,7 @@ git commit -m "test(auth): lock OPA tenant foundation"
 Before starting the administrative-role plan, obtain two independent reviews:
 
 1. spec compliance against
-   `docs/superpowers/specs/2026-08-13-vondel-opa-centered-multitenant-authorization-design.md`,
+   `docs/superpowers/specs/2026-08-13-bloem-opa-centered-multitenant-authorization-design.md`,
    limited to this increment's declared scope; and
 2. security review of tenant non-disclosure, access-group scoping, entitlement
    intersection, OPA tightening, v1 parity, migration rollback, and CI skip

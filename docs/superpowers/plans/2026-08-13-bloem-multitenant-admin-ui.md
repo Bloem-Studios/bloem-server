@@ -1,14 +1,14 @@
-# Vondel Multitenant Administration UI Implementation Plan
+# Bloem Multitenant Administration UI Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a tenant-safe Vondel administration experience with explicit Platform and Organization contexts, organization lifecycle management, scalable people operations, and organization-scoped security controls while preserving Silo `/api/v1` compatibility.
+**Goal:** Add a tenant-safe Bloem administration experience with explicit Platform and Organization contexts, organization lifecycle management, scalable people operations, and organization-scoped security controls while preserving Silo `/api/v1` compatibility.
 
 **Architecture:** Keep the existing account session as the compatibility root and mint a separate, short-lived `/api/v2/admin` context token after server-side authority validation. A single React admin shell uses an in-memory context token, context-qualified query keys, server-driven lists, and existing page components adapted to v2 resources rather than duplicated.
 
 **Tech Stack:** Go 1.26, chi, pgx/PostgreSQL, OPA/Rego, React 19, TypeScript, React Router, TanStack Query, Tailwind CSS, Vitest, Testing Library, pnpm.
 
-**Spec:** `docs/superpowers/specs/2026-08-13-vondel-multitenant-admin-ui-design.md`
+**Spec:** `docs/superpowers/specs/2026-08-13-bloem-multitenant-admin-ui-design.md`
 
 ## Global Constraints
 

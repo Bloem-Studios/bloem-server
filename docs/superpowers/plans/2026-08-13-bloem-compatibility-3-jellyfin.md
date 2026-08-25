@@ -1,36 +1,36 @@
-# Vondel Jellyfin Application Implementation Plan
+# Bloem Jellyfin Application Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Create the private `vondel-jellyfin` application and replace Vondel's embedded Jellyfin surface, including media, playback, sessions, Live TV, Jellyfin Web, and LAN discovery.
+**Goal:** Create the private `bloem-jellyfin` application and replace Bloem's embedded Jellyfin surface, including media, playback, sessions, Live TV, Jellyfin Web, and LAN discovery.
 
-**Architecture:** The application translates Jellyfin protocols through subject-scoped private Vondel APIs and retains only disposable client/session/preferences state. Vondel owns the canonical public address and exact Jellyfin route set, serves delivery URLs, enforces policy, operates Prairie-derived Live TV/DVR, and emits the optional LAN discovery response.
+**Architecture:** The application translates Jellyfin protocols through subject-scoped private Bloem APIs and retains only disposable client/session/preferences state. Bloem owns the canonical public address and exact Jellyfin route set, serves delivery URLs, enforces policy, operates Prairie-derived Live TV/DVR, and emits the optional LAN discovery response.
 
 **Tech Stack:** Go 1.26, SQLite/WAL, optional PostgreSQL, WebSockets, Jellyfin Web static assets, UDP discovery, Docker, private GitHub Actions/OCI.
 
-**Spec:** `docs/superpowers/specs/2026-08-12-vondel-compatibility-sidecars-design.md`
+**Spec:** `docs/superpowers/specs/2026-08-12-bloem-compatibility-sidecars-design.md`
 
 ## Global Constraints
 
 - Repository and images remain private indefinitely.
-- Vondel remains sole authority for identity, policy, catalog, playback, events, Live TV, DVR, and recording files.
+- Bloem remains sole authority for identity, policy, catalog, playback, events, Live TV, DVR, and recording files.
 - No public user/profile directory exists; unknown devices receive no user list.
 - Direct profile email/password, legacy account login, trusted-device profile tiles, and existing PIN switching all remain supported.
 - Adult content is absent from metadata, counts, search, artwork, activity, events, playback, Live TV, and timing hints when unauthorized.
-- The application receives no Vondel database, Redis, media mounts, Docker socket, signing/provider/tuner secrets, or unrestricted filesystem paths.
-- Public access uses only the canonical Vondel address and a compile-time fixed route set.
+- The application receives no Bloem database, Redis, media mounts, Docker socket, signing/provider/tuner secrets, or unrestricted filesystem paths.
+- Public access uses only the canonical Bloem address and a compile-time fixed route set.
 - Use RED/GREEN TDD, task commits, independent reviews, and exact private release evidence.
 
 ---
 
 ### Task 1: Create the Private Jellyfin Application Repository
 
-**Files (new repository `Vondel-Media/vondel-jellyfin`):**
+**Files (new repository `Bloem-Studios/bloem-jellyfin`):**
 - Create: `go.mod`
 - Create: `LICENSE`
 - Create: `NOTICE`
 - Create: `README.md`
-- Create: `cmd/vondel-jellyfin/main.go`
+- Create: `cmd/bloem-jellyfin/main.go`
 - Create: `internal/config/config.go`
 - Create: `internal/config/config_test.go`
 - Create: `.github/workflows/ci.yml`
@@ -43,22 +43,22 @@
 
 - [ ] **Step 1: Initialize a verified private parentless repository**
 
-Preserve AGPL-3.0 obligations and add `NOTICE` naming the exact Vondel source commit plus extracted `internal/jellycompat` paths. Configure source/upstream fetch-only with push URL `DISABLED`; confirm private visibility before first push.
+Preserve AGPL-3.0 obligations and add `NOTICE` naming the exact Bloem source commit plus extracted `internal/jellycompat` paths. Configure source/upstream fetch-only with push URL `DISABLED`; confirm private visibility before first push.
 
 - [ ] **Step 2: Write failing lifecycle/privacy tests and implement**
 
-Test secret-file-only enrollment, immutable instance identity, supported API range, state DSN, optional mTLS, renewal, revocation, incompatible readiness, password/log redaction, and native process shutdown. Read enrollment only from `/run/secrets/vondel_compat_enrollment` and erase raw bytes after use.
+Test secret-file-only enrollment, immutable instance identity, supported API range, state DSN, optional mTLS, renewal, revocation, incompatible readiness, password/log redaction, and native process shutdown. Read enrollment only from `/run/secrets/bloem_compat_enrollment` and erase raw bytes after use.
 
 - [ ] **Step 3: Add trusted private CI and verify**
 
-Use checkout-free private-module prefetch and secretless code execution. Prohibit visibility changes, Silo dispatch, public registries/packages, credential-bearing URLs, Vondel database variables, media mounts, and Docker socket access.
+Use checkout-free private-module prefetch and secretless code execution. Prohibit visibility changes, Silo dispatch, public registries/packages, credential-bearing URLs, Bloem database variables, media mounts, and Docker socket access.
 
 ```bash
 GOWORK=off go test ./... -count=1
 GOWORK=off go test -race ./... -count=1
 GOWORK=off go vet ./...
 bash scripts/verify-private-source_test.sh
-git add . && git commit -m "feat: create Vondel Jellyfin application"
+git add . && git commit -m "feat: create Bloem Jellyfin application"
 ```
 
 ---
@@ -72,7 +72,7 @@ git add . && git commit -m "feat: create Vondel Jellyfin application"
 - Create: `internal/jellyfin/users.go`
 - Create: `internal/jellyfin/devices.go`
 - Create: `internal/jellyfin/preferences.go`
-- Create: `internal/vondel/client.go`
+- Create: `internal/bloem/client.go`
 - Create: `internal/session/store.go`
 - Create: `internal/session/sqlite.go`
 - Create: `internal/session/postgres.go`
@@ -90,7 +90,7 @@ Run direct profile login, legacy account login, remembered/default profile, unkn
 
 Run: `GOWORK=off go test ./internal/jellyfin ./internal/session -run 'Identity|Login|Device|Profile' -count=1`
 
-Expected: FAIL. Translate Jellyfin credentials transiently to Vondel; store only opaque token correlation, device capabilities, Jellyfin preferences, expiry, and event cursor. Never persist password or canonical identity/profile policy.
+Expected: FAIL. Translate Jellyfin credentials transiently to Bloem; store only opaque token correlation, device capabilities, Jellyfin preferences, expiry, and event cursor. Never persist password or canonical identity/profile policy.
 
 - [ ] **Step 3: Verify SQLite/PostgreSQL contracts, race, and redaction**
 
@@ -102,8 +102,8 @@ GOWORK=off go test -race ./internal/jellyfin ./internal/session -count=1
 - [ ] **Step 4: Commit**
 
 ```bash
-git add internal/jellyfin internal/vondel internal/session
-git commit -m "feat(jellyfin): add Vondel-backed identity"
+git add internal/jellyfin internal/bloem internal/session
+git commit -m "feat(jellyfin): add Bloem-backed identity"
 ```
 
 ---
@@ -127,11 +127,11 @@ git commit -m "feat(jellyfin): add Vondel-backed identity"
 
 - [ ] **Step 1: Run shared catalog fixtures and record RED**
 
-Cover every commercial/streamed Vondel media type supported by Jellyfin mappings: movies, series, episodes, music artists/albums/tracks, audiobooks, ebooks where the protocol permits, podcasts, radio, Live TV channels/programs/recordings, manga/comics through explicit compatible item mappings, and mixed libraries.
+Cover every commercial/streamed Bloem media type supported by Jellyfin mappings: movies, series, episodes, music artists/albums/tracks, audiobooks, ebooks where the protocol permits, podcasts, radio, Live TV channels/programs/recordings, manga/comics through explicit compatible item mappings, and mixed libraries.
 
 - [ ] **Step 2: Implement subject-filtered translations**
 
-Use signed Vondel cursors behind Jellyfin paging, stable external IDs, same-origin image/delivery URLs, and exact field omissions. No local metadata authority or direct filesystem reads. Use idempotency keys for favorites, watched/progress, collections, playlists, and download mutations.
+Use signed Bloem cursors behind Jellyfin paging, stable external IDs, same-origin image/delivery URLs, and exact field omissions. No local metadata authority or direct filesystem reads. Use idempotency keys for favorites, watched/progress, collections, playlists, and download mutations.
 
 - [ ] **Step 3: Prove adult and tenant isolation**
 
@@ -171,7 +171,7 @@ Cover direct play, direct stream, transcode profiles, range/seeking, subtitles, 
 
 Run: `GOWORK=off go test ./internal/jellyfin -run 'Playback|Stream|Transcode|Session|WebSocket' -count=1`
 
-Prefer short-lived same-origin Vondel URLs so media bytes bypass the application. Where Jellyfin semantics require proxying, enforce byte/time/concurrency bounds, cancellation propagation, and hop-by-hop header stripping.
+Prefer short-lived same-origin Bloem URLs so media bytes bypass the application. Where Jellyfin semantics require proxying, enforce byte/time/concurrency bounds, cancellation propagation, and hop-by-hop header stripping.
 
 - [ ] **Step 3: Verify concurrency and recovery**
 
@@ -196,11 +196,11 @@ git commit -m "feat(jellyfin): translate playback sessions and events"
 - Create: `internal/jellyfin/guide.go`
 - Create: `internal/jellyfin/dvr.go`
 - Create: `internal/jellyfin/livetv_test.go`
-- Modify (Vondel): `internal/compatapi/livetv.go`
-- Create (Vondel): `internal/compatapi/livetv_test.go`
+- Modify (Bloem): `internal/compatapi/livetv.go`
+- Create (Bloem): `internal/compatapi/livetv_test.go`
 
 **Interfaces:**
-- Consumes subject-filtered Vondel/Prairie tuner discovery, channels, guide, availability, stream grants, DVR rules, recording status, and recording catalog.
+- Consumes subject-filtered Bloem/Prairie tuner discovery, channels, guide, availability, stream grants, DVR rules, recording status, and recording catalog.
 - Produces Jellyfin `/LiveTv/**` channels/programs/guide/timers/series-timers/recordings/playback operations.
 
 - [ ] **Step 1: Add failing deterministic Live TV cases**
@@ -236,7 +236,7 @@ Application: `git commit -m "feat(jellyfin): translate Live TV and DVR"`.
 - Create: `scripts/fetch-jellyfin-web.sh`
 - Create: `scripts/verify-jellyfin-web.sh`
 
-**Files (Vondel):**
+**Files (Bloem):**
 - Modify: `internal/compatgateway/routes.go`
 - Modify: `internal/compatgateway/proxy_test.go`
 - Modify: `internal/compatgateway/discovery.go`
@@ -244,7 +244,7 @@ Application: `git commit -m "feat(jellyfin): translate Live TV and DVR"`.
 
 **Interfaces:**
 - Produces Jellyfin Web at canonical `/web` and the audited protocol route table.
-- Produces optional UDP discovery advertising canonical Vondel HTTPS URL plus stable compatibility server ID only while the application is healthy/enabled/compatible.
+- Produces optional UDP discovery advertising canonical Bloem HTTPS URL plus stable compatibility server ID only while the application is healthy/enabled/compatible.
 
 - [ ] **Step 1: Pin and verify Jellyfin Web assets**
 
@@ -276,7 +276,7 @@ Server: `git commit -m "feat(compat): add Jellyfin routes and discovery"`.
 
 ### Task 7: Dual-Run Parity, Private Release, and Cutover
 
-**Files (Vondel):**
+**Files (Bloem):**
 - Create: `internal/acceptance/jellyfin_external_test.go`
 - Modify: `.github/workflows/ci.yml`
 - Modify: `docker-compose.jellyfin.yml`
@@ -295,7 +295,7 @@ Server: `git commit -m "feat(compat): add Jellyfin routes and discovery"`.
 
 - [ ] **Step 1: Run complete embedded-versus-external parity**
 
-Use clean Vondel state and deterministic fixtures for identity, catalog, every mapped media type, playback/transcode/subtitles, state, sessions/events, adult isolation, Live TV/DVR/recordings, Jellyfin Web, discovery, restart, dependency failure, slow clients, disabled/revoked/incompatible applications, and native health.
+Use clean Bloem state and deterministic fixtures for identity, catalog, every mapped media type, playback/transcode/subtitles, state, sessions/events, adult isolation, Live TV/DVR/recordings, Jellyfin Web, discovery, restart, dependency failure, slow clients, disabled/revoked/incompatible applications, and native health.
 
 - [ ] **Step 2: Switch the fixed route table only after parity**
 
@@ -321,4 +321,4 @@ bash scripts/verify-private-release_test.sh
 git diff --check
 ```
 
-Commit application release preparation and server cutover separately. Tag/release only after independent review and exact-HEAD CI; record tag, peeled commit, image digest, CI run, and private visibility in the Vondel inventory.
+Commit application release preparation and server cutover separately. Tag/release only after independent review and exact-HEAD CI; record tag, peeled commit, image digest, CI run, and private visibility in the Bloem inventory.

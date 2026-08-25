@@ -1,18 +1,18 @@
-# Vondel Resource Tenancy Design
+# Bloem Resource Tenancy Design
 
 **Date:** 2026-08-13
 
 **Status:** Approved
 
-**Depends on:** `2026-08-12-vondel-tenant-identity-foundation.md`
+**Depends on:** `2026-08-12-bloem-tenant-identity-foundation.md`
 
-**Source architecture:** `2026-08-12-vondel-multitenant-security-and-authorization-design.md`
+**Source architecture:** `2026-08-12-bloem-multitenant-security-and-authorization-design.md`
 
 ## Objective
 
 Make ownership and organization visibility explicit for every server resource
-before Vondel enables direct-profile login, delegated administration, or
-multi-organization resource management. The populated Vondel catalog becomes
+before Bloem enables direct-profile login, delegated administration, or
+multi-organization resource management. The populated Bloem catalog becomes
 platform-owned and is granted to the default organization through stored,
 auditable entitlements. Existing Silo-compatible `/api/v1` behavior remains
 unchanged.
@@ -277,7 +277,7 @@ with application predicates and candidate RLS policies and require identical
 allow/deny sets. RLS tests prove transaction-local context is reset between
 pooled connections and that missing context exposes no tenant rows.
 
-### Populated Vondel acceptance
+### Populated Bloem acceptance
 
 1. Snapshot the database and application LXCs.
 2. Record counts and visibility for users, profiles, libraries, media, plugin

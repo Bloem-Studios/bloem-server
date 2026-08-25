@@ -1,4 +1,4 @@
-# Vondel OPA-Centered Multi-Tenant Authorization Design
+# Bloem OPA-Centered Multi-Tenant Authorization Design
 
 **Date:** 2026-08-13
 
@@ -10,7 +10,7 @@
 
 ## Purpose
 
-Vondel must support both a single self-hosted installation and a service with
+Bloem must support both a single self-hosted installation and a service with
 many independent organizations and thousands of accounts. It must preserve
 Silo client behavior while adding direct profile authentication, scoped
 administration, platform-shared resources, and strong tenant isolation.
@@ -22,8 +22,8 @@ policy decisions; every protocol adapter uses the same services.
 
 This document supersedes:
 
-- `2026-08-12-vondel-multitenant-security-and-authorization-design.md`; and
-- `2026-08-13-vondel-tenancy-admin-design.md`.
+- `2026-08-12-bloem-multitenant-security-and-authorization-design.md`; and
+- `2026-08-13-bloem-tenancy-admin-design.md`.
 
 The earlier tenant-identity and resource-ownership implementation remains
 subject to review against this design. The unmerged tenancy-administration
@@ -49,8 +49,8 @@ migration is not approved for merge merely because portions may be reusable.
 - Multiple simultaneous access groups per profile.
 - Cross-organization resource sharing.
 - Implicit media access for platform or organization administrators.
-- Encoding Vondel branding into shared server contracts.
-- Using an artificially high API version to distinguish Vondel clients.
+- Encoding Bloem branding into shared server contracts.
+- Using an artificially high API version to distinguish Bloem clients.
 
 ## Architectural Responsibilities
 
@@ -101,7 +101,7 @@ sensitive operation occurs.
 
 ### Protocol adapters
 
-Silo v1, Vondel/Silo v2, web administration, Jellyfin compatibility,
+Silo v1, Bloem/Silo v2, web administration, Jellyfin compatibility,
 Audiobookshelf compatibility, Live TV, plugins, downloads, playback, and event
 delivery are adapters over the same subject-resolution and policy services.
 Changing protocol surface cannot change effective authority.
@@ -173,7 +173,7 @@ The UI and API use these names and do not call all three concepts “bundles.”
 
 The policy evaluation order is:
 
-1. immutable tenant and Vondel safety rules;
+1. immutable tenant and Bloem safety rules;
 2. resource ownership or active platform entitlement;
 3. applicable platform or organization administrative grant, for an
    administrative action;
@@ -377,9 +377,9 @@ Implementation is divided into independently reviewable changes:
 7. platform and organization administration UI; and
 8. Live TV and plugin policy extensions.
 
-Shared commits remain product-neutral. Vondel branding, optional capabilities,
+Shared commits remain product-neutral. Bloem branding, optional capabilities,
 and deployment defaults stay in separate commits. Upstream Silo may accept the
-foundation incrementally without adopting every Vondel feature.
+foundation incrementally without adopting every Bloem feature.
 
 ## Deferred
 

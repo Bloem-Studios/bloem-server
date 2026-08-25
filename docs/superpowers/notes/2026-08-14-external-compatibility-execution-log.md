@@ -4,12 +4,12 @@ Durable implementation notes for the approved external compatibility application
 
 ## Canonical documents
 
-- Design: `docs/superpowers/specs/2026-08-12-vondel-compatibility-sidecars-design.md`
-- Roadmap: `docs/superpowers/plans/2026-08-12-vondel-compatibility-sidecars.md`
-- Foundation plan: `docs/superpowers/plans/2026-08-13-vondel-compatibility-1-foundation.md`
-- Audiobookshelf plan: `docs/superpowers/plans/2026-08-13-vondel-compatibility-2-audiobookshelf.md`
-- Jellyfin plan: `docs/superpowers/plans/2026-08-13-vondel-compatibility-3-jellyfin.md`
-- Cutover plan: `docs/superpowers/plans/2026-08-13-vondel-compatibility-4-cutover.md`
+- Design: `docs/superpowers/specs/2026-08-12-bloem-compatibility-sidecars-design.md`
+- Roadmap: `docs/superpowers/plans/2026-08-12-bloem-compatibility-sidecars.md`
+- Foundation plan: `docs/superpowers/plans/2026-08-13-bloem-compatibility-1-foundation.md`
+- Audiobookshelf plan: `docs/superpowers/plans/2026-08-13-bloem-compatibility-2-audiobookshelf.md`
+- Jellyfin plan: `docs/superpowers/plans/2026-08-13-bloem-compatibility-3-jellyfin.md`
+- Cutover plan: `docs/superpowers/plans/2026-08-13-bloem-compatibility-4-cutover.md`
 
 The design was approved and the roadmap/plans were committed in:
 
@@ -33,22 +33,22 @@ The four plans execute serially. Each implementation task uses this gate:
 
 Implementation stays on the isolated `feature/opa-tenant-foundation` branch. Plan execution does not authorize pushes, merges, deployments, repository creation, releases, tags, visibility changes, or destructive production operations. Those remain explicit external gates.
 
-An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08-13-vondel-compatibility-1-foundation/`. This tracked note is the maintainer-facing durable summary; it must not contain local filesystem paths or secrets.
+An ignored recovery ledger and task reports live under `.superpowers/sdd/2026-08-13-bloem-compatibility-1-foundation/`. This tracked note is the maintainer-facing durable summary; it must not contain local filesystem paths or secrets.
 
 ## Binding architecture rulings
 
-- Vondel remains authoritative for credentials, profiles, organizations, policy, media state, playback, delivery, events, and Prairie-derived Live TV/DVR.
-- The removable private applications are named `vondel-audiobookshelf` and `vondel-jellyfin`.
-- Both use Vondel's canonical public address. Audiobookshelf owns only `/audiobookshelf/**`; Jellyfin owns a reviewed fixed protocol route set and `/web`.
-- Companions receive no Vondel database, Redis, media filesystem, Docker socket, signing key, provider credential, or tuner credential.
-- Vondel never controls Docker. Administration shows health and exact operator commands but performs no container mutation.
+- Bloem remains authoritative for credentials, profiles, organizations, policy, media state, playback, delivery, events, and Prairie-derived Live TV/DVR.
+- The removable private applications are named `bloem-audiobookshelf` and `bloem-jellyfin`.
+- Both use Bloem's canonical public address. Audiobookshelf owns only `/audiobookshelf/**`; Jellyfin owns a reviewed fixed protocol route set and `/web`.
+- Companions receive no Bloem database, Redis, media filesystem, Docker socket, signing key, provider credential, or tuner credential.
+- Bloem never controls Docker. Administration shows health and exact operator commands but performs no container mutation.
 - A profile is either shared-only or has both a globally unique email and password. Partial direct credentials are invalid.
-- Account owners own profiles, unchanged. A profile's optional email and password are a second front door to that one profile, usable from any client — Jellyfin, the Silo and Vondel clients, Audiobookshelf — and the profile still belongs to its parent account.
+- Account owners own profiles, unchanged. A profile's optional email and password are a second front door to that one profile, usable from any client — Jellyfin, the Silo and Bloem clients, Audiobookshelf — and the profile still belongs to its parent account.
 - A direct profile login carries least privilege, not parity with reaching that profile through the account login: it may browse, play, and keep its own progress, settings, devices, and profile record, and nothing else. Household management, account surfaces, and anything that mints a differently scoped credential are refused even when the bound profile is the household primary. The reason is exposure — this password is typed into third-party clients, so it must not be spendable as the account. Confirmed by the maintainer on 2026-08-14.
 - Legacy account login and current PIN-based shared-device profile switching remain supported.
 - Direct profile login binds the session to exactly one organization, account, profile, device, authentication method, audience, capabilities, and current security/policy revisions.
 - Unknown devices receive no public profile directory.
-- Canonical progress, bookmarks, favorites, collections, playlists, downloads, playback state, Live TV rules, and recordings remain in Vondel.
+- Canonical progress, bookmarks, favorites, collections, playlists, downloads, playback state, Live TV rules, and recordings remain in Bloem.
 - Companion persistence contains disposable protocol state only. Default storage is companion-owned SQLite/WAL; a separate companion-owned PostgreSQL database is optional.
 - Both source repositories and release artifacts remain private indefinitely.
 - Audiobookshelf extraction precedes Jellyfin. Embedded code is removed only after dual-run parity and exact private release-image acceptance.
@@ -377,7 +377,7 @@ The Audiobookshelf, Jellyfin/Live TV, and final cutover plans remain pending unt
 - Task 6 (`a5ff3adc`, merged `446fc94b`) closed the four gaps the fourth pass left and grew to 55
   tamper cases. Top-level sections are no longer default-allow — `.networks`, `.volumes`,
   `.secrets`, and `.configs` are diffed with a key allowlist on network entries; `silo.networks`
-  is pinned to exactly `default` plus `vondel-compat` with no options; base services carry their
+  is pinned to exactly `default` plus `bloem-compat` with no options; base services carry their
   own key allowlist; and a second scan pass runs with the operator `.env` when one is present.
   Verified independently: an attacker-named external `default` network with zero service-level
   change now produces nine FAIL lines.

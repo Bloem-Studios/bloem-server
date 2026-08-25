@@ -1,12 +1,12 @@
-# Vondel Clean-Room Native Clients Design
+# Bloem Clean-Room Native Clients Design
 
 **Date:** 2026-08-12  
 **Status:** Approved design  
-**Products:** Vondel for Apple platforms and Vondel for Android platforms
+**Products:** Bloem for Apple platforms and Bloem for Android platforms
 
 ## Objective
 
-Build two genuinely independent, publishable native client families for Vondel and compatible official Silo servers. The clients cover every supported media category from their first store release:
+Build two genuinely independent, publishable native client families for Bloem and compatible official Silo servers. The clients cover every supported media category from their first store release:
 
 - movies;
 - episodic television;
@@ -15,7 +15,7 @@ Build two genuinely independent, publishable native client families for Vondel a
 - ebooks;
 - manga.
 
-They also include the complete capability-gated Live TV experience defined by `2026-08-12-vondel-prairie-livetv-design.md`: channel guide, live playback, timeshift, one-off/series DVR, conflicts and recordings.
+They also include the complete capability-gated Live TV experience defined by `2026-08-12-bloem-prairie-livetv-design.md`: channel guide, live playback, timeshift, one-off/series DVR, conflicts and recordings.
 
 All target platforms exist from the beginning. tvOS and Android TV lead product development, but store submission waits until the complete Apple and Android platform matrices satisfy the acceptance criteria.
 
@@ -27,7 +27,7 @@ The goal is not to obscure provenance or mislead reviewers. The applications mus
 
 Apple Guideline 4.3 rejects apps that are indistinguishable from widely available apps, while Guideline 5.2 requires developers to own or license included intellectual property and avoid copycat representations. Google Play's repetitive-content policy rejects apps that copy another app's experience without original content or value.
 
-Vondel addresses those requirements through original product value, verifiable clean-room development, accurate metadata, complete functionality, and a distinct media-mode experience. The review package will state what the product does and provide a stable demo environment; it will not claim that cosmetic changes alone make the app independent.
+Bloem addresses those requirements through original product value, verifiable clean-room development, accurate metadata, complete functionality, and a distinct media-mode experience. The review package will state what the product does and provide a stable demo environment; it will not claim that cosmetic changes alone make the app independent.
 
 Official policy references:
 
@@ -36,16 +36,16 @@ Official policy references:
 
 ## Repository boundary
 
-Three new repositories start empty with zero-parent Vondel root commits:
+Three new repositories start empty with zero-parent Bloem root commits:
 
-- `Vondel-Media/vondel-client-contracts`
-- `Vondel-Media/vondel-apple`
-- `Vondel-Media/vondel-android`
+- `Bloem-Studios/bloem-client-contracts`
+- `Bloem-Studios/bloem-apple`
+- `Bloem-Studios/bloem-android`
 
 The private reference repositories remain separate and read-only:
 
-- `Vondel-Media/silo-apple-reference`
-- `Vondel-Media/silo-android-reference`
+- `Bloem-Studios/silo-apple-reference`
+- `Bloem-Studios/silo-android-reference`
 
 The reference repositories are never Git remotes, dependencies, submodules, build inputs, source generators, or copy sources for the new applications. They may be consulted only to compile a high-level feature coverage list and observe public black-box behavior. Reference access is documented in the provenance ledger.
 
@@ -53,7 +53,7 @@ The reference repositories are never Git remotes, dependencies, submodules, buil
 
 ### Contract team boundary
 
-The contracts repository is derived from Vondel Server route definitions, checked-in API documentation, invented fixtures, and observed network contracts against controlled servers. It defines:
+The contracts repository is derived from Bloem Server route definitions, checked-in API documentation, invented fixtures, and observed network contracts against controlled servers. It defines:
 
 - endpoint paths and HTTP methods;
 - request and response schemas;
@@ -94,7 +94,7 @@ Targets:
 
 Core components:
 
-- typed HTTP/WebSocket gateway generated or hand-written from Vondel contracts;
+- typed HTTP/WebSocket gateway generated or hand-written from Bloem contracts;
 - Keychain-backed account/profile vault;
 - server/account/profile-scoped local persistence;
 - independent Watch, Listen and Read repositories;
@@ -116,7 +116,7 @@ Targets:
 
 Core components:
 
-- typed HTTP/WebSocket gateway from Vondel contracts;
+- typed HTTP/WebSocket gateway from Bloem contracts;
 - Android Keystore-backed account/profile vault;
 - server/account/profile-scoped Room persistence;
 - independent Watch, Listen and Read repositories;
@@ -132,7 +132,7 @@ Apple and Android share semantics through the contracts and conformance fixtures
 
 ## Product information architecture
 
-Vondel is organized by what the user intends to do rather than by server database types.
+Bloem is organized by what the user intends to do rather than by server database types.
 
 ### Watch
 
@@ -181,14 +181,14 @@ Connection flow:
 
 1. discover a local server or accept a manually entered HTTPS URL;
 2. validate the origin and probe server identity/capabilities;
-3. authenticate through the documented Vondel/Silo endpoint;
+3. authenticate through the documented Bloem/Silo endpoint;
 4. store tokens in the platform security vault;
 5. select account/profile and create a strict scope identifier;
 6. open scoped persistence and synchronize supported content.
 
 Every cached entity and pending mutation is keyed by server, account and profile. Switching any identity closes the old scope before rendering the new one. Tokens, URLs and user media metadata are never logged by default.
 
-Both Vondel and compatible official Silo servers are supported. Capability negotiation determines available functionality. Missing optional capabilities produce a visible unavailable state or a documented fallback; the client never silently assumes a Vondel-only extension exists.
+Both Bloem and compatible official Silo servers are supported. Capability negotiation determines available functionality. Missing optional capabilities produce a visible unavailable state or a documented fallback; the client never silently assumes a Bloem-only extension exists.
 
 ## Playback and reader design
 
@@ -223,9 +223,9 @@ Errors are classified as connection, TLS/origin, authentication, authorization, 
 
 ## Original visual identity
 
-Vondel receives an original visual system and store package:
+Bloem receives an original visual system and store package:
 
-- Vondel-owned icon, wordmark, splash and store imagery;
+- Bloem-owned icon, wordmark, splash and store imagery;
 - original typography, color, motion and spacing tokens;
 - original poster/artwork treatments and focus states;
 - original navigation structure and screen composition;
@@ -238,7 +238,7 @@ No Silo artwork, screenshots, copy, source asset, component layout or metadata i
 
 ### Contract conformance
 
-The contracts repository runs deterministic cases against invented fixtures and a disposable Vondel Server. Each endpoint covers success, authentication/authorization failure, missing capability, malformed response, timeout and cancellation.
+The contracts repository runs deterministic cases against invented fixtures and a disposable Bloem Server. Each endpoint covers success, authentication/authorization failure, missing capability, malformed response, timeout and cancellation.
 
 ### Platform tests
 
@@ -269,7 +269,7 @@ Store submission is blocked until movies, episodic television, music, audiobooks
 - Android tablet;
 - Android TV.
 
-The same seven-target matrix must pass guide, tune, heartbeat/recovery, pause/resume/seek-live, one-off/series record, conflict and recordings behavior when connected to a Live TV-capable Vondel Server.
+The same seven-target matrix must pass guide, tune, heartbeat/recovery, pause/resume/seek-live, one-off/series record, conflict and recordings behavior when connected to a Live TV-capable Bloem Server.
 
 Implementation proceeds in vertical slices, but a partially covered media or platform matrix is not called the initial release.
 
@@ -278,7 +278,7 @@ Implementation proceeds in vertical slices, but a partially covered media or pla
 Each store submission includes:
 
 - accurate product description and privacy disclosures;
-- Vondel-owned support and privacy-policy URLs;
+- Bloem-owned support and privacy-policy URLs;
 - stable reviewer credentials and a populated demo server;
 - explicit review notes describing server connection and all media modes;
 - original screenshots/previews showing actual app operation;
@@ -301,7 +301,7 @@ No claim is made that App Review or Google Play approval can be guaranteed. The 
 
 ## Licensing
 
-The new contracts and client repositories use `AGPL-3.0-or-later`, consistent with the Vondel ecosystem. Their AGPL license does not depend on or imply incorporation of the reference client source. Every third-party dependency and asset must have a recorded compatible license before entering a release build.
+The new contracts and client repositories use `AGPL-3.0-or-later`, consistent with the Bloem ecosystem. Their AGPL license does not depend on or imply incorporation of the reference client source. Every third-party dependency and asset must have a recorded compatible license before entering a release build.
 
 ## Delivery sequence
 
@@ -313,7 +313,7 @@ The new contracts and client repositories use `AGPL-3.0-or-later`, consistent wi
 6. Add Read, including ebooks and manga, across all targets.
 7. Complete phone/tablet/macOS Watch experiences and shared cross-media Now behavior.
 8. Complete downloads, recovery, accessibility, localization, privacy and store metadata.
-9. Complete the capability-gated Live TV/DVR vertical slice on every target after the Vondel Live TV contracts are published.
+9. Complete the capability-gated Live TV/DVR vertical slice on every target after the Bloem Live TV contracts are published.
 10. Run the full platform/media/Live TV acceptance matrix and prepare reviewer environments/dossiers.
 
 Tasks may run concurrently when they touch independent repositories or media coordinators, but conformance and identity-scoping gates remain prerequisites for feature integration.
@@ -322,10 +322,10 @@ Tasks may run concurrently when they touch independent repositories or media coo
 
 The clean-room client project is ready for store submission only when:
 
-- all three new repositories begin from empty Vondel roots and contain no reference source/assets;
+- all three new repositories begin from empty Bloem roots and contain no reference source/assets;
 - Apple and Android use independently designed native architectures and interfaces;
 - the six library media categories and capability-gated Live TV/DVR work across the seven target form factors;
-- both Vondel and capability-compatible official Silo servers pass conformance;
+- both Bloem and capability-compatible official Silo servers pass conformance;
 - TV focus/navigation and all playback/reader matrices pass;
 - offline bundles, profile scoping, retries and diagnostics pass safety tests;
 - accessibility, localization, privacy and security gates pass;

@@ -1,14 +1,14 @@
-# Vondel Profile Login and Shared Devices Design
+# Bloem Profile Login and Shared Devices Design
 
 **Date:** 2026-08-12
 
 **Status:** Approved
 
-**Scope:** Add optional direct credentials to Vondel profiles while preserving Silo-compatible household login and making shared-client profile switching convenient and revocable.
+**Scope:** Add optional direct credentials to Bloem profiles while preserving Silo-compatible household login and making shared-client profile switching convenient and revocable.
 
 ## Decision
 
-Vondel keeps its current household ownership model:
+Bloem keeps its current household ownership model:
 
 - A `users` account owns administration, invitations, service limits, permissions, and one or more `user_profiles`.
 - The account login and primary profile are separate identities. The primary
@@ -17,9 +17,9 @@ Vondel keeps its current household ownership model:
 - Secondary profiles remain local-only by default and require neither email nor password.
 - A secondary profile gains a direct login only when its owner explicitly enables one with a globally unique email and password.
 - Silo-compatible clients continue to authenticate the household and then select a profile.
-- New Vondel clients can authenticate directly into one profile or pair as a shared household device.
+- New Bloem clients can authenticate directly into one profile or pair as a shared household device.
 
-Shared clients do not require every household member's password. The owner approves the device once, selects the profiles it may access, and Vondel issues a revocable device-bound grant. Switching among granted profiles is immediate, subject to an optional profile PIN.
+Shared clients do not require every household member's password. The owner approves the device once, selects the profiles it may access, and Bloem issues a revocable device-bound grant. Switching among granted profiles is immediate, subject to an optional profile PIN.
 
 ## Goals
 
@@ -89,9 +89,9 @@ Profile-bound authorization always uses both parent user ID and fixed profile ID
 TVs and other shared clients default to device pairing:
 
 1. The client requests a short-lived, single-use pairing code and displays it.
-2. The primary owner opens an authenticated Vondel web/mobile session and enters or approves the code.
+2. The primary owner opens an authenticated Bloem web/mobile session and enters or approves the code.
 3. The owner names the device and selects which profiles it may access.
-4. Vondel stores a device grant and returns a revocable device credential through the pending pairing channel.
+4. Bloem stores a device grant and returns a revocable device credential through the pending pairing channel.
 5. The device lists only granted profiles and can switch between them without profile passwords.
 
 Pairing codes are high-entropy despite their short display form, rate-limited, expire quickly, bind to the requesting device key, and cannot be replayed after approval or denial. The stored grant, not a self-contained token list, is authoritative for allowed profiles. Removing a profile from the grant takes effect immediately.
@@ -128,7 +128,7 @@ Every operation is reauthorized against current account, profile, library, and d
 
 ## Credentials and Recovery
 
-- Passwords use Vondel's existing password hashing policy and strength rules.
+- Passwords use Bloem's existing password hashing policy and strength rules.
 - Profile password hashes are stored separately from profile PIN hashes.
 - Raw passwords, PINs, pairing codes, access tokens, and reset tokens never appear in logs or events.
 - The primary owner can create, change, disable, or reset a profile's
@@ -193,7 +193,7 @@ Rollout order is server schema and capability discovery, web administration, sha
 
 - Expired, denied, replayed, or mismatched pairing codes fail without creating a grant.
 - A revoked device grant invalidates new requests immediately.
-- Revocation during playback follows Vondel's configured session-revocation policy; it never authorizes a new segment or refreshed URL after revocation.
+- Revocation during playback follows Bloem's configured session-revocation policy; it never authorizes a new segment or refreshed URL after revocation.
 - If the server is unavailable during pairing, the client remains untrusted and offers a retry; it does not create local profile authority.
 - Disabled accounts deny every contained profile. Disabled direct login denies only that credential unless the account/profile itself is disabled.
 - A missing or no-longer-granted profile disappears from the device picker and its cached state is removed.
@@ -218,4 +218,4 @@ Server and client conformance must cover:
 - web, iOS, iPadOS, macOS, tvOS, Android, and Android TV flows;
 - automatic fallback to legacy login against official-compatible Silo servers.
 
-Acceptance runs against the dedicated Vondel development server with personal and shared device fixtures, multiple local-only and direct-login profiles, and separately permissioned adult content.
+Acceptance runs against the dedicated Bloem development server with personal and shared device fixtures, multiple local-only and direct-login profiles, and separately permissioned adult content.

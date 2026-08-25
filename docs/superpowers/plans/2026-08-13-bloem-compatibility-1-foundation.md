@@ -1,20 +1,20 @@
-# Vondel Compatibility Foundation Implementation Plan
+# Bloem Compatibility Foundation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the identity, trust, private API, gateway, administration, and deployment foundation required by removable compatibility applications.
 
-**Architecture:** Vondel remains the sole authority and exposes a capability-scoped `/api/internal/compat/v1` contract. A fixed-path gateway on Vondel's existing listener forwards only reviewed protocol routes to enrolled applications; enrollment and application state are durable, revocable, and independent per instance.
+**Architecture:** Bloem remains the sole authority and exposes a capability-scoped `/api/internal/compat/v1` contract. A fixed-path gateway on Bloem's existing listener forwards only reviewed protocol routes to enrolled applications; enrollment and application state are durable, revocable, and independent per instance.
 
 **Tech Stack:** Go 1.26, PostgreSQL/pgx, chi, OpenAPI 3.1, React/TypeScript, Docker Compose, mTLS for remote placement.
 
-**Spec:** `docs/superpowers/specs/2026-08-12-vondel-compatibility-sidecars-design.md`
+**Spec:** `docs/superpowers/specs/2026-08-12-bloem-compatibility-sidecars-design.md`
 
 ## Global Constraints
 
 - Repositories and artifacts remain private indefinitely.
-- No companion receives Vondel database, Redis, filesystem, Docker socket, signing-key, provider, or tuner access.
-- Vondel reauthorizes every subject operation; companion cache state is never authoritative.
+- No companion receives Bloem database, Redis, filesystem, Docker socket, signing-key, provider, or tuner access.
+- Bloem reauthorizes every subject operation; companion cache state is never authoritative.
 - Profile email and password are optional together, never separately; login email is globally unique across accounts and profiles.
 - Existing account login and per-profile PIN switching remain unchanged.
 - Gateway ownership is compile-time/static configuration, not runtime route registration.
@@ -189,14 +189,14 @@ git commit -m "feat(compat): add companion enrollment and trust"
 **Interfaces:**
 - Produces versioned routes below `/api/internal/compat/v1`.
 - Produces generated-style `compatapi/client.Client` methods for enrollment/health, credential exchange/device/PIN/profile, catalog/search/detail/artwork, state/collections/playlists/downloads, playback, sessions, Live TV, and resumable events.
-- Consumes `compatapp.Service.Authenticate` and existing narrow Vondel domain interfaces.
+- Consumes `compatapp.Service.Authenticate` and existing narrow Bloem domain interfaces.
 
 - [ ] **Step 1: Write the failing OpenAPI structural test**
 
 ```go
 func TestOperationsDeclareCapabilityIdempotencyAndErrors(t *testing.T) {
 	for _, op := range loadOperations(t) {
-		require.NotEmpty(t, op.Extension("x-vondel-capability"))
+		require.NotEmpty(t, op.Extension("x-bloem-capability"))
 		requireResponses(t, op, 401, 403, 409, 429, 503)
 		if op.Mutates() { require.True(t, op.RequiresHeader("Idempotency-Key")) }
 	}
@@ -211,7 +211,7 @@ Expected: FAIL. Define subject tokens without caller-selected subject IDs, signe
 
 - [ ] **Step 3: Implement handlers as policy-enforcing adapters**
 
-Each handler authenticates the application, validates its operation capability, resolves the token-bound subject, installs authoritative tenant facts, invokes existing Vondel services, and filters the response before encoding. Never expose database identifiers not already part of the public media model, filesystem paths, provider/tuner credentials, or signing material.
+Each handler authenticates the application, validates its operation capability, resolves the token-bound subject, installs authoritative tenant facts, invokes existing Bloem services, and filters the response before encoding. Never expose database identifiers not already part of the public media model, filesystem paths, provider/tuner credentials, or signing material.
 
 - [ ] **Step 4: Verify authorization and contract parity**
 
@@ -292,19 +292,19 @@ git commit -m "feat(compat): add fixed-path gateway administration"
 - Create: `docs/operations/compatibility-applications.md`
 
 **Interfaces:**
-- Produces private network aliases `vondel-audiobookshelf` and `vondel-jellyfin` with no host ports.
-- Produces Docker-secret enrollment mount `/run/secrets/vondel_compat_enrollment`.
+- Produces private network aliases `bloem-audiobookshelf` and `bloem-jellyfin` with no host ports.
+- Produces Docker-secret enrollment mount `/run/secrets/bloem_compat_enrollment`.
 - Produces loopback-only diagnostic ports solely in the diagnostic override.
 
 - [ ] **Step 1: Write failing structural tests**
 
-Assert companions have no `ports`, Vondel DB/Redis environment variables, media/data mounts, Docker socket, privileged mode, shared signing/provider/tuner credentials, or public registry publication actions. Assert only named volumes for disposable SQLite/WAL state and a read-only enrollment secret.
+Assert companions have no `ports`, Bloem DB/Redis environment variables, media/data mounts, Docker socket, privileged mode, shared signing/provider/tuner credentials, or public registry publication actions. Assert only named volumes for disposable SQLite/WAL state and a read-only enrollment secret.
 
 - [ ] **Step 2: Prove RED and implement Compose overlays**
 
 Run: `bash scripts/verify-compat-compose_test.sh`
 
-Expected: FAIL because overlays are absent. Add commented base examples and complete opt-in overlays using private image placeholders `ghcr.io/vondel-media/vondel-audiobookshelf:latest` and `ghcr.io/vondel-media/vondel-jellyfin:latest`; production pulls require private-registry authentication.
+Expected: FAIL because overlays are absent. Add commented base examples and complete opt-in overlays using private image placeholders `ghcr.io/bloem-media/bloem-audiobookshelf:latest` and `ghcr.io/bloem-media/bloem-jellyfin:latest`; production pulls require private-registry authentication.
 
 - [ ] **Step 3: Document same-host and remote deployment**
 
@@ -331,7 +331,7 @@ git commit -m "docs(compat): add private companion deployment contracts"
 **Files:**
 - Create: `internal/acceptance/compat_foundation_test.go`
 - Modify: `.github/workflows/ci.yml`
-- Modify: `docs/superpowers/specs/2026-08-12-vondel-compatibility-sidecars-design.md`
+- Modify: `docs/superpowers/specs/2026-08-12-bloem-compatibility-sidecars-design.md`
 
 **Interfaces:**
 - Consumes Tasks 1–6.
@@ -366,6 +366,6 @@ git diff --check
 Update only the foundation checklist/evidence in the spec; extraction remains incomplete.
 
 ```bash
-git add .github/workflows/ci.yml internal/acceptance/compat_foundation_test.go docs/superpowers/specs/2026-08-12-vondel-compatibility-sidecars-design.md
+git add .github/workflows/ci.yml internal/acceptance/compat_foundation_test.go docs/superpowers/specs/2026-08-12-bloem-compatibility-sidecars-design.md
 git commit -m "test(compat): lock compatibility foundation"
 ```

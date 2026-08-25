@@ -1,35 +1,35 @@
-# Vondel Audiobookshelf Application Implementation Plan
+# Bloem Audiobookshelf Application Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Create the private `vondel-audiobookshelf` application, reach full protocol parity through Vondel's private API, and switch `/audiobookshelf/**` without affecting native audiobook behavior.
+**Goal:** Create the private `bloem-audiobookshelf` application, reach full protocol parity through Bloem's private API, and switch `/audiobookshelf/**` without affecting native audiobook behavior.
 
-**Architecture:** The application owns Audiobookshelf HTTP and Socket.IO translation plus disposable protocol state. Vondel remains authoritative for identity, policy, audiobook catalog, progress, bookmarks, collections, playlists, downloads, playback, and events; the fixed gateway strips `/audiobookshelf` before forwarding.
+**Architecture:** The application owns Audiobookshelf HTTP and Socket.IO translation plus disposable protocol state. Bloem remains authoritative for identity, policy, audiobook catalog, progress, bookmarks, collections, playlists, downloads, playback, and events; the fixed gateway strips `/audiobookshelf` before forwarding.
 
 **Tech Stack:** Go 1.26, SQLite/WAL, optional PostgreSQL, Socket.IO/WebSocket, generated Compatibility API client, Docker, private GitHub Actions/OCI.
 
-**Spec:** `docs/superpowers/specs/2026-08-12-vondel-compatibility-sidecars-design.md`
+**Spec:** `docs/superpowers/specs/2026-08-12-bloem-compatibility-sidecars-design.md`
 
 ## Global Constraints
 
 - Repository and images remain private indefinitely.
-- The application receives no Vondel database, Redis, media mounts, Docker socket, signing key, or unrelated secrets.
+- The application receives no Bloem database, Redis, media mounts, Docker socket, signing key, or unrelated secrets.
 - Submitted passwords are forwarded transiently and never persisted, hashed, cached, inspected beyond decoding, or logged.
-- Canonical progress, bookmarks, collections, playlists, downloads, playback, and activity remain in Vondel.
+- Canonical progress, bookmarks, collections, playlists, downloads, playback, and activity remain in Bloem.
 - Application persistence is disposable protocol state only, defaulting to SQLite/WAL in its own named volume.
-- Public access exists only at the canonical Vondel `/audiobookshelf/**` prefix.
+- Public access exists only at the canonical Bloem `/audiobookshelf/**` prefix.
 - Use RED/GREEN TDD, task commits, independent reviews, and exact private release evidence.
 
 ---
 
 ### Task 1: Create the Private Application Repository
 
-**Files (new repository `Vondel-Media/vondel-audiobookshelf`):**
+**Files (new repository `Bloem-Studios/bloem-audiobookshelf`):**
 - Create: `go.mod`
 - Create: `LICENSE`
 - Create: `NOTICE`
 - Create: `README.md`
-- Create: `cmd/vondel-audiobookshelf/main.go`
+- Create: `cmd/bloem-audiobookshelf/main.go`
 - Create: `internal/config/config.go`
 - Create: `internal/config/config_test.go`
 - Create: `.github/workflows/ci.yml`
@@ -42,15 +42,15 @@
 
 - [ ] **Step 1: Create the private repository and prove visibility before first push**
 
-Initialize a parentless `main`, preserve AGPL-3.0 license obligations, and add `NOTICE` naming the exact Vondel source commit and extracted `internal/audiobooks/abs`, `internal/audiobooks/abssocket`, and related store paths. Configure the upstream/source remote fetch-only and its push URL to `DISABLED`.
+Initialize a parentless `main`, preserve AGPL-3.0 license obligations, and add `NOTICE` naming the exact Bloem source commit and extracted `internal/audiobooks/abs`, `internal/audiobooks/abssocket`, and related store paths. Configure the upstream/source remote fetch-only and its push URL to `DISABLED`.
 
 - [ ] **Step 2: Write failing configuration and privacy tests**
 
-Test required Vondel endpoint, enrollment secret file, state DSN, API range, TLS/mTLS validation, absence of password-bearing log values, and rejection of enrollment secrets supplied through environment variables or URLs.
+Test required Bloem endpoint, enrollment secret file, state DSN, API range, TLS/mTLS validation, absence of password-bearing log values, and rejection of enrollment secrets supplied through environment variables or URLs.
 
 - [ ] **Step 3: Implement minimal process lifecycle**
 
-Read the enrollment token only from `/run/secrets/vondel_compat_enrollment`, enroll once, remove its in-memory bytes, renew service credentials, perform API compatibility handshake before readiness, and stop accepting traffic on revocation/incompatibility.
+Read the enrollment token only from `/run/secrets/bloem_compat_enrollment`, enroll once, remove its in-memory bytes, renew service credentials, perform API compatibility handshake before readiness, and stop accepting traffic on revocation/incompatibility.
 
 - [ ] **Step 4: Add trusted private CI**
 
@@ -63,7 +63,7 @@ GOWORK=off go test ./... -count=1
 GOWORK=off go test -race ./... -count=1
 GOWORK=off go vet ./...
 bash scripts/verify-private-source_test.sh
-git add . && git commit -m "feat: create Vondel Audiobookshelf application"
+git add . && git commit -m "feat: create Bloem Audiobookshelf application"
 ```
 
 ---
@@ -74,7 +74,7 @@ git add . && git commit -m "feat: create Vondel Audiobookshelf application"
 - Create: `internal/audiobookshelf/login.go`
 - Create: `internal/audiobookshelf/users.go`
 - Create: `internal/audiobookshelf/router.go`
-- Create: `internal/vondel/client.go`
+- Create: `internal/bloem/client.go`
 - Create: `internal/session/store.go`
 - Create: `internal/session/sqlite.go`
 - Create: `internal/session/postgres.go`
@@ -97,7 +97,7 @@ Expected: FAIL because handlers and state adapters are absent.
 
 - [ ] **Step 3: Implement protocol translation and disposable state**
 
-Store only opaque Vondel session correlation, ABS token ID, device capabilities, expiry, and event cursor. Enable SQLite WAL/busy timeout and provide the same repository contract for a separate optional PostgreSQL database. Never store submitted credentials or canonical profile data.
+Store only opaque Bloem session correlation, ABS token ID, device capabilities, expiry, and event cursor. Enable SQLite WAL/busy timeout and provide the same repository contract for a separate optional PostgreSQL database. Never store submitted credentials or canonical profile data.
 
 - [ ] **Step 4: Run parity and persistence tests**
 
@@ -111,8 +111,8 @@ Expected: PASS for SQLite and disposable-state reset; PostgreSQL contract runs w
 - [ ] **Step 5: Commit**
 
 ```bash
-git add internal/audiobookshelf internal/vondel internal/session
-git commit -m "feat(abs): add Vondel-backed identity"
+git add internal/audiobookshelf internal/bloem internal/session
+git commit -m "feat(abs): add Bloem-backed identity"
 ```
 
 ---
@@ -141,11 +141,11 @@ Point the shared runner at the application. Expected failures must be named for 
 
 - [ ] **Step 2: Implement read translation**
 
-Map Vondel subject-filtered resources to ABS shapes without querying storage directly. Preserve signed cursors internally even where ABS exposes page numbers. Resolve images and downloads to same-origin `/audiobookshelf/**` or Vondel delivery URLs according to protocol requirements.
+Map Bloem subject-filtered resources to ABS shapes without querying storage directly. Preserve signed cursors internally even where ABS exposes page numbers. Resolve images and downloads to same-origin `/audiobookshelf/**` or Bloem delivery URLs according to protocol requirements.
 
 - [ ] **Step 3: Implement idempotent mutations and playback**
 
-Derive stable idempotency keys from external request/session identifiers. Propagate cancellation/deadlines. Prefer direct client-to-Vondel delivery; bound any protocol-required proxy by size, time, cancellation, and slow-client backpressure.
+Derive stable idempotency keys from external request/session identifiers. Propagate cancellation/deadlines. Prefer direct client-to-Bloem delivery; bound any protocol-required proxy by size, time, cancellation, and slow-client backpressure.
 
 - [ ] **Step 4: Verify full HTTP parity and adult isolation**
 
@@ -180,7 +180,7 @@ git commit -m "feat(abs): translate catalog state and playback"
 
 - [ ] **Step 1: Write failing socket parity tests**
 
-Cover authenticated upgrade, unknown/revoked token, filtered events, reconnect from durable cursor, gap-triggered bounded resync, app restart, Vondel restart, slow consumer, queue overflow, and graceful shutdown.
+Cover authenticated upgrade, unknown/revoked token, filtered events, reconnect from durable cursor, gap-triggered bounded resync, app restart, Bloem restart, slow consumer, queue overflow, and graceful shutdown.
 
 - [ ] **Step 2: Prove RED and implement bounded event handling**
 
@@ -201,7 +201,7 @@ git commit -m "feat(abs): add resumable socket events"
 
 ### Task 5: Dual-Run Parity and Gateway Cutover
 
-**Files (Vondel Server):**
+**Files (Bloem Server):**
 - Create: `internal/acceptance/audiobookshelf_external_test.go`
 - Modify: `internal/compatgateway/routes.go`
 - Modify: `internal/compatgateway/proxy_test.go`
@@ -209,12 +209,12 @@ git commit -m "feat(abs): add resumable socket events"
 - Modify: `.github/workflows/ci.yml`
 
 **Interfaces:**
-- Consumes an exact private `vondel-audiobookshelf` image digest.
+- Consumes an exact private `bloem-audiobookshelf` image digest.
 - Produces the `/audiobookshelf/**` route cutover while embedded code remains available only as a test oracle for this task.
 
 - [ ] **Step 1: Add failing dual-run acceptance**
 
-Provision a clean Vondel database, deterministic media, embedded target, and external target. Run every shared case against both and compare normalized reports. Then exercise gateway same-origin URLs, unavailable behavior, disabled/revoked application, incompatible API, restart recovery, and native server health.
+Provision a clean Bloem database, deterministic media, embedded target, and external target. Run every shared case against both and compare normalized reports. Then exercise gateway same-origin URLs, unavailable behavior, disabled/revoked application, incompatible API, restart recovery, and native server health.
 
 - [ ] **Step 2: Prove RED and switch the route**
 
@@ -247,7 +247,7 @@ git commit -m "feat(compat): route Audiobookshelf to external application"
 
 **Interfaces:**
 - Produces a private multi-architecture image and provenance/SBOM attached to an annotated stable tag.
-- Produces exact client URL `https://vondel.example/audiobookshelf`.
+- Produces exact client URL `https://bloem.example/audiobookshelf`.
 
 - [ ] **Step 1: Write failing release policy tests**
 
@@ -255,7 +255,7 @@ Require private repository visibility, annotated stable tag at exact green `orig
 
 - [ ] **Step 2: Implement and verify the private image**
 
-Build as non-root with read-only root filesystem compatibility, separate writable state volume, health checks, no shell when practical, and linux/amd64 plus linux/arm64 images. Scan the image for Vondel secrets, submitted-password fixtures, database URLs, and media paths.
+Build as non-root with read-only root filesystem compatibility, separate writable state volume, health checks, no shell when practical, and linux/amd64 plus linux/arm64 images. Scan the image for Bloem secrets, submitted-password fixtures, database URLs, and media paths.
 
 - [ ] **Step 3: Write client and operations guides**
 
@@ -272,4 +272,4 @@ git diff --check
 git add . && git commit -m "release: prepare private Audiobookshelf application"
 ```
 
-Tag and release only after independent review and exact-HEAD CI are green; record tag, peeled commit, image digest, CI run, and private visibility in the Vondel inventory.
+Tag and release only after independent review and exact-HEAD CI are green; record tag, peeled commit, image digest, CI run, and private visibility in the Bloem inventory.

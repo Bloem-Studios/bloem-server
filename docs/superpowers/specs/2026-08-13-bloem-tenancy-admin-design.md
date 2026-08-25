@@ -1,11 +1,11 @@
-# Vondel Tenancy Administration Design
+# Bloem Tenancy Administration Design
 
 Date: 2026-08-13
-Status: Superseded by `2026-08-13-vondel-opa-centered-multitenant-authorization-design.md`
+Status: Superseded by `2026-08-13-bloem-opa-centered-multitenant-authorization-design.md`
 
 ## Purpose
 
-Vondel already has the first server-side resource-tenancy boundary: typed
+Bloem already has the first server-side resource-tenancy boundary: typed
 platform and organization owners, platform-resource entitlements, immutable
 bundle membership revisions, and fail-closed access checks. Those primitives
 are not currently manageable through the API or web interface.
@@ -282,7 +282,7 @@ The design assumes thousands of accounts and many organizations:
 - Existing compatibility-created platform resources continue to receive the
   default organization's direct entitlement.
 - Existing roots are shown with their migrated platform owner.
-- No client must inspect a server version. New Vondel clients discover the v10
+- No client must inspect a server version. New Bloem clients discover the v10
   tenancy capability and hide the workspace when absent.
 - The first implementation is server plus web administration. Native client
   administration can consume the same v10 API later without changing its

@@ -1,12 +1,12 @@
-# Vondel multitenant administration UI design
+# Bloem multitenant administration UI design
 
 **Status:** Approved design
 **Date:** 2026-08-13
-**Related design:** `docs/superpowers/specs/2026-08-13-vondel-opa-centered-multitenant-authorization-design.md`
+**Related design:** `docs/superpowers/specs/2026-08-13-bloem-opa-centered-multitenant-authorization-design.md`
 
 ## Purpose
 
-Vondel needs an administrative interface for the OPA-centered multitenant
+Bloem needs an administrative interface for the OPA-centered multitenant
 foundation. The current web administration supports server-wide users, access
 groups and policies, but it does not expose organizations, memberships,
 organization-scoped groups, tenant entitlements or an explicit authority
