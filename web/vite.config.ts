@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import os from "os";
 import { configDefaults } from "vitest/config";
-import { vondelBrand } from "./vondel-brand-plugin";
+import { bloemBrand } from "./bloem-brand-plugin";
 
 /// <reference types="vitest" />
 
@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => {
   );
 
   return {
-    plugins: [react(), tailwindcss(), vondelBrand()],
+    plugins: [react(), tailwindcss(), bloemBrand()],
     worker: {
       format: "es",
     },

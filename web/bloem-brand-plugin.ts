@@ -12,9 +12,9 @@ import { applyBrand } from "./src/lib/product-brand";
  *  alone; the wordmark is an image and is replaced by swapping the file. */
 const BRANDABLE = /\.(ts|tsx|html)$/;
 
-export function vondelBrand(): Plugin {
+export function bloemBrand(): Plugin {
   return {
-    name: "vondel-brand",
+    name: "bloem-brand",
     // After other transforms, so the string we rewrite is the one that ships.
     enforce: "post",
     transform(code, id) {
