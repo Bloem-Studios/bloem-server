@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 1022 117" role="img" aria-label="BLOEM">
+<g fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="butt" stroke-linejoin="miter">
+  <path d="M8,0 V101" />
+  <path d="M0,8 H107 A16,16 0 0 1 123,24 V34 A16,16 0 0 1 107,50 H0" />
+  <path d="M0,50 H112 A16,16 0 0 1 128,66 V77 A16,16 0 0 1 112,93 H0" />
+  <path d="M223,0 V77 A16,16 0 0 0 239,93 H340" />
+  <rect x="427" y="8" width="128" height="85" rx="20" ry="20" />
+  <rect x="643" y="0"  width="135" height="16" fill="#FA6400" stroke="none" />
+  <rect x="643" y="42" width="135" height="16" fill="#FFFFFF" stroke="none" />
+  <rect x="643" y="85" width="135" height="16" fill="#FFFFFF" stroke="none" />
+  <path d="M861,0 V101" />
+  <path d="M998,0 V101" />
+  <path d="M862,0 L929,80 L996,0" />
+</g>
+</svg>

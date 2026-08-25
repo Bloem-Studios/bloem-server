@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/bloem-banner.png" alt="Bloem Server" width="480" />
+  <img src="assets/bloem-banner.png" alt="Bloem Server" width="520" />
 </p>
 
 # Bloem Server
