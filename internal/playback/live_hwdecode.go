@@ -1,6 +1,7 @@
 package playback
 
 import (
+	"context"
 	"strings"
 	"sync"
 )
@@ -94,7 +95,12 @@ func ffmpegHasDecoder(ffmpegPath, decoder string) bool {
 		return cached
 	}
 
-	output, err := runFFmpegProbe(ffmpegPath, "-hide_banner", "-decoders")
+	// runFFmpegProbe gained a context and timeout upstream; this probe has no
+	// caller-supplied context, so it bounds itself on the same budget the GPU
+	// probes use rather than inheriting an unbounded one.
+	probeCtx, cancel := context.WithTimeout(context.Background(), nvencProbeCommandTimeout)
+	defer cancel()
+	output, err := runFFmpegProbe(probeCtx, nvencProbeCommandTimeout, ffmpegPath, "-hide_banner", "-decoders")
 	available := err == nil && ffmpegOutputHasToken(output, decoder)
 
 	decoderProbeCache.Lock()

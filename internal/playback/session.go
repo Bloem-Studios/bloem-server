@@ -1773,36 +1773,6 @@ func (m *SessionManager) stopTransportsLocked(sessionID string) {
 // transport it is still serving.
 func (m *SessionManager) StopSession(sessionID string) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	watchers, ok := m.transportStops[sessionID]
-	if !ok {
-		return
-	}
-	delete(watchers, stop)
-	if len(watchers) == 0 {
-		delete(m.transportStops, sessionID)
-	}
-}
-
-// stopTransportsLocked signals every transport registered for the session. The
-// close is cheap and never blocks, and the watchers it wakes cancel an ffmpeg
-// rather than calling back into the manager, so it is safe to do under the lock.
-func (m *SessionManager) stopTransportsLocked(sessionID string) {
-	watchers, ok := m.transportStops[sessionID]
-	if !ok {
-		return
-	}
-	delete(m.transportStops, sessionID)
-	for stop := range watchers {
-		close(stop)
-	}
-}
-
-// StopSession removes a session from the manager and interrupts any media
-// transport it is still serving.
-func (m *SessionManager) StopSession(sessionID string) error {
-	m.mu.Lock()
 	session, ok := m.sessions[sessionID]
 	if !ok {
 		m.mu.Unlock()

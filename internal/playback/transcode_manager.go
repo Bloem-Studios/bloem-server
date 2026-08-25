@@ -665,7 +665,7 @@ func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str
 		slog.WarnContext(ctx, "playback session reconstruct admitting despite unevaluated limits (degraded; limit provider unavailable)", "component", "playback",
 			"session", sessionID, "playback_session_id", sessionID,
 			"user", card.UserID, "method", method, "error", err)
-		return nil
+		session = m.Sessions.RegisterReconstructed(s)
 	}
 	slog.InfoContext(ctx, "playback session reconstructed from recipe card", "component", "playback",
 		"session", sessionID, "playback_session_id", sessionID, "user", card.UserID, "method", method)
