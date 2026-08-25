@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/bloem-banner.png" alt="Bloem Server" width="480" />
+</p>
+
 # Bloem Server
 
 Bloem Server is a public tracking fork of

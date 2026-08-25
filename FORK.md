@@ -83,9 +83,11 @@ Prairie Server subsystem pinned in `docs/livetv/prairie-source-manifest.tsv`.
 
 User-facing prose is rebranded at bundle time by `web/vondel-brand-plugin.ts`,
 so upstream web source remains mergeable. Bloem's public icons, wordmark, PWA
-manifest, service-worker default notification name, and the two asset paths in
-`SiloBrand.tsx` are maintained explicitly because Silo's reserved visual assets
-must not ship in a modified distribution. Compatibility identifiers, module
+manifest, service-worker default notification name, the repository artwork in
+`assets/`, and the two asset paths in `SiloBrand.tsx` are maintained explicitly
+because Silo's reserved visual assets must not ship in a modified distribution.
+Both brand-asset directories carry a `NOTICE` recording that they are original
+Bloem work rather than derivatives of Silo's visual identity. Compatibility identifiers, module
 paths, environment variables, and protocol fields retain their Silo names.
 
 Clients are NOT forks. `bloem-apple` and `bloem-android` are clean-room
