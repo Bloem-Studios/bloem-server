@@ -2,10 +2,9 @@
 
 A wire-level reference for `bloem-server`'s native `/api/v2` API surface — the Bloem-specific
 extensions layered on top of the Silo-compatible `/api/v1` projection, including its reviewed
-Bloem exceptions, documented
-separately (see [Silo API Reference](https://github.com/Bloem-Media/silo-api-reference), also
-mirrored at `bloem-android/docs/silo-api-reference.md`). This maintained reference follows the
-mounted routes and handlers in the current server source.
+Bloem exceptions, documented separately in the private `Bloem-Studios/bloem-android` repository
+at `docs/silo-api-reference.md`. This maintained reference follows the mounted routes and handlers
+in the current server source.
 
 **This is a private, proprietary API.** Unlike `/api/v1`, none of this surface is Silo-compatible
 or externally frozen. The v2 API evolves with Bloem; clients must use capability tokens for
@@ -1986,12 +1985,13 @@ that the way the tenancy store enforces it for Platform routes.
 
 ## People Administration (native /api/v2/admin/organization/people)
 
-Source of truth read directly from `bloem-server` (`~/projects/bloem/bloem-server`):
-route table `internal/api/router_v2.go` (`mountV2Routes`, people block ~lines 208-221),
+Source of truth in this repository: route table `internal/api/router_v2.go` (`mountV2Routes`,
+people block ~lines 208-221),
 handler `internal/api/handlers/v2_admin_people.go` (`V2AdminPeopleHandler`), service/store
 `internal/adminpeople/service.go` (`adminpeople.Service`), and durable-job worker
-`internal/adminpeople/worker.go` (`adminpeople.Worker`). Cross-checked against
-`~/projects/bloem-android` and `~/projects/bloem-apple` — see **Clients** below.
+`internal/adminpeople/worker.go` (`adminpeople.Worker`). Client use was cross-checked against the
+private `Bloem-Studios/bloem-android` and `Bloem-Studios/bloem-apple` repositories — see
+**Clients** below.
 
 This surface is **organization-admin-scoped bulk people management**, not household/self-service
 profile management (that's the `/api/v1` `PUT /profiles/{id}` flow, documented separately —
