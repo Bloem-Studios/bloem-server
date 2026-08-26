@@ -1,0 +1,243 @@
+name: Upstream sync
+
+# Keeps this fork current with Silo-Server/silo-server without a human having to
+# notice that upstream moved.
+#
+# The gate is deliberately the existing CI workflow rather than a second copy of
+# it: this job opens a pull request, CI runs on that PR the same way it runs on
+# any other, and the merge only happens if CI goes green. A conflict or a red
+# build leaves the PR sitting there for a human instead of landing on main.
+#
+# Silo is in rapid development, so this runs daily. Nothing here force-pushes,
+# and nothing here touches main directly.
+
+on:
+  schedule:
+    # 05:20 UTC. Off the hour on purpose — scheduled workflows queue behind
+    # everyone else's on-the-hour crons.
+    - cron: "20 5 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Report what would happen without pushing a branch or opening a PR"
+        type: boolean
+        default: false
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  UPSTREAM_REPO: https://github.com/Silo-Server/silo-server.git
+
+jobs:
+  sync:
+    name: Merge upstream into a PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          # The merge needs real history, not a shallow clone, or git cannot
+          # find the merge base and reports every upstream file as a conflict.
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "bloem-upstream-sync[bot]"
+          git config user.email "bloem-upstream-sync@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "$UPSTREAM_REPO" 2>/dev/null || git remote set-url upstream "$UPSTREAM_REPO"
+          # Never push to upstream, even by accident. This fork is fetch-only
+          # against Silo-Server.
+          git remote set-url --push upstream DISABLED
+          git fetch upstream main --tags
+
+      - name: Count what is new
+        id: count
+        run: |
+          behind=$(git rev-list --count HEAD..upstream/main)
+          echo "behind=$behind" >> "$GITHUB_OUTPUT"
+          echo "upstream_sha=$(git rev-parse --short upstream/main)" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Upstream sync"
+            echo ""
+            echo "\`main\` is **$behind** commit(s) behind \`upstream/main\` (\`$(git rev-parse --short upstream/main)\`)."
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$behind" -eq 0 ]; then
+            echo "Already current with upstream. Nothing to do."
+          fi
+
+      - name: Attempt the merge
+        id: merge
+        if: steps.count.outputs.behind != '0'
+        run: |
+          branch="upstream-sync/$(date -u +%Y-%m-%d)-${{ steps.count.outputs.upstream_sha }}"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          git checkout -b "$branch"
+
+          if git merge --no-ff --no-edit upstream/main; then
+            echo "clean=true" >> "$GITHUB_OUTPUT"
+            echo "Merged cleanly."
+          else
+            echo "clean=false" >> "$GITHUB_OUTPUT"
+            # Capture the conflict list before aborting; a conflicted index
+            # cannot be pushed, so a human has to drive these.
+            conflicts=$(git diff --name-only --diff-filter=U)
+            echo "conflicts<<CONFLICT_EOF" >> "$GITHUB_OUTPUT"
+            echo "$conflicts" >> "$GITHUB_OUTPUT"
+            echo "CONFLICT_EOF" >> "$GITHUB_OUTPUT"
+            echo "conflict_count=$(echo "$conflicts" | grep -c . || true)" >> "$GITHUB_OUTPUT"
+            git merge --abort
+            {
+              echo ""
+              echo "**Merge conflicted — no branch pushed.** Conflicting files:"
+              echo ""
+              echo '```'
+              echo "$conflicts"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Set up Go
+        if: steps.merge.outputs.clean == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify it at least builds
+        id: build
+        if: steps.merge.outputs.clean == 'true'
+        # A build failure is information, not a reason to stop: the PR should
+        # still be opened and reported, flagged as broken.
+        continue-on-error: true
+        run: go build ./...
+
+      - name: Push the branch and open a PR
+        id: pr
+        if: steps.merge.outputs.clean == 'true' && !inputs.dry_run
+        env:
+          # GitHub deliberately does not start workflow runs for events raised
+          # by the default GITHUB_TOKEN, to stop workflows triggering
+          # themselves. That means a PR opened with GITHUB_TOKEN never starts
+          # CI, and the whole CI-is-the-gate design silently stalls with the PR
+          # sitting there forever.
+          #
+          # UPSTREAM_SYNC_TOKEN is a PAT (repo scope) that does raise events, so
+          # CI runs and upstream-sync-merge.yml can land the PR. Without it this
+          # still works, just not unattended: the PR is opened and flagged as
+          # needing CI kicked off by hand. That is the safe way to degrade —
+          # nothing merges without a green run either way.
+          GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          HAS_PAT: ${{ secrets.UPSTREAM_SYNC_TOKEN != '' }}
+        run: |
+          branch="${{ steps.merge.outputs.branch }}"
+          git push -u origin "$branch"
+
+          if [ "$HAS_PAT" = "true" ]; then
+            ci_note="CI runs automatically and this merges itself once it is green."
+          else
+            ci_note="**\`UPSTREAM_SYNC_TOKEN\` is not set**, so CI will not start on its own here (GitHub does not raise events for the default token). Close and reopen this PR, or push any commit to it, to kick CI off — it will then merge itself on green."
+          fi
+          echo "has_pat=$HAS_PAT" >> "$GITHUB_OUTPUT"
+
+          build_note="Build check passed."
+          if [ "${{ steps.build.outcome }}" != "success" ]; then
+            build_note="**\`go build ./...\` FAILED on the merged tree** — CI will confirm, but expect this to need hands."
+          fi
+
+          # Built with printf rather than a heredoc: this whole script is inside
+          # a YAML block scalar, where a heredoc terminator picks up the block
+          # indentation and never matches.
+          body=$(printf '%s\n\n%s\n\n%s\n\n%s\n\n%s\n' \
+            "Automated merge of \`upstream/main\` (\`${{ steps.count.outputs.upstream_sha }}\`) — ${{ steps.count.outputs.behind }} commit(s)." \
+            "$build_note" \
+            "This merged with no conflicts. CI is the gate: if it goes green this merges itself, and if it goes red the PR stays open for a human. Nothing has touched \`main\`." \
+            "$ci_note" \
+            "Opened by \`.github/workflows/upstream-sync.yml\`.")
+
+          url=$(gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "Merge upstream Silo-Server (${{ steps.count.outputs.behind }} commits, ${{ steps.count.outputs.upstream_sha }})" \
+            --body "$body")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+          # The merge itself is NOT armed here. GitHub's native auto-merge only
+          # actually waits for CI when main carries branch protection with
+          # required checks, and that protection would equally block direct
+          # pushes to main — which is how this repo is normally worked. So the
+          # gate lives in upstream-sync-merge.yml instead, which fires when CI
+          # finishes and merges only on success. No branch protection needed and
+          # nothing changes about pushing to main by hand.
+
+      - name: Report to Discord
+        if: always() && steps.count.outputs.behind != '0'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const webhook = process.env.DISCORD_WEBHOOK_URL;
+            if (!webhook) {
+              core.warning('DISCORD_WEBHOOK_URL is not set; skipping notification.');
+              return;
+            }
+            const behind = '${{ steps.count.outputs.behind }}';
+            const sha = '${{ steps.count.outputs.upstream_sha }}';
+            const clean = '${{ steps.merge.outputs.clean }}';
+            const prUrl = '${{ steps.pr.outputs.url }}';
+            const buildOk = '${{ steps.build.outcome }}' === 'success';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            let embed;
+            if (clean !== 'true') {
+              const conflicts = `${{ steps.merge.outputs.conflicts }}`.trim().split('\n').filter(Boolean);
+              embed = {
+                title: 'Upstream sync needs hands',
+                url: runUrl,
+                color: 0xE04F4F,
+                description:
+                  `\`${behind}\` upstream commit(s) (\`${sha}\`) **conflict** with the Bloem delta. ` +
+                  `No branch was pushed and \`main\` is untouched.`,
+                fields: [{
+                  name: `Conflicting files (${conflicts.length})`,
+                  value: '```\n' + conflicts.slice(0, 20).join('\n').slice(0, 1000) +
+                         (conflicts.length > 20 ? `\n… and ${conflicts.length - 20} more` : '') + '\n```',
+                }],
+              };
+            } else if (!prUrl) {
+              embed = {
+                title: 'Upstream sync (dry run)',
+                url: runUrl,
+                color: 0x9AA0A6,
+                description: `\`${behind}\` upstream commit(s) (\`${sha}\`) would merge cleanly. Nothing pushed.`,
+              };
+            } else {
+              embed = {
+                title: buildOk ? 'Upstream sync opened a PR' : 'Upstream sync opened a PR (build failed)',
+                url: prUrl,
+                color: buildOk ? 0x4FA3E0 : 0xE0A44F,
+                description:
+                  `Merged \`${behind}\` upstream commit(s) (\`${sha}\`) with no conflicts.\n` +
+                  (buildOk
+                    ? 'Build passed. Merges itself if CI goes green.'
+                    : '**`go build ./...` failed on the merged tree.** PR left open.'),
+              };
+            }
+
+            const res = await fetch(webhook, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: 'Upstream sync', embeds: [embed] }),
+            });
+            if (!res.ok) {
+              core.setFailed(`Discord webhook failed with ${res.status}: ${await res.text()}`);
+            }
