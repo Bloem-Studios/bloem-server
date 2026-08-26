@@ -255,7 +255,7 @@ build gates. The final program gate requires:
 - Watch Together, audiobook, and music journeys on all four clients;
 - ebook journeys on Android mobile and iOS;
 - runtime playback capability and Aether regression suites on all four clients;
-- updated API, architecture, feature-changelog, and operator documentation;
+- updated API, architecture, and operator documentation;
 - formatting, lint, local-path, and diff-hygiene checks in every changed
   repository.
 

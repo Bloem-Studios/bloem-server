@@ -130,6 +130,17 @@ discarded — no double-counting into Prometheus, no second `/metrics` source. A
 asserts `otel.GetMeterProvider()` remains the no-op after `Setup`. Migrating metrics to
 the OTel metrics SDK is out of scope.
 
+`GET /api/v1/admin/host-stats` is a separate, third thing: a JSON (not Prometheus-text)
+endpoint reporting the **host machine's** live CPU%, memory used/total, and network
+rx/tx rates, meant for a mobile admin client to render directly rather than for a
+metrics backend to scrape. It's unrelated to both the OTel pipeline above and to
+`/metrics`, which instruments the Go **process** (via `client_golang`'s default
+collectors — CPU-seconds, resident memory, goroutines), not the host it runs on.
+`internal/hoststats.Sampler` reads `/proc/stat`, `/proc/meminfo`, and `/proc/net/dev`
+on a 2s background tick (never blocking the HTTP handler); `supported: false` is a
+normal, always-`200` response on a non-Linux host or when `/proc` is unreadable — see
+`internal/hoststats/sampler.go`'s package doc for the full contract.
+
 ## Local collector (example)
 
 ```yaml
