@@ -514,6 +514,31 @@ func TestHandlePlaybackCapabilityV3AdvertisesTheFinalizedContract(t *testing.T) 
 		!playback.HasFeatureV3(response.Features, playback.FeatureDirectStreamResumeV3) {
 		t.Fatalf("capability response = %#v", response)
 	}
+	var document map[string]json.RawMessage
+	if err := json.Unmarshal(rr.Body.Bytes(), &document); err != nil {
+		t.Fatal(err)
+	}
+	if string(document["transformations"]) == "null" {
+		t.Fatalf("transformations wire value = null, want an array")
+	}
+}
+
+func TestHandlePlaybackCapabilityV3EncodesNoTransformationsAsEmptyArray(t *testing.T) {
+	handler := NewPlaybackHandler(playback.NewSessionManager(0, 0))
+	handler.v3RegistryProbe = func(context.Context, string, tonemap.Capabilities) (*playback.TransformationRegistryV3, error) {
+		return playback.NewTransformationRegistryV3(nil), nil
+	}
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/playback/capability", nil).WithContext(newAuthorizedPlaybackContext())
+	handler.HandlePlaybackCapabilityV3(recorder, request)
+	var document map[string]json.RawMessage
+	if err := json.Unmarshal(recorder.Body.Bytes(), &document); err != nil {
+		t.Fatal(err)
+	}
+	if string(document["transformations"]) != "[]" {
+		t.Fatalf("empty transformations wire value = %s, want []", document["transformations"])
+	}
 }
 
 func TestHandlePlaybackCapabilityV3AdvertisesHeaderAuthenticationReadinessFromSettings(t *testing.T) {

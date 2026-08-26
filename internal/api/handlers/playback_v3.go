@@ -859,7 +859,11 @@ func (h *PlaybackHandler) HandlePlaybackCapabilityV3(w http.ResponseWriter, r *h
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	}
-	response := playback.CapabilityResponseV3{Enabled: true, ProtocolVersions: []int{playback.ProtocolV3}}
+	response := playback.CapabilityResponseV3{
+		Enabled:          true,
+		ProtocolVersions: []int{playback.ProtocolV3},
+		Transformations:  []playback.TransformationV3{},
+	}
 	response.Features = playback.DeploymentFeaturesV3(h.headerAuthenticatedMediaReady(r.Context()))
 	response.Deliveries = []playback.DeliveryV3{playback.DeliveryOriginalHTTPV3, playback.DeliveryRemuxProgressiveV3, playback.DeliveryRemuxHLSV3, playback.DeliveryTranscodeHLSV3}
 	settings := h.plannerSettingsV3(r.Context())
