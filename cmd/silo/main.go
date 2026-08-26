@@ -42,6 +42,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	"github.com/Silo-Server/silo-server/internal/artworkkey"
 	"github.com/Silo-Server/silo-server/internal/audiobooks"
 	"github.com/Silo-Server/silo-server/internal/audiobooks/abs"
 	"github.com/Silo-Server/silo-server/internal/audiobooks/podcastfeed"
@@ -1020,6 +1021,7 @@ func main() {
 			// restart (the node hop token is recipe-less). Shares the offload Redis.
 			srv.SetRecipeStore(noderecipe.NewStore(redisClient, 0))
 			srv.SetStreamTelemetry(streamTelemetryRegistry)
+			srv.StartHardwareEncoderWarmup(appCtx)
 			// Reclaim orphaned transcode dirs at boot and hourly thereafter, bound
 			// to appCtx so it stops on shutdown.
 			srv.StartOrphanSweeper(appCtx)
@@ -2503,7 +2505,15 @@ func main() {
 			taskMgr.Register(tasks.NewRefreshMetadataTask(refreshWorker, metadataService))
 		}
 		if metadataImageCacheProcessor != nil {
-			taskMgr.Register(tasks.NewCacheMetadataImagesTask(metadataImageCacheProcessor))
+			cacheImagesTask := tasks.NewCacheMetadataImagesTask(metadataImageCacheProcessor)
+			// Artwork cached under an older variant ladder is missing the rungs
+			// a client can now ask for. Arm the one-shot regeneration pass; it
+			// records the version it finished and then costs nothing.
+			cacheImagesTask.SetLadderBackfill(
+				metadata.NewImageLadderBackfillStateRepository(pool),
+				artworkkey.LadderVersion,
+			)
+			taskMgr.Register(cacheImagesTask)
 			taskMgr.Register(tasks.NewBackfillMetadataImagesTask(metadataImageCacheProcessor))
 		}
 		if deps.S3Public != nil {

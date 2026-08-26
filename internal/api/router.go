@@ -1118,6 +1118,7 @@ func NewRouter(deps Dependencies) chi.Router {
 			playbackHandler.SetProfileStaler(recsRepoForStale)
 			playbackHandler.SetProfileRefreshRequester(deps.RecWorker)
 		}
+		playbackHandler.StartCapabilityWarmupV3(deps.AppContext)
 
 		realtimeHub := deps.PlaybackRealtimeHub
 		if realtimeHub == nil {
@@ -2317,6 +2318,10 @@ func NewRouter(deps Dependencies) chi.Router {
 					r.Post("/events/ws-ticket", eventsHandler.HandleMintWSTicket)
 					r.Get("/events/capability", eventsHandler.HandleCapability)
 				}
+
+				// Artwork size selection. Static: the answer depends only on
+				// the server's variant ladder, not on the caller.
+				r.Get("/images/capability", handlers.HandleImagesCapability)
 
 				// User notifications: profile-scoped inbox, preferences, and
 				// the websocket handshake ticket.

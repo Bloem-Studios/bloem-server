@@ -241,10 +241,20 @@ const defaultSegmentDuration = 2
 // embedded length matches what the node actually produces.
 const DefaultSegmentDuration = defaultSegmentDuration
 
-// maxSyntheticManifestSegments preserves the historical worst-case playlist
-// size (100,000 seconds at two-second segments). Longer media uses FFmpeg's
-// real sliding playlist instead of allocating a complete synthetic manifest.
+// maxSyntheticManifestSegments caps complete synthetic playlists by entry
+// count. At the default two-second duration this preserves the historical
+// 100,000-second limit; shorter fragments reach the same bound sooner.
 const maxSyntheticManifestSegments = 50_000
+
+// Large synthetic playlists used to repeat the full access and reconstruction
+// query on every segment URI. For a feature-length title that turns a small
+// index into several megabytes of duplicate JWT text, delaying both transfer
+// and hls.js parsing. HLS variable substitution keeps the query once while
+// preserving the exact resolved segment URLs. Keep small playlists on the
+// simpler legacy form; below this byte threshold the saving is immaterial.
+const minManifestQuerySubstitutionSavings = 64 * 1024
+
+const manifestQueryVariable = "silo_query"
 
 // remountStartOffsetSeconds is a positive, effectively-zero HLS start offset.
 // Media3 suppresses live-edge position projection for EVENT playlists only
@@ -863,7 +873,7 @@ func appendHWAccelArgs(args []string, opts TranscodeOpts) []string {
 		}
 		// VAAPI→QSV hardware pipeline: derive QSV from VAAPI device.
 		args = append(args,
-			"-init_hw_device", fmt.Sprintf("vaapi=va:%s,driver=iHD,kernel_driver=i915,vendor_id=0x8086", hwDevice),
+			"-init_hw_device", qsvVAAPIInitDevice(hwDevice),
 			"-init_hw_device", "qsv=qs@va",
 		)
 		if opts.ToneMapMode == tonemap.ModeHardware && opts.ToneMapFilter == tonemap.HardwareFilterOpenCL {
@@ -897,6 +907,10 @@ func appendHWAccelArgs(args []string, opts TranscodeOpts) []string {
 		}
 	}
 	return args
+}
+
+func qsvVAAPIInitDevice(device string) string {
+	return fmt.Sprintf("vaapi=va:%s,driver=iHD,kernel_driver=i915,vendor_id=0x8086", device)
 }
 
 // videoPreset returns an encoder-compatible preset. CPU encoders use a faster
@@ -1628,9 +1642,24 @@ const minManifestSegments = 3
 // unnecessary latency at playback start.
 const minCopyManifestSegments = 2
 
+// minFreshHardwareManifestSegments keeps one complete fragment of headroom
+// after the first playable fragment. A fresh hardware encoder produces that
+// window comfortably ahead of real time, while CPU encodes and reconstructed
+// generations retain the larger three-fragment safety margin below.
+const minFreshHardwareManifestSegments = 2
+
 func startupSegmentRequirement(opts TranscodeOpts) int {
 	if strings.EqualFold(opts.TargetCodecVideo, "copy") {
 		return minCopyManifestSegments
+	}
+	if opts.FastStart {
+		switch opts.HWAccel {
+		case transcodeHWQSV, transcodeHWVAAPI, transcodeHWNVENC:
+			if bitmapBurnInActive(opts) {
+				return 1
+			}
+			return minFreshHardwareManifestSegments
+		}
 	}
 	return minManifestSegments
 }
@@ -2297,20 +2326,21 @@ func (s *TranscodeSession) GenerateFullManifest(segPrefix, rawQuery string) []by
 		segCount = 1
 	}
 
-	var suffix string
-	if rawQuery != "" {
-		suffix = "?" + rawQuery
-	}
+	queryDefinition, suffix, queryVersion := syntheticManifestQuery(segCount, rawQuery)
 
 	segExt := hlsSegmentExtension(opts)
 	hlsVersion := 3
 	if segExt == ".m4s" {
 		hlsVersion = 7
 	}
+	if queryVersion > hlsVersion {
+		hlsVersion = queryVersion
+	}
 
 	var buf bytes.Buffer
 	buf.WriteString("#EXTM3U\n")
 	buf.WriteString(fmt.Sprintf("#EXT-X-VERSION:%d\n", hlsVersion))
+	buf.WriteString(queryDefinition)
 	buf.WriteString(fmt.Sprintf("#EXT-X-TARGETDURATION:%d\n", segDur))
 	buf.WriteString("#EXT-X-MEDIA-SEQUENCE:0\n")
 	buf.WriteString("#EXT-X-PLAYLIST-TYPE:VOD\n")
@@ -2334,6 +2364,20 @@ func (s *TranscodeSession) GenerateFullManifest(segPrefix, rawQuery string) []by
 
 	buf.WriteString("#EXT-X-ENDLIST\n")
 	return buf.Bytes()
+}
+
+func syntheticManifestQuery(segmentCount int, rawQuery string) (definition, suffix string, minVersion int) {
+	if rawQuery == "" {
+		return "", "", 0
+	}
+	legacySuffix := "?" + rawQuery
+	variableSuffix := "?{$" + manifestQueryVariable + "}"
+	savingsPerSegment := len(legacySuffix) - len(variableSuffix)
+	if savingsPerSegment <= 0 || int64(segmentCount)*int64(savingsPerSegment) < minManifestQuerySubstitutionSavings || strings.ContainsAny(rawQuery, "\"\r\n") {
+		return "", legacySuffix, 0
+	}
+	definition = fmt.Sprintf("#EXT-X-DEFINE:NAME=\"%s\",VALUE=\"%s\"\n", manifestQueryVariable, rawQuery)
+	return definition, variableSuffix, 8
 }
 
 // GetSegment returns the file path of a named segment if it exists.

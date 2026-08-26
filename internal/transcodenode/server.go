@@ -330,6 +330,24 @@ func (s *Server) StartOrphanSweeper(ctx context.Context) {
 	}, playback.OrphanCleanupInterval)
 }
 
+// StartHardwareEncoderWarmup primes the configured hardware encoder behind
+// node startup. It is best effort and never delays the health listener.
+func (s *Server) StartHardwareEncoderWarmup(ctx context.Context) {
+	if s == nil || s.watcher == nil || ctx == nil {
+		return
+	}
+	cfg := s.watcher.Config()
+	if cfg == nil {
+		return
+	}
+	playbackCfg := cfg.Playback
+	go func() {
+		if err := playback.WarmHardwareEncoder(ctx, playbackCfg.FFmpegPath, playbackCfg.HWAccel, playbackCfg.HWDevice); err != nil {
+			slog.DebugContext(ctx, "transcode node hardware encoder warmup failed", "component", "transcodenode", "error", err)
+		}
+	}()
+}
+
 // activeSessionIDs snapshots the ids of currently registered jobs so the orphan
 // sweep spares their output dirs regardless of directory mtime, mirroring the
 // central TranscodeManager's live-set snapshot.
@@ -1293,6 +1311,9 @@ func (s *Server) spawnReconstruct(r *http.Request, sessionID string, requestedSe
 	outputDir := s.sessionOutputDir(sessionID)
 	opts := card.TranscodeOpts(outputDir, cfg.Playback.FFmpegPath, s.ffmpegSink)
 	opts.SessionID = sessionID
+	// Recipe cards preserve the original launch tuning, but reconstruction must
+	// retain the normal manifest cushion rather than the fresh-start fast path.
+	opts.FastStart = false
 	// Re-resolve environment-specific encode knobs from this node's live config; the
 	// token deliberately omits HWAccel/HWDevice so an operator change applies on
 	// rebuild. Run as a transcode node, not integrated (card.TranscodeOpts defaults).

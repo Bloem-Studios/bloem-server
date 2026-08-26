@@ -141,6 +141,7 @@ import {
   useAdminContext,
 } from "@/contexts/AdminContextProvider";
 import { canRenderAdminShell } from "@/contexts/adminContextAccess";
+import { prewarmCodecDetection } from "@/player/hooks/useCodecDetection";
 
 /** Scrolls to top on pathname change (custom replacement for ScrollRestoration which requires data router). */
 function useScrollRestoration() {
@@ -759,6 +760,13 @@ function AdminRealtimeEventChannels() {
   return null;
 }
 
+function PlaybackCapabilityPrewarmer() {
+  useEffect(() => {
+    void prewarmCodecDetection();
+  }, []);
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -772,6 +780,7 @@ export default function App() {
                     <WatchPlaybackProvider>
                       <AudiobookPlaybackProvider>
                         <RealtimeEventsProvider>
+                          <PlaybackCapabilityPrewarmer />
                           <RealtimeEventChannels />
                           <ScrollRestorationManager />
                           <RouteAnnouncer />
