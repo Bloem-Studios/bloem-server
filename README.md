@@ -35,6 +35,15 @@ the [Prairie Server](https://github.com/Prairie-Server/prairie-server)
 subsystem; see `docs/livetv/prairie-source-manifest.tsv` for the pinned
 source this was adapted from.
 
+Bloem tracks Silo's `main` closely rather than in occasional large batches: an
+automated daily job attempts the upstream merge, opens a pull request when it
+merges cleanly, and only auto-merges once CI is green. A conflict — judgment
+about the Bloem delta — is left open for manual review instead of being
+forced through. Day-to-day upstream work (playback, the web app, metadata,
+and everything else covered above) reaches Bloem promptly this way; recent
+examples include per-client artwork-size negotiation and playback-startup
+latency hardening, both upstream Silo features.
+
 ## What Bloem adds on top of Silo
 
 This fork stays close to upstream deliberately (see FORK.md for why), and
