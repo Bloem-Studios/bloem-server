@@ -84,9 +84,10 @@ The native v2 surface may add fields and routes without preserving an upstream
 Silo wire shape. Clients must ignore response fields they do not understand.
 The public identity route is always mounted. Other handlers are conditionally
 assembled; a handler absent from the router yields `404`. Watch is mounted
-when its reader dependencies exist, but a missing search provider keeps
-`GET /api/v2/watch/search` mounted and it returns `503 unavailable` rather
-than `404` or an empty success response.
+when its reader dependencies exist. Its catalog reader is also always passed
+to the Watch handler as the searcher, so a deployment without the optional
+search provider returns a valid `200` search document with no items rather
+than `503` when Watch itself is mounted.
 
 ## Wiring
 

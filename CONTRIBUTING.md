@@ -92,7 +92,7 @@ go tool govulncheck ./...
 make test-go
 make test-web
 make lint
-cd web && pnpm run format:check
+(cd web && pnpm run format:check)
 make verify-settings-bindings-all
 make verify-playback-fixtures
 make verify-local-paths

@@ -61,8 +61,9 @@ is wired; it does not advertise a v2 direct-profile session mode.
 Client handlers other than identity are conditionally assembled. A handler
 that is absent from the router returns `404`; this is not inferred from a
 build-level capability token. Watch search is a separate case: when Watch is
-mounted but its search provider is absent, `GET /api/v2/watch/search` remains
-mounted and returns `503 unavailable`.
+mounted but its optional catalog search provider is absent,
+`GET /api/v2/watch/search` remains mounted and returns a valid `200` document
+with no items.
 
 ## Known gaps / follow-ups surfaced while compiling this doc
 
@@ -578,8 +579,7 @@ search provider's own relevance order (never re-sorted by the composition layer)
 wanting scroll pagination, which this endpoint does not offer (same "first frame" tradeoff as
 `/watch/home`'s item limit).
 
-**Auth.** Same authenticated group as `/watch/home`. Additionally requires a search provider to be
-wired at all — see Errors.
+**Auth.** Same authenticated group as `/watch/home`.
 
 **Query params.** `q` (string, required, trimmed — `400` if empty).
 
@@ -593,12 +593,11 @@ searched item must fetch it via `/watch/items/{content_id}` or `/watch/home`. De
 shape, deduplicated by `content_id` (keeping the first, best-ranked occurrence).
 
 **Errors.**
-- `400 {"error":"bad_request","message":"q is required"}`.
-- `503 {"error":"unavailable","message":"Search is not available"}` — no search provider configured
-  (`h.searcher == nil`); this is checked before the query param, so a missing `q` on a
-  searchless deployment still yields the searcher-unavailable answer first only if... actually the
-  code checks `h.searcher == nil` **before** parsing `q`, so an empty `q` on a deployment with no
-  search provider returns `503`, not `400`.
+- `400 {"error":"bad_request","message":"q is required"}`. In the production router the
+  `CatalogWatchReader` is always passed as both reader and searcher whenever Watch mounts. A nil
+  underlying catalog search provider therefore produces an empty `200` document for a non-empty
+  query; it does not make the handler searcher nil. The handler's separate nil-searcher `503`
+  guard applies only when `WatchHandler` is constructed without any searcher.
 - `500 {"error":"internal_error","message":"Search failed"}` — search provider error.
 - `500 {"error":"internal_error","message":"Failed to compose the Watch search document"}` —
   composition failure after a successful search.
