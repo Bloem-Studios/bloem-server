@@ -1,24 +1,24 @@
-# Silo Server
+# Bloem Server
 
-Go backend for Silo: API contracts, auth/session, catalog/scanner/playback services, database
+Go backend for Bloem: API contracts, auth/session, catalog/scanner/playback services, database
 migrations, Jellyfin compatibility, and the host-side plugin runtime. `cmd/silo` is the
 entrypoint, backend code is under `internal/` by domain, the React frontend is `web/src/`.
 
 This repository is a VERY EARLY WIP. Proposing sweeping changes that improve long-term
 maintainability is encouraged.
 
-## What Silo is
+## What Bloem is
 
 A modern, open-source media server built from the ground up on current infrastructure —
 Postgres, S3, Redis — rather than SQLite and local disk. The foundational bet is horizontal
-scale: Silo deploys as a cluster (Kubernetes, remote transcode nodes) and stays fast on large
+scale: Bloem deploys as a cluster (Kubernetes, remote transcode nodes) and stays fast on large
 libraries, whether it's one node serving a household or a deployment streaming to thousands of
 users. Weigh every design against that full spectrum; treat a node dying mid-stream as a normal
 event, not an edge case.
 
 It is an open platform, not a walled garden: third-party clients are encouraged, and other
-people's clients will depend on the v1 API once it locks — see "v1 API rules" below for the
-current pre-1.0 posture. Jellyfin-protocol compatibility is a long-term commitment as an
+people's clients use the Silo-compatible v1 projection — see "v1 API rules" below for the
+current pre-lock posture. Jellyfin-protocol compatibility is a long-term commitment as an
 on-ramp for the existing ecosystem.
 
 The core/plugin line is about implementation multiplicity: library types (movies, TV,
@@ -55,7 +55,7 @@ server-side (`watchstate`, `userdb`, `settingsresolve`).
 - **Session** — ambiguous; always say which: playback session (`internal/playback`) or login
   session (`internal/auth`).
 - **jellycompat vs v1** — jellycompat is the Jellyfin-protocol surface for ecosystem clients;
-  "the API" or "v1" means Silo's native `/api/v1`.
+  "v1" means Bloem's Silo-compatible `/api/v1` projection, with reviewed Bloem exceptions.
 
 ## Priorities
 
@@ -72,11 +72,10 @@ local workaround onto it.
 Most of this codebase's scope is open; a short list is permanently closed. Read
 [docs/non-goals.md](docs/non-goals.md) before proposing or implementing in those areas.
 
-**Live TV, OTA/DVB tuners, IPTV, EPG/XMLTV, DVR, and `.strm` remote-URL shortcuts will not be
-accepted** — not in core, not as a plugin, not in a client. The first-party clients ship on the
-Apple and Google stores, and a server that plays arbitrary remote stream URLs puts the whole
-client suite at risk. This is settled product direction, not a design problem to solve; do not
-write code for it, and say so plainly if asked.
+**Live TV is a maintained Bloem feature**: the shipped HDHomeRun-compatible tuner, guide,
+channel playback, DVR-rule, and recording implementation is in scope. Arbitrary remote-URL
+shortcuts (including `.strm`) and generic remote-stream ingestion remain out of scope; see
+[docs/non-goals.md](docs/non-goals.md) for the current boundary.
 
 ## Gotchas
 
@@ -114,8 +113,8 @@ the repository root is the cwd." `make verify-local-paths` enforces this.
 
 Sibling repos are usually checked out side-by-side in the same parent directory.
 
-- `silo-android` — Android phone and TV clients.
-- `silo-apple` — iOS, tvOS, and macOS clients.
+- `bloem-android` — Android phone and TV clients.
+- `bloem-apple` — iOS, tvOS, and macOS clients.
 - `silo-plugin-sdk` — public plugin SDK, protobuf contracts, generated plugin API, manifest
   helpers, runtime bootstrap.
 - `silo-plugins` — central plugin catalog / repository manifest.
@@ -130,7 +129,7 @@ done until each of these has been handled or ruled out:
 
 - The API change fits the current v1 posture (see "v1 API rules" below); new features still
   expose a capability endpoint.
-- Follow-up work is done or filed for both `silo-apple` and `silo-android` — prefer
+- Follow-up work is done or filed for both `bloem-apple` and `bloem-android` — prefer
   coordinated multi-repo changes over leaving a platform behind.
 - jellycompat parity was considered (does the Jellyfin surface need the same behavior?).
 - The relevant `docs/*-api.md` is updated when the contract changes.
@@ -170,11 +169,11 @@ checks it end to end.
 
 ## v1 API rules
 
-Silo is alpha and `/api/v1` is not locked yet. Until it locks, restructuring the API is in
-scope — if a shape is wrong, fix it now rather than carry it into 1.0. Prefer larger
-coordinated sweeps over a drip of small breaks, and don't build backwards-compatibility shims
-for pre-lock clients. A breaking change still needs coordination with `silo-apple` and
-`silo-android`, and removals get recorded in the pre-lock removals table in
+`/api/v1` is Bloem's Silo-compatible projection and is not locked yet. Until it locks,
+restructuring the API is in scope — if a shape is wrong, fix it now rather than carry it into
+1.0. Prefer larger coordinated sweeps over a drip of small breaks, and don't build
+backwards-compatibility shims for pre-lock clients. A breaking change still needs coordination
+with `bloem-apple` and `bloem-android`, and removals get recorded in the pre-lock removals table in
 [docs/architecture/v1-scope.md](docs/architecture/v1-scope.md) so client authors can track
 them.
 

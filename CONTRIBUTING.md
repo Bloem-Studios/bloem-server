@@ -80,17 +80,28 @@ See the README for full setup. The frontend uses pnpm 10.32.1, as pinned in
 
 ## Validate your change
 
-Run the applicable focused checks while iterating, then run this repository's
-pre-submission gate before opening a merge request:
+Run the applicable focused checks while iterating. Before opening a merge
+request, install the documented prerequisites and run the same build, format,
+vet, vulnerability, test, lint, and generated-artifact checks that CI uses:
 
 ```sh
+make build
+test -z "$(gofmt -l .)"
+go vet ./...
+go tool govulncheck ./...
 make test-go
 make test-web
 make lint
+cd web && pnpm run format:check
 make verify-settings-bindings-all
 make verify-playback-fixtures
 make verify-local-paths
 ```
+
+`make build` installs the pinned frontend dependencies and builds the embedded
+web bundle. `make lint` runs the full local Go and frontend linters; CI scopes
+its Go lint gate to changed lines because the repository has pre-existing
+findings. `go tool govulncheck ./...` is CI's reachable Go vulnerability scan.
 
 If your change spans this server and Bloem's own private plugin SDK, local iteration through
 an untracked `go.work` workspace is expected. Do not rely on that workspace in repo-tracked

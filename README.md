@@ -55,7 +55,7 @@ adds a focused set of its own capabilities alongside it:
   administrative-context session system, and policy-bounded visibility of
   organization-owned or explicitly entitled media folders — while `/api/v1`
   remains the Silo-compatible projection. It has documented, reviewed Bloem
-  exceptions; see [the v1 client-surface policy](docs/architecture/v2-client-surface.md) and
+  exceptions; see [the v1 compatibility policy](docs/architecture/v1-scope.md) and
   [the operator runbook](docs/architecture/opa-tenant-authorization.md).
 - Revisioned **entitlement templates** for consistently applying playback,
   stream, profile, transcode, download, request, permission, quality, and

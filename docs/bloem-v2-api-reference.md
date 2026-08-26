@@ -42,8 +42,7 @@ clients depend on"), and splits into two genuinely different surfaces:
 ## Native client route summary
 
 `GET /api/v2/server/identity` is public. The following routes require an
-account bearer token and a profile (`X-Profile-Id`, unless a direct-profile
-session supplies it):
+ordinary account bearer token and an `X-Profile-Id` header:
 
 - `GET /api/v2/watch/home`, `GET /api/v2/watch/items/{content_id}`, and
   `GET /api/v2/watch/search`
@@ -53,9 +52,17 @@ session supplies it):
   `GET /api/v2/music/artists/{id}`, and `GET /api/v2/music/albums/{id}`
 
 Music artist and album reads additionally require an allowed positive
-`library_id`. Client routes other than identity are conditionally mounted when
-their backing dependencies are configured; clients must treat `404` as an
-unavailable optional feature and consult capabilities before use.
+`library_id`. Direct-profile sessions are not admitted to `/api/v2`: the
+router's direct-profile allowlist contains only `/api/v1` routes, so
+authentication rejects them before `RequireProfile` runs. The
+`direct_profile_login` capability field reports whether `POST /api/v1/auth/profile-login`
+is wired; it does not advertise a v2 direct-profile session mode.
+
+Client handlers other than identity are conditionally assembled. A handler
+that is absent from the router returns `404`; this is not inferred from a
+build-level capability token. Watch search is a separate case: when Watch is
+mounted but its search provider is absent, `GET /api/v2/watch/search` remains
+mounted and returns `503 unavailable`.
 
 ## Known gaps / follow-ups surfaced while compiling this doc
 
@@ -130,9 +137,9 @@ route", a `503` says "this server has it and cannot answer right now, retry" —
 of its way to always be able to return the latter for identity specifically.
 
 **`X-Profile-Id` header.** Every authenticated client-surface route requires it
-(`middleware.RequireProfile`); a request without it gets `400 {"error":"bad_request","message":"X-Profile-Id header is required"}` before the handler runs. A direct-profile session (one already
-bound to a single profile) supplies its own profile and the header becomes optional/validated
-against it instead — see `bindDirectProfile` in `internal/api/middleware/profile.go`.
+(`middleware.RequireProfile`); a request without it gets `400 {"error":"bad_request","message":"X-Profile-Id header is required"}` before the handler runs. `/api/v2` accepts ordinary
+account sessions only: direct-profile sessions are rejected by the router's
+default-deny `/api/v1` allowlist before this middleware runs.
 
 ---
 
@@ -150,23 +157,38 @@ against it instead — see `bindDirectProfile` in `internal/api/middleware/profi
 
 **Response** `200` — `v2CapabilitiesResponse`:
 
-```jsonc
+```json
 {
   "api": "v2",
   "identity_schema": 1,
   "features": {
-    "legacy_silo_v1": true,               // always true today
-    "organization_memberships": true,     // always true today
-    "tenant_bounded_media_scope": true,   // always true today
-    "direct_profile_login": false         // tracks whether POST /auth/profile-login is wired (V2SystemHandler.SetDirectProfileLoginAvailable)
+    "legacy_silo_v1": true,
+    "organization_memberships": true,
+    "tenant_bounded_media_scope": true,
+    "direct_profile_login": true,
+    "shared_device_pairing": false,
+    "delegated_admin_roles": false
   },
-  "media_types": ["movie", "series", "episode", "audiobook", "ebook", "manga"],
+  "media_types": ["movie", "series", "episode", "audiobook", "ebook", "manga", "music_album"],
   "feature_tokens": [
+    "playback_plan_v3",
+    "neutral_playback_v3_contract_v1",
+    "layout_aware_passthrough",
+    "playback_route_diagnostics",
+    "device_quirks_v1",
+    "seek_reanchor_v1",
+    "output_change_v1",
+    "direct_stream_resume_v1",
+    "header_authenticated_media_v1",
+    "authorized_media_origins_v1",
+    "software_video_decode_v1",
+    "plan_invalidated_v1",
+    "plan_source_duration_v1",
+    "declared_event_channels",
     "watch_document_v1",
     "device_pairing_v1",
     "progress_sync_v1",
-    "declared_event_channels",
-    "/* plus every token playback.ServerFeaturesV3() publishes */"
+    "music_catalog_v1"
   ]
 }
 ```
@@ -179,15 +201,13 @@ Field notes:
   - Note: `movie`/`series`/`episode`/`audiobook`/`ebook`/`manga` are the raw `media_items.type`
     vocabulary values (`internal/api/handlers/domain_consts.go`); there is no separate "video"
     grouping value here even though `catalog.IsValidMediaScope` accepts one internally.
-- `feature_tokens`: an **additive-only allowlist** clients match against and ignore unknown
-  entries from. `watch_document_v1` is the schema token for the Watch documents below;
+- `feature_tokens`: an **additive-only build allowlist** clients match against and ignore unknown
+  entries from; they do not prove that an optional route is mounted in a particular deployment.
+  `watch_document_v1` is the schema token for the Watch documents below;
   `progress_sync_v1` covers `POST /api/v2/sync/progress`'s per-item `updated`/`ignored`/`error`
   result vocabulary; `device_pairing_v1` covers TV pairing (protocol details on
   `/auth/device/capability`, documented in the v1 reference); `declared_event_channels` covers the
-  events-websocket declared-channel handshake (details on `/events/capability`). The rest of the
-  list is whatever `playback.ServerFeaturesV3()` currently publishes — check that function for the
-  live set; this document does not duplicate the v1 Watch & Playback section's playback-capability
-  catalogue.
+  events-websocket declared-channel handshake (details on `/events/capability`).
 - `identity_schema` is a bare integer (currently always `1`), unrelated to `api_versions` on
   `GET /api/v2/server/identity`.
 
@@ -512,7 +532,7 @@ covering the union's requested content ids, `featured_content_id` chosen by the 
 **Clients.** Both. `bloem-apple`: `HTTPWatchCatalogSource.swift` (`Endpoints.home =
 "/api/v2/watch/home"`). `bloem-android`: `HttpWatchCatalogSource.kt` (`HOME_PATH =
 "/api/v2/watch/home"`); its own file comment states *"The native client surface lives on
-`/api/v2`; `/api/v1` is a frozen Silo-compatible projection."*
+`/api/v2`; `/api/v1` is a Silo-compatible projection."*
 
 ---
 
@@ -597,8 +617,8 @@ shape, deduplicated by `content_id` (keeping the first, best-ranked occurrence).
 **Purpose.** Batch offline-queue flush of playback progress — the same storage path, thresholds,
 last-write-wins merge, taste-profile-staleness trigger and event fan-out as
 `POST /api/v1/sync/progress`, but reported back to the caller in a **finer per-item status
-vocabulary**. The v1 route reports a flat `"ok"` for every non-error row (frozen — real Silo clients
-parse it and it cannot change under them); this v2 route distinguishes a row that was actually
+vocabulary**. The v1 route reports a flat `"ok"` for every non-error row (kept for Silo compatibility — real Silo clients
+parse it, so a change requires coordinated v1 contract review); this v2 route distinguishes a row that was actually
 **written** from one that was accepted but **discarded** by last-write-wins or the min-resume
 floor, so a client can tell "landed" from "not landed" and stop retrying a position the server
 genuinely never stored (the exact failure mode the sync protocol exists to prevent). Clients
@@ -759,7 +779,7 @@ own "year" sort — not re-sorted client-side by this handler).
 
 ### Music
 
-Music is a Bloem-native extension and is deliberately absent from the frozen
+Music is a Bloem-native extension and is deliberately absent from the
 Silo-compatible `/api/v1` projection. Clients discover build support through
 the `music_catalog_v1` feature token and discover usable profile-scoped content
 through `GET /api/v2/music/status`.

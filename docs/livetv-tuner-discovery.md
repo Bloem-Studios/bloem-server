@@ -31,7 +31,8 @@ What the override does:
 
 - Sets `network_mode: host` on the `silo` application service
 - Points `DATABASE_URL` / `REDIS_URL` at `127.0.0.1` (postgres/redis still publish host ports)
-- Uses `PORT` from `.env` as the host listen port (default `8090`, same as the previous published URL)
+- Keeps the application's base listener on host port `8080`; the base `PORT`
+  variable applies only to bridge-mode host publishing
 
 You can combine with NVIDIA:
 

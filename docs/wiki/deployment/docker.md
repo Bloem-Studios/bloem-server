@@ -170,10 +170,12 @@ another service. The container listeners are fixed.
 | `PROXY_PORT` | `8083` | Commented standalone proxy example |
 | `TRANSCODE_PORT` | `8082` | Commented standalone transcode example |
 
-The Jellyfin/Emby and Audiobookshelf listeners are enabled by default, so
-`8096` and `13378` accept connections from the first start. Turn them off in
-**Admin > Settings** (`jellyfin_compat.enabled`, `audiobookshelf_compat.enabled`)
-if you do not use compatible clients.
+The Jellyfin/Emby and Audiobookshelf protocols are available through the
+compatibility gateway on the main `PORT` by default. Dedicated `8096` and
+`13378` listeners are opt-in: enable `jellyfin_compat.listen` or
+`audiobookshelf_compat.listen` in **Admin > Settings**, uncomment the matching
+port mapping in `docker-compose.yml`, set `JF_PORT` or `ABS_PORT`, and recreate
+the application service.
 
 > [!WARNING]
 > The application and compatibility port mappings listen on all host interfaces
@@ -365,7 +367,7 @@ default. Database-size classification uses
 | `POSTGRES_TUNE_CPUS` | `auto` | CPU count used for worker recommendations. |
 | `POSTGRES_TUNE_STORAGE` | `ssd` | One of `hdd`, `ssd`, `san`, or `nvme`. |
 | `POSTGRES_TUNE_DB_SIZE` | `auto` | Automatic classification, or `less_ram`, `mid_ram`, or `greater_ram`. |
-| `POSTGRES_TUNE_CONNECTIONS` | `100` | PostgreSQL `max_connections`; raised when the Silo application pool is larger. |
+| `POSTGRES_TUNE_CONNECTIONS` | `100` | PostgreSQL `max_connections`; raised when the Bloem application pool is larger. |
 | `POSTGRES_SHM_SIZE` | `8gb` | Docker `/dev/shm` size for bundled PostgreSQL. |
 
 Turning auto-tuning off does not remove settings already written to

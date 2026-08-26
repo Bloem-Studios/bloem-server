@@ -39,10 +39,15 @@ demands a tenant-selected session carrying organization, membership and revision
 claims. No login endpoint mints those claims, so requiring it would refuse every
 viewer. Organization-bound administrative routes still must use it.
 
-Clients detect all of it through `feature_tokens` on the capability document —
+These routes use ordinary account sessions and require `X-Profile-Id`.
+Direct-profile sessions are limited by the router's `/api/v1` allowlist and
+are rejected before the v2 profile middleware runs.
+
+`feature_tokens` describe build-level, additive capabilities — including
 `watch_document_v1`, `device_pairing_v1`, `progress_sync_v1`, and
-`music_catalog_v1` — never by
-inspecting a server version.
+`music_catalog_v1` — and clients must not use a server version for feature
+detection. A token does not prove that a dependency-conditional route is
+mounted in a particular deployment; clients still handle the route's response.
 
 ## Server identity is its own endpoint
 
@@ -76,11 +81,12 @@ the same event fan-out.
 ## Response and dependency behavior
 
 The native v2 surface may add fields and routes without preserving an upstream
-Silo wire shape. Clients must ignore response fields they do not understand
-and use capability tokens before relying on optional features. Except for the
-always-mounted public identity route, client routes mount only when their
-backing dependencies are available; an unavailable optional handler is absent
-and returns `404`, not an empty success response.
+Silo wire shape. Clients must ignore response fields they do not understand.
+The public identity route is always mounted. Other handlers are conditionally
+assembled; a handler absent from the router yields `404`. Watch is mounted
+when its reader dependencies exist, but a missing search provider keeps
+`GET /api/v2/watch/search` mounted and it returns `503 unavailable` rather
+than `404` or an empty success response.
 
 ## Wiring
 
