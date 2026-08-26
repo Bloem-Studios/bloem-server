@@ -132,6 +132,7 @@ type Dependencies struct {
 	SessionSyncer             handlers.PlaybackSessionSyncer  // optional; immediate playback session sync trigger
 	EventBus                  cache.EventBus
 	AdminStatsProvider        handlers.AdminStatsSource
+	HostStatsSource           handlers.HostStatsSource
 	Recommender               recommendations.Recommender // nil when disabled
 	RecWorker                 *recommendations.Worker     // nil when disabled
 	CatalogSearchVectorizer   catalog.CatalogSearchQueryVectorizer
@@ -1295,6 +1296,7 @@ func NewRouter(deps Dependencies) chi.Router {
 		adminHandler.EventsHub = deps.EventsHub
 		adminHandler.ImpersonationService = authService
 		adminHandler.StatsSource = deps.AdminStatsProvider
+		adminHandler.HostStatsSource = deps.HostStatsSource
 		adminHandler.RealtimeHub = deps.RealtimeHub
 		adminHandler.AccessGroups = accessGroupStore
 		adminHandler.BootstrapSensitiveConfigured = deps.BootstrapSensitiveConfigured
@@ -3212,6 +3214,7 @@ func NewRouter(deps Dependencies) chi.Router {
 							r.Get("/playback-history", adminHandler.HandleListPlaybackHistory)
 							r.Get("/unmatched", adminHandler.HandleListUnmatched)
 							r.Get("/stats", adminHandler.HandleGetStats)
+							r.Get("/host-stats", adminHandler.HandleGetHostStats)
 							r.Get("/server/status", adminHandler.HandleGetServerStatus)
 							r.Get("/catalog/search/status", adminHandler.HandleGetCatalogSearchStatus)
 							if policyHandler != nil {

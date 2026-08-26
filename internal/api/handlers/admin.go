@@ -143,6 +143,7 @@ type AdminHandler struct {
 	accountProvisioner           *auth.AccountProvisioner
 	DetailSvc                    *catalog.DetailService
 	StatsSource                  AdminStatsSource
+	HostStatsSource              HostStatsSource
 	Config                       *config.Config
 	EventBus                     cache.EventBus
 	EventsHub                    *evt.Hub

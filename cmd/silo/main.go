@@ -62,6 +62,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/ebooks"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/historyimport"
+	"github.com/Silo-Server/silo-server/internal/hoststats"
 	"github.com/Silo-Server/silo-server/internal/httpstream"
 	"github.com/Silo-Server/silo-server/internal/imagecache"
 	"github.com/Silo-Server/silo-server/internal/intromarkers"
@@ -2110,6 +2111,14 @@ func main() {
 		defer adminStatsProvider.Close()
 		deps.AdminStatsProvider = adminStatsProvider
 	}
+
+	// Host CPU/memory/network sampling needs no database — it's a pure
+	// /proc reader — so it's wired unconditionally rather than gated on
+	// deps.DB like the stats provider above. Run exits on its own once
+	// appCtx is cancelled at shutdown; nothing further to defer.
+	hostStatsSampler := hoststats.NewSampler(2 * time.Second)
+	go hostStatsSampler.Run(appCtx)
+	deps.HostStatsSource = hostStatsSampler
 
 	// Wire recommendations engine, worker, and ratings repo if enabled.
 	var recEngine *recommendations.Engine
