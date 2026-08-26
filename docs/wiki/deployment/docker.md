@@ -1,9 +1,9 @@
 ---
-title: Deploy Silo with Docker
-description: Run and operate Silo with Docker Compose, from a single host to distributed roles.
+title: Deploy Bloem with Docker
+description: Run and operate Bloem with Docker Compose, from a single host to distributed roles.
 summary: Installation, storage, acceleration, search, topology, tuning, backups, and updates for Docker deployments.
 tags:
-  - silo
+  - bloem
   - deployment
   - docker
   - operations
@@ -16,26 +16,26 @@ related:
   - ../../s3-storage-setup.md
 ---
 
-# Deploy Silo with Docker
+# Deploy Bloem with Docker
 
-Docker Compose is the recommended way to run Silo. The repository's default
+Docker Compose is the recommended way to run Bloem. The repository's default
 stack targets a new single-host installation and includes:
 
-- Silo in `integrated` mode
+- Bloem in `integrated` mode
 - PostgreSQL 18 with pgvector
 - Redis
-- FFmpeg and the Silo web application in the Silo image
+- FFmpeg and the Bloem web application in the Bloem image
 
 Start here unless you already run PostgreSQL and Redis elsewhere or need
 dedicated delivery nodes.
 
 ```mermaid
 flowchart LR
-    Clients[Web and compatible clients] --> Silo[Silo integrated server]
-    Silo --> Media[(Media files)]
-    Silo --> PostgreSQL[(PostgreSQL + pgvector)]
-    Silo --> Redis[(Redis)]
-    Silo -. optional .-> Search[(Meilisearch)]
+    Clients[Web and compatible clients] --> Bloem[Bloem integrated server]
+    Bloem --> Media[(Media files)]
+    Bloem --> PostgreSQL[(PostgreSQL + pgvector)]
+    Bloem --> Redis[(Redis)]
+    Bloem -. optional .-> Search[(Meilisearch)]
 ```
 
 ## Requirements
@@ -53,8 +53,8 @@ and container runtime support.
 Clone the repository and create `.env` from the example:
 
 ```sh
-git clone https://github.com/Silo-Server/silo-server.git
-cd silo-server
+git clone https://github.com/bloem-studios/bloem-server.git
+cd bloem-server
 cp .env.example .env
 chmod 600 .env
 printf '\nPOSTGRES_PASSWORD=%s\nSECRET_KEY=%s\n' \
@@ -86,14 +86,14 @@ Design notes: [Secret encryption at rest](../../architecture/secret-encryption.m
 
 ## Container image selection
 
-The default `.env.example` follows `ghcr.io/silo-server/silo-server:latest`.
+The default `.env.example` follows `ghcr.io/bloem-studios/bloem-server:latest`.
 Before the first release, successful default-branch publications also receive
 an ordered `build-N` tag and a short commit-SHA tag.
 
-Use `SILO_IMAGE` to select an image:
+`SILO_IMAGE` is retained as a Compose compatibility identifier. Use it to select a Bloem image:
 
 ```dotenv
-SILO_IMAGE=ghcr.io/silo-server/silo-server:build-N
+SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:build-N
 ```
 
 Use a commit-SHA tag or digest when a deployment or rollback target must not
@@ -128,7 +128,7 @@ Durable application state lives in PostgreSQL. Redis holds coordination and
 cache-style data. Transcode output is local and transient.
 
 PostgreSQL is the required user-state backend for any deployment that may run
-more than one Silo application process. SQLite user state is a deliberately
+more than one Bloem application process. SQLite user state is a deliberately
 single-node mode: local files are written under `/var/lib/silo/userdb`, there is
 no built-in S3/Litestream replication, and startup reserves one durable
 `SILO_NODE_NAME` in PostgreSQL. A second process using that identity, or a
@@ -147,7 +147,7 @@ services:
 ```
 
 Validate the merged Compose configuration before recreating the container.
-Back up the complete directory as one unit while Silo is stopped. Do not place
+Back up the complete directory as one unit while Bloem is stopped. Do not place
 the directory on independently mounted replica-local volumes.
 
 Moving a SQLite deployment to another node is an explicit maintenance
@@ -248,26 +248,26 @@ alternative provider:
 3. In **Admin > Settings > Search**, select Meilisearch, set the URL to
    `http://meilisearch:7700`, enter the same key as the API key, test the
    connection, and save.
-4. Restart Silo and rebuild the catalog search index from the same page.
+4. Restart Bloem and rebuild the catalog search index from the same page.
 
-Silo continues to use PostgreSQL full-text search until Meilisearch is selected.
+Bloem continues to use PostgreSQL full-text search until Meilisearch is selected.
 
 ## External PostgreSQL and Redis
 
 > [!IMPORTANT]
 > The default `docker-compose.yml` defines bundled PostgreSQL and Redis services,
-> hard-codes the Silo service's internal connection URLs, and declares health
+> hard-codes the Bloem service's internal connection URLs, and declares health
 > dependencies on both services. Setting `DATABASE_URL` or `REDIS_URL` only in
 > `.env` does not replace that wiring.
 
 To use existing infrastructure, write a Compose definition or override that
 does all of the following:
 
-- supplies the external `DATABASE_URL` and `REDIS_URL` to the Silo service
+- supplies the external `DATABASE_URL` and `REDIS_URL` to the Bloem service
 - removes or replaces the bundled-service dependencies
 - omits the bundled PostgreSQL and Redis services from the deployed project
 - preserves the media, plugin, compatibility, transcode, and catalog mounts
-- preserves the same `SECRET_KEY` across every Silo role
+- preserves the same `SECRET_KEY` across every Bloem role
 
 Validate the merged configuration before starting it:
 
@@ -301,7 +301,7 @@ For a distributed deployment:
 - restart a role after changing its artifact path
 
 Prepared downloads can run on transcode nodes. The node keeps the result on
-its own disk and serves it through Silo's authenticated artifact API, so nodes
+its own disk and serves it through Bloem's authenticated artifact API, so nodes
 need no shared artifact mount. Dedicated transcode nodes default to a protected
 directory inside the transcode volume; `download.artifact_dir` overrides that
 for transcode nodes and for the integrated/API fallback. Whatever path you
@@ -313,7 +313,7 @@ client-facing contract is in the [Downloads API](../../downloads-api.md#411-dist
 
 ## PostgreSQL auto-tuning
 
-The bundled deployment enables Silo's
+The bundled deployment enables Bloem's
 [pgtune](https://github.com/le0pard/pgtune)-style OLTP tuning by default:
 
 ```yaml
@@ -321,14 +321,14 @@ POSTGRES_TUNE: auto
 ```
 
 > [!CAUTION]
-> With auto-tuning enabled, Silo uses `ALTER SYSTEM` and writes recommendations
+> With auto-tuning enabled, Bloem uses `ALTER SYSTEM` and writes recommendations
 > to PostgreSQL's `postgresql.auto.conf`. Set `POSTGRES_TUNE=off` before startup
 > if PostgreSQL settings are managed elsewhere.
 
 Reloadable settings are applied with `pg_reload_conf()`. Restart-only settings
-are written to `postgresql.auto.conf` and logged by name on every Silo start
-until PostgreSQL has been restarted. Silo is already serving when that warning
-appears, and restarting only PostgreSQL drops every open Silo connection, so
+are written to `postgresql.auto.conf` and logged by name on every Bloem start
+until PostgreSQL has been restarted. Bloem is already serving when that warning
+appears, and restarting only PostgreSQL drops every open Bloem connection, so
 restart both during a quiet window (or once, right after first boot, before
 adding libraries):
 
@@ -338,7 +338,7 @@ docker compose restart postgres silo
 
 The bundled database user has the required permissions. For an external
 database, keep `POSTGRES_TUNE=off` for the application credential and manage
-tuning out of band with a separate administrative credential. Silo uses the
+tuning out of band with a separate administrative credential. Bloem uses the
 `DATABASE_URL` identity for both normal operation and tuning; it does not have
 a separate tuning credential. Granting that identity `ALTER SYSTEM` permits
 server-wide configuration changes if the application credential is
@@ -347,13 +347,13 @@ compromised.
 Enable external tuning only in a trusted deployment that accepts this risk. Set
 explicit `POSTGRES_TUNE_MEMORY` and `POSTGRES_TUNE_CPUS` values for the database
 host and grant the `DATABASE_URL` user permission to run `ALTER SYSTEM`;
-automatic host detection describes the Silo container, not a remote database
+automatic host detection describes the Bloem container, not a remote database
 machine.
 
-When `POSTGRES_TUNE_MEMORY=auto`, Silo uses the first trustworthy source from a
+When `POSTGRES_TUNE_MEMORY=auto`, Bloem uses the first trustworthy source from a
 finite Docker cgroup limit, the bundled read-only `/host/proc/meminfo` mount,
 or guarded `/proc/meminfo` detection. It reserves 25% of detected memory for
-Silo, Redis, plugins, transcodes, the operating system, and other work by
+Bloem, Redis, plugins, transcodes, the operating system, and other work by
 default. Database-size classification uses
 `pg_database_size(current_database())`.
 
@@ -403,7 +403,7 @@ docker compose up -d --no-deps silo
 docker compose logs -f silo
 ```
 
-Silo applies pending migrations during startup, under a database lock, before
+Bloem applies pending migrations during startup, under a database lock, before
 it opens its HTTP listener. The container healthcheck starts failing after
 about a minute, so a large migration can show `unhealthy` in `docker ps` while
 it is still working. Follow the logs until startup completes and do not

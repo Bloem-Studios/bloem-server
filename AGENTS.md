@@ -95,14 +95,15 @@ Renaming a row in SQL makes its value undecryptable.
 profiles on one account share a `user_id`. A profile's `is_primary` marks the household parent,
 which is *not* the server-wide `admin` role on the account.
 
-**Docs hygiene.** Implementation plans and specs are ephemeral working artifacts, not
-documentation. `docs/superpowers/` is gitignored: write plans there (or in any scratch dir)
-while working, but never commit them — put the plan in the PR description instead. Before a
-branch merges, distill anything durable (invariants, protocols, security rules) into
-`docs/architecture/` and let the plan die. The code is the source of truth; a doc that
-disagrees with the code is wrong. Any committed doc must not contain local absolute
-filesystem paths or transient worktree IDs — use repository-relative paths and wording like
-"Commands assume the repository root is the cwd." `make verify-local-paths` enforces this.
+**Docs hygiene.** New implementation plans and specs are ephemeral working artifacts, not
+maintained documentation. `docs/superpowers/` is gitignored for new files: write new plans there
+(or in scratch space), but do not add them to a change. The already tracked files in that
+directory are historical records; preserve their historical facts and add a frozen-snapshot banner
+when one reads as current operating guidance. Before a branch merges, distill durable invariants,
+protocols, and security rules into `docs/architecture/`. The code is the source of truth; a doc
+that disagrees with the code is wrong. Any committed doc must not contain local absolute filesystem
+paths or transient worktree IDs — use repository-relative paths and wording like "Commands assume
+the repository root is the cwd." `make verify-local-paths` enforces this.
 
 **Dev frontend against a remote backend.** Set `VITE_API_PROXY_TARGET` in `web/.env.local` before
 `make dev-frontend`; the frontend calls relative `/api` URLs that Vite proxies.

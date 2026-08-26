@@ -28,7 +28,7 @@ Bloem is in heavy active development. Features get rewritten, APIs shift, whole 
 
 Small stuff (typo fixes, minor bugs) — just open a merge request. No ceremony.
 
-For anything bigger, start with an issue first. New features, API changes, schema migrations, large refactors, behavior changes — talk about it before writing code. Design docs live under `docs/superpowers/specs/` and `docs/superpowers/plans/` if you need examples.
+For anything bigger, start with an issue first. New features, API changes, schema migrations, large refactors, behavior changes — talk about it before writing code. Tracked records under `docs/superpowers/` are historical examples, not current implementation instructions; new working plans remain untracked.
 
 ## Don't Submit AI Slop
 
@@ -75,17 +75,29 @@ AI disclosure is mandatory for every MR; use the required block in [AI Disclosur
 
 ## Development Setup
 
-See the README for full setup. Common checks:
+See the README for full setup. The frontend uses pnpm 10.32.1, as pinned in
+`web/package.json`; do not substitute Bun commands.
+
+## Validate your change
+
+Run the applicable focused checks while iterating, then run this repository's
+pre-submission gate before opening a merge request:
 
 ```sh
-go test ./...                        # Go tests
-golangci-lint run                    # Go lint
-cd web && bun test                   # Frontend tests
-cd web && bun run lint               # Frontend lint
-cd web && bun run format:check       # Frontend formatting
+make test-go
+make test-web
+make lint
+make verify-settings-bindings-all
+make verify-playback-fixtures
+make verify-local-paths
 ```
 
-If your change spans this server and Bloem's own private plugin SDK, local iteration through [`go.work`](go.work) is expected. Do not rely on that workspace in repo-tracked config or release pipelines. CI validates this repo with `GOWORK=off`, and any new SDK package or symbol must come from a pushed, tagged release of the SDK before the change is ready to merge — same discipline Silo's own `silo-plugin-sdk` workflow uses, applied to Bloem's separate, private SDK.
+If your change spans this server and Bloem's own private plugin SDK, local iteration through
+an untracked `go.work` workspace is expected. Do not rely on that workspace in repo-tracked
+config or release pipelines. CI validates this repo with `GOWORK=off`, and any new SDK package
+or symbol must come from a pushed, tagged release of the SDK before the change is ready to merge
+— the same discipline Silo's own `silo-plugin-sdk` workflow uses, applied to Bloem's separate,
+private SDK.
 
 ## Style
 

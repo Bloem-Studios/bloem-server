@@ -29,7 +29,7 @@ COMPOSE_FILE=docker-compose.yml:docker-compose.livetv.yml
 
 What the override does:
 
-- Sets `network_mode: host` on the `prairie` service
+- Sets `network_mode: host` on the `silo` application service
 - Points `DATABASE_URL` / `REDIS_URL` at `127.0.0.1` (postgres/redis still publish host ports)
 - Uses `PORT` from `.env` as the host listen port (default `8090`, same as the previous published URL)
 

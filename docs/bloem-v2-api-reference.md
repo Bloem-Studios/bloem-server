@@ -1,17 +1,15 @@
 # Bloem Server — Native /api/v2 Reference
 
 A wire-level reference for `bloem-server`'s native `/api/v2` API surface — the Bloem-specific
-extensions layered on top of the frozen, Silo-compatible `/api/v1` projection documented
+extensions layered on top of the Silo-compatible `/api/v1` projection, including its reviewed
+Bloem exceptions, documented
 separately (see [Silo API Reference](https://github.com/Bloem-Media/silo-api-reference), also
-mirrored at `bloem-android/docs/silo-api-reference.md`). Compiled 2026-08-20 by reading
-`bloem-server`'s actual Go source directly — route tables, handlers, and the domain packages
-each handler calls into — cross-checked against real usage in `bloem-android` and `bloem-apple`.
+mirrored at `bloem-android/docs/silo-api-reference.md`). This maintained reference follows the
+mounted routes and handlers in the current server source.
 
-**This is a private, proprietary API.** Unlike `/api/v1`, none of this surface is meant to be
-Silo-compatible or externally stable — `bloem-server`'s own `AGENTS.md` calls the whole repo "a
-VERY EARLY WIP" and explicitly welcomes sweeping changes. Treat this document as a snapshot of
-2026-08-20's implementation, not a frozen contract — re-derive it from source before relying on
-any exact field name or error code in new work.
+**This is a private, proprietary API.** Unlike `/api/v1`, none of this surface is Silo-compatible
+or externally frozen. The v2 API evolves with Bloem; clients must use capability tokens for
+optional behavior and ignore additive response fields they do not understand.
 
 ## What `/api/v2` actually is
 
@@ -22,7 +20,8 @@ clients depend on"), and splits into two genuinely different surfaces:
 
 - **System & Client** (`GET /api/v2/capabilities`, `GET /api/v2/organizations`,
   `POST /api/v2/admin/session`, plus the client-facing routes mounted by `router_v2_client.go`:
-  server identity, native Watch home/item/search, native progress sync, person detail) — reachable
+  server identity, native Watch home/item/search, native progress sync, person detail, and Music
+  status/artist/album reads) — reachable
   by an ordinary authenticated user, no organization/admin context required. This is the part the
   native mobile/TV clients actually call.
 - **Admin** (everything under `/api/v2/admin`) — a genuine multi-tenant SaaS administration
@@ -39,6 +38,24 @@ clients depend on"), and splits into two genuinely different surfaces:
 2. [Organization Administration](#organization-administration-native-apiv2admin)
 3. [Platform Administration & Compatibility](#platform-administration--compatibility-native-apiv2admin)
 4. [People Administration](#people-administration-native-apiv2adminorganizationpeople)
+
+## Native client route summary
+
+`GET /api/v2/server/identity` is public. The following routes require an
+account bearer token and a profile (`X-Profile-Id`, unless a direct-profile
+session supplies it):
+
+- `GET /api/v2/watch/home`, `GET /api/v2/watch/items/{content_id}`, and
+  `GET /api/v2/watch/search`
+- `POST /api/v2/sync/progress`
+- `GET /api/v2/persons/{person_id}`
+- `GET /api/v2/music/status`, `GET /api/v2/music/artists`,
+  `GET /api/v2/music/artists/{id}`, and `GET /api/v2/music/albums/{id}`
+
+Music artist and album reads additionally require an allowed positive
+`library_id`. Client routes other than identity are conditionally mounted when
+their backing dependencies are configured; clients must treat `404` as an
+unavailable optional feature and consult capabilities before use.
 
 ## Known gaps / follow-ups surfaced while compiling this doc
 

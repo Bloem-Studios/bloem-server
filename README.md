@@ -54,8 +54,8 @@ adds a focused set of its own capabilities alongside it:
   administration), organization-scoped profile groups, a separate
   administrative-context session system, and policy-bounded visibility of
   organization-owned or explicitly entitled media folders — while `/api/v1`
-  remains the unmodified Silo-compatible surface every existing client
-  already speaks. See
+  remains the Silo-compatible projection. It has documented, reviewed Bloem
+  exceptions; see [the v1 client-surface policy](docs/architecture/v2-client-surface.md) and
   [the operator runbook](docs/architecture/opa-tenant-authorization.md).
 - Revisioned **entitlement templates** for consistently applying playback,
   stream, profile, transcode, download, request, permission, quality, and
@@ -94,7 +94,7 @@ remain Silo's own work, unchanged.
 
 - **Plays your media, your way** — direct play when the device supports it, remux or hardware-accelerated transcode (including NVENC) when it doesn't.
 - **Web app included** — a full-featured web client and admin interface ship with the server.
-- **Works with apps you already use** — a Jellyfin/Emby-compatible API supports clients such as VidHub, Findroid, and Infuse, and an Audiobookshelf-compatible API supports Audiobookshelf-protocol clients for audiobook/podcast playback, progress sync, bookmarks, and RSS feeds. Both are enabled by default and reachable on Silo's own address — no extra ports to open. Both can be turned off in Admin > Settings, and an operator who wants a dedicated listener on a fixed port (`JF_PORT`/`ABS_PORT`, `8096`/`13378`) can still opt into one there.
+- **Works with apps you already use** — a Jellyfin/Emby-compatible API supports clients such as VidHub, Findroid, and Infuse, and an Audiobookshelf-compatible API supports Audiobookshelf-protocol clients for audiobook/podcast playback, progress sync, bookmarks, and RSS feeds. Both are enabled by default and reachable on Bloem's own address — no extra ports to open. Both can be turned off in Admin > Settings, and an operator who wants a dedicated listener on a fixed port (`JF_PORT`/`ABS_PORT`, `8096`/`13378`) can still opt into one there.
 - **Household profiles** — multiple profiles per account, with per-profile watch state and parental controls.
 - **Reusable access policy** — immutable entitlement-template revisions and organization policy cohorts make reviewed policy changes repeatable for one account or up to 10,000 snapshotted accounts, with separate controls for original downloads and transcoded downloads and either all libraries or an explicit library selection.
 - **Plugin-driven metadata** — match and enrich your libraries with providers like TMDB and TVDB, installed as plugins.
@@ -102,9 +102,11 @@ remain Silo's own work, unchanged.
 
 ## Deploy with Docker (recommended)
 
-The easiest way to run Silo is with Docker Compose 2.24 or newer. The default stack assumes you do
+The easiest way to run Bloem is with Docker Compose 2.24 or newer. The default stack assumes you do
 not already have PostgreSQL and Redis available, so it bundles PostgreSQL, Redis, FFmpeg, and the
-application for a one-command start.
+application for a one-command start. It pulls
+`ghcr.io/bloem-studios/bloem-server:latest` by default; `SILO_IMAGE` remains
+the Compose override name for upstream-configuration compatibility.
 
 1. **Create a `.env` file**
 
@@ -114,7 +116,7 @@ application for a one-command start.
      "$(openssl rand -hex 24)" "$(openssl rand -base64 48)" >> .env
    ```
 
-   This replaces the development database password from `.env.example` and creates the key Silo
+   This replaces the development database password from `.env.example` and creates the key Bloem
    uses to encrypt stored credentials. Back up `.env` separately from PostgreSQL; losing
    `SECRET_KEY` makes those credentials unrecoverable.
 
@@ -126,7 +128,7 @@ application for a one-command start.
    MEDIA_ROOT=/path/to/your/media
    ```
 
-   `MEDIA_ROOT` is the one value most users need to change. You can also override `SILO_DATA_ROOT` if you do not want bind mounts under `/opt/silo`, and change ports if the defaults conflict with something else on the host.
+   `MEDIA_ROOT` is the one value most users need to change. You can also override `SILO_DATA_ROOT` if you do not want bind mounts under `/opt/silo`, and change ports if the defaults conflict with something else on the host. `SILO_*` names are retained compatibility identifiers.
 
 3. **Start the default integrated stack**
 
@@ -134,9 +136,9 @@ application for a one-command start.
    docker compose up -d
    ```
 
-   This starts PostgreSQL, Redis, and the integrated Silo server. The app is available at `http://localhost:8090`. Jellyfin/Emby-compatible app support and Audiobookshelf-compatible app support are both enabled by default, reachable on that same address — no extra ports needed. Either can be turned off from Admin > Settings if you don't need it, and an operator who wants a dedicated listener on a fixed port instead can opt into one there too.
+   This starts PostgreSQL, Redis, and the integrated Bloem server. The app is available at `http://localhost:8090`. Jellyfin/Emby-compatible app support and Audiobookshelf-compatible app support are both enabled by default, reachable on that same address — no extra ports needed. Either can be turned off from Admin > Settings if you don't need it, and an operator who wants a dedicated listener on a fixed port instead can opt into one there too.
 
-   If you already have PostgreSQL and Redis available, omit those bundled service examples from compose and point Silo at your existing `DATABASE_URL` and `REDIS_URL` instead.
+   If you already have PostgreSQL and Redis available, omit those bundled service examples from compose and point Bloem at your existing `DATABASE_URL` and `REDIS_URL` instead.
 
    ### Optional Intel/AMD VA-API or Intel Quick Sync
 
@@ -208,9 +210,9 @@ want its search provider:
 | `search` | `docker compose --profile search up -d` | Add the optional Meilisearch service |
 
 Before starting the `search` profile, set `MEILI_MASTER_KEY` in `.env` to the output of
-`openssl rand -hex 32`. After Silo starts, choose Meilisearch under **Admin > Settings > Search**,
+`openssl rand -hex 32`. After Bloem starts, choose Meilisearch under **Admin > Settings > Search**,
 set the URL to `http://meilisearch:7700`, enter the same key as the API key, test the connection,
-and save. Restart Silo, then rebuild the catalog search index from the same page. Silo continues
+and save. Restart Bloem, then rebuild the catalog search index from the same page. Bloem continues
 to use PostgreSQL full-text search until you select Meilisearch.
 
 ### Distributed Examples
@@ -240,16 +242,16 @@ relay on that fallback route.
 
 ### Deployment Notes
 
-The default compose stack intentionally bundles PostgreSQL and Redis for ease of setup and assumes a fresh install without those services already available. If you already operate PostgreSQL and Redis, omit those examples from compose and point Silo at your existing infrastructure instead. For serious installs, PostgreSQL is better on a separate VM or a managed service so upgrades, tuning, and backups are isolated from the app host. Redis can stay local for many installs, but externalizing it is also reasonable if you already operate shared infrastructure.
+The default compose stack intentionally bundles PostgreSQL and Redis for ease of setup and assumes a fresh install without those services already available. If you already operate PostgreSQL and Redis, omit those examples from compose and point Bloem at your existing infrastructure instead. For serious installs, PostgreSQL is better on a separate VM or a managed service so upgrades, tuning, and backups are isolated from the app host. Redis can stay local for many installs, but externalizing it is also reasonable if you already operate shared infrastructure.
 
-Silo is externally stateful by default rather than fully stateless. Durable application state lives in PostgreSQL. Redis only stores coordination and cache-style data. Silo still writes transient transcode output locally under `/tmp/silo-transcode`. If you switch `userdb.backend=sqlite`, Silo also becomes locally stateful at `/var/lib/silo/userdb`.
+Bloem is externally stateful by default rather than fully stateless. Durable application state lives in PostgreSQL. Redis only stores coordination and cache-style data. Bloem still writes transient transcode output locally under `/tmp/silo-transcode`. If you switch `userdb.backend=sqlite`, Bloem also becomes locally stateful at `/var/lib/silo/userdb`.
 
 Migrating an existing Continuum Docker install should be done with the preflight
 helper and cutover guide in [docs/continuum-to-silo-docker-migration.md](docs/continuum-to-silo-docker-migration.md).
 
 ## Configuration
 
-Silo requires `DATABASE_URL` and `SECRET_KEY` when running from source or against external
+Bloem requires `DATABASE_URL` and `SECRET_KEY` when running from source or against external
 infrastructure. In the default Docker Compose path, the stack wires the database and Redis URLs
 for you. All other settings — libraries, metadata providers, transcoding, users — are managed
 through the admin UI after first launch.
@@ -317,7 +319,7 @@ move fully to a custom `postgresql.conf`.
 
 ## Build from Source
 
-If you prefer running Silo without Docker:
+If you prefer running Bloem without Docker:
 
 1. **Install prerequisites**: Go 1.26.4+, Node.js 22+, pnpm 10.32.1, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
 

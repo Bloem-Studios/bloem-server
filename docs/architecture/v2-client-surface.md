@@ -24,7 +24,13 @@ BLOEM_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
 | `GET /api/v2/server/identity` | public | `server_id`, `server_name`, `api_versions`, `setup_complete`. `no-store`. |
 | `GET /api/v2/watch/home` | account + profile | `watch_document_v1` home snapshot. |
 | `GET /api/v2/watch/items/{content_id}` | account + profile | `watch_document_v1` item snapshot. |
+| `GET /api/v2/watch/search` | account + profile | Profile-scoped Watch search. |
 | `POST /api/v2/sync/progress` | account + profile | Per-item `updated` / `ignored` / `error`. |
+| `GET /api/v2/persons/{person_id}` | account + profile | Profile-scoped person detail and visible filmography. |
+| `GET /api/v2/music/status` | account + profile | Available music library IDs. |
+| `GET /api/v2/music/artists` | account + profile | Artists page; requires an allowed `library_id`. |
+| `GET /api/v2/music/artists/{id}` | account + profile | Artist and ordered albums; requires `library_id`. |
+| `GET /api/v2/music/albums/{id}` | account + profile | Album and ordered tracks; requires `library_id`. |
 
 The authenticated routes share one group: `RequireAuth`, the default-organization
 tenant projection, the rate limiter, viewer-access resolution, and
@@ -34,7 +40,8 @@ claims. No login endpoint mints those claims, so requiring it would refuse every
 viewer. Organization-bound administrative routes still must use it.
 
 Clients detect all of it through `feature_tokens` on the capability document —
-`watch_document_v1`, `device_pairing_v1`, `progress_sync_v1` — never by
+`watch_document_v1`, `device_pairing_v1`, `progress_sync_v1`, and
+`music_catalog_v1` — never by
 inspecting a server version.
 
 ## Server identity is its own endpoint
@@ -65,6 +72,15 @@ identical store and reports `updated` (the row was written), `ignored` (accepted
 not written) or `error`. Only the reporting differs: both routes run the same
 thresholds, the same last-write-wins merge, the same taste-profile refresh and
 the same event fan-out.
+
+## Response and dependency behavior
+
+The native v2 surface may add fields and routes without preserving an upstream
+Silo wire shape. Clients must ignore response fields they do not understand
+and use capability tokens before relying on optional features. Except for the
+always-mounted public identity route, client routes mount only when their
+backing dependencies are available; an unavailable optional handler is absent
+and returns `404`, not an empty success response.
 
 ## Wiring
 

@@ -1,7 +1,7 @@
 # Optional override for Live TV HDHomeRun LAN discovery (Linux hosts).
 #
 # Bridge-mode Docker cannot send/receive SiliconDust UDP broadcasts on port
-# 65001 to the LAN. This override puts the prairie service on the host network
+# 65001 to the LAN. This override puts the Bloem application service on the host network
 # so "Discover on LAN" works. Dispatcharr URL probing works without this file.
 #
 # Usage:
@@ -17,10 +17,10 @@
 #   host :8080 (and JF/ABS ports if enabled). Point clients at that host port,
 #   or put a reverse proxy on the host in front of it.
 # - postgres/redis stay on the compose network but publish 5432/6379 to the host,
-#   so prairie reaches them via 127.0.0.1.
+#   so the application reaches them via 127.0.0.1.
 
 services:
-  prairie:
+  silo:
     network_mode: host
     # Clear bridge-mode port publishes (ignored under host networking anyway).
     ports: !reset []

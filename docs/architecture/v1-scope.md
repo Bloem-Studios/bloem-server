@@ -1,6 +1,12 @@
-# Silo v1 Scope
+# Bloem Silo-compatible v1 Scope
 
 **Status: NOT LOCKED — proposal window open.**
+
+`/api/v1` is Bloem's Silo-compatible projection, not an unmodified upstream
+surface. The route contract is pinned against `origin/main`; the reviewed
+Bloem exceptions are direct profile login and lookup, account-administration
+profile/device/session methods, and tenant-member lifecycle/resource methods.
+Native Bloem client features belong under `/api/v2`.
 
 Propose capabilities with the **v1 capability proposal** issue template; triage happens on the
 [Silo v1 project](https://github.com/orgs/Silo-Server/projects/5).
@@ -8,7 +14,7 @@ Propose capabilities with the **v1 capability proposal** issue template; triage 
 When the scope locks, this file becomes the source of truth and will contain:
 
 1. **Locked capabilities** — a table of capability epics (issue links) with one-line scope statements.
-2. **API policy** — additive-only within `/api/v1` (no field renames/removals, no type changes,
+2. **API policy** — additive-only within `/api/v1` after lock (no field renames/removals, no type changes,
    no status-code repurposing; removals only via the Deprecation/Sunset header flow; capability
    endpoints for feature detection). Contract tooling: #135.
 3. **Amendment rules** — after lock, this file changes only via PR with code-owner review.

@@ -1,9 +1,9 @@
 ---
-title: Silo Wiki
-description: User-facing Silo documentation written in Markdown for in-repo use and Wiki.js sync.
-summary: Index of digestible Silo docs by audience and subject.
+title: Bloem Wiki
+description: User-facing Bloem documentation written in Markdown for in-repo use and Wiki.js sync.
+summary: Index of digestible Bloem docs by audience and subject.
 tags:
-  - silo
+  - bloem
   - docs
   - wiki
 audience:
@@ -13,9 +13,9 @@ last_reviewed: 2026-08-20
 related: []
 ---
 
-# Silo Wiki
+# Bloem Wiki
 
-This directory is the repo-local home for user-digestible Silo documentation. Pages here
+This directory is the repo-local home for user-digestible Bloem documentation. Pages here
 should stay portable Markdown so they can render cleanly in GitHub and sync into Wiki.js without
 rewriting.
 
@@ -35,7 +35,7 @@ rewriting.
   download, profile, transcode, permission, and library policies and safely apply them to
   organizations or direct accounts.
 - [Supported Media Folder Structures and Naming](admin/media-folder-and-naming.md) - Accurate
-  reference for the folder layouts and filenames Silo can scan and match today.
+  reference for the folder layouts and filenames Bloem can scan and match today.
 - [Collection Templates](admin/collection-templates.md) - Curated, one-click starting points for
   synced library collections sourced from TMDB, Trakt, and MDBList.
 - [Local NFO Metadata](admin/nfo-local-metadata.md) - Supported NFO sidecar fields, how they merge
@@ -43,7 +43,7 @@ rewriting.
 
 ## Deployment
 
-- [Deploy Silo with Docker](deployment/docker.md) - Install and operate Silo with Docker Compose,
+- [Deploy Bloem with Docker](deployment/docker.md) - Install and operate Bloem with Docker Compose,
   including storage, GPU acceleration, search, distributed roles, tuning, backups, and updates.
 
 ## Troubleshooting
