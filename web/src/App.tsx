@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -27,13 +27,8 @@ import { RealtimeEventsProvider } from "@/components/RealtimeEventsProvider";
 import { useEventChannel } from "@/components/realtimeEventsContext";
 import { useSettingValuesRealtime } from "@/hooks/queries/settingValues";
 import Layout from "@/components/Layout";
-import AdminLayout from "@/components/AdminLayout";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
-import OAuthComplete from "@/pages/OAuthComplete";
-import ActivateDevice from "@/pages/ActivateDevice";
-import SetupWizard from "@/pages/SetupWizard";
-import Profiles from "@/pages/Profiles";
 import Catalog from "@/pages/Catalog";
 import LibraryPage from "@/pages/LibraryPage";
 import ItemDetail from "@/pages/ItemDetail/index";
@@ -101,25 +96,7 @@ import { isTasteSeedDismissed } from "@/lib/tasteSeed";
 import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
 import { useOnboardingState } from "@/hooks/queries/onboarding";
 import SettingsLayout from "@/pages/SettingsLayout";
-import AppearanceSettings from "@/pages/settings/AppearanceSettings";
-import AccessibilitySettings from "@/pages/settings/AccessibilitySettings";
 import PlaybackSettings from "@/pages/settings/PlaybackSettings";
-import ProfilesSettings from "@/pages/settings/ProfilesSettings";
-import LibrarySettings from "@/pages/settings/LibrarySettings";
-import HistoryImportSettings from "@/pages/settings/HistoryImportSettings";
-import WebhookSyncSettings from "@/pages/settings/WebhookSyncSettings";
-import WatchProvidersSettings from "@/pages/settings/WatchProvidersSettings";
-import SubtitleAppearanceSettings from "@/pages/settings/SubtitleAppearanceSettings";
-import HomeScreenSettings from "@/pages/settings/HomeScreenSettings";
-import ThemeEditorSettings from "@/pages/settings/ThemeEditorSettings";
-import CardOverlaySettings from "@/pages/settings/CardOverlaySettings";
-import PersonalizeSettings from "@/pages/settings/PersonalizeSettings";
-import ConnectAppsSettings from "@/pages/settings/ConnectAppsSettings";
-import InterfaceSettings from "@/pages/settings/InterfaceSettings";
-import WatchTogetherJoin from "@/pages/WatchTogetherJoin";
-import WatchTogetherRoomPage from "@/pages/WatchTogetherRoomPage";
-import WatchRoute from "@/pages/WatchRoute";
-import ProfileCustomizeHome from "@/pages/ProfileCustomizeHome";
 import {
   WatchPlaybackBar,
   WatchPlaybackHost,
@@ -142,6 +119,78 @@ import {
 } from "@/contexts/AdminContextProvider";
 import { canRenderAdminShell } from "@/contexts/adminContextAccess";
 import { prewarmCodecDetection } from "@/player/hooks/useCodecDetection";
+
+const AdminLayout = lazy(() => import("@/components/AdminLayout"));
+const OAuthComplete = lazy(() => import("@/pages/OAuthComplete"));
+const ActivateDevice = lazy(() => import("@/pages/ActivateDevice"));
+const SetupWizard = lazy(() => import("@/pages/SetupWizard"));
+const Profiles = lazy(() => import("@/pages/Profiles"));
+const LibraryPage = lazy(() => import("@/pages/LibraryPage"));
+const ItemDetail = lazy(() => import("@/pages/ItemDetail/index"));
+const EbookReader = lazy(() => import("@/pages/EbookReader"));
+const PersonDetail = lazy(() => import("@/pages/PersonDetail"));
+const Collections = lazy(() => import("@/pages/Collections"));
+const CollectionEditor = lazy(() => import("@/pages/CollectionEditor"));
+const Notifications = lazy(() => import("@/pages/Notifications"));
+const DeviceSettings = lazy(() => import("@/pages/settings/DeviceSettings"));
+const NotificationsSettings = lazy(() => import("@/pages/settings/NotificationsSettings"));
+const Requests = lazy(() => import("@/pages/Requests"));
+const RequestBrowse = lazy(() => import("@/pages/RequestBrowse"));
+const RequestDetail = lazy(() => import("@/pages/RequestDetail"));
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
+const AdminActivity = lazy(() => import("@/pages/AdminActivity"));
+const AdminLogs = lazy(() => import("@/pages/AdminLogs"));
+const AdminDiagnostics = lazy(() => import("@/pages/AdminDiagnostics"));
+const AdminAccessGroups = lazy(() => import("@/pages/AdminAccessGroups"));
+const AdminUsers = lazy(() => import("@/pages/AdminUsers"));
+const AdminRequests = lazy(() => import("@/pages/AdminRequests"));
+const AdminAutoscan = lazy(() => import("@/pages/AdminAutoscan"));
+const AdminDevices = lazy(() => import("@/pages/AdminDevices"));
+const AdminLibraries = lazy(() => import("@/pages/AdminLibraries"));
+const AdminSettingsLayout = lazy(() => import("@/pages/admin-settings/AdminSettingsLayout"));
+const AdminNodes = lazy(() => import("@/pages/AdminNodes"));
+const AdminSections = lazy(() => import("@/pages/AdminSections"));
+const AdminCollections = lazy(() => import("@/pages/AdminCollections"));
+const AdminCollectionEditor = lazy(() => import("@/pages/AdminCollectionEditor"));
+const AdminPlaybackHistory = lazy(() => import("@/pages/AdminPlaybackHistory"));
+const AdminMarkerHistory = lazy(() => import("@/pages/AdminMarkerHistory"));
+const AdminMaintenance = lazy(() => import("@/pages/AdminMaintenance"));
+const AdminApiKeys = lazy(() => import("@/pages/AdminApiKeys"));
+const AdminSubtitles = lazy(() => import("@/pages/AdminSubtitles"));
+const AdminUserDetail = lazy(() => import("@/pages/AdminUserDetail"));
+const AdminTasks = lazy(() => import("@/pages/AdminTasks"));
+const AdminTaskDetail = lazy(() => import("@/pages/AdminTaskDetail"));
+const AdminPlugins = lazy(() => import("@/pages/AdminPlugins"));
+const AdminHistoryImport = lazy(() => import("@/pages/AdminHistoryImport"));
+const AdminRecommendations = lazy(() => import("@/pages/AdminRecommendations"));
+const AdminPolicyLayout = lazy(() => import("@/pages/admin-policy/AdminPolicyLayout"));
+const Recommendations = lazy(() => import("@/pages/Recommendations"));
+const RecommendationsSection = lazy(() => import("@/pages/RecommendationsSection"));
+const Calendar = lazy(() => import("@/pages/Calendar"));
+const Signup = lazy(() => import("@/pages/Signup"));
+const InviteClaim = lazy(() => import("@/pages/InviteClaim"));
+const HouseholdSetup = lazy(() => import("@/pages/HouseholdSetup"));
+const TasteSeed = lazy(() => import("@/pages/TasteSeed"));
+const AppearanceSettings = lazy(() => import("@/pages/settings/AppearanceSettings"));
+const AccessibilitySettings = lazy(() => import("@/pages/settings/AccessibilitySettings"));
+const ProfilesSettings = lazy(() => import("@/pages/settings/ProfilesSettings"));
+const LibrarySettings = lazy(() => import("@/pages/settings/LibrarySettings"));
+const HistoryImportSettings = lazy(() => import("@/pages/settings/HistoryImportSettings"));
+const WebhookSyncSettings = lazy(() => import("@/pages/settings/WebhookSyncSettings"));
+const WatchProvidersSettings = lazy(() => import("@/pages/settings/WatchProvidersSettings"));
+const SubtitleAppearanceSettings = lazy(
+  () => import("@/pages/settings/SubtitleAppearanceSettings"),
+);
+const HomeScreenSettings = lazy(() => import("@/pages/settings/HomeScreenSettings"));
+const ThemeEditorSettings = lazy(() => import("@/pages/settings/ThemeEditorSettings"));
+const CardOverlaySettings = lazy(() => import("@/pages/settings/CardOverlaySettings"));
+const PersonalizeSettings = lazy(() => import("@/pages/settings/PersonalizeSettings"));
+const ConnectAppsSettings = lazy(() => import("@/pages/settings/ConnectAppsSettings"));
+const InterfaceSettings = lazy(() => import("@/pages/settings/InterfaceSettings"));
+const WatchTogetherJoin = lazy(() => import("@/pages/WatchTogetherJoin"));
+const WatchTogetherRoomPage = lazy(() => import("@/pages/WatchTogetherRoomPage"));
+const WatchRoute = lazy(() => import("@/pages/WatchRoute"));
+const ProfileCustomizeHome = lazy(() => import("@/pages/ProfileCustomizeHome"));
 
 /** Scrolls to top on pathname change (custom replacement for ScrollRestoration which requires data router). */
 function useScrollRestoration() {
@@ -174,6 +223,15 @@ function RouteAnnouncer() {
 function ScrollRestorationManager() {
   useScrollRestoration();
   return null;
+}
+
+function RouteLoading() {
+  return (
+    <div className="p-8" role="status" aria-live="polite">
+      <span className="sr-only">Loading page</span>
+      Loading...
+    </div>
+  );
 }
 
 /**
@@ -786,7 +844,9 @@ export default function App() {
                           <RouteAnnouncer />
                           <QueryCacheManager />
                           <AppChrome />
-                          <ReactiveAppRoutes />
+                          <Suspense fallback={<RouteLoading />}>
+                            <ReactiveAppRoutes />
+                          </Suspense>
                           <WatchPlaybackHost />
                           <WatchPlaybackBar />
                           <Toaster />
