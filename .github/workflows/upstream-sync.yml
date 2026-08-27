@@ -87,17 +87,28 @@ jobs:
             echo "Merged cleanly."
           else
             echo "clean=false" >> "$GITHUB_OUTPUT"
-            # Capture the conflict list before aborting; a conflicted index
-            # cannot be pushed, so a human has to drive these.
             conflicts=$(git diff --name-only --diff-filter=U)
             echo "conflicts<<CONFLICT_EOF" >> "$GITHUB_OUTPUT"
             echo "$conflicts" >> "$GITHUB_OUTPUT"
             echo "CONFLICT_EOF" >> "$GITHUB_OUTPUT"
             echo "conflict_count=$(echo "$conflicts" | grep -c . || true)" >> "$GITHUB_OUTPUT"
-            git merge --abort
+
+            # Commit the conflicted state and push it as a DRAFT PR rather than
+            # aborting. This fork rebrands Silo as Bloem, so the branding files
+            # (README, SiloBrand.tsx, vite.config.ts) conflict on essentially
+            # every sync -- the old behaviour aborted and wrote to the job
+            # summary, which nobody reads, so upstream silently accumulated 34
+            # commits before a human noticed. A draft PR carrying the conflict
+            # markers is visible, reviewable, and resolvable in the browser or
+            # by checking the branch out.
+            #
+            # `git commit --no-verify` is required: a conflicted index commits
+            # fine, but hooks would reject the markers.
+            git add -A
+            git commit --no-verify --no-edit -m "merge upstream/main (CONFLICTED -- needs manual resolution)" || true
             {
               echo ""
-              echo "**Merge conflicted — no branch pushed.** Conflicting files:"
+              echo "**Merge conflicted.** Pushed as a draft PR for manual resolution. Conflicting files:"
               echo ""
               echo '```'
               echo "$conflicts"
@@ -122,7 +133,10 @@ jobs:
 
       - name: Push the branch and open a PR
         id: pr
-        if: steps.merge.outputs.clean == 'true' && !inputs.dry_run
+        # Runs for BOTH outcomes now. A clean merge opens a normal PR that CI
+        # can land; a conflicted merge opens a draft carrying the conflict
+        # markers, so the work is visible instead of dying in a job summary.
+        if: steps.count.outputs.behind != '0' && !inputs.dry_run
         env:
           # GitHub deliberately does not start workflow runs for events raised
           # by the default GITHUB_TOKEN, to stop workflows triggering
@@ -149,24 +163,41 @@ jobs:
           echo "has_pat=$HAS_PAT" >> "$GITHUB_OUTPUT"
 
           build_note="Build check passed."
-          if [ "${{ steps.build.outcome }}" != "success" ]; then
+          if [ "${{ steps.merge.outputs.clean }}" != "true" ]; then
+            build_note="Build not attempted — the tree contains conflict markers."
+          elif [ "${{ steps.build.outcome }}" != "success" ]; then
             build_note="**\`go build ./...\` FAILED on the merged tree** — CI will confirm, but expect this to need hands."
           fi
 
           # Built with printf rather than a heredoc: this whole script is inside
           # a YAML block scalar, where a heredoc terminator picks up the block
           # indentation and never matches.
-          body=$(printf '%s\n\n%s\n\n%s\n\n%s\n\n%s\n' \
-            "Automated merge of \`upstream/main\` (\`${{ steps.count.outputs.upstream_sha }}\`) — ${{ steps.count.outputs.behind }} commit(s)." \
-            "$build_note" \
-            "This merged with no conflicts. CI is the gate: if it goes green this merges itself, and if it goes red the PR stays open for a human. Nothing has touched \`main\`." \
-            "$ci_note" \
-            "Opened by \`.github/workflows/upstream-sync.yml\`.")
+          if [ "${{ steps.merge.outputs.clean }}" = "true" ]; then
+            title="Merge upstream Silo-Server (${{ steps.count.outputs.behind }} commits, ${{ steps.count.outputs.upstream_sha }})"
+            draft_flag=""
+            body=$(printf '%s\n\n%s\n\n%s\n\n%s\n\n%s\n' \
+              "Automated merge of \`upstream/main\` (\`${{ steps.count.outputs.upstream_sha }}\`) — ${{ steps.count.outputs.behind }} commit(s)." \
+              "$build_note" \
+              "This merged with no conflicts. CI is the gate: if it goes green this merges itself, and if it goes red the PR stays open for a human. Nothing has touched \`main\`." \
+              "$ci_note" \
+              "Opened by \`.github/workflows/upstream-sync.yml\`.")
+          else
+            title="[CONFLICTS] Merge upstream Silo-Server (${{ steps.count.outputs.behind }} commits, ${{ steps.count.outputs.upstream_sha }})"
+            draft_flag="--draft"
+            body=$(printf '%s\n\n%s\n%s\n%s\n\n%s\n\n%s\n' \
+              "Automated merge of \`upstream/main\` (\`${{ steps.count.outputs.upstream_sha }}\`) — ${{ steps.count.outputs.behind }} commit(s) — **CONFLICTED**." \
+              "This branch carries the conflict markers as a commit so the work is visible and reviewable. It will NOT merge itself; resolve the ${{ steps.merge.outputs.conflict_count }} conflicting file(s), push to this branch, and mark it ready for review." \
+              "" \
+              "This fork rebrands Silo as Bloem, so the branding files (README, SiloBrand.tsx, vite.config.ts) conflict on most syncs. Keep the Bloem identity and take upstream's functional changes — taking either side wholesale drops one or the other." \
+              "\`\`\`\n${{ steps.merge.outputs.conflicts }}\n\`\`\`" \
+              "Opened by \`.github/workflows/upstream-sync.yml\`.")
+          fi
 
           url=$(gh pr create \
             --base main \
             --head "$branch" \
-            --title "Merge upstream Silo-Server (${{ steps.count.outputs.behind }} commits, ${{ steps.count.outputs.upstream_sha }})" \
+            $draft_flag \
+            --title "$title" \
             --body "$body")
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
@@ -206,7 +237,10 @@ jobs:
                 color: 0xE04F4F,
                 description:
                   `\`${behind}\` upstream commit(s) (\`${sha}\`) **conflict** with the Bloem delta. ` +
-                  `No branch was pushed and \`main\` is untouched.`,
+                  (prUrl
+                    ? `Pushed as a draft PR for manual resolution: ${prUrl}`
+                    : `No PR was opened (dry run).`) +
+                  ` \`main\` is untouched.`,
                 fields: [{
                   name: `Conflicting files (${conflicts.length})`,
                   value: '```\n' + conflicts.slice(0, 20).join('\n').slice(0, 1000) +
