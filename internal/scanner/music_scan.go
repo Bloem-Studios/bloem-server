@@ -202,27 +202,8 @@ func (s *Scanner) upsertMusicTrack(ctx context.Context, folder *models.MediaFold
 		return fmt.Errorf("stat music file: %w", err)
 	}
 	modified := normalizeFileModifiedAt(info.ModTime())
-	mf, err := s.fileRepo.Upsert(ctx, models.MediaFile{
-		ContentID:          albumID,
-		MediaFolderID:      folder.ID,
-		CanonicalRootPath:  albumRoot,
-		ObservedRootPath:   albumRoot,
-		ContentGroupKey:    albumID,
-		GroupKeyVersion:    1,
-		BaseTitle:          track.Title,
-		BaseYear:           track.Year,
-		BaseType:           "music",
-		IdentityConfidence: "high",
-		FilePath:           track.Path,
-		FileSize:           info.Size(),
-		FileModifiedAt:     &modified,
-		CodecAudio:         track.Probe.CodecAudio,
-		AudioChannels:      track.Probe.AudioChannels,
-		Container:          track.Probe.Container,
-		Duration:           track.Probe.Duration,
-		Bitrate:            track.Probe.Bitrate,
-		ProbeSource:        "local",
-	})
+	mediaFile := musicMediaFile(folder, albumID, albumRoot, track, info.Size(), modified)
+	mf, err := s.fileRepo.Upsert(ctx, mediaFile)
 	if err != nil {
 		return fmt.Errorf("upsert music media file: %w", err)
 	}
@@ -237,6 +218,37 @@ func (s *Scanner) upsertMusicTrack(ctx context.Context, folder *models.MediaFold
 		return fmt.Errorf("upsert music track: %w", err)
 	}
 	return nil
+}
+
+// musicMediaFile is the one boundary between the music catalogue scanner and
+// playback. Keep the complete normalized probe here: a partial copy can render
+// album metadata successfully while every playback planner correctly rejects
+// the same file as source_metadata_incomplete.
+func musicMediaFile(
+	folder *models.MediaFolder,
+	albumID string,
+	albumRoot string,
+	track parsedMusicTrack,
+	fileSize int64,
+	modified time.Time,
+) models.MediaFile {
+	mediaFile := models.MediaFile{
+		ContentID:          albumID,
+		MediaFolderID:      folder.ID,
+		CanonicalRootPath:  albumRoot,
+		ObservedRootPath:   albumRoot,
+		ContentGroupKey:    albumID,
+		GroupKeyVersion:    1,
+		BaseTitle:          track.Title,
+		BaseYear:           track.Year,
+		BaseType:           "music",
+		IdentityConfidence: "high",
+		FilePath:           track.Path,
+		FileSize:           fileSize,
+		FileModifiedAt:     &modified,
+	}
+	applyProbeData(&mediaFile, &track.Probe, "local")
+	return mediaFile
 }
 
 func (s *Scanner) reconcileMissingMusic(ctx context.Context, folderID int, seen map[string]struct{}) error {

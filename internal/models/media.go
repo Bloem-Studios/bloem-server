@@ -8,6 +8,7 @@ import (
 
 const (
 	mediaBaseTypeAudiobook = "audiobook"
+	mediaBaseTypeMusic     = "music"
 	mediaBaseTypePodcast   = "podcast"
 	mediaCodecMJPEG        = "mjpeg"
 	mediaCodecH264         = "h264"
@@ -257,7 +258,7 @@ func isImageVideoCodec(codec string) bool {
 // HasLegacyAttachedPictureVideo reports the stale shape in which every video
 // track on known audio media is embedded cover art.
 func (f AudioOnlyProbeFacts) HasLegacyAttachedPictureVideo() bool {
-	knownAudioType := f.BaseType == mediaBaseTypeAudiobook || f.BaseType == mediaBaseTypePodcast
+	knownAudioType := f.BaseType == mediaBaseTypeAudiobook || f.BaseType == mediaBaseTypeMusic || f.BaseType == mediaBaseTypePodcast
 	hasAudio := f.HasAudioTracks || strings.TrimSpace(f.CodecAudio) != ""
 	if !knownAudioType || !hasAudio {
 		return false
@@ -274,7 +275,7 @@ func (f AudioOnlyProbeFacts) HasLegacyAttachedPictureVideo() bool {
 // IsAudioOnly reports whether these facts contain positive evidence for known
 // audio media with no playable video stream.
 func (f AudioOnlyProbeFacts) IsAudioOnly() bool {
-	knownAudioType := f.BaseType == mediaBaseTypeAudiobook || f.BaseType == mediaBaseTypePodcast
+	knownAudioType := f.BaseType == mediaBaseTypeAudiobook || f.BaseType == mediaBaseTypeMusic || f.BaseType == mediaBaseTypePodcast
 	hasAudio := f.HasAudioTracks || strings.TrimSpace(f.CodecAudio) != ""
 	return (knownAudioType && hasAudio && !f.HasVideoTracks && strings.TrimSpace(f.CodecVideo) == "") || f.HasLegacyAttachedPictureVideo()
 }

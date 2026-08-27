@@ -112,6 +112,11 @@ func TestMediaFileIsAudioOnly(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "music with no video stream",
+			file: &MediaFile{BaseType: "music", CodecAudio: "aac", AudioTracks: []AudioTrack{{Codec: "aac"}}},
+			want: true,
+		},
+		{
 			name: "legacy audiobook cover art is not playable video",
 			file: &MediaFile{BaseType: "audiobook", CodecVideo: "mjpeg", CodecAudio: "aac", VideoTracks: []VideoTrack{{Codec: "mjpeg"}}, AudioTracks: []AudioTrack{{Codec: "aac"}}},
 			want: true,
