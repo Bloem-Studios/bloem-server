@@ -214,7 +214,7 @@ func sessionToABS(s ABSPlaybackSession, item *models.MediaItem, baseURL string) 
 		"chapters":      []map[string]any{},
 		"displayTitle":  item.Title,
 		"displayAuthor": displayAuthor,
-		"coverPath":     baseURL + "/api/items/" + s.ContentID + "/cover",
+		"coverPath":     publicURL(baseURL, "/api/items/"+s.ContentID+"/cover"),
 		// duration: the total book duration isn't tracked on the session row
 		// itself; 0 is a safe placeholder (never crashes, only affects the
 		// progress-bar denominator on this historical-session view).

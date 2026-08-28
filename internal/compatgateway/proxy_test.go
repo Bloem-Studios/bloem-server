@@ -1787,8 +1787,10 @@ func TestLocalHandlerStripsPrefixForAudiobookshelf(t *testing.T) {
 		LocalHandlers:  map[AppKind]http.Handler{KindAudiobookshelf: abs},
 	})
 
+	req := httptest.NewRequest(http.MethodGet, "/audiobookshelf/api/ping", nil)
+	req.Header.Set("X-Bloem-Public-Mount", "/forged")
 	rec := httptest.NewRecorder()
-	gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/audiobookshelf/api/ping", nil))
+	gateway.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("got status %d, want 200", rec.Code)
 	}
@@ -1798,6 +1800,70 @@ func TestLocalHandlerStripsPrefixForAudiobookshelf(t *testing.T) {
 	}
 	if got[0].URL.Path != "/api/ping" {
 		t.Fatalf("local handler saw path %q, want /audiobookshelf stripped to /api/ping", got[0].URL.Path)
+	}
+	if mount := publicMountFromContext(got[0].Context()); mount != "/audiobookshelf" {
+		t.Fatalf("local handler public mount = %q, want /audiobookshelf", mount)
+	}
+	if header := got[0].Header.Get("X-Bloem-Public-Mount"); header != "" {
+		t.Fatalf("caller-supplied public mount reached local handler as %q", header)
+	}
+}
+
+func TestAudiobookshelfCompanionReceivesAuthenticatedPublicMount(t *testing.T) {
+	transport := &recordingTransport{}
+	states := &fakeStates{}
+	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://bloem-audiobookshelf:13378")))
+	secret := []byte("gateway-test-secret")
+	gateway := New(Config{States: states, Transport: transport, IdentitySecret: secret})
+
+	req := httptest.NewRequest(http.MethodGet, "/audiobookshelf/api/ping", nil)
+	req.Header.Set("X-Bloem-Public-Mount", "/forged")
+	rec := httptest.NewRecorder()
+	gateway.ServeHTTP(rec, req)
+
+	upstream := transport.recorded()
+	if len(upstream) != 1 {
+		t.Fatalf("got %d upstream requests, want 1", len(upstream))
+	}
+	sent := upstream[0]
+	if got := sent.Header.Get("X-Bloem-Public-Mount"); got != "/audiobookshelf" {
+		t.Fatalf("companion public mount = %q, want canonical /audiobookshelf", got)
+	}
+	identity := sent.Header.Get("X-Bloem-Internal-Identity")
+	payload, signature, found := strings.Cut(identity, ".")
+	if !found {
+		t.Fatalf("identity %q must be payload.signature", identity)
+	}
+	mac := hmac.New(sha256.New, secret)
+	mac.Write([]byte(payload))
+	if !hmac.Equal([]byte(hex.EncodeToString(mac.Sum(nil))), []byte(signature)) {
+		t.Fatal("public mount was not accompanied by a gateway-authenticated identity")
+	}
+	if !strings.Contains(payload, ":"+string(KindAudiobookshelf)+":") {
+		t.Fatalf("identity payload %q does not bind the Audiobookshelf application kind", payload)
+	}
+}
+
+func TestCallerPublicMountHeaderIsDeletedOutsideAudiobookshelf(t *testing.T) {
+	transport := &recordingTransport{}
+	states := &fakeStates{}
+	states.set(KindJellyfin, availableStatus(mustParseURL(t, "http://bloem-jellyfin:8096")))
+	gateway := New(Config{
+		States:         states,
+		Transport:      transport,
+		IdentitySecret: []byte("gateway-test-secret"),
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/System/Info", nil)
+	req.Header.Set("X-Bloem-Public-Mount", "/audiobookshelf")
+	gateway.ServeHTTP(httptest.NewRecorder(), req)
+
+	upstream := transport.recorded()
+	if len(upstream) != 1 {
+		t.Fatalf("got %d upstream requests, want 1", len(upstream))
+	}
+	if got := upstream[0].Header.Get("X-Bloem-Public-Mount"); got != "" {
+		t.Fatalf("caller-supplied public mount survived as %q", got)
 	}
 }
 

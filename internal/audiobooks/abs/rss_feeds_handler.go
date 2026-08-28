@@ -186,10 +186,10 @@ func renderFeedXML(f RSSFeed, item *models.MediaItem, files []*models.MediaFile,
 	b.WriteString(`<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">` + "\n")
 	b.WriteString("<channel>\n")
 	b.WriteString("<title>" + xmlEscape(item.Title) + "</title>\n")
-	b.WriteString("<link>" + xmlEscape(baseURL+"/feed/"+f.Slug+".xml") + "</link>\n")
+	b.WriteString("<link>" + xmlEscape(publicURL(baseURL, "/feed/"+f.Slug+".xml")) + "</link>\n")
 	b.WriteString("<description>silo audiobook feed</description>\n")
 	for _, mf := range files {
-		enc := baseURL + "/feed/" + f.Slug + "/file/" + strconv.Itoa(mf.ID)
+		enc := publicURL(baseURL, "/feed/"+f.Slug+"/file/"+strconv.Itoa(mf.ID))
 		b.WriteString("<item>\n")
 		b.WriteString("<title>" + xmlEscape(item.Title) + "</title>\n")
 		b.WriteString(`<enclosure url="` + xmlEscape(enc) + `" type="audio/mpeg" length="0"/>` + "\n")

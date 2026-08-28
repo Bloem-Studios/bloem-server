@@ -257,7 +257,11 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// caller sent was already dropped from pr.Out by SetXForwarded and
 			// the explicit delete below.
 			out.Header.Del(internalIdentityHeader)
+			out.Header.Del(publicMountHeader)
 			out.Header.Set(internalIdentityHeader, g.signIdentity(route.App, traceID))
+			if route.App == KindAudiobookshelf {
+				out.Header.Set(publicMountHeader, normalizePublicMount(route.Prefix))
+			}
 			out.Header.Set(traceHeader, traceID)
 			pr.SetXForwarded()
 		},
@@ -293,11 +297,16 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // X-Forwarded-* rewrite, no circuit breaker: those all exist for the
 // network hop to a companion process, which this dispatch never makes.
 func (g *Gateway) serveLocal(w http.ResponseWriter, r *http.Request, route Route, handler http.Handler) {
+	clone := r.Clone(r.Context())
+	clone.Header = r.Header.Clone()
+	clone.Header.Del(publicMountHeader)
+	if route.App == KindAudiobookshelf {
+		clone = clone.WithContext(withPublicMount(clone.Context(), route.Prefix))
+	}
 	if !route.StripPrefix {
-		handler.ServeHTTP(w, r)
+		handler.ServeHTTP(w, clone)
 		return
 	}
-	clone := r.Clone(r.Context())
 	urlCopy := *r.URL
 	urlCopy.RawPath = strippedPath(r.URL.EscapedPath())
 	urlCopy.Path = strippedPath(r.URL.Path)

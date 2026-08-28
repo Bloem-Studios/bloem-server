@@ -570,7 +570,7 @@ func (h *Handler) handleLibrarySearch(w http.ResponseWriter, r *http.Request) {
 					"mediaType": LibraryMediaType,
 					"updatedAt": updatedMs,
 					"media": map[string]any{
-						"coverPath": baseURL + "/api/items/" + bp.ContentID + "/cover",
+						"coverPath": publicURL(baseURL, "/api/items/"+bp.ContentID+"/cover"),
 						"metadata":  map[string]any{"title": bp.Title},
 					},
 				})
@@ -757,7 +757,7 @@ func siloItemToLibraryItem(item *models.MediaItem, lib AudiobookLibrary, baseURL
 	// "local/audiobooks/.../original.webp" mean nothing to an ABS client;
 	// our cover handler resolves them via the CoverResolver before
 	// redirecting to the real URL.
-	coverPath := baseURL + "/api/items/" + item.ContentID + "/cover"
+	coverPath := publicURL(baseURL, "/api/items/"+item.ContentID+"/cover")
 
 	addedAtMs := int64(0)
 	if item.AddedAt != nil {
@@ -969,7 +969,7 @@ func siloFilesToAudioTracks(contentID string, files []*models.MediaFile, baseURL
 		filename := filepath.Base(f.FilePath)
 		wireIndex := i + 1
 
-		contentURL := baseURL + "/abs/api/items/" + contentID + "/file/" + ino
+		contentURL := publicURL(baseURL, "/abs/api/items/"+contentID+"/file/"+ino)
 		if token != "" {
 			contentURL += "?token=" + token
 		}

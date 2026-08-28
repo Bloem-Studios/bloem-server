@@ -157,7 +157,7 @@ func seriesBookMinified(contentID, title, libID, baseURL string, updatedAtMs int
 				TitleIgnorePrefix: titleIgnorePrefix(title),
 				Genres:            []string{},
 			},
-			CoverPath:     baseURL + "/api/items/" + contentID + "/cover",
+			CoverPath:     publicURL(baseURL, "/api/items/"+contentID+"/cover"),
 			Tags:          []string{},
 			NumTracks:     1,
 			NumAudioFiles: 1,

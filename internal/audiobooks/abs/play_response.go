@@ -147,7 +147,7 @@ func (h *Handler) handlePlayStart(w http.ResponseWriter, r *http.Request) {
 		"chapters":      chapters,
 		"displayTitle":  displayTitle,
 		"displayAuthor": displayAuthor,
-		"coverPath":     baseURL + "/api/items/" + contentID + "/cover",
+		"coverPath":     publicURL(baseURL, "/api/items/"+contentID+"/cover"),
 		"duration":      totalDuration,
 		"playMethod":    0, // DIRECTPLAY
 		"mediaPlayer":   "exo-player",
@@ -200,7 +200,7 @@ func buildSiloAudioTracks(
 		// Our ino uses 0-based internally; handleFileStream resolves via ino.
 		wireIndex := i + 1
 
-		contentURL := baseURL + "/abs/public/session/" + sessionID + "/track/" + strconv.Itoa(wireIndex)
+		contentURL := publicURL(baseURL, legacyPublicPrefix+"/session/"+sessionID+"/track/"+strconv.Itoa(wireIndex))
 
 		duration := float64(f.Duration) // f.Duration is in seconds (int)
 
@@ -440,7 +440,7 @@ func buildSiloPlayLibraryItem(
 			"id":            contentID,
 			"libraryItemId": contentID,
 			"metadata":      mediaMetadata,
-			"coverPath":     baseURL + "/api/items/" + contentID + "/cover",
+			"coverPath":     publicURL(baseURL, "/api/items/"+contentID+"/cover"),
 			"tags":          []any{},
 			"audioFiles":    audioTracks,
 			"chapters":      chapters,

@@ -29,7 +29,7 @@ type RSSFeed struct {
 // rssFeedToABS shapes a feed in the ABS wire format. `url` is built
 // from the supplied base URL + slug.
 func rssFeedToABS(f RSSFeed, baseURL string) map[string]any {
-	url := baseURL + "/feed/" + f.Slug + ".xml"
+	url := publicURL(baseURL, "/feed/"+f.Slug+".xml")
 	return map[string]any{
 		"id":            f.ID,
 		"userId":        f.UserID,

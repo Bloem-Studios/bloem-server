@@ -20,6 +20,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/compatgateway"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
 )
@@ -286,6 +287,10 @@ type Dependencies struct {
 	// the ABS client can fetch. Optional; when nil, /api/items/{id}/cover
 	// 404s rather than redirecting to an unreachable relative path.
 	CoverResolver func(ctx context.Context, path, variant string) string
+	// InternalGatewayIdentityVerified reports whether the existing companion
+	// identity middleware authenticated this request as gateway-originated.
+	// A nil verifier means fixed public-mount headers are never trusted.
+	InternalGatewayIdentityVerified func(*http.Request) bool
 }
 
 // Handler wires the /abs/api/* and canonical ABS-client paths.
@@ -374,9 +379,24 @@ func New(deps Dependencies) *Handler {
 func (h *Handler) Mount(parent chi.Router) {
 	declareABSMediaRoutes()
 	parent.Group(func(r chi.Router) {
+		r.Use(h.publicMountMiddleware)
 		r.Use(h.accessLog)
 		h.mountRoutes(r)
 	})
+}
+
+type absPublicMountContextKey struct{}
+
+func (h *Handler) publicMountMiddleware(next http.Handler) http.Handler {
+	return compatgateway.PublicMountHandler(
+		h.deps.InternalGatewayIdentityVerified,
+		func(w http.ResponseWriter, r *http.Request, mount string) {
+			if mount != "" {
+				r = r.WithContext(context.WithValue(r.Context(), absPublicMountContextKey{}, mount))
+			}
+			next.ServeHTTP(w, r)
+		},
+	)
 }
 
 // Router returns the complete ABS-compatible listener for a dedicated
@@ -393,7 +413,7 @@ func (h *Handler) mountRoutes(r chi.Router) {
 	// (no /api or /abs/api prefix). Mobile clients do `${addr}/ping`,
 	// `${addr}/login`, etc. Designed to be mounted on a dedicated listener
 	// so the routes don't collide with silo's SPA catch-all.
-	for _, prefix := range []string{"", "/abs/api"} {
+	for _, prefix := range []string{"", legacyAPIPrefix} {
 		r.Get(prefix+"/ping", h.handleABSPing)
 		r.Get(prefix+"/healthcheck", h.handleABSPing) // same body as /ping
 		r.Get(prefix+"/init", h.handleABSInit)
@@ -405,7 +425,7 @@ func (h *Handler) mountRoutes(r chi.Router) {
 	// The rest of the authenticated surface is mounted under both /api and
 	// /abs/api, so mount login+refresh under the same set; a client posting
 	// /api/login otherwise 404s and surfaces a generic "unknown error".
-	for _, prefix := range []string{"", "/api", "/abs/api"} {
+	for _, prefix := range []string{"", canonicalAPIPrefix, legacyAPIPrefix} {
 		r.Post(prefix+"/login", h.handleLogin)
 		// Token rotation — mobile clients call this every ~22h to avoid the
 		// 24h access-token interactive re-login trap.
@@ -423,7 +443,7 @@ func (h *Handler) mountRoutes(r chi.Router) {
 	// Unauthenticated cover + author-image routes. Real ABS serves covers
 	// without auth (getDoesServerImagesRequireToken returns false for our
 	// version), so mounting these outside bearerAuth avoids 401s.
-	for _, prefix := range []string{"/abs/api", "/api"} {
+	for _, prefix := range []string{legacyAPIPrefix, canonicalAPIPrefix} {
 		r.Get(prefix+"/items/{id}/cover", h.handleItemCover)
 		r.Get(prefix+"/authors/{id}/image", h.handleAuthorImage)
 	}
@@ -774,11 +794,14 @@ func (h *Handler) broadcast(event string, payload any) {
 // absBaseURL returns the server address prefix ABS clients should use to
 // resolve response-embedded URLs.
 //
+//   - Compatibility gateway: returns the origin plus its privately carried
+//     fixed /audiobookshelf public mount.
 //   - Host-proxied (X-Silo-User-Id header present): returns the plugin-proxy
 //     path "<scheme>://<host>/api/v1/plugins/<installID>".
 //   - Standalone listener: returns "<scheme>://<host>" — origin only.
 //
-// Honors X-Forwarded-Proto / X-Forwarded-Host for TLS-terminating proxies.
+// X-Forwarded-Prefix and RFC Forwarded never select the public mount. Existing
+// X-Forwarded-Proto / X-Forwarded-Host support remains for TLS termination.
 func (h *Handler) absBaseURL(r *http.Request) string {
 	scheme := r.Header.Get("X-Forwarded-Proto")
 	if scheme == "" {
@@ -792,10 +815,15 @@ func (h *Handler) absBaseURL(r *http.Request) string {
 	if host == "" {
 		host = r.Host
 	}
-	if r.Header.Get("X-Silo-User-Id") != "" {
-		return scheme + "://" + host + "/api/v1/plugins/" + h.deps.InstallID()
+	origin := scheme + "://" + host
+	mount, _ := r.Context().Value(absPublicMountContextKey{}).(string)
+	if mount != "" {
+		return origin + mount
 	}
-	return scheme + "://" + host
+	if r.Header.Get("X-Silo-User-Id") != "" {
+		return origin + "/api/v1/plugins/" + h.deps.InstallID()
+	}
+	return origin
 }
 
 // ---------------------------------------------------------------------------
