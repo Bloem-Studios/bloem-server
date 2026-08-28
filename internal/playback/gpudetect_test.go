@@ -48,8 +48,9 @@ type fakeFFmpegProbe struct {
 }
 
 type fakeFFmpegBinary struct {
-	path    string
-	logPath string
+	path        string
+	logPath     string
+	startedPath string
 }
 
 func TestResolveHWAccelWithFFmpegAutoPrefersNVENCOverIntel(t *testing.T) {
@@ -296,11 +297,65 @@ func TestResolveHWAccelWithFFmpegUsesNVIDIADeviceNodesWithoutDRM(t *testing.T) {
 
 func TestResolveHWAccelPassesThroughConfiguredBackends(t *testing.T) {
 	setupHWAccelTest(t)
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
 
 	for _, configured := range []string{"nvenc", "qsv", "vaapi", "none", "custom"} {
 		t.Run(configured, func(t *testing.T) {
-			if got := ResolveHWAccelWithFFmpeg(configured, "/does/not/exist/ffmpeg", ""); got != configured {
-				t.Fatalf("ResolveHWAccelWithFFmpeg(%q) = %q, want unchanged", configured, got)
+			if got := ResolveHWAccelWithFFmpegContext(ctx, configured, "/does/not/exist/ffmpeg", ""); got != configured {
+				t.Fatalf("ResolveHWAccelWithFFmpegContext(%q) = %q, want unchanged", configured, got)
+			}
+		})
+	}
+}
+
+func TestExpiredFFmpegContextDoesNotLaunchProbe(t *testing.T) {
+	tests := []struct {
+		name      string
+		goos      string
+		configure func(*testing.T, *hwAccelTestEnv)
+	}{
+		{
+			name: "Linux NVENC",
+			goos: linuxGOOS,
+			configure: func(t *testing.T, env *hwAccelTestEnv) {
+				env.addRenderDevice(t, "renderD128", "0x10de")
+			},
+		},
+		{name: "Darwin VideoToolbox", goos: darwinGOOS},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := setupHWAccelTest(t)
+			currentGOOS = test.goos
+			if test.configure != nil {
+				test.configure(t, env)
+			}
+
+			// A removed top-level guard makes the VideoToolbox cache register a
+			// detached flight synchronously. Park any such flight so the in-flight
+			// count is deterministic rather than racing a fast helper failure.
+			release := make(chan struct{})
+			previousHWStarted := hwProbeFlightStarted
+			previousVideoToolboxStarted := videoToolboxProbeStarted
+			hwProbeFlightStarted = func() { <-release }
+			videoToolboxProbeStarted = func() { <-release }
+			defer func() {
+				close(release)
+				hwProbeFlightStarted = previousHWStarted
+				videoToolboxProbeStarted = previousVideoToolboxStarted
+			}()
+
+			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+			defer cancel()
+			if got := ResolveHWAccelWithFFmpegContext(ctx, "auto", "/does/not/exist/ffmpeg", ""); got != HWAccelNone {
+				t.Fatalf("ResolveHWAccelWithFFmpegContext() = %q, want none", got)
+			}
+			if ctx.Err() != context.DeadlineExceeded {
+				t.Fatalf("context error = %v, want deadline exceeded", ctx.Err())
+			}
+			if inFlight := HWProbesInFlight(); inFlight != 0 {
+				t.Fatalf("expired caller registered %d hardware probe(s), want none", inFlight)
 			}
 		})
 	}
@@ -431,13 +486,16 @@ func TestResolveHWAccelWithFFmpegContextHonorsCallerDeadline(t *testing.T) {
 	env.addRenderDevice(t, "renderD128", "0x10de")
 	ffmpeg := writeFakeFFmpeg(t, fakeFFmpegProbe{hang: true})
 
-	// 60ms, not the caller deadline's natural handful of milliseconds: the
-	// budget has to cover the fake sysfs walk in listRenderDevices before the
-	// probe is reached, which is cold when this test runs after the rest of the
-	// package. Too tight and exec never starts the process, so nothing is
-	// logged. It stays far below the 200ms per-command timeout the assertion
-	// below distinguishes it from.
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
+	// Start the shared probe first and wait for the helper process itself to
+	// report that it is running. The caller deadline below then measures only
+	// joining and leaving an in-flight probe, not scheduler or sysfs latency.
+	probeDone := make(chan string, 1)
+	go func() {
+		probeDone <- ResolveHWAccelWithFFmpegContext(context.Background(), "auto", ffmpeg.path, "")
+	}()
+	waitForFakeFFmpegStart(t, ffmpeg.startedPath, probeDone)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	started := time.Now()
 	got := ResolveHWAccelWithFFmpegContext(ctx, "auto", ffmpeg.path, "")
 	cancel()
@@ -451,9 +509,14 @@ func TestResolveHWAccelWithFFmpegContextHonorsCallerDeadline(t *testing.T) {
 		t.Fatalf("context error = %v, want deadline exceeded", ctx.Err())
 	}
 
-	retryCtx, retryCancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
-	_ = ResolveHWAccelWithFFmpegContext(retryCtx, "auto", ffmpeg.path, "")
-	retryCancel()
+	select {
+	case backgroundResult := <-probeDone:
+		if backgroundResult != HWAccelNone {
+			t.Fatalf("background ResolveHWAccelWithFFmpegContext() = %q, want none", backgroundResult)
+		}
+	case <-time.After(hwProbeCommandTimeout + time.Second):
+		t.Fatal("background FFmpeg probe did not finish after its command timeout")
+	}
 	logData, err := os.ReadFile(ffmpeg.logPath)
 	if err != nil {
 		t.Fatal(err)
@@ -1032,13 +1095,39 @@ func writeFakeFFmpeg(t *testing.T, probe fakeFFmpegProbe) fakeFFmpegBinary {
 	path := filepath.Join(dir, "ffmpeg")
 	logPath := filepath.Join(dir, "probe.log")
 	writeFakeFFmpegScript(t, path, logPath, probe)
-	return fakeFFmpegBinary{path: path, logPath: logPath}
+	return fakeFFmpegBinary{path: path, logPath: logPath, startedPath: logPath + ".started"}
+}
+
+func waitForFakeFFmpegStart(t *testing.T, startedPath string, probeDone <-chan string) {
+	t.Helper()
+	// Keep the watchdog outside the probe command's own startup window. On a
+	// loaded runner the shell may not write the marker immediately, but the
+	// bounded probe will still report through probeDone if it cannot start.
+	deadline := time.NewTimer(hwProbeCommandTimeout + time.Second)
+	ticker := time.NewTicker(time.Millisecond)
+	defer deadline.Stop()
+	defer ticker.Stop()
+	for {
+		if _, err := os.Stat(startedPath); err == nil {
+			return
+		} else if !os.IsNotExist(err) {
+			t.Fatalf("stat fake FFmpeg start signal: %v", err)
+		}
+		select {
+		case result := <-probeDone:
+			t.Fatalf("FFmpeg probe returned %q before its helper signaled process start", result)
+		case <-deadline.C:
+			t.Fatal("timed out waiting for fake FFmpeg process start")
+		case <-ticker.C:
+		}
+	}
 }
 
 func writeFakeFFmpegScript(t *testing.T, path, logPath string, probe fakeFFmpegProbe) {
 	t.Helper()
 
 	script := "#!/bin/sh\n"
+	script += fmt.Sprintf(": > %q\n", logPath+".started")
 	script += fmt.Sprintf("printf '%%s\\n' \"$*\" >> %q\n", logPath)
 	if probe.delay > 0 {
 		script += fmt.Sprintf("sleep %.3f\n", probe.delay.Seconds())

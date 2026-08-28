@@ -337,6 +337,13 @@ func ResolveHWAccelWithFFmpegContext(ctx context.Context, hwAccel, ffmpegPath, h
 	if hwAccel != hwAccelAuto {
 		return hwAccel
 	}
+	// Do not register a detached/coalesced probe after this caller has already
+	// expired. Linux's backend walk also checks the context, but Darwin reaches
+	// the VideoToolbox cache directly and would otherwise start work after the
+	// result can no longer be consumed.
+	if ctx.Err() != nil {
+		return transcodeHWNone
+	}
 	if currentGOOS == darwinGOOS {
 		if ok, reason := ffmpegSupportsVideoToolboxContext(ctx, ffmpegPath); ok {
 			slog.InfoContext(ctx, "hw_accel=auto: macOS detected, using VideoToolbox")

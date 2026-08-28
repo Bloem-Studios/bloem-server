@@ -30,10 +30,10 @@ func TestMediaRouteManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
-	declareNativeMediaRoutes()
 	minimal := NewRouter(Dependencies{Config: cfg})
 	maximal := NewRouter(Dependencies{DB: pool, Config: cfg, FileRepo: scanner.NewFileRepository(pool), FolderRepo: catalog.NewFolderRepository(pool), SessionMgr: playback.NewSessionManager(0, 0)})
-	actual, err := streamtelemetry.BuildRouteManifest([]chi.Routes{minimal, maximal}, nativeMediaRoutes)
+	mediaRoutes := declaredNativeMediaRoutes()
+	actual, err := streamtelemetry.BuildRouteManifest([]chi.Routes{minimal, maximal}, mediaRoutes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestMediaRouteManifest(t *testing.T) {
 	if string(want) != actual {
 		t.Fatalf("route manifest changed; inspect it and run go test . -update-route-manifest")
 	}
-	for _, route := range nativeMediaRoutes {
+	for _, route := range mediaRoutes {
 		if !route.Enrolled {
 			t.Fatalf("native route not enrolled: %s %s", route.Method, route.Pattern)
 		}
@@ -61,7 +61,7 @@ func TestMediaRouteManifest(t *testing.T) {
 }
 
 func TestNativeRejectedAndMissingRequestsRemainProvisional(t *testing.T) {
-	for _, route := range nativeMediaRoutes {
+	for _, route := range declaredNativeMediaRoutes() {
 		for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
 			t.Run(route.Method+" "+route.Pattern+" "+http.StatusText(status), func(t *testing.T) {
 				cfg := streamtelemetry.DefaultConfig("test")

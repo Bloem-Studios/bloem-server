@@ -184,30 +184,23 @@ func TestRouteTableOwnership(t *testing.T) {
 // route colliding with a family fails here instead of disappearing behind
 // the gateway.
 func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
-	// An object route table would declare paths this scan cannot see at all.
-	// The SPA does not use one today; if that changes, the pin must be
-	// rewritten rather than silently bypassed.
-	if table := spaObjectRouterFiles(t); len(table) > 0 {
-		t.Fatalf("SPA builds an object route table in %v; this pin only reads <Route> elements", table)
-	}
-
-	elements, files := spaRouteElements(t)
-	if len(elements) < 20 || files == 0 {
-		t.Fatalf("found %d <Route> elements across %d files; the scan is stale", len(elements), files)
+	declarations, files := spaRouteDeclarations(t)
+	if len(declarations) < 20 || files == 0 {
+		t.Fatalf("found %d route declarations across %d files; the scan is stale", len(declarations), files)
 	}
 	families := map[string]bool{}
 	for _, route := range RouteTable() {
 		families[strings.ToLower(strings.TrimPrefix(route.Prefix, "/"))] = true
 	}
 
-	literal := regexp.MustCompile(`\spath="([^"]*)"`)
+	literal := regexp.MustCompile(`(?:^|[\s{,])path\s*(?:=\s*|:\s*)"([^"]*)"`)
 	// Any spelling that names a path, readable or not.
-	declaresPath := regexp.MustCompile(`[\s{]path\s*[:=]`)
-	spread := regexp.MustCompile(`\{\s*\.\.\.`)
+	declaresPath := regexp.MustCompile(`(?:^|[\s{,])path\s*[:=]`)
+	spread := regexp.MustCompile(`(?:^|[\s{,])\.\.\.`)
 	seen := map[string]bool{}
 	caseSensitive := map[string]bool{}
 	relative := 0
-	for _, element := range elements {
+	for _, element := range declarations {
 		// A route whose path this scan cannot read is a failure, not a gap.
 		// The rule is stated positively: if the tag mentions a path at all —
 		// in any spelling, including single quotes, braces, backticks, or
@@ -298,54 +291,561 @@ func TestReservedNativeSegmentsCoverTheSPARoutes(t *testing.T) {
 // expression — is either a refusal or a value this pin cannot read, and both
 // are failures rather than passes.
 var (
-	caseSensitiveMentioned = regexp.MustCompile(`(?:^|[\s{])caseSensitive\b`)
-	caseSensitiveOn        = regexp.MustCompile(`(?:^|[\s{])caseSensitive\s*(?:=\s*\{\s*true\s*\})?(?:$|[\s/>])`)
-	caseSensitiveOff       = regexp.MustCompile(`(?:^|[\s{])caseSensitive\s*=\s*\{\s*false\s*\}`)
+	caseSensitiveMentioned = regexp.MustCompile(`(?:^|[\s{,])caseSensitive\b`)
+	caseSensitiveOn        = regexp.MustCompile(`(?:^|[\s{,])caseSensitive\s*(?:(?:=\s*\{\s*true\s*\})|(?::\s*true))?(?:$|[\s,/>}])`)
+	caseSensitiveOff       = regexp.MustCompile(`(?:^|[\s{,])caseSensitive\s*(?:=\s*\{\s*false\s*\}|:\s*false)`)
+	objectRouterBuilders   = regexp.MustCompile(`\b(?:createBrowserRouter|createHashRouter|createMemoryRouter|useRoutes)\s*\(`)
 )
 
-// spaObjectRouterFiles reports files declaring a data-router route table,
-// whose paths are object keys rather than <Route> attributes.
-func spaObjectRouterFiles(t *testing.T) []string {
-	t.Helper()
-	var found []string
-	for _, file := range spaSourceFiles(t) {
-		source, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatalf("read %s: %v", file, err)
+func TestRouteObjectDeclarations(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		want   []string
+	}{
+		{
+			name: "browser router with nested children",
+			source: `createBrowserRouter([
+				{ path: "/search", caseSensitive: true, element: <Search /> },
+				{ children: [{ path: "users", element: <Users /> }] },
+			])`,
+			want: []string{
+				`{ path: "/search", caseSensitive: true, element: <Search /> }`,
+				`{ path: "users", element: <Users /> }`,
+			},
+		},
+		{
+			name:   "useRoutes table",
+			source: `useRoutes([{ path: "/livetv", caseSensitive: false }])`,
+			want:   []string{`{ path: "/livetv", caseSensitive: false }`},
+		},
+		{
+			name:   "spread route table is not extracted",
+			source: `createMemoryRouter([{ ...sharedRoute, element: <Page /> }])`,
+		},
+		{
+			name:   "shorthand path is not extracted",
+			source: `createBrowserRouter([{ path }])`,
+		},
+		{
+			name:   "shorthand case sensitivity is not extracted",
+			source: `createBrowserRouter([{ path: "/search", caseSensitive }])`,
+		},
+		{
+			name:   "shorthand nested children are not extracted",
+			source: `createBrowserRouter([{ path: "/", children: [{ children }] }])`,
+		},
+		{
+			name:   "named object route table",
+			source: `const appRoutes = [{ path: "/items" }]; createBrowserRouter(appRoutes)`,
+			want:   []string{`{ path: "/items" }`},
+		},
+		{
+			name:   "named JSX route tree is not an object declaration",
+			source: `const appRoutes = createRoutesFromElements(<Route path="*" />); createBrowserRouter(appRoutes)`,
+		},
+		{
+			name: "comments and strings are not router declarations",
+			source: `// createMemoryRouter([{ path: "/comment" }])
+				const note = "useRoutes([{ path: '/string' }])";`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := routeObjectDeclarations(test.source)
+			for index := range got {
+				got[index] = condense(got[index])
+			}
+			for index := range test.want {
+				test.want[index] = condense(test.want[index])
+			}
+			if strings.Join(got, "\n") != strings.Join(test.want, "\n") {
+				t.Fatalf("routeObjectDeclarations() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestRouteObjectRouterReadable(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		want   bool
+	}{
+		{name: "inline object table", source: `createBrowserRouter([{ path: "/items" }])`, want: true},
+		{name: "inline object table with options", source: `createBrowserRouter([{ path: "/items" }], { basename: "/app" })`, want: true},
+		{name: "recursive literal object table", source: `createBrowserRouter([{ path: "/", children: [{ index: true, element: <Home /> }, { path: "items" }] }])`, want: true},
+		{name: "explicit route property literals", source: `createBrowserRouter([{ path: "/search", caseSensitive: true }, { path: "/items", caseSensitive: false }, { children: [] }])`, want: true},
+		{name: "named object table", source: `const routes = [{ path: "/items" }]; createBrowserRouter(routes)`, want: true},
+		{name: "named object table with options", source: `const routes = [{ path: "/items" }]; createBrowserRouter(routes, { basename: "/app" })`, want: true},
+		{name: "named JSX route tree", source: `const routes = createRoutesFromElements(<Route path="*" />); createBrowserRouter(routes)`, want: true},
+		{name: "builder mention in comment", source: `// createMemoryRouter(makeRoutes())`, want: true},
+		{name: "computed table", source: `createBrowserRouter(makeRoutes())`, want: false},
+		{name: "imported route entry", source: `createBrowserRouter([sharedRoute])`, want: false},
+		{name: "called route entry", source: `createBrowserRouter([makeRoute()])`, want: false},
+		{name: "non-literal children", source: `createBrowserRouter([{ path: "/", children: sharedRoutes }])`, want: false},
+		{name: "spread nested children table", source: `createBrowserRouter([{ path: "/", children: [...sharedRoutes] }])`, want: false},
+		{name: "spread route object", source: `createBrowserRouter([{ ...sharedRoute, element: <Page /> }])`, want: false},
+		{name: "spread nested route object", source: `createBrowserRouter([{ children: [{ ...sharedRoute, element: <Page /> }] }])`, want: false},
+		{name: "shorthand path", source: `createBrowserRouter([{ path }])`, want: false},
+		{name: "shorthand case sensitivity", source: `createBrowserRouter([{ path: "/search", caseSensitive }])`, want: false},
+		{name: "shorthand nested children", source: `createBrowserRouter([{ path: "/", children: [{ children }] }])`, want: false},
+		{name: "concatenated inline table", source: `createBrowserRouter([{ path: "/items" }].concat(extraRoutes))`, want: false},
+		{name: "top-level array spread", source: `createBrowserRouter([...sharedRoutes, { path: "/items" }])`, want: false},
+		{name: "top-level named array spread", source: `const routes = [...sharedRoutes, { path: "/items" }]; createBrowserRouter(routes)`, want: false},
+		{name: "computed named initializer", source: `const routes = [{ path: "/items" }].concat(extraRoutes); createBrowserRouter(routes)`, want: false},
+		{name: "concatenated named table", source: `const routes = [{ path: "/items" }]; createBrowserRouter(routes.concat(extraRoutes))`, want: false},
+		{name: "named table property", source: `const routes = [{ path: "/items" }]; createBrowserRouter(routes.current)`, want: false},
+		{name: "called named table", source: `const routes = [{ path: "/items" }]; createBrowserRouter(routes())`, want: false},
+		{name: "let object table", source: `let routes = [{ path: "/items" }]; createBrowserRouter(routes)`, want: false},
+		{name: "var object table", source: `var routes = [{ path: "/items" }]; createBrowserRouter(routes)`, want: false},
+		{name: "reassigned object table", source: `const routes = [{ path: "/items" }]; routes = otherRoutes; createBrowserRouter(routes)`, want: false},
+		{name: "pushed object table", source: `const routes = [{ path: "/items" }]; routes.push({ path: "/search" }); createBrowserRouter(routes)`, want: false},
+		{name: "indexed object table mutation", source: `const routes = [{ path: "/items" }]; routes[0] = { path: "/search" }; createBrowserRouter(routes)`, want: false},
+		{name: "property object table mutation", source: `const routes = [{ path: "/items" }]; routes.length = 0; createBrowserRouter(routes)`, want: false},
+		{name: "postfix object table computation", source: `const routes = [{ path: "/items" }]; const paths = routes.map(route => route.path); createBrowserRouter(routes)`, want: false},
+		{name: "suffixed named JSX tree", source: `const routes = createRoutesFromElements(<Route path="*" />); createBrowserRouter(routes.concat(extraRoutes))`, want: false},
+		{name: "mutable named JSX tree", source: `let routes = createRoutesFromElements(<Route path="*" />); createBrowserRouter(routes)`, want: false},
+		{name: "reassigned named JSX tree", source: `const routes = createRoutesFromElements(<Route path="*" />); routes = otherRoutes; createBrowserRouter(routes)`, want: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := routeObjectRouterReadable(test.source); got != test.want {
+				t.Fatalf("routeObjectRouterReadable() = %t, want %t", got, test.want)
+			}
+		})
+	}
+}
+
+func routeObjectRouterReadable(source string) bool {
+	structure := javascriptStructure(source)
+	for offset := 0; offset < len(structure); {
+		match := objectRouterBuilders.FindStringIndex(structure[offset:])
+		if match == nil {
+			return true
 		}
-		for _, builder := range []string{"createBrowserRouter", "createHashRouter", "createMemoryRouter", "useRoutes("} {
-			if strings.Contains(string(source), builder) {
-				found = append(found, filepath.Base(file))
-				break
+		builderStart := offset + match[0]
+		openParen := offset + match[1] - 1
+		argumentStart := openParen + 1
+		offset = argumentStart
+		if routeTableArrayStart(structure, builderStart, argumentStart) >= 0 || jsxRouteTableArgument(structure, builderStart, argumentStart) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func routeObjectDeclarations(source string) []string {
+	structure := javascriptStructure(source)
+	var declarations []string
+	for offset := 0; offset < len(structure); {
+		match := objectRouterBuilders.FindStringIndex(structure[offset:])
+		if match == nil {
+			break
+		}
+		builderStart := offset + match[0]
+		openParen := offset + match[1] - 1
+		arrayStart := routeTableArrayStart(structure, builderStart, openParen+1)
+		offset = openParen + 1
+		if arrayStart < 0 {
+			continue
+		}
+		_, objects, ok := literalRouteTable(structure, arrayStart)
+		if !ok {
+			continue
+		}
+		for _, object := range objects {
+			declarations = append(declarations, source[object.start:object.end+1])
+		}
+	}
+	return declarations
+}
+
+func routeTableArrayStart(source string, builderStart, argumentStart int) int {
+	argumentStart = skipASCIISpace(source, argumentStart)
+	if argumentStart < len(source) && source[argumentStart] == '[' {
+		arrayEnd, _, ok := literalRouteTable(source, argumentStart)
+		if ok && routeTableArgumentComplete(source, arrayEnd) {
+			return argumentStart
+		}
+		return -1
+	}
+	name, ok := bareRouteTableIdentifier(source, argumentStart)
+	if !ok {
+		return -1
+	}
+	definitions := regexp.MustCompile(`\bconst\s+(`+regexp.QuoteMeta(name)+`)\s*=\s*\[`).FindAllStringSubmatchIndex(source[:builderStart], -1)
+	if len(definitions) != 1 {
+		return -1
+	}
+	arrayStart := definitions[0][1] - 1
+	arrayEnd, _, ok := literalRouteTable(source, arrayStart)
+	if !ok || !routeTableDeclarationComplete(source, arrayEnd) ||
+		!routeTableBindingOnlyUsedAt(source, name, definitions[0][2], argumentStart) {
+		return -1
+	}
+	return arrayStart
+}
+
+func jsxRouteTableArgument(source string, builderStart, argumentStart int) bool {
+	argumentStart = skipASCIISpace(source, argumentStart)
+	if callEnd := namedCallEnd(source, argumentStart, "createRoutesFromElements"); callEnd >= 0 {
+		return routeTableArgumentComplete(source, callEnd)
+	}
+	name, ok := bareRouteTableIdentifier(source, argumentStart)
+	if !ok {
+		return false
+	}
+	definitions := regexp.MustCompile(`\bconst\s+(`+regexp.QuoteMeta(name)+`)\s*=\s*createRoutesFromElements\s*\(`).FindAllStringSubmatchIndex(source[:builderStart], -1)
+	if len(definitions) != 1 {
+		return false
+	}
+	callStart := definitions[0][1] - 1
+	callEnd := matchingDelimiter(source, callStart, '(', ')')
+	return callEnd >= 0 && routeTableDeclarationComplete(source, callEnd) &&
+		routeTableBindingOnlyUsedAt(source, name, definitions[0][2], argumentStart)
+}
+
+func bareRouteTableIdentifier(source string, argumentStart int) (string, bool) {
+	argumentStart = skipASCIISpace(source, argumentStart)
+	identifierEnd := argumentStart
+	for identifierEnd < len(source) && isIdentifierByte(source[identifierEnd]) {
+		identifierEnd++
+	}
+	if identifierEnd == argumentStart {
+		return "", false
+	}
+	after := skipASCIISpace(source, identifierEnd)
+	if after >= len(source) || source[after] != ')' && source[after] != ',' {
+		return "", false
+	}
+	return source[argumentStart:identifierEnd], true
+}
+
+type routeObjectSpan struct {
+	start int
+	end   int
+}
+
+func literalRouteTable(source string, arrayStart int) (int, []routeObjectSpan, bool) {
+	if arrayStart < 0 || arrayStart >= len(source) || source[arrayStart] != '[' {
+		return -1, nil, false
+	}
+	arrayEnd := matchingDelimiter(source, arrayStart, '[', ']')
+	if arrayEnd < 0 {
+		return -1, nil, false
+	}
+	var objects []routeObjectSpan
+	for index := arrayStart + 1; ; {
+		index = skipASCIISpace(source, index)
+		if index == arrayEnd {
+			return arrayEnd, objects, true
+		}
+		if index > arrayEnd || source[index] != '{' {
+			return -1, nil, false
+		}
+		objectEnd, nested, ok := literalRouteObject(source, index)
+		if !ok || objectEnd > arrayEnd {
+			return -1, nil, false
+		}
+		objects = append(objects, nested...)
+		index = skipASCIISpace(source, objectEnd+1)
+		if index == arrayEnd {
+			return arrayEnd, objects, true
+		}
+		if index > arrayEnd || source[index] != ',' {
+			return -1, nil, false
+		}
+		index++
+	}
+}
+
+func literalRouteObject(source string, objectStart int) (int, []routeObjectSpan, bool) {
+	if objectStart < 0 || objectStart >= len(source) || source[objectStart] != '{' {
+		return -1, nil, false
+	}
+	objectEnd := matchingDelimiter(source, objectStart, '{', '}')
+	if objectEnd < 0 {
+		return -1, nil, false
+	}
+	var objects []routeObjectSpan
+	if isRouteObject(source[objectStart : objectEnd+1]) {
+		objects = append(objects, routeObjectSpan{start: objectStart, end: objectEnd})
+	}
+	for index := objectStart + 1; ; {
+		index = skipASCIISpace(source, index)
+		if index == objectEnd {
+			return objectEnd, objects, true
+		}
+		if index > objectEnd || !isIdentifierByte(source[index]) {
+			return -1, nil, false
+		}
+		nameStart := index
+		for index < objectEnd && isIdentifierByte(source[index]) {
+			index++
+		}
+		name := source[nameStart:index]
+		index = skipASCIISpace(source, index)
+		switch {
+		case index < objectEnd && source[index] == ':':
+			if name == "children" {
+				childStart := skipASCIISpace(source, index+1)
+				if childStart >= objectEnd || source[childStart] != '[' {
+					return -1, nil, false
+				}
+				childEnd, children, ok := literalRouteTable(source, childStart)
+				if !ok || childEnd > objectEnd {
+					return -1, nil, false
+				}
+				objects = append(objects, children...)
+				index = skipASCIISpace(source, childEnd+1)
+			} else {
+				var ok bool
+				index, ok = routeObjectPropertyValueEnd(source, index+1, objectEnd)
+				if !ok {
+					return -1, nil, false
+				}
+			}
+		default:
+			// Shorthand properties resolve through runtime bindings. The pin can
+			// neither prove their values nor emit them as route declarations, so
+			// every property in a readable literal table must be explicit.
+			return -1, nil, false
+		}
+		if index == objectEnd {
+			return objectEnd, objects, true
+		}
+		if index > objectEnd || source[index] != ',' {
+			return -1, nil, false
+		}
+		index++
+	}
+}
+
+func routeObjectPropertyValueEnd(source string, valueStart, objectEnd int) (int, bool) {
+	bracketDepth, braceDepth, parenDepth := 0, 0, 0
+	for index := valueStart; index < objectEnd; index++ {
+		switch source[index] {
+		case '[':
+			bracketDepth++
+		case ']':
+			bracketDepth--
+		case '{':
+			braceDepth++
+		case '}':
+			braceDepth--
+		case '(':
+			parenDepth++
+		case ')':
+			parenDepth--
+		case ',':
+			if bracketDepth == 0 && braceDepth == 0 && parenDepth == 0 {
+				return index, true
+			}
+		}
+		if bracketDepth < 0 || braceDepth < 0 || parenDepth < 0 {
+			return -1, false
+		}
+	}
+	return objectEnd, bracketDepth == 0 && braceDepth == 0 && parenDepth == 0
+}
+
+func routeTableArgumentComplete(source string, expressionEnd int) bool {
+	after := skipASCIISpace(source, expressionEnd+1)
+	return after < len(source) && (source[after] == ')' || source[after] == ',')
+}
+
+func routeTableDeclarationComplete(source string, expressionEnd int) bool {
+	after := skipASCIISpace(source, expressionEnd+1)
+	return after < len(source) && source[after] == ';'
+}
+
+func namedCallEnd(source string, start int, name string) int {
+	if !strings.HasPrefix(source[start:], name) {
+		return -1
+	}
+	openParen := skipASCIISpace(source, start+len(name))
+	if openParen >= len(source) || source[openParen] != '(' {
+		return -1
+	}
+	return matchingDelimiter(source, openParen, '(', ')')
+}
+
+func routeTableBindingOnlyUsedAt(source, name string, allowedStarts ...int) bool {
+	remaining := make(map[int]bool, len(allowedStarts))
+	for _, start := range allowedStarts {
+		remaining[start] = true
+	}
+	for offset := 0; offset < len(source); {
+		relative := strings.Index(source[offset:], name)
+		if relative < 0 {
+			break
+		}
+		start := offset + relative
+		end := start + len(name)
+		offset = end
+		if start > 0 && isIdentifierByte(source[start-1]) || end < len(source) && isIdentifierByte(source[end]) {
+			continue
+		}
+		if !remaining[start] {
+			return false
+		}
+		delete(remaining, start)
+	}
+	return len(remaining) == 0
+}
+
+// javascriptStructure blanks comments and string literals while preserving
+// byte offsets and delimiters. Router-builder names in documentation and
+// strings therefore cannot masquerade as live route tables.
+func javascriptStructure(source string) string {
+	masked := []byte(source)
+	blank := func(index int) {
+		if masked[index] != '\n' && masked[index] != '\r' {
+			masked[index] = ' '
+		}
+	}
+	for index := 0; index < len(source); {
+		switch {
+		case source[index] == '/' && index+1 < len(source) && source[index+1] == '/':
+			for index < len(source) && source[index] != '\n' {
+				blank(index)
+				index++
+			}
+		case source[index] == '/' && index+1 < len(source) && source[index+1] == '*':
+			blank(index)
+			blank(index + 1)
+			index += 2
+			for index < len(source) {
+				if source[index] == '*' && index+1 < len(source) && source[index+1] == '/' {
+					blank(index)
+					blank(index + 1)
+					index += 2
+					break
+				}
+				blank(index)
+				index++
+			}
+		case source[index] == '\'' || source[index] == '"' || source[index] == '`':
+			quote := source[index]
+			blank(index)
+			index++
+			for index < len(source) {
+				if source[index] == '\\' && index+1 < len(source) {
+					blank(index)
+					blank(index + 1)
+					index += 2
+					continue
+				}
+				end := source[index] == quote
+				blank(index)
+				index++
+				if end {
+					break
+				}
+			}
+		default:
+			index++
+		}
+	}
+	return string(masked)
+}
+
+func matchingDelimiter(source string, start int, open, close byte) int {
+	depth := 0
+	for index := start; index < len(source); index++ {
+		switch source[index] {
+		case open:
+			depth++
+		case close:
+			depth--
+			if depth == 0 {
+				return index
 			}
 		}
 	}
-	return found
+	return -1
+}
+
+func skipASCIISpace(source string, index int) int {
+	for index < len(source) {
+		switch source[index] {
+		case ' ', '\t', '\n', '\r':
+			index++
+		default:
+			return index
+		}
+	}
+	return index
+}
+
+func isRouteObject(object string) bool {
+	braceDepth, bracketDepth, parenDepth := 0, 0, 0
+	for index := 0; index < len(object); index++ {
+		switch object[index] {
+		case '{':
+			braceDepth++
+		case '}':
+			braceDepth--
+		case '[':
+			bracketDepth++
+		case ']':
+			bracketDepth--
+		case '(':
+			parenDepth++
+		case ')':
+			parenDepth--
+		}
+		if braceDepth != 1 || bracketDepth != 0 || parenDepth != 0 {
+			continue
+		}
+		if strings.HasPrefix(object[index:], "...") {
+			return true
+		}
+		if !strings.HasPrefix(object[index:], "path") || index > 0 && isIdentifierByte(object[index-1]) {
+			continue
+		}
+		after := index + len("path")
+		if after < len(object) && isIdentifierByte(object[after]) {
+			continue
+		}
+		after = skipASCIISpace(object, after)
+		if after < len(object) && object[after] == ':' {
+			return true
+		}
+	}
+	return false
 }
 
 func condense(element string) string {
 	return strings.Join(strings.Fields(element), " ")
 }
 
-// spaRouteElements returns every <Route …> opening tag in web/src, so a route
-// declared outside App.tsx cannot escape the pin. Brace depth is tracked so
-// an element={<Page />} attribute does not end the tag early.
-func spaRouteElements(t *testing.T) ([]string, int) {
+// spaRouteDeclarations returns every <Route …> opening tag and inline object
+// route in web/src, so a route declared outside App.tsx cannot escape the pin.
+func spaRouteDeclarations(t *testing.T) ([]string, int) {
 	t.Helper()
-	var elements []string
+	var declarations []string
 	files := 0
 	for _, file := range spaSourceFiles(t) {
 		source, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatalf("read %s: %v", file, err)
 		}
-		found := routeOpeningTags(string(source))
+		sourceText := string(source)
+		if !routeObjectRouterReadable(sourceText) {
+			t.Fatalf("SPA route table in %s is computed in a form this pin cannot read", filepath.Base(file))
+		}
+		found := routeOpeningTags(sourceText)
+		found = append(found, routeObjectDeclarations(sourceText)...)
 		if len(found) > 0 {
 			files++
-			elements = append(elements, found...)
+			declarations = append(declarations, found...)
 		}
 	}
-	return elements, files
+	return declarations, files
 }
 
 // spaSourceExtensions is every extension the SPA build accepts a module from.
