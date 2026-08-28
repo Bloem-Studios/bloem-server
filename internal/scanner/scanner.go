@@ -2325,6 +2325,56 @@ func pathWithinAnyRoot(path string, roots []string) bool {
 	return false
 }
 
+// reconcileVanishedMusicFile atomically marks one music file missing and
+// removes its track. Locking the media_files row makes this transaction and a
+// concurrent music ingest serialize across server processes. The second stat
+// after acquiring the row lock prevents a stale absence check from winning
+// after another scanner restored the path.
+func (s *Scanner) reconcileVanishedMusicFile(ctx context.Context, filePath string, fileID int) (bool, error) {
+	tx, err := s.fileRepo.Pool().Begin(ctx)
+	if err != nil {
+		return false, fmt.Errorf("begin vanished music reconciliation: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	tag, err := tx.Exec(ctx, `SELECT id FROM media_files WHERE id = $1 FOR UPDATE`, fileID)
+	if err != nil {
+		return false, fmt.Errorf("lock vanished music file: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return true, nil
+	}
+	if _, err := os.Stat(filePath); err == nil {
+		return false, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return false, fmt.Errorf("recheck music file %s: %w", filePath, err)
+	}
+
+	tag, err = tx.Exec(ctx, `
+		UPDATE media_files
+		SET missing_since = $1, updated_at = NOW()
+		WHERE id = $2
+	`, time.Now().UTC(), fileID)
+	if err != nil {
+		return false, fmt.Errorf("mark vanished music file missing: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return true, nil
+	}
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM music_tracks mt USING media_files mf
+		WHERE mt.media_file_id = $1
+		  AND mf.id = mt.media_file_id
+		  AND mf.missing_since IS NOT NULL
+	`, fileID); err != nil {
+		return false, fmt.Errorf("delete vanished music track: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return false, fmt.Errorf("commit vanished music reconciliation: %w", err)
+	}
+	return true, nil
+}
+
 // ScanFile scans a single file and upserts it into the database.
 func (s *Scanner) ScanFile(ctx context.Context, filePath string, folder *models.MediaFolder) error {
 	var stopWatch context.CancelFunc
@@ -2376,14 +2426,17 @@ func (s *Scanner) ScanFile(ctx context.Context, filePath string, folder *models.
 			if lookupErr != nil {
 				return lookupErr
 			}
-			if err := s.fileRepo.MarkMissing(ctx, existing.ID, time.Now().UTC()); err != nil {
-				return err
+			handled, reconcileErr := s.reconcileVanishedMusicFile(ctx, cleanFile, existing.ID)
+			if reconcileErr != nil {
+				return reconcileErr
 			}
-			if _, err := s.fileRepo.Pool().Exec(ctx, `DELETE FROM music_tracks WHERE media_file_id = $1`, existing.ID); err != nil {
-				return fmt.Errorf("delete vanished music track: %w", err)
+			if !handled {
+				return s.ScanMusicFolder(ctx, scopedFolderPaths(folder, []string{filepath.Dir(cleanFile)}), false)
 			}
-			if _, err := s.fileRepo.Pool().Exec(ctx, `DELETE FROM music_albums ma WHERE NOT EXISTS (SELECT 1 FROM music_tracks mt WHERE mt.album_id = ma.content_id)`); err != nil {
-				return fmt.Errorf("delete empty music album: %w", err)
+			if s.libraryRepo != nil {
+				if _, _, _, err := s.reconcileLibraryMemberships(ctx, folder.ID, nil); err != nil {
+					return fmt.Errorf("reconcile vanished music item: %w", err)
+				}
 			}
 			return s.syncFolderScopedAudioLibraryState(ctx, folder.ID)
 		} else if err != nil {

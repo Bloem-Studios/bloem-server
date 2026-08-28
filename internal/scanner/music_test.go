@@ -6,13 +6,161 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type musicPostgresBarrier struct {
+	ctx       context.Context
+	conn      *pgxpool.Conn
+	holderPID int
+	released  bool
+}
+
+func newMusicPostgresBarrier(t *testing.T, pool *pgxpool.Pool, key int64) *musicPostgresBarrier {
+	t.Helper()
+	ctx := context.Background()
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatalf("acquire music barrier connection: %v", err)
+	}
+	barrier := &musicPostgresBarrier{ctx: ctx, conn: conn}
+	if err := conn.QueryRow(ctx, `SELECT pg_backend_pid()`).Scan(&barrier.holderPID); err != nil {
+		conn.Release()
+		t.Fatalf("read music barrier backend: %v", err)
+	}
+	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock($1)`, key); err != nil {
+		conn.Release()
+		t.Fatalf("acquire music advisory barrier: %v", err)
+	}
+	t.Cleanup(func() {
+		if barrier.released {
+			return
+		}
+		_, _ = barrier.conn.Exec(context.Background(), `SELECT pg_advisory_unlock_all()`)
+		barrier.conn.Release()
+		barrier.released = true
+	})
+	return barrier
+}
+
+func (b *musicPostgresBarrier) waitForWaiter(t *testing.T, operation <-chan error) {
+	t.Helper()
+	waitCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for {
+		select {
+		case err := <-operation:
+			t.Fatalf("music operation finished before reaching database barrier: %v", err)
+		default:
+		}
+		var waiting bool
+		err := b.conn.QueryRow(waitCtx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM pg_locks waiting
+				JOIN pg_locks held
+				  ON held.locktype = waiting.locktype
+				 AND held.database IS NOT DISTINCT FROM waiting.database
+				 AND held.classid IS NOT DISTINCT FROM waiting.classid
+				 AND held.objid IS NOT DISTINCT FROM waiting.objid
+				 AND held.objsubid IS NOT DISTINCT FROM waiting.objsubid
+				WHERE held.pid = $1
+				  AND held.granted
+				  AND NOT waiting.granted
+				  AND waiting.pid <> held.pid
+			)
+		`, b.holderPID).Scan(&waiting)
+		if err != nil {
+			t.Fatalf("observe music database barrier: %v", err)
+		}
+		if waiting {
+			return
+		}
+		if err := waitCtx.Err(); err != nil {
+			t.Fatalf("music operation did not reach database barrier: %v", err)
+		}
+		runtime.Gosched()
+	}
+}
+
+// waitForDownstreamCompletionOrLockChain waits until downstream either
+// finishes or is observably blocked by the operation already waiting on this
+// barrier. The lock-chain branch proves database-backed serialization without
+// timing guesses: holder <- upstream <- downstream.
+func (b *musicPostgresBarrier) waitForDownstreamCompletionOrLockChain(
+	t *testing.T,
+	upstream <-chan error,
+	downstream <-chan error,
+) (bool, error) {
+	t.Helper()
+	waitCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for {
+		select {
+		case err := <-upstream:
+			t.Fatalf("upstream music operation finished before barrier release: %v", err)
+		case err := <-downstream:
+			return true, err
+		default:
+		}
+		var chained bool
+		err := b.conn.QueryRow(waitCtx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM pg_stat_activity blocked_upstream
+				JOIN pg_stat_activity blocked_downstream
+				  ON blocked_upstream.pid = ANY(pg_blocking_pids(blocked_downstream.pid))
+				WHERE $1 = ANY(pg_blocking_pids(blocked_upstream.pid))
+			)
+		`, b.holderPID).Scan(&chained)
+		if err != nil {
+			t.Fatalf("observe music database lock chain: %v", err)
+		}
+		if chained {
+			return false, nil
+		}
+		if err := waitCtx.Err(); err != nil {
+			t.Fatalf("downstream music operation neither finished nor reached lock chain: %v", err)
+		}
+		runtime.Gosched()
+	}
+}
+
+func (b *musicPostgresBarrier) release(t *testing.T) {
+	t.Helper()
+	if b.released {
+		return
+	}
+	if _, err := b.conn.Exec(b.ctx, `SELECT pg_advisory_unlock_all()`); err != nil {
+		t.Fatalf("release music database barrier: %v", err)
+	}
+	b.conn.Release()
+	b.released = true
+}
+
+func waitForMusicOperation(t *testing.T, operation <-chan error) error {
+	t.Helper()
+	waitCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	select {
+	case err := <-operation:
+		return err
+	case <-waitCtx.Done():
+		t.Fatalf("music operation did not finish after barrier release: %v", waitCtx.Err())
+		return nil
+	}
+}
+
+func musicPostgresLiteral(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
+}
 
 type musicScanTestFixture struct {
 	t       *testing.T
@@ -22,6 +170,7 @@ type musicScanTestFixture struct {
 	folder  *models.MediaFolder
 	root    string
 	album   string
+	artists []string
 }
 
 type musicCatalogCounts struct {
@@ -70,6 +219,7 @@ printf '%s\n' '{"format":{"format_name":"flac","duration":"60","bit_rate":"10000
 		folder:  folder,
 		root:    root,
 		album:   album,
+		artists: []string{stableMusicSemanticID("artist", "Artist")},
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM media_files WHERE media_folder_id = $1`, folderID)
@@ -79,9 +229,9 @@ printf '%s\n' '{"format":{"format_name":"flac","duration":"60","bit_rate":"10000
 			WHERE mil.content_id = mi.content_id AND mil.media_folder_id = $1`, folderID)
 		_, _ = pool.Exec(ctx, `
 			DELETE FROM music_artists ar
-			WHERE ar.id = $1 AND NOT EXISTS (
+			WHERE ar.id = ANY($1) AND NOT EXISTS (
 				SELECT 1 FROM music_albums ma WHERE ma.artist_id = ar.id
-			)`, stableMusicSemanticID("artist", "Artist"))
+			)`, fixture.artists)
 	})
 	return fixture
 }
@@ -164,12 +314,9 @@ func TestMusicTrackFromProbeUsesTagsAndPreservesUnknownOrder(t *testing.T) {
 	}
 }
 
-func TestStableMusicSemanticIDsRemainCaseInsensitive(t *testing.T) {
+func TestStableMusicArtistIDRemainsCaseInsensitive(t *testing.T) {
 	if upper, lower := stableMusicSemanticID("artist", "Bloem Artist"), stableMusicSemanticID("artist", "bloem artist"); upper != lower {
 		t.Fatalf("case-equivalent artist IDs differ: %q != %q", upper, lower)
-	}
-	if upper, lower := stableMusicSemanticID("album", "Bloem Album"), stableMusicSemanticID("album", "bloem album"); upper != lower {
-		t.Fatalf("case-equivalent album IDs differ: %q != %q", upper, lower)
 	}
 }
 
@@ -383,6 +530,431 @@ func TestMusicScanHealthyRootReconcilesOnlyMissingTrack(t *testing.T) {
 	got := fixture.counts()
 	if got.Files != 2 || got.ActiveFiles != 1 || got.Tracks != 1 || got.Albums != 1 || got.Memberships != 1 {
 		t.Fatalf("catalog after one deleted track = %+v", got)
+	}
+}
+
+func TestMusicFullScanDoesNotReconcileFilesCreatedOrRefreshedAfterItsSnapshot(t *testing.T) {
+	// This catches a full scan consulting the live media_files table after its
+	// filesystem walk. A row inserted after that walk was never evidence of
+	// absence, and a pre-existing row refreshed by the scoped scan no longer
+	// represents the generation the full scan observed.
+	fixture := newMusicScanTestFixture(t, "keep.flac")
+	// A distinct artist avoids an unrelated row-lock dependency: the full
+	// ingestion transaction intentionally holds its own artist row while the
+	// media-file barrier is active.
+	secondAlbum := filepath.Join(fixture.root, "Concurrent Artist", "Second Album")
+	fixture.artists = append(fixture.artists, stableMusicSemanticID("artist", "Concurrent Artist"))
+	if err := os.MkdirAll(secondAlbum, 0o755); err != nil {
+		t.Fatalf("create second music album: %v", err)
+	}
+	returningPath := filepath.Join(secondAlbum, "returning.flac")
+	gonePath := filepath.Join(secondAlbum, "gone.flac")
+	for _, path := range []string{returningPath, gonePath} {
+		if err := os.WriteFile(path, []byte("baseline audio payload"), 0o644); err != nil {
+			t.Fatalf("write baseline music track %q: %v", path, err)
+		}
+	}
+	if err := fixture.scan(); err != nil {
+		t.Fatalf("baseline music scan: %v", err)
+	}
+	for _, path := range []string{returningPath, gonePath} {
+		if err := os.Remove(path); err != nil {
+			t.Fatalf("remove music track %q before full scan: %v", path, err)
+		}
+	}
+
+	barrierKey := int64(510_000_000_000) + int64(fixture.folder.ID)
+	barrier := newMusicPostgresBarrier(t, fixture.pool, barrierKey)
+	functionName := fmt.Sprintf("task5_music_file_barrier_%d", fixture.folder.ID)
+	triggerName := fmt.Sprintf("task5_music_file_barrier_%d", fixture.folder.ID)
+	keepPath := filepath.Join(fixture.album, "keep.flac")
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $fn$
+		BEGIN
+			IF NEW.media_folder_id = %d AND NEW.file_path = %s THEN
+				PERFORM pg_advisory_xact_lock(%d::bigint);
+			END IF;
+			RETURN NEW;
+		END
+		$fn$`, functionName, fixture.folder.ID, musicPostgresLiteral(keepPath), barrierKey)); err != nil {
+		t.Fatalf("create music file barrier function: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE TRIGGER %s BEFORE INSERT OR UPDATE ON media_files
+		FOR EACH ROW EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
+		t.Fatalf("create music file barrier trigger: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON media_files`, triggerName))
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
+	})
+
+	fullScan := make(chan error, 1)
+	go func() { fullScan <- fixture.scan() }()
+	barrier.waitForWaiter(t, fullScan)
+
+	if err := os.WriteFile(returningPath, []byte("returned audio payload"), 0o644); err != nil {
+		t.Fatalf("restore music track during full scan: %v", err)
+	}
+	newPath := filepath.Join(secondAlbum, "new.flac")
+	if err := os.WriteFile(newPath, []byte("new audio payload"), 0o644); err != nil {
+		t.Fatalf("create music track during full scan: %v", err)
+	}
+	if err := fixture.scanner.ScanFile(fixture.ctx, newPath, fixture.folder); err != nil {
+		barrier.release(t)
+		_ = waitForMusicOperation(t, fullScan)
+		t.Fatalf("scoped music scan during full scan: %v", err)
+	}
+	barrier.release(t)
+	if err := waitForMusicOperation(t, fullScan); err != nil {
+		t.Fatalf("concurrent full music scan: %v", err)
+	}
+
+	want := map[string]struct {
+		active   bool
+		hasTrack bool
+	}{
+		keepPath:      {active: true, hasTrack: true},
+		returningPath: {active: true, hasTrack: true},
+		newPath:       {active: true, hasTrack: true},
+		gonePath:      {active: false, hasTrack: false},
+	}
+	for path, expected := range want {
+		var active, hasTrack bool
+		if err := fixture.pool.QueryRow(fixture.ctx, `
+			SELECT mf.missing_since IS NULL,
+			       EXISTS (SELECT 1 FROM music_tracks mt WHERE mt.media_file_id = mf.id)
+			FROM media_files mf
+			WHERE mf.media_folder_id = $1 AND mf.file_path = $2
+		`, fixture.folder.ID, path).Scan(&active, &hasTrack); err != nil {
+			t.Fatalf("read reconciled music track %q: %v", path, err)
+		}
+		if active != expected.active || hasTrack != expected.hasTrack {
+			t.Errorf("music track %q state = active:%t track:%t, want active:%t track:%t",
+				path, active, hasTrack, expected.active, expected.hasTrack)
+		}
+	}
+}
+
+func TestMusicAlbumIngestionIsAtomicWithOrphanReconciliation(t *testing.T) {
+	// This catches album/item creation committing before the corresponding
+	// track. The trigger pauses the insert at that exact boundary while a
+	// second connection executes the real orphan reconciliation path.
+	fixture := newMusicScanTestFixture(t)
+	trackPath := filepath.Join(fixture.album, "new.flac")
+	if err := os.WriteFile(trackPath, []byte("new audio payload"), 0o644); err != nil {
+		t.Fatalf("write music track: %v", err)
+	}
+
+	barrierKey := int64(520_000_000_000) + int64(fixture.folder.ID)
+	barrier := newMusicPostgresBarrier(t, fixture.pool, barrierKey)
+	functionName := fmt.Sprintf("task5_music_track_barrier_%d", fixture.folder.ID)
+	triggerName := fmt.Sprintf("task5_music_track_barrier_%d", fixture.folder.ID)
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $fn$
+		BEGIN
+			IF EXISTS (
+				SELECT 1 FROM media_files mf
+				WHERE mf.id = NEW.media_file_id AND mf.media_folder_id = %d
+			) THEN
+				PERFORM pg_advisory_xact_lock(%d::bigint);
+			END IF;
+			RETURN NEW;
+		END
+		$fn$`, functionName, fixture.folder.ID, barrierKey)); err != nil {
+		t.Fatalf("create music track barrier function: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE TRIGGER %s BEFORE INSERT ON music_tracks
+		FOR EACH ROW EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
+		t.Fatalf("create music track barrier trigger: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON music_tracks`, triggerName))
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
+	})
+
+	ingestion := make(chan error, 1)
+	go func() {
+		ingestion <- fixture.scanner.ScanMusicFolder(
+			fixture.ctx,
+			scopedFolderPaths(fixture.folder, []string{fixture.album}),
+			false,
+		)
+	}()
+	barrier.waitForWaiter(t, ingestion)
+
+	candidates, err := fixture.scanner.snapshotMusicReconcileCandidates(fixture.ctx, fixture.folder.ID)
+	if err != nil {
+		barrier.release(t)
+		_ = waitForMusicOperation(t, ingestion)
+		t.Fatalf("snapshot music candidates while track insert is pending: %v", err)
+	}
+	if err := fixture.scanner.reconcileMissingMusic(
+		fixture.ctx,
+		fixture.folder.ID,
+		candidates,
+		map[string]struct{}{trackPath: {}},
+		nil,
+	); err != nil {
+		barrier.release(t)
+		_ = waitForMusicOperation(t, ingestion)
+		t.Fatalf("reconcile music while track insert is pending: %v", err)
+	}
+	barrier.release(t)
+	if err := waitForMusicOperation(t, ingestion); err != nil {
+		t.Fatalf("music ingestion after concurrent orphan reconcile: %v", err)
+	}
+
+	var files, items, albums, memberships, tracks, orphanItems, orphanAlbums int
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT
+			(SELECT count(*) FROM media_files mf WHERE mf.media_folder_id = $1 AND mf.missing_since IS NULL),
+			(SELECT count(*) FROM media_items mi WHERE mi.type = 'music_album' AND EXISTS (
+				SELECT 1 FROM media_files mf WHERE mf.media_folder_id = $1 AND mf.content_id = mi.content_id
+			)),
+			(SELECT count(*) FROM music_albums ma WHERE EXISTS (
+				SELECT 1 FROM media_files mf WHERE mf.media_folder_id = $1 AND mf.content_id = ma.content_id
+			)),
+			(SELECT count(*) FROM media_item_libraries mil WHERE mil.media_folder_id = $1),
+			(SELECT count(*) FROM music_tracks mt JOIN media_files mf ON mf.id = mt.media_file_id WHERE mf.media_folder_id = $1),
+			(SELECT count(*) FROM media_items mi WHERE mi.type = 'music_album'
+				AND EXISTS (SELECT 1 FROM media_files mf WHERE mf.media_folder_id = $1 AND mf.content_id = mi.content_id)
+				AND NOT EXISTS (SELECT 1 FROM music_albums ma WHERE ma.content_id = mi.content_id)),
+			(SELECT count(*) FROM music_albums ma
+				WHERE EXISTS (SELECT 1 FROM media_files mf WHERE mf.media_folder_id = $1 AND mf.content_id = ma.content_id)
+				  AND NOT EXISTS (SELECT 1 FROM music_tracks mt WHERE mt.album_id = ma.content_id))
+	`, fixture.folder.ID).Scan(&files, &items, &albums, &memberships, &tracks, &orphanItems, &orphanAlbums); err != nil {
+		t.Fatalf("read music ingestion state: %v", err)
+	}
+	if files != 1 || items != 1 || albums != 1 || memberships != 1 || tracks != 1 || orphanItems != 0 || orphanAlbums != 0 {
+		t.Fatalf("music ingestion state = files:%d items:%d albums:%d memberships:%d tracks:%d orphan-items:%d orphan-albums:%d",
+			files, items, albums, memberships, tracks, orphanItems, orphanAlbums)
+	}
+}
+
+func TestMusicScanFileVanishedUsesMembershipOrphanOwner(t *testing.T) {
+	// This catches the file-scoped path deleting music_albums directly while
+	// leaving its parent media item and folder membership behind. The shared
+	// membership reconciler owns the entire item/album orphan lifecycle.
+	fixture := newMusicScanTestFixture(t, "vanished.flac")
+	if err := fixture.scan(); err != nil {
+		t.Fatalf("baseline music scan: %v", err)
+	}
+	trackPath := filepath.Join(fixture.album, "vanished.flac")
+	if err := os.Remove(trackPath); err != nil {
+		t.Fatalf("remove music track: %v", err)
+	}
+
+	if err := fixture.scanner.ScanFile(fixture.ctx, trackPath, fixture.folder); err != nil {
+		t.Fatalf("scan vanished music file: %v", err)
+	}
+
+	got := fixture.counts()
+	if got.Files != 1 || got.ActiveFiles != 0 || got.Tracks != 0 || got.Albums != 0 || got.Memberships != 0 {
+		t.Fatalf("catalog after file-scoped removal = %+v, want retained missing file and no item-owned rows", got)
+	}
+	var orphanMusicItems int
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT count(*)
+		FROM media_items mi
+		WHERE mi.type = 'music_album'
+		  AND EXISTS (
+			SELECT 1 FROM media_files mf
+			WHERE mf.media_folder_id = $1 AND mf.content_id = mi.content_id
+		  )
+		  AND NOT EXISTS (SELECT 1 FROM music_albums ma WHERE ma.content_id = mi.content_id)
+	`, fixture.folder.ID).Scan(&orphanMusicItems); err != nil {
+		t.Fatalf("count orphan music items: %v", err)
+	}
+	if orphanMusicItems != 0 {
+		t.Fatalf("orphan music items after file-scoped removal = %d, want 0", orphanMusicItems)
+	}
+}
+
+func TestMusicVanishedScanSerializesWithConcurrentRefresh(t *testing.T) {
+	// The missing scan pauses after marking the file missing but before deleting
+	// its track. A real concurrent ingest then refreshes the same media_file.
+	// The two catalog mutations must serialize so whichever commits last owns a
+	// complete media_file+track state, never an active file without a track.
+	fixture := newMusicScanTestFixture(t, "race.flac")
+	if err := fixture.scan(); err != nil {
+		t.Fatalf("baseline music scan: %v", err)
+	}
+	trackPath := filepath.Join(fixture.album, "race.flac")
+	if err := os.Remove(trackPath); err != nil {
+		t.Fatalf("remove music track: %v", err)
+	}
+
+	barrierKey := int64(530_000_000_000) + int64(fixture.folder.ID)
+	barrier := newMusicPostgresBarrier(t, fixture.pool, barrierKey)
+	applicationName := fmt.Sprintf("task5-music-vanished-%d", fixture.folder.ID)
+	operationConfig, err := pgxpool.ParseConfig(os.Getenv("SILO_TEST_DATABASE_URL"))
+	if err != nil {
+		t.Fatalf("parse vanished music operation database config: %v", err)
+	}
+	operationConfig.ConnConfig.RuntimeParams["application_name"] = applicationName
+	operationPool, err := pgxpool.NewWithConfig(fixture.ctx, operationConfig)
+	if err != nil {
+		t.Fatalf("create vanished music operation pool: %v", err)
+	}
+	t.Cleanup(operationPool.Close)
+	missingScanner := NewScanner(NewFileRepository(operationPool), fixture.scanner.ffprobePath, nil, 1, false, 0)
+	functionName := fmt.Sprintf("task5_music_delete_barrier_%d", fixture.folder.ID)
+	triggerName := fmt.Sprintf("task5_music_delete_barrier_%d", fixture.folder.ID)
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $fn$
+		BEGIN
+			IF current_setting('application_name') = %s THEN
+				PERFORM pg_advisory_xact_lock(%d::bigint);
+			END IF;
+			RETURN NULL;
+		END
+		$fn$`, functionName, musicPostgresLiteral(applicationName), barrierKey)); err != nil {
+		t.Fatalf("create music delete barrier function: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE TRIGGER %s BEFORE DELETE ON music_tracks
+		FOR EACH STATEMENT EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
+		t.Fatalf("create music delete barrier trigger: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON music_tracks`, triggerName))
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
+	})
+
+	missing := make(chan error, 1)
+	go func() { missing <- missingScanner.ScanFile(fixture.ctx, trackPath, fixture.folder) }()
+	barrier.waitForWaiter(t, missing)
+
+	if err := os.WriteFile(trackPath, []byte("restored audio payload"), 0o644); err != nil {
+		barrier.release(t)
+		_ = waitForMusicOperation(t, missing)
+		t.Fatalf("restore music track during missing scan: %v", err)
+	}
+	refresh := make(chan error, 1)
+	go func() {
+		refresh <- fixture.scanner.ScanMusicFolder(
+			fixture.ctx,
+			scopedFolderPaths(fixture.folder, []string{trackPath}),
+			false,
+		)
+	}()
+	refreshCompleted, refreshErr := barrier.waitForDownstreamCompletionOrLockChain(t, missing, refresh)
+
+	barrier.release(t)
+	if err := waitForMusicOperation(t, missing); err != nil {
+		t.Fatalf("vanished music scan after concurrent refresh: %v", err)
+	}
+	if !refreshCompleted {
+		refreshErr = waitForMusicOperation(t, refresh)
+	}
+	if refreshErr != nil {
+		t.Fatalf("concurrent music refresh: %v", refreshErr)
+	}
+	if refreshCompleted {
+		t.Error("concurrent refresh bypassed the vanished scan's database transaction")
+	}
+
+	var active, hasTrack bool
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT mf.missing_since IS NULL,
+		       EXISTS (SELECT 1 FROM music_tracks mt WHERE mt.media_file_id = mf.id)
+		FROM media_files mf
+		WHERE mf.media_folder_id = $1 AND mf.file_path = $2
+	`, fixture.folder.ID, trackPath).Scan(&active, &hasTrack); err != nil {
+		t.Fatalf("read refreshed music track: %v", err)
+	}
+	if !active || !hasTrack {
+		t.Fatalf("refreshed music track state = active:%t track:%t, want active:true track:true", active, hasTrack)
+	}
+}
+
+func TestConcurrentMusicIngestsShareOneNewAlbumIdentity(t *testing.T) {
+	// Both scans enter with a previously unseen album root. The first pauses
+	// after choosing its ID; the second must wait on a database-visible root
+	// lock, then reuse the album established by the first transaction.
+	fixture := newMusicScanTestFixture(t)
+	firstPath := filepath.Join(fixture.album, "first.flac")
+	secondPath := filepath.Join(fixture.album, "second.flac")
+	for _, path := range []string{firstPath, secondPath} {
+		if err := os.WriteFile(path, []byte("new audio payload"), 0o644); err != nil {
+			t.Fatalf("write concurrent music track %q: %v", path, err)
+		}
+	}
+
+	barrierKey := int64(540_000_000_000) + int64(fixture.folder.ID)
+	barrier := newMusicPostgresBarrier(t, fixture.pool, barrierKey)
+	functionName := fmt.Sprintf("task5_music_album_root_barrier_%d", fixture.folder.ID)
+	triggerName := fmt.Sprintf("task5_music_album_root_barrier_%d", fixture.folder.ID)
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $fn$
+		BEGIN
+			IF NEW.media_folder_id = %d AND NEW.file_path = %s THEN
+				PERFORM pg_advisory_xact_lock(%d::bigint);
+			END IF;
+			RETURN NEW;
+		END
+		$fn$`, functionName, fixture.folder.ID, musicPostgresLiteral(firstPath), barrierKey)); err != nil {
+		t.Fatalf("create music album-root barrier function: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE TRIGGER %s BEFORE INSERT OR UPDATE ON media_files
+		FOR EACH ROW EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
+		t.Fatalf("create music album-root barrier trigger: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON media_files`, triggerName))
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
+	})
+
+	first := make(chan error, 1)
+	go func() {
+		first <- fixture.scanner.ScanMusicFolder(
+			fixture.ctx,
+			scopedFolderPaths(fixture.folder, []string{firstPath}),
+			false,
+		)
+	}()
+	barrier.waitForWaiter(t, first)
+
+	second := make(chan error, 1)
+	go func() {
+		second <- fixture.scanner.ScanMusicFolder(
+			fixture.ctx,
+			scopedFolderPaths(fixture.folder, []string{secondPath}),
+			false,
+		)
+	}()
+	secondCompleted, secondErr := barrier.waitForDownstreamCompletionOrLockChain(t, first, second)
+
+	barrier.release(t)
+	if err := waitForMusicOperation(t, first); err != nil {
+		t.Fatalf("first concurrent music ingest: %v", err)
+	}
+	if !secondCompleted {
+		secondErr = waitForMusicOperation(t, second)
+	}
+	if secondErr != nil {
+		t.Fatalf("second concurrent music ingest: %v", secondErr)
+	}
+	if secondCompleted {
+		t.Error("second ingest bypassed serialization for an unseen album root")
+	}
+
+	var albums, files, tracks, memberships int
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT
+			(SELECT count(DISTINCT mf.content_id) FROM media_files mf WHERE mf.media_folder_id = $1),
+			(SELECT count(*) FROM media_files mf WHERE mf.media_folder_id = $1 AND mf.missing_since IS NULL),
+			(SELECT count(*) FROM music_tracks mt JOIN media_files mf ON mf.id = mt.media_file_id WHERE mf.media_folder_id = $1),
+			(SELECT count(*) FROM media_item_libraries mil WHERE mil.media_folder_id = $1)
+	`, fixture.folder.ID).Scan(&albums, &files, &tracks, &memberships); err != nil {
+		t.Fatalf("read concurrent album state: %v", err)
+	}
+	if albums != 1 || files != 2 || tracks != 2 || memberships != 1 {
+		t.Fatalf("concurrent album state = albums:%d files:%d tracks:%d memberships:%d, want 1/2/2/1",
+			albums, files, tracks, memberships)
 	}
 }
 

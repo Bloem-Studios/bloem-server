@@ -3,6 +3,7 @@ package scanner
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
@@ -66,11 +67,11 @@ func legacyMusicTrackID(trackPath string) string {
 	return stableMusicSemanticID("track", trackPath)
 }
 
-// stableMusicTrackID deliberately preserves path case. Artist/album identity
-// is semantic and case-insensitive, but a case-sensitive filesystem may hold
-// Track.flac and track.flac as two distinct files. Scoping the cleaned,
-// album-relative path by folder and album keeps those physical identities
-// deterministic without coupling them to an absolute library location.
+// stableMusicTrackID deliberately preserves path case: a case-sensitive
+// filesystem may hold Track.flac and track.flac as two distinct files.
+// Scoping the cleaned, album-relative path by folder and the root-resolved
+// album ID keeps those physical identities deterministic without coupling
+// them to an absolute library location.
 func stableMusicTrackID(folderID int, albumID, albumRoot, trackPath string) string {
 	relativePath := filepath.Clean(trackPath)
 	if rel, err := filepath.Rel(filepath.Clean(albumRoot), relativePath); err == nil &&
@@ -94,9 +95,14 @@ func (s *Scanner) ScanMusicFolder(ctx context.Context, folder *models.MediaFolde
 	}
 
 	var rootObservation RootSetObservation
+	var reconcileCandidates []musicReconcileCandidate
 	if fullScan {
 		var err error
 		rootObservation, err = s.ObserveRoots(ctx, folder.ID, folder.Paths)
+		if err != nil {
+			return err
+		}
+		reconcileCandidates, err = s.snapshotMusicReconcileCandidates(ctx, folder.ID)
 		if err != nil {
 			return err
 		}
@@ -174,16 +180,11 @@ func (s *Scanner) ScanMusicFolder(ctx context.Context, folder *models.MediaFolde
 			track.TrackNumber = albumTrackIndexes[albumRoot]
 		}
 		albumID := albumIDs[albumRoot]
-		if albumID == "" {
-			albumID, err = s.findOrCreateMusicAlbumID(ctx, folder.ID, albumRoot)
-			if err != nil {
-				return err
-			}
-			albumIDs[albumRoot] = albumID
-		}
-		if err := s.upsertMusicTrack(ctx, folder, albumID, albumRoot, track); err != nil {
+		albumID, err = s.upsertMusicTrack(ctx, folder, albumID, albumRoot, track)
+		if err != nil {
 			return err
 		}
+		albumIDs[albumRoot] = albumID
 		seen[path] = struct{}{}
 	}
 	if fullScan {
@@ -193,7 +194,7 @@ func (s *Scanner) ScanMusicFolder(ctx context.Context, folder *models.MediaFolde
 			protectedRoots = appendUniquePath(protectedRoots, failedPath)
 		}
 		if !allConfiguredRootsUnreachable(rootObservation.ConfiguredRoots, rootObservation.UnreachableRoots) {
-			if err := s.reconcileMissingMusic(ctx, folder.ID, seen, protectedRoots); err != nil {
+			if err := s.reconcileMissingMusic(ctx, folder.ID, reconcileCandidates, seen, protectedRoots); err != nil {
 				return err
 			}
 		}
@@ -274,9 +275,9 @@ func (s *Scanner) hasCatalogedMusicFiles(ctx context.Context, folderID int) (boo
 	return exists, nil
 }
 
-func (s *Scanner) findOrCreateMusicAlbumID(ctx context.Context, folderID int, albumRoot string) (string, error) {
+func findOrCreateMusicAlbumIDTx(ctx context.Context, tx pgx.Tx, folderID int, albumRoot string) (string, error) {
 	var contentID string
-	err := s.fileRepo.Pool().QueryRow(ctx, `
+	err := tx.QueryRow(ctx, `
 		SELECT ma.content_id
 		FROM music_albums ma
 		JOIN media_files mf ON mf.content_id = ma.content_id
@@ -295,8 +296,42 @@ func (s *Scanner) findOrCreateMusicAlbumID(ctx context.Context, folderID int, al
 	return contentID, nil
 }
 
-func (s *Scanner) upsertMusicTrack(ctx context.Context, folder *models.MediaFolder, albumID, albumRoot string, track parsedMusicTrack) error {
+func musicAlbumRootLockKey(folderID int, albumRoot string) int64 {
+	identity := fmt.Sprintf("bloem:music-album-root\x00%d\x00%s", folderID, filepath.Clean(albumRoot))
+	sum := sha256.Sum256([]byte(identity))
+	return int64(binary.BigEndian.Uint64(sum[:8]))
+}
+
+func (s *Scanner) upsertMusicTrack(
+	ctx context.Context,
+	folder *models.MediaFolder,
+	albumID string,
+	albumRoot string,
+	track parsedMusicTrack,
+) (string, error) {
 	artistID := stableMusicSemanticID("artist", track.AlbumArtist)
+	info, err := os.Stat(track.Path)
+	if err != nil {
+		return "", fmt.Errorf("stat music file: %w", err)
+	}
+	modified := normalizeFileModifiedAt(info.ModTime())
+
+	pool := s.fileRepo.Pool()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("begin music track upsert: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, musicAlbumRootLockKey(folder.ID, albumRoot)); err != nil {
+		return "", fmt.Errorf("lock music album root: %w", err)
+	}
+	if albumID == "" {
+		albumID, err = findOrCreateMusicAlbumIDTx(ctx, tx, folder.ID, albumRoot)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	item := &models.MediaItem{
 		ContentID: albumID,
 		Type:      "music_album",
@@ -306,45 +341,35 @@ func (s *Scanner) upsertMusicTrack(ctx context.Context, folder *models.MediaFold
 		Runtime:   int(track.DurationMS / 60000),
 		Status:    "matched",
 	}
-	if err := s.itemRepo.Upsert(ctx, item); err != nil {
-		return fmt.Errorf("upsert music album item: %w", err)
+	mediaFile := musicMediaFile(folder, albumID, albumRoot, track, info.Size(), modified)
+	trackID := stableMusicTrackID(folder.ID, albumID, albumRoot, track.Path)
+	legacyTrackID := legacyMusicTrackID(track.Path)
+
+	if err := s.itemRepo.UpsertTx(ctx, tx, item); err != nil {
+		return "", fmt.Errorf("upsert music album item: %w", err)
 	}
-	pool := s.fileRepo.Pool()
-	if _, err := pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO music_artists (id, name, sort_name)
 		VALUES ($1, $2, $2)
 		ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, sort_name = EXCLUDED.sort_name, updated_at = NOW()`, artistID, track.AlbumArtist); err != nil {
-		return fmt.Errorf("upsert music artist: %w", err)
+		return "", fmt.Errorf("upsert music artist: %w", err)
 	}
-	if _, err := pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO music_albums (content_id, artist_id, year)
 		VALUES ($1, $2, NULLIF($3, 0))
 		ON CONFLICT (content_id) DO UPDATE SET artist_id = EXCLUDED.artist_id,
 			year = COALESCE(EXCLUDED.year, music_albums.year), updated_at = NOW()`, albumID, artistID, track.Year); err != nil {
-		return fmt.Errorf("upsert music album: %w", err)
+		return "", fmt.Errorf("upsert music album: %w", err)
 	}
-	if _, err := pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO media_item_libraries (content_id, media_folder_id, first_seen_at)
 		VALUES ($1, $2, NOW()) ON CONFLICT (content_id, media_folder_id) DO NOTHING`, albumID, folder.ID); err != nil {
-		return fmt.Errorf("upsert music library membership: %w", err)
+		return "", fmt.Errorf("upsert music library membership: %w", err)
 	}
-	info, err := os.Stat(track.Path)
+	mf, err := s.fileRepo.UpsertTx(ctx, tx, mediaFile)
 	if err != nil {
-		return fmt.Errorf("stat music file: %w", err)
+		return "", fmt.Errorf("upsert music media file: %w", err)
 	}
-	modified := normalizeFileModifiedAt(info.ModTime())
-	mediaFile := musicMediaFile(folder, albumID, albumRoot, track, info.Size(), modified)
-	mf, err := s.fileRepo.Upsert(ctx, mediaFile)
-	if err != nil {
-		return fmt.Errorf("upsert music media file: %w", err)
-	}
-	trackID := stableMusicTrackID(folder.ID, albumID, albumRoot, track.Path)
-	legacyTrackID := legacyMusicTrackID(track.Path)
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin music track upsert: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
 	if legacyTrackID != trackID {
 		// The legacy scheme lowercased full paths, so two case-distinct files
 		// could share one ID. Move that row only when it already belongs to this
@@ -358,7 +383,7 @@ func (s *Scanner) upsertMusicTrack(ctx context.Context, folder *models.MediaFold
 			  AND NOT EXISTS (
 				SELECT 1 FROM music_tracks current WHERE current.id = $1
 			  )`, trackID, legacyTrackID, mf.ID); err != nil {
-			return fmt.Errorf("reconcile legacy music track identity: %w", err)
+			return "", fmt.Errorf("reconcile legacy music track identity: %w", err)
 		}
 	}
 	if _, err := tx.Exec(ctx, `
@@ -368,12 +393,12 @@ func (s *Scanner) upsertMusicTrack(ctx context.Context, folder *models.MediaFold
 			media_file_id = EXCLUDED.media_file_id, title = EXCLUDED.title, duration_ms = EXCLUDED.duration_ms,
 			disc_number = EXCLUDED.disc_number, track_number = EXCLUDED.track_number, updated_at = NOW()`,
 		trackID, albumID, artistID, mf.ID, track.Title, track.DurationMS, track.DiscNumber, track.TrackNumber); err != nil {
-		return fmt.Errorf("upsert music track: %w", err)
+		return "", fmt.Errorf("upsert music track: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit music track upsert: %w", err)
+		return "", fmt.Errorf("commit music track upsert: %w", err)
 	}
-	return nil
+	return albumID, nil
 }
 
 // musicMediaFile is the one boundary between the music catalogue scanner and
@@ -407,72 +432,77 @@ func musicMediaFile(
 	return mediaFile
 }
 
-func (s *Scanner) reconcileMissingMusic(ctx context.Context, folderID int, seen map[string]struct{}, protectedRoots []string) error {
-	rows, err := s.fileRepo.Pool().Query(ctx, `SELECT id, file_path FROM media_files WHERE media_folder_id = $1 AND base_type = 'music' AND missing_since IS NULL`, folderID)
+type musicReconcileCandidate struct {
+	id         int
+	path       string
+	version    string
+	wasMissing bool
+}
+
+// snapshotMusicReconcileCandidates captures the only database rows a full
+// scan may treat as absent. It runs before the filesystem walk: rows created
+// later were never part of that walk's world-view, while xmin lets the
+// reconcile pass detect candidates refreshed by a concurrent scoped scan.
+func (s *Scanner) snapshotMusicReconcileCandidates(ctx context.Context, folderID int) ([]musicReconcileCandidate, error) {
+	rows, err := s.fileRepo.Pool().Query(ctx, `
+		SELECT id, file_path, xmin::text, missing_since IS NOT NULL
+		FROM media_files
+		WHERE media_folder_id = $1 AND base_type = 'music'
+	`, folderID)
 	if err != nil {
-		return fmt.Errorf("list existing music files: %w", err)
+		return nil, fmt.Errorf("snapshot existing music files: %w", err)
 	}
-	type existingFile struct {
-		id   int
-		path string
-	}
-	existing := make([]existingFile, 0)
+	defer rows.Close()
+	candidates := make([]musicReconcileCandidate, 0)
 	for rows.Next() {
-		var file existingFile
-		if err := rows.Scan(&file.id, &file.path); err != nil {
-			rows.Close()
-			return fmt.Errorf("scan existing music file: %w", err)
+		var candidate musicReconcileCandidate
+		if err := rows.Scan(&candidate.id, &candidate.path, &candidate.version, &candidate.wasMissing); err != nil {
+			return nil, fmt.Errorf("scan existing music candidate: %w", err)
 		}
-		existing = append(existing, file)
+		candidates = append(candidates, candidate)
 	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return fmt.Errorf("iterate existing music files: %w", err)
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate existing music candidates: %w", err)
 	}
-	for _, file := range existing {
-		if _, ok := seen[file.path]; ok {
+	return candidates, nil
+}
+
+func (s *Scanner) reconcileMissingMusic(
+	ctx context.Context,
+	folderID int,
+	candidates []musicReconcileCandidate,
+	seen map[string]struct{},
+	protectedRoots []string,
+) error {
+	cleanupFileIDs := make([]int, 0, len(candidates))
+	for _, candidate := range candidates {
+		if _, ok := seen[candidate.path]; ok {
 			continue
 		}
-		if pathWithinAnyRoot(file.path, protectedRoots) {
+		if pathWithinAnyRoot(candidate.path, protectedRoots) {
 			continue
 		}
-		if err := s.fileRepo.MarkMissing(ctx, file.id, time.Now().UTC()); err != nil {
+		if candidate.wasMissing {
+			cleanupFileIDs = append(cleanupFileIDs, candidate.id)
+			continue
+		}
+		marked, err := s.fileRepo.MarkMissingIfUnchanged(ctx, candidate.id, candidate.version, time.Now().UTC())
+		if err != nil {
 			return err
 		}
+		if marked {
+			cleanupFileIDs = append(cleanupFileIDs, candidate.id)
+		}
 	}
-	deleteTracksQuery := `
-		DELETE FROM music_tracks mt USING media_files mf
-		WHERE mt.media_file_id = mf.id AND mf.media_folder_id = $1 AND mf.missing_since IS NOT NULL`
-	deleteTracksArgs := []any{folderID}
-	if clauses, clauseArgs := rootCoverageClauses(protectedRoots, len(deleteTracksArgs)+1); len(clauses) > 0 {
-		deleteTracksQuery += " AND NOT (" + strings.Join(clauses, " OR ") + ")"
-		deleteTracksArgs = append(deleteTracksArgs, clauseArgs...)
-	}
-	if _, err := s.fileRepo.Pool().Exec(ctx, deleteTracksQuery, deleteTracksArgs...); err != nil {
-		return fmt.Errorf("delete missing music tracks: %w", err)
-	}
-	deleteAlbumsQuery := `
-		DELETE FROM music_albums ma
-		WHERE NOT EXISTS (
-			SELECT 1 FROM music_tracks mt WHERE mt.album_id = ma.content_id
-		)
-		  AND EXISTS (
-			SELECT 1 FROM media_files mf
-			WHERE mf.media_folder_id = $1 AND mf.content_id = ma.content_id
-		  )`
-	deleteAlbumsArgs := []any{folderID}
-	if clauses, clauseArgs := rootCoverageClauses(protectedRoots, len(deleteAlbumsArgs)+1); len(clauses) > 0 {
-		deleteAlbumsQuery += `
-		  AND NOT EXISTS (
-			SELECT 1 FROM media_files mf
-			WHERE mf.media_folder_id = $1 AND mf.content_id = ma.content_id
-			  AND (` + strings.Join(clauses, " OR ") + `)
-		  )`
-		deleteAlbumsArgs = append(deleteAlbumsArgs, clauseArgs...)
-	}
-	if _, err := s.fileRepo.Pool().Exec(ctx, deleteAlbumsQuery, deleteAlbumsArgs...); err != nil {
-		return fmt.Errorf("delete empty music albums: %w", err)
+	if len(cleanupFileIDs) > 0 {
+		if _, err := s.fileRepo.Pool().Exec(ctx, `
+			DELETE FROM music_tracks mt USING media_files mf
+			WHERE mt.media_file_id = mf.id
+			  AND mf.id = ANY($1::int[])
+			  AND mf.missing_since IS NOT NULL
+		`, cleanupFileIDs); err != nil {
+			return fmt.Errorf("delete missing music tracks: %w", err)
+		}
 	}
 	if s.libraryRepo != nil {
 		if _, _, _, err := s.reconcileLibraryMemberships(ctx, folderID, protectedRoots); err != nil {

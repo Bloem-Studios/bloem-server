@@ -823,9 +823,22 @@ func serializeJSONB(v any) ([]byte, error) {
 	return data, nil
 }
 
+type mediaFileQueryRower interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
 // Upsert inserts or updates a media file by file_path (ON CONFLICT DO UPDATE).
 // Returns the resulting row.
 func (r *FileRepository) Upsert(ctx context.Context, mf models.MediaFile) (*models.MediaFile, error) {
+	return r.upsert(ctx, r.pool, mf)
+}
+
+// UpsertTx applies the same media-file write inside the caller's transaction.
+func (r *FileRepository) UpsertTx(ctx context.Context, tx pgx.Tx, mf models.MediaFile) (*models.MediaFile, error) {
+	return r.upsert(ctx, tx, mf)
+}
+
+func (r *FileRepository) upsert(ctx context.Context, queryer mediaFileQueryRower, mf models.MediaFile) (*models.MediaFile, error) {
 	subtitleTracksJSON, err := serializeJSONB(mf.SubtitleTracks)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling subtitle_tracks: %w", err)
@@ -957,7 +970,7 @@ func (r *FileRepository) Upsert(ctx context.Context, mf models.MediaFile) (*mode
 		updated_at = NOW()
 	RETURNING ` + fileColumns
 
-	row := r.pool.QueryRow(ctx, query,
+	row := queryer.QueryRow(ctx, query,
 		contentID,
 		episodeID,
 		extraID,
@@ -2772,6 +2785,24 @@ func (r *FileRepository) MarkMissing(ctx context.Context, id int, since time.Tim
 		return ErrFileNotFound
 	}
 	return nil
+}
+
+// MarkMissingIfUnchanged marks one media file missing only while it is still
+// the exact PostgreSQL row version observed by the caller. xmin is used as an
+// optimistic concurrency token so a scoped scan that refreshed the row after
+// a full scan took its candidate snapshot always wins over stale absence.
+func (r *FileRepository) MarkMissingIfUnchanged(ctx context.Context, id int, version string, since time.Time) (bool, error) {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE media_files
+		SET missing_since = $1, updated_at = NOW()
+		WHERE id = $2
+		  AND xmin = ($3::text)::xid
+		  AND missing_since IS NULL
+	`, since, id, version)
+	if err != nil {
+		return false, fmt.Errorf("marking unchanged file missing: %w", err)
+	}
+	return tag.RowsAffected() == 1, nil
 }
 
 // DeleteMissingByFolder deletes media files in the given folder that have been

@@ -80,8 +80,14 @@ separate, deferred concern.
 Music uses two additional identifiers that are deliberately separate from the
 provider-derived `content_id` scheme above:
 
-- Artist and album semantic keys are normalized case-insensitively. Letter
-  case is presentation data and does not make a second logical artist or album.
+- Artist IDs are normalized case-insensitive semantic hashes; letter case is
+  presentation data and does not make a second logical artist.
+- Album IDs are not semantic title hashes. A scan resolves an existing album
+  by `(media_folder_id, canonical_root_path)` and otherwise generates a new
+  item ID. Resolution and creation are serialized with a database transaction
+  advisory lock on that tuple, so concurrent server processes reuse one ID.
+  Renaming or moving an album root can therefore create a new album identity;
+  no cross-server deterministic album contract exists yet.
 - `music_tracks.id` identifies one physical track entry. It hashes the media
   folder ID, album ID, and cleaned slash-normalized path relative to the album
   root **without lowercasing the path**. This keeps the ID stable across scans
