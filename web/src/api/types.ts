@@ -780,6 +780,7 @@ export type ItemUserData = LeafItemUserData | SeasonUserData;
 
 export interface Season {
   content_id: string;
+  play_content_id?: string;
   season_number: number;
   is_specials: boolean;
   title: string;
@@ -839,8 +840,10 @@ export interface BrowseItemSortMetrics {
 
 export interface BrowseItem {
   content_id: string;
+  play_content_id?: string;
   type: "movie" | "series" | "season" | "episode" | "audiobook" | "ebook" | "manga";
   title: string;
+  series_id?: string;
   series_title?: string;
   season_number?: number | null;
   episode_number?: number | null;
@@ -1169,6 +1172,7 @@ export interface ItemExtra {
 
 export interface ItemDetail {
   content_id: string;
+  play_content_id?: string;
   type: "movie" | "series" | "season" | "episode" | "audiobook" | "ebook" | "manga" | "podcast";
   status?: "pending" | "matched" | "unmatched" | "ambiguous";
 
@@ -3935,6 +3939,7 @@ export interface SectionItemUpcomingEvent {
 
 export interface SectionItem {
   content_id: string;
+  play_content_id?: string;
   type: "movie" | "series" | "season" | "episode" | "audiobook" | "ebook";
   title: string;
   series_id?: string;
@@ -4420,6 +4425,12 @@ export interface RateLimitConfig {
   active?: boolean;
   /** Backend the running limiter uses; may differ from `backend` until restart. */
   active_backend?: string;
+  /**
+   * Whether the Redis backend can be selected at all (GET responses only).
+   * Sentinel and REDIS_URL deployments have no stored `redis.url`, so only the
+   * server can answer this.
+   */
+  redis_available?: boolean;
 }
 
 export interface RateLimitUpdateResponse {
@@ -4449,6 +4460,14 @@ export interface AdminServerStatus {
   restart_required: boolean;
   restart_required_at?: string;
   restart_required_reason?: string;
+  /**
+   * Every distinct reason marked since boot ("setting:<key>" for settings
+   * saves), so pending restarts can be scoped per subsystem. The singular
+   * field only remembers the last save.
+   */
+  restart_required_reasons?: string[];
+  /** Increments on every restart-required save; re-arms the dismissed banner. */
+  restart_mark_count?: number;
   restart_requested: boolean;
   restart_requested_at?: string;
 }

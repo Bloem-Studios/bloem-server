@@ -12,6 +12,12 @@ class ResizeObserverStub {
   disconnect() {}
 }
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+if (!window.HTMLElement.prototype.hasPointerCapture) {
+  window.HTMLElement.prototype.hasPointerCapture = () => false;
+}
+if (!window.HTMLElement.prototype.scrollIntoView) {
+  window.HTMLElement.prototype.scrollIntoView = () => {};
+}
 
 const useSettingsFormMock = vi.fn();
 const useWizardContextMock = vi.fn();
@@ -128,6 +134,15 @@ describe("ServerStorageStep", () => {
     expect(markup).toContain("Pinned Web version");
     expect(markup).toContain("Web install directory");
     expect(markup).toContain("/var/lib/silo/compat/jellyfin-web");
+  });
+
+  it("offers VideoToolbox hardware acceleration during setup", async () => {
+    mockStep();
+
+    render(<ServerStorageStep />);
+    await userEvent.click(screen.getByRole("combobox", { name: "Hardware accel" }));
+
+    expect(screen.getByRole("option", { name: "VideoToolbox (macOS)" })).toBeInTheDocument();
   });
 
   it("uses Jellyfin runtime status when the explicit enabled setting is missing", () => {

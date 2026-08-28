@@ -106,7 +106,7 @@ describe("AdminSidebar", () => {
   it("renders the grouped navigation sections", () => {
     const markup = renderSidebar();
 
-    for (const section of ["Overview", "Content", "Automation", "Users", "System"]) {
+    for (const section of ["Overview", "Content", "Automation", "Users", "Settings", "System"]) {
       expect(markup).toContain(`>${section}<`);
     }
     expect(markup).toContain('href="/admin/platform/organizations"');
@@ -145,6 +145,14 @@ describe("AdminSidebar", () => {
     expect(mockUseBuildInfo).toHaveBeenLastCalledWith(false);
     expect(mockUsePolicyCapability).toHaveBeenLastCalledWith(false);
     expect(mockUseAdminPluginInstallations).toHaveBeenLastCalledWith(false);
+  });
+
+  it("keeps settings as one sidebar destination", () => {
+    const markup = renderSidebar();
+    const settingsLinks = markup.match(/href="\/admin\/settings[^"]*"/g) ?? [];
+
+    expect(settingsLinks).toEqual(['href="/admin/settings"']);
+    expect(markup).not.toContain("/admin/settings?tab=");
   });
 
   it("renders as an embedded rail inside the mobile drawer", () => {
