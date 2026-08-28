@@ -77,11 +77,10 @@ func observeABS(registry *streamtelemetry.Registry, method, pattern string, hand
 		observed = registry.Observe(absMediaRoute(method, pattern))(handler)
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Only the compatibility gateway supplies this trusted mount context.
-		// Dedicated ABS listeners keep their existing zero-WriteTimeout path,
-		// while mounted media replaces the public server's absolute deadline
-		// before the handler can commit response headers.
-		if mount, _ := r.Context().Value(absPublicMountContextKey{}).(string); mount != "" {
+		// Only private, in-process compatibility-gateway dispatch supplies this
+		// marker. Verified companion mount metadata still selects public URLs but
+		// must not enroll its independent listener in the public server policy.
+		if inProcess, _ := r.Context().Value(absInProcessDispatchContextKey{}).(bool); inProcess {
 			w = httpstream.NewRollingDeadlineWriter(w)
 		}
 		observed.ServeHTTP(w, r)

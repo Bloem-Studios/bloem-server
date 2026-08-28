@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/compatgateway"
 	"github.com/Silo-Server/silo-server/internal/httpstream"
+	"github.com/Silo-Server/silo-server/internal/models"
 )
 
 const (
@@ -59,6 +61,87 @@ func TestMountedABSTrackRollingDeadlineSurvivesPublicWriteTimeout(t *testing.T) 
 	}
 	if result := <-handlerDone; result.err != nil || result.bytes != total {
 		t.Fatalf("handler ReadFrom = %d bytes, err %v; want %d bytes", result.bytes, result.err, total)
+	}
+}
+
+// TestMountedABSHandlerFeedDeadlineSurvivesPublicWriteTimeout exercises the
+// production Handler.Mount registration and a real http.ServeFile route. The
+// file takes longer than the public server's absolute WriteTimeout to consume,
+// while each production-sized ReadFrom slice completes within the rolling
+// stall window.
+func TestMountedABSHandlerFeedDeadlineSurvivesPublicWriteTimeout(t *testing.T) {
+	t.Setenv("SILO_STREAM_WRITE_STALL_TIMEOUT", "1")
+
+	const total = 2 * httpstream.ReadFromChunkDefault
+	path := t.TempDir() + "/feed.mp3"
+	if err := os.WriteFile(path, make([]byte, total), 0o644); err != nil {
+		t.Fatalf("write feed fixture: %v", err)
+	}
+
+	h := New(Dependencies{
+		MediaStore: &feedMediaStore{file: &models.MediaFile{
+			ID: 501, FilePath: path, ContentID: "book-9",
+		}},
+		RSSFeedStore: &feedStore{feed: RSSFeed{
+			ID: "feed-1", UserID: "7", ProfileID: "profile-9", LibraryItemID: "book-9", Slug: "slug-9",
+		}},
+	})
+	application := chi.NewRouter()
+	h.Mount(application)
+	gateway := compatgateway.New(compatgateway.Config{
+		IdentitySecret: []byte("gateway-mounted-handler-deadline-test"),
+		LocalHandlers: map[compatgateway.AppKind]http.Handler{
+			compatgateway.KindAudiobookshelf: application,
+		},
+	})
+	server := httptest.NewUnstartedServer(gateway)
+	server.Config.WriteTimeout = gatewayTestWriteTimeout
+	server.Listener = &gatewayWriteBufferListener{Listener: server.Listener, bytes: 16 << 10}
+	server.Start()
+	t.Cleanup(server.Close)
+
+	address := strings.TrimPrefix(server.URL, "http://")
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		t.Fatalf("dial mounted ABS server: %v", err)
+	}
+	defer func() { _ = conn.Close() }()
+	if err := conn.SetDeadline(time.Now().Add(5 * gatewayTestStallWindow)); err != nil {
+		t.Fatalf("set client deadline: %v", err)
+	}
+	if tcp, ok := conn.(*net.TCPConn); ok {
+		if err := tcp.SetReadBuffer(16 << 10); err != nil {
+			t.Fatalf("set client read buffer: %v", err)
+		}
+	}
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/audiobookshelf/feed/slug-9/file/501", nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	if err := req.Write(conn); err != nil {
+		t.Fatalf("write request: %v", err)
+	}
+	response, err := http.ReadResponse(bufio.NewReader(conn), req)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("response status = %d, want %d", response.StatusCode, http.StatusOK)
+	}
+
+	started := time.Now()
+	bytesRead, err := io.Copy(io.Discard, &pacedGatewayResponseReader{
+		source: response.Body, slicePace: 600 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("production mounted feed died before completing %d bytes: read %d: %v", total, bytesRead, err)
+	}
+	if bytesRead != total {
+		t.Fatalf("production mounted feed body = %d bytes, want %d", bytesRead, total)
+	}
+	if elapsed := time.Since(started); elapsed <= gatewayTestWriteTimeout {
+		t.Fatalf("feed completed in %s, test did not outlive public WriteTimeout %s", elapsed, gatewayTestWriteTimeout)
 	}
 }
 
@@ -179,4 +262,47 @@ func (r *pacedGatewayTrackReader) Read(p []byte) (int, error) {
 	}
 	r.remaining -= n
 	return int(n), nil
+}
+
+type gatewayWriteBufferListener struct {
+	net.Listener
+	bytes int
+}
+
+func (l *gatewayWriteBufferListener) Accept() (net.Conn, error) {
+	conn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	if tcp, ok := conn.(*net.TCPConn); ok {
+		if err := tcp.SetWriteBuffer(l.bytes); err != nil {
+			_ = conn.Close()
+			return nil, err
+		}
+	}
+	return conn, nil
+}
+
+type pacedGatewayResponseReader struct {
+	source    io.Reader
+	delivered int64
+	started   time.Time
+	slicePace time.Duration
+}
+
+func (r *pacedGatewayResponseReader) Read(p []byte) (int, error) {
+	n, err := r.source.Read(p)
+	if n == 0 {
+		return n, err
+	}
+	if r.started.IsZero() {
+		r.started = time.Now()
+	}
+	r.delivered += int64(n)
+	target := r.started.Add(time.Duration(r.delivered) * r.slicePace / time.Duration(httpstream.ReadFromChunkDefault))
+	if wait := time.Until(target); wait > 0 {
+		timer := time.NewTimer(wait)
+		<-timer.C
+	}
+	return n, err
 }

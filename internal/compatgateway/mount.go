@@ -24,15 +24,17 @@ func publicMountFromContext(ctx context.Context) string {
 }
 
 // PublicMountHandler passes trusted mount metadata to an application without
-// exposing the private context key. In-process dispatch supplies that context
-// directly. A companion may supply the fixed header only when its surrounding
-// internal-gateway identity verifier has accepted the request.
+// exposing the private context key. inProcessDispatch is true only when the
+// mount came from that context. A companion may supply the fixed header only
+// when its surrounding internal-gateway identity verifier has accepted the
+// request, but that metadata does not impersonate in-process dispatch.
 func PublicMountHandler(
 	identityVerified func(*http.Request) bool,
-	next func(http.ResponseWriter, *http.Request, string),
+	next func(http.ResponseWriter, *http.Request, string, bool),
 ) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mount := publicMountFromContext(r.Context())
+		inProcessDispatch := mount != ""
 		if mount == "" && identityVerified != nil && identityVerified(r) {
 			mount = normalizePublicMount(r.Header.Get(publicMountHeader))
 		}
@@ -40,7 +42,7 @@ func PublicMountHandler(
 		clone := r.Clone(r.Context())
 		clone.Header = r.Header.Clone()
 		clone.Header.Del(publicMountHeader)
-		next(w, clone, mount)
+		next(w, clone, mount, inProcessDispatch)
 	})
 }
 

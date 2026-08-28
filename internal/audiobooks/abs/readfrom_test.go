@@ -128,6 +128,94 @@ func TestMountedABSMediaWriterChainPreservesStreamingInterfaces(t *testing.T) {
 	if base.writeDeadlineCall < 2 {
 		t.Fatalf("SetWriteDeadline calls = %d, want mounted enrollment plus response-controller probe", base.writeDeadlineCall)
 	}
+	snapshot := registry.Sweep()
+	if snapshot.UnattributedObservations != 1 || snapshot.UnattributedBytes != 5 {
+		t.Fatalf("telemetry unattributed observations/bytes = %d/%d, want 1/5",
+			snapshot.UnattributedObservations, snapshot.UnattributedBytes)
+	}
+	if len(snapshot.Sessions) != 0 || len(snapshot.Transfers) != 0 {
+		t.Fatalf("unattached writer-chain probe created logical activity: sessions=%d transfers=%d",
+			len(snapshot.Sessions), len(snapshot.Transfers))
+	}
+}
+
+func TestABSMediaRollingDeadlineEnrollmentRequiresInProcessDispatch(t *testing.T) {
+	tests := []struct {
+		name        string
+		throughGW   bool
+		verified    bool
+		mountHeader bool
+		wantBaseURL string
+		wantRolling bool
+	}{
+		{
+			name:        "in-process compatibility gateway",
+			throughGW:   true,
+			wantBaseURL: "http://media.example/audiobookshelf",
+			wantRolling: true,
+		},
+		{
+			name:        "identity-verified companion",
+			verified:    true,
+			mountHeader: true,
+			wantBaseURL: "http://media.example/audiobookshelf",
+			wantRolling: false,
+		},
+		{
+			name:        "dedicated listener",
+			wantBaseURL: "http://media.example",
+			wantRolling: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			h := New(Dependencies{
+				MediaStore: noopMediaStore{},
+				InternalGatewayIdentityVerified: func(*http.Request) bool {
+					return test.verified
+				},
+			})
+			application := chi.NewRouter()
+			application.Use(h.publicMountMiddleware)
+			const pattern = "/feed/{slug}/file/{ino}"
+			var gotBaseURL string
+			var gotRolling bool
+			application.Get(pattern, observeABS(nil, http.MethodGet, pattern, func(w http.ResponseWriter, r *http.Request) {
+				gotBaseURL = h.absBaseURL(r)
+				gotRolling = writerChainContains[*httpstream.RollingDeadlineWriter](w)
+				w.WriteHeader(http.StatusNoContent)
+			}))
+
+			reqPath := "/feed/feed-1/file/1"
+			if test.throughGW {
+				reqPath = "/audiobookshelf" + reqPath
+			}
+			req := httptest.NewRequest(http.MethodGet, "http://media.example"+reqPath, nil)
+			if test.mountHeader {
+				req.Header.Set("X-Bloem-Public-Mount", "/audiobookshelf")
+			}
+			base := &absWriterChainSpy{header: make(http.Header)}
+			if test.throughGW {
+				gateway := compatgateway.New(compatgateway.Config{
+					IdentitySecret: []byte("deadline-enrollment-test"),
+					LocalHandlers: map[compatgateway.AppKind]http.Handler{
+						compatgateway.KindAudiobookshelf: application,
+					},
+				})
+				gateway.ServeHTTP(base, req)
+			} else {
+				application.ServeHTTP(base, req)
+			}
+
+			if gotBaseURL != test.wantBaseURL {
+				t.Fatalf("ABS base URL = %q, want %q", gotBaseURL, test.wantBaseURL)
+			}
+			if gotRolling != test.wantRolling {
+				t.Fatalf("rolling deadline writer present = %t, want %t", gotRolling, test.wantRolling)
+			}
+		})
+	}
 }
 
 type writerInterfaceError string
