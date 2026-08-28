@@ -2787,24 +2787,6 @@ func (r *FileRepository) MarkMissing(ctx context.Context, id int, since time.Tim
 	return nil
 }
 
-// MarkMissingIfUnchanged marks one media file missing only while it is still
-// the exact PostgreSQL row version observed by the caller. xmin is used as an
-// optimistic concurrency token so a scoped scan that refreshed the row after
-// a full scan took its candidate snapshot always wins over stale absence.
-func (r *FileRepository) MarkMissingIfUnchanged(ctx context.Context, id int, version string, since time.Time) (bool, error) {
-	tag, err := r.pool.Exec(ctx, `
-		UPDATE media_files
-		SET missing_since = $1, updated_at = NOW()
-		WHERE id = $2
-		  AND xmin = ($3::text)::xid
-		  AND missing_since IS NULL
-	`, since, id, version)
-	if err != nil {
-		return false, fmt.Errorf("marking unchanged file missing: %w", err)
-	}
-	return tag.RowsAffected() == 1, nil
-}
-
 // DeleteMissingByFolder deletes media files in the given folder that have been
 // marked missing for longer than the grace period. Missing files are already
 // hidden from clients; the grace only delays deleting the row so a file that

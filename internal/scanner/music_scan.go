@@ -199,7 +199,7 @@ func (s *Scanner) ScanMusicFolder(ctx context.Context, folder *models.MediaFolde
 			}
 		}
 	}
-	if err := s.syncFolderScopedAudioLibraryState(ctx, folder.ID); err != nil {
+	if err := s.syncMusicFolderLibraryState(ctx, folder.ID); err != nil {
 		return err
 	}
 	if !fullScan {
@@ -302,6 +302,34 @@ func musicAlbumRootLockKey(folderID int, albumRoot string) int64 {
 	return int64(binary.BigEndian.Uint64(sum[:8]))
 }
 
+func musicFolderMutationLockKey(folderID int) int64 {
+	identity := fmt.Sprintf("bloem:music-folder-mutation:v1\x00%d", folderID)
+	sum := sha256.Sum256([]byte(identity))
+	return int64(binary.BigEndian.Uint64(sum[:8]))
+}
+
+// Music mutations use a folder-scoped advisory read/write lock across every
+// server process. Ingest takes the shared mode so independent albums can be
+// written concurrently; cleanup and state restoration take the exclusive mode
+// because their set-oriented statements use a different row-lock order.
+// Filesystem walking and probing happen before this lock. Vanished-file cleanup
+// performs only its required exact-path stat recheck while holding it. The
+// narrower album-root lock is always acquired after the folder lock, giving
+// every music mutation one deadlock-safe order.
+func lockMusicFolderMutationSharedTx(ctx context.Context, tx pgx.Tx, folderID int) error {
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock_shared($1)`, musicFolderMutationLockKey(folderID)); err != nil {
+		return fmt.Errorf("lock music folder mutation in shared mode: %w", err)
+	}
+	return nil
+}
+
+func lockMusicFolderMutationExclusiveTx(ctx context.Context, tx pgx.Tx, folderID int) error {
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, musicFolderMutationLockKey(folderID)); err != nil {
+		return fmt.Errorf("lock music folder mutation exclusively: %w", err)
+	}
+	return nil
+}
+
 func (s *Scanner) upsertMusicTrack(
 	ctx context.Context,
 	folder *models.MediaFolder,
@@ -322,6 +350,9 @@ func (s *Scanner) upsertMusicTrack(
 		return "", fmt.Errorf("begin music track upsert: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := lockMusicFolderMutationSharedTx(ctx, tx, folder.ID); err != nil {
+		return "", err
+	}
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, musicAlbumRootLockKey(folder.ID, albumRoot)); err != nil {
 		return "", fmt.Errorf("lock music album root: %w", err)
 	}
@@ -474,7 +505,7 @@ func (s *Scanner) reconcileMissingMusic(
 	seen map[string]struct{},
 	protectedRoots []string,
 ) error {
-	cleanupFileIDs := make([]int, 0, len(candidates))
+	absentCandidates := make([]musicReconcileCandidate, 0, len(candidates))
 	for _, candidate := range candidates {
 		if _, ok := seen[candidate.path]; ok {
 			continue
@@ -482,20 +513,57 @@ func (s *Scanner) reconcileMissingMusic(
 		if pathWithinAnyRoot(candidate.path, protectedRoots) {
 			continue
 		}
+		absentCandidates = append(absentCandidates, candidate)
+	}
+
+	tx, err := s.fileRepo.Pool().Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin music missing reconciliation: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := lockMusicFolderMutationExclusiveTx(ctx, tx, folderID); err != nil {
+		return err
+	}
+
+	cleanupFileIDs := make([]int, 0, len(absentCandidates))
+	missingAt := time.Now().UTC()
+	for _, candidate := range absentCandidates {
+		var id int
 		if candidate.wasMissing {
-			cleanupFileIDs = append(cleanupFileIDs, candidate.id)
+			err = tx.QueryRow(ctx, `
+				SELECT id
+				FROM media_files
+				WHERE id = $1
+				  AND media_folder_id = $2
+				  AND file_path = $3
+				  AND base_type = 'music'
+				  AND xmin = ($4::text)::xid
+				  AND missing_since IS NOT NULL
+				FOR UPDATE
+			`, candidate.id, folderID, candidate.path, candidate.version).Scan(&id)
+		} else {
+			err = tx.QueryRow(ctx, `
+				UPDATE media_files
+				SET missing_since = $1, updated_at = NOW()
+				WHERE id = $2
+				  AND media_folder_id = $3
+				  AND file_path = $4
+				  AND base_type = 'music'
+				  AND xmin = ($5::text)::xid
+				  AND missing_since IS NULL
+				RETURNING id
+			`, missingAt, candidate.id, folderID, candidate.path, candidate.version).Scan(&id)
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
 			continue
 		}
-		marked, err := s.fileRepo.MarkMissingIfUnchanged(ctx, candidate.id, candidate.version, time.Now().UTC())
 		if err != nil {
-			return err
+			return fmt.Errorf("verify missing music candidate %d: %w", candidate.id, err)
 		}
-		if marked {
-			cleanupFileIDs = append(cleanupFileIDs, candidate.id)
-		}
+		cleanupFileIDs = append(cleanupFileIDs, id)
 	}
 	if len(cleanupFileIDs) > 0 {
-		if _, err := s.fileRepo.Pool().Exec(ctx, `
+		if _, err := tx.Exec(ctx, `
 			DELETE FROM music_tracks mt USING media_files mf
 			WHERE mt.media_file_id = mf.id
 			  AND mf.id = ANY($1::int[])
@@ -505,9 +573,30 @@ func (s *Scanner) reconcileMissingMusic(
 		}
 	}
 	if s.libraryRepo != nil {
-		if _, _, _, err := s.reconcileLibraryMemberships(ctx, folderID, protectedRoots); err != nil {
+		if _, _, _, err := s.libraryRepo.ReconcileFolderMembershipTx(ctx, tx, folderID, protectedRoots); err != nil {
 			return fmt.Errorf("reconcile music library membership: %w", err)
 		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit music missing reconciliation: %w", err)
+	}
+	return nil
+}
+
+func (s *Scanner) syncMusicFolderLibraryState(ctx context.Context, folderID int) error {
+	tx, err := s.fileRepo.Pool().Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin music folder state repair: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := lockMusicFolderMutationExclusiveTx(ctx, tx, folderID); err != nil {
+		return err
+	}
+	if err := s.syncFolderScopedAudioLibraryStateTx(ctx, tx, folderID); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit music folder state repair: %w", err)
 	}
 	return nil
 }

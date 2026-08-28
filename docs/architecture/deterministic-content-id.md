@@ -103,6 +103,19 @@ keeps its row history, and the other case-distinct file receives its own new
 ID. The unowned collided legacy ID is not preserved; retaining both files and
 stable identities takes precedence while the API is pre-lock.
 
+Music catalog mutations share a folder-scoped PostgreSQL transaction advisory
+lock (`bloem:music-folder-mutation:v1`). Ingest takes the shared mode so
+independent albums can be written concurrently. Missing-file cleanup and
+set-oriented present-state restoration take the exclusive mode; restoration
+uses a different row-lock order and therefore must not overlap ingest.
+Filesystem walking and probing happen before acquiring the lock. A vanished-file
+event performs only its required exact-path stat recheck while holding it. When
+an ingest also needs the album-root advisory lock, it always acquires the folder
+lock first. Missing-file state changes, track deletion, and membership / orphan
+reconciliation commit in one transaction; single-file events narrow that
+reconciliation to the affected content item so a healthy-root event cannot purge
+an intentionally preserved orphan under another root.
+
 ---
 
 ## 3. How the id is derived

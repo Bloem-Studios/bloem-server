@@ -21,6 +21,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/naming"
 	"github.com/Silo-Server/silo-server/internal/rootcheck"
 	"github.com/Silo-Server/silo-server/internal/s3client"
+	"github.com/jackc/pgx/v5"
 )
 
 // videoExtensions is the set of file extensions recognized as media files.
@@ -2065,6 +2066,24 @@ func (s *Scanner) syncPresentFileState(ctx context.Context, folderID int, filePa
 // "($2::text IS NULL OR mf.file_path = $2)" so the folder-wide plan is not
 // forced onto a filter the planner cannot use an index for.
 func (s *Scanner) syncPresentState(ctx context.Context, folderID int, filePath *string) error {
+	// One transaction: a crash part-way through must not leave a row with some
+	// links cleared and its memberships unrepaired.
+	tx, err := s.fileRepo.Pool().Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning present state repair: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if err := s.syncPresentStateTx(ctx, tx, folderID, filePath); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("committing present state repair: %w", err)
+	}
+	return nil
+}
+
+func (s *Scanner) syncPresentStateTx(ctx context.Context, tx pgx.Tx, folderID int, filePath *string) error {
 	args := []any{folderID}
 	filePredicate := ""
 	if filePath != nil {
@@ -2173,32 +2192,36 @@ func (s *Scanner) syncPresentState(ctx context.Context, folderID int, filePath *
 		},
 	}
 
-	// One transaction: a crash part-way through must not leave a row with some
-	// links cleared and its memberships unrepaired.
-	tx, err := s.fileRepo.Pool().Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("beginning present state repair: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
 	for _, stmt := range statements {
 		if _, err := tx.Exec(ctx, stmt.sql, args...); err != nil {
 			return fmt.Errorf("%s: %w", stmt.desc, err)
 		}
 	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("committing present state repair: %w", err)
-	}
 	return nil
 }
 
 func (s *Scanner) syncFolderScopedAudioLibraryState(ctx context.Context, folderID int) error {
-	if err := s.syncPresentLibraryState(ctx, folderID); err != nil {
+	tx, err := s.fileRepo.Pool().Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning folder-scoped audio state repair: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if err := s.syncFolderScopedAudioLibraryStateTx(ctx, tx, folderID); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("committing folder-scoped audio state repair: %w", err)
+	}
+	return nil
+}
+
+func (s *Scanner) syncFolderScopedAudioLibraryStateTx(ctx context.Context, tx pgx.Tx, folderID int) error {
+	if err := s.syncPresentStateTx(ctx, tx, folderID, nil); err != nil {
 		return err
 	}
 
-	if _, err := s.fileRepo.Pool().Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO media_item_roots (media_folder_id, canonical_root_path, content_id)
 		SELECT DISTINCT ON (mf.media_folder_id, mf.canonical_root_path)
 			mf.media_folder_id, mf.canonical_root_path, mf.content_id
@@ -2325,54 +2348,79 @@ func pathWithinAnyRoot(path string, roots []string) bool {
 	return false
 }
 
-// reconcileVanishedMusicFile atomically marks one music file missing and
-// removes its track. Locking the media_files row makes this transaction and a
-// concurrent music ingest serialize across server processes. The second stat
-// after acquiring the row lock prevents a stale absence check from winning
-// after another scanner restored the path.
-func (s *Scanner) reconcileVanishedMusicFile(ctx context.Context, filePath string, fileID int) (bool, error) {
+// reconcileVanishedMusicFile atomically marks one folder-owned music file
+// missing, removes its track, and reconciles only that item's membership. The
+// folder mutation lock serializes the operation with music ingest across
+// server processes. The second stat after acquiring the lock prevents a stale
+// absence check from winning after another scanner restored the path. The two
+// booleans report whether the missing event was handled and whether catalog
+// state changed; an unowned path is a handled no-op.
+func (s *Scanner) reconcileVanishedMusicFile(ctx context.Context, folderID int, filePath string) (bool, bool, error) {
 	tx, err := s.fileRepo.Pool().Begin(ctx)
 	if err != nil {
-		return false, fmt.Errorf("begin vanished music reconciliation: %w", err)
+		return false, false, fmt.Errorf("begin vanished music reconciliation: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
-
-	tag, err := tx.Exec(ctx, `SELECT id FROM media_files WHERE id = $1 FOR UPDATE`, fileID)
-	if err != nil {
-		return false, fmt.Errorf("lock vanished music file: %w", err)
+	if err := lockMusicFolderMutationExclusiveTx(ctx, tx, folderID); err != nil {
+		return false, false, err
 	}
-	if tag.RowsAffected() == 0 {
-		return true, nil
+
+	var fileID int
+	var contentID string
+	err = tx.QueryRow(ctx, `
+		SELECT id, COALESCE(content_id, '')
+		FROM media_files
+		WHERE media_folder_id = $1
+		  AND file_path = $2
+		  AND base_type = 'music'
+		FOR UPDATE
+	`, folderID, filePath).Scan(&fileID, &contentID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return true, false, nil
+	}
+	if err != nil {
+		return false, false, fmt.Errorf("lock vanished music file: %w", err)
 	}
 	if _, err := os.Stat(filePath); err == nil {
-		return false, nil
+		return false, false, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return false, fmt.Errorf("recheck music file %s: %w", filePath, err)
+		return false, false, fmt.Errorf("recheck music file %s: %w", filePath, err)
 	}
 
-	tag, err = tx.Exec(ctx, `
+	tag, err := tx.Exec(ctx, `
 		UPDATE media_files
 		SET missing_since = $1, updated_at = NOW()
 		WHERE id = $2
-	`, time.Now().UTC(), fileID)
+		  AND media_folder_id = $3
+		  AND file_path = $4
+		  AND base_type = 'music'
+	`, time.Now().UTC(), fileID, folderID, filePath)
 	if err != nil {
-		return false, fmt.Errorf("mark vanished music file missing: %w", err)
+		return false, false, fmt.Errorf("mark vanished music file missing: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return true, nil
+		return true, false, nil
 	}
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM music_tracks mt USING media_files mf
 		WHERE mt.media_file_id = $1
 		  AND mf.id = mt.media_file_id
+		  AND mf.media_folder_id = $2
+		  AND mf.file_path = $3
+		  AND mf.base_type = 'music'
 		  AND mf.missing_since IS NOT NULL
-	`, fileID); err != nil {
-		return false, fmt.Errorf("delete vanished music track: %w", err)
+	`, fileID, folderID, filePath); err != nil {
+		return false, false, fmt.Errorf("delete vanished music track: %w", err)
+	}
+	if s.libraryRepo != nil {
+		if _, _, _, err := s.libraryRepo.ReconcileContentMembershipTx(ctx, tx, folderID, contentID, nil); err != nil {
+			return false, false, fmt.Errorf("reconcile vanished music item: %w", err)
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return false, fmt.Errorf("commit vanished music reconciliation: %w", err)
+		return false, false, fmt.Errorf("commit vanished music reconciliation: %w", err)
 	}
-	return true, nil
+	return true, true, nil
 }
 
 // ScanFile scans a single file and upserts it into the database.
@@ -2419,26 +2467,17 @@ func (s *Scanner) ScanFile(ctx context.Context, filePath string, folder *models.
 			if s.fileRepo == nil {
 				return nil
 			}
-			existing, lookupErr := s.fileRepo.GetByPath(ctx, cleanFile)
-			if errors.Is(lookupErr, ErrFileNotFound) {
-				return nil
-			}
-			if lookupErr != nil {
-				return lookupErr
-			}
-			handled, reconcileErr := s.reconcileVanishedMusicFile(ctx, cleanFile, existing.ID)
+			handled, changed, reconcileErr := s.reconcileVanishedMusicFile(ctx, folder.ID, cleanFile)
 			if reconcileErr != nil {
 				return reconcileErr
 			}
 			if !handled {
 				return s.ScanMusicFolder(ctx, scopedFolderPaths(folder, []string{filepath.Dir(cleanFile)}), false)
 			}
-			if s.libraryRepo != nil {
-				if _, _, _, err := s.reconcileLibraryMemberships(ctx, folder.ID, nil); err != nil {
-					return fmt.Errorf("reconcile vanished music item: %w", err)
-				}
+			if !changed {
+				return nil
 			}
-			return s.syncFolderScopedAudioLibraryState(ctx, folder.ID)
+			return s.syncMusicFolderLibraryState(ctx, folder.ID)
 		} else if err != nil {
 			return fmt.Errorf("stat music file %s: %w", cleanFile, err)
 		}

@@ -162,6 +162,21 @@ func musicPostgresLiteral(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
 }
 
+func newMusicScannerWithApplicationName(t *testing.T, fixture *musicScanTestFixture, applicationName string) *Scanner {
+	t.Helper()
+	config, err := pgxpool.ParseConfig(os.Getenv("SILO_TEST_DATABASE_URL"))
+	if err != nil {
+		t.Fatalf("parse music operation database config: %v", err)
+	}
+	config.ConnConfig.RuntimeParams["application_name"] = applicationName
+	pool, err := pgxpool.NewWithConfig(fixture.ctx, config)
+	if err != nil {
+		t.Fatalf("create music operation pool: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	return NewScanner(NewFileRepository(pool), fixture.scanner.ffprobePath, nil, 1, false, 0)
+}
+
 type musicScanTestFixture struct {
 	t       *testing.T
 	ctx     context.Context
@@ -579,6 +594,9 @@ func TestMusicFullScanDoesNotReconcileFilesCreatedOrRefreshedAfterItsSnapshot(t 
 		$fn$`, functionName, fixture.folder.ID, musicPostgresLiteral(keepPath), barrierKey)); err != nil {
 		t.Fatalf("create music file barrier function: %v", err)
 	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
+	})
 	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
 		CREATE TRIGGER %s BEFORE INSERT OR UPDATE ON media_files
 		FOR EACH ROW EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
@@ -586,7 +604,6 @@ func TestMusicFullScanDoesNotReconcileFilesCreatedOrRefreshedAfterItsSnapshot(t 
 	}
 	t.Cleanup(func() {
 		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON media_files`, triggerName))
-		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
 	})
 
 	fullScan := make(chan error, 1)
@@ -600,14 +617,22 @@ func TestMusicFullScanDoesNotReconcileFilesCreatedOrRefreshedAfterItsSnapshot(t 
 	if err := os.WriteFile(newPath, []byte("new audio payload"), 0o644); err != nil {
 		t.Fatalf("create music track during full scan: %v", err)
 	}
-	if err := fixture.scanner.ScanFile(fixture.ctx, newPath, fixture.folder); err != nil {
-		barrier.release(t)
-		_ = waitForMusicOperation(t, fullScan)
-		t.Fatalf("scoped music scan during full scan: %v", err)
-	}
+	scopedScan := make(chan error, 1)
+	go func() { scopedScan <- fixture.scanner.ScanFile(fixture.ctx, newPath, fixture.folder) }()
+	scopedCompleted, scopedErr := barrier.waitForDownstreamCompletionOrLockChain(t, fullScan, scopedScan)
+
 	barrier.release(t)
 	if err := waitForMusicOperation(t, fullScan); err != nil {
 		t.Fatalf("concurrent full music scan: %v", err)
+	}
+	if !scopedCompleted {
+		scopedErr = waitForMusicOperation(t, scopedScan)
+	}
+	if scopedErr != nil {
+		t.Fatalf("scoped music scan during full scan: %v", scopedErr)
+	}
+	if scopedCompleted {
+		t.Error("scoped music state restoration bypassed the in-flight full scan transaction")
 	}
 
 	want := map[string]struct {
@@ -664,6 +689,9 @@ func TestMusicAlbumIngestionIsAtomicWithOrphanReconciliation(t *testing.T) {
 		$fn$`, functionName, fixture.folder.ID, barrierKey)); err != nil {
 		t.Fatalf("create music track barrier function: %v", err)
 	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
+	})
 	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
 		CREATE TRIGGER %s BEFORE INSERT ON music_tracks
 		FOR EACH ROW EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
@@ -671,7 +699,6 @@ func TestMusicAlbumIngestionIsAtomicWithOrphanReconciliation(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON music_tracks`, triggerName))
-		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
 	})
 
 	ingestion := make(chan error, 1)
@@ -690,20 +717,30 @@ func TestMusicAlbumIngestionIsAtomicWithOrphanReconciliation(t *testing.T) {
 		_ = waitForMusicOperation(t, ingestion)
 		t.Fatalf("snapshot music candidates while track insert is pending: %v", err)
 	}
-	if err := fixture.scanner.reconcileMissingMusic(
-		fixture.ctx,
-		fixture.folder.ID,
-		candidates,
-		map[string]struct{}{trackPath: {}},
-		nil,
-	); err != nil {
-		barrier.release(t)
-		_ = waitForMusicOperation(t, ingestion)
-		t.Fatalf("reconcile music while track insert is pending: %v", err)
-	}
+	reconcile := make(chan error, 1)
+	go func() {
+		reconcile <- fixture.scanner.reconcileMissingMusic(
+			fixture.ctx,
+			fixture.folder.ID,
+			candidates,
+			map[string]struct{}{trackPath: {}},
+			nil,
+		)
+	}()
+	reconcileCompleted, reconcileErr := barrier.waitForDownstreamCompletionOrLockChain(t, ingestion, reconcile)
+
 	barrier.release(t)
 	if err := waitForMusicOperation(t, ingestion); err != nil {
 		t.Fatalf("music ingestion after concurrent orphan reconcile: %v", err)
+	}
+	if !reconcileCompleted {
+		reconcileErr = waitForMusicOperation(t, reconcile)
+	}
+	if reconcileErr != nil {
+		t.Fatalf("reconcile music while track insert is pending: %v", reconcileErr)
+	}
+	if reconcileCompleted {
+		t.Error("orphan reconciliation bypassed the in-flight music ingest transaction")
 	}
 
 	var files, items, albums, memberships, tracks, orphanItems, orphanAlbums int
@@ -813,6 +850,9 @@ func TestMusicVanishedScanSerializesWithConcurrentRefresh(t *testing.T) {
 		$fn$`, functionName, musicPostgresLiteral(applicationName), barrierKey)); err != nil {
 		t.Fatalf("create music delete barrier function: %v", err)
 	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
+	})
 	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
 		CREATE TRIGGER %s BEFORE DELETE ON music_tracks
 		FOR EACH STATEMENT EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
@@ -820,7 +860,6 @@ func TestMusicVanishedScanSerializesWithConcurrentRefresh(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON music_tracks`, triggerName))
-		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
 	})
 
 	missing := make(chan error, 1)
@@ -898,6 +937,9 @@ func TestConcurrentMusicIngestsShareOneNewAlbumIdentity(t *testing.T) {
 		$fn$`, functionName, fixture.folder.ID, musicPostgresLiteral(firstPath), barrierKey)); err != nil {
 		t.Fatalf("create music album-root barrier function: %v", err)
 	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
+	})
 	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
 		CREATE TRIGGER %s BEFORE INSERT OR UPDATE ON media_files
 		FOR EACH ROW EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
@@ -905,7 +947,6 @@ func TestConcurrentMusicIngestsShareOneNewAlbumIdentity(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON media_files`, triggerName))
-		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
 	})
 
 	first := make(chan error, 1)
@@ -955,6 +996,369 @@ func TestConcurrentMusicIngestsShareOneNewAlbumIdentity(t *testing.T) {
 	if albums != 1 || files != 2 || tracks != 2 || memberships != 1 {
 		t.Fatalf("concurrent album state = albums:%d files:%d tracks:%d memberships:%d, want 1/2/2/1",
 			albums, files, tracks, memberships)
+	}
+}
+
+func TestMusicFullReconcileMarkAndDeleteAreAtomicWithRefresh(t *testing.T) {
+	// The full reconciler pauses after its active candidate has been CAS-marked
+	// missing and before track deletion. A second candidate was already missing
+	// at snapshot time. A concurrent scoped ingest must not fit between either
+	// candidate's version check and deletion.
+	fixture := newMusicScanTestFixture(t, "active.flac", "already-missing.flac")
+	if err := fixture.scan(); err != nil {
+		t.Fatalf("baseline music scan: %v", err)
+	}
+	activePath := filepath.Join(fixture.album, "active.flac")
+	alreadyMissingPath := filepath.Join(fixture.album, "already-missing.flac")
+	for _, path := range []string{activePath, alreadyMissingPath} {
+		if err := os.Remove(path); err != nil {
+			t.Fatalf("remove music track %q: %v", path, err)
+		}
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE media_files
+		SET missing_since = NOW(), updated_at = NOW()
+		WHERE media_folder_id = $1 AND file_path = $2
+	`, fixture.folder.ID, alreadyMissingPath); err != nil {
+		t.Fatalf("seed already-missing music candidate: %v", err)
+	}
+
+	applicationName := fmt.Sprintf("task5-music-full-reconcile-%d", fixture.folder.ID)
+	reconcileScanner := newMusicScannerWithApplicationName(t, fixture, applicationName)
+	candidates, err := reconcileScanner.snapshotMusicReconcileCandidates(fixture.ctx, fixture.folder.ID)
+	if err != nil {
+		t.Fatalf("snapshot music reconcile candidates: %v", err)
+	}
+	barrierKey := int64(550_000_000_000) + int64(fixture.folder.ID)
+	barrier := newMusicPostgresBarrier(t, fixture.pool, barrierKey)
+	functionName := fmt.Sprintf("task5_music_full_delete_barrier_%d", fixture.folder.ID)
+	triggerName := fmt.Sprintf("task5_music_full_delete_barrier_%d", fixture.folder.ID)
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $fn$
+		BEGIN
+			IF current_setting('application_name') = %s THEN
+				PERFORM pg_advisory_xact_lock(%d::bigint);
+			END IF;
+			RETURN NULL;
+		END
+		$fn$`, functionName, musicPostgresLiteral(applicationName), barrierKey)); err != nil {
+		t.Fatalf("create full reconcile delete barrier function: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
+	})
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE TRIGGER %s BEFORE DELETE ON music_tracks
+		FOR EACH STATEMENT EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
+		t.Fatalf("create full reconcile delete barrier trigger: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON music_tracks`, triggerName))
+	})
+
+	reconcile := make(chan error, 1)
+	go func() {
+		reconcile <- reconcileScanner.reconcileMissingMusic(
+			fixture.ctx,
+			fixture.folder.ID,
+			candidates,
+			map[string]struct{}{},
+			nil,
+		)
+	}()
+	barrier.waitForWaiter(t, reconcile)
+
+	for _, path := range []string{activePath, alreadyMissingPath} {
+		if err := os.WriteFile(path, []byte("restored audio payload"), 0o644); err != nil {
+			barrier.release(t)
+			_ = waitForMusicOperation(t, reconcile)
+			t.Fatalf("restore music track %q during reconcile: %v", path, err)
+		}
+	}
+	refresh := make(chan error, 1)
+	go func() {
+		refresh <- fixture.scanner.ScanMusicFolder(
+			fixture.ctx,
+			scopedFolderPaths(fixture.folder, []string{fixture.album}),
+			false,
+		)
+	}()
+	refreshCompleted, refreshErr := barrier.waitForDownstreamCompletionOrLockChain(t, reconcile, refresh)
+
+	barrier.release(t)
+	if err := waitForMusicOperation(t, reconcile); err != nil {
+		t.Fatalf("full music reconcile after refresh: %v", err)
+	}
+	if !refreshCompleted {
+		refreshErr = waitForMusicOperation(t, refresh)
+	}
+	if refreshErr != nil {
+		t.Fatalf("music refresh during full reconcile: %v", refreshErr)
+	}
+	if refreshCompleted {
+		t.Error("music refresh bypassed full reconcile mutation serialization")
+	}
+
+	for _, path := range []string{activePath, alreadyMissingPath} {
+		var active, hasTrack bool
+		if err := fixture.pool.QueryRow(fixture.ctx, `
+			SELECT mf.missing_since IS NULL,
+			       EXISTS (SELECT 1 FROM music_tracks mt WHERE mt.media_file_id = mf.id)
+			FROM media_files mf
+			WHERE mf.media_folder_id = $1 AND mf.file_path = $2
+		`, fixture.folder.ID, path).Scan(&active, &hasTrack); err != nil {
+			t.Fatalf("read refreshed full-reconcile candidate %q: %v", path, err)
+		}
+		if !active || !hasTrack {
+			t.Errorf("refreshed candidate %q state = active:%t track:%t, want active:true track:true", path, active, hasTrack)
+		}
+	}
+}
+
+func TestMusicExistingMissingAlbumRefreshSerializesWithOrphanReconcile(t *testing.T) {
+	// The ingest pauses after updating the item and membership but before
+	// refreshing the existing missing media file. Orphan reconciliation must
+	// wait before deleting membership/item state, then re-evaluate the album
+	// after the ingest commits.
+	fixture := newMusicScanTestFixture(t, "returning.flac")
+	if err := fixture.scan(); err != nil {
+		t.Fatalf("baseline music scan: %v", err)
+	}
+	trackPath := filepath.Join(fixture.album, "returning.flac")
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE media_files
+		SET missing_since = NOW(), updated_at = NOW()
+		WHERE media_folder_id = $1 AND file_path = $2
+	`, fixture.folder.ID, trackPath); err != nil {
+		t.Fatalf("mark existing music file missing: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		DELETE FROM music_tracks mt USING media_files mf
+		WHERE mt.media_file_id = mf.id
+		  AND mf.media_folder_id = $1
+		  AND mf.file_path = $2
+	`, fixture.folder.ID, trackPath); err != nil {
+		t.Fatalf("remove missing music track: %v", err)
+	}
+	candidates, err := fixture.scanner.snapshotMusicReconcileCandidates(fixture.ctx, fixture.folder.ID)
+	if err != nil {
+		t.Fatalf("snapshot existing missing music album: %v", err)
+	}
+
+	applicationName := fmt.Sprintf("task5-music-existing-refresh-%d", fixture.folder.ID)
+	ingestScanner := newMusicScannerWithApplicationName(t, fixture, applicationName)
+	barrierKey := int64(560_000_000_000) + int64(fixture.folder.ID)
+	barrier := newMusicPostgresBarrier(t, fixture.pool, barrierKey)
+	functionName := fmt.Sprintf("task5_music_existing_refresh_barrier_%d", fixture.folder.ID)
+	triggerName := fmt.Sprintf("task5_music_existing_refresh_barrier_%d", fixture.folder.ID)
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $fn$
+		BEGIN
+			IF current_setting('application_name') = %s
+			   AND NEW.media_folder_id = %d
+			   AND NEW.file_path = %s THEN
+				PERFORM pg_advisory_xact_lock(%d::bigint);
+			END IF;
+			RETURN NEW;
+		END
+		$fn$`, functionName, musicPostgresLiteral(applicationName), fixture.folder.ID,
+		musicPostgresLiteral(trackPath), barrierKey)); err != nil {
+		t.Fatalf("create existing refresh barrier function: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP FUNCTION IF EXISTS %s()`, functionName))
+	})
+	if _, err := fixture.pool.Exec(fixture.ctx, fmt.Sprintf(`
+		CREATE TRIGGER %s BEFORE INSERT OR UPDATE ON media_files
+		FOR EACH ROW EXECUTE FUNCTION %s()`, triggerName, functionName)); err != nil {
+		t.Fatalf("create existing refresh barrier trigger: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = fixture.pool.Exec(context.Background(), fmt.Sprintf(`DROP TRIGGER IF EXISTS %s ON media_files`, triggerName))
+	})
+
+	ingest := make(chan error, 1)
+	go func() {
+		ingest <- ingestScanner.ScanMusicFolder(
+			fixture.ctx,
+			scopedFolderPaths(fixture.folder, []string{trackPath}),
+			false,
+		)
+	}()
+	barrier.waitForWaiter(t, ingest)
+
+	reconcile := make(chan error, 1)
+	go func() {
+		reconcile <- fixture.scanner.reconcileMissingMusic(
+			fixture.ctx,
+			fixture.folder.ID,
+			candidates,
+			map[string]struct{}{},
+			nil,
+		)
+	}()
+	reconcileCompleted, reconcileErr := barrier.waitForDownstreamCompletionOrLockChain(t, ingest, reconcile)
+
+	barrier.release(t)
+	if err := waitForMusicOperation(t, ingest); err != nil {
+		t.Fatalf("existing missing music ingest: %v", err)
+	}
+	if !reconcileCompleted {
+		reconcileErr = waitForMusicOperation(t, reconcile)
+	}
+	if reconcileErr != nil {
+		t.Fatalf("orphan reconcile during existing music ingest: %v", reconcileErr)
+	}
+
+	var item, album, membership, activeFile, track bool
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT
+			EXISTS (SELECT 1 FROM media_items mi JOIN media_files mf ON mf.content_id = mi.content_id
+				WHERE mf.media_folder_id = $1 AND mf.file_path = $2),
+			EXISTS (SELECT 1 FROM music_albums ma JOIN media_files mf ON mf.content_id = ma.content_id
+				WHERE mf.media_folder_id = $1 AND mf.file_path = $2),
+			EXISTS (SELECT 1 FROM media_item_libraries mil JOIN media_files mf ON mf.content_id = mil.content_id
+				WHERE mil.media_folder_id = $1 AND mf.media_folder_id = $1 AND mf.file_path = $2),
+			EXISTS (SELECT 1 FROM media_files mf
+				WHERE mf.media_folder_id = $1 AND mf.file_path = $2 AND mf.missing_since IS NULL),
+			EXISTS (SELECT 1 FROM music_tracks mt JOIN media_files mf ON mf.id = mt.media_file_id
+				WHERE mf.media_folder_id = $1 AND mf.file_path = $2)
+	`, fixture.folder.ID, trackPath).Scan(&item, &album, &membership, &activeFile, &track); err != nil {
+		t.Fatalf("read existing album state after concurrent refresh/reconcile: %v", err)
+	}
+	if !item || !album || !membership || !activeFile || !track {
+		t.Fatalf("existing album state = item:%t album:%t membership:%t active-file:%t track:%t, want all true",
+			item, album, membership, activeFile, track)
+	}
+}
+
+func TestMusicVanishedScanCannotMutateAnotherLibraryPathOwner(t *testing.T) {
+	// media_files.file_path is global, but a ScanFile request is owned by its
+	// supplied library. A stale/cross-library path lookup must not mutate the
+	// row merely because its global path matches.
+	requested := newMusicScanTestFixture(t)
+	owner := newMusicScanTestFixture(t, "owned.flac")
+	if err := owner.scan(); err != nil {
+		t.Fatalf("baseline owner music scan: %v", err)
+	}
+	ownedPath := filepath.Join(owner.album, "owned.flac")
+	if err := os.Remove(ownedPath); err != nil {
+		t.Fatalf("remove owner music file: %v", err)
+	}
+
+	if err := requested.scanner.ScanFile(requested.ctx, ownedPath, requested.folder); err != nil {
+		t.Fatalf("cross-library vanished music scan: %v", err)
+	}
+
+	var ownerFolderID int
+	var active, hasTrack bool
+	if err := owner.pool.QueryRow(owner.ctx, `
+		SELECT mf.media_folder_id,
+		       mf.missing_since IS NULL,
+		       EXISTS (SELECT 1 FROM music_tracks mt WHERE mt.media_file_id = mf.id)
+		FROM media_files mf
+		WHERE mf.file_path = $1
+	`, ownedPath).Scan(&ownerFolderID, &active, &hasTrack); err != nil {
+		t.Fatalf("read cross-library music owner: %v", err)
+	}
+	if ownerFolderID != owner.folder.ID || !active || !hasTrack {
+		t.Fatalf("cross-library owner state = folder:%d active:%t track:%t, want folder:%d active:true track:true",
+			ownerFolderID, active, hasTrack, owner.folder.ID)
+	}
+}
+
+func TestMusicVanishedScanDoesNotPurgeProtectedSiblingRootOrphan(t *testing.T) {
+	// A prior protected-root reconciliation may leave an intentionally hidden,
+	// membership-less item so its metadata/history can return when that root is
+	// reachable again. A file event under a healthy sibling must reconcile only
+	// its own album and leave that protected orphan untouched.
+	fixture := newMusicScanTestFixture(t, "healthy.flac")
+	protectedRoot := t.TempDir()
+	protectedAlbum := filepath.Join(protectedRoot, "Artist", "Protected Album")
+	if err := os.MkdirAll(protectedAlbum, 0o755); err != nil {
+		t.Fatalf("create protected music album: %v", err)
+	}
+	protectedPath := filepath.Join(protectedAlbum, "protected.flac")
+	if err := os.WriteFile(protectedPath, []byte("protected audio payload"), 0o644); err != nil {
+		t.Fatalf("write protected music track: %v", err)
+	}
+	fixture.folder.Paths = append(fixture.folder.Paths, protectedRoot)
+	if err := fixture.scan(); err != nil {
+		t.Fatalf("baseline mixed-root music scan: %v", err)
+	}
+
+	healthyPath := filepath.Join(fixture.album, "healthy.flac")
+	var healthyContentID, protectedContentID string
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT content_id FROM media_files
+		WHERE media_folder_id = $1 AND file_path = $2
+	`, fixture.folder.ID, healthyPath).Scan(&healthyContentID); err != nil {
+		t.Fatalf("read healthy music content id: %v", err)
+	}
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT content_id FROM media_files
+		WHERE media_folder_id = $1 AND file_path = $2
+	`, fixture.folder.ID, protectedPath).Scan(&protectedContentID); err != nil {
+		t.Fatalf("read protected music content id: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE media_files
+		SET missing_since = NOW(), updated_at = NOW()
+		WHERE media_folder_id = $1 AND file_path = $2
+	`, fixture.folder.ID, protectedPath); err != nil {
+		t.Fatalf("mark protected-root music file missing: %v", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		DELETE FROM music_tracks mt USING media_files mf
+		WHERE mt.media_file_id = mf.id
+		  AND mf.media_folder_id = $1
+		  AND mf.file_path = $2
+	`, fixture.folder.ID, protectedPath); err != nil {
+		t.Fatalf("remove protected-root music track: %v", err)
+	}
+	removed, deleted, _, err := fixture.scanner.libraryRepo.ReconcileFolderMembership(
+		fixture.ctx,
+		fixture.folder.ID,
+		[]string{protectedRoot},
+	)
+	if err != nil {
+		t.Fatalf("seed protected-root orphan state: %v", err)
+	}
+	if removed != 1 || deleted != 0 {
+		t.Fatalf("protected-root seed reconciliation = removed:%d deleted:%d, want 1/0", removed, deleted)
+	}
+	if err := os.RemoveAll(protectedRoot); err != nil {
+		t.Fatalf("make protected music root unreachable: %v", err)
+	}
+	if err := os.Remove(healthyPath); err != nil {
+		t.Fatalf("remove healthy sibling music track: %v", err)
+	}
+
+	if err := fixture.scanner.ScanFile(fixture.ctx, healthyPath, fixture.folder); err != nil {
+		t.Fatalf("scan vanished healthy-root music track: %v", err)
+	}
+
+	var healthyItem, protectedItem, protectedAlbumRow, protectedMembership bool
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT
+			EXISTS (SELECT 1 FROM media_items WHERE content_id = $1),
+			EXISTS (SELECT 1 FROM media_items WHERE content_id = $2),
+			EXISTS (SELECT 1 FROM music_albums WHERE content_id = $2),
+			EXISTS (SELECT 1 FROM media_item_libraries WHERE content_id = $2 AND media_folder_id = $3)
+	`, healthyContentID, protectedContentID, fixture.folder.ID).Scan(
+		&healthyItem,
+		&protectedItem,
+		&protectedAlbumRow,
+		&protectedMembership,
+	); err != nil {
+		t.Fatalf("read mixed-root orphan state: %v", err)
+	}
+	if healthyItem {
+		t.Error("vanished healthy-root album item was not reconciled")
+	}
+	if !protectedItem || !protectedAlbumRow || protectedMembership {
+		t.Fatalf("protected sibling state = item:%t album:%t membership:%t, want true/true/false",
+			protectedItem, protectedAlbumRow, protectedMembership)
 	}
 }
 

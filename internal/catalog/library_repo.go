@@ -441,13 +441,69 @@ func (r *LibraryItemRepository) ReconcileFolderMembership(ctx context.Context, f
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	removed, deleted, orphanedImageDirs, err := r.ReconcileFolderMembershipTx(ctx, tx, folderID, protectedPathPrefixes)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, 0, nil, fmt.Errorf("committing membership reconciliation transaction: %w", err)
+	}
+
+	return removed, deleted, orphanedImageDirs, nil
+}
+
+// ReconcileFolderMembershipTx performs folder-wide membership and orphan
+// reconciliation in the caller's transaction. Callers that mutate file
+// presence must use this form so the presence change and resulting catalog
+// cleanup are atomic.
+func (r *LibraryItemRepository) ReconcileFolderMembershipTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	folderID int,
+	protectedPathPrefixes []string,
+) (int, int, []string, error) {
+	return r.reconcileFolderMembershipTx(ctx, tx, folderID, nil, protectedPathPrefixes)
+}
+
+// ReconcileContentMembershipTx narrows membership and orphan reconciliation
+// to one content item in the caller's transaction. It is used by single-file
+// events so an event under one root cannot purge deliberately preserved
+// orphans under an unrelated root in the same folder.
+func (r *LibraryItemRepository) ReconcileContentMembershipTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	folderID int,
+	contentID string,
+	protectedPathPrefixes []string,
+) (int, int, []string, error) {
+	contentID = strings.TrimSpace(contentID)
+	if contentID == "" {
+		return 0, 0, nil, nil
+	}
+	return r.reconcileFolderMembershipTx(ctx, tx, folderID, []string{contentID}, protectedPathPrefixes)
+}
+
+func (r *LibraryItemRepository) reconcileFolderMembershipTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	folderID int,
+	contentIDs []string,
+	protectedPathPrefixes []string,
+) (int, int, []string, error) {
+	args := []any{folderID}
+	contentPredicate := ""
+	if len(contentIDs) > 0 {
+		args = append(args, contentIDs)
+		contentPredicate = "\n\t\t  AND mil.content_id = ANY($2::text[])"
+	}
+
 	// Manga series items (type='manga') are virtual parents with no media_file of
 	// their own — their membership is keyed to having chapters, not files. Exclude
 	// them here so file-presence reconciliation never sweeps a live series; orphan
 	// series (no remaining chapters) are cleaned up separately by the manga scan.
 	rows, err := tx.Query(ctx, `
 		DELETE FROM media_item_libraries mil
-		WHERE mil.media_folder_id = $1
+		WHERE mil.media_folder_id = $1`+contentPredicate+`
 		  AND NOT EXISTS (
 			SELECT 1
 			FROM media_files mf
@@ -462,7 +518,7 @@ func (r *LibraryItemRepository) ReconcileFolderMembership(ctx context.Context, f
 			  AND mi.type = 'manga'
 		  )
 		RETURNING mil.content_id
-	`, folderID)
+	`, args...)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("deleting stale folder memberships: %w", err)
 	}
@@ -491,7 +547,7 @@ func (r *LibraryItemRepository) ReconcileFolderMembership(ctx context.Context, f
 	if err != nil {
 		return 0, 0, nil, err
 	}
-	previouslyProtected, err := collectFolderFileOrphanIDs(ctx, tx, folderID)
+	previouslyProtected, err := collectFolderFileOrphanIDs(ctx, tx, folderID, contentIDs)
 	if err != nil {
 		return 0, 0, nil, err
 	}
@@ -540,24 +596,33 @@ func (r *LibraryItemRepository) ReconcileFolderMembership(ctx context.Context, f
 		}
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return 0, 0, nil, fmt.Errorf("committing membership reconciliation transaction: %w", err)
-	}
-
 	return len(removedContentIDs), deletedItems, orphanedImageDirs, nil
 }
 
-func collectFolderFileOrphanIDs(ctx context.Context, tx pgx.Tx, folderID int) ([]string, error) {
+func collectFolderFileOrphanIDs(ctx context.Context, tx pgx.Tx, folderID int, contentIDs []string) ([]string, error) {
+	args := []any{folderID}
+	contentPredicate := ""
+	if len(contentIDs) > 0 {
+		args = append(args, contentIDs)
+		contentPredicate = "\n\t\t  AND mf.content_id = ANY($2::text[])"
+	}
 	rows, err := tx.Query(ctx, `
 		SELECT DISTINCT mf.content_id
 		FROM media_files mf
 		WHERE mf.media_folder_id = $1
 		  AND mf.content_id IS NOT NULL
-		  AND mf.content_id <> ''
+		  AND mf.content_id <> ''`+contentPredicate+`
 		  AND NOT EXISTS (
 			SELECT 1 FROM media_item_libraries mil WHERE mil.content_id = mf.content_id
 		  )
-	`, folderID)
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM media_files active
+			WHERE active.media_folder_id = mf.media_folder_id
+			  AND active.content_id = mf.content_id
+			  AND active.missing_since IS NULL
+		  )
+	`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("finding previously protected folder orphans: %w", err)
 	}
