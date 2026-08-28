@@ -1090,27 +1090,12 @@ func (s *Scanner) scanFolderByRoots(
 	// read filters on missing_since IS NULL. Probe every CONFIGURED path, not
 	// the compacted traversal roots: a nested child mount is dropped by
 	// compaction but can die independently of its reachable parent.
-	configuredProbes := rootcheck.ProbeManyWithTimeout(ctx, configuredRoots, rootcheck.DefaultProbeTimeout)
-	unreachableRoots := make([]string, 0)
-	suspectRoots := make([]string, 0)
-	for i, root := range configuredRoots {
-		probe := configuredProbes[i]
-		if !probe.Reachable {
-			logUnreachableRoot(ctx, folder.ID, root, probe)
-			unreachableRoots = append(unreachableRoots, root)
-			continue
-		}
-		if !probe.Empty {
-			continue
-		}
-		existing, err := s.fileRepo.GetByFolderAndPathPrefix(ctx, folder.ID, root)
-		if err != nil {
-			return nil, fmt.Errorf("listing files under empty root %q: %w", root, err)
-		}
-		if len(existing) > 0 {
-			suspectRoots = append(suspectRoots, root)
-		}
+	rootObservation, err := s.ObserveRoots(ctx, folder.ID, configuredRoots)
+	if err != nil {
+		return nil, err
 	}
+	unreachableRoots := rootObservation.UnreachableRoots
+	suspectRoots := rootObservation.SuspectEmptyRoots
 	result.UnreachableRoots = unreachableRoots
 	unreachableSet := make(map[string]bool, len(unreachableRoots))
 	for _, root := range unreachableRoots {
@@ -1466,12 +1451,11 @@ func (s *Scanner) scanFolderByRoots(
 // hot paths (including per-file autoscan events): a wedged mount must degrade
 // into the protected "unreachable" path instead of stalling the scanner.
 func probeUnreachableRoots(ctx context.Context, folderID int, roots []string) []string {
-	var unreachable []string
 	probes := rootcheck.ProbeManyWithTimeout(ctx, roots, rootcheck.DefaultProbeTimeout)
+	unreachable, _ := classifyRootProbeResults(roots, probes)
 	for i, root := range roots {
 		if probe := probes[i]; !probe.Reachable {
 			logUnreachableRoot(ctx, folderID, root, probe)
-			unreachable = append(unreachable, root)
 		}
 	}
 	return unreachable
@@ -1504,67 +1488,17 @@ func removePath(paths []string, path string) []string {
 	return paths
 }
 
-// suspectEmptyRoots returns configured roots that probe as reachable but
-// LITERALLY empty directories while the database still holds rows (all
-// missing-marked) under them. That is the signature of a mount that dropped
-// out leaving its bare mountpoint directory behind (NFS/SMB drop, dead
-// bind-mount source) — a reachability probe cannot tell it apart from an
-// intentionally emptied root, so destructive cleanup under these roots is
-// deferred until the operator confirms or the files return. A root that
-// still has directory entries keeps the historical purge path.
-func (s *Scanner) suspectEmptyRoots(ctx context.Context, folderID int, configuredRoots, unreachableRoots []string) ([]string, error) {
-	if s == nil || s.fileRepo == nil {
-		return nil, nil
-	}
-	unreachableSet := make(map[string]bool, len(unreachableRoots))
-	for _, root := range unreachableRoots {
-		unreachableSet[root] = true
-	}
-	emptyRoots := make([]string, 0, len(configuredRoots))
-	probes := rootcheck.ProbeManyWithTimeout(ctx, configuredRoots, rootcheck.DefaultProbeTimeout)
-	for i, root := range configuredRoots {
-		if unreachableSet[root] {
-			continue
-		}
-		if probe := probes[i]; probe.Reachable && probe.Empty {
-			emptyRoots = append(emptyRoots, root)
-		}
-	}
-	if len(emptyRoots) == 0 {
-		return nil, nil
-	}
-	// Any cataloged row under an empty-but-reachable root makes it suspect,
-	// not just a root whose rows are already all missing. Requiring the
-	// latter made this protection reactive: on the first scan after a mount
-	// dropped, the rows are still live, the root is not classified suspect,
-	// and the scan marks everything missing — the exact outage this guards
-	// against, recognised only in time to protect the wreckage.
-	suspect, err := s.fileRepo.ListRootsWithCatalogedFiles(ctx, folderID, emptyRoots)
-	if err != nil {
-		return nil, fmt.Errorf("listing suspect-empty roots for folder %d: %w", folderID, err)
-	}
-	if len(suspect) > 0 {
-		slog.WarnContext(ctx, "scanner: empty roots still hold cataloged files; protecting them from cleanup", "component", "scanner",
-			"folder_id", folderID,
-			"roots", suspect,
-		)
-	}
-	return suspect, nil
-}
-
 // protectedConfiguredRoots probes the folder's configured root paths
 // (uncompacted, so a nested child mount is probed independently of its
 // reachable parent) and returns every root that must be exempted from
 // destructive cleanup right now: probe-unreachable roots plus suspect-empty
 // ones. Callers must pass a folder whose Paths is the full configured list.
 func (s *Scanner) protectedConfiguredRoots(ctx context.Context, folder *models.MediaFolder) ([]string, error) {
-	configuredRoots := cleanScanRoots(folder.Paths)
-	unreachableRoots := probeUnreachableRoots(ctx, folder.ID, configuredRoots)
-	suspectRoots, err := s.suspectEmptyRoots(ctx, folder.ID, configuredRoots, unreachableRoots)
+	observation, err := s.ObserveRoots(ctx, folder.ID, folder.Paths)
 	if err != nil {
 		return nil, err
 	}
-	return append(unreachableRoots, suspectRoots...), nil
+	return append(observation.UnreachableRoots, observation.SuspectEmptyRoots...), nil
 }
 
 // configuredFolderPaths returns the folder's full configured root list for
@@ -1963,35 +1897,14 @@ func (s *Scanner) reprobeNestedRoots(
 		return nil, nil, nil
 	}
 
-	probes := rootcheck.ProbeManyWithTimeout(ctx, nested, rootcheck.DefaultProbeTimeout)
-	unreachable = make([]string, 0)
-	emptyRoots := make([]string, 0)
-	for i, root := range nested {
-		probe := probes[i]
-		switch {
-		case !probe.Reachable:
-			logUnreachableRoot(ctx, folderID, root, probe)
-			unreachable = append(unreachable, root)
-		case probe.Empty:
-			emptyRoots = append(emptyRoots, root)
-		}
-	}
-
-	if cleanupArmed || len(emptyRoots) == 0 || s == nil || s.fileRepo == nil {
-		return unreachable, nil, nil
-	}
-	// An empty child that still owns cataloged rows is a lost mount, not an
-	// emptied library — the same rule suspectEmptyRoots applies, reusing the
-	// probe results already gathered above.
-	suspect, err = s.fileRepo.ListRootsWithCatalogedFiles(ctx, folderID, emptyRoots)
+	observation, err := s.ObserveRoots(ctx, folderID, nested)
 	if err != nil {
-		return nil, nil, fmt.Errorf("listing suspect-empty nested roots for folder %d: %w", folderID, err)
+		return nil, nil, err
 	}
-	if len(suspect) > 0 {
-		slog.WarnContext(ctx, "scanner: nested empty roots still hold cataloged files; protecting them from cleanup",
-			"component", "scanner", "folder_id", folderID, "roots", suspect)
+	if cleanupArmed {
+		return observation.UnreachableRoots, nil, nil
 	}
-	return unreachable, suspect, nil
+	return observation.UnreachableRoots, observation.SuspectEmptyRoots, nil
 }
 
 // emptyCleanupArmed reports whether the operator has armed the folder's
@@ -2336,14 +2249,13 @@ func (s *Scanner) sweepMissingAndReconcile(ctx context.Context, folder *models.M
 	if err != nil {
 		return 0, 0, 0, err
 	}
-	configuredRoots := cleanScanRoots(configuredPaths)
-	protectedRoots := probeUnreachableRoots(ctx, folder.ID, configuredRoots)
+	observation, err := s.ObserveRoots(ctx, folder.ID, configuredPaths)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	protectedRoots := observation.UnreachableRoots
 	if !confirmedCleanup {
-		suspectRoots, serr := s.suspectEmptyRoots(ctx, folder.ID, configuredRoots, protectedRoots)
-		if serr != nil {
-			return 0, 0, 0, serr
-		}
-		protectedRoots = append(protectedRoots, suspectRoots...)
+		protectedRoots = append(protectedRoots, observation.SuspectEmptyRoots...)
 	}
 	var orphanedImageDirs []string
 	removedMemberships, deletedItems, orphanedImageDirs, err = s.reconcileLibraryMemberships(ctx, folder.ID, protectedRoots)

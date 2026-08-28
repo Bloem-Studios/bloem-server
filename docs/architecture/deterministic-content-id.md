@@ -75,6 +75,28 @@ drop a title's watch history on a routine rename. That's why it's anchored on
 rename-invariant provider IDs, never a path or file hash. File-level dedup is a
 separate, deferred concern.
 
+### Music identity namespaces
+
+Music uses two additional identifiers that are deliberately separate from the
+provider-derived `content_id` scheme above:
+
+- Artist and album semantic keys are normalized case-insensitively. Letter
+  case is presentation data and does not make a second logical artist or album.
+- `music_tracks.id` identifies one physical track entry. It hashes the media
+  folder ID, album ID, and cleaned slash-normalized path relative to the album
+  root **without lowercasing the path**. This keeps the ID stable across scans
+  while allowing `Track.flac` and `track.flac` to coexist on case-sensitive
+  filesystems. The folder namespace prevents identical layouts in separate
+  libraries from aliasing.
+
+Older music track IDs hashed a lowercased absolute path. During a successful
+scan, a legacy row is rewritten to the new ID only when its `media_file_id`
+already owns that row. This ownership rule is the deterministic precedence for
+a historical case collision: the one file representable by the legacy row
+keeps its row history, and the other case-distinct file receives its own new
+ID. The unowned collided legacy ID is not preserved; retaining both files and
+stable identities takes precedence while the API is pre-lock.
+
 ---
 
 ## 3. How the id is derived
