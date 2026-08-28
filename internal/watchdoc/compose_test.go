@@ -397,6 +397,27 @@ func equalStrings(a, b []string) bool {
 	return true
 }
 
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
+func equalInts(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for index := range a {
+		if a[index] != b[index] {
+			return false
+		}
+	}
+	return true
+}
+
 // --- home ------------------------------------------------------------------
 
 func TestWatchHomeListsMoviesAndSeriesWithDeterministicFeatured(t *testing.T) {
@@ -770,6 +791,65 @@ func TestWatchSeriesDetailDropsEpisodesThatCannotBeValidated(t *testing.T) {
 		if id == "8080-s02e03" {
 			t.Error("an episode with no playable file is listed")
 		}
+	}
+}
+
+func TestWatchSeriesDetailNavigationUsesOnlyScopedPlayableEpisodes(t *testing.T) {
+	reader := inventedWorld(t)
+	reader.episodes["8080"] = []watchdoc.Episode{
+		{ContentID: "episode-next-season", SeriesID: "8080", SeasonNumber: 2, EpisodeNumber: 1, Title: "The Next Floor"},
+		{ContentID: "episode-hidden", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 2, Title: "Behind Another Door"},
+		// episode-missing (S01E03) has no catalog row at all.
+		{ContentID: "episode-unplayable", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 4, Title: "The Silent Projector"},
+		{ContentID: "episode-mixed-allowed", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 5, Title: "One Open Door"},
+		{ContentID: "episode-current", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 1, Title: "The First Door"},
+	}
+	// FilesByContentIDs is the composition boundary for the exact profile
+	// scope. Hidden and unplayable rows are both absent from its answer; the
+	// mixed episode survives because at least one version passed that scope.
+	reader.files = map[string]int64{
+		"episode-current":       101,
+		"episode-mixed-allowed": 105,
+		"episode-next-season":   201,
+	}
+	scope := watchdoc.ProfileScope{
+		UserID:             11,
+		ProfileID:          "profile-restricted",
+		AllowedLibraryIDs:  []int{4, 9},
+		DisabledLibraryIDs: []int{9},
+		MaxContentRating:   "PG-13",
+		MaxPlaybackQuality: "1080p",
+	}
+
+	document, err := watchdoc.ComposeItem(context.Background(), reader, scope, "8080")
+	if err != nil {
+		t.Fatalf("compose item: %v", err)
+	}
+
+	var episodeIDs []string
+	for _, item := range document.Items {
+		if item.Kind == watchdoc.KindEpisode {
+			episodeIDs = append(episodeIDs, item.ContentID)
+		}
+	}
+	want := []string{"episode-current", "episode-mixed-allowed", "episode-next-season"}
+	if !equalStrings(episodeIDs, want) {
+		t.Fatalf("playable episode navigation = %v, want %v", episodeIDs, want)
+	}
+	for _, absent := range []string{"episode-hidden", "episode-missing", "episode-unplayable"} {
+		if containsString(episodeIDs, absent) {
+			t.Errorf("navigation exposes %q; hidden, missing, and unplayable episodes must all be absent", absent)
+		}
+	}
+	if len(reader.fileScopes) == 0 {
+		t.Fatal("composition never asked for profile-scoped playable files")
+	}
+	seen := reader.fileScopes[0]
+	if seen.UserID != scope.UserID || seen.ProfileID != scope.ProfileID ||
+		!equalInts(seen.AllowedLibraryIDs, scope.AllowedLibraryIDs) ||
+		!equalInts(seen.DisabledLibraryIDs, scope.DisabledLibraryIDs) ||
+		seen.MaxContentRating != scope.MaxContentRating || seen.MaxPlaybackQuality != scope.MaxPlaybackQuality {
+		t.Errorf("file lookup scope = %#v, want exact %#v", seen, scope)
 	}
 }
 

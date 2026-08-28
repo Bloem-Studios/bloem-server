@@ -45,17 +45,23 @@ export function useSeriesEpisodes(
   const currentEpisodes = currentEpisodesData?.episodes ?? [];
   const nextEpisodes = nextEpisodesData?.episodes ?? [];
 
-  const episodes: EpisodeRef[] = [...currentEpisodes, ...nextEpisodes].map((ep) => ({
-    contentId: ep.content_id,
-    seasonNumber: ep.season_number,
-    episodeNumber: ep.episode_number,
-    title: ep.title,
-    runtime: ep.runtime,
-    overview: ep.overview,
-    stillUrl: ep.still_url,
-    stillThumbhash: ep.still_thumbhash,
-    airDate: ep.air_date,
-  }));
+  // Episode metadata remains useful to catalog screens even when the viewer
+  // cannot play it, but the player must not treat the series relationship as
+  // authorization. The API has already applied the exact viewer scope to
+  // `files`; only that surviving playable set may provide navigation IDs.
+  const episodes: EpisodeRef[] = [...currentEpisodes, ...nextEpisodes]
+    .filter((ep) => ep.files?.some((file) => file.file_id > 0))
+    .map((ep) => ({
+      contentId: ep.content_id,
+      seasonNumber: ep.season_number,
+      episodeNumber: ep.episode_number,
+      title: ep.title,
+      runtime: ep.runtime,
+      overview: ep.overview,
+      stillUrl: ep.still_url,
+      stillThumbhash: ep.still_thumbhash,
+      airDate: ep.air_date,
+    }));
 
   const isLoading = seasonsLoading || currentLoading || (!!nextSeasonInfo && nextLoading);
 

@@ -864,7 +864,7 @@ export default function WatchTogetherRoomPage() {
                           </div>
                         ))
                       : (episodesQuery.data?.episodes ?? [])
-                          .filter((ep) => ep.files.length > 0)
+                          .filter((ep) => (ep.files?.length ?? 0) > 0)
                           .map((episode) => (
                             <button
                               key={episode.content_id}
@@ -889,7 +889,7 @@ export default function WatchTogetherRoomPage() {
                             </button>
                           ))}
                     {!episodesQuery.isLoading &&
-                    (episodesQuery.data?.episodes ?? []).filter((ep) => ep.files.length > 0)
+                    (episodesQuery.data?.episodes ?? []).filter((ep) => (ep.files?.length ?? 0) > 0)
                       .length === 0 ? (
                       <div className="text-muted-foreground rounded-lg border border-white/5 px-4 py-8 text-center text-sm">
                         No playable episodes in this season.

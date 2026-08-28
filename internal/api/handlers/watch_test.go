@@ -210,6 +210,16 @@ func newWatchTestReader(t *testing.T) *watchTestReader {
 
 func newWatchRequest(t *testing.T, target, contentID, profileID string) *http.Request {
 	t.Helper()
+	return newWatchRequestWithScope(t, target, contentID, profileID, access.Scope{
+		UserID:            11,
+		ProfileID:         profileID,
+		AllowedLibraryIDs: []int{4, 9},
+		MaxContentRating:  "PG-13",
+	})
+}
+
+func newWatchRequestWithScope(t *testing.T, target, contentID, profileID string, scope access.Scope) *http.Request {
+	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, target, nil)
 	routeCtx := chi.NewRouteContext()
 	if contentID != "" {
@@ -219,12 +229,7 @@ func newWatchRequest(t *testing.T, target, contentID, profileID string) *http.Re
 	ctx = apimw.SetClaims(ctx, &auth.Claims{UserID: 11, Role: "user", TokenType: auth.TokenTypeAccess})
 	if profileID != "" {
 		ctx = apimw.SetProfileID(ctx, profileID)
-		ctx = access.SetScope(ctx, access.Scope{
-			UserID:            11,
-			ProfileID:         profileID,
-			AllowedLibraryIDs: []int{4, 9},
-			MaxContentRating:  "PG-13",
-		})
+		ctx = access.SetScope(ctx, scope)
 	}
 	return req.WithContext(ctx)
 }
@@ -410,10 +415,12 @@ type fakeWatchItems struct {
 	items      map[string]*models.MediaItem
 	restricted map[string]bool
 	requested  [][]string
+	filters    []catalog.AccessFilter
 }
 
-func (f *fakeWatchItems) GetByIDsWithAccess(_ context.Context, contentIDs []string, _ catalog.AccessFilter) ([]*models.MediaItem, error) {
+func (f *fakeWatchItems) GetByIDsWithAccess(_ context.Context, contentIDs []string, filter catalog.AccessFilter) ([]*models.MediaItem, error) {
 	f.requested = append(f.requested, append([]string(nil), contentIDs...))
+	f.filters = append(f.filters, filter)
 	found := make([]*models.MediaItem, 0, len(contentIDs))
 	for _, id := range contentIDs {
 		if item, ok := f.items[id]; ok && !f.restricted[id] {
@@ -423,7 +430,8 @@ func (f *fakeWatchItems) GetByIDsWithAccess(_ context.Context, contentIDs []stri
 	return found, nil
 }
 
-func (f *fakeWatchItems) EnsureAccessibleIDs(_ context.Context, contentIDs []string, _ catalog.AccessFilter) (map[string]bool, error) {
+func (f *fakeWatchItems) EnsureAccessibleIDs(_ context.Context, contentIDs []string, filter catalog.AccessFilter) (map[string]bool, error) {
+	f.filters = append(f.filters, filter)
 	accessible := make(map[string]bool, len(contentIDs))
 	for _, id := range contentIDs {
 		accessible[id] = !f.restricted[id]
@@ -712,6 +720,146 @@ func TestWatchReaderFiltersEpisodeFilesByAccessToo(t *testing.T) {
 	if fileIDs["8080-s01e01"] != 8080001 {
 		t.Errorf("episode file_id = %d, want 8080001", fileIDs["8080-s01e01"])
 	}
+}
+
+func TestCatalogWatchReaderItemEndpointNavigationUsesExactPlayableProfileScope(t *testing.T) {
+	reader, _, items, episodes, files, _ := newWatchReaderFixture(t)
+	episodes.bySeries["8080"] = []*models.Episode{
+		{ContentID: "episode-next-season", SeriesID: "8080", SeasonNumber: 2, EpisodeNumber: 1, Title: "The Next Floor"},
+		{ContentID: "episode-disabled", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 6, Title: "The Closed Library"},
+		{ContentID: "episode-quality", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 5, Title: "Too Many Pixels"},
+		{ContentID: "episode-no-file", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 4, Title: "The Empty Projector"},
+		// episode-missing (S01E03) has no catalog row at all.
+		{ContentID: "episode-foreign-only", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 2, Title: "Behind Another Door"},
+		{ContentID: "episode-mixed-allowed", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 7, Title: "One Open Door"},
+		{ContentID: "episode-current", SeriesID: "8080", SeasonNumber: 1, EpisodeNumber: 1, Title: "The First Door"},
+	}
+	files.byEpisode = map[string][]*models.MediaFile{
+		"episode-current":       {{ID: 101, MediaFolderID: 4, Resolution: "1080p"}},
+		"episode-foreign-only":  {{ID: 201, MediaFolderID: 7, Resolution: "1080p"}},
+		"episode-quality":       {{ID: 501, MediaFolderID: 4, Resolution: "2160p"}},
+		"episode-disabled":      {{ID: 601, MediaFolderID: 9, Resolution: "1080p"}},
+		"episode-mixed-allowed": {{ID: 701, MediaFolderID: 7, Resolution: "1080p"}, {ID: 705, MediaFolderID: 4, Resolution: "1080p"}},
+		"episode-next-season":   {{ID: 801, MediaFolderID: 4, Resolution: "1080p"}},
+	}
+	scope := watchdoc.ProfileScope{
+		UserID:             11,
+		ProfileID:          "profile-restricted",
+		AllowedLibraryIDs:  []int{4, 9},
+		DisabledLibraryIDs: []int{9},
+		MaxContentRating:   "PG-13",
+		MaxPlaybackQuality: "1080p",
+	}
+
+	rawEpisodes, err := reader.Episodes(context.Background(), scope, "8080")
+	if err != nil {
+		t.Fatalf("list raw episodes: %v", err)
+	}
+	if len(rawEpisodes) != 7 {
+		t.Fatalf("raw episode rows = %d, want 7 to prove relationship rows remain present", len(rawEpisodes))
+	}
+	rawIDs := make([]string, 0, len(rawEpisodes))
+	for _, episode := range rawEpisodes {
+		rawIDs = append(rawIDs, episode.ContentID)
+	}
+	playableFiles, err := reader.FilesByContentIDs(context.Background(), scope, rawIDs)
+	if err != nil {
+		t.Fatalf("resolve scoped episode files: %v", err)
+	}
+	if len(playableFiles) != 3 || playableFiles["episode-current"] != 101 ||
+		playableFiles["episode-mixed-allowed"] != 705 || playableFiles["episode-next-season"] != 801 {
+		t.Fatalf("scoped playable files = %#v, want only current, mixed allowed, and next season", playableFiles)
+	}
+
+	handler := NewWatchHandler(reader, nil)
+	requestScope := access.Scope{
+		UserID:              scope.UserID,
+		ProfileID:           scope.ProfileID,
+		AllowedLibraryIDs:   append([]int(nil), scope.AllowedLibraryIDs...),
+		DisabledLibraryIDs:  append([]int(nil), scope.DisabledLibraryIDs...),
+		LibrariesRestricted: true,
+		MaxContentRating:    scope.MaxContentRating,
+		MaxPlaybackQuality:  scope.MaxPlaybackQuality,
+		PlaybackAllowed:     true,
+		ProfileVerified:     true,
+	}
+	rr := httptest.NewRecorder()
+	handler.HandleWatchItem(rr, newWatchRequestWithScope(t,
+		"/api/v2/watch/items/8080", "8080", scope.ProfileID, requestScope))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, body %s", rr.Code, rr.Body.String())
+	}
+	var document watchdoc.Document
+	if err := json.Unmarshal(rr.Body.Bytes(), &document); err != nil {
+		t.Fatalf("decode watch item response: %v", err)
+	}
+	var navigationIDs []string
+	fileIDByEpisode := map[string]int64{}
+	for _, item := range document.Items {
+		if item.Kind != watchdoc.KindEpisode {
+			continue
+		}
+		navigationIDs = append(navigationIDs, item.ContentID)
+		fileIDByEpisode[item.ContentID] = item.FileID
+	}
+	want := []string{"episode-current", "episode-mixed-allowed", "episode-next-season"}
+	if !equalWatchStrings(navigationIDs, want) {
+		t.Fatalf("handler episode navigation = %v, want surviving playable order %v", navigationIDs, want)
+	}
+	if fileIDByEpisode["episode-mixed-allowed"] != 705 {
+		t.Errorf("mixed episode file_id = %d, want allowed version 705", fileIDByEpisode["episode-mixed-allowed"])
+	}
+	for _, absent := range []string{
+		"episode-foreign-only", "episode-missing", "episode-no-file", "episode-quality", "episode-disabled",
+	} {
+		if containsWatchString(navigationIDs, absent) {
+			t.Errorf("handler exposes %q; hidden, missing, and unplayable episodes must all be absent", absent)
+		}
+	}
+	if len(items.filters) == 0 {
+		t.Fatal("CatalogWatchReader did not enforce the request scope")
+	}
+	for call, seen := range items.filters {
+		if seen.UserID != scope.UserID || seen.ProfileID != scope.ProfileID ||
+			!equalWatchInts(seen.AllowedLibraryIDs, scope.AllowedLibraryIDs) ||
+			!equalWatchInts(seen.DisabledLibraryIDs, scope.DisabledLibraryIDs) ||
+			seen.MaxContentRating != scope.MaxContentRating || seen.MaxPlaybackQuality != scope.MaxPlaybackQuality {
+			t.Errorf("catalog access filter call %d = %#v, want exact profile scope %#v", call, seen, scope)
+		}
+	}
+}
+
+func containsWatchString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
+func equalWatchStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for index := range a {
+		if a[index] != b[index] {
+			return false
+		}
+	}
+	return true
+}
+
+func equalWatchInts(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for index := range a {
+		if a[index] != b[index] {
+			return false
+		}
+	}
+	return true
 }
 
 func TestWatchReaderMarkersResolvesChaptersAndSkipIntroFromMediaFiles(t *testing.T) {

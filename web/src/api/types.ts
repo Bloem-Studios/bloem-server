@@ -1328,7 +1328,8 @@ export interface EpisodeListItem {
   still_url: string;
   still_thumbhash: string;
   user_data?: LeafItemUserData;
-  files: EpisodeFile[];
+  // Omitted by the API when the viewer has no playable file for this metadata row.
+  files?: EpisodeFile[];
   overlay_summary?: OverlaySummary | null;
 }
 
