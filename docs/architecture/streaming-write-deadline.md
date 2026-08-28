@@ -108,6 +108,32 @@ preserves deadline traversal, and `Flush`, `Hijack` and `Push` retain their
 optional-interface behavior. The outer compressor still bypasses only exact bulk routes;
 subtitle-font JSON remains compressible.
 
+### Same-origin Audiobookshelf media
+
+The public compatibility gateway keeps its global `WriteTimeout: 120s`. When it
+dispatches `/audiobookshelf` in process, it carries the fixed public mount in the
+trusted request context described by the compatibility-mount contract. ABS consumes
+that existing context at its declared per-media route wrapper and installs a
+`RollingDeadlineWriter` before the handler can write headers. It does not infer
+enrollment from the stripped URL or from caller-controlled forwarding headers.
+
+This placement is deliberately narrow:
+
+- only routes declared in `absMediaRoutes` pass through the wrapper; ordinary ABS JSON
+  endpoints and socket.io do not;
+- a dedicated ABS listener has no trusted public-mount context, so its existing server
+  `WriteTimeout: 0` behavior is unchanged;
+- the in-process gateway passes the response writer through unchanged. The mounted
+  media chain is handler → telemetry writer (when enabled) → rolling writer → ABS
+  access-log writer → the public server writer. Every wrapping layer forwards
+  `io.ReaderFrom`, `http.Flusher`, and `Unwrap`, so `http.ResponseController` can still
+  reach the connection deadline.
+
+Some direct-play handlers also construct their own rolling writer as part of the
+shared playback helper. The route-level enrollment remains the authority for the
+public mount: a newly added ABS media handler cannot silently fall back to the public
+server's absolute deadline merely because it uses a different file-serving helper.
+
 ## How conformance is verified
 
 Handler-level tests bypass exactly the middleware this concerns, so they cannot prove
@@ -122,3 +148,11 @@ which asserts that a slow-but-progressing stream survives a window far shorter t
 whole transfer, that an oversized slice is still reaped (so nobody restores a large slice
 without noticing), and that neither the production bump throttle nor a long pause before
 the first write shortens the window a slice runs against.
+
+The mounted ABS regression uses the real compatibility gateway and a real TCP server
+with short test bounds. Its progressing transfer lasts longer than both the server
+`WriteTimeout` and the rolling window, while completing each bounded `ReadFrom` slice
+inside the window; its stalled peer stops reading and must fail against the rolling
+window rather than the shorter server deadline. A separate chain test drives the same
+gateway and ABS access-log/telemetry wrappers and verifies `ReadFrom`, `Flush`,
+`Unwrap`, and response-controller deadline traversal end to end.

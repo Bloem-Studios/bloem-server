@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/httpstream"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
 )
 
@@ -71,8 +72,18 @@ func absMediaRoute(method, pattern string) streamtelemetry.MediaRoute {
 // wrapper across both media and socket.io, so middleware placement decides
 // whether websockets survive."
 func observeABS(registry *streamtelemetry.Registry, method, pattern string, handler http.HandlerFunc) http.HandlerFunc {
-	if registry == nil {
-		return handler
+	var observed http.Handler = handler
+	if registry != nil {
+		observed = registry.Observe(absMediaRoute(method, pattern))(handler)
 	}
-	return registry.Observe(absMediaRoute(method, pattern))(handler).ServeHTTP
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Only the compatibility gateway supplies this trusted mount context.
+		// Dedicated ABS listeners keep their existing zero-WriteTimeout path,
+		// while mounted media replaces the public server's absolute deadline
+		// before the handler can commit response headers.
+		if mount, _ := r.Context().Value(absPublicMountContextKey{}).(string); mount != "" {
+			w = httpstream.NewRollingDeadlineWriter(w)
+		}
+		observed.ServeHTTP(w, r)
+	}
 }
