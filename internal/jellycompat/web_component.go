@@ -1106,32 +1106,6 @@ func currentProcessToken() string {
 	return processToken(os.Getpid())
 }
 
-func processToken(pid int) string {
-	if pid <= 0 {
-		return ""
-	}
-	data, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(pid), "stat"))
-	if err == nil {
-		stat := string(data)
-		commEnd := strings.LastIndex(stat, ") ")
-		if commEnd != -1 && commEnd+2 < len(stat) {
-			fields := strings.Fields(stat[commEnd+2:])
-			if len(fields) >= 20 {
-				return fields[19]
-			}
-		}
-	}
-
-	// Darwin and other non-procfs platforms expose a process start time through
-	// ps. Pairing it with the PID lets operation locks distinguish a live process
-	// from a recycled PID without weakening the existing stale-lock recovery.
-	output, err := exec.Command("ps", "-o", "lstart=", "-p", strconv.Itoa(pid)).Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(output))
-}
-
 func finishWebOperation(root, id string, err error) *WebComponentOperationStatus {
 	now := time.Now().UTC().Format(time.RFC3339)
 

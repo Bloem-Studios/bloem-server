@@ -86,3 +86,4 @@ docker-compose.local.yml
 output/
 /settingsgen
 /playbackfixtures
+build/
