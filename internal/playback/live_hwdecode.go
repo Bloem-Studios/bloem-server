@@ -98,9 +98,9 @@ func ffmpegHasDecoder(ffmpegPath, decoder string) bool {
 	// runFFmpegProbe gained a context and timeout upstream; this probe has no
 	// caller-supplied context, so it bounds itself on the same budget the GPU
 	// probes use rather than inheriting an unbounded one.
-	probeCtx, cancel := context.WithTimeout(context.Background(), nvencProbeCommandTimeout)
+	probeCtx, cancel := context.WithTimeout(context.Background(), hwProbeCommandTimeout)
 	defer cancel()
-	output, err := runFFmpegProbe(probeCtx, nvencProbeCommandTimeout, ffmpegPath, "-hide_banner", "-decoders")
+	output, err := runFFmpegProbe(probeCtx, hwProbeCommandTimeout, ffmpegPath, "-hide_banner", "-decoders")
 	available := err == nil && ffmpegOutputHasToken(output, decoder)
 
 	decoderProbeCache.Lock()
