@@ -73,6 +73,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/scanqueue"
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/sections"
+	"github.com/Silo-Server/silo-server/internal/serverid"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
 	"github.com/Silo-Server/silo-server/internal/subtitles"
@@ -389,6 +390,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	if deps.DB != nil {
 		settingsRepo = catalog.NewEncryptedSettingsRepo(catalog.NewServerSettingsRepo(deps.DB), deps.SecretCipher)
 	}
+	serverIdentity := serverid.NewResolver(settingsRepo)
 	var accessGroupStore *access.GroupStore
 	if deps.DB != nil {
 		accessGroupStore = access.NewGroupStore(deps.DB)
@@ -500,6 +502,13 @@ func NewRouter(deps Dependencies) chi.Router {
 			profileTokenService,
 		)
 		authHandler = handlers.NewAuthHandler(authService, jwtService, deviceLoginService)
+		lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
+		authHandler.SetLifecycleIdempotency(
+			lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+			lifecycleidempotency.NewRequestDigester(lifecycleSecret),
+			lifecycleidempotency.NewPreauthActorDigester(lifecycleSecret),
+			serverIdentity,
+		)
 		// Same api-key/user sources AuthMiddleware.RequireAuth uses below —
 		// an "sa_" key must authenticate identically whether a request goes
 		// through the middleware or straight to /auth/me and friends.

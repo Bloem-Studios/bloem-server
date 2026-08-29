@@ -4,17 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/clientip"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
@@ -28,6 +32,21 @@ type AuthHandler struct {
 	apiKeyValidator      apimw.APIKeyValidator  // nil if API keys not configured
 	apiKeyUserLoader     apimw.APIKeyUserLoader // nil if API keys not configured
 	accessGroups         access.GroupPolicyProvider
+	lifecycle            lifecycleidempotency.Coordinator
+	lifecycleDigest      lifecycleidempotency.RequestDigester
+	preauthDigest        lifecycleidempotency.PreauthActorDigester
+	serverIdentity       interface {
+		Resolve(context.Context) (string, error)
+	}
+}
+
+func (h *AuthHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, requestDigest lifecycleidempotency.RequestDigester, preauthDigest lifecycleidempotency.PreauthActorDigester, identity interface {
+	Resolve(context.Context) (string, error)
+}) {
+	h.lifecycle = coordinator
+	h.lifecycleDigest = requestDigest
+	h.preauthDigest = preauthDigest
+	h.serverIdentity = identity
 }
 
 type profileLoginService interface {
@@ -323,8 +342,13 @@ func (h *AuthHandler) HandleSetupStatus(w http.ResponseWriter, r *http.Request) 
 
 // HandleSetup handles POST /auth/setup.
 func (h *AuthHandler) HandleSetup(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
 	var req setupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
@@ -339,6 +363,14 @@ func (h *AuthHandler) HandleSetup(w http.ResponseWriter, r *http.Request) {
 
 	deviceName := r.UserAgent()
 	ip := clientip.FromContext(r.Context())
+	if h.lifecycle != nil && h.lifecycleDigest != nil && h.preauthDigest != nil && h.serverIdentity != nil {
+		h.handleLifecycleSetup(w, r, body, req, deviceName, ip)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 
 	pair, user, err := h.service.SetupInitialUser(
 		r.Context(),
@@ -560,8 +592,13 @@ func (h *AuthHandler) HandleSignupStatus(w http.ResponseWriter, r *http.Request)
 
 // HandleSignup handles POST /auth/signup.
 func (h *AuthHandler) HandleSignup(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
 	var req signupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
@@ -576,6 +613,14 @@ func (h *AuthHandler) HandleSignup(w http.ResponseWriter, r *http.Request) {
 
 	deviceName := r.UserAgent()
 	ip := clientip.FromContext(r.Context())
+	if h.lifecycle != nil && h.lifecycleDigest != nil && h.preauthDigest != nil && h.serverIdentity != nil {
+		h.handleLifecycleSignup(w, r, body, req, deviceName, ip)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 
 	pair, user, err := h.service.Signup(
 		r.Context(),
@@ -614,6 +659,141 @@ func (h *AuthHandler) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, buildLoginResponse(pair, user, effectiveDownloadAllowed(r.Context(), user, h.accessGroups), nil))
+}
+
+type transactionalAuthAccessGroups interface {
+	GetInTransaction(context.Context, pgx.Tx, uuid.UUID, int64) (*access.Group, error)
+}
+
+func (h *AuthHandler) handleLifecycleSetup(w http.ResponseWriter, r *http.Request, body []byte, req setupRequest, deviceName, ip string) {
+	serverID, err := h.serverIdentity.Resolve(r.Context())
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "server_identity_unavailable", "Server identity is temporarily unavailable")
+		return
+	}
+	request := lifecycleidempotency.Request{
+		IdempotencyKey: r.Header.Get("Idempotency-Key"),
+		Binding: lifecycleidempotency.Binding{
+			ActorKind:          lifecycleidempotency.ActorPreauthIntent,
+			ActorSubjectDigest: h.preauthDigest("auth.setup", serverID),
+			Method:             r.Method,
+			RouteID:            "auth.setup",
+			RequestHash:        h.lifecycleDigest(r.Method, "auth.setup", nil, r.URL.Query(), body),
+			TargetSource:       lifecycleidempotency.TargetBodyAccount,
+		},
+	}
+	result, err := h.lifecycle.ExecuteCreate(r.Context(), request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
+		pair, created, err := h.service.SetupInitialUserInTransaction(ctx, tx, req.Username, req.Email, req.Password, req.CreateDefaultProfile, req.DefaultProfileName, deviceName, ip)
+		if err != nil {
+			return nil, lifecycleidempotency.Result{}, err
+		}
+		response, err := h.lifecycleLoginResult(ctx, tx, pair, created)
+		if err != nil {
+			return nil, lifecycleidempotency.Result{}, err
+		}
+		return createdAccountLifecycleTargets(created), response, nil
+	})
+	if err != nil {
+		if writeV2LifecycleError(w, err) {
+			return
+		}
+		if errors.Is(err, auth.ErrSetupAlreadyComplete) {
+			writeError(w, http.StatusUnauthorized, "setup_complete", "Initial setup has already been completed")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
+		return
+	}
+	writeV2LifecycleResult(w, result)
+}
+
+func (h *AuthHandler) handleLifecycleSignup(w http.ResponseWriter, r *http.Request, body []byte, req signupRequest, deviceName, ip string) {
+	serverID, err := h.serverIdentity.Resolve(r.Context())
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "server_identity_unavailable", "Server identity is temporarily unavailable")
+		return
+	}
+	request := lifecycleidempotency.Request{
+		IdempotencyKey: r.Header.Get("Idempotency-Key"),
+		Binding: lifecycleidempotency.Binding{
+			ActorKind:          lifecycleidempotency.ActorPreauthIntent,
+			ActorSubjectDigest: h.preauthDigest("auth.signup", serverID, req.InviteCode),
+			Method:             r.Method,
+			RouteID:            "auth.signup",
+			RequestHash:        h.lifecycleDigest(r.Method, "auth.signup", nil, r.URL.Query(), body),
+			TargetSource:       lifecycleidempotency.TargetBodyAccount,
+		},
+	}
+	result, err := h.lifecycle.ExecuteCreate(r.Context(), request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
+		pair, created, err := h.service.SignupInTransaction(ctx, tx, req.Username, req.Email, req.Password, req.InviteCode, req.CreateDefaultProfile, req.DefaultProfileName, deviceName, ip)
+		if err != nil {
+			return nil, lifecycleidempotency.Result{}, err
+		}
+		response, err := h.lifecycleLoginResult(ctx, tx, pair, created)
+		if err != nil {
+			return nil, lifecycleidempotency.Result{}, err
+		}
+		return createdAccountLifecycleTargets(created), response, nil
+	})
+	if err != nil {
+		if writeV2LifecycleError(w, err) {
+			return
+		}
+		switch {
+		case errors.Is(err, auth.ErrSignupDisabled):
+			writeError(w, http.StatusForbidden, "signup_disabled", "Public signups are not currently enabled")
+		case errors.Is(err, auth.ErrInviteCodeNotFound):
+			writeError(w, http.StatusBadRequest, "invalid_code", "Invalid invite code")
+		case errors.Is(err, auth.ErrInviteCodeExhausted):
+			writeError(w, http.StatusBadRequest, "code_exhausted", "This invite code has reached its maximum uses")
+		case errors.Is(err, auth.ErrInviteCodeDisabled):
+			writeError(w, http.StatusBadRequest, "code_disabled", "This invite code is no longer active")
+		case auth.IsDuplicate(err):
+			writeError(w, http.StatusBadRequest, "duplicate", "Username or email already taken")
+		default:
+			writeError(w, http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
+		}
+		return
+	}
+	writeV2LifecycleResult(w, result)
+}
+
+func createdAccountLifecycleTargets(created auth.CreatedAccount) []lifecycleidempotency.TargetBinding {
+	return []lifecycleidempotency.TargetBinding{{
+		OrganizationID: created.OrganizationID, MembershipID: created.MembershipID,
+		AccountID: created.User.ID, AccountIncarnationID: created.User.AccountIncarnationID,
+		ProfileID: created.ProfileID,
+	}}
+}
+
+func (h *AuthHandler) lifecycleLoginResult(ctx context.Context, tx pgx.Tx, pair *auth.TokenPair, created auth.CreatedAccount) (lifecycleidempotency.Result, error) {
+	var groupPolicy *access.GroupPolicy
+	if created.User.Role != models.RoleAdmin && h.accessGroups != nil {
+		var groupID *int64
+		if err := tx.QueryRow(ctx, `SELECT access_group_id FROM organization_memberships WHERE id=$1`, created.MembershipID).Scan(&groupID); err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		if groupID != nil {
+			groups, ok := h.accessGroups.(transactionalAuthAccessGroups)
+			if !ok {
+				return lifecycleidempotency.Result{}, errors.New("access groups do not support caller-owned transactions")
+			}
+			group, err := groups.GetInTransaction(ctx, tx, created.OrganizationID, *groupID)
+			if err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			if group != nil {
+				policy := group.Policy()
+				groupPolicy = &policy
+			}
+		}
+	}
+	downloadAllowed := access.ApplyGroupPolicy(created.User, groupPolicy).DownloadAllowed
+	payload, err := json.Marshal(buildLoginResponse(pair, created.User, downloadAllowed, nil))
+	if err != nil {
+		return lifecycleidempotency.Result{}, err
+	}
+	return lifecycleidempotency.Result{Status: http.StatusCreated, Body: payload, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
 }
 
 // --- Helper functions ---
