@@ -79,30 +79,43 @@ type Reconciler struct {
 	nodeName        string
 	sessionProvider SessionSyncProvider
 	interval        time.Duration
-	stop            chan struct{}
 	EventBus        cache.EventBus
 	EventsHub       *evt.Hub
 	PreSync         PreSyncHook
+
+	lifecycleCtx context.Context
+	cancel       context.CancelFunc
+	startOnce    sync.Once
+	stopOnce     sync.Once
+	loopDone     chan struct{}
+
 	// syncMu guards syncRunning/syncPending. Session syncs are coalesced onto a
 	// single owner so concurrent callers (the periodic tick plus request-path
 	// start/stop triggers) can never commit an older session snapshot after a
 	// newer one — which would resurrect stopped sessions or drop freshly
 	// started ones — and so request goroutines never queue behind a slow sync.
-	syncMu      sync.Mutex
-	syncRunning bool
-	syncPending bool
+	// It also fences new ownership during shutdown and exposes completion for
+	// the owner that was already in flight when shutdown began.
+	syncMu        sync.Mutex
+	syncRunning   bool
+	syncPending   bool
+	syncStopped   bool
+	syncOwnerDone chan struct{}
 }
 
 // NewReconciler creates a new Reconciler with sensible defaults. The default
 // reconciliation interval is 30 seconds. The sessionProvider may be nil if
 // session sync is not needed (e.g. in tests).
 func NewReconciler(pool *pgxpool.Pool, nodeName string, sp SessionSyncProvider) *Reconciler {
+	lifecycleCtx, cancel := context.WithCancel(context.Background())
 	return &Reconciler{
 		pool:            pool,
 		nodeName:        strings.TrimSpace(nodeName),
 		sessionProvider: sp,
 		interval:        15 * time.Second,
-		stop:            make(chan struct{}),
+		lifecycleCtx:    lifecycleCtx,
+		cancel:          cancel,
+		loopDone:        make(chan struct{}),
 	}
 }
 
@@ -446,22 +459,28 @@ func (r *Reconciler) ReconcileAggregates(ctx context.Context, userID int, totals
 	return nil
 }
 
-// Start begins the background reconciliation loop. It runs until Stop is
-// called. On each tick it syncs active playback sessions to PostgreSQL.
+// Start begins the background reconciliation loop exactly once. It runs until
+// Stop is called. On each tick it syncs active playback sessions to PostgreSQL.
 func (r *Reconciler) Start() {
-	go func() {
-		ticker := time.NewTicker(r.interval)
-		defer ticker.Stop()
+	r.startOnce.Do(func() { go r.run() })
+}
 
-		for {
-			select {
-			case <-r.stop:
+func (r *Reconciler) run() {
+	defer close(r.loopDone)
+	ticker := time.NewTicker(r.interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-r.lifecycleCtx.Done():
+			return
+		case <-ticker.C:
+			if r.lifecycleCtx.Err() != nil {
 				return
-			case <-ticker.C:
-				r.tick()
 			}
+			r.tick()
 		}
-	}()
+	}
 }
 
 // tick runs one reconciliation cycle.
@@ -469,7 +488,7 @@ func (r *Reconciler) tick() {
 	if r.PreSync != nil {
 		r.PreSync()
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(r.lifecycleCtx, 15*time.Second)
 	defer cancel()
 	if err := r.SyncNow(ctx); err != nil {
 		log.Printf("reconciler: session sync error: %v", err)
@@ -491,6 +510,10 @@ func (r *Reconciler) SyncNow(ctx context.Context) error {
 	}
 
 	r.syncMu.Lock()
+	if r.syncStopped {
+		r.syncMu.Unlock()
+		return nil
+	}
 	if r.syncRunning {
 		// The in-flight sync may have captured a snapshot that predates this
 		// caller's state change; have the owner run one more pass.
@@ -501,15 +524,28 @@ func (r *Reconciler) SyncNow(ctx context.Context) error {
 	r.syncRunning = true
 	// The fresh capture below supersedes any pass queued before ownership.
 	r.syncPending = false
+	ownerDone := make(chan struct{})
+	r.syncOwnerDone = ownerDone
 	r.syncMu.Unlock()
+	defer func() {
+		r.syncMu.Lock()
+		r.syncRunning = false
+		if r.syncStopped {
+			r.syncPending = false
+		}
+		close(ownerDone)
+		r.syncMu.Unlock()
+	}()
 
 	err := r.syncOnce(ctx)
 	for {
 		r.syncMu.Lock()
 		// Leave a queued pass for the next caller (the periodic tick at the
 		// latest) rather than burning it on an already-expired context.
-		if !r.syncPending || ctx.Err() != nil {
-			r.syncRunning = false
+		if r.syncStopped || !r.syncPending || ctx.Err() != nil {
+			if r.syncStopped {
+				r.syncPending = false
+			}
 			r.syncMu.Unlock()
 			return err
 		}
@@ -543,7 +579,60 @@ func (r *Reconciler) syncOnce(ctx context.Context) error {
 	return r.ReconcileSessions(ctx, sessions)
 }
 
-// Stop signals the reconciliation loop to stop.
+// Stop fences new reconciliation ownership, suppresses queued follow-up
+// passes, and signals the background loop to stop. It is safe to call
+// repeatedly. Use StopAndWait before deleting rows the reconciler can write.
 func (r *Reconciler) Stop() {
-	close(r.stop)
+	r.stopOnce.Do(func() {
+		r.syncMu.Lock()
+		r.syncStopped = true
+		r.syncPending = false
+		r.syncMu.Unlock()
+
+		r.cancel()
+		// StopAndWait also works before Start and future Start calls are harmless.
+		r.startOnce.Do(func() { close(r.loopDone) })
+	})
+}
+
+// StopAndWait stops the reconciler and waits for both its ticker loop and the
+// reconciliation owner that was already in flight. A wait-context error does
+// not consume either completion signal; a later caller can still join.
+func (r *Reconciler) StopAndWait(ctx context.Context) error {
+	r.Stop()
+
+	r.syncMu.Lock()
+	var ownerDone <-chan struct{}
+	if r.syncRunning {
+		ownerDone = r.syncOwnerDone
+	}
+	r.syncMu.Unlock()
+
+	if err := waitForReconcilerCompletion(ctx, r.loopDone); err != nil {
+		return err
+	}
+	if ownerDone != nil {
+		return waitForReconcilerCompletion(ctx, ownerDone)
+	}
+	return nil
+}
+
+func waitForReconcilerCompletion(ctx context.Context, done <-chan struct{}) error {
+	select {
+	case <-done:
+		return nil
+	default:
+	}
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		select {
+		case <-done:
+			return nil
+		default:
+			return ctx.Err()
+		}
+	}
 }

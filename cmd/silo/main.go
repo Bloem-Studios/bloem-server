@@ -149,6 +149,51 @@ func resolveNodeIdentity() string {
 	return h
 }
 
+type reconcilerShutdown interface {
+	Stop()
+	StopAndWait(context.Context) error
+}
+
+type heartbeatShutdown interface {
+	Stop()
+	StopAndWait(context.Context) error
+	CleanupSelf(context.Context) error
+}
+
+type sharedWorkerShutdownResult struct {
+	reconcilerJoinErr error
+	heartbeatJoinErr  error
+	cleanupErr        error
+}
+
+// shutdownSharedWorkerOwnership fences both writers before joining either one.
+// Reconciliation is joined first because it can recreate a session row; the
+// shared session and heartbeat rows are deleted only after both joins succeed.
+func shutdownSharedWorkerOwnership(
+	ctx context.Context,
+	reconciler reconcilerShutdown,
+	heartbeat heartbeatShutdown,
+) sharedWorkerShutdownResult {
+	if reconciler != nil {
+		reconciler.Stop()
+	}
+	if heartbeat != nil {
+		heartbeat.Stop()
+	}
+
+	var result sharedWorkerShutdownResult
+	if reconciler != nil {
+		result.reconcilerJoinErr = reconciler.StopAndWait(ctx)
+	}
+	if heartbeat != nil {
+		result.heartbeatJoinErr = heartbeat.StopAndWait(ctx)
+	}
+	if heartbeat != nil && result.reconcilerJoinErr == nil && result.heartbeatJoinErr == nil {
+		result.cleanupErr = heartbeat.CleanupSelf(ctx)
+	}
+	return result
+}
+
 // nodeCapabilityFetcher adapts the authenticated node capability client to the
 // node health sweep, which stores capability reports opaquely.
 //
@@ -3080,7 +3125,6 @@ func main() {
 			log.Fatal("reconciler must be initialized before starting workers")
 		}
 		reconciler.Start()
-		defer reconciler.Stop()
 
 		if heartbeatWriter != nil {
 			heartbeatWriter.Start()
@@ -3479,15 +3523,26 @@ func main() {
 		}
 	}
 
-	// 2b. Stop heartbeat writes before removing this node's shared ownership.
-	// If the writer cannot be joined, leave the stale rows for TTL cleanup:
-	// deleting first would allow a late in-flight beat to recreate ownership.
+	// 2b. Fence and join every writer before removing this node's shared
+	// ownership. If either join fails, leave both rows for TTL cleanup: deleting
+	// first would allow a late reconciliation or heartbeat to recreate them.
+	var reconcilerLifecycle reconcilerShutdown
+	if reconciler != nil {
+		reconcilerLifecycle = reconciler
+	}
+	var heartbeatLifecycle heartbeatShutdown
 	if heartbeatWriter != nil {
-		if err := heartbeatWriter.StopAndWait(shutdownCtx); err != nil {
-			slog.Error("heartbeat shutdown error; skipping shared ownership cleanup", "error", err)
-		} else if err := heartbeatWriter.CleanupSelf(shutdownCtx); err != nil {
-			slog.Error("heartbeat cleanup error", "error", err)
-		}
+		heartbeatLifecycle = heartbeatWriter
+	}
+	workerShutdown := shutdownSharedWorkerOwnership(shutdownCtx, reconcilerLifecycle, heartbeatLifecycle)
+	if workerShutdown.reconcilerJoinErr != nil {
+		slog.Error("reconciler shutdown error; skipping shared ownership cleanup", "error", workerShutdown.reconcilerJoinErr)
+	}
+	if workerShutdown.heartbeatJoinErr != nil {
+		slog.Error("heartbeat shutdown error; skipping shared ownership cleanup", "error", workerShutdown.heartbeatJoinErr)
+	}
+	if workerShutdown.cleanupErr != nil {
+		slog.Error("shared ownership cleanup error", "error", workerShutdown.cleanupErr)
 	}
 
 	// 3. Close user store provider.
@@ -3500,8 +3555,6 @@ func main() {
 	// 4. (match worker is now managed by the task manager — no separate cancel needed)
 
 	// Suppress unused variable warnings for workers used only in deferred calls.
-	_ = reconciler
-	_ = heartbeatWriter
 	_ = refreshWorker
 	_ = adminJobRunner
 
