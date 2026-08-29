@@ -5,15 +5,26 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
+
+type replayLifecycleCoordinator struct{ result lifecycleidempotency.Result }
+
+func (c replayLifecycleCoordinator) Execute(context.Context, lifecycleidempotency.Request, lifecycleidempotency.Mutator) (lifecycleidempotency.Result, error) {
+	return c.result, nil
+}
+func (c replayLifecycleCoordinator) ExecuteCreate(context.Context, lifecycleidempotency.Request, lifecycleidempotency.CreateMutator) (lifecycleidempotency.Result, error) {
+	return c.result, nil
+}
 
 type adminPlatformStoreStub struct {
 	organization tenancy.Organization
@@ -159,6 +170,27 @@ func TestV2AdminPlatformCreateValidatesFieldsAndProvidesAtomicAuditContext(t *te
 	}
 	if store.actor.AccountID != 7 || store.actor.PlatformRole != "platform_admin" || store.actor.AuthorityContext != "platform" || store.actor.RequestID != "request-123" {
 		t.Fatalf("atomic audit actor = %+v", store.actor)
+	}
+}
+
+func TestV2AdminPlatformCreateReplaysReceiptBeforeStoreAccess(t *testing.T) {
+	store := &adminPlatformStoreStub{}
+	handler := NewV2AdminPlatformHandler(store, nil)
+	body := []byte(`{"organization":{"id":"10000000-0000-0000-0000-000000000001","slug":"first","name":"First","status":"active","policy_revision":1}}`)
+	handler.SetLifecycleIdempotency(replayLifecycleCoordinator{result: lifecycleidempotency.Result{Status: http.StatusCreated, Body: body, Replayed: true}}, func(string, string, map[string]string, url.Values, []byte) lifecycleidempotency.Digest {
+		return lifecycleidempotency.Digest{1}
+	})
+	req := adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations/", `{"name":"First","slug":"first","owner_account_id":42}`, nil)
+	req.Header.Set("Idempotency-Key", "organization-create-0001")
+	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform}))
+	rec := httptest.NewRecorder()
+
+	handler.HandleCreateOrganization(rec, req)
+	if rec.Code != http.StatusCreated || rec.Body.String() != string(body) {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+	if store.calls != 0 {
+		t.Fatalf("store calls = %d, want receipt-first replay", store.calls)
 	}
 }
 

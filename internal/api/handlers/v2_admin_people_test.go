@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -198,6 +200,30 @@ func TestV2AdminPeopleSignalsSharedWorkerAfterDurableEnqueue(t *testing.T) {
 	handler.HandleCreateBulkJob(rec, req)
 	if rec.Code != http.StatusCreated || wake.calls != 1 {
 		t.Fatalf("response=%d %s wakes=%d", rec.Code, rec.Body.String(), wake.calls)
+	}
+}
+
+func TestV2AdminPeopleMembershipUpdateReplaysBeforeStoreAccess(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	store := &adminPeopleServiceStub{}
+	handler := NewV2AdminPeopleHandler(store)
+	body := []byte(`{"person":{"organization_id":"10000000-0000-0000-0000-000000000001","account_id":42,"membership_id":"20000000-0000-0000-0000-000000000002","membership_status":"suspended","security_revision":4,"profiles":[]}}`)
+	handler.SetLifecycleIdempotency(replayLifecycleCoordinator{result: lifecycleidempotency.Result{Status: http.StatusOK, Body: body, Replayed: true}}, func(string, string, map[string]string, url.Values, []byte) lifecycleidempotency.Digest {
+		return lifecycleidempotency.Digest{1}
+	})
+	req := adminPeopleRequest(http.MethodPatch, "/api/v2/admin/organization/people/42/memberships/current", `{"expected_revision":3,"status":"suspended"}`, organizationID, 7, map[string]string{"account_id": "42"})
+	claims, _ := apimw.GetAdminContextClaims(req.Context())
+	claims.AccountIncarnationID = uuid.MustParse("11111111-2222-4333-8444-555555555555")
+	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), claims))
+	req.Header.Set("Idempotency-Key", "people-membership-0001")
+	rec := httptest.NewRecorder()
+
+	handler.HandleUpdateMembership(rec, req)
+	if rec.Code != http.StatusOK || rec.Body.String() != string(body) {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+	if store.calls != 0 {
+		t.Fatalf("store calls = %d, want receipt-first replay", store.calls)
 	}
 }
 

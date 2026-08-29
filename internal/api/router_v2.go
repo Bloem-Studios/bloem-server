@@ -70,6 +70,13 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	if tenants != nil {
 		verifier := auth.NewAccountCredentialVerifier(auth.NewUserRepository(deps.DB))
 		platformHandler = handlers.NewV2AdminPlatformHandler(tenants, verifier)
+		if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
+			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
+			platformHandler.SetLifecycleIdempotency(
+				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
+			)
+		}
 		organizationHandler = handlers.NewV2AdminOrganizationHandler(
 			tenants,
 			access.NewGroupStore(deps.DB),
@@ -82,6 +89,13 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 			entitlementSecret = []byte(deps.Config.Auth.JWTSecret)
 		}
 		entitlementHandler = handlers.NewEntitlementTemplatesHandler(entitlements.NewTemplateStore(deps.DB), entitlementSecret)
+		if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
+			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
+			entitlementHandler.SetLifecycleIdempotency(
+				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
+			)
+		}
 	}
 	peopleService := deps.AdminPeopleService
 	if peopleService == nil && deps.DB != nil && deps.Config != nil {
@@ -89,6 +103,13 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	}
 	if peopleService != nil {
 		peopleHandler = handlers.NewV2AdminPeopleHandlerWithWake(peopleService, deps.AdminPeopleWorker)
+		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
+			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
+			peopleHandler.SetLifecycleIdempotency(
+				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
+			)
+		}
 		if deps.DB != nil {
 			peopleHandler.SetCohortStore(entitlements.NewTemplateStore(deps.DB))
 		}

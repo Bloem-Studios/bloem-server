@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -12,9 +13,11 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type V2AdminPeopleService interface {
@@ -40,9 +43,25 @@ type V2AdminPeopleCohortStore interface {
 }
 
 type V2AdminPeopleHandler struct {
-	service     V2AdminPeopleService
-	worker      AdminPeopleWorkerWake
-	cohortStore V2AdminPeopleCohortStore
+	service         V2AdminPeopleService
+	worker          AdminPeopleWorkerWake
+	cohortStore     V2AdminPeopleCohortStore
+	lifecycle       lifecycleidempotency.Coordinator
+	lifecycleDigest lifecycleidempotency.RequestDigester
+}
+
+func (h *V2AdminPeopleHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
+	h.lifecycle = coordinator
+	h.lifecycleDigest = digester
+}
+
+type v2AdminPeopleLifecycleService interface {
+	UpdateMembershipInTransaction(context.Context, pgx.Tx, uuid.UUID, int, int, int64, tenancy.MembershipStatus) (adminpeople.PersonSummary, error)
+	UpdateProfileGroupInTransaction(context.Context, pgx.Tx, uuid.UUID, int, int, string, int64, int) (adminpeople.PersonSummary, error)
+}
+
+type v2AdminPeopleLifecycleSelectionResolver interface {
+	ResolveLifecycleSelectionTargets(context.Context, pgx.Tx, uuid.UUID, string) ([]lifecycleidempotency.TargetBinding, error)
 }
 
 func NewV2AdminPeopleHandler(service V2AdminPeopleService) *V2AdminPeopleHandler {
@@ -226,8 +245,20 @@ func (h *V2AdminPeopleHandler) HandleCreateBulkJob(w http.ResponseWriter, r *htt
 	if !ok {
 		return
 	}
+	body, ok := captureV2LifecycleBody(w, r)
+	if !ok {
+		return
+	}
 	var action adminpeople.BulkAction
 	if !decodeAdminPlatformJSON(w, r, &action) {
+		return
+	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecyclePeopleBulkJob(w, r, tenant, body, action)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
 	ctx := adminPeopleMutationContext(r)
@@ -249,8 +280,28 @@ func (h *V2AdminPeopleHandler) HandleCreatePolicyJob(w http.ResponseWriter, r *h
 	if !ok {
 		return
 	}
+	body, ok := captureV2LifecycleBody(w, r)
+	if !ok {
+		return
+	}
 	var action adminpeople.PolicyBulkAction
 	if !decodeAdminPlatformJSON(w, r, &action) {
+		return
+	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		handleKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+		if action.IdempotencyKey != "" && handleKey != "" && action.IdempotencyKey != handleKey {
+			writeError(w, http.StatusConflict, "idempotency_key_conflict", "Header and command idempotency keys must match")
+			return
+		}
+		if handleKey != "" {
+			action.IdempotencyKey = handleKey
+		}
+		h.handleLifecyclePeoplePolicyJob(w, r, tenant, body, action)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
 	result, err := h.service.EnqueuePolicyBulk(adminPeopleMutationContext(r), tenant.OrganizationID, tenant.AccountID, action)
@@ -335,6 +386,10 @@ func (h *V2AdminPeopleHandler) HandleUpdateMembership(w http.ResponseWriter, r *
 	if !ok {
 		return
 	}
+	body, ok := captureV2LifecycleBody(w, r)
+	if !ok {
+		return
+	}
 	var request struct {
 		ExpectedRevision int64                    `json:"expected_revision"`
 		Status           tenancy.MembershipStatus `json:"status"`
@@ -344,6 +399,14 @@ func (h *V2AdminPeopleHandler) HandleUpdateMembership(w http.ResponseWriter, r *
 	}
 	if request.ExpectedRevision <= 0 || (request.Status != tenancy.MembershipActive && request.Status != tenancy.MembershipSuspended) {
 		writeAdminValidation(w, map[string]string{"request": "must include a current expected_revision and active or suspended status"})
+		return
+	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecyclePeopleMembership(w, r, tenant, body, accountID, request.ExpectedRevision, request.Status)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
 	ctx := adminPeopleMutationContext(r)
@@ -371,6 +434,10 @@ func (h *V2AdminPeopleHandler) HandleUpdateProfile(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")
 		return
 	}
+	body, ok := captureV2LifecycleBody(w, r)
+	if !ok {
+		return
+	}
 	var request struct {
 		ExpectedRevision int64 `json:"expected_revision"`
 		GroupID          int   `json:"group_id"`
@@ -382,6 +449,14 @@ func (h *V2AdminPeopleHandler) HandleUpdateProfile(w http.ResponseWriter, r *htt
 		writeAdminValidation(w, map[string]string{"request": "must include a current expected_revision and group_id"})
 		return
 	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecyclePeopleProfile(w, r, tenant, body, accountID, profileID, request.ExpectedRevision, request.GroupID)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	ctx := adminPeopleMutationContext(r)
 	person, err := h.service.UpdateProfileGroup(ctx, tenant.OrganizationID, tenant.AccountID, accountID, profileID, request.ExpectedRevision, request.GroupID)
 	if err != nil {
@@ -391,6 +466,154 @@ func (h *V2AdminPeopleHandler) HandleUpdateProfile(w http.ResponseWriter, r *htt
 	writeJSON(w, http.StatusOK, struct {
 		Person adminpeople.PersonSummary `json:"person"`
 	}{person})
+}
+
+func peopleLifecycleResult(person adminpeople.PersonSummary) (lifecycleidempotency.Result, error) {
+	body, err := json.Marshal(struct {
+		Person adminpeople.PersonSummary `json:"person"`
+	}{person})
+	return lifecycleidempotency.Result{Status: http.StatusOK, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}}, err
+}
+
+func (h *V2AdminPeopleHandler) lifecycleService() (v2AdminPeopleLifecycleService, error) {
+	service, ok := h.service.(v2AdminPeopleLifecycleService)
+	if !ok {
+		return nil, errors.New("lifecycle-safe people service unavailable")
+	}
+	return service, nil
+}
+
+func (h *V2AdminPeopleHandler) handleLifecyclePeopleMembership(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, accountID int, expectedRevision int64, status tenancy.MembershipStatus) {
+	claims, _ := middleware.GetAdminContextClaims(r.Context())
+	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "people.membership.update", lifecycleidempotency.TargetExactMembership, map[string]string{"account_id": strconv.Itoa(accountID)}, body)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
+		return
+	}
+	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+		return resolveV2AccountMembershipTarget(ctx, tx, tenant.OrganizationID, accountID, "")
+	}
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		service, err := h.lifecycleService()
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		person, err := service.UpdateMembershipInTransaction(adminPeopleMutationContext(r.WithContext(ctx)), tx, tenant.OrganizationID, tenant.AccountID, accountID, expectedRevision, status)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		return peopleLifecycleResult(person)
+	})
+	if err != nil {
+		if !writeV2LifecycleError(w, err) {
+			h.writeError(w, r, err, accountID)
+		}
+		return
+	}
+	writeV2LifecycleResult(w, result)
+}
+
+func (h *V2AdminPeopleHandler) handleLifecyclePeopleProfile(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, accountID int, profileID string, expectedRevision int64, groupID int) {
+	claims, _ := middleware.GetAdminContextClaims(r.Context())
+	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "people.profile.update", lifecycleidempotency.TargetPathAccount, map[string]string{"account_id": strconv.Itoa(accountID), "profile_id": profileID}, body)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
+		return
+	}
+	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+		return resolveV2AccountMembershipTarget(ctx, tx, tenant.OrganizationID, accountID, profileID)
+	}
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		service, err := h.lifecycleService()
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		person, err := service.UpdateProfileGroupInTransaction(adminPeopleMutationContext(r.WithContext(ctx)), tx, tenant.OrganizationID, tenant.AccountID, accountID, profileID, expectedRevision, groupID)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		return peopleLifecycleResult(person)
+	})
+	if err != nil {
+		if !writeV2LifecycleError(w, err) {
+			h.writeError(w, r, err, accountID)
+		}
+		return
+	}
+	writeV2LifecycleResult(w, result)
+}
+
+func (h *V2AdminPeopleHandler) lifecycleSelectionRequest(r *http.Request, tenant tenancy.Context, body []byte, routeID, selectionToken string) (lifecycleidempotency.Request, bool) {
+	claims, _ := middleware.GetAdminContextClaims(r.Context())
+	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetStoredSelection, nil, body)
+	if !ok {
+		return lifecycleidempotency.Request{}, false
+	}
+	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+		resolver, ok := h.service.(v2AdminPeopleLifecycleSelectionResolver)
+		if !ok {
+			return nil, errors.New("lifecycle selection resolver unavailable")
+		}
+		return resolver.ResolveLifecycleSelectionTargets(ctx, tx, tenant.OrganizationID, selectionToken)
+	}
+	return request, true
+}
+
+func bulkLifecycleResult(result adminpeople.BulkResult) (lifecycleidempotency.Result, error) {
+	body, err := json.Marshal(struct {
+		Job adminpeople.BulkResult `json:"job"`
+	}{result})
+	return lifecycleidempotency.Result{Status: http.StatusCreated, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}, OperationID: result.JobID}, err
+}
+
+func (h *V2AdminPeopleHandler) handleLifecyclePeopleBulkJob(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, action adminpeople.BulkAction) {
+	request, ok := h.lifecycleSelectionRequest(r, tenant, body, "people.bulk_job.create", action.SelectionToken)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
+		return
+	}
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, _ pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		queued, err := h.service.ExecuteBulk(adminPeopleMutationContext(r.WithContext(ctx)), tenant.OrganizationID, tenant.AccountID, action)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		return bulkLifecycleResult(queued)
+	})
+	if err != nil {
+		if !writeV2LifecycleError(w, err) {
+			h.writeError(w, r, err, 0)
+		}
+		return
+	}
+	if !result.Replayed && h.worker != nil {
+		h.worker.Wake()
+	}
+	writeV2LifecycleResult(w, result)
+}
+
+func (h *V2AdminPeopleHandler) handleLifecyclePeoplePolicyJob(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, action adminpeople.PolicyBulkAction) {
+	request, ok := h.lifecycleSelectionRequest(r, tenant, body, "people.policy_job.create", action.SelectionToken)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
+		return
+	}
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, _ pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		queued, err := h.service.EnqueuePolicyBulk(adminPeopleMutationContext(r.WithContext(ctx)), tenant.OrganizationID, tenant.AccountID, action)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		return bulkLifecycleResult(queued)
+	})
+	if err != nil {
+		if !writeV2LifecycleError(w, err) {
+			h.writeError(w, r, err, 0)
+		}
+		return
+	}
+	if !result.Replayed && h.worker != nil {
+		h.worker.Wake()
+	}
+	writeV2LifecycleResult(w, result)
 }
 
 func (h *V2AdminPeopleHandler) requireOrganization(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {

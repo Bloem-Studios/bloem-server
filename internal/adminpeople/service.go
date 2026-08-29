@@ -19,6 +19,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/idgen"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
@@ -546,6 +547,7 @@ type profileSnapshot struct {
 }
 type targetSnapshot struct {
 	AccountID              int                      `json:"account_id"`
+	AccountIncarnationID   uuid.UUID                `json:"account_incarnation_id"`
 	MembershipID           uuid.UUID                `json:"membership_id"`
 	MembershipStatus       tenancy.MembershipStatus `json:"membership_status"`
 	MembershipRevision     int64                    `json:"membership_revision"`
@@ -577,7 +579,7 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 	// would incorrectly exclude rows when database and application clocks skew.
 	conditions, args := buildPeopleConditions(organizationID, canonical.toFilter(), nil)
 	rows, err := tx.Query(ctx, `
-		SELECT m.account_id,m.id,m.status,m.security_revision,u.access_policy_revision,
+		SELECT m.account_id,u.account_incarnation_id,m.id,m.status,m.security_revision,u.access_policy_revision,
 		       COALESCE(u.access_group_id,0),COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),COALESCE(r.revision,0),
 		       COALESCE(r.source_template_key,g.managed_template_key,''),COALESCE(r.source_template_revision,g.managed_template_revision,0),
 		       COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'group_id',p.access_group_id,'inherits_account',p.access_group_id IS NOT DISTINCT FROM u.access_group_id,'updated_at',p.updated_at) ORDER BY p.id) FROM user_profiles p WHERE p.organization_id=m.organization_id AND p.user_id=m.account_id),'[]'::jsonb)
@@ -594,7 +596,7 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 	for rows.Next() {
 		var target targetSnapshot
 		var profilesJSON []byte
-		if err := rows.Scan(&target.AccountID, &target.MembershipID, &target.MembershipStatus, &target.MembershipRevision, &target.AccountPolicyRevision, &target.GroupID, &target.CohortID, &target.CohortRevision, &target.SourceTemplateKey, &target.SourceTemplateRevision, &profilesJSON); err != nil {
+		if err := rows.Scan(&target.AccountID, &target.AccountIncarnationID, &target.MembershipID, &target.MembershipStatus, &target.MembershipRevision, &target.AccountPolicyRevision, &target.GroupID, &target.CohortID, &target.CohortRevision, &target.SourceTemplateKey, &target.SourceTemplateRevision, &profilesJSON); err != nil {
 			rows.Close()
 			return Selection{}, fmt.Errorf("scan people selection: %w", err)
 		}
@@ -644,6 +646,44 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 		return Selection{}, fmt.Errorf("commit people selection snapshot: %w", err)
 	}
 	return Selection{Token: token, Matched: int64(len(ids)), Excluded: excluded, ExpiresAt: expires}, nil
+}
+
+// ResolveLifecycleSelectionTargets returns the immutable account incarnations
+// and memberships captured by a signed selection. It performs no live account
+// lookup, preserving receipt-first replay and exact target-set binding.
+func (s *Service) ResolveLifecycleSelectionTargets(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, token string) ([]lifecycleidempotency.TargetBinding, error) {
+	reference, err := s.parseSelectionReference(token)
+	if err != nil {
+		return nil, err
+	}
+	var storedOrganization uuid.UUID
+	var payload []byte
+	query := `SELECT organization_id,targets FROM admin_people_selections WHERE id=$1`
+	args := []any{reference}
+	if organizationID != uuid.Nil {
+		query += ` AND organization_id=$2`
+		args = append(args, organizationID)
+	}
+	if err := tx.QueryRow(ctx, query, args...).Scan(&storedOrganization, &payload); errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrInvalidSelection
+	} else if err != nil {
+		return nil, err
+	}
+	var snapshots []targetSnapshot
+	if err := json.Unmarshal(payload, &snapshots); err != nil {
+		return nil, ErrInvalidSelection
+	}
+	targets := make([]lifecycleidempotency.TargetBinding, 0, len(snapshots))
+	for _, snapshot := range snapshots {
+		if snapshot.AccountID <= 0 || snapshot.AccountIncarnationID == uuid.Nil || snapshot.MembershipID == uuid.Nil {
+			return nil, lifecycleidempotency.ErrInvalidBinding
+		}
+		targets = append(targets, lifecycleidempotency.TargetBinding{OrganizationID: storedOrganization, MembershipID: snapshot.MembershipID, AccountID: snapshot.AccountID, AccountIncarnationID: snapshot.AccountIncarnationID, ResourceID: reference.String()})
+	}
+	if len(targets) == 0 {
+		return nil, lifecycleidempotency.ErrTargetNotFound
+	}
+	return targets, nil
 }
 
 func (s *Service) signSelectionReference(reference uuid.UUID) (string, error) {
@@ -1794,14 +1834,26 @@ func isPolicyBulkAction(kind string) bool {
 }
 
 func (s *Service) UpdateMembership(ctx context.Context, organizationID uuid.UUID, actorID, accountID int, expectedRevision int64, status tenancy.MembershipStatus) (PersonSummary, error) {
-	if status != tenancy.MembershipActive && status != tenancy.MembershipSuspended {
-		return PersonSummary{}, ErrInvalidBulkAction
-	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return PersonSummary{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	person, err := s.UpdateMembershipInTransaction(ctx, tx, organizationID, actorID, accountID, expectedRevision, status)
+	if err != nil {
+		return PersonSummary{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return PersonSummary{}, err
+	}
+	return person, nil
+}
+
+func (s *Service) UpdateMembershipInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID, accountID int, expectedRevision int64, status tenancy.MembershipStatus) (PersonSummary, error) {
+	if status != tenancy.MembershipActive && status != tenancy.MembershipSuspended {
+		return PersonSummary{}, ErrInvalidBulkAction
+	}
+	var err error
 	var id uuid.UUID
 	var current tenancy.MembershipStatus
 	var revision int64
@@ -1830,21 +1882,30 @@ func (s *Service) UpdateMembership(ctx context.Context, organizationID uuid.UUID
 			return PersonSummary{}, err
 		}
 	}
-	if err = tx.Commit(ctx); err != nil {
-		return PersonSummary{}, err
-	}
-	return s.Get(ctx, organizationID, accountID)
+	return getPersonInTransaction(ctx, tx, organizationID, accountID)
 }
 
 func (s *Service) UpdateProfileGroup(ctx context.Context, organizationID uuid.UUID, actorID, accountID int, profileID string, expectedRevision int64, groupID int) (PersonSummary, error) {
-	if groupID <= 0 || strings.TrimSpace(profileID) == "" {
-		return PersonSummary{}, ErrInvalidBulkAction
-	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return PersonSummary{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	person, err := s.UpdateProfileGroupInTransaction(ctx, tx, organizationID, actorID, accountID, profileID, expectedRevision, groupID)
+	if err != nil {
+		return PersonSummary{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return PersonSummary{}, err
+	}
+	return person, nil
+}
+
+func (s *Service) UpdateProfileGroupInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID, accountID int, profileID string, expectedRevision int64, groupID int) (PersonSummary, error) {
+	if groupID <= 0 || strings.TrimSpace(profileID) == "" {
+		return PersonSummary{}, ErrInvalidBulkAction
+	}
+	var err error
 	var groupExists bool
 	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM access_groups WHERE organization_id=$1 AND id=$2)`, organizationID, groupID).Scan(&groupExists); err != nil {
 		return PersonSummary{}, err
@@ -1881,8 +1942,30 @@ func (s *Service) UpdateProfileGroup(ctx context.Context, organizationID uuid.UU
 			return PersonSummary{}, err
 		}
 	}
-	if err = tx.Commit(ctx); err != nil {
+	return getPersonInTransaction(ctx, tx, organizationID, accountID)
+}
+
+func getPersonInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int) (PersonSummary, error) {
+	var person PersonSummary
+	err := tx.QueryRow(ctx, `SELECT m.organization_id,m.account_id,COALESCE(u.email,''),COALESCE(NULLIF(u.username,''),u.email,''),m.id,m.status,m.legacy_role,m.security_revision,GREATEST(m.updated_at,COALESCE((SELECT max(p.updated_at) FROM user_profiles p WHERE p.organization_id=m.organization_id AND p.user_id=m.account_id),m.updated_at)) FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE m.organization_id=$1 AND m.account_id=$2`, organizationID, accountID).Scan(&person.OrganizationID, &person.AccountID, &person.Email, &person.DisplayName, &person.MembershipID, &person.MembershipStatus, &person.LegacyRole, &person.SecurityRevision, &person.LastActivity)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return PersonSummary{}, ErrNotFound
+	}
+	if err != nil {
 		return PersonSummary{}, err
 	}
-	return s.Get(ctx, organizationID, accountID)
+	person.Profiles = []ProfileSummary{}
+	rows, err := tx.Query(ctx, `SELECT p.id,p.name,p.access_group_id,g.name,p.updated_at FROM user_profiles p JOIN access_groups g ON g.organization_id=p.organization_id AND g.id=p.access_group_id WHERE p.organization_id=$1 AND p.user_id=$2 ORDER BY lower(p.name),p.id`, organizationID, accountID)
+	if err != nil {
+		return PersonSummary{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var profile ProfileSummary
+		if err := rows.Scan(&profile.ID, &profile.Name, &profile.GroupID, &profile.GroupName, &profile.UpdatedAt); err != nil {
+			return PersonSummary{}, err
+		}
+		person.Profiles = append(person.Profiles, profile)
+	}
+	return person, rows.Err()
 }

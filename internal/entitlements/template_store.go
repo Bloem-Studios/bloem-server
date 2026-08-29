@@ -219,6 +219,36 @@ func (s *Store) ApplyTemplateWithReceipt(ctx context.Context, actorAccountID int
 		})
 }
 
+// ApplyTemplateConfirmedInTransaction verifies the preview and materializes it
+// in the caller's transaction, allowing a lifecycle receipt to commit atomically.
+func (s *Store) ApplyTemplateConfirmedInTransaction(ctx context.Context, tx pgx.Tx, actorAccountID int, organizationID uuid.UUID, templateKey string, templateRevision int64, previewHash string) (ApplyResult, error) {
+	preview, err := s.applyTemplateInTx(ctx, tx, organizationID, templateKey, templateRevision, actorAccountID, true)
+	if err != nil {
+		return ApplyResult{}, err
+	}
+	if PreviewHash(preview) != previewHash {
+		return ApplyResult{}, ErrConfirmationStale
+	}
+	return s.applyTemplateInTx(ctx, tx, organizationID, templateKey, templateRevision, actorAccountID, false)
+}
+
+func (s *Store) ApplyDefaultAccountTemplateConfirmedInTransaction(ctx context.Context, tx pgx.Tx, actorAccountID, accountID int, templateKey string, templateRevision int64, previewHash string) (ApplyResult, error) {
+	var organizationID uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT o.id FROM organizations o JOIN organization_memberships m ON m.organization_id=o.id WHERE o.is_default AND m.account_id=$1 AND m.status='active'`, accountID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
+		return ApplyResult{}, ErrAccountNotFound
+	} else if err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: resolve direct account organization: %w", err)
+	}
+	preview, err := s.applyAccountTemplateInTx(ctx, tx, organizationID, accountID, templateKey, templateRevision, actorAccountID, true)
+	if err != nil {
+		return ApplyResult{}, err
+	}
+	if PreviewHash(preview) != previewHash {
+		return ApplyResult{}, ErrConfirmationStale
+	}
+	return s.applyAccountTemplateInTx(ctx, tx, organizationID, accountID, templateKey, templateRevision, actorAccountID, false)
+}
+
 // ApplyDefaultAccountTemplateWithReceipt is the direct-account equivalent of
 // ApplyTemplateWithReceipt, including default-organization resolution inside
 // the same transaction.

@@ -12,10 +12,12 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 const adminPlatformBodyLimit = 32 << 10
@@ -41,8 +43,23 @@ type AdminReauthenticationVerifier interface {
 }
 
 type V2AdminPlatformHandler struct {
-	store  V2AdminPlatformStore
-	reauth AdminReauthenticationVerifier
+	store           V2AdminPlatformStore
+	reauth          AdminReauthenticationVerifier
+	lifecycle       lifecycleidempotency.Coordinator
+	lifecycleDigest lifecycleidempotency.RequestDigester
+}
+
+func (h *V2AdminPlatformHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
+	h.lifecycle = coordinator
+	h.lifecycleDigest = digester
+}
+
+type v2AdminPlatformLifecycleStore interface {
+	CreateOrganizationInTransaction(context.Context, pgx.Tx, tenancy.CreateOrganizationInput) (tenancy.Organization, error)
+	SetOrganizationStatusInTransaction(context.Context, pgx.Tx, uuid.UUID, int64, tenancy.OrganizationStatus) (tenancy.Organization, error)
+	TransferOwnershipInTransaction(context.Context, pgx.Tx, uuid.UUID, int64, int) (tenancy.Organization, error)
+	CreateMembershipInTransaction(context.Context, pgx.Tx, uuid.UUID, int64, tenancy.CreateMembershipInput) (tenancy.Membership, tenancy.Organization, error)
+	UpdateMembershipInTransaction(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, int64, tenancy.UpdateMembershipInput) (tenancy.Membership, tenancy.Organization, error)
 }
 
 func NewV2AdminPlatformHandler(store V2AdminPlatformStore, reauth AdminReauthenticationVerifier) *V2AdminPlatformHandler {
@@ -86,6 +103,10 @@ func (h *V2AdminPlatformHandler) HandleCreateOrganization(w http.ResponseWriter,
 	if !ok {
 		return
 	}
+	body, ok := captureV2LifecycleBody(w, r)
+	if !ok {
+		return
+	}
 	var request struct {
 		Name           string `json:"name"`
 		Slug           string `json:"slug"`
@@ -102,6 +123,14 @@ func (h *V2AdminPlatformHandler) HandleCreateOrganization(w http.ResponseWriter,
 		writeAdminValidation(w, fields)
 		return
 	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleCreateOrganization(w, r, claims, body, request.Name, request.Slug, request.OwnerAccountID)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	created, err := h.store.CreateOrganization(adminMutationRequestContext(r, claims), tenancy.CreateOrganizationInput{
 		Name: request.Name, Slug: request.Slug, OwnerAccountID: request.OwnerAccountID,
 	})
@@ -112,6 +141,201 @@ func (h *V2AdminPlatformHandler) HandleCreateOrganization(w http.ResponseWriter,
 	writeJSON(w, http.StatusCreated, struct {
 		Organization tenancy.Organization `json:"organization"`
 	}{created})
+}
+
+func (h *V2AdminPlatformHandler) handleLifecycleCreateOrganization(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, name, slug string, ownerAccountID int) {
+	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "organization.create", lifecycleidempotency.TargetBodyAccount, nil, body)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
+		return
+	}
+	result, err := h.lifecycle.ExecuteCreate(r.Context(), request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
+		transactional, ok := h.store.(v2AdminPlatformLifecycleStore)
+		if !ok {
+			return nil, lifecycleidempotency.Result{}, errors.New("lifecycle-safe organization store unavailable")
+		}
+		created, err := transactional.CreateOrganizationInTransaction(adminMutationRequestContext(r.WithContext(ctx), claims), tx, tenancy.CreateOrganizationInput{Name: name, Slug: slug, OwnerAccountID: ownerAccountID})
+		if err != nil {
+			return nil, lifecycleidempotency.Result{}, err
+		}
+		targets, err := resolveV2OrganizationOwnerTarget(ctx, tx, created.ID)
+		if err != nil {
+			return nil, lifecycleidempotency.Result{}, err
+		}
+		response, err := json.Marshal(struct {
+			Organization tenancy.Organization `json:"organization"`
+		}{created})
+		if err != nil {
+			return nil, lifecycleidempotency.Result{}, err
+		}
+		return targets, lifecycleidempotency.Result{Status: http.StatusCreated, Body: response, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
+	})
+	if err != nil {
+		h.writeLifecycleStoreError(w, r, err, uuid.Nil, uuid.Nil)
+		return
+	}
+	writeV2LifecycleResult(w, result)
+}
+
+func (h *V2AdminPlatformHandler) writeLifecycleStoreError(w http.ResponseWriter, r *http.Request, err error, organizationID, membershipID uuid.UUID) {
+	if errors.Is(err, errV2LifecycleReauthenticationRequired) {
+		writeError(w, http.StatusUnauthorized, "reauthentication_required", "Account re-authentication is required")
+		return
+	}
+	if errors.Is(err, errV2LifecycleReauthenticationUnavailable) {
+		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Account re-authentication is unavailable")
+		return
+	}
+	if writeV2LifecycleError(w, err) {
+		return
+	}
+	h.writeStoreError(w, r, err, organizationID, membershipID)
+}
+
+var (
+	errV2LifecycleReauthenticationRequired    = errors.New("lifecycle reauthentication required")
+	errV2LifecycleReauthenticationUnavailable = errors.New("lifecycle reauthentication unavailable")
+)
+
+func (h *V2AdminPlatformHandler) lifecycleStore() (v2AdminPlatformLifecycleStore, error) {
+	store, ok := h.store.(v2AdminPlatformLifecycleStore)
+	if !ok {
+		return nil, errors.New("lifecycle-safe organization store unavailable")
+	}
+	return store, nil
+}
+
+func organizationLifecycleResult(status int, organization tenancy.Organization) (lifecycleidempotency.Result, error) {
+	body, err := json.Marshal(struct {
+		Organization tenancy.Organization `json:"organization"`
+	}{organization})
+	return lifecycleidempotency.Result{Status: status, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}}, err
+}
+
+func membershipLifecycleResult(status int, membership tenancy.Membership, organization tenancy.Organization) (lifecycleidempotency.Result, error) {
+	body, err := json.Marshal(struct {
+		Membership   tenancy.Membership   `json:"membership"`
+		Organization tenancy.Organization `json:"organization"`
+	}{membership, organization})
+	return lifecycleidempotency.Result{Status: status, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}}, err
+}
+
+func (h *V2AdminPlatformHandler) handleLifecycleOrganizationStatus(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, expectedRevision int64, status tenancy.OrganizationStatus, routeID string) {
+	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetExactMembership, map[string]string{"id": organizationID.String()}, body)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
+		return
+	}
+	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+		return resolveV2OrganizationOwnerTarget(ctx, tx, organizationID)
+	}
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		store, err := h.lifecycleStore()
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		organization, err := store.SetOrganizationStatusInTransaction(adminMutationRequestContext(r.WithContext(ctx), claims), tx, organizationID, expectedRevision, status)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		return organizationLifecycleResult(http.StatusOK, organization)
+	})
+	if err != nil {
+		h.writeLifecycleStoreError(w, r, err, organizationID, uuid.Nil)
+		return
+	}
+	writeV2LifecycleResult(w, result)
+}
+
+func (h *V2AdminPlatformHandler) handleLifecycleTransferOwnership(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, expectedRevision int64, ownerAccountID int, password string) {
+	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "organization.transfer", lifecycleidempotency.TargetBodyAccount, map[string]string{"id": organizationID.String()}, body)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
+		return
+	}
+	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+		return lifecycleidempotency.ResolveAccountTargets(ctx, tx, ownerAccountID)
+	}
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		if strings.TrimSpace(password) == "" || h.reauth == nil {
+			return lifecycleidempotency.Result{}, errV2LifecycleReauthenticationRequired
+		}
+		verified, err := h.reauth.VerifyPassword(ctx, claims.AccountID, password)
+		if err != nil {
+			return lifecycleidempotency.Result{}, errV2LifecycleReauthenticationUnavailable
+		}
+		if !verified {
+			return lifecycleidempotency.Result{}, errV2LifecycleReauthenticationRequired
+		}
+		store, err := h.lifecycleStore()
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		organization, err := store.TransferOwnershipInTransaction(adminMutationRequestContext(r.WithContext(ctx), claims), tx, organizationID, expectedRevision, ownerAccountID)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		return organizationLifecycleResult(http.StatusOK, organization)
+	})
+	if err != nil {
+		h.writeLifecycleStoreError(w, r, err, organizationID, uuid.Nil)
+		return
+	}
+	writeV2LifecycleResult(w, result)
+}
+
+func (h *V2AdminPlatformHandler) handleLifecycleCreateMembership(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, expectedRevision int64, input tenancy.CreateMembershipInput) {
+	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "organization.membership.create", lifecycleidempotency.TargetBodyAccount, map[string]string{"id": organizationID.String()}, body)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
+		return
+	}
+	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+		return lifecycleidempotency.ResolveAccountTargets(ctx, tx, input.AccountID)
+	}
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		store, err := h.lifecycleStore()
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		membership, organization, err := store.CreateMembershipInTransaction(adminMutationRequestContext(r.WithContext(ctx), claims), tx, organizationID, expectedRevision, input)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		return membershipLifecycleResult(http.StatusCreated, membership, organization)
+	})
+	if err != nil {
+		h.writeLifecycleStoreError(w, r, err, organizationID, uuid.Nil)
+		return
+	}
+	writeV2LifecycleResult(w, result)
+}
+
+func (h *V2AdminPlatformHandler) handleLifecycleUpdateMembership(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID, membershipID uuid.UUID, expectedRevision int64, input tenancy.UpdateMembershipInput) {
+	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "organization.membership.update", lifecycleidempotency.TargetExactMembership, map[string]string{"id": organizationID.String(), "membership_id": membershipID.String()}, body)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
+		return
+	}
+	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+		return resolveV2ExactMembershipTarget(ctx, tx, organizationID, membershipID)
+	}
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		store, err := h.lifecycleStore()
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		membership, organization, err := store.UpdateMembershipInTransaction(adminMutationRequestContext(r.WithContext(ctx), claims), tx, organizationID, membershipID, expectedRevision, input)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		return membershipLifecycleResult(http.StatusOK, membership, organization)
+	})
+	if err != nil {
+		h.writeLifecycleStoreError(w, r, err, organizationID, membershipID)
+		return
+	}
+	writeV2LifecycleResult(w, result)
 }
 
 func (h *V2AdminPlatformHandler) HandleGetOrganization(w http.ResponseWriter, r *http.Request) {
@@ -193,6 +417,10 @@ func (h *V2AdminPlatformHandler) handleOrganizationStatus(w http.ResponseWriter,
 	if !ok {
 		return
 	}
+	body, ok := captureV2LifecycleBody(w, r)
+	if !ok {
+		return
+	}
 	var request struct {
 		ExpectedRevision int64 `json:"expected_revision"`
 	}
@@ -201,6 +429,18 @@ func (h *V2AdminPlatformHandler) handleOrganizationStatus(w http.ResponseWriter,
 	}
 	if request.ExpectedRevision <= 0 {
 		writeAdminValidation(w, map[string]string{"expected_revision": "must be a positive revision"})
+		return
+	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		routeID := "organization.reactivate"
+		if status == tenancy.OrganizationSuspended {
+			routeID = "organization.suspend"
+		}
+		h.handleLifecycleOrganizationStatus(w, r, claims, body, organizationID, request.ExpectedRevision, status, routeID)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
 	after, err := h.store.SetOrganizationStatus(adminMutationRequestContext(r, claims), organizationID, request.ExpectedRevision, status)
@@ -219,6 +459,10 @@ func (h *V2AdminPlatformHandler) HandleTransferOwnership(w http.ResponseWriter, 
 		return
 	}
 	organizationID, ok := adminPlatformPathUUID(w, r, "id")
+	if !ok {
+		return
+	}
+	body, ok := captureV2LifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -243,6 +487,14 @@ func (h *V2AdminPlatformHandler) HandleTransferOwnership(w http.ResponseWriter, 
 	}
 	if len(fields) > 0 {
 		writeAdminValidation(w, fields)
+		return
+	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleTransferOwnership(w, r, claims, body, organizationID, request.ExpectedRevision, request.OwnerAccountID, request.Password)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
 	if strings.TrimSpace(request.Password) == "" || h.reauth == nil {
@@ -305,6 +557,10 @@ func (h *V2AdminPlatformHandler) HandleCreateMembership(w http.ResponseWriter, r
 	if !ok {
 		return
 	}
+	body, ok := captureV2LifecycleBody(w, r)
+	if !ok {
+		return
+	}
 	var request struct {
 		ExpectedRevision int64                    `json:"expected_revision"`
 		AccountID        int                      `json:"account_id"`
@@ -331,6 +587,14 @@ func (h *V2AdminPlatformHandler) HandleCreateMembership(w http.ResponseWriter, r
 		writeAdminValidation(w, fields)
 		return
 	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleCreateMembership(w, r, claims, body, organizationID, request.ExpectedRevision, tenancy.CreateMembershipInput{AccountID: request.AccountID, LegacyRole: request.LegacyRole, Status: request.Status})
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	membership, organization, err := h.store.CreateMembership(adminMutationRequestContext(r, claims), organizationID, request.ExpectedRevision, tenancy.CreateMembershipInput{AccountID: request.AccountID, LegacyRole: request.LegacyRole, Status: request.Status})
 	if err != nil {
 		h.writeStoreError(w, r, err, organizationID, uuid.Nil)
@@ -352,6 +616,10 @@ func (h *V2AdminPlatformHandler) HandleUpdateMembership(w http.ResponseWriter, r
 		return
 	}
 	membershipID, ok := adminPlatformPathUUID(w, r, "membership_id")
+	if !ok {
+		return
+	}
+	body, ok := captureV2LifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -378,6 +646,14 @@ func (h *V2AdminPlatformHandler) HandleUpdateMembership(w http.ResponseWriter, r
 	}
 	if len(fields) > 0 {
 		writeAdminValidation(w, fields)
+		return
+	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleUpdateMembership(w, r, claims, body, organizationID, membershipID, request.ExpectedRevision, tenancy.UpdateMembershipInput{LegacyRole: request.LegacyRole, Status: request.Status})
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
 	after, organization, err := h.store.UpdateMembership(adminMutationRequestContext(r, claims), organizationID, membershipID, request.ExpectedRevision, tenancy.UpdateMembershipInput{LegacyRole: request.LegacyRole, Status: request.Status})
