@@ -328,6 +328,36 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	showForcedSubtitles := true
+	if req.ShowForcedSubtitles != nil {
+		showForcedSubtitles = *req.ShowForcedSubtitles
+	}
+	profileID := uuid.New().String()
+	profile := userstore.Profile{
+		ID:                         profileID,
+		Name:                       strings.TrimSpace(req.Name),
+		Avatar:                     avatarRef,
+		IsChild:                    req.IsChild,
+		MaxContentRating:           req.MaxContentRating,
+		QualityPreference:          req.QualityPreference,
+		Language:                   req.Language,
+		PreferredMetadataLanguage:  req.PreferredMetadataLanguage,
+		SubtitleLanguage:           req.SubtitleLanguage,
+		SubtitleMode:               req.SubtitleMode,
+		AutoSkipIntro:              req.AutoSkipIntro,
+		AutoSkipCredits:            req.AutoSkipCredits,
+		AutoSkipRecap:              req.AutoSkipRecap,
+		AutoPlayNextPreview:        req.AutoPlayNextPreview,
+		ShowForcedSubtitles:        showForcedSubtitles,
+		LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
+		AllowedLibraryIDs:          req.AllowedLibraryIDs,
+		MaxPlaybackQuality:         maxPlaybackQuality,
+	}
+	if h.lifecycle != nil {
+		h.handleLifecycleProfileCreate(w, r, userID, profile, req, settingsSync, body)
+		return
+	}
+
 	store, err := h.storeProvider.ForUser(r.Context(), userID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
@@ -393,6 +423,7 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 		}
 		inheritedAccessGroupID = inheritedGroupID
 	}
+	profile.AccessGroupID = inheritedAccessGroupID
 
 	if profileNameConflicts(existingProfiles, req.Name, "") {
 		writeError(
@@ -401,40 +432,6 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 			"name_conflict",
 			"A profile with this name already exists",
 		)
-		return
-	}
-
-	showForcedSubtitles := true
-	if req.ShowForcedSubtitles != nil {
-		showForcedSubtitles = *req.ShowForcedSubtitles
-	}
-
-	profileID := uuid.New().String()
-	profile := userstore.Profile{
-		ID: profileID,
-		// Store the trimmed form the conflict check compared, so " Laura "
-		// doesn't persist with stray whitespace.
-		Name:                       strings.TrimSpace(req.Name),
-		Avatar:                     avatarRef,
-		IsChild:                    req.IsChild,
-		MaxContentRating:           req.MaxContentRating,
-		QualityPreference:          req.QualityPreference,
-		Language:                   req.Language,
-		PreferredMetadataLanguage:  req.PreferredMetadataLanguage,
-		SubtitleLanguage:           req.SubtitleLanguage,
-		SubtitleMode:               req.SubtitleMode,
-		AutoSkipIntro:              req.AutoSkipIntro,
-		AutoSkipCredits:            req.AutoSkipCredits,
-		AutoSkipRecap:              req.AutoSkipRecap,
-		AutoPlayNextPreview:        req.AutoPlayNextPreview,
-		ShowForcedSubtitles:        showForcedSubtitles,
-		LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
-		AllowedLibraryIDs:          req.AllowedLibraryIDs,
-		MaxPlaybackQuality:         maxPlaybackQuality,
-		AccessGroupID:              inheritedAccessGroupID,
-	}
-	if h.lifecycle != nil {
-		h.handleLifecycleProfileCreate(w, r, store, userID, profile, req, settingsSync, body)
 		return
 	}
 
@@ -603,15 +600,6 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	if req.PIN != nil && apimw.IsDirectProfileSession(r) {
-		// The PIN gates profile switching for account sessions, so it is a
-		// credential of a different scope than the one this session holds.
-		// Setting it from here would let a profile password rewrite the lock
-		// that stands in front of the household.
-		writeError(w, http.StatusForbidden, "forbidden",
-			"Direct profile sessions cannot change the profile PIN")
-		return
-	}
 	var avatarRef *string
 	if req.Avatar != nil {
 		normalized, err := normalizePresetAvatarReference(*req.Avatar)
@@ -630,6 +618,37 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		maxPlaybackQuality = &normalized
+	}
+	if req.Name != nil {
+		trimmedName := strings.TrimSpace(*req.Name)
+		if trimmedName == "" {
+			writeError(w, http.StatusBadRequest, "bad_request", "Profile name is required")
+			return
+		}
+		req.Name = &trimmedName
+	}
+	settingsSync, err := planUpdateProfileSettingsSync(req)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		return
+	}
+	input := userstore.UpdateProfileInput{
+		Name: req.Name, Avatar: avatarRef, PIN: req.PIN, IsChild: req.IsChild,
+		MaxContentRating: req.MaxContentRating, QualityPreference: req.QualityPreference,
+		Language: req.Language, PreferredMetadataLanguage: req.PreferredMetadataLanguage,
+		SubtitleLanguage: req.SubtitleLanguage, SubtitleMode: req.SubtitleMode,
+		AutoSkipIntro: req.AutoSkipIntro, AutoSkipCredits: req.AutoSkipCredits,
+		AutoSkipRecap: req.AutoSkipRecap, AutoPlayNextPreview: req.AutoPlayNextPreview,
+		ShowForcedSubtitles: req.ShowForcedSubtitles, LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
+		AllowedLibraryIDs: req.AllowedLibraryIDs, MaxPlaybackQuality: maxPlaybackQuality,
+	}
+	if h.lifecycle != nil {
+		h.handleLifecycleProfileUpdate(w, r, userID, profileID, req, input, settingsSync, body)
+		return
+	}
+	if req.PIN != nil && apimw.IsDirectProfileSession(r) {
+		writeError(w, http.StatusForbidden, "forbidden", "Direct profile sessions cannot change the profile PIN")
+		return
 	}
 
 	store, err := h.storeProvider.ForUser(r.Context(), userID)
@@ -667,14 +686,6 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 	}
 
 	if req.Name != nil {
-		// Normalize to the trimmed form up front: the conflict check compares
-		// it and the store persists it, so " Laura " never lands verbatim.
-		trimmedName := strings.TrimSpace(*req.Name)
-		if trimmedName == "" {
-			writeError(w, http.StatusBadRequest, "bad_request", "Profile name is required")
-			return
-		}
-		req.Name = &trimmedName
 		existingProfiles, err := store.ListProfiles(r.Context())
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list profiles")
@@ -691,38 +702,6 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	// Planned before the transaction so an invalid preference fails while the
-	// request is still a no-op.
-	settingsSync, err := planUpdateProfileSettingsSync(req)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		return
-	}
-
-	input := userstore.UpdateProfileInput{
-		Name:                       req.Name,
-		Avatar:                     avatarRef,
-		PIN:                        req.PIN,
-		IsChild:                    req.IsChild,
-		MaxContentRating:           req.MaxContentRating,
-		QualityPreference:          req.QualityPreference,
-		Language:                   req.Language,
-		PreferredMetadataLanguage:  req.PreferredMetadataLanguage,
-		SubtitleLanguage:           req.SubtitleLanguage,
-		SubtitleMode:               req.SubtitleMode,
-		AutoSkipIntro:              req.AutoSkipIntro,
-		AutoSkipCredits:            req.AutoSkipCredits,
-		AutoSkipRecap:              req.AutoSkipRecap,
-		AutoPlayNextPreview:        req.AutoPlayNextPreview,
-		ShowForcedSubtitles:        req.ShowForcedSubtitles,
-		LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
-		AllowedLibraryIDs:          req.AllowedLibraryIDs,
-		MaxPlaybackQuality:         maxPlaybackQuality,
-	}
-	if h.lifecycle != nil {
-		h.handleLifecycleProfileUpdate(w, r, store, userID, profileID, input, settingsSync, body)
-		return
-	}
 	currentProfile, err := store.GetProfile(r.Context(), profileID)
 	if err != nil || currentProfile == nil {
 		writeError(w, http.StatusNotFound, "not_found", "Profile not found")
@@ -764,6 +743,10 @@ func (h *ProfileHandler) HandleDeleteProfile(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusBadRequest, "bad_request", "Profile ID is required")
 		return
 	}
+	if h.lifecycle != nil {
+		h.handleLifecycleProfileDelete(w, r, userID, profileID)
+		return
+	}
 
 	store, err := h.storeProvider.ForUser(r.Context(), userID)
 	if err != nil {
@@ -777,10 +760,6 @@ func (h *ProfileHandler) HandleDeleteProfile(w http.ResponseWriter, r *http.Requ
 	}
 	if !allowed {
 		writeError(w, http.StatusForbidden, "forbidden", "Profile management requires the primary profile or admin access")
-		return
-	}
-	if h.lifecycle != nil {
-		h.handleLifecycleProfileDelete(w, r, store, userID, profileID)
 		return
 	}
 	profile, err := store.GetProfile(r.Context(), profileID)

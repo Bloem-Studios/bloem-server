@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
@@ -17,20 +18,18 @@ import (
 )
 
 var errLifecyclePrimaryProfileProtected = errors.New("primary profile is protected")
+var (
+	errLifecycleUnavailable             = errors.New("profile lifecycle idempotency unavailable")
+	errLifecycleManagementForbidden     = errors.New("profile management forbidden")
+	errLifecycleBootstrapAccessSettings = errors.New("bootstrap profile access settings forbidden")
+	errLifecycleDirectProfilePIN        = errors.New("direct profile session cannot change profile PIN")
+	errLifecycleSelfServiceTarget       = errors.New("self-service profile target forbidden")
+	errLifecycleSelfServiceAccess       = errors.New("self-service profile access settings forbidden")
+	errLifecycleNameConflict            = errors.New("profile name conflict")
+	errLifecycleHouseholdProfileLimit   = errors.New("profile limit reached")
+)
 
-func (h *ProfileHandler) profileLifecycleTransactioner(w http.ResponseWriter, store userstore.UserStore) (userstore.ProfileLifecycleTransactioner, bool) {
-	txStore, ok := store.(userstore.ProfileLifecycleTransactioner)
-	if !ok {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-	}
-	return txStore, ok
-}
-
-func (h *ProfileHandler) handleLifecycleProfileCreate(w http.ResponseWriter, r *http.Request, store userstore.UserStore, userID int, profile userstore.Profile, req createProfileRequest, writes []profileSettingSync, body []byte) {
-	txStore, ok := h.profileLifecycleTransactioner(w, store)
-	if !ok {
-		return
-	}
+func (h *ProfileHandler) handleLifecycleProfileCreate(w http.ResponseWriter, r *http.Request, userID int, profile userstore.Profile, req createProfileRequest, writes []profileSettingSync, body []byte) {
 	request, ok := h.profileLifecycleRequest(w, r, "profile.create", nil, body)
 	if !ok {
 		return
@@ -38,9 +37,54 @@ func (h *ProfileHandler) handleLifecycleProfileCreate(w http.ResponseWriter, r *
 	var changedKeys []string
 	result, err := h.lifecycle.ExecuteCreate(r.Context(), request,
 		func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
+			store, err := h.storeProvider.ForUser(ctx, userID)
+			if err != nil {
+				return nil, lifecycleidempotency.Result{}, err
+			}
+			txStore, ok := store.(userstore.ProfileLifecycleTransactioner)
+			if !ok {
+				return nil, lifecycleidempotency.Result{}, errLifecycleUnavailable
+			}
+			existingProfiles, err := store.ListProfiles(ctx)
+			if err != nil {
+				return nil, lifecycleidempotency.Result{}, err
+			}
+			existingProfiles = profilesForOrganization(ctx, existingProfiles)
+			isBootstrap := len(existingProfiles) == 0
+			requestWithContext := r.WithContext(ctx)
+			if !isBootstrap {
+				allowed, err := h.canManageHouseholdProfiles(requestWithContext, store)
+				if err != nil {
+					return nil, lifecycleidempotency.Result{}, err
+				}
+				if !allowed {
+					return nil, lifecycleidempotency.Result{}, errLifecycleManagementForbidden
+				}
+			}
+			if isBootstrap && !apimw.IsAdmin(ctx) &&
+				(req.IsChild || req.MaxContentRating != "" || req.LibraryRestrictionsEnabled || len(req.AllowedLibraryIDs) > 0 || req.MaxPlaybackQuality != "") {
+				return nil, lifecycleidempotency.Result{}, errLifecycleBootstrapAccessSettings
+			}
+			if h.UserRepo != nil {
+				user, err := h.UserRepo.GetByID(ctx, userID)
+				if err != nil {
+					return nil, lifecycleidempotency.Result{}, err
+				}
+				limit, inheritedGroupID, err := h.effectiveProfileLimit(ctx, user)
+				if err != nil {
+					return nil, lifecycleidempotency.Result{}, err
+				}
+				if limit >= 1 && len(existingProfiles) >= limit {
+					return nil, lifecycleidempotency.Result{}, errLifecycleHouseholdProfileLimit
+				}
+				profile.AccessGroupID = inheritedGroupID
+			}
+			if profileNameConflicts(existingProfiles, req.Name, "") {
+				return nil, lifecycleidempotency.Result{}, errLifecycleNameConflict
+			}
 			var created *userstore.Profile
 			var responseWrites []profileSettingSync
-			err := txStore.WithProfileLifecycleTransaction(ctx, tx, func(writer userstore.ProfileLifecycleWriter) error {
+			err = txStore.WithProfileLifecycleTransaction(ctx, tx, func(writer userstore.ProfileLifecycleWriter) error {
 				if err := writer.CreateProfile(ctx, profile); err != nil {
 					return err
 				}
@@ -92,11 +136,7 @@ func (h *ProfileHandler) handleLifecycleProfileCreate(w http.ResponseWriter, r *
 	writeLifecycleResult(w, result)
 }
 
-func (h *ProfileHandler) handleLifecycleProfileUpdate(w http.ResponseWriter, r *http.Request, store userstore.UserStore, userID int, profileID string, input userstore.UpdateProfileInput, writes []profileSettingSync, body []byte) {
-	txStore, ok := h.profileLifecycleTransactioner(w, store)
-	if !ok {
-		return
-	}
+func (h *ProfileHandler) handleLifecycleProfileUpdate(w http.ResponseWriter, r *http.Request, userID int, profileID string, req updateProfileRequest, input userstore.UpdateProfileInput, writes []profileSettingSync, body []byte) {
 	request, ok := h.profileLifecycleRequest(w, r, "profile.update", map[string]string{"id": profileID}, body)
 	if !ok {
 		return
@@ -106,8 +146,42 @@ func (h *ProfileHandler) handleLifecycleProfileUpdate(w http.ResponseWriter, r *
 	var committedOriginal *userstore.Profile
 	result, err := h.lifecycle.Execute(r.Context(), request,
 		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+			store, err := h.storeProvider.ForUser(ctx, userID)
+			if err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			txStore, ok := store.(userstore.ProfileLifecycleTransactioner)
+			if !ok {
+				return lifecycleidempotency.Result{}, errLifecycleUnavailable
+			}
+			requestWithContext := r.WithContext(ctx)
+			if req.PIN != nil && apimw.IsDirectProfileSession(requestWithContext) {
+				return lifecycleidempotency.Result{}, errLifecycleDirectProfilePIN
+			}
+			canManage, err := h.canManageHouseholdProfiles(requestWithContext, store)
+			if err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			if !canManage {
+				activeProfileID := apimw.ActiveProfileID(requestWithContext)
+				if activeProfileID == "" || activeProfileID != profileID {
+					return lifecycleidempotency.Result{}, errLifecycleSelfServiceTarget
+				}
+				if !isAllowedSelfServiceProfileUpdate(req) {
+					return lifecycleidempotency.Result{}, errLifecycleSelfServiceAccess
+				}
+			}
+			if req.Name != nil {
+				existingProfiles, err := store.ListProfiles(ctx)
+				if err != nil {
+					return lifecycleidempotency.Result{}, err
+				}
+				if profileNameConflicts(existingProfiles, *req.Name, profileID) {
+					return lifecycleidempotency.Result{}, errLifecycleNameConflict
+				}
+			}
 			var updated *userstore.Profile
-			err := txStore.WithProfileLifecycleTransaction(ctx, tx, func(writer userstore.ProfileLifecycleWriter) error {
+			err = txStore.WithProfileLifecycleTransaction(ctx, tx, func(writer userstore.ProfileLifecycleWriter) error {
 				var err error
 				committedOriginal, err = writer.GetProfile(ctx, profileID)
 				if err != nil {
@@ -144,11 +218,7 @@ func (h *ProfileHandler) handleLifecycleProfileUpdate(w http.ResponseWriter, r *
 	writeLifecycleResult(w, result)
 }
 
-func (h *ProfileHandler) handleLifecycleProfileDelete(w http.ResponseWriter, r *http.Request, store userstore.UserStore, userID int, profileID string) {
-	txStore, ok := h.profileLifecycleTransactioner(w, store)
-	if !ok {
-		return
-	}
+func (h *ProfileHandler) handleLifecycleProfileDelete(w http.ResponseWriter, r *http.Request, userID int, profileID string) {
 	request, ok := h.profileLifecycleRequest(w, r, "profile.delete", map[string]string{"id": profileID}, nil)
 	if !ok {
 		return
@@ -157,7 +227,22 @@ func (h *ProfileHandler) handleLifecycleProfileDelete(w http.ResponseWriter, r *
 	var deleted *userstore.Profile
 	result, err := h.lifecycle.Execute(r.Context(), request,
 		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-			err := txStore.WithProfileLifecycleTransaction(ctx, tx, func(writer userstore.ProfileLifecycleWriter) error {
+			store, err := h.storeProvider.ForUser(ctx, userID)
+			if err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			txStore, ok := store.(userstore.ProfileLifecycleTransactioner)
+			if !ok {
+				return lifecycleidempotency.Result{}, errLifecycleUnavailable
+			}
+			allowed, err := h.canManageHouseholdProfiles(r.WithContext(ctx), store)
+			if err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			if !allowed {
+				return lifecycleidempotency.Result{}, errLifecycleManagementForbidden
+			}
+			err = txStore.WithProfileLifecycleTransaction(ctx, tx, func(writer userstore.ProfileLifecycleWriter) error {
 				var err error
 				deleted, err = writer.GetProfile(ctx, profileID)
 				if err != nil {
@@ -259,6 +344,24 @@ func (h *ProfileHandler) writeProfileLifecycleError(w http.ResponseWriter, err e
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Lifecycle request identity is no longer valid")
 	case errors.Is(err, lifecycleidempotency.ErrTargetNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Profile not found")
+	case errors.Is(err, errLifecycleUnavailable):
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	case errors.Is(err, access.ErrProfileUnverified):
+		writeProfileManagementPermissionError(w, err)
+	case errors.Is(err, errLifecycleManagementForbidden):
+		writeError(w, http.StatusForbidden, "forbidden", "Profile management requires the primary profile or admin access")
+	case errors.Is(err, errLifecycleBootstrapAccessSettings):
+		writeError(w, http.StatusForbidden, "forbidden", "Profile access settings require the primary profile or admin access")
+	case errors.Is(err, errLifecycleDirectProfilePIN):
+		writeError(w, http.StatusForbidden, "forbidden", "Direct profile sessions cannot change the profile PIN")
+	case errors.Is(err, errLifecycleSelfServiceTarget):
+		writeError(w, http.StatusForbidden, "forbidden", "You can only update the active profile's playback preferences")
+	case errors.Is(err, errLifecycleSelfServiceAccess):
+		writeError(w, http.StatusForbidden, "forbidden", "Profile access settings require the primary profile or admin access")
+	case errors.Is(err, errLifecycleNameConflict):
+		writeError(w, http.StatusConflict, "name_conflict", "A profile with this name already exists")
+	case errors.Is(err, errLifecycleHouseholdProfileLimit), isProfileEntitlementLimitError(err):
+		writeError(w, http.StatusConflict, "profile_limit_reached", "This account has reached its profile limit")
 	case errors.Is(err, errLifecyclePrimaryProfileProtected):
 		writeError(w, http.StatusConflict, "primary_profile_protected", "The primary profile cannot be deleted. Delete the user account instead.")
 	case errors.As(err, &pgErr) && pgErr.Code == "P0001" && pgErr.Message == "membership_policy_fenced":
