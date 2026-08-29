@@ -68,16 +68,6 @@ func lifecycleJSONResult(status int, value any) (lifecycleidempotency.Result, er
 	return lifecycleidempotency.Result{Status: status, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
 }
 
-func writeLifecycleResult(w http.ResponseWriter, result lifecycleidempotency.Result) {
-	for key, values := range result.Headers {
-		for _, value := range values {
-			w.Header().Add(key, value)
-		}
-	}
-	w.WriteHeader(result.Status)
-	_, _ = w.Write(result.Body)
-}
-
 func (h *AdminHandler) effectiveProfileLimitInTransaction(ctx context.Context, tx pgx.Tx, user *models.User) (int, *int64, error) {
 	if user == nil {
 		return 0, nil, nil

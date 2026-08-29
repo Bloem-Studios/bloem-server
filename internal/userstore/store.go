@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 var ErrCollectionGroupNotFound = errors.New("collection group not found")
@@ -43,6 +45,19 @@ type PreferenceSettingsWriter interface {
 // synchronize a shipped legacy preference row with its canonical values.
 type PreferenceSettingsTransactioner interface {
 	WithPreferenceSettingsTransaction(ctx context.Context, fn func(PreferenceSettingsWriter) error) error
+}
+
+// ProfileLifecycleWriter is the transaction-scoped surface needed to keep a
+// direct profile mutation, canonical setting projections, and its durable
+// lifecycle receipt in one caller-owned PostgreSQL transaction.
+type ProfileLifecycleWriter interface {
+	PreferenceSettingsWriter
+	GetProfile(context.Context, string) (*Profile, error)
+	DeleteProfile(context.Context, string) error
+}
+
+type ProfileLifecycleTransactioner interface {
+	WithProfileLifecycleTransaction(context.Context, pgx.Tx, func(ProfileLifecycleWriter) error) error
 }
 
 // UserStore defines the interface for per-user data storage.

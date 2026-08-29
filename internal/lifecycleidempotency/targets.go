@@ -128,3 +128,30 @@ FOR UPDATE OF memberships,users`, organizationID)
 	}
 	return targets, nil
 }
+
+// ResolveProfileTarget locks one profile together with its exact membership
+// and account incarnation. Profile ids are reusable strings, so retaining the
+// membership and incarnation prevents a replay from attaching to a later
+// replacement row with the same id.
+func ResolveProfileTarget(ctx context.Context, tx pgx.Tx, accountID int, profileID string) (TargetBinding, error) {
+	if accountID <= 0 || profileID == "" {
+		return TargetBinding{}, ErrTargetNotFound
+	}
+	var target TargetBinding
+	err := tx.QueryRow(ctx, `
+SELECT profiles.organization_id,memberships.id,users.id,users.account_incarnation_id,profiles.id
+FROM public.user_profiles AS profiles
+JOIN public.users AS users ON users.id=profiles.user_id
+JOIN public.organization_memberships AS memberships
+  ON memberships.organization_id=profiles.organization_id AND memberships.account_id=users.id
+WHERE profiles.user_id=$1 AND profiles.id=$2
+FOR UPDATE OF memberships,users,profiles`, accountID, profileID).Scan(
+		&target.OrganizationID, &target.MembershipID, &target.AccountID, &target.AccountIncarnationID, &target.ProfileID)
+	if err == pgx.ErrNoRows {
+		return TargetBinding{}, ErrTargetNotFound
+	}
+	if err != nil {
+		return TargetBinding{}, fmt.Errorf("resolve lifecycle profile target: %w", err)
+	}
+	return target, nil
+}

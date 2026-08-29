@@ -953,6 +953,13 @@ func NewRouter(deps Dependencies) chi.Router {
 		profileHandler.UserRepo = userRepo
 		profileHandler.AccessGroups = accessGroupStore
 		profileHandler.EventsHub = deps.EventsHub
+		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
+			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
+			profileHandler.SetLifecycleIdempotency(
+				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
+			)
+		}
 		profileHandler.ProfileTokens = profileTokenService
 		// Preserve genuine nil in the interface. Assigning a nil *s3client.Client
 		// would produce a non-nil typed interface and panic when an existing

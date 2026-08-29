@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	evt "github.com/Silo-Server/silo-server/internal/events"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -45,6 +47,15 @@ type ProfileHandler struct {
 	// canonical setting row a profile mutation syncs (see
 	// profiles_settings_sync.go). Nil (as in tests) simply skips publishing.
 	EventsHub *evt.Hub
+	lifecycle lifecycleidempotency.Coordinator
+	digest    lifecycleidempotency.RequestDigester
+}
+
+// SetLifecycleIdempotency installs durable coordination for direct household
+// profile creates, updates, and deletes.
+func (h *ProfileHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
+	h.lifecycle = coordinator
+	h.digest = digester
 }
 
 // NewProfileHandler creates a new ProfileHandler.
@@ -282,8 +293,13 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
 	var req createProfileRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
@@ -416,6 +432,10 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 		AllowedLibraryIDs:          req.AllowedLibraryIDs,
 		MaxPlaybackQuality:         maxPlaybackQuality,
 		AccessGroupID:              inheritedAccessGroupID,
+	}
+	if h.lifecycle != nil {
+		h.handleLifecycleProfileCreate(w, r, store, userID, profile, req, settingsSync, body)
+		return
 	}
 
 	if err := h.createProfileWithSettingsSync(r.Context(), store, userID, profile, settingsSync); err != nil {
@@ -573,8 +593,13 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
 	var req updateProfileRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
@@ -612,12 +637,6 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
 		return
 	}
-	currentProfile, err := store.GetProfile(r.Context(), profileID)
-	if err != nil || currentProfile == nil {
-		writeError(w, http.StatusNotFound, "not_found", "Profile not found")
-		return
-	}
-
 	canManage, err := h.canManageHouseholdProfiles(r, store)
 	if err != nil {
 		writeProfileManagementPermissionError(w, err)
@@ -700,6 +719,15 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 		AllowedLibraryIDs:          req.AllowedLibraryIDs,
 		MaxPlaybackQuality:         maxPlaybackQuality,
 	}
+	if h.lifecycle != nil {
+		h.handleLifecycleProfileUpdate(w, r, store, userID, profileID, input, settingsSync, body)
+		return
+	}
+	currentProfile, err := store.GetProfile(r.Context(), profileID)
+	if err != nil || currentProfile == nil {
+		writeError(w, http.StatusNotFound, "not_found", "Profile not found")
+		return
+	}
 
 	// The profile columns and their canonical projections commit together. A
 	// failure cannot leave a 500 response whose legacy values look saved while
@@ -749,6 +777,10 @@ func (h *ProfileHandler) HandleDeleteProfile(w http.ResponseWriter, r *http.Requ
 	}
 	if !allowed {
 		writeError(w, http.StatusForbidden, "forbidden", "Profile management requires the primary profile or admin access")
+		return
+	}
+	if h.lifecycle != nil {
+		h.handleLifecycleProfileDelete(w, r, store, userID, profileID)
 		return
 	}
 	profile, err := store.GetProfile(r.Context(), profileID)

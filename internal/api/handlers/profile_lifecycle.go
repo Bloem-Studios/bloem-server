@@ -24,13 +24,17 @@ func (h *ProfileHandler) updateProfileWithLifecycle(
 	); err != nil {
 		return err
 	}
+	h.completeProfileUpdateAfterCommit(ctx, userID, current, input)
+	return nil
+}
+
+func (h *ProfileHandler) completeProfileUpdateAfterCommit(ctx context.Context, userID int, current *userstore.Profile, input userstore.UpdateProfileInput) {
 	if current.Avatar != "" && input.Avatar != nil && avatarRefReplacesUpload(current.Avatar, *input.Avatar) {
 		if cleanupErr := deleteUploadedAvatarObjects(ctx, h.AvatarStore, userID, current.ID); cleanupErr != nil {
 			slog.WarnContext(ctx, "profile avatar cleanup failed after update",
 				"component", "api", "user_id", userID, "profile_id", current.ID, "error", cleanupErr)
 		}
 	}
-	return nil
 }
 
 // deleteProfileWithLifecycle removes the profile first, matching the native
@@ -46,6 +50,11 @@ func (h *ProfileHandler) deleteProfileWithLifecycle(
 	if err := store.DeleteProfile(ctx, profile.ID); err != nil {
 		return err
 	}
+	h.completeProfileDeleteAfterCommit(ctx, userID, profile)
+	return nil
+}
+
+func (h *ProfileHandler) completeProfileDeleteAfterCommit(ctx context.Context, userID int, profile *userstore.Profile) {
 	if isUploadedAvatarRef(profile.Avatar) {
 		if cleanupErr := deleteUploadedAvatarObjects(ctx, h.AvatarStore, userID, profile.ID); cleanupErr != nil {
 			slog.WarnContext(ctx, "profile avatar cleanup failed after delete",
@@ -60,5 +69,4 @@ func (h *ProfileHandler) deleteProfileWithLifecycle(
 				"component", "api", "user_id", userID, "profile_id", profile.ID, "error", purgeErr)
 		}
 	}
-	return nil
 }

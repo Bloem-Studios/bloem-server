@@ -362,7 +362,7 @@ func (s *PostgresUserStore) DeleteProfileInTransaction(ctx context.Context, tx p
 	return deleteProfile(ctx, tx, s.userID, id)
 }
 
-func deleteProfile(ctx context.Context, tx pgx.Tx, userID int, id string) error {
+func deleteProfile(ctx context.Context, tx preferenceSettingsExecutor, userID int, id string) error {
 	// Preferences belong to viewers, not creators, so remove every override
 	// for collections owned by the profile before those collections disappear.
 	if _, err := tx.Exec(ctx, `
