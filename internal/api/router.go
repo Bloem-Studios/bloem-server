@@ -838,6 +838,13 @@ func NewRouter(deps Dependencies) chi.Router {
 			requestSvc.SetLifecycleNotifier(lifecycle)
 		}
 		requestHandler = handlers.NewRequestsHandler(requestSvc)
+		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
+			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
+			requestHandler.SetLifecycleIdempotency(
+				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
+			)
+		}
 
 		// Onboarding tour manifest: gates consult live state at request time
 		// so admin toggles apply without a restart. The watch-together gate

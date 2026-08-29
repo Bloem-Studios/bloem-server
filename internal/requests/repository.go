@@ -118,6 +118,21 @@ func (r *Repository) GetUserLimit(ctx context.Context, userID int) (*UserLimit, 
 }
 
 func (r *Repository) UpsertUserLimit(ctx context.Context, limit UserLimit) (*UserLimit, error) {
+	return upsertUserLimit(ctx, r.pool, limit)
+}
+
+// UpsertUserLimitInTransaction participates in a caller-owned lifecycle
+// transaction so the account binding, mutation, and response receipt commit
+// together.
+func (r *Repository) UpsertUserLimitInTransaction(ctx context.Context, tx pgx.Tx, limit UserLimit) (*UserLimit, error) {
+	return upsertUserLimit(ctx, tx, limit)
+}
+
+type userLimitQuerier interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func upsertUserLimit(ctx context.Context, querier userLimitQuerier, limit UserLimit) (*UserLimit, error) {
 	var max, window any
 	if limit.MaxRequests != nil {
 		max = *limit.MaxRequests
@@ -127,7 +142,7 @@ func (r *Repository) UpsertUserLimit(ctx context.Context, limit UserLimit) (*Use
 	}
 	var row UserLimit
 	var scannedMax, scannedWindow sql.NullInt64
-	err := r.pool.QueryRow(ctx, `
+	err := querier.QueryRow(ctx, `
 		INSERT INTO request_user_limits (
 			user_id, limit_mode, max_requests, window_days, approval_mode, updated_at
 		)
