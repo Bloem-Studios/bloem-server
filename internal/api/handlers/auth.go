@@ -901,12 +901,14 @@ func (h *AuthHandler) extractClaims(r *http.Request) (*auth.Claims, error) {
 			_ = h.apiKeyValidator.UpdateLastUsed(context.Background(), id)
 		}(apiKey.ID)
 		return &auth.Claims{
-			UserID:    user.ID,
-			Role:      user.Role,
-			SessionID: "",
-			TokenType: auth.TokenTypeAPIKey,
-			APIKeyID:  apiKey.ID,
-			RateTier:  apiKey.RateTier,
+			UserID:               user.ID,
+			AccountIncarnationID: user.AccountIncarnationID.String(),
+			Role:                 user.Role,
+			SessionID:            "",
+			TokenType:            auth.TokenTypeAPIKey,
+			APIKeyID:             apiKey.ID,
+			RateTier:             apiKey.RateTier,
+			APIKeyScopes:         apiKey.Scopes,
 		}, nil
 	}
 

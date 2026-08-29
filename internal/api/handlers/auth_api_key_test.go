@@ -9,6 +9,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/google/uuid"
 )
 
 // extractClaims previously only accepted a JWT, so a long-lived "sa_" API
@@ -52,7 +53,8 @@ func newAPIKeyRequest(token string) *http.Request {
 func TestExtractClaimsAcceptsAValidAPIKey(t *testing.T) {
 	t.Parallel()
 	validator := &stubAPIKeyValidator{key: &models.APIKey{ID: 22, UserID: 131, RateTier: "standard"}}
-	loader := &stubAPIKeyUserLoader{user: &models.User{ID: 131, Role: "user", Enabled: true}}
+	incarnation := uuid.MustParse("11111111-2222-4333-8444-555555555555")
+	loader := &stubAPIKeyUserLoader{user: &models.User{ID: 131, AccountIncarnationID: incarnation, Role: "user", Enabled: true}}
 	handler := &AuthHandler{apiKeyValidator: validator, apiKeyUserLoader: loader}
 
 	claims, err := handler.extractClaims(newAPIKeyRequest("sa_demo-token"))
@@ -70,6 +72,9 @@ func TestExtractClaimsAcceptsAValidAPIKey(t *testing.T) {
 	}
 	if claims.RateTier != "standard" {
 		t.Fatalf("RateTier = %q, want %q", claims.RateTier, "standard")
+	}
+	if claims.AccountIncarnationID != incarnation.String() {
+		t.Fatalf("AccountIncarnationID = %q", claims.AccountIncarnationID)
 	}
 }
 

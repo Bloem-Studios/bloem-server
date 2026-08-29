@@ -165,13 +165,14 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			am.apiKeyLastUsed.Touch(apiKey.ID)
 
 			claims = &auth.Claims{
-				UserID:       user.ID,
-				Role:         user.Role,
-				SessionID:    "",
-				TokenType:    auth.TokenTypeAPIKey,
-				APIKeyID:     apiKey.ID,
-				RateTier:     apiKey.RateTier,
-				APIKeyScopes: apiKey.Scopes,
+				UserID:               user.ID,
+				AccountIncarnationID: user.AccountIncarnationID.String(),
+				Role:                 user.Role,
+				SessionID:            "",
+				TokenType:            auth.TokenTypeAPIKey,
+				APIKeyID:             apiKey.ID,
+				RateTier:             apiKey.RateTier,
+				APIKeyScopes:         apiKey.Scopes,
 			}
 		} else {
 			// JWT authentication (existing flow).
