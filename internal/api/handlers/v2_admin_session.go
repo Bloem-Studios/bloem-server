@@ -67,6 +67,11 @@ func (h *AdminContextSessionHandler) HandleSession(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	}
+	actorIncarnation, err := uuid.Parse(claims.AccountIncarnationID)
+	if err != nil || actorIncarnation == uuid.Nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
+		return
+	}
 	if h == nil || h.tokens == nil || h.resolver == nil || h.memberships == nil {
 		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 		return
@@ -99,12 +104,10 @@ func (h *AdminContextSessionHandler) HandleSession(w http.ResponseWriter, r *htt
 			writeError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
 			return
 		}
-		actorIncarnation, _ := uuid.Parse(claims.AccountIncarnationID)
 		h.mint(w, auth.AdminContextClaims{AccountID: claims.UserID, AccountIncarnationID: actorIncarnation, Scope: auth.AdminScopePlatform}, adminContextSummary{
 			Key: "platform", Scope: auth.AdminScopePlatform, Name: "Platform", Status: "active", Authority: "platform_admin",
 		})
 	case auth.AdminScopeOrganization:
-		actorIncarnation, _ := uuid.Parse(claims.AccountIncarnationID)
 		organizationID, err := uuid.Parse(request.OrganizationID)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "invalid_request", "Organization context requires an organization_id")

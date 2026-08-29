@@ -125,7 +125,7 @@ func TestV2AdminPlatformOrganizationRoutesAreMountedBehindPlatformContext(t *tes
 	platform := handlers.NewV2AdminPlatformHandler(nil, nil)
 	router := chi.NewRouter()
 	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, nil, adminMW, platform)
-	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopePlatform})
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestV2AuthoritativeAccountPolicyRoutesAreMountedBehindPlatformContext(t *te
 	policyHandler.SetAccountPolicies(v2AccountPolicyReaderStub{})
 	router := chi.NewRouter()
 	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, authMW, adminMW, policyHandler)
-	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopePlatform})
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestV2PlatformEntitlementBulkRoutesUseExactMethodsWithoutRedirects(t *testi
 	handler.SetPlatformEntitlementBulk(bulkStore, bulkStore, bulkStore, v2AdminPlatformAuthorizerAllowedStub{}, nil)
 	router := chi.NewRouter()
 	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, authMW, adminMW, handler)
-	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopePlatform})
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestV2AdminPeopleRoutesAreMountedBehindOrganizationContext(t *testing.T) {
 	people := handlers.NewV2AdminPeopleHandler(nil)
 	router := chi.NewRouter()
 	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, nil, adminMW, people)
-	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11})
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -372,7 +372,7 @@ func TestV2AdminOrganizationProjectionRoutesAreMountedWithoutPolicyMutationRoute
 	authMW := apimw.NewAuthMiddleware(v2TokenValidator{claims: &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}}, v2SessionValidator{}, nil, nil)
 	router := chi.NewRouter()
 	mountV2Routes(router, handlers.NewV2SystemHandler(nil), nil, authMW, adminMW, organization, explain)
-	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11, EffectiveAuthority: "organization_admin"})
+	token, err := tokens.Mint(auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopeOrganization, OrganizationID: organizationID, MembershipID: membershipID, PolicyRevision: 7, SecurityRevision: 11, EffectiveAuthority: "organization_admin"})
 	if err != nil {
 		t.Fatal(err)
 	}

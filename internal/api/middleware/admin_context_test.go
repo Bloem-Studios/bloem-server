@@ -80,7 +80,7 @@ func TestAdminContextMiddlewareInjectsOnlyResolvedOrganizationContext(t *testing
 	}
 	tokens := auth.NewAdminContextTokenService("admin-context-middleware-test-secret")
 	token, err := tokens.Mint(auth.AdminContextClaims{
-		AccountID: 41, Scope: auth.AdminScopeOrganization,
+		AccountID: 41, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopeOrganization,
 		OrganizationID: organizationID, MembershipID: membershipID,
 		PolicyRevision: 7, SecurityRevision: 11,
 	})
@@ -116,7 +116,7 @@ func TestAdminContextMiddlewareRejectsStaleOrganizationRevision(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	membershipID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
 	claims := auth.AdminContextClaims{
-		AccountID: 41, Scope: auth.AdminScopeOrganization,
+		AccountID: 41, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopeOrganization,
 		OrganizationID: organizationID, MembershipID: membershipID,
 		PolicyRevision: 7, SecurityRevision: 11,
 	}
@@ -133,7 +133,7 @@ func TestAdminContextMiddlewareRejectsStaleOrganizationRevision(t *testing.T) {
 func TestAdminContextMiddlewareRejectsForeignOrganizationMembership(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	claims := auth.AdminContextClaims{
-		AccountID: 41, Scope: auth.AdminScopeOrganization,
+		AccountID: 41, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopeOrganization,
 		OrganizationID: organizationID, MembershipID: uuid.New(),
 		PolicyRevision: 7, SecurityRevision: 11,
 	}
@@ -149,7 +149,7 @@ func TestAdminContextMiddlewareRejectsForeignOrganizationMembership(t *testing.T
 
 func TestAdminContextMiddlewareRejectsSuspendedOrganization(t *testing.T) {
 	claims := auth.AdminContextClaims{
-		AccountID: 41, Scope: auth.AdminScopeOrganization,
+		AccountID: 41, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopeOrganization,
 		OrganizationID: uuid.New(), MembershipID: uuid.New(),
 		PolicyRevision: 7, SecurityRevision: 11,
 	}
@@ -161,8 +161,8 @@ func TestAdminContextMiddlewareRejectsSuspendedOrganization(t *testing.T) {
 
 func TestAdminContextMiddlewareRejectsLostPlatformAuthority(t *testing.T) {
 	rec := performAdminContextRequest(t, auth.AdminContextClaims{
-		AccountID: 41,
-		Scope:     auth.AdminScopePlatform,
+		AccountID: 41, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"),
+		Scope: auth.AdminScopePlatform,
 	}, &adminContextResolverStub{}, adminContextPlatformAuthorizerStub{})
 	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "insufficient_platform_authority") {
 		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())

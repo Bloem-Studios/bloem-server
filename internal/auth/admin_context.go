@@ -164,6 +164,9 @@ func validateAdminContextClaims(claims AdminContextClaims) error {
 	if claims.AccountID <= 0 {
 		return fmt.Errorf("%w: account id", ErrInvalidAdminContext)
 	}
+	if claims.AccountIncarnationID == uuid.Nil {
+		return fmt.Errorf("%w: account incarnation id", ErrInvalidAdminContext)
+	}
 	switch claims.Scope {
 	case AdminScopePlatform:
 		if claims.OrganizationID != uuid.Nil || claims.MembershipID != uuid.Nil || claims.PolicyRevision != 0 || claims.SecurityRevision != 0 || claims.EffectiveAuthority != "" {

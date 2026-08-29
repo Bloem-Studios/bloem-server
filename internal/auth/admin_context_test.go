@@ -18,12 +18,13 @@ func TestAdminContextTokenServiceMintsOnlyOneOrganizationScope(t *testing.T) {
 	service := auth.NewAdminContextTokenService("admin-context-test-secret")
 
 	token, err := service.Mint(auth.AdminContextClaims{
-		AccountID:        41,
-		Scope:            auth.AdminScopeOrganization,
-		OrganizationID:   organizationID,
-		MembershipID:     membershipID,
-		PolicyRevision:   7,
-		SecurityRevision: 11,
+		AccountID:            41,
+		AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"),
+		Scope:                auth.AdminScopeOrganization,
+		OrganizationID:       organizationID,
+		MembershipID:         membershipID,
+		PolicyRevision:       7,
+		SecurityRevision:     11,
 	})
 	if err != nil {
 		t.Fatalf("Mint() error = %v", err)
@@ -61,13 +62,36 @@ func TestAdminContextTokenServiceRoundTripsAccountIncarnation(t *testing.T) {
 	}
 }
 
+func TestAdminContextTokenServiceRejectsMissingAccountIncarnation(t *testing.T) {
+	service := auth.NewAdminContextTokenService("admin-context-test-secret")
+	if _, err := service.Mint(auth.AdminContextClaims{AccountID: 41, Scope: auth.AdminScopePlatform}); !errors.Is(err, auth.ErrInvalidAdminContext) {
+		t.Fatalf("Mint() error = %v, want ErrInvalidAdminContext", err)
+	}
+}
+
+func TestAdminContextTokenServiceRejectsMalformedAndNilAccountIncarnations(t *testing.T) {
+	const secret = "admin-context-test-secret"
+	now := time.Now().UTC().Truncate(time.Second)
+	service := auth.NewAdminContextTokenService(secret)
+	for _, incarnation := range []string{"not-a-uuid", uuid.Nil.String()} {
+		token := signedAdminContextToken(t, secret, jwt.MapClaims{
+			"account_id": 41, "account_incarnation_id": incarnation, "scope": string(auth.AdminScopePlatform),
+			"token_type": "admin_context", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(),
+		})
+		if _, err := service.Parse(token); !errors.Is(err, auth.ErrInvalidAdminContext) {
+			t.Fatalf("Parse(%q) error = %v, want ErrInvalidAdminContext", incarnation, err)
+		}
+	}
+}
+
 func TestAdminContextTokenServiceRejectsMixedScopes(t *testing.T) {
 	service := auth.NewAdminContextTokenService("admin-context-test-secret")
 
 	_, err := service.Mint(auth.AdminContextClaims{
-		AccountID:      41,
-		Scope:          auth.AdminScopePlatform,
-		OrganizationID: uuid.New(),
+		AccountID:            41,
+		AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"),
+		Scope:                auth.AdminScopePlatform,
+		OrganizationID:       uuid.New(),
 	})
 	if !errors.Is(err, auth.ErrInvalidAdminContext) {
 		t.Fatalf("Mint() error = %v, want ErrInvalidAdminContext", err)
@@ -79,9 +103,10 @@ func TestAdminContextTokenServiceCapsCallerExpiryAtFifteenMinutes(t *testing.T) 
 	before := time.Now().UTC()
 
 	token, err := service.Mint(auth.AdminContextClaims{
-		AccountID: 41,
-		Scope:     auth.AdminScopePlatform,
-		ExpiresAt: before.Add(time.Hour),
+		AccountID:            41,
+		AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"),
+		Scope:                auth.AdminScopePlatform,
+		ExpiresAt:            before.Add(time.Hour),
 	})
 	if err != nil {
 		t.Fatalf("Mint() error = %v", err)
