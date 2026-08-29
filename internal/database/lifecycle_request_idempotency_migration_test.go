@@ -11,6 +11,58 @@ import (
 )
 
 const lifecycleRequestIdempotencyPreviousMigration int64 = 20260829085838
+const lifecycleReceiptResolutionFixPreviousMigration int64 = 20260829092200
+
+func TestLifecycleReceiptResolutionTriggerUpgradeUsesFinalState(t *testing.T) {
+	ctx := context.Background()
+	pool := newDisposableMigrationDatabase(t)
+	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate latest: %v", err)
+	}
+	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", lifecycleReceiptResolutionFixPreviousMigration); err != nil {
+		t.Fatalf("prepare original receipt trigger: %v", err)
+	}
+
+	commitCompletedCreateReceipt := func(keyByte byte) error {
+		tx, err := pool.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		keyDigest, actorDigest, requestDigest, targetDigest := make([]byte, 32), make([]byte, 32), make([]byte, 32), make([]byte, 32)
+		keyDigest[0], actorDigest[0], requestDigest[0], targetDigest[0] = keyByte, 2, 3, 4
+		if _, err := tx.Exec(ctx, `INSERT INTO lifecycle_request_receipts (
+idempotency_key_digest,actor_kind,actor_subject_digest,method,route_id,request_hash,state)
+VALUES ($1,'preauth_intent',$2,'POST','test.create',$3,'binding_unresolved')`, keyDigest, actorDigest, requestDigest); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE lifecycle_request_receipts
+SET target_source='body_account',target_set_digest=$2,state='bound'
+WHERE idempotency_key_digest=$1`, keyDigest, targetDigest); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE lifecycle_request_receipts SET state='committed_pending'
+WHERE idempotency_key_digest=$1`, keyDigest); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE lifecycle_request_receipts
+SET state='completed',response_status=201,response_headers='{}',completed_at=now()
+WHERE idempotency_key_digest=$1`, keyDigest); err != nil {
+			return err
+		}
+		return tx.Commit(ctx)
+	}
+
+	if err := commitCompletedCreateReceipt(41); err == nil || !strings.Contains(err.Error(), "lifecycle_request_receipt_unresolved_at_commit") {
+		t.Fatalf("original trigger commit error = %v", err)
+	}
+	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("apply receipt resolution fix: %v", err)
+	}
+	if err := commitCompletedCreateReceipt(42); err != nil {
+		t.Fatalf("completed create receipt rejected after upgrade: %v", err)
+	}
+}
 
 func TestAccountIncarnationMigrationBackfillsAndOwnsIdentity(t *testing.T) {
 	ctx := context.Background()

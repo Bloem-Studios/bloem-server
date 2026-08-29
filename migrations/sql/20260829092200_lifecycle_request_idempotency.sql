@@ -218,12 +218,7 @@ FOR EACH ROW EXECUTE FUNCTION public.guard_lifecycle_request_receipt_target();
 -- +goose StatementBegin
 CREATE FUNCTION public.reject_unresolved_lifecycle_request_receipt() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM public.lifecycle_request_receipts AS receipt
-        WHERE receipt.idempotency_key_digest = NEW.idempotency_key_digest
-          AND receipt.state = 'binding_unresolved'
-    ) THEN
+    IF NEW.state = 'binding_unresolved' THEN
         RAISE EXCEPTION 'lifecycle_request_receipt_unresolved_at_commit' USING ERRCODE = 'check_violation';
     END IF;
     RETURN NULL;
