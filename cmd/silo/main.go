@@ -30,6 +30,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-hclog"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
@@ -438,6 +439,16 @@ func (b tenancyOwnershipBootstrapper) ActivateInitialOwnership(ctx context.Conte
 func (b tenancyOwnershipBootstrapper) ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) error {
 	_, err := b.store.ProvisionDefaultMembership(ctx, accountID, legacyRole)
 	return err
+}
+
+func (b tenancyOwnershipBootstrapper) ProvisionDefaultMembershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int, legacyRole string) (uuid.UUID, uuid.UUID, error) {
+	membership, err := b.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, legacyRole)
+	return membership.OrganizationID, membership.ID, err
+}
+
+func (b tenancyOwnershipBootstrapper) ProvisionMembershipInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, legacyRole string) (uuid.UUID, uuid.UUID, error) {
+	membership, err := b.store.ProvisionMembershipInTransaction(ctx, tx, organizationID, accountID, legacyRole)
+	return membership.OrganizationID, membership.ID, err
 }
 
 func buildBaseHandler(format string, level slog.Leveler, otelHandler slog.Handler) slog.Handler {

@@ -261,6 +261,28 @@ func (s *Service) Login(ctx context.Context, username, password, deviceName, ip 
 	return s.loginWithProvider(ctx, "local", username, password, deviceName, ip)
 }
 
+// StartAccountSessionInTransaction creates a login session and mints its token
+// pair on a caller-owned transaction for an account created in that same unit.
+func (s *Service) StartAccountSessionInTransaction(ctx context.Context, tx pgx.Tx, user *models.User, deviceName, ip string) (*TokenPair, error) {
+	if user == nil {
+		return nil, ErrInvalidCredentials
+	}
+	sessions, ok := s.sessions.(transactionalSessionRepository)
+	if !ok {
+		return nil, fmt.Errorf("session repository does not support transactional creation")
+	}
+	sessionID := uuid.NewString()
+	if err := sessions.CreateInTransaction(ctx, tx, models.AuthSession{
+		ID: sessionID, UserID: user.ID, DeviceName: deviceName, IPAddress: ip,
+		ExpiresAt: time.Now().Add(s.jwt.RefreshExpiry()),
+	}); err != nil {
+		return nil, fmt.Errorf("creating session: %w", err)
+	}
+	return s.generateTokenPair(Claims{
+		UserID: user.ID, AccountIncarnationID: user.AccountIncarnationID.String(), Role: user.Role, SessionID: sessionID,
+	})
+}
+
 func (s *Service) LoginWithProvider(
 	ctx context.Context,
 	providerID string,

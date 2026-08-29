@@ -211,6 +211,38 @@ func (s *Store) ProvisionDefaultMembershipInTransaction(
 	return membership, nil
 }
 
+// ProvisionMembershipInTransaction creates an active membership in one
+// explicit organization on a caller-owned transaction.
+func (s *Store) ProvisionMembershipInTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	organizationID uuid.UUID,
+	accountID int,
+	legacyRole string,
+) (Membership, error) {
+	if organizationID == uuid.Nil || (legacyRole != legacyRoleAdmin && legacyRole != legacyRoleUser) {
+		return Membership{}, fmt.Errorf("provision membership: invalid organization or legacy role %q", legacyRole)
+	}
+	var status OrganizationStatus
+	if err := tx.QueryRow(ctx, `SELECT status FROM organizations WHERE id=$1 FOR UPDATE`, organizationID).Scan(&status); errors.Is(err, pgx.ErrNoRows) {
+		return Membership{}, ErrOrganizationNotFound
+	} else if err != nil {
+		return Membership{}, fmt.Errorf("lock organization for membership: %w", err)
+	}
+	if status != OrganizationActive {
+		return Membership{}, ErrTenantNotFoundOrHidden
+	}
+	membership, err := scanMembership(tx.QueryRow(ctx, `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		VALUES ($1,$2,$3,$4)
+		RETURNING id,organization_id,account_id,status,legacy_role,security_revision`,
+		organizationID, accountID, MembershipActive, legacyRole))
+	if err != nil {
+		return Membership{}, fmt.Errorf("create organization membership: %w", err)
+	}
+	return membership, nil
+}
+
 // ActivateInitialOwnership atomically assigns the initial platform and default
 // organization owner. Repeating the operation for that same owner is a no-op.
 func (s *Store) ActivateInitialOwnership(ctx context.Context, accountID int) (state OwnershipState, err error) {

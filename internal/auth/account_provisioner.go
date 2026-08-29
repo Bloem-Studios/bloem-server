@@ -43,6 +43,10 @@ type transactionalMembershipProvisioner interface {
 	ProvisionDefaultMembershipInTransaction(context.Context, pgx.Tx, int, string) (uuid.UUID, uuid.UUID, error)
 }
 
+type transactionalOrganizationMembershipProvisioner interface {
+	ProvisionMembershipInTransaction(context.Context, pgx.Tx, uuid.UUID, int, string) (uuid.UUID, uuid.UUID, error)
+}
+
 type transactionalProfileCreator interface {
 	CreateProfileInTransaction(context.Context, pgx.Tx, userstore.Profile) error
 }
@@ -196,13 +200,46 @@ func (p *AccountProvisioner) CreateAccountInTransaction(
 		}
 	}
 
+	return p.createProfileInTransaction(ctx, tx, input, created)
+}
+
+// CreateAccountForOrganizationInTransaction creates an account, membership,
+// and optional profile in the organization selected by a stored invitation.
+func (p *AccountProvisioner) CreateAccountForOrganizationInTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	organizationID uuid.UUID,
+	input CreateAccountInput,
+) (CreatedAccount, error) {
+	user, conflict, err := p.CreateUserInTransaction(ctx, tx, input.User)
+	if err != nil {
+		return CreatedAccount{}, err
+	}
+	if conflict {
+		return CreatedAccount{}, ErrDuplicate
+	}
+	created := CreatedAccount{User: user, OrganizationID: organizationID}
+	memberships, ok := p.memberships.(transactionalOrganizationMembershipProvisioner)
+	if !ok {
+		return CreatedAccount{}, fmt.Errorf("membership provisioner does not support organization transactional creation")
+	}
+	created.OrganizationID, created.MembershipID, err = memberships.ProvisionMembershipInTransaction(
+		ctx, tx, organizationID, user.ID, MembershipLegacyRole(input.User.Role),
+	)
+	if err != nil {
+		return CreatedAccount{}, fmt.Errorf("provision organization membership: %w", err)
+	}
+	return p.createProfileInTransaction(ctx, tx, input, created)
+}
+
+func (p *AccountProvisioner) createProfileInTransaction(ctx context.Context, tx pgx.Tx, input CreateAccountInput, created CreatedAccount) (CreatedAccount, error) {
 	if !input.DefaultProfile.Enabled {
 		return created, nil
 	}
 	if p.storeProvider == nil {
 		return CreatedAccount{}, fmt.Errorf("user store provider unavailable")
 	}
-	store, err := p.storeProvider.ForUser(ctx, user.ID)
+	store, err := p.storeProvider.ForUser(ctx, created.User.ID)
 	if err != nil {
 		return CreatedAccount{}, fmt.Errorf("open user store: %w", err)
 	}
@@ -220,6 +257,8 @@ func (p *AccountProvisioner) CreateAccountInTransaction(
 	created.ProfileID = uuid.NewString()
 	if err := profiles.CreateProfileInTransaction(ctx, tx, userstore.Profile{
 		ID:                  created.ProfileID,
+		OrganizationID:      created.OrganizationID.String(),
+		AccessGroupID:       input.User.AccessGroupID,
 		Name:                name,
 		ShowForcedSubtitles: true,
 	}); err != nil {

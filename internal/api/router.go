@@ -2162,6 +2162,15 @@ func NewRouter(deps Dependencies) chi.Router {
 
 			if invitationService != nil {
 				invitationHandler := handlers.NewInvitationHandler(invitationService)
+				if deps.Config.Auth.JWTSecret != "" {
+					lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
+					invitationHandler.SetLifecycleIdempotency(
+						lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+						lifecycleidempotency.NewRequestDigester(lifecycleSecret),
+						serverid.NewResolver(settingsRepo),
+						lifecycleSecret,
+					)
+				}
 				if accessGroupStore != nil {
 					invitationHandler.SetAccessGroupProvider(accessGroupStore)
 				}
