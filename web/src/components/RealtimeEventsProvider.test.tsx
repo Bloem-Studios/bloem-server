@@ -265,7 +265,7 @@ describe("RealtimeEventsProvider", () => {
     expect(FakeWebSocket.instances).toHaveLength(2);
   });
 
-  it("preserves cached watched state when a favorite-only event arrives", () => {
+  it("preserves cached watched state when a favorite-only event arrives", async () => {
     const queryClient = new QueryClient();
     const detailKey = catalogKeys.itemDetail("movie-1");
     queryClient.setQueryData<ItemDetail>(detailKey, {
@@ -281,6 +281,11 @@ describe("RealtimeEventsProvider", () => {
         </RealtimeEventsProvider>
       </QueryClientProvider>,
     );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
 
     act(() => {
       FakeWebSocket.instances[0]?.emitMessage({

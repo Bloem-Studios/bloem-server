@@ -355,8 +355,7 @@ export default function CompatibilityApplicationsPage() {
           </h1>
           <p className="page-subtitle text-sm sm:text-base">
             Enroll, enable, and monitor the removable Jellyfin and Audiobookshelf applications.
-            Containers are operated on the host; Bloem shows the exact commands and never runs
-            them.
+            Containers are operated on the host; Bloem shows the exact commands and never runs them.
           </p>
         </div>
         <Button onClick={() => setEnrollOpen(true)}>

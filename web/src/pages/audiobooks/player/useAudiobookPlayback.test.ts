@@ -279,7 +279,7 @@ describe("useAudiobookPlayback", () => {
       await probeResult;
     });
     await flushAsyncWork();
-    expect(result.current.streamUrl).toBe("/api/v1/stream/session-1?token=token");
+    expect(result.current.streamUrl).toBe("/api/v1/stream/session-1");
     expect(
       vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/playback/start")),
     ).toHaveLength(1);
