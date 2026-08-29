@@ -2364,6 +2364,10 @@ func (s *Scanner) reconcileVanishedMusicFile(ctx context.Context, folderID int, 
 	if err := lockMusicFolderMutationExclusiveTx(ctx, tx, folderID); err != nil {
 		return false, false, err
 	}
+	albumRoot := filepath.Dir(filePath)
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, musicAlbumRootLockKey(folderID, albumRoot)); err != nil {
+		return false, false, fmt.Errorf("lock vanished music album root: %w", err)
+	}
 
 	var fileID int
 	var contentID string
@@ -2375,16 +2379,20 @@ func (s *Scanner) reconcileVanishedMusicFile(ctx context.Context, folderID int, 
 		  AND base_type = 'music'
 		FOR UPDATE
 	`, folderID, filePath).Scan(&fileID, &contentID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return true, false, nil
-	}
-	if err != nil {
+	rowMissing := errors.Is(err, pgx.ErrNoRows)
+	if err != nil && !rowMissing {
 		return false, false, fmt.Errorf("lock vanished music file: %w", err)
 	}
+	// The caller's first stat happened before it waited for the folder lock.
+	// Recheck even when no catalog row exists: a path created while waiting
+	// must fall through to normal ingest instead of becoming a handled no-op.
 	if _, err := os.Stat(filePath); err == nil {
 		return false, false, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return false, false, fmt.Errorf("recheck music file %s: %w", filePath, err)
+	}
+	if rowMissing {
+		return true, false, nil
 	}
 
 	tag, err := tx.Exec(ctx, `
@@ -2416,6 +2424,12 @@ func (s *Scanner) reconcileVanishedMusicFile(ctx context.Context, folderID int, 
 		if _, _, _, err := s.libraryRepo.ReconcileContentMembershipTx(ctx, tx, folderID, contentID, nil); err != nil {
 			return false, false, fmt.Errorf("reconcile vanished music item: %w", err)
 		}
+	}
+	if err := s.syncMusicScopedLibraryStateTx(ctx, tx, folderID, []musicRepairScope{{
+		contentID: contentID,
+		albumRoot: albumRoot,
+	}}); err != nil {
+		return false, false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return false, false, fmt.Errorf("commit vanished music reconciliation: %w", err)
@@ -2477,7 +2491,7 @@ func (s *Scanner) ScanFile(ctx context.Context, filePath string, folder *models.
 			if !changed {
 				return nil
 			}
-			return s.syncMusicFolderLibraryState(ctx, folder.ID)
+			return nil
 		} else if err != nil {
 			return fmt.Errorf("stat music file %s: %w", cleanFile, err)
 		}

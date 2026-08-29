@@ -180,7 +180,7 @@ func (s *Scanner) ScanMusicFolder(ctx context.Context, folder *models.MediaFolde
 			track.TrackNumber = albumTrackIndexes[albumRoot]
 		}
 		albumID := albumIDs[albumRoot]
-		albumID, err = s.upsertMusicTrack(ctx, folder, albumID, albumRoot, track)
+		albumID, err = s.upsertMusicTrack(ctx, folder, albumID, albumRoot, track, fullScan)
 		if err != nil {
 			return err
 		}
@@ -199,11 +199,21 @@ func (s *Scanner) ScanMusicFolder(ctx context.Context, folder *models.MediaFolde
 			}
 		}
 	}
+	if !fullScan {
+		repairScopes := make([]musicRepairScope, 0, len(albumIDs))
+		for albumRoot, contentID := range albumIDs {
+			repairScopes = append(repairScopes, musicRepairScope{
+				contentID: contentID,
+				albumRoot: albumRoot,
+			})
+		}
+		if err := s.syncMusicScopedLibraryState(ctx, folder.ID, repairScopes); err != nil {
+			return err
+		}
+		return nil
+	}
 	if err := s.syncMusicFolderLibraryState(ctx, folder.ID); err != nil {
 		return err
-	}
-	if !fullScan {
-		return nil
 	}
 
 	switch {
@@ -309,13 +319,13 @@ func musicFolderMutationLockKey(folderID int) int64 {
 }
 
 // Music mutations use a folder-scoped advisory read/write lock across every
-// server process. Ingest takes the shared mode so independent albums can be
-// written concurrently; cleanup and state restoration take the exclusive mode
-// because their set-oriented statements use a different row-lock order.
-// Filesystem walking and probing happen before this lock. Vanished-file cleanup
-// performs only its required exact-path stat recheck while holding it. The
-// narrower album-root lock is always acquired after the folder lock, giving
-// every music mutation one deadlock-safe order.
+// server process. Scoped ingest takes the shared mode so independent albums can
+// be written concurrently. A full scan's short per-track write and its cleanup
+// take exclusive mode so scoped state restoration cannot commit through an
+// in-flight full-scan generation. Filesystem walking and probing happen before
+// this lock. Vanished-file cleanup performs only its required exact-path stat
+// recheck while holding it. The narrower album-root lock is always acquired
+// after the folder lock, giving every music mutation one deadlock-safe order.
 func lockMusicFolderMutationSharedTx(ctx context.Context, tx pgx.Tx, folderID int) error {
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock_shared($1)`, musicFolderMutationLockKey(folderID)); err != nil {
 		return fmt.Errorf("lock music folder mutation in shared mode: %w", err)
@@ -336,6 +346,7 @@ func (s *Scanner) upsertMusicTrack(
 	albumID string,
 	albumRoot string,
 	track parsedMusicTrack,
+	fullScan bool,
 ) (string, error) {
 	artistID := stableMusicSemanticID("artist", track.AlbumArtist)
 	info, err := os.Stat(track.Path)
@@ -350,8 +361,14 @@ func (s *Scanner) upsertMusicTrack(
 		return "", fmt.Errorf("begin music track upsert: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
-	if err := lockMusicFolderMutationSharedTx(ctx, tx, folder.ID); err != nil {
-		return "", err
+	if fullScan {
+		if err := lockMusicFolderMutationExclusiveTx(ctx, tx, folder.ID); err != nil {
+			return "", err
+		}
+	} else {
+		if err := lockMusicFolderMutationSharedTx(ctx, tx, folder.ID); err != nil {
+			return "", err
+		}
 	}
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, musicAlbumRootLockKey(folder.ID, albumRoot)); err != nil {
 		return "", fmt.Errorf("lock music album root: %w", err)
@@ -470,6 +487,11 @@ type musicReconcileCandidate struct {
 	wasMissing bool
 }
 
+type musicRepairScope struct {
+	contentID string
+	albumRoot string
+}
+
 // snapshotMusicReconcileCandidates captures the only database rows a full
 // scan may treat as absent. It runs before the filesystem walk: rows created
 // later were never part of that walk's world-view, while xmin lets the
@@ -526,41 +548,60 @@ func (s *Scanner) reconcileMissingMusic(
 	}
 
 	cleanupFileIDs := make([]int, 0, len(absentCandidates))
-	missingAt := time.Now().UTC()
-	for _, candidate := range absentCandidates {
-		var id int
-		if candidate.wasMissing {
-			err = tx.QueryRow(ctx, `
-				SELECT id
-				FROM media_files
-				WHERE id = $1
-				  AND media_folder_id = $2
-				  AND file_path = $3
-				  AND base_type = 'music'
-				  AND xmin = ($4::text)::xid
-				  AND missing_since IS NOT NULL
-				FOR UPDATE
-			`, candidate.id, folderID, candidate.path, candidate.version).Scan(&id)
-		} else {
-			err = tx.QueryRow(ctx, `
+	if len(absentCandidates) > 0 {
+		candidateIDs := make([]int, len(absentCandidates))
+		candidatePaths := make([]string, len(absentCandidates))
+		candidateVersions := make([]string, len(absentCandidates))
+		candidateWasMissing := make([]bool, len(absentCandidates))
+		for i, candidate := range absentCandidates {
+			candidateIDs[i] = candidate.id
+			candidatePaths[i] = candidate.path
+			candidateVersions[i] = candidate.version
+			candidateWasMissing[i] = candidate.wasMissing
+		}
+
+		// Validate every snapshot tuple and lock the still-matching rows in one
+		// deterministic order. A row refreshed after the pre-walk snapshot has
+		// a new xmin and is omitted; already-missing rows remain eligible only
+		// while they are still missing.
+		rows, queryErr := tx.Query(ctx, `
+			WITH candidate AS (
+				SELECT *
+				FROM unnest(
+					$2::integer[], $3::text[], $4::text[], $5::boolean[]
+				) AS c(id, file_path, version, was_missing)
+			)
+			SELECT mf.id
+			FROM candidate c
+			JOIN media_files mf
+			  ON mf.id = c.id
+			 AND mf.media_folder_id = $1
+			 AND mf.file_path = c.file_path
+			 AND mf.base_type = 'music'
+			 AND mf.xmin = c.version::xid
+			WHERE (c.was_missing AND mf.missing_since IS NOT NULL)
+			   OR (NOT c.was_missing AND mf.missing_since IS NULL)
+			ORDER BY mf.id
+			FOR UPDATE OF mf
+		`, folderID, candidateIDs, candidatePaths, candidateVersions, candidateWasMissing)
+		if queryErr != nil {
+			return fmt.Errorf("lock missing music candidates: %w", queryErr)
+		}
+		cleanupFileIDs, err = pgx.CollectRows(rows, pgx.RowTo[int])
+		if err != nil {
+			return fmt.Errorf("collect locked missing music candidates: %w", err)
+		}
+
+		if len(cleanupFileIDs) > 0 {
+			if _, err := tx.Exec(ctx, `
 				UPDATE media_files
 				SET missing_since = $1, updated_at = NOW()
-				WHERE id = $2
-				  AND media_folder_id = $3
-				  AND file_path = $4
-				  AND base_type = 'music'
-				  AND xmin = ($5::text)::xid
+				WHERE id = ANY($2::integer[])
 				  AND missing_since IS NULL
-				RETURNING id
-			`, missingAt, candidate.id, folderID, candidate.path, candidate.version).Scan(&id)
+			`, time.Now().UTC(), cleanupFileIDs); err != nil {
+				return fmt.Errorf("mark missing music candidates: %w", err)
+			}
 		}
-		if errors.Is(err, pgx.ErrNoRows) {
-			continue
-		}
-		if err != nil {
-			return fmt.Errorf("verify missing music candidate %d: %w", candidate.id, err)
-		}
-		cleanupFileIDs = append(cleanupFileIDs, id)
 	}
 	if len(cleanupFileIDs) > 0 {
 		if _, err := tx.Exec(ctx, `
@@ -599,4 +640,163 @@ func (s *Scanner) syncMusicFolderLibraryState(ctx context.Context, folderID int)
 		return fmt.Errorf("commit music folder state repair: %w", err)
 	}
 	return nil
+}
+
+// syncMusicScopedLibraryState repairs only the album identities and roots a
+// scoped scan touched. The shared folder lock permits independent albums to
+// progress concurrently; per-root locks retain the global folder -> album ->
+// row ordering used by ingestion.
+func (s *Scanner) syncMusicScopedLibraryState(
+	ctx context.Context,
+	folderID int,
+	scopes []musicRepairScope,
+) error {
+	scopes = normalizeMusicRepairScopes(scopes)
+	if len(scopes) == 0 {
+		return nil
+	}
+	tx, err := s.fileRepo.Pool().Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin music scoped state repair: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := lockMusicFolderMutationSharedTx(ctx, tx, folderID); err != nil {
+		return err
+	}
+	lastAlbumRoot := ""
+	for _, scope := range scopes {
+		if scope.albumRoot == lastAlbumRoot {
+			continue
+		}
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, musicAlbumRootLockKey(folderID, scope.albumRoot)); err != nil {
+			return fmt.Errorf("lock music repair album root: %w", err)
+		}
+		lastAlbumRoot = scope.albumRoot
+	}
+	if err := s.syncMusicScopedLibraryStateTx(ctx, tx, folderID, scopes); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit music scoped state repair: %w", err)
+	}
+	return nil
+}
+
+func normalizeMusicRepairScopes(scopes []musicRepairScope) []musicRepairScope {
+	normalized := make([]musicRepairScope, 0, len(scopes))
+	seen := make(map[musicRepairScope]struct{}, len(scopes))
+	for _, scope := range scopes {
+		scope.contentID = strings.TrimSpace(scope.contentID)
+		scope.albumRoot = filepath.Clean(scope.albumRoot)
+		if scope.contentID == "" || scope.albumRoot == "" || scope.albumRoot == "." {
+			continue
+		}
+		if _, ok := seen[scope]; ok {
+			continue
+		}
+		seen[scope] = struct{}{}
+		normalized = append(normalized, scope)
+	}
+	sort.Slice(normalized, func(i, j int) bool {
+		if normalized[i].albumRoot == normalized[j].albumRoot {
+			return normalized[i].contentID < normalized[j].contentID
+		}
+		return normalized[i].albumRoot < normalized[j].albumRoot
+	})
+	return normalized
+}
+
+func (s *Scanner) syncMusicScopedLibraryStateTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	folderID int,
+	scopes []musicRepairScope,
+) error {
+	scopes = normalizeMusicRepairScopes(scopes)
+	if len(scopes) == 0 {
+		return nil
+	}
+	contentIDs := make([]string, 0, len(scopes))
+	albumRoots := make([]string, 0, len(scopes))
+	seenContentIDs := make(map[string]struct{}, len(scopes))
+	for _, scope := range scopes {
+		albumRoots = append(albumRoots, scope.albumRoot)
+		if _, ok := seenContentIDs[scope.contentID]; ok {
+			continue
+		}
+		seenContentIDs[scope.contentID] = struct{}{}
+		contentIDs = append(contentIDs, scope.contentID)
+	}
+	sort.Strings(contentIDs)
+	scopeContentIDs := contentIDsForMusicRepairScopes(scopes)
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO media_item_libraries (content_id, media_folder_id, first_seen_at)
+		SELECT DISTINCT mf.content_id, mf.media_folder_id, NOW()
+		FROM media_files mf
+		JOIN media_items mi ON mi.content_id = mf.content_id
+		WHERE mf.media_folder_id = $1
+		  AND mf.content_id = ANY($2::text[])
+		  AND mf.missing_since IS NULL
+		ORDER BY mf.content_id, mf.media_folder_id
+		ON CONFLICT (content_id, media_folder_id) DO NOTHING
+	`, folderID, contentIDs); err != nil {
+		return fmt.Errorf("restoring scoped music memberships: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		WITH target AS (
+			SELECT *
+			FROM unnest($2::text[], $3::text[]) AS t(content_id, canonical_root_path)
+		)
+		DELETE FROM media_item_roots mir
+		USING target
+		WHERE mir.media_folder_id = $1
+		  AND mir.content_id = target.content_id
+		  AND mir.canonical_root_path = target.canonical_root_path
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM media_files mf
+			WHERE mf.media_folder_id = mir.media_folder_id
+			  AND mf.content_id = mir.content_id
+			  AND mf.canonical_root_path = mir.canonical_root_path
+			  AND mf.missing_since IS NULL
+		  )
+	`, folderID, scopeContentIDs, albumRoots); err != nil {
+		return fmt.Errorf("removing stale scoped music roots: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		WITH target AS (
+			SELECT *
+			FROM unnest($2::text[], $3::text[]) AS t(content_id, canonical_root_path)
+		)
+		INSERT INTO media_item_roots (media_folder_id, canonical_root_path, content_id)
+		SELECT DISTINCT ON (mf.media_folder_id, mf.canonical_root_path)
+			mf.media_folder_id, mf.canonical_root_path, mf.content_id
+		FROM media_files mf
+		JOIN target
+		  ON target.content_id = mf.content_id
+		 AND target.canonical_root_path = mf.canonical_root_path
+		JOIN media_items mi ON mi.content_id = mf.content_id
+		WHERE mf.media_folder_id = $1
+		  AND mf.missing_since IS NULL
+		  AND mi.type = 'music_album'
+		ORDER BY mf.media_folder_id, mf.canonical_root_path, mf.id
+		ON CONFLICT (media_folder_id, canonical_root_path)
+		DO UPDATE SET content_id = EXCLUDED.content_id,
+			last_seen_at = NOW()
+	`, folderID, scopeContentIDs, albumRoots); err != nil {
+		return fmt.Errorf("restoring scoped music roots: %w", err)
+	}
+
+	return nil
+}
+
+func contentIDsForMusicRepairScopes(scopes []musicRepairScope) []string {
+	contentIDs := make([]string, len(scopes))
+	for i, scope := range scopes {
+		contentIDs[i] = scope.contentID
+	}
+	return contentIDs
 }

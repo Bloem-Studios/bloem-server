@@ -553,25 +553,44 @@ func (r *LibraryItemRepository) reconcileFolderMembershipTx(
 	}
 	orphanIDs = appendUniqueStrings(orphanIDs, previouslyProtected...)
 	if len(orphanIDs) > 0 {
-
 		// Exempt orphans whose files sit under an unreachable root: the files
 		// still exist, the root is just offline. See the doc comment above.
-		if len(orphanIDs) > 0 && len(protectedPathPrefixes) > 0 {
+		if len(protectedPathPrefixes) > 0 {
 			orphanIDs, err = excludeOrphansUnderProtectedPrefixes(ctx, tx, orphanIDs, folderID, protectedPathPrefixes)
 			if err != nil {
 				return 0, 0, nil, err
 			}
 		}
 
-		// Collect image paths before deletion.
 		if len(orphanIDs) > 0 {
-			orphanedImageDirs, err = collectImageDirs(ctx, tx, orphanIDs)
+			// Every writer that establishes item-owned state locks media_items
+			// first (INSERT/UPDATE, or an FK key-share lock for membership). Lock
+			// candidate rows in one deterministic order so cross-folder refreshes
+			// either become visible before the orphan decision or wait until after
+			// a legitimate delete. The orphan decision deliberately happens in a
+			// separate statement: at READ COMMITTED it receives a fresh snapshot
+			// after any conflicting writer we waited for has committed.
+			orphanIDs, err = lockMediaItemCandidates(ctx, tx, orphanIDs)
 			if err != nil {
 				return 0, 0, nil, err
 			}
 		}
 
 		if len(orphanIDs) > 0 {
+			orphanIDs, err = collectGloballyDeletableMediaItemIDs(ctx, tx, orphanIDs)
+			if err != nil {
+				return 0, 0, nil, err
+			}
+		}
+
+		if len(orphanIDs) > 0 {
+			// Capture paths before cascades remove their owners, but do not return
+			// any cleanup prefix until the guarded DELETE says which rows really
+			// disappeared. A concurrent survivor must keep its artwork.
+			rawImageDirs, err := collectRawImageDirs(ctx, tx, orphanIDs)
+			if err != nil {
+				return 0, 0, nil, err
+			}
 			rows, err := tx.Query(ctx, `
 				DELETE FROM media_items mi
 				WHERE mi.content_id = ANY($1)
@@ -579,6 +598,12 @@ func (r *LibraryItemRepository) reconcileFolderMembershipTx(
 					SELECT 1
 					FROM media_item_libraries mil
 					WHERE mil.content_id = mi.content_id
+				  )
+				  AND NOT EXISTS (
+					SELECT 1
+					FROM media_files mf
+					WHERE mf.content_id = mi.content_id
+					  AND mf.missing_since IS NULL
 				  )
 				RETURNING mi.content_id
 			`, orphanIDs)
@@ -590,6 +615,10 @@ func (r *LibraryItemRepository) reconcileFolderMembershipTx(
 				return 0, 0, nil, fmt.Errorf("collecting deleted orphaned media item IDs: %w", err)
 			}
 			deletedItems = len(deletedContentIDs)
+			orphanedImageDirs, err = filterUnreferencedImageDirs(ctx, tx, rawImageDirs, deletedContentIDs)
+			if err != nil {
+				return 0, 0, nil, err
+			}
 			if err := EnqueueSearchIndexDeletes(ctx, tx, deletedContentIDs); err != nil {
 				return 0, 0, nil, fmt.Errorf("enqueueing catalog search orphan deletes: %w", err)
 			}
@@ -647,6 +676,67 @@ func appendUniqueStrings(values []string, additions ...string) []string {
 		values = append(values, value)
 	}
 	return values
+}
+
+// lockMediaItemCandidates takes row locks in content-ID order. The explicit
+// ordering is required because two folder reconciliations can share more than
+// one item while holding different folder advisory locks.
+func lockMediaItemCandidates(ctx context.Context, tx pgx.Tx, contentIDs []string) ([]string, error) {
+	if len(contentIDs) == 0 {
+		return nil, nil
+	}
+	contentIDs = append([]string(nil), contentIDs...)
+	slices.Sort(contentIDs)
+	contentIDs = slices.Compact(contentIDs)
+	rows, err := tx.Query(ctx, `
+		SELECT mi.content_id
+		FROM media_items mi
+		WHERE mi.content_id = ANY($1::text[])
+		ORDER BY mi.content_id
+		FOR UPDATE
+	`, contentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("locking orphaned media item candidates: %w", err)
+	}
+	lockedIDs, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, fmt.Errorf("collecting locked orphaned media item candidates: %w", err)
+	}
+	return lockedIDs, nil
+}
+
+// collectGloballyDeletableMediaItemIDs is intentionally separate from the row
+// lock statement. Under READ COMMITTED this fresh statement observes a
+// cross-folder refresh that committed while candidate locking was blocked.
+func collectGloballyDeletableMediaItemIDs(ctx context.Context, tx pgx.Tx, contentIDs []string) ([]string, error) {
+	if len(contentIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT mi.content_id
+		FROM media_items mi
+		WHERE mi.content_id = ANY($1::text[])
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM media_item_libraries mil
+			WHERE mil.content_id = mi.content_id
+		  )
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM media_files mf
+			WHERE mf.content_id = mi.content_id
+			  AND mf.missing_since IS NULL
+		  )
+		ORDER BY mi.content_id
+	`, contentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("rechecking global orphaned media item state: %w", err)
+	}
+	deletableIDs, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, fmt.Errorf("collecting globally orphaned media item IDs: %w", err)
+	}
+	return deletableIDs, nil
 }
 
 // excludeOrphansUnderProtectedPrefixes returns the subset of orphanIDs that
