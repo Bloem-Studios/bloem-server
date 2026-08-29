@@ -209,7 +209,20 @@ func (s *GroupStore) List(ctx context.Context, organizationID uuid.UUID) ([]Grou
 
 // Get returns one access group with its member count.
 func (s *GroupStore) Get(ctx context.Context, organizationID uuid.UUID, id int64) (*Group, error) {
-	group, err := scanGroup(s.pool.QueryRow(ctx, `
+	return getGroup(ctx, s.pool, organizationID, id)
+}
+
+type groupQueryRower interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+// GetInTransaction loads one access group from a caller-owned transaction.
+func (s *GroupStore) GetInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, id int64) (*Group, error) {
+	return getGroup(ctx, tx, organizationID, id)
+}
+
+func getGroup(ctx context.Context, querier groupQueryRower, organizationID uuid.UUID, id int64) (*Group, error) {
+	group, err := scanGroup(querier.QueryRow(ctx, `
 		SELECT `+accessGroupSelectColumns+`, COUNT(p.id)::int AS member_count
 		FROM access_groups g
 		LEFT JOIN user_profiles p

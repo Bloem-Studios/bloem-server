@@ -257,6 +257,12 @@ func (r *UserRepository) GetByID(ctx context.Context, id int) (*models.User, err
 	return scanUser(r.pool.QueryRow(ctx, query, id))
 }
 
+// GetByIDInTransaction reads an account through a caller-owned transaction.
+func (r *UserRepository) GetByIDInTransaction(ctx context.Context, tx pgx.Tx, id int) (*models.User, error) {
+	query := `SELECT ` + allColumns + ` FROM users WHERE id = $1`
+	return scanUser(tx.QueryRow(ctx, query, id))
+}
+
 // GetByUsername retrieves a user by their username (case-insensitive).
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*models.User, error) {
 	query := `SELECT ` + allColumns + ` FROM users WHERE username = $1`

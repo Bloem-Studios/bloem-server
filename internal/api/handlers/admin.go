@@ -76,6 +76,18 @@ type DirectEntitlementProvisioner interface {
 	ApplyDefaultAccountTemplate(context.Context, int, string, int64, bool) (entitlements.ApplyResult, error)
 }
 
+type transactionalDirectEntitlementProvisioner interface {
+	ApplyDefaultAccountTemplateInTransaction(context.Context, pgx.Tx, int, string, int64, bool) (entitlements.ApplyResult, error)
+}
+
+type transactionalAdminUserRepository interface {
+	GetByIDInTransaction(context.Context, pgx.Tx, int) (*models.User, error)
+}
+
+type transactionalAccessGroupValidator interface {
+	GetInTransaction(context.Context, pgx.Tx, uuid.UUID, int64) (*access.Group, error)
+}
+
 // AccountPolicyReader exposes only authoritative Server-side policy state.
 // Callers cannot supply an expected template or cohort identity through this
 // boundary.
@@ -1116,8 +1128,13 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
 	var req updateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
@@ -1127,13 +1144,8 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "bad_request", "entitlement_template_key and a positive entitlement_template_revision are required together")
 		return
 	}
-	if directEntitlementRequested && h.directEntitlements == nil {
+	if directEntitlementRequested && h.directEntitlements == nil && (h.lifecycle == nil || h.lifecycleDigest == nil) {
 		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are not configured")
-		return
-	}
-
-	currentUser, blocked := h.rejectScopedAPIKeyUpdate(w, r, id, &req)
-	if blocked {
 		return
 	}
 
@@ -1158,29 +1170,6 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		if req.AccessGroupID.Value != nil && *req.AccessGroupID.Value <= 0 {
 			writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
 			return
-		}
-		currentUser, blocked = h.rejectGroupedAdmin(w, r, id, &req, currentUser)
-		if blocked {
-			return
-		}
-		if req.AccessGroupID.Value != nil {
-			if h.AccessGroups == nil {
-				writeError(w, http.StatusInternalServerError, "internal_error", "Access groups are not configured")
-				return
-			}
-			tenant, ok := tenancy.FromContext(r.Context())
-			if !ok || tenant.OrganizationID == uuid.Nil {
-				writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
-				return
-			}
-			if _, err := h.AccessGroups.Get(r.Context(), tenant.OrganizationID, *req.AccessGroupID.Value); err != nil {
-				if errors.Is(err, access.ErrGroupNotFound) {
-					writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
-					return
-				}
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to validate access group")
-				return
-			}
 		}
 	}
 	var permissions *[]string
@@ -1211,6 +1200,45 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		DownloadTranscodeAllowed: req.DownloadTranscodeAllowed.Optional(),
 		RequestsAllowed:          req.RequestsAllowed.Optional(),
 		AccessGroupID:            req.AccessGroupID.Optional(),
+	}
+
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleUpdateUser(w, r, id, idStr, body, req, updateInput, directEntitlementRequested)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
+
+	currentUser, blocked := h.rejectScopedAPIKeyUpdate(w, r, id, &req)
+	if blocked {
+		return
+	}
+	if req.AccessGroupID.Set {
+		currentUser, blocked = h.rejectGroupedAdmin(w, r, id, &req, currentUser)
+		if blocked {
+			return
+		}
+		if req.AccessGroupID.Value != nil {
+			if h.AccessGroups == nil {
+				writeError(w, http.StatusInternalServerError, "internal_error", "Access groups are not configured")
+				return
+			}
+			tenant, ok := tenancy.FromContext(r.Context())
+			if !ok || tenant.OrganizationID == uuid.Nil {
+				writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+				return
+			}
+			if _, err := h.AccessGroups.Get(r.Context(), tenant.OrganizationID, *req.AccessGroupID.Value); err != nil {
+				if errors.Is(err, access.ErrGroupNotFound) {
+					writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to validate access group")
+				return
+			}
+		}
 	}
 
 	if currentUser == nil && updateMayRequireSessionRevocation(updateInput) {
@@ -1263,6 +1291,221 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 	resp := toAdminUserResponse(user, updatedGroupPolicy)
 	resp.AppliedEntitlementRevision = appliedEntitlementRevision
 	writeJSON(w, http.StatusOK, resp)
+}
+
+var (
+	errLifecycleUpdateInsufficientScope = errors.New("lifecycle account update insufficient scope")
+	errLifecycleUpdateGroupedAdmin      = errors.New("lifecycle account update grouped admin")
+	errLifecycleUpdateTenantUnavailable = errors.New("lifecycle account update tenant unavailable")
+	errLifecycleUpdateAccessUnavailable = errors.New("lifecycle account update access groups unavailable")
+)
+
+func (h *AdminHandler) handleLifecycleUpdateUser(
+	w http.ResponseWriter,
+	r *http.Request,
+	id int,
+	selector string,
+	body []byte,
+	req updateUserRequest,
+	updateInput models.UpdateUserInput,
+	directEntitlementRequested bool,
+) {
+	claims := apimw.GetClaims(r.Context())
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
+		return
+	}
+	actorIncarnation, err := uuid.Parse(claims.AccountIncarnationID)
+	if err != nil || actorIncarnation == uuid.Nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
+		return
+	}
+	actorID := claims.UserID
+	request := lifecycleidempotency.Request{
+		IdempotencyKey: r.Header.Get("Idempotency-Key"),
+		Binding: lifecycleidempotency.Binding{
+			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
+			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: "account.update",
+			RequestHash:  h.lifecycleDigest(r.Method, "account.update", map[string]string{"id": selector}, r.URL.Query(), body),
+			TargetSource: lifecycleidempotency.TargetPathAccount,
+		},
+		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+			if directEntitlementRequested {
+				rows, err := tx.Query(ctx, `
+					SELECT organizations.id
+					FROM organizations
+					JOIN organization_memberships ON organization_memberships.organization_id=organizations.id
+					WHERE organization_memberships.account_id=$1
+					ORDER BY organizations.id
+					FOR UPDATE OF organizations`, id)
+				if err != nil {
+					return nil, fmt.Errorf("lock account organizations: %w", err)
+				}
+				for rows.Next() {
+					var organizationID uuid.UUID
+					if err := rows.Scan(&organizationID); err != nil {
+						rows.Close()
+						return nil, err
+					}
+				}
+				if err := rows.Err(); err != nil {
+					rows.Close()
+					return nil, err
+				}
+				rows.Close()
+			}
+			return lifecycleidempotency.ResolveAccountTargets(ctx, tx, id)
+		},
+	}
+	var revokeSessions bool
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		users, ok := h.userRepo.(transactionalAdminUserRepository)
+		if !ok {
+			return lifecycleidempotency.Result{}, errors.New("account repository does not support caller-owned transactions")
+		}
+		current, err := users.GetByIDInTransaction(ctx, tx, id)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		if len(claims.APIKeyScopes) > 0 {
+			if req.Role != nil && *req.Role == roleAdmin {
+				return lifecycleidempotency.Result{}, errLifecycleUpdateInsufficientScope
+			}
+			if (req.Password != nil || req.Role != nil) && current.Role == roleAdmin {
+				return lifecycleidempotency.Result{}, errLifecycleUpdateInsufficientScope
+			}
+		}
+		if req.AccessGroupID.Set && req.AccessGroupID.Value != nil {
+			resultingRole := current.Role
+			if req.Role != nil {
+				resultingRole = *req.Role
+			}
+			if resultingRole == roleAdmin {
+				return lifecycleidempotency.Result{}, errLifecycleUpdateGroupedAdmin
+			}
+			if h.AccessGroups == nil {
+				return lifecycleidempotency.Result{}, errLifecycleUpdateAccessUnavailable
+			}
+			tenant, exists := tenancy.FromContext(ctx)
+			if !exists || tenant.OrganizationID == uuid.Nil {
+				return lifecycleidempotency.Result{}, errLifecycleUpdateTenantUnavailable
+			}
+			groups, ok := h.AccessGroups.(transactionalAccessGroupValidator)
+			if !ok {
+				return lifecycleidempotency.Result{}, errLifecycleUpdateAccessUnavailable
+			}
+			if _, err := groups.GetInTransaction(ctx, tx, tenant.OrganizationID, *req.AccessGroupID.Value); err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+		}
+		revokeSessions = updateRequiresSessionRevocation(current, updateInput)
+		if _, err := h.accountProvisioner.UpdateUserInTransaction(ctx, tx, id, updateInput); err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		var appliedEntitlementRevision int64
+		if directEntitlementRequested {
+			entitlementWriter, ok := h.directEntitlements.(transactionalDirectEntitlementProvisioner)
+			if !ok {
+				return lifecycleidempotency.Result{}, errors.New("entitlement store does not support caller-owned transactions")
+			}
+			applied, err := entitlementWriter.ApplyDefaultAccountTemplateInTransaction(ctx, tx, id, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
+			if err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			appliedEntitlementRevision = applied.TemplateRevision
+		}
+		if revokeSessions {
+			if h.pool == nil {
+				return lifecycleidempotency.Result{}, errors.New("session repository does not support caller-owned transactions")
+			}
+			sessions := auth.NewSessionRepository(h.pool)
+			if err := sessions.RevokeAllByUserInTransaction(ctx, tx, id); err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			if err := sessions.RevokeAllByImpersonatorInTransaction(ctx, tx, id); err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+		}
+		updated, err := users.GetByIDInTransaction(ctx, tx, id)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		var groupPolicy *access.GroupPolicy
+		if access.GroupApplies(updated) && h.AccessGroups != nil {
+			if tenant, exists := tenancy.FromContext(ctx); exists {
+				groups, ok := h.AccessGroups.(transactionalAccessGroupValidator)
+				if !ok {
+					return lifecycleidempotency.Result{}, errLifecycleUpdateAccessUnavailable
+				}
+				group, err := groups.GetInTransaction(ctx, tx, tenant.OrganizationID, *updated.AccessGroupID)
+				if err != nil && !errors.Is(err, access.ErrGroupNotFound) {
+					return lifecycleidempotency.Result{}, err
+				}
+				if group != nil {
+					policy := group.Policy()
+					groupPolicy = &policy
+				}
+			}
+		}
+		response := toAdminUserResponse(updated, groupPolicy)
+		response.AppliedEntitlementRevision = appliedEntitlementRevision
+		payload, err := json.Marshal(response)
+		if err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		return lifecycleidempotency.Result{Status: http.StatusOK, Body: payload, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
+	})
+	if err != nil {
+		slog.ErrorContext(r.Context(), "lifecycle account update failed", "component", "api", "user_id", id, "error", err)
+		switch {
+		case errors.Is(err, errLifecycleUpdateInsufficientScope):
+			writeError(w, http.StatusForbidden, "insufficient_scope", "A scoped API key may not perform this account update")
+		case errors.Is(err, errLifecycleUpdateGroupedAdmin):
+			writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Admin accounts cannot belong to an access group")
+		case errors.Is(err, errLifecycleUpdateTenantUnavailable):
+			writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+		case errors.Is(err, errLifecycleUpdateAccessUnavailable):
+			writeError(w, http.StatusInternalServerError, "internal_error", "Access groups are not configured")
+		case errors.Is(err, access.ErrGroupNotFound):
+			writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
+		case errors.Is(err, entitlements.ErrTemplateNotFound), errors.Is(err, entitlements.ErrTemplateUnavailable):
+			writeError(w, http.StatusUnprocessableEntity, "entitlement_template_unavailable", "Entitlement template revision is unavailable")
+		case errors.Is(err, lifecycleidempotency.ErrKeyRequired):
+			writeError(w, http.StatusPreconditionRequired, "idempotency_key_required", "Idempotency-Key is required for this lifecycle mutation")
+		case errors.Is(err, lifecycleidempotency.ErrKeyMalformed):
+			writeError(w, http.StatusBadRequest, "idempotency_key_invalid", "Idempotency-Key must be a bounded opaque ASCII value")
+		case errors.Is(err, lifecycleidempotency.ErrConflict):
+			writeError(w, http.StatusConflict, "idempotency_key_conflict", "Idempotency-Key conflicts with its original lifecycle request")
+		case errors.Is(err, lifecycleidempotency.ErrTargetNotFound), auth.IsNotFound(err):
+			writeError(w, http.StatusNotFound, "not_found", "User not found")
+		case errors.Is(err, lifecycleidempotency.ErrPending):
+			w.Header().Set("Retry-After", "1")
+			writeError(w, http.StatusServiceUnavailable, "lifecycle_request_pending", "Lifecycle request completion is pending")
+		case errors.Is(err, lifecycleidempotency.ErrInvalidBinding):
+			writeError(w, http.StatusUnauthorized, "unauthorized", "Lifecycle request identity is no longer valid")
+		default:
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update user")
+		}
+		return
+	}
+	if !result.Replayed && revokeSessions {
+		if h.OnUserSessionsRevoked != nil {
+			err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
+				return h.OnUserSessionsRevoked(callbackCtx, id)
+			})
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke updated user sessions")
+				return
+			}
+		}
+	}
+	for key, values := range result.Headers {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+	w.WriteHeader(result.Status)
+	_, _ = w.Write(result.Body)
 }
 
 // HandleDeleteUser handles DELETE /admin/users/{id}.

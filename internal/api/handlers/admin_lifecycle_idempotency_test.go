@@ -182,9 +182,11 @@ func TestRequestLimitLifecycleReplayDoesNotUpdateSameNumericReplacement(t *testi
 		router.ServeHTTP(recorder, req)
 		return recorder
 	}
-	if first := request(); first.Code != http.StatusOK {
+	first := request()
+	if first.Code != http.StatusOK {
 		t.Fatalf("first update = %d: %s", first.Code, first.Body.String())
 	}
+	firstBody := first.Body.String()
 	if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id=$1`, target.ID); err != nil {
 		t.Fatalf("delete target: %v", err)
 	}
@@ -197,12 +199,121 @@ func TestRequestLimitLifecycleReplayDoesNotUpdateSameNumericReplacement(t *testi
 	if _, err := pool.Exec(ctx, `INSERT INTO request_user_limits (user_id,limit_mode,max_requests,window_days,approval_mode) VALUES ($1,'custom',99,30,'auto')`, target.ID); err != nil {
 		t.Fatalf("create replacement limit: %v", err)
 	}
-	if replay := request(); replay.Code != http.StatusOK {
+	replay := request()
+	if replay.Code != http.StatusOK {
 		t.Fatalf("replay update = %d: %s", replay.Code, replay.Body.String())
+	}
+	if replay.Body.String() != firstBody {
+		t.Fatalf("replay body = %q, want %q", replay.Body.String(), firstBody)
 	}
 	var maxRequests int
 	if err := pool.QueryRow(ctx, `SELECT max_requests FROM request_user_limits WHERE user_id=$1`, target.ID).Scan(&maxRequests); err != nil || maxRequests != 99 {
 		t.Fatalf("replacement max requests = %d, error = %v", maxRequests, err)
+	}
+}
+
+func TestAdminUpdateUserLifecycleReplayDoesNotUpdateSameNumericReplacement(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	users := auth.NewUserRepository(pool)
+	actor, err := users.Create(ctx, models.CreateUserInput{Username: "update-actor-" + uuid.NewString(), Email: uuid.NewString() + "@lifecycle.test", Password: "test-password", Role: models.RoleAdmin})
+	if err != nil {
+		t.Fatalf("create actor: %v", err)
+	}
+	target, err := users.Create(ctx, models.CreateUserInput{Username: "update-target-" + uuid.NewString(), Email: uuid.NewString() + "@lifecycle.test", Password: "test-password", Role: models.RoleUser})
+	if err != nil {
+		t.Fatalf("create target: %v", err)
+	}
+	var organizationID uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT id FROM organizations WHERE is_default`).Scan(&organizationID); err != nil {
+		t.Fatalf("load default organization: %v", err)
+	}
+	for _, accountID := range []int{actor.ID, target.ID} {
+		if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active',$3)`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
+			t.Fatalf("create membership: %v", err)
+		}
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=ANY($1::integer[])`, []int{actor.ID, target.ID})
+	})
+
+	handler := handlers.NewAdminHandler(users, pool, nil)
+	invalidations := 0
+	handler.OnUserSessionsRevoked = func(context.Context, int) error {
+		invalidations++
+		return nil
+	}
+	secret := []byte("account-update-lifecycle-test-secret")
+	handler.SetLifecycleIdempotency(lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(pool), lifecycleidempotency.NewHMACKeyDigester(secret)), lifecycleidempotency.NewRequestDigester(secret))
+	router := chi.NewRouter()
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims := &auth.Claims{UserID: actor.ID, AccountIncarnationID: actor.AccountIncarnationID.String(), Role: models.RoleAdmin}
+			next.ServeHTTP(w, r.WithContext(apimw.SetClaims(r.Context(), claims)))
+		})
+	})
+	router.Put("/api/v1/admin/users/{id}", handler.HandleUpdateUser)
+	key := "account-update-replay-" + uuid.NewString()
+	updatedUsername := "updated-" + uuid.NewString()
+	oldSessionID := uuid.NewString()
+	if _, err := pool.Exec(ctx, `INSERT INTO auth_sessions (id,user_id,device_id,expires_at) VALUES ($1,$2,'old',now()+interval '1 hour')`, oldSessionID, target.ID); err != nil {
+		t.Fatalf("create old session: %v", err)
+	}
+	request := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/users/"+strconv.Itoa(target.ID), strings.NewReader(`{"username":"`+updatedUsername+`","password":"replacement-password"}`))
+		req.Header.Set("Idempotency-Key", key)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	if first := request(); first.Code != http.StatusOK {
+		t.Fatalf("first update = %d: %s", first.Code, first.Body.String())
+	}
+	var oldSessionActive bool
+	if err := pool.QueryRow(ctx, `SELECT revoked_at IS NULL FROM auth_sessions WHERE id=$1`, oldSessionID).Scan(&oldSessionActive); err != nil || oldSessionActive {
+		t.Fatalf("old session active = %v, error = %v", oldSessionActive, err)
+	}
+	if invalidations != 1 {
+		t.Fatalf("invalidations after first update = %d, want 1", invalidations)
+	}
+	if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id=$1`, target.ID); err != nil {
+		t.Fatalf("delete target: %v", err)
+	}
+	var replacementIncarnation uuid.UUID
+	if err := pool.QueryRow(ctx, `INSERT INTO users (id,username,email,password_hash,role,enabled) VALUES ($1,$2,$3,'x','user',true) RETURNING account_incarnation_id`, target.ID, "replacement-"+uuid.NewString(), uuid.NewString()+"@lifecycle.test").Scan(&replacementIncarnation); err != nil {
+		t.Fatalf("create replacement: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','user')`, organizationID, target.ID); err != nil {
+		t.Fatalf("create replacement membership: %v", err)
+	}
+	replacementSessionID := uuid.NewString()
+	if _, err := pool.Exec(ctx, `INSERT INTO auth_sessions (id,user_id,device_id,expires_at) VALUES ($1,$2,'replacement',now()+interval '1 hour')`, replacementSessionID, target.ID); err != nil {
+		t.Fatalf("create replacement session: %v", err)
+	}
+	if replay := request(); replay.Code != http.StatusOK {
+		t.Fatalf("replay update = %d: %s", replay.Code, replay.Body.String())
+	}
+	var replacementUsername string
+	if err := pool.QueryRow(ctx, `SELECT username FROM users WHERE id=$1 AND account_incarnation_id=$2`, target.ID, replacementIncarnation).Scan(&replacementUsername); err != nil || replacementUsername == updatedUsername {
+		t.Fatalf("replacement username = %q, error = %v", replacementUsername, err)
+	}
+	var replacementSessionActive bool
+	if err := pool.QueryRow(ctx, `SELECT revoked_at IS NULL FROM auth_sessions WHERE id=$1`, replacementSessionID).Scan(&replacementSessionActive); err != nil || !replacementSessionActive {
+		t.Fatalf("replacement session active = %v, error = %v", replacementSessionActive, err)
+	}
+	if invalidations != 1 {
+		t.Fatalf("invalidations after replay = %d, want 1", invalidations)
 	}
 }
 

@@ -653,6 +653,22 @@ func (s *Store) ApplyDefaultAccountTemplate(ctx context.Context, accountID int, 
 	return s.ApplyAccountTemplate(ctx, organizationID, accountID, key, revision, dryRun)
 }
 
+// ApplyDefaultAccountTemplateInTransaction applies a direct-account template
+// through a caller-owned lifecycle transaction.
+func (s *Store) ApplyDefaultAccountTemplateInTransaction(ctx context.Context, tx pgx.Tx, accountID int, key string, revision int64, dryRun bool) (ApplyResult, error) {
+	var organizationID uuid.UUID
+	if err := tx.QueryRow(ctx, `
+		SELECT o.id
+		FROM organizations o
+		JOIN organization_memberships m ON m.organization_id=o.id
+		WHERE o.is_default AND m.account_id=$1 AND m.status='active'`, accountID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
+		return ApplyResult{}, ErrAccountNotFound
+	} else if err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: resolve direct account organization: %w", err)
+	}
+	return s.applyAccountTemplateInTx(ctx, tx, organizationID, accountID, key, revision, accountID, dryRun)
+}
+
 // Store persists templates and materializes them into tenant access groups.
 type Store struct {
 	pool *pgxpool.Pool

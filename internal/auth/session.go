@@ -380,8 +380,18 @@ func revokeAllByUserWithQuerier(ctx context.Context, querier sessionExecQuerier,
 // RevokeAllByImpersonator sets revoked_at to NOW() for all active impersonation
 // sessions started by the given impersonator.
 func (r *SessionRepository) RevokeAllByImpersonator(ctx context.Context, userID int) error {
+	return revokeAllByImpersonatorWithQuerier(ctx, r.pool, userID)
+}
+
+// RevokeAllByImpersonatorInTransaction participates in a caller-owned
+// account lifecycle transaction.
+func (r *SessionRepository) RevokeAllByImpersonatorInTransaction(ctx context.Context, tx pgx.Tx, userID int) error {
+	return revokeAllByImpersonatorWithQuerier(ctx, tx, userID)
+}
+
+func revokeAllByImpersonatorWithQuerier(ctx context.Context, querier sessionExecQuerier, userID int) error {
 	query := `UPDATE auth_sessions SET revoked_at = NOW() WHERE impersonator_user_id = $1 AND revoked_at IS NULL`
-	if _, err := r.pool.Exec(ctx, query, userID); err != nil {
+	if _, err := querier.Exec(ctx, query, userID); err != nil {
 		return fmt.Errorf("revoking impersonation sessions for user %d: %w", userID, err)
 	}
 	return nil
