@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -74,7 +75,8 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=ANY($1::integer[])`, []int{actor.ID, member.ID})
 	})
 
-	handler := handlers.NewAdminTenantMembersHandler(memberService, nil)
+	adminHandler := handlers.NewAdminHandler(users, pool, pgstore.NewPostgresProvider(pool))
+	handler := handlers.NewAdminTenantMembersHandler(memberService, adminHandler)
 	secret := []byte("tenant-member-lifecycle-handler-secret")
 	handler.SetLifecycleIdempotency(
 		lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(pool), lifecycleidempotency.NewHMACKeyDigester(secret)),
@@ -92,6 +94,8 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 	router.Post("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/suspend", handler.HandleSuspend)
 	router.Post("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/resume", handler.HandleResume)
 	router.Post("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/reset-password", handler.HandleResetPassword)
+	router.Delete("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}", handler.HandleRevokeAuthSession)
+	router.Delete("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/auth-sessions", handler.HandleRevokeAllAuthSessions)
 	path := "/api/v1/admin/tenants/" + tenant.ID.String() + "/members/" + strconv.Itoa(member.ID)
 	key := "tenant-member-update-" + uuid.NewString()
 	request := func(name string) *httptest.ResponseRecorder {
@@ -137,6 +141,86 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 	var suspendReceipts int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM lifecycle_request_receipts WHERE idempotency_key_digest=$1`, keyDigest[:]).Scan(&suspendReceipts); err != nil || suspendReceipts != 0 {
 		t.Fatalf("refused suspend receipts = %d, %v; want none", suspendReceipts, err)
+	}
+
+	var profileID string
+	if err := pool.QueryRow(ctx, `SELECT id FROM user_profiles WHERE user_id=$1 AND organization_id=$2 ORDER BY is_primary DESC,id LIMIT 1`, member.ID, tenant.ID).Scan(&profileID); err != nil {
+		t.Fatalf("load tenant member profile: %v", err)
+	}
+	sessions := auth.NewSessionRepository(pool)
+	singleSessionID := "single-session-" + uuid.NewString()
+	if err := sessions.Create(ctx, models.AuthSession{ID: singleSessionID, UserID: member.ID, ProfileID: &profileID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+		t.Fatalf("create single session: %v", err)
+	}
+	singleSessionKey := "tenant-member-session-delete-" + uuid.NewString()
+	singleSessionPath := path + "/auth-sessions/" + singleSessionID
+	revokeSingle := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodDelete, singleSessionPath, nil)
+		req.Header.Set("Idempotency-Key", singleSessionKey)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	if firstRevoke := revokeSingle(); firstRevoke.Code != http.StatusNoContent {
+		t.Fatalf("first session revoke = %d: %s", firstRevoke.Code, firstRevoke.Body.String())
+	}
+	otherSessionID := "other-session-" + uuid.NewString()
+	if err := sessions.Create(ctx, models.AuthSession{ID: otherSessionID, UserID: member.ID, ProfileID: &profileID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+		t.Fatalf("create other session: %v", err)
+	}
+	conflictingRequest := httptest.NewRequest(http.MethodDelete, path+"/auth-sessions/"+otherSessionID, nil)
+	conflictingRequest.Header.Set("Idempotency-Key", singleSessionKey)
+	conflictingResponse := httptest.NewRecorder()
+	router.ServeHTTP(conflictingResponse, conflictingRequest)
+	if conflictingResponse.Code != http.StatusConflict {
+		t.Fatalf("same key for other session = %d: %s", conflictingResponse.Code, conflictingResponse.Body.String())
+	}
+	if valid, err := sessions.IsValid(ctx, otherSessionID); err != nil || !valid {
+		t.Fatalf("other session after conflict valid=%v, error=%v", valid, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE auth_sessions SET revoked_at=NULL WHERE id=$1`, singleSessionID); err != nil {
+		t.Fatalf("restore session after first revoke: %v", err)
+	}
+	if replayRevoke := revokeSingle(); replayRevoke.Code != http.StatusNoContent {
+		t.Fatalf("replay session revoke = %d: %s", replayRevoke.Code, replayRevoke.Body.String())
+	}
+	if valid, err := sessions.IsValid(ctx, singleSessionID); err != nil || !valid {
+		t.Fatalf("session after replay valid=%v, error=%v", valid, err)
+	}
+
+	allScopedID := "all-scoped-" + uuid.NewString()
+	allAccountID := "all-account-" + uuid.NewString()
+	if err := sessions.Create(ctx, models.AuthSession{ID: allScopedID, UserID: member.ID, ProfileID: &profileID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+		t.Fatalf("create scoped all-session: %v", err)
+	}
+	if err := sessions.Create(ctx, models.AuthSession{ID: allAccountID, UserID: member.ID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+		t.Fatalf("create account all-session: %v", err)
+	}
+	allKey := "tenant-member-sessions-delete-" + uuid.NewString()
+	revokeAll := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodDelete, path+"/auth-sessions", nil)
+		req.Header.Set("Idempotency-Key", allKey)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	if firstAll := revokeAll(); firstAll.Code != http.StatusNoContent {
+		t.Fatalf("first all-session revoke = %d: %s", firstAll.Code, firstAll.Body.String())
+	}
+	if valid, err := sessions.IsValid(ctx, allScopedID); err != nil || valid {
+		t.Fatalf("scoped session after revoke-all valid=%v, error=%v", valid, err)
+	}
+	if valid, err := sessions.IsValid(ctx, allAccountID); err != nil || !valid {
+		t.Fatalf("account session after scoped revoke-all valid=%v, error=%v", valid, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE auth_sessions SET revoked_at=NULL WHERE id=$1`, allScopedID); err != nil {
+		t.Fatalf("restore scoped session after revoke-all: %v", err)
+	}
+	if replayAll := revokeAll(); replayAll.Code != http.StatusNoContent {
+		t.Fatalf("replay all-session revoke = %d: %s", replayAll.Code, replayAll.Body.String())
+	}
+	if valid, err := sessions.IsValid(ctx, allScopedID); err != nil || !valid {
+		t.Fatalf("scoped session after replay-all valid=%v, error=%v", valid, err)
 	}
 
 	resetKey := "tenant-member-reset-" + uuid.NewString()
@@ -188,6 +272,25 @@ VALUES ($1,$2,$3,'x','user') RETURNING account_incarnation_id`, member.ID,
 INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
 VALUES ($1,$2,'active','user')`, tenant.ID, member.ID); err != nil {
 		t.Fatalf("create replacement membership: %v", err)
+	}
+	var accessGroupID int64
+	if err := pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, tenant.ID).Scan(&accessGroupID); err != nil {
+		t.Fatalf("load tenant default access group: %v", err)
+	}
+	replacementProfileID := "replacement-profile-" + uuid.NewString()
+	if _, err := pool.Exec(ctx, `
+INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id)
+VALUES ($1,$2,'Replacement',$3,$4)`, replacementProfileID, member.ID, tenant.ID, accessGroupID); err != nil {
+		t.Fatalf("create replacement profile: %v", err)
+	}
+	if err := sessions.Create(ctx, models.AuthSession{ID: singleSessionID, UserID: member.ID, ProfileID: &replacementProfileID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+		t.Fatalf("create same-id replacement session: %v", err)
+	}
+	if replayRevoke := revokeSingle(); replayRevoke.Code != http.StatusNoContent {
+		t.Fatalf("replacement replay session revoke = %d: %s", replayRevoke.Code, replayRevoke.Body.String())
+	}
+	if valid, err := sessions.IsValid(ctx, singleSessionID); err != nil || !valid {
+		t.Fatalf("replacement session after replay valid=%v, error=%v", valid, err)
 	}
 	if replayDelete := deleteRequest(); replayDelete.Code != http.StatusNoContent {
 		t.Fatalf("replay delete = %d: %s", replayDelete.Code, replayDelete.Body.String())

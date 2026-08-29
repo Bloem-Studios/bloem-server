@@ -351,9 +351,25 @@ func (h *AdminTenantMembersHandler) HandleListAuthSessions(w http.ResponseWriter
 	h.delegateNested(w, r, h.adminUsers.HandleListUserAuthSessions)
 }
 func (h *AdminTenantMembersHandler) HandleRevokeAuthSession(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.digest != nil {
+		h.handleLifecycleRevokeAuthSession(w, r)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	h.delegateNested(w, r, h.adminUsers.HandleRevokeUserAuthSession)
 }
 func (h *AdminTenantMembersHandler) HandleRevokeAllAuthSessions(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.digest != nil {
+		h.handleLifecycleRevokeAllAuthSessions(w, r)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	h.delegateNested(w, r, h.adminUsers.HandleRevokeAllUserAuthSessions)
 }
 

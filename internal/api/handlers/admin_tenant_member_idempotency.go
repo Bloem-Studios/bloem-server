@@ -6,7 +6,9 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/apiresponse"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
@@ -25,6 +28,13 @@ type tenantMemberTransactionalService interface {
 	InvalidateCompatSessionsAfterCommit(context.Context, int, string) error
 	CompleteDeleteAfterCommit(context.Context, uuid.UUID, int) error
 }
+
+type tenantMemberSessionTransactionalRepository interface {
+	RevokeByUserAndSessionInTransaction(context.Context, pgx.Tx, int, string) error
+	RevokeAllByUserAndProfilesInTransaction(context.Context, pgx.Tx, int, []string) error
+}
+
+var errTenantMemberAuthSessionNotFound = errors.New("tenant member authentication session not found")
 
 func (h *AdminTenantMembersHandler) lifecycleService(w http.ResponseWriter) (tenantMemberTransactionalService, bool) {
 	service, ok := h.members.(tenantMemberTransactionalService)
@@ -39,7 +49,7 @@ func (h *AdminTenantMembersHandler) handleLifecycleUpdate(w http.ResponseWriter,
 	if !ok {
 		return
 	}
-	h.executeMemberLifecycle(w, r, tenantID, userID, "tenant.member.update", body,
+	h.executeMemberLifecycle(w, r, tenantID, userID, "tenant.member.update", body, nil,
 		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 			member, err := service.UpdateInTransaction(ctx, tx, tenantID, userID, tenancy.UpdateMemberInput{Username: username, Email: email})
 			if err != nil {
@@ -64,7 +74,7 @@ func (h *AdminTenantMembersHandler) handleLifecycleState(w http.ResponseWriter, 
 	if suspended {
 		routeID = "tenant.member.suspend"
 	}
-	h.executeMemberLifecycle(w, r, tenantID, userID, routeID, nil,
+	h.executeMemberLifecycle(w, r, tenantID, userID, routeID, nil, nil,
 		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 			member, err := service.SetSuspendedInTransaction(ctx, tx, tenantID, userID, suspended)
 			if err != nil {
@@ -84,7 +94,7 @@ func (h *AdminTenantMembersHandler) handleLifecycleResetPassword(w http.Response
 	if !ok {
 		return
 	}
-	h.executeMemberLifecycle(w, r, tenantID, userID, "tenant.member.reset_password", body,
+	h.executeMemberLifecycle(w, r, tenantID, userID, "tenant.member.reset_password", body, nil,
 		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 			member, err := service.ResetPasswordInTransaction(ctx, tx, tenantID, userID, password)
 			if err != nil {
@@ -101,7 +111,7 @@ func (h *AdminTenantMembersHandler) handleLifecycleDelete(w http.ResponseWriter,
 	if !ok {
 		return
 	}
-	h.executeMemberLifecycle(w, r, tenantID, userID, "tenant.member.delete", nil,
+	h.executeMemberLifecycle(w, r, tenantID, userID, "tenant.member.delete", nil, nil,
 		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 			if err := service.DeleteInTransaction(ctx, tx, tenantID, userID); err != nil {
 				return lifecycleidempotency.Result{}, err
@@ -112,6 +122,113 @@ func (h *AdminTenantMembersHandler) handleLifecycleDelete(w http.ResponseWriter,
 		})
 }
 
+func (h *AdminTenantMembersHandler) handleLifecycleRevokeAuthSession(w http.ResponseWriter, r *http.Request) {
+	tenantID, userID, ok := h.memberScope(w, r)
+	if !ok {
+		return
+	}
+	sessionID := strings.TrimSpace(chi.URLParam(r, "session_id"))
+	if sessionID == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "Session ID is required")
+		return
+	}
+	repository, ok := h.lifecycleSessionRepository(w)
+	if !ok {
+		return
+	}
+	var invalidatedProfileIDs []string
+	h.executeMemberLifecycle(w, r, tenantID, userID, "tenant.member.session.delete", nil, map[string]string{"session_id": sessionID},
+		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+			var sessionUserID int
+			var profileID *string
+			err := tx.QueryRow(ctx, `
+SELECT user_id,profile_id FROM auth_sessions WHERE id=$1 FOR UPDATE`, sessionID).Scan(&sessionUserID, &profileID)
+			if err == pgx.ErrNoRows {
+				return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
+			}
+			if err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			if sessionUserID != userID || profileID == nil {
+				return lifecycleidempotency.Result{}, errTenantMemberAuthSessionNotFound
+			}
+			var inOrganization bool
+			if err := tx.QueryRow(ctx, `
+SELECT EXISTS(SELECT 1 FROM user_profiles WHERE id=$1 AND user_id=$2 AND organization_id=$3)`,
+				*profileID, userID, tenantID).Scan(&inOrganization); err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			if !inOrganization {
+				return lifecycleidempotency.Result{}, errTenantMemberAuthSessionNotFound
+			}
+			if err := repository.RevokeByUserAndSessionInTransaction(ctx, tx, userID, sessionID); err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			invalidatedProfileIDs = []string{*profileID}
+			return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
+		}, func(ctx context.Context) error {
+			return h.invalidateTenantMemberProfilesAfterCommit(ctx, userID, invalidatedProfileIDs)
+		})
+}
+
+func (h *AdminTenantMembersHandler) handleLifecycleRevokeAllAuthSessions(w http.ResponseWriter, r *http.Request) {
+	tenantID, userID, ok := h.memberScope(w, r)
+	if !ok {
+		return
+	}
+	repository, ok := h.lifecycleSessionRepository(w)
+	if !ok {
+		return
+	}
+	var invalidatedProfileIDs []string
+	h.executeMemberLifecycle(w, r, tenantID, userID, "tenant.member.sessions.delete", nil, nil,
+		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+			rows, err := tx.Query(ctx, `
+SELECT id FROM user_profiles WHERE user_id=$1 AND organization_id=$2 ORDER BY id`, userID, tenantID)
+			if err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var profileID string
+				if err := rows.Scan(&profileID); err != nil {
+					return lifecycleidempotency.Result{}, err
+				}
+				invalidatedProfileIDs = append(invalidatedProfileIDs, profileID)
+			}
+			if err := rows.Err(); err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			if err := repository.RevokeAllByUserAndProfilesInTransaction(ctx, tx, userID, invalidatedProfileIDs); err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
+		}, func(ctx context.Context) error {
+			return h.invalidateTenantMemberProfilesAfterCommit(ctx, userID, invalidatedProfileIDs)
+		})
+}
+
+func (h *AdminTenantMembersHandler) lifecycleSessionRepository(w http.ResponseWriter) (tenantMemberSessionTransactionalRepository, bool) {
+	if h.adminUsers == nil || h.adminUsers.sessionRepo == nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions are not configured")
+		return nil, false
+	}
+	repository, ok := h.adminUsers.sessionRepo.(tenantMemberSessionTransactionalRepository)
+	if !ok {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	}
+	return repository, ok
+}
+
+func (h *AdminTenantMembersHandler) invalidateTenantMemberProfilesAfterCommit(ctx context.Context, userID int, profileIDs []string) error {
+	if len(profileIDs) == 0 || h.adminUsers == nil || h.adminUsers.OnUserProfileSessionsRevoked == nil {
+		return nil
+	}
+	return sessioninvalidation.Run(ctx, func(callbackCtx context.Context) error {
+		return h.adminUsers.OnUserProfileSessionsRevoked(callbackCtx, userID, profileIDs)
+	})
+}
+
 func (h *AdminTenantMembersHandler) executeMemberLifecycle(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -119,6 +236,7 @@ func (h *AdminTenantMembersHandler) executeMemberLifecycle(
 	userID int,
 	routeID string,
 	body []byte,
+	additionalSelectors map[string]string,
 	mutate lifecycleidempotency.Mutator,
 	afterCommit func(context.Context) error,
 ) {
@@ -134,14 +252,16 @@ func (h *AdminTenantMembersHandler) executeMemberLifecycle(
 	}
 	actorID := claims.UserID
 	tenantSelector, userSelector := tenantID.String(), strconv.Itoa(userID)
+	selectors := map[string]string{"tenant_id": tenantSelector, "user_id": userSelector}
+	for name, value := range additionalSelectors {
+		selectors[name] = value
+	}
 	request := lifecycleidempotency.Request{
 		IdempotencyKey: r.Header.Get("Idempotency-Key"),
 		Binding: lifecycleidempotency.Binding{
 			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
 			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: routeID,
-			RequestHash: h.digest(r.Method, routeID, map[string]string{
-				"tenant_id": tenantSelector, "user_id": userSelector,
-			}, r.URL.Query(), body),
+			RequestHash:  h.digest(r.Method, routeID, selectors, r.URL.Query(), body),
 			TargetSource: lifecycleidempotency.TargetPathTenantMember,
 		},
 		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
@@ -210,6 +330,8 @@ func (h *AdminTenantMembersHandler) writeMemberLifecycleError(w http.ResponseWri
 		writeError(w, http.StatusNotFound, "not_found", "No such tenant member")
 	case errors.Is(err, tenancy.ErrMembershipPolicyWriteUnavailable):
 		apiresponse.WriteRetryableUnavailable(w, "membership_policy_rollout_pending", "Membership policy rollout is not ready for this mutation", 1)
+	case errors.Is(err, errTenantMemberAuthSessionNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
 	default:
 		h.writeError(w, err, "Failed to mutate tenant member")
 	}
