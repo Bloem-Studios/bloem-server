@@ -276,6 +276,11 @@ VALUES ($1,$2,'Lifecycle Tenant','initializing','operator-test',$3,2,1)`, tenant
 		"lifecycle-tenant-"+uuid.NewString(), "service-"+uuid.NewString()); err != nil {
 		t.Fatalf("create tenant organization: %v", err)
 	}
+	if _, err := pool.Exec(ctx, `
+INSERT INTO access_groups (organization_id,name,is_default)
+VALUES ($1,$2,true)`, tenantOrganization, "lifecycle-tenant-default-"+uuid.NewString()); err != nil {
+		t.Fatalf("create tenant default access group: %v", err)
+	}
 	create := func(username string) (int, uuid.UUID, uuid.UUID) {
 		t.Helper()
 		var accountID int
