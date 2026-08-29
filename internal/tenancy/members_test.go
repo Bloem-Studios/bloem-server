@@ -446,6 +446,52 @@ func TestMemberServiceIdentityAndSessionRevocationAreAtomic(t *testing.T) {
 	}
 }
 
+func TestMemberServiceCallerOwnedTransactionControlsIdentityMutation(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 1)
+	member, _, err := service.Create(ctx, tenant.ID, "caller-tx-create-"+uuid.NewString(), memberInput("caller-tx-"+uuid.NewString()))
+	if err != nil {
+		t.Fatalf("create member: %v", err)
+	}
+	t.Cleanup(func() { _ = service.Delete(context.Background(), tenant.ID, member.ID) })
+
+	rolledBackName := "rolled-back-" + uuid.NewString()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin rollback transaction: %v", err)
+	}
+	if _, err := service.UpdateInTransaction(ctx, tx, tenant.ID, member.ID, tenancy.UpdateMemberInput{Username: &rolledBackName}); err != nil {
+		t.Fatalf("update in rollback transaction: %v", err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	unchanged, err := service.Get(ctx, tenant.ID, member.ID)
+	if err != nil || unchanged.Username != member.Username {
+		t.Fatalf("after rollback = %+v, %v; want username %q", unchanged, err, member.Username)
+	}
+
+	committedName := "committed-" + uuid.NewString()
+	tx, err = pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin commit transaction: %v", err)
+	}
+	updated, err := service.UpdateInTransaction(ctx, tx, tenant.ID, member.ID, tenancy.UpdateMemberInput{Username: &committedName})
+	if err != nil {
+		t.Fatalf("update in commit transaction: %v", err)
+	}
+	if updated.Username != committedName {
+		t.Fatalf("transaction response username = %q, want %q", updated.Username, committedName)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+	got, err := service.Get(ctx, tenant.ID, member.ID)
+	if err != nil || got.Username != committedName {
+		t.Fatalf("after commit = %+v, %v; want username %q", got, err, committedName)
+	}
+}
+
 func TestMemberServiceCompatInvalidationRunsAfterCommittedSecurityMutation(t *testing.T) {
 	ctx, pool, store, service, sessions := newMemberService(t)
 	tenant := createMemberTenant(t, ctx, store, 2)
