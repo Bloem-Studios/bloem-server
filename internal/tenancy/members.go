@@ -308,6 +308,68 @@ func (s *MemberService) Create(
 	return *created, false, nil
 }
 
+// CreateInTransaction creates a tenant member on a caller-owned transaction.
+// Durable lifecycle coordinators use this path so the generated account and
+// membership identities are committed atomically with their receipt.
+func (s *MemberService) CreateInTransaction(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, input CreateMemberInput) (models.User, uuid.UUID, error) {
+	input.Username = strings.TrimSpace(input.Username)
+	input.Email = strings.TrimSpace(input.Email)
+	if s == nil || s.store == nil || s.accounts == nil || tx == nil || tenantID == uuid.Nil ||
+		!validMemberIdentity(input.Username, input.Email, input.Password) {
+		return models.User{}, uuid.Nil, ErrInvalidMemberCommand
+	}
+	tenant, err := s.store.lockTenantOrganization(ctx, tx, tenantID)
+	if errors.Is(err, ErrTenantOrganizationNotFound) {
+		return models.User{}, uuid.Nil, ErrMemberNotFound
+	}
+	if err != nil {
+		return models.User{}, uuid.Nil, err
+	}
+	if tenant.Frozen {
+		return models.User{}, uuid.Nil, ErrTenantFrozen
+	}
+	used, err := tenantMembershipCount(ctx, tx, tenantID)
+	if err != nil {
+		return models.User{}, uuid.Nil, err
+	}
+	if used >= tenant.Slots {
+		return models.User{}, uuid.Nil, ErrSlotQuotaExceeded
+	}
+	if err := ensureTenantDefaultAccessGroup(ctx, tx, tenantID); err != nil {
+		return models.User{}, uuid.Nil, err
+	}
+	var accessGroupID int64
+	if err := tx.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, tenantID).Scan(&accessGroupID); err != nil {
+		return models.User{}, uuid.Nil, fmt.Errorf("tenancy: load member tenant default access group: %w", err)
+	}
+	created, conflict, err := s.accounts.CreateUserInTransaction(ctx, tx, models.CreateUserInput{
+		Username: input.Username, Email: input.Email, Password: input.Password, Role: legacyRoleUser, AccessGroupID: &accessGroupID,
+	})
+	if conflict {
+		return models.User{}, uuid.Nil, ErrUsernameConflict
+	}
+	if err != nil {
+		return models.User{}, uuid.Nil, fmt.Errorf("tenancy: create member account: %w", err)
+	}
+	membershipID := uuid.New()
+	if _, err := tx.Exec(ctx, `INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role) VALUES ($1,$2,$3,$4,$5)`, membershipID, tenantID, created.ID, MembershipActive, legacyRoleUser); err != nil {
+		return models.User{}, uuid.Nil, fmt.Errorf("tenancy: create member membership: %w", err)
+	}
+	if tenant.ownerAccountID == nil {
+		if _, err := tx.Exec(ctx, `UPDATE organizations SET owner_account_id=$2,status=$3,updated_at=now() WHERE id=$1`, tenantID, created.ID, OrganizationActive); err != nil {
+			return models.User{}, uuid.Nil, fmt.Errorf("tenancy: activate member tenant: %w", err)
+		}
+	}
+	return *created, membershipID, nil
+}
+
+// CompleteCreateAfterCommit invalidates quota reads after a coordinated create.
+func (s *MemberService) CompleteCreateAfterCommit() {
+	if s != nil && s.store != nil {
+		s.store.invalidateTenantLimitsCache()
+	}
+}
+
 // List returns only users with a membership in the asserted live tenant.
 func (s *MemberService) List(ctx context.Context, tenantID uuid.UUID) ([]models.User, error) {
 	if s == nil || s.pool == nil || tenantID == uuid.Nil {

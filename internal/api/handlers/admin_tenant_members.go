@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/apiresponse"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
@@ -29,6 +30,11 @@ type tenantMemberService interface {
 	ResetPassword(context.Context, uuid.UUID, int, string) (models.User, error)
 	Delete(context.Context, uuid.UUID, int) error
 	RequireMembership(context.Context, uuid.UUID, int) error
+}
+
+type tenantMemberLifecycleCreator interface {
+	CreateInTransaction(context.Context, pgx.Tx, uuid.UUID, tenancy.CreateMemberInput) (models.User, uuid.UUID, error)
+	CompleteCreateAfterCommit()
 }
 
 // AdminTenantMembersHandler serves the reseller member lifecycle and gates
@@ -145,8 +151,9 @@ func (h *AdminTenantMembersHandler) HandleCreate(w http.ResponseWriter, r *http.
 		return
 	}
 	key := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
-	if key == "" {
-		writeError(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency-Key is required")
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
 	var req struct {
@@ -154,8 +161,17 @@ func (h *AdminTenantMembersHandler) HandleCreate(w http.ResponseWriter, r *http.
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(raw, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
+	input := tenancy.CreateMemberInput{Username: req.Username, Email: req.Email, Password: req.Password}
+	if h.lifecycle != nil && h.digest != nil {
+		h.handleLifecycleCreate(w, r, tenantID, input, raw)
+		return
+	}
+	if key == "" {
+		writeError(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency-Key is required")
 		return
 	}
 	member, replay, err := h.members.Create(r.Context(), tenantID, key, tenancy.CreateMemberInput{
@@ -170,6 +186,44 @@ func (h *AdminTenantMembersHandler) HandleCreate(w http.ResponseWriter, r *http.
 		status = http.StatusOK
 	}
 	writeJSON(w, status, toTenantMemberResponse(member))
+}
+
+func (h *AdminTenantMembersHandler) handleLifecycleCreate(w http.ResponseWriter, r *http.Request, tenantID uuid.UUID, input tenancy.CreateMemberInput, body []byte) {
+	creator, ok := h.members.(tenantMemberLifecycleCreator)
+	if !ok {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
+	actorID, actorIncarnation, ok := lifecycleActor(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
+		return
+	}
+	routeID := "tenant.member.create"
+	request := lifecycleidempotency.Request{IdempotencyKey: r.Header.Get("Idempotency-Key"), Binding: lifecycleidempotency.Binding{
+		ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID, ActorAccountIncarnationID: &actorIncarnation,
+		Method: r.Method, RouteID: routeID, RequestHash: h.digest(r.Method, routeID, map[string]string{"tenant_id": tenantID.String()}, r.URL.Query(), body),
+		TargetSource: lifecycleidempotency.TargetBodyAccount,
+	}}
+	result, err := h.lifecycle.ExecuteCreate(r.Context(), request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
+		member, membershipID, err := creator.CreateInTransaction(ctx, tx, tenantID, input)
+		if err != nil {
+			return nil, lifecycleidempotency.Result{}, err
+		}
+		created, err := memberLifecycleJSONResult(http.StatusCreated, toTenantMemberResponse(member))
+		if err != nil {
+			return nil, lifecycleidempotency.Result{}, err
+		}
+		return []lifecycleidempotency.TargetBinding{{OrganizationID: tenantID, MembershipID: membershipID, AccountID: member.ID, AccountIncarnationID: member.AccountIncarnationID}}, created, nil
+	})
+	if err != nil {
+		h.writeError(w, err, "Failed to create tenant member")
+		return
+	}
+	if !result.Replayed {
+		creator.CompleteCreateAfterCommit()
+	}
+	writeLifecycleResult(w, result)
 }
 
 func (h *AdminTenantMembersHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
@@ -329,22 +383,50 @@ func (h *AdminTenantMembersHandler) delegateNested(w http.ResponseWriter, r *htt
 	next(w, r)
 }
 
+func (h *AdminTenantMembersHandler) delegateNestedLifecycle(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	tenantID, _, ok := h.memberScope(w, r)
+	if !ok {
+		return
+	}
+	if h.adminUsers == nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Tenant member resources are not configured")
+		return
+	}
+	next(w, r.WithContext(withAdminResourceOrganization(r.Context(), tenantID)))
+}
+
 func (h *AdminTenantMembersHandler) HandleListProfiles(w http.ResponseWriter, r *http.Request) {
 	h.delegateNested(w, r, h.adminUsers.HandleListUserProfiles)
 }
 func (h *AdminTenantMembersHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.digest != nil {
+		h.delegateNestedLifecycle(w, r, h.adminUsers.HandleCreateUserProfile)
+		return
+	}
 	h.delegateNested(w, r, h.adminUsers.HandleCreateUserProfile)
 }
 func (h *AdminTenantMembersHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.digest != nil {
+		h.delegateNestedLifecycle(w, r, h.adminUsers.HandleUpdateUserProfile)
+		return
+	}
 	h.delegateNested(w, r, h.adminUsers.HandleUpdateUserProfile)
 }
 func (h *AdminTenantMembersHandler) HandleDeleteProfile(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.digest != nil {
+		h.delegateNestedLifecycle(w, r, h.adminUsers.HandleDeleteUserProfile)
+		return
+	}
 	h.delegateNested(w, r, h.adminUsers.HandleDeleteUserProfile)
 }
 func (h *AdminTenantMembersHandler) HandleListDevices(w http.ResponseWriter, r *http.Request) {
 	h.delegateNested(w, r, h.adminUsers.HandleListUserDevices)
 }
 func (h *AdminTenantMembersHandler) HandleDeleteDevice(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.digest != nil {
+		h.delegateNestedLifecycle(w, r, h.adminUsers.HandleDeleteUserDevice)
+		return
+	}
 	h.delegateNested(w, r, h.adminUsers.HandleDeleteUserDevice)
 }
 func (h *AdminTenantMembersHandler) HandleListAuthSessions(w http.ResponseWriter, r *http.Request) {
@@ -375,6 +457,15 @@ func (h *AdminTenantMembersHandler) HandleRevokeAllAuthSessions(w http.ResponseW
 
 func (h *AdminTenantMembersHandler) writeError(w http.ResponseWriter, err error, fallback string) {
 	switch {
+	case errors.Is(err, lifecycleidempotency.ErrKeyRequired):
+		writeError(w, http.StatusPreconditionRequired, "idempotency_key_required", "Idempotency-Key is required for this lifecycle mutation")
+	case errors.Is(err, lifecycleidempotency.ErrKeyMalformed):
+		writeError(w, http.StatusBadRequest, "idempotency_key_invalid", "Idempotency-Key must be a bounded opaque ASCII value")
+	case errors.Is(err, lifecycleidempotency.ErrConflict):
+		writeError(w, http.StatusConflict, "idempotency_key_conflict", "Idempotency-Key conflicts with its original lifecycle request")
+	case errors.Is(err, lifecycleidempotency.ErrPending):
+		w.Header().Set("Retry-After", "1")
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_request_pending", "Lifecycle request completion is pending")
 	case errors.Is(err, tenancy.ErrMemberNotFound), errors.Is(err, tenancy.ErrTenantOrganizationNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "No such tenant member")
 	case errors.Is(err, tenancy.ErrSlotQuotaExceeded), errors.Is(err, tenancy.ErrTenantFrozen):

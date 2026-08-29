@@ -82,10 +82,10 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 	adminHandler := handlers.NewAdminHandler(users, pool, pgstore.NewPostgresProvider(pool))
 	handler := handlers.NewAdminTenantMembersHandler(memberService, adminHandler)
 	secret := []byte("tenant-member-lifecycle-handler-secret")
-	handler.SetLifecycleIdempotency(
-		lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(pool), lifecycleidempotency.NewHMACKeyDigester(secret)),
-		lifecycleidempotency.NewRequestDigester(secret),
-	)
+	coordinator := lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(pool), lifecycleidempotency.NewHMACKeyDigester(secret))
+	digester := lifecycleidempotency.NewRequestDigester(secret)
+	handler.SetLifecycleIdempotency(coordinator, digester)
+	adminHandler.SetLifecycleIdempotency(coordinator, digester)
 	router := chi.NewRouter()
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -93,6 +93,7 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 			next.ServeHTTP(w, r.WithContext(apimw.SetClaims(r.Context(), claims)))
 		})
 	})
+	router.Post("/api/v1/admin/tenants/{tenant_id}/members", handler.HandleCreate)
 	router.Put("/api/v1/admin/tenants/{tenant_id}/members/{user_id}", handler.HandleUpdate)
 	router.Delete("/api/v1/admin/tenants/{tenant_id}/members/{user_id}", handler.HandleDelete)
 	router.Post("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/suspend", handler.HandleSuspend)
@@ -100,7 +101,150 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 	router.Post("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/reset-password", handler.HandleResetPassword)
 	router.Delete("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}", handler.HandleRevokeAuthSession)
 	router.Delete("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/auth-sessions", handler.HandleRevokeAllAuthSessions)
+	router.Post("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/profiles", handler.HandleCreateProfile)
+	router.Put("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}", handler.HandleUpdateProfile)
+	router.Delete("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}", handler.HandleDeleteProfile)
+	router.Delete("/api/v1/admin/tenants/{tenant_id}/members/{user_id}/devices/{device_id}", handler.HandleDeleteDevice)
+
+	createKey := "tenant-member-lifecycle-create-" + uuid.NewString()
+	createUsername := "created-member-" + uuid.NewString()
+	createBody, _ := json.Marshal(map[string]string{"username": createUsername, "email": uuid.NewString() + "@tenant-lifecycle.test", "password": "created-password"})
+	createMember := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/tenants/"+tenant.ID.String()+"/members", bytes.NewReader(createBody))
+		req.Header.Set("Idempotency-Key", createKey)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	firstCreate := createMember()
+	if firstCreate.Code != http.StatusCreated {
+		t.Fatalf("first member create = %d: %s", firstCreate.Code, firstCreate.Body.String())
+	}
+	var createdMember struct {
+		UserID int `json:"user_id"`
+	}
+	if err := json.Unmarshal(firstCreate.Body.Bytes(), &createdMember); err != nil || createdMember.UserID <= 0 {
+		t.Fatalf("decode created member: %+v, %v", createdMember, err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, createdMember.UserID) })
+	laterCreatedName := "created-member-later-" + uuid.NewString()
+	if _, err := memberService.Update(ctx, tenant.ID, createdMember.UserID, tenancy.UpdateMemberInput{Username: &laterCreatedName}); err != nil {
+		t.Fatalf("change created member after first request: %v", err)
+	}
+	replayedCreate := createMember()
+	if replayedCreate.Code != http.StatusCreated || replayedCreate.Body.String() != firstCreate.Body.String() {
+		t.Fatalf("member create replay = %d %s; first = %d %s", replayedCreate.Code, replayedCreate.Body.String(), firstCreate.Code, firstCreate.Body.String())
+	}
+	createdAfterReplay, err := memberService.Get(ctx, tenant.ID, createdMember.UserID)
+	if err != nil || createdAfterReplay.Username != laterCreatedName {
+		t.Fatalf("created member after replay = %+v, %v; want username %q", createdAfterReplay, err, laterCreatedName)
+	}
 	path := "/api/v1/admin/tenants/" + tenant.ID.String() + "/members/" + strconv.Itoa(member.ID)
+	profileKey := "tenant-profile-create-" + uuid.NewString()
+	createProfile := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, path+"/profiles", bytes.NewBufferString(`{"name":"Guest"}`))
+		req.Header.Set("Idempotency-Key", profileKey)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	firstProfile := createProfile()
+	if firstProfile.Code != http.StatusCreated {
+		t.Fatalf("first tenant profile create = %d: %s", firstProfile.Code, firstProfile.Body.String())
+	}
+	var createdProfile struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(firstProfile.Body.Bytes(), &createdProfile); err != nil || createdProfile.ID == "" {
+		t.Fatalf("decode tenant profile: %+v, %v", createdProfile, err)
+	}
+	profilePath := path + "/profiles/" + createdProfile.ID
+	updateProfileKey := "tenant-profile-update-" + uuid.NewString()
+	updateProfile := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPut, profilePath, bytes.NewBufferString(`{"name":"Visitor"}`))
+		req.Header.Set("Idempotency-Key", updateProfileKey)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	firstProfileUpdate := updateProfile()
+	if firstProfileUpdate.Code != http.StatusOK {
+		t.Fatalf("first tenant profile update = %d: %s", firstProfileUpdate.Code, firstProfileUpdate.Body.String())
+	}
+	deviceID := "tenant-device-" + uuid.NewString()
+	if _, err := pool.Exec(ctx, `INSERT INTO user_devices (user_id,profile_id,device_id,device_name) VALUES ($1,$2,$3,'Old device')`, member.ID, createdProfile.ID, deviceID); err != nil {
+		t.Fatalf("seed tenant device: %v", err)
+	}
+	deviceKey := "tenant-device-delete-" + uuid.NewString()
+	deleteDevice := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodDelete, path+"/devices/"+deviceID, nil)
+		req.Header.Set("Idempotency-Key", deviceKey)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	if response := deleteDevice(); response.Code != http.StatusNoContent {
+		t.Fatalf("first tenant device delete = %d: %s", response.Code, response.Body.String())
+	}
+	deleteProfileKey := "tenant-profile-delete-" + uuid.NewString()
+	deleteProfile := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodDelete, profilePath, nil)
+		req.Header.Set("Idempotency-Key", deleteProfileKey)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	if response := deleteProfile(); response.Code != http.StatusNoContent {
+		t.Fatalf("first tenant profile delete = %d: %s", response.Code, response.Body.String())
+	}
+	for _, receipt := range []struct {
+		key, routeID, targetSource string
+	}{
+		{createKey, "tenant.member.create", string(lifecycleidempotency.TargetBodyAccount)},
+		{profileKey, "tenant.member.profile.create", string(lifecycleidempotency.TargetPathTenantMember)},
+		{updateProfileKey, "tenant.member.profile.update", string(lifecycleidempotency.TargetPathTenantMember)},
+		{deleteProfileKey, "tenant.member.profile.delete", string(lifecycleidempotency.TargetPathTenantMember)},
+		{deviceKey, "tenant.member.device.delete", string(lifecycleidempotency.TargetPathTenantMember)},
+	} {
+		digest := lifecycleidempotency.NewHMACKeyDigester(secret)(receipt.key)
+		var routeID, targetSource string
+		if err := pool.QueryRow(ctx, `SELECT route_id,target_source FROM lifecycle_request_receipts WHERE idempotency_key_digest=$1`, digest[:]).Scan(&routeID, &targetSource); err != nil {
+			t.Fatalf("load %s receipt: %v", receipt.routeID, err)
+		}
+		if routeID != receipt.routeID || targetSource != receipt.targetSource {
+			t.Fatalf("receipt binding = %s/%s, want %s/%s", routeID, targetSource, receipt.routeID, receipt.targetSource)
+		}
+	}
+	var defaultGroupID int64
+	if err := pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, tenant.ID).Scan(&defaultGroupID); err != nil {
+		t.Fatalf("load tenant default group: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,organization_id,name,is_primary,access_group_id) VALUES ($1,$2,$3,'Replacement',false,$4)`, createdProfile.ID, member.ID, tenant.ID, defaultGroupID); err != nil {
+		t.Fatalf("create replacement tenant profile: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO user_devices (user_id,profile_id,device_id,device_name) VALUES ($1,$2,$3,'Replacement device')`, member.ID, createdProfile.ID, deviceID); err != nil {
+		t.Fatalf("create replacement tenant device: %v", err)
+	}
+	if replay := createProfile(); replay.Code != firstProfile.Code || replay.Body.String() != firstProfile.Body.String() {
+		t.Fatalf("tenant profile create replay = %d %q, want %d %q", replay.Code, replay.Body.String(), firstProfile.Code, firstProfile.Body.String())
+	}
+	if replay := updateProfile(); replay.Code != firstProfileUpdate.Code || replay.Body.String() != firstProfileUpdate.Body.String() {
+		t.Fatalf("tenant profile update replay = %d %q, want %d %q", replay.Code, replay.Body.String(), firstProfileUpdate.Code, firstProfileUpdate.Body.String())
+	}
+	if replay := deleteProfile(); replay.Code != http.StatusNoContent {
+		t.Fatalf("tenant profile delete replay = %d: %s", replay.Code, replay.Body.String())
+	}
+	if replay := deleteDevice(); replay.Code != http.StatusNoContent {
+		t.Fatalf("tenant device delete replay = %d: %s", replay.Code, replay.Body.String())
+	}
+	var replacementName string
+	if err := pool.QueryRow(ctx, `SELECT name FROM user_profiles WHERE user_id=$1 AND id=$2`, member.ID, createdProfile.ID).Scan(&replacementName); err != nil || replacementName != "Replacement" {
+		t.Fatalf("replacement tenant profile = %q, %v", replacementName, err)
+	}
+	var replacementDevices int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM user_devices WHERE user_id=$1 AND profile_id=$2 AND device_id=$3`, member.ID, createdProfile.ID, deviceID).Scan(&replacementDevices); err != nil || replacementDevices != 1 {
+		t.Fatalf("replacement tenant devices = %d, %v", replacementDevices, err)
+	}
 	key := "tenant-member-update-" + uuid.NewString()
 	request := func(name string) *httptest.ResponseRecorder {
 		body, _ := json.Marshal(map[string]string{"username": name})

@@ -18,6 +18,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/apiresponse"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -66,6 +67,24 @@ func lifecycleJSONResult(status int, value any) (lifecycleidempotency.Result, er
 	}
 	body = append(body, '\n')
 	return lifecycleidempotency.Result{Status: status, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
+}
+
+func adminResourceLifecycleScope(ctx context.Context, accountRoute string, userID int, selectors map[string]string) (string, lifecycleidempotency.TargetSource, func(context.Context, pgx.Tx) ([]lifecycleidempotency.TargetBinding, error)) {
+	organizationID := adminResourceOrganization(ctx)
+	if organizationID == uuid.Nil {
+		return accountRoute, lifecycleidempotency.TargetPathAccount, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+			return lifecycleidempotency.ResolveAccountTargets(ctx, tx, userID)
+		}
+	}
+	selectors["tenant_id"] = organizationID.String()
+	route := strings.Replace(accountRoute, "account.", "tenant.member.", 1)
+	return route, lifecycleidempotency.TargetPathTenantMember, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+		target, err := lifecycleidempotency.ResolveTenantMemberTarget(ctx, tx, organizationID, userID)
+		if err != nil {
+			return nil, err
+		}
+		return []lifecycleidempotency.TargetBinding{target}, nil
+	}
 }
 
 func (h *AdminHandler) effectiveProfileLimitInTransaction(ctx context.Context, tx pgx.Tx, user *models.User) (int, *int64, error) {
@@ -155,17 +174,17 @@ func (h *AdminHandler) handleLifecycleCreateUserProfile(w http.ResponseWriter, r
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
 		return
 	}
+	selectors := map[string]string{"user_id": selector}
+	routeID, targetSource, resolveTargets := adminResourceLifecycleScope(r.Context(), "account.profile.create", userID, selectors)
 	request := lifecycleidempotency.Request{
 		IdempotencyKey: r.Header.Get("Idempotency-Key"),
 		Binding: lifecycleidempotency.Binding{
 			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
-			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: "account.profile.create",
-			RequestHash:  h.lifecycleDigest(r.Method, "account.profile.create", map[string]string{"user_id": selector}, r.URL.Query(), body),
-			TargetSource: lifecycleidempotency.TargetPathAccount,
+			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: routeID,
+			RequestHash:  h.lifecycleDigest(r.Method, routeID, selectors, r.URL.Query(), body),
+			TargetSource: targetSource,
 		},
-		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-			return lifecycleidempotency.ResolveAccountTargets(ctx, tx, userID)
-		},
+		ResolveTargets: resolveTargets,
 	}
 	var changedKeys []string
 	var createdProfileID string
@@ -273,16 +292,18 @@ func (h *AdminHandler) profileLifecycleRequest(r *http.Request, routeID string, 
 	if !ok {
 		return lifecycleidempotency.Request{}, lifecycleidempotency.ErrInvalidBinding
 	}
+	selectors := map[string]string{"user_id": userSelector, "profile_id": profileID}
+	routeID, targetSource, resolveBase := adminResourceLifecycleScope(r.Context(), routeID, userID, selectors)
 	return lifecycleidempotency.Request{
 		IdempotencyKey: r.Header.Get("Idempotency-Key"),
 		Binding: lifecycleidempotency.Binding{
 			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
 			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: routeID,
-			RequestHash:  h.lifecycleDigest(r.Method, routeID, map[string]string{"user_id": userSelector, "profile_id": profileID}, r.URL.Query(), body),
-			TargetSource: lifecycleidempotency.TargetPathAccount,
+			RequestHash:  h.lifecycleDigest(r.Method, routeID, selectors, r.URL.Query(), body),
+			TargetSource: targetSource,
 		},
 		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-			targets, err := lifecycleidempotency.ResolveAccountTargets(ctx, tx, userID)
+			targets, err := resolveBase(ctx, tx)
 			if err != nil {
 				return nil, err
 			}
@@ -527,17 +548,19 @@ func (h *AdminHandler) handleLifecycleDeleteUserDevice(w http.ResponseWriter, r 
 		return
 	}
 	organizationID := adminResourceOrganization(r.Context())
+	selectors := map[string]string{"user_id": userSelector, "device_id": deviceID}
+	routeID, targetSource, resolveBase := adminResourceLifecycleScope(r.Context(), "account.device.delete", userID, selectors)
 	var profileIDs []string
 	request := lifecycleidempotency.Request{
 		IdempotencyKey: r.Header.Get("Idempotency-Key"),
 		Binding: lifecycleidempotency.Binding{
 			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
-			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: "account.device.delete",
-			RequestHash:  h.lifecycleDigest(r.Method, "account.device.delete", map[string]string{"user_id": userSelector, "device_id": deviceID}, r.URL.Query(), nil),
-			TargetSource: lifecycleidempotency.TargetPathAccount,
+			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: routeID,
+			RequestHash:  h.lifecycleDigest(r.Method, routeID, selectors, r.URL.Query(), nil),
+			TargetSource: targetSource,
 		},
 		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-			targets, err := lifecycleidempotency.ResolveAccountTargets(ctx, tx, userID)
+			targets, err := resolveBase(ctx, tx)
 			if err != nil {
 				return nil, err
 			}
@@ -634,6 +657,8 @@ var (
 
 func (h *AdminHandler) writeAccountResourceLifecycleError(w http.ResponseWriter, err error, fallback string) {
 	switch {
+	case errors.Is(err, tenancy.ErrMembershipPolicyWriteUnavailable):
+		apiresponse.WriteRetryableUnavailable(w, "membership_policy_rollout_pending", "Membership policy rollout is not ready for this mutation", 1)
 	case errors.Is(err, lifecycleidempotency.ErrKeyRequired):
 		writeError(w, http.StatusPreconditionRequired, "idempotency_key_required", "Idempotency-Key is required for this lifecycle mutation")
 	case errors.Is(err, lifecycleidempotency.ErrKeyMalformed):
