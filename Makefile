@@ -1,4 +1,4 @@
-.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures
+.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -224,6 +224,42 @@ migrate-down-to:
 # Apply pending Goose migrations through Silo's bootstrapping runner.
 migrate-up:
 	go run ./cmd/silo/ --env "$(ENV_FILE)" --migrate-only
+
+# Record immutable proof that one released client passed its lifecycle suite.
+# DATABASE_URL must identify the deployment whose rollout is being controlled.
+# Usage: make lifecycle-idempotency-record-client CLIENT=web COMMIT_SHA=<git-sha> \
+#   SUITE_DIGEST=<sha256> RELEASED_AT=<rfc3339> RELEASE_CHANNEL_DIGEST=<sha256>
+lifecycle-idempotency-record-client:
+	@for value in CLIENT COMMIT_SHA SUITE_DIGEST RELEASED_AT RELEASE_CHANNEL_DIGEST; do \
+		eval 'present=$${'"$$value"'}'; \
+		if [ -z "$$present" ]; then echo "$$value is required"; exit 1; fi; \
+	done
+	go run ./cmd/lifecycleidempotencyctl record-client \
+		--client "$(CLIENT)" --commit-sha "$(COMMIT_SHA)" \
+		--suite-digest "$(SUITE_DIGEST)" --released-at "$(RELEASED_AT)" \
+		--release-channel-digest "$(RELEASE_CHANNEL_DIGEST)"
+
+# Print the rollout phase and immutable client evidence as JSON.
+lifecycle-idempotency-status:
+	go run ./cmd/lifecycleidempotencyctl status
+
+# Irreversibly require lifecycle idempotency after the command verifies all
+# reviewed/observed digests and the three immutable client evidence records.
+# Usage: make lifecycle-idempotency-finalize CONFIRM=required \
+#   OBSERVED_ROUTE_DIGEST=<sha256> EXPECTED_ROUTE_DIGEST=<sha256> \
+#   OBSERVED_SCHEMA_DIGEST=<sha256> EXPECTED_SCHEMA_DIGEST=<sha256> \
+#   PRODUCTION_WEB_DIGEST=<sha256>
+lifecycle-idempotency-finalize:
+	@for value in CONFIRM OBSERVED_ROUTE_DIGEST EXPECTED_ROUTE_DIGEST OBSERVED_SCHEMA_DIGEST EXPECTED_SCHEMA_DIGEST PRODUCTION_WEB_DIGEST; do \
+		eval 'present=$${'"$$value"'}'; \
+		if [ -z "$$present" ]; then echo "$$value is required"; exit 1; fi; \
+	done
+	go run ./cmd/lifecycleidempotencyctl finalize --confirm "$(CONFIRM)" \
+		--observed-route-digest "$(OBSERVED_ROUTE_DIGEST)" \
+		--expected-route-digest "$(EXPECTED_ROUTE_DIGEST)" \
+		--observed-schema-digest "$(OBSERVED_SCHEMA_DIGEST)" \
+		--expected-schema-digest "$(EXPECTED_SCHEMA_DIGEST)" \
+		--production-web-digest "$(PRODUCTION_WEB_DIGEST)"
 
 # Install repo-local git hooks for this checkout/worktree.
 install-hooks:
