@@ -99,10 +99,12 @@ func (h *AdminContextSessionHandler) HandleSession(w http.ResponseWriter, r *htt
 			writeError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
 			return
 		}
-		h.mint(w, auth.AdminContextClaims{AccountID: claims.UserID, Scope: auth.AdminScopePlatform}, adminContextSummary{
+		actorIncarnation, _ := uuid.Parse(claims.AccountIncarnationID)
+		h.mint(w, auth.AdminContextClaims{AccountID: claims.UserID, AccountIncarnationID: actorIncarnation, Scope: auth.AdminScopePlatform}, adminContextSummary{
 			Key: "platform", Scope: auth.AdminScopePlatform, Name: "Platform", Status: "active", Authority: "platform_admin",
 		})
 	case auth.AdminScopeOrganization:
+		actorIncarnation, _ := uuid.Parse(claims.AccountIncarnationID)
 		organizationID, err := uuid.Parse(request.OrganizationID)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "invalid_request", "Organization context requires an organization_id")
@@ -142,7 +144,7 @@ func (h *AdminContextSessionHandler) HandleSession(w http.ResponseWriter, r *htt
 			return
 		}
 		h.mint(w, auth.AdminContextClaims{
-			AccountID: claims.UserID, Scope: auth.AdminScopeOrganization,
+			AccountID: claims.UserID, AccountIncarnationID: actorIncarnation, Scope: auth.AdminScopeOrganization,
 			OrganizationID: organizationID, MembershipID: membership.ID,
 			PolicyRevision: resolved.PolicyRevision, SecurityRevision: resolved.SecurityRevision,
 			EffectiveAuthority: authority,

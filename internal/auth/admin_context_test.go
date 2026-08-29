@@ -43,6 +43,24 @@ func TestAdminContextTokenServiceMintsOnlyOneOrganizationScope(t *testing.T) {
 	}
 }
 
+func TestAdminContextTokenServiceRoundTripsAccountIncarnation(t *testing.T) {
+	service := auth.NewAdminContextTokenService("admin-context-test-secret")
+	incarnation := uuid.MustParse("11111111-2222-4333-8444-555555555555")
+	token, err := service.Mint(auth.AdminContextClaims{
+		AccountID: 41, AccountIncarnationID: incarnation, Scope: auth.AdminScopePlatform,
+	})
+	if err != nil {
+		t.Fatalf("Mint() error = %v", err)
+	}
+	claims, err := service.Parse(token)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if claims.AccountIncarnationID != incarnation {
+		t.Fatalf("account incarnation = %s, want %s", claims.AccountIncarnationID, incarnation)
+	}
+}
+
 func TestAdminContextTokenServiceRejectsMixedScopes(t *testing.T) {
 	service := auth.NewAdminContextTokenService("admin-context-test-secret")
 

@@ -26,14 +26,15 @@ const (
 // one exact organization membership. They are intentionally independent of
 // the account-session JWT claims used by legacy routes.
 type AdminContextClaims struct {
-	AccountID          int
-	Scope              AdminScope
-	OrganizationID     uuid.UUID
-	MembershipID       uuid.UUID
-	PolicyRevision     int64
-	SecurityRevision   int64
-	EffectiveAuthority string
-	ExpiresAt          time.Time
+	AccountID            int
+	AccountIncarnationID uuid.UUID
+	Scope                AdminScope
+	OrganizationID       uuid.UUID
+	MembershipID         uuid.UUID
+	PolicyRevision       int64
+	SecurityRevision     int64
+	EffectiveAuthority   string
+	ExpiresAt            time.Time
 }
 
 type AdminContextTokenService interface {
@@ -46,14 +47,15 @@ type adminContextTokenService struct {
 }
 
 type adminContextJWTClaims struct {
-	AccountID          int        `json:"account_id"`
-	Scope              AdminScope `json:"scope"`
-	OrganizationID     string     `json:"organization_id,omitempty"`
-	MembershipID       string     `json:"membership_id,omitempty"`
-	PolicyRevision     int64      `json:"policy_revision,omitempty"`
-	SecurityRevision   int64      `json:"security_revision,omitempty"`
-	EffectiveAuthority string     `json:"effective_authority,omitempty"`
-	TokenType          string     `json:"token_type"`
+	AccountID            int        `json:"account_id"`
+	AccountIncarnationID string     `json:"account_incarnation_id,omitempty"`
+	Scope                AdminScope `json:"scope"`
+	OrganizationID       string     `json:"organization_id,omitempty"`
+	MembershipID         string     `json:"membership_id,omitempty"`
+	PolicyRevision       int64      `json:"policy_revision,omitempty"`
+	SecurityRevision     int64      `json:"security_revision,omitempty"`
+	EffectiveAuthority   string     `json:"effective_authority,omitempty"`
+	TokenType            string     `json:"token_type"`
 	jwt.RegisteredClaims
 }
 
@@ -93,6 +95,9 @@ func (s *adminContextTokenService) Mint(claims AdminContextClaims) (string, erro
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
+	if claims.AccountIncarnationID != uuid.Nil {
+		jwtClaims.AccountIncarnationID = claims.AccountIncarnationID.String()
+	}
 	if claims.Scope == AdminScopeOrganization {
 		jwtClaims.OrganizationID = claims.OrganizationID.String()
 		jwtClaims.MembershipID = claims.MembershipID.String()
@@ -131,6 +136,12 @@ func (s *adminContextTokenService) Parse(tokenStr string) (AdminContextClaims, e
 		SecurityRevision:   jwtClaims.SecurityRevision,
 		EffectiveAuthority: jwtClaims.EffectiveAuthority,
 		ExpiresAt:          expiresAt,
+	}
+	if jwtClaims.AccountIncarnationID != "" {
+		claims.AccountIncarnationID, err = uuid.Parse(jwtClaims.AccountIncarnationID)
+		if err != nil || claims.AccountIncarnationID == uuid.Nil {
+			return AdminContextClaims{}, fmt.Errorf("%w: account incarnation id", ErrInvalidAdminContext)
+		}
 	}
 	if claims.Scope == AdminScopeOrganization {
 		var parseErr error

@@ -137,11 +137,12 @@ func TestV2AdminSessionRequiresPlatformAuthorityForPlatformScope(t *testing.T) {
 }
 
 func TestV2AdminSessionMintsPlatformContextForCurrentPlatformAdmin(t *testing.T) {
+	incarnation := uuid.MustParse("11111111-2222-4333-8444-555555555555")
 	tokens := auth.NewAdminContextTokenService("admin-session-test-secret")
 	handler := NewAdminContextSessionHandler(tokens, adminSessionResolverStub{}, adminSessionMembershipStoreStub{}, adminSessionPlatformAuthorizerStub{allowed: true})
 	req := httptest.NewRequest(http.MethodPost, "/api/v2/admin/session", strings.NewReader(`{"scope":"platform"}`))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, Role: "user"}))
+	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 41, AccountIncarnationID: incarnation.String(), Role: "user"}))
 	rec := httptest.NewRecorder()
 
 	handler.HandleSession(rec, req)
@@ -162,7 +163,7 @@ func TestV2AdminSessionMintsPlatformContextForCurrentPlatformAdmin(t *testing.T)
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	if claims.Scope != auth.AdminScopePlatform || claims.AccountID != 41 || claims.OrganizationID != uuid.Nil || claims.MembershipID != uuid.Nil ||
+	if claims.Scope != auth.AdminScopePlatform || claims.AccountID != 41 || claims.AccountIncarnationID != incarnation || claims.OrganizationID != uuid.Nil || claims.MembershipID != uuid.Nil ||
 		body.Context.Scope != auth.AdminScopePlatform || body.Context.Authority != "platform_admin" {
 		t.Fatalf("claims/context = %#v %#v", claims, body.Context)
 	}
