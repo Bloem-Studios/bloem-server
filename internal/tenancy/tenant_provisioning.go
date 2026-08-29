@@ -286,7 +286,24 @@ func (s *Store) UpdateTenantOrganizationLimits(ctx context.Context, id uuid.UUID
 		return TenantOrganization{}, fmt.Errorf("tenancy: begin tenant limits update: %w", err)
 	}
 	defer rollbackOnError(ctx, tx, &err)
+	organization, err = s.UpdateTenantOrganizationLimitsInTransaction(ctx, tx, id, slots, transcodes)
+	if err != nil {
+		return TenantOrganization{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return TenantOrganization{}, fmt.Errorf("tenancy: commit tenant limits update: %w", err)
+	}
+	s.CompleteTenantOrganizationMutationAfterCommit()
+	return organization, nil
+}
 
+// UpdateTenantOrganizationLimitsInTransaction applies a plan change inside a
+// caller-owned transaction so the mutation and its lifecycle receipt commit
+// atomically.
+func (s *Store) UpdateTenantOrganizationLimitsInTransaction(ctx context.Context, tx pgx.Tx, id uuid.UUID, slots, transcodes int) (TenantOrganization, error) {
+	if slots < 1 || transcodes < 0 {
+		return TenantOrganization{}, ErrTenantOrganizationInvalid
+	}
 	current, err := s.lockTenantOrganization(ctx, tx, id)
 	if err != nil {
 		return TenantOrganization{}, err
@@ -304,10 +321,6 @@ func (s *Store) UpdateTenantOrganizationLimits(ctx context.Context, id uuid.UUID
 	if err != nil {
 		return TenantOrganization{}, fmt.Errorf("tenancy: update tenant organization limits: %w", err)
 	}
-	if err = tx.Commit(ctx); err != nil {
-		return TenantOrganization{}, fmt.Errorf("tenancy: commit tenant limits update: %w", err)
-	}
-	s.invalidateTenantLimitsCache()
 	updated.SlotsUsed = used
 	return updated, nil
 }

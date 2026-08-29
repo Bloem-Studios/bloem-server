@@ -235,6 +235,20 @@ func TestTenantOrganizationCallerOwnedTransactionsRollback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := store.UpdateTenantOrganizationLimitsInTransaction(ctx, tx, tenant.ID, 3, 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if current, err := store.GetTenantOrganization(ctx, tenant.ID); err != nil || current.Slots != 1 || current.Transcodes != 0 {
+		t.Fatalf("limits survived rollback: %+v, err=%v", current, err)
+	}
+
+	tx, err = pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := store.DeleteTenantOrganizationInTransaction(ctx, tx, tenant.ID); err != nil {
 		t.Fatal(err)
 	}

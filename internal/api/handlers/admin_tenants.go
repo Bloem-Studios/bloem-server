@@ -186,12 +186,25 @@ func (h *AdminTenantsHandler) HandleUpdateLimits(w http.ResponseWriter, r *http.
 	if !ok {
 		return
 	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "Invalid request body")
+		return
+	}
 	var req struct {
 		Slots      int `json:"slots"`
 		Transcodes int `json:"transcodes"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_json", "Invalid request body")
+		return
+	}
+	if req.Slots < 1 || req.Transcodes < 0 {
+		writeError(w, http.StatusUnprocessableEntity, "validation", "A tenant needs at least one slot")
+		return
+	}
+	if h.lifecycle != nil {
+		h.handleLifecycleLimits(w, r, id, req.Slots, req.Transcodes, body)
 		return
 	}
 	tenant, err := h.store.UpdateTenantOrganizationLimits(r.Context(), id, req.Slots, req.Transcodes)

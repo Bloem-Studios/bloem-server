@@ -100,6 +100,32 @@ func TestAdminStoreUpdateAndSuspensionAreRevisionGuardedAndReversible(t *testing
 	}
 }
 
+func TestAdminStoreOrganizationUpdateCallerOwnedTransactionRollsBack(t *testing.T) {
+	store, fixture := newTenancyFixture(t)
+	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Before", Slug: "rollback-update", OwnerAccountID: fixture.adminID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := fixture.pool.Begin(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := "After"
+	if _, err := store.UpdateOrganizationInTransaction(adminMutationContext(fixture), tx, created.ID, created.PolicyRevision, UpdateOrganizationInput{Name: &name}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Rollback(fixture.ctx); err != nil {
+		t.Fatal(err)
+	}
+	current, err := store.GetOrganization(fixture.ctx, created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.Name != created.Name || current.PolicyRevision != created.PolicyRevision {
+		t.Fatalf("organization update survived rollback: before %+v after %+v", created, current)
+	}
+}
+
 func TestAdminStoreMembershipLifecycleIsOrganizationBounded(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
 	first, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "First", Slug: "first", OwnerAccountID: fixture.adminID})

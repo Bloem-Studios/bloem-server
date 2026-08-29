@@ -64,6 +64,7 @@ func tenantOrganizationLifecycleHarness(t *testing.T) (*pgxpool.Pool, *tenancy.S
 	router.Post("/api/v1/admin/tenants", handler.HandleCreate)
 	router.Post("/api/v1/admin/tenants/{id}/freeze", handler.HandleFreeze)
 	router.Post("/api/v1/admin/tenants/{id}/thaw", handler.HandleThaw)
+	router.Patch("/api/v1/admin/tenants/{id}/limits", handler.HandleUpdateLimits)
 	router.Delete("/api/v1/admin/tenants/{id}", handler.HandleDelete)
 	return pool, store, users, actor, router
 }
@@ -120,6 +121,23 @@ func TestTenantOrganizationLifecycleReplayPreservesLaterStateAndReplacement(t *t
 	}
 	if current, err := store.GetTenantOrganization(ctx, tenant.ID); err != nil || current.Frozen {
 		t.Fatalf("freeze replay changed later state: %+v, %v", current, err)
+	}
+
+	limitsPath := "/api/v1/admin/tenants/" + tenant.ID.String() + "/limits"
+	limitsKey := "tenant-limits-" + uuid.NewString()
+	firstLimits := lifecycleTenantRequest(t, router, http.MethodPatch, limitsPath, limitsKey, map[string]int{"slots": 3, "transcodes": 2})
+	if firstLimits.Code != http.StatusOK {
+		t.Fatalf("limits = %d: %s", firstLimits.Code, firstLimits.Body.String())
+	}
+	if _, err := store.UpdateTenantOrganizationLimits(ctx, tenant.ID, 4, 3); err != nil {
+		t.Fatal(err)
+	}
+	replayedLimits := lifecycleTenantRequest(t, router, http.MethodPatch, limitsPath, limitsKey, map[string]int{"slots": 3, "transcodes": 2})
+	if replayedLimits.Code != firstLimits.Code || replayedLimits.Body.String() != firstLimits.Body.String() {
+		t.Fatalf("limits replay = %d %q, want %d %q", replayedLimits.Code, replayedLimits.Body.String(), firstLimits.Code, firstLimits.Body.String())
+	}
+	if current, err := store.GetTenantOrganization(ctx, tenant.ID); err != nil || current.Slots != 4 || current.Transcodes != 3 {
+		t.Fatalf("limits replay changed later state: %+v, %v", current, err)
 	}
 
 	deletePath := "/api/v1/admin/tenants/" + tenant.ID.String()

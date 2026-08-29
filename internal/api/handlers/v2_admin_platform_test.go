@@ -194,6 +194,28 @@ func TestV2AdminPlatformCreateReplaysReceiptBeforeStoreAccess(t *testing.T) {
 	}
 }
 
+func TestV2AdminPlatformUpdateReplaysReceiptBeforeStoreAccess(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	store := &adminPlatformStoreStub{}
+	handler := NewV2AdminPlatformHandler(store, nil)
+	body := []byte(`{"organization":{"id":"10000000-0000-0000-0000-000000000001","slug":"first","name":"First","status":"active","policy_revision":2}}`)
+	handler.SetLifecycleIdempotency(replayLifecycleCoordinator{result: lifecycleidempotency.Result{Status: http.StatusOK, Body: body, Replayed: true}}, func(string, string, map[string]string, url.Values, []byte) lifecycleidempotency.Digest {
+		return lifecycleidempotency.Digest{1}
+	})
+	req := adminPlatformRequest(http.MethodPatch, "/api/v2/admin/platform/organizations/"+organizationID.String(), `{"expected_revision":1,"name":"First"}`, map[string]string{"id": organizationID.String()})
+	req.Header.Set("Idempotency-Key", "organization-update-0001")
+	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform}))
+	rec := httptest.NewRecorder()
+
+	handler.HandleUpdateOrganization(rec, req)
+	if rec.Code != http.StatusOK || rec.Body.String() != string(body) {
+		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
+	}
+	if store.calls != 0 {
+		t.Fatalf("store calls = %d, want receipt-first replay", store.calls)
+	}
+}
+
 func TestV2AdminPlatformMapsStaleRevisionWithCurrentRevision(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	store := &adminPlatformStoreStub{

@@ -79,6 +79,32 @@ func (h *AdminTenantsHandler) handleLifecycleFrozen(w http.ResponseWriter, r *ht
 	writeLifecycleResult(w, result)
 }
 
+func (h *AdminTenantsHandler) handleLifecycleLimits(w http.ResponseWriter, r *http.Request, id uuid.UUID, slots, transcodes int, body []byte) {
+	request, ok := h.tenantLifecycleRequest(w, r, "tenant.limits.update", map[string]string{"tenant_id": id.String()}, body, lifecycleidempotency.TargetExactMembership)
+	if !ok {
+		return
+	}
+	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+		return lifecycleidempotency.ResolveTenantOrganizationTargets(ctx, tx, id)
+	}
+	result, err := h.lifecycle.Execute(r.Context(), request,
+		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+			tenant, err := h.store.UpdateTenantOrganizationLimitsInTransaction(ctx, tx, id, slots, transcodes)
+			if err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			return memberLifecycleJSONResult(http.StatusOK, toTenantResponse(tenant))
+		})
+	if err != nil {
+		h.writeTenantLifecycleError(w, err)
+		return
+	}
+	if !result.Replayed {
+		h.store.CompleteTenantOrganizationMutationAfterCommit()
+	}
+	writeLifecycleResult(w, result)
+}
+
 func (h *AdminTenantsHandler) handleLifecycleDelete(w http.ResponseWriter, r *http.Request, id uuid.UUID) {
 	deleter, ok := h.userRepo.(tenantAccountTransactionalDeleter)
 	if !ok {

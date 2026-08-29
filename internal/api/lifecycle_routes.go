@@ -38,6 +38,7 @@ var lifecycleRouteContracts = []RouteContract{
 	lifecycle("profile.delete", http.MethodDelete, "/api/v1/profiles/{id}", lifecycleidempotency.TargetExactMembership, false),
 
 	lifecycle("tenant.create", http.MethodPost, "/api/v1/admin/tenants", lifecycleidempotency.TargetBodyAccount, false),
+	lifecycle("tenant.limits.update", http.MethodPatch, "/api/v1/admin/tenants/{id}/limits", lifecycleidempotency.TargetExactMembership, false),
 	lifecycle("tenant.freeze", http.MethodPost, "/api/v1/admin/tenants/{id}/freeze", lifecycleidempotency.TargetExactMembership, false),
 	lifecycle("tenant.thaw", http.MethodPost, "/api/v1/admin/tenants/{id}/thaw", lifecycleidempotency.TargetExactMembership, false),
 	lifecycle("tenant.delete", http.MethodDelete, "/api/v1/admin/tenants/{id}", lifecycleidempotency.TargetExactMembership, false),
@@ -69,6 +70,7 @@ var lifecycleRouteContracts = []RouteContract{
 	lifecycle("account.request_limit.update", http.MethodPut, "/api/v1/admin/request-users/{user_id}/limit", lifecycleidempotency.TargetPathAccount, false),
 
 	lifecycle("organization.create", http.MethodPost, "/api/v2/admin/platform/organizations/", lifecycleidempotency.TargetBodyAccount, false),
+	lifecycle("organization.update", http.MethodPatch, "/api/v2/admin/platform/organizations/{id}", lifecycleidempotency.TargetExactMembership, false),
 	lifecycle("organization.suspend", http.MethodPost, "/api/v2/admin/platform/organizations/{id}/suspend", lifecycleidempotency.TargetExactMembership, false),
 	lifecycle("organization.reactivate", http.MethodPost, "/api/v2/admin/platform/organizations/{id}/reactivate", lifecycleidempotency.TargetExactMembership, false),
 	lifecycle("organization.transfer", http.MethodPost, "/api/v2/admin/platform/organizations/{id}/transfer-ownership", lifecycleidempotency.TargetBodyAccount, false),

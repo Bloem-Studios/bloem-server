@@ -269,6 +269,25 @@ func (s *Store) CreateOrganizationInTransaction(ctx context.Context, tx pgx.Tx, 
 }
 
 func (s *Store) UpdateOrganization(ctx context.Context, organizationID uuid.UUID, expectedRevision int64, input UpdateOrganizationInput) (organization Organization, err error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Organization{}, fmt.Errorf("begin organization update: %w", err)
+	}
+	defer rollbackOnError(ctx, tx, &err)
+	organization, err = s.UpdateOrganizationInTransaction(ctx, tx, organizationID, expectedRevision, input)
+	if err != nil {
+		return Organization{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Organization{}, fmt.Errorf("commit organization update: %w", err)
+	}
+	return organization, nil
+}
+
+// UpdateOrganizationInTransaction updates organization identity fields in a
+// caller-owned transaction so the audited mutation and lifecycle receipt can
+// commit atomically.
+func (s *Store) UpdateOrganizationInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, expectedRevision int64, input UpdateOrganizationInput) (organization Organization, err error) {
 	if organizationID == uuid.Nil || expectedRevision <= 0 || (input.Name == nil && input.Slug == nil) {
 		return Organization{}, ErrInvalidAdminMutation
 	}
@@ -291,11 +310,6 @@ func (s *Store) UpdateOrganization(ctx context.Context, organizationID uuid.UUID
 	if err != nil {
 		return Organization{}, err
 	}
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return Organization{}, fmt.Errorf("begin organization update: %w", err)
-	}
-	defer rollbackOnError(ctx, tx, &err)
 	before, err := scanOrganization(tx.QueryRow(ctx, `SELECT `+organizationColumns+` FROM organizations WHERE id=$1 FOR UPDATE`, organizationID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Organization{}, ErrOrganizationNotFound
@@ -309,9 +323,6 @@ func (s *Store) UpdateOrganization(ctx context.Context, organizationID uuid.UUID
 	nameUnchanged := name == nil || *name == before.Name
 	slugUnchanged := slug == nil || *slug == before.Slug
 	if nameUnchanged && slugUnchanged {
-		if err = tx.Commit(ctx); err != nil {
-			return Organization{}, fmt.Errorf("commit unchanged organization update: %w", err)
-		}
 		return before, nil
 	}
 	organization, err = scanOrganization(tx.QueryRow(ctx, `
@@ -332,9 +343,6 @@ func (s *Store) UpdateOrganization(ctx context.Context, organizationID uuid.UUID
 		if err = recordOrganizationAudit(ctx, tx, actor, "organization.slug_changed", organization, before.PolicyRevision, organization.PolicyRevision, organizationAdminAuditState(before), organizationAdminAuditState(organization)); err != nil {
 			return Organization{}, err
 		}
-	}
-	if err = tx.Commit(ctx); err != nil {
-		return Organization{}, fmt.Errorf("commit organization update: %w", err)
 	}
 	return organization, nil
 }
