@@ -244,20 +244,19 @@ lifecycle-idempotency-status:
 	go run ./cmd/lifecycleidempotencyctl status
 
 # Irreversibly require lifecycle idempotency after the command verifies all
-# reviewed/observed digests and the three immutable client evidence records.
+# reviewed digests against the compiled route registry and live schema, plus
+# the three immutable client evidence records. Obtain current digests from
+# lifecycle-idempotency-status, review them independently, then pass them here.
 # Usage: make lifecycle-idempotency-finalize CONFIRM=required \
-#   OBSERVED_ROUTE_DIGEST=<sha256> EXPECTED_ROUTE_DIGEST=<sha256> \
-#   OBSERVED_SCHEMA_DIGEST=<sha256> EXPECTED_SCHEMA_DIGEST=<sha256> \
+#   EXPECTED_ROUTE_DIGEST=<sha256> EXPECTED_SCHEMA_DIGEST=<sha256> \
 #   PRODUCTION_WEB_DIGEST=<sha256>
 lifecycle-idempotency-finalize:
-	@for value in CONFIRM OBSERVED_ROUTE_DIGEST EXPECTED_ROUTE_DIGEST OBSERVED_SCHEMA_DIGEST EXPECTED_SCHEMA_DIGEST PRODUCTION_WEB_DIGEST; do \
+	@for value in CONFIRM EXPECTED_ROUTE_DIGEST EXPECTED_SCHEMA_DIGEST PRODUCTION_WEB_DIGEST; do \
 		eval 'present=$${'"$$value"'}'; \
 		if [ -z "$$present" ]; then echo "$$value is required"; exit 1; fi; \
 	done
 	go run ./cmd/lifecycleidempotencyctl finalize --confirm "$(CONFIRM)" \
-		--observed-route-digest "$(OBSERVED_ROUTE_DIGEST)" \
 		--expected-route-digest "$(EXPECTED_ROUTE_DIGEST)" \
-		--observed-schema-digest "$(OBSERVED_SCHEMA_DIGEST)" \
 		--expected-schema-digest "$(EXPECTED_SCHEMA_DIGEST)" \
 		--production-web-digest "$(PRODUCTION_WEB_DIGEST)"
 

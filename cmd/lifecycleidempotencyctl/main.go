@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -124,7 +125,7 @@ func openRollout(ctx context.Context, databaseURL string) (rolloutOperations, fu
 		pool.Close()
 		return nil, nil, err
 	}
-	return lifecycleidempotency.NewRollout(pool), pool.Close, nil
+	return lifecycleidempotency.NewRollout(pool, api.LifecycleRouteDigest()), pool.Close, nil
 }
 
 func parseRecordClient(args []string) (lifecycleidempotency.ClientEvidence, error) {
@@ -167,9 +168,7 @@ func parseRecordClient(args []string) (lifecycleidempotency.ClientEvidence, erro
 func parseFinalize(args []string) (lifecycleidempotency.FinalizeInput, error) {
 	flags := newFlagSet("finalize")
 	confirm := flags.String("confirm", "", "must be 'required' to acknowledge the irreversible phase change")
-	observedRoute := flags.String("observed-route-digest", "", "observed route-manifest SHA-256")
 	expectedRoute := flags.String("expected-route-digest", "", "reviewed route-manifest SHA-256")
-	observedSchema := flags.String("observed-schema-digest", "", "observed schema SHA-256")
 	expectedSchema := flags.String("expected-schema-digest", "", "reviewed schema SHA-256")
 	productionWeb := flags.String("production-web-digest", "", "production web release-channel SHA-256")
 	if err := flags.Parse(args); err != nil {
@@ -185,9 +184,7 @@ func parseFinalize(args []string) (lifecycleidempotency.FinalizeInput, error) {
 		name string
 		text string
 	}{
-		{"observed-route-digest", *observedRoute},
 		{"expected-route-digest", *expectedRoute},
-		{"observed-schema-digest", *observedSchema},
 		{"expected-schema-digest", *expectedSchema},
 		{"production-web-digest", *productionWeb},
 	}
@@ -199,16 +196,9 @@ func parseFinalize(args []string) (lifecycleidempotency.FinalizeInput, error) {
 		}
 		digests[i] = digest
 	}
-	if digests[0] != digests[1] {
-		return lifecycleidempotency.FinalizeInput{}, errors.New("observed-route-digest does not match expected-route-digest")
-	}
-	if digests[2] != digests[3] {
-		return lifecycleidempotency.FinalizeInput{}, errors.New("observed-schema-digest does not match expected-schema-digest")
-	}
 	return lifecycleidempotency.FinalizeInput{
-		ObservedRouteDigest: digests[0], ExpectedRouteDigest: digests[1],
-		ObservedSchemaDigest: digests[2], ExpectedSchemaDigest: digests[3],
-		ProductionWebDigest: digests[4],
+		ExpectedRouteDigest: digests[0], ExpectedSchemaDigest: digests[1],
+		ProductionWebDigest: digests[2],
 	}, nil
 }
 
@@ -243,11 +233,15 @@ func parseDigest(value string) (lifecycleidempotency.Digest, error) {
 }
 
 type statusJSON struct {
-	Phase                 lifecycleidempotency.Phase `json:"phase"`
-	FinalizedAt           *time.Time                 `json:"finalized_at"`
-	FinalizedRouteDigest  string                     `json:"finalized_route_digest"`
-	FinalizedSchemaDigest string                     `json:"finalized_schema_digest"`
-	Evidence              []evidenceJSON             `json:"evidence"`
+	Phase                  lifecycleidempotency.Phase `json:"phase"`
+	FinalizedAt            *time.Time                 `json:"finalized_at"`
+	FinalizedRouteDigest   string                     `json:"finalized_route_digest"`
+	FinalizedSchemaDigest  string                     `json:"finalized_schema_digest"`
+	CurrentRouteDigest     string                     `json:"current_route_digest"`
+	CurrentSchemaDigest    string                     `json:"current_schema_digest"`
+	RouteMatchesFinalized  bool                       `json:"route_matches_finalized"`
+	SchemaMatchesFinalized bool                       `json:"schema_matches_finalized"`
+	Evidence               []evidenceJSON             `json:"evidence"`
 }
 
 type evidenceJSON struct {
@@ -262,9 +256,13 @@ type evidenceJSON struct {
 func writeStatus(output io.Writer, status lifecycleidempotency.RolloutStatus) error {
 	encoded := statusJSON{
 		Phase: status.Phase, FinalizedAt: status.FinalizedAt,
-		FinalizedRouteDigest:  hex.EncodeToString(status.FinalizedRouteDigest[:]),
-		FinalizedSchemaDigest: hex.EncodeToString(status.FinalizedSchemaDigest[:]),
-		Evidence:              make([]evidenceJSON, 0, len(status.Evidence)),
+		FinalizedRouteDigest:   hex.EncodeToString(status.FinalizedRouteDigest[:]),
+		FinalizedSchemaDigest:  hex.EncodeToString(status.FinalizedSchemaDigest[:]),
+		CurrentRouteDigest:     hex.EncodeToString(status.CurrentRouteDigest[:]),
+		CurrentSchemaDigest:    hex.EncodeToString(status.CurrentSchemaDigest[:]),
+		RouteMatchesFinalized:  status.RouteMatchesFinalized,
+		SchemaMatchesFinalized: status.SchemaMatchesFinalized,
+		Evidence:               make([]evidenceJSON, 0, len(status.Evidence)),
 	}
 	for _, evidence := range status.Evidence {
 		encoded.Evidence = append(encoded.Evidence, evidenceJSON{

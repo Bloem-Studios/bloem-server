@@ -11,13 +11,24 @@ import (
 func TestLifecycleIdempotencyRequiredFinalizerNeedsImmutableThreeClientEvidence(t *testing.T) {
 	ctx := context.Background()
 	pool := newLifecycleStoreDatabase(t)
-	rollout := NewRollout(pool)
+	compiledRouteDigest := testDigest(1)
+	rollout := NewRollout(pool, compiledRouteDigest)
+	initialStatus, err := rollout.Status(ctx)
+	if err != nil {
+		t.Fatalf("Status() before finalization: %v", err)
+	}
+	if initialStatus.CurrentRouteDigest != compiledRouteDigest || initialStatus.CurrentSchemaDigest == (Digest{}) {
+		t.Fatalf("current release digests = route %x schema %x", initialStatus.CurrentRouteDigest, initialStatus.CurrentSchemaDigest)
+	}
 	input := FinalizeInput{
-		ObservedRouteDigest:  testDigest(1),
-		ExpectedRouteDigest:  testDigest(1),
-		ObservedSchemaDigest: testDigest(2),
-		ExpectedSchemaDigest: testDigest(2),
+		ExpectedRouteDigest:  compiledRouteDigest,
+		ExpectedSchemaDigest: initialStatus.CurrentSchemaDigest,
 		ProductionWebDigest:  testDigest(3),
+	}
+	routeMismatch := input
+	routeMismatch.ExpectedRouteDigest = testDigest(99)
+	if err := rollout.Finalize(ctx, routeMismatch); !errors.Is(err, ErrRolloutDigestMismatch) {
+		t.Fatalf("Finalize() route mismatch = %v, want ErrRolloutDigestMismatch", err)
 	}
 	if err := rollout.Finalize(ctx, input); !errors.Is(err, ErrClientEvidenceIncomplete) {
 		t.Fatalf("Finalize() without evidence = %v, want ErrClientEvidenceIncomplete", err)
@@ -48,9 +59,9 @@ func TestLifecycleIdempotencyRequiredFinalizerNeedsImmutableThreeClientEvidence(
 	}
 
 	mismatch := input
-	mismatch.ObservedRouteDigest = testDigest(99)
+	mismatch.ExpectedSchemaDigest = testDigest(99)
 	if err := rollout.Finalize(ctx, mismatch); !errors.Is(err, ErrRolloutDigestMismatch) {
-		t.Fatalf("Finalize() route mismatch = %v, want ErrRolloutDigestMismatch", err)
+		t.Fatalf("Finalize() schema mismatch = %v, want ErrRolloutDigestMismatch", err)
 	}
 	if err := rollout.Finalize(ctx, input); err != nil {
 		t.Fatalf("Finalize() valid evidence: %v", err)
@@ -62,8 +73,24 @@ func TestLifecycleIdempotencyRequiredFinalizerNeedsImmutableThreeClientEvidence(
 	if status.Phase != PhaseRequired || len(status.Evidence) != 3 {
 		t.Fatalf("status = %+v, want required with three evidence rows", status)
 	}
+	if !status.RouteMatchesFinalized || !status.SchemaMatchesFinalized {
+		t.Fatalf("finalized digest comparison = route %t schema %t, want both true", status.RouteMatchesFinalized, status.SchemaMatchesFinalized)
+	}
 	if err := rollout.Finalize(ctx, input); err != nil {
 		t.Fatalf("Finalize() second call should be idempotent: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `ALTER TABLE lifecycle_request_receipts ADD COLUMN release_audit_drift boolean`); err != nil {
+		t.Fatalf("alter lifecycle schema fixture: %v", err)
+	}
+	driftedStatus, err := rollout.Status(ctx)
+	if err != nil {
+		t.Fatalf("Status() after schema drift: %v", err)
+	}
+	if driftedStatus.SchemaMatchesFinalized {
+		t.Fatal("status did not detect live lifecycle schema drift")
+	}
+	if err := rollout.Finalize(ctx, input); !errors.Is(err, ErrRolloutDigestMismatch) {
+		t.Fatalf("Finalize() after schema drift = %v, want ErrRolloutDigestMismatch", err)
 	}
 	if _, err := pool.Exec(ctx, `UPDATE lifecycle_idempotency_control SET phase='optional',finalized_at=NULL WHERE singleton`); err == nil {
 		t.Fatal("required phase reversed")
@@ -73,10 +100,14 @@ func TestLifecycleIdempotencyRequiredFinalizerNeedsImmutableThreeClientEvidence(
 func TestLifecycleIdempotencyRequiredFinalizerSerializesWithUnkeyedMutation(t *testing.T) {
 	ctx := context.Background()
 	pool := newLifecycleStoreDatabase(t)
-	rollout := NewRollout(pool)
+	compiledRouteDigest := testDigest(1)
+	rollout := NewRollout(pool, compiledRouteDigest)
+	status, err := rollout.Status(ctx)
+	if err != nil {
+		t.Fatalf("Status(): %v", err)
+	}
 	input := FinalizeInput{
-		ObservedRouteDigest: testDigest(1), ExpectedRouteDigest: testDigest(1),
-		ObservedSchemaDigest: testDigest(2), ExpectedSchemaDigest: testDigest(2),
+		ExpectedRouteDigest: compiledRouteDigest, ExpectedSchemaDigest: status.CurrentSchemaDigest,
 		ProductionWebDigest: testDigest(3),
 	}
 	for index, client := range []string{"web", "apple", "android"} {

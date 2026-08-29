@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/hex"
 	"net/http"
 	"sort"
 	"strings"
@@ -8,6 +9,28 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 )
+
+func TestLifecycleRouteDigestCanonicalizesEveryContractField(t *testing.T) {
+	contracts := []RouteContract{
+		{ID: "account.delete", Method: http.MethodDelete, Pattern: "/api/v1/admin/users/{id}", TargetSource: lifecycleidempotency.TargetPathAccount, Mutation: true},
+		{ID: "auth.signup", Method: http.MethodPost, Pattern: "/api/v1/auth/signup", TargetSource: lifecycleidempotency.TargetBodyAccount, Mutation: true, Preauth: true},
+	}
+	digest := digestLifecycleRouteContracts(contracts)
+	const want = "9a6b53f42ad452171375d8df7be07b22818204c0c6813e7cd142e499f8d1aee4"
+	if got := hex.EncodeToString(digest[:]); got != want {
+		t.Fatalf("canonical route digest = %s, want %s", got, want)
+	}
+
+	reversed := []RouteContract{contracts[1], contracts[0]}
+	if got := digestLifecycleRouteContracts(reversed); got != digest {
+		t.Fatalf("route digest depends on registration order: %x != %x", got, digest)
+	}
+	changed := append([]RouteContract(nil), contracts...)
+	changed[0].TargetSource = lifecycleidempotency.TargetExactMembership
+	if got := digestLifecycleRouteContracts(changed); got == digest {
+		t.Fatal("route digest ignored a target-source change")
+	}
+}
 
 func TestUnsafeLifecycleRouteRegistryHasStableUniqueContracts(t *testing.T) {
 	contracts := LifecycleRouteContracts()

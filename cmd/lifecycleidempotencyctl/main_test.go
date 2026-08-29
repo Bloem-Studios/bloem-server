@@ -112,6 +112,8 @@ func TestRunStatusPrintsStableHexJSON(t *testing.T) {
 		Phase:                 lifecycleidempotency.PhaseOptional,
 		FinalizedRouteDigest:  mustDigest(t, digestA),
 		FinalizedSchemaDigest: mustDigest(t, digestB),
+		CurrentRouteDigest:    mustDigest(t, digestB),
+		CurrentSchemaDigest:   mustDigest(t, digestC),
 		Evidence: []lifecycleidempotency.ClientEvidence{{
 			Client: "web", CommitSHA: strings.Repeat("c", 40), SuiteDigest: mustDigest(t, digestB),
 			ReleasedAt:           time.Date(2026, 8, 29, 9, 30, 0, 0, time.UTC),
@@ -125,20 +127,20 @@ func TestRunStatusPrintsStableHexJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := out.String()
-	for _, want := range []string{`"phase":"optional"`, `"finalized_route_digest":"` + digestA + `"`, `"suite_digest":"` + digestB + `"`, `"release_channel_digest":"` + digestC + `"`} {
+	for _, want := range []string{`"phase":"optional"`, `"finalized_route_digest":"` + digestA + `"`, `"current_route_digest":"` + digestB + `"`, `"current_schema_digest":"` + digestC + `"`, `"suite_digest":"` + digestB + `"`, `"release_channel_digest":"` + digestC + `"`} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("output %q does not contain %q", got, want)
 		}
 	}
 }
 
-func TestRunFinalizeRequiresConfirmationAndMatchingDigestsBeforeOpeningDatabase(t *testing.T) {
+func TestRunFinalizeRequiresConfirmationAndReviewedDigestsBeforeOpeningDatabase(t *testing.T) {
 	t.Parallel()
-	base := []string{"finalize", "--observed-route-digest", digestA, "--expected-route-digest", digestA, "--observed-schema-digest", digestB, "--expected-schema-digest", digestB, "--production-web-digest", digestC}
+	base := []string{"finalize", "--expected-route-digest", digestA, "--expected-schema-digest", digestB, "--production-web-digest", digestC}
 	for _, args := range [][]string{
 		base,
 		append(append([]string{}, base...), "--confirm", "optional"),
-		{"finalize", "--confirm", "required", "--observed-route-digest", digestA, "--expected-route-digest", digestB, "--observed-schema-digest", digestB, "--expected-schema-digest", digestB, "--production-web-digest", digestC},
+		{"finalize", "--confirm", "required", "--observed-route-digest", digestA, "--expected-route-digest", digestA, "--expected-schema-digest", digestB, "--production-web-digest", digestC},
 	} {
 		opened := false
 		err := run(context.Background(), args, func(string) string { return "postgres://unused" }, &bytes.Buffer{}, func(context.Context, string) (rolloutOperations, func(), error) {
@@ -154,7 +156,7 @@ func TestRunFinalizeRequiresConfirmationAndMatchingDigestsBeforeOpeningDatabase(
 func TestRunFinalizePassesValidatedEvidenceDigests(t *testing.T) {
 	t.Parallel()
 	fake := &fakeRollout{}
-	err := run(context.Background(), []string{"finalize", "--confirm", "required", "--observed-route-digest", digestA, "--expected-route-digest", digestA, "--observed-schema-digest", digestB, "--expected-schema-digest", digestB, "--production-web-digest", digestC},
+	err := run(context.Background(), []string{"finalize", "--confirm", "required", "--expected-route-digest", digestA, "--expected-schema-digest", digestB, "--production-web-digest", digestC},
 		func(string) string { return "postgres://unused" }, &bytes.Buffer{}, func(context.Context, string) (rolloutOperations, func(), error) { return fake, func() {}, nil })
 	if err != nil {
 		t.Fatal(err)

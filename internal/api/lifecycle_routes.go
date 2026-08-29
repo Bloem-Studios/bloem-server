@@ -1,7 +1,10 @@
 package api
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 
@@ -134,6 +137,30 @@ func LifecycleOneShotRoutes() []ReviewedOneShotRoute {
 
 func LifecycleNonMutationRoutes() []ReviewedNonMutationRoute {
 	return append([]ReviewedNonMutationRoute(nil), lifecycleNonMutationRoutes...)
+}
+
+// LifecycleRouteDigest identifies the exact replay-safe mutation registry
+// compiled into this server. Its canonical form is independent of declaration
+// order while binding every field that changes preflight or receipt behavior.
+func LifecycleRouteDigest() lifecycleidempotency.Digest {
+	return digestLifecycleRouteContracts(lifecycleRouteContracts)
+}
+
+func digestLifecycleRouteContracts(contracts []RouteContract) lifecycleidempotency.Digest {
+	lines := make([]string, 0, len(contracts))
+	for _, contract := range contracts {
+		lines = append(lines, fmt.Sprintf("%s\t%s\t%s\t%s\t%t\t%t\n",
+			contract.ID, contract.Method, contract.Pattern, contract.TargetSource,
+			contract.Mutation, contract.Preauth))
+	}
+	sort.Strings(lines)
+	hash := sha256.New()
+	for _, line := range lines {
+		_, _ = hash.Write([]byte(line))
+	}
+	var digest lifecycleidempotency.Digest
+	copy(digest[:], hash.Sum(nil))
+	return digest
 }
 
 func LookupLifecycleRoute(method, pattern string) (RouteContract, bool) {
