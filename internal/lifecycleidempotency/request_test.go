@@ -22,3 +22,20 @@ func TestRequestDigesterCanonicalizesSelectorsAndQueryButBindsRouteAndBody(t *te
 		}
 	}
 }
+
+func TestPreauthActorDigesterSeparatesIntentAndTrustAnchors(t *testing.T) {
+	digest := NewPreauthActorDigester([]byte("preauth-actor-test-secret"))
+	first := digest("signup", "server-instance", "invite-code-digest")
+	if first != digest("signup", "server-instance", "invite-code-digest") {
+		t.Fatal("identical preauth subject produced a different digest")
+	}
+	for name, changed := range map[string]Digest{
+		"intent": digest("invitation.accept", "server-instance", "invite-code-digest"),
+		"server": digest("signup", "replacement-server", "invite-code-digest"),
+		"anchor": digest("signup", "server-instance", "other-code-digest"),
+	} {
+		if changed == first {
+			t.Errorf("changing %s did not change preauth actor digest", name)
+		}
+	}
+}

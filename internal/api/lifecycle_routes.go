@@ -23,6 +23,12 @@ type ReviewedOneShotRoute struct {
 	Reason  string
 }
 
+type ReviewedNonMutationRoute struct {
+	Method  string
+	Pattern string
+	Reason  string
+}
+
 var lifecycleRouteContracts = []RouteContract{
 	lifecycle("auth.setup", http.MethodPost, "/api/v1/auth/setup", lifecycleidempotency.TargetBodyAccount, true),
 	lifecycle("auth.signup", http.MethodPost, "/api/v1/auth/signup", lifecycleidempotency.TargetBodyAccount, true),
@@ -93,6 +99,20 @@ var lifecycleOneShotRoutes = []ReviewedOneShotRoute{
 	{http.MethodPost, "/api/v1/auth/oauth/complete", "OAuth callback"},
 }
 
+var lifecycleNonMutationRoutes = []ReviewedNonMutationRoute{
+	{http.MethodPost, "/api/v2/admin/platform/accounts/{account_id}/entitlement/dry-run", "entitlement preview"},
+	{http.MethodPost, "/api/v2/admin/platform/users/{user_id}/entitlement/dry-run", "legacy entitlement preview"},
+	{http.MethodPost, "/api/v2/admin/platform/organizations/{id}/entitlement/dry-run", "organization entitlement preview"},
+	{http.MethodPost, "/api/v2/admin/platform/accounts/{account_id}/entitlement", "method rejected by exact route dispatch"},
+	{http.MethodPut, "/api/v2/admin/platform/accounts/{account_id}/entitlement", "method rejected by exact route dispatch"},
+	{http.MethodPatch, "/api/v2/admin/platform/accounts/{account_id}/entitlement", "method rejected by exact route dispatch"},
+	{http.MethodDelete, "/api/v2/admin/platform/accounts/{account_id}/entitlement", "method rejected by exact route dispatch"},
+	{http.MethodPost, "/api/v2/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement", "method rejected by exact route dispatch"},
+	{http.MethodPut, "/api/v2/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement", "method rejected by exact route dispatch"},
+	{http.MethodPatch, "/api/v2/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement", "method rejected by exact route dispatch"},
+	{http.MethodDelete, "/api/v2/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement", "method rejected by exact route dispatch"},
+}
+
 var (
 	lifecycleRouteIndexOnce sync.Once
 	lifecycleRouteIndex     map[string]RouteContract
@@ -108,6 +128,10 @@ func LifecycleRouteContracts() []RouteContract {
 
 func LifecycleOneShotRoutes() []ReviewedOneShotRoute {
 	return append([]ReviewedOneShotRoute(nil), lifecycleOneShotRoutes...)
+}
+
+func LifecycleNonMutationRoutes() []ReviewedNonMutationRoute {
+	return append([]ReviewedNonMutationRoute(nil), lifecycleNonMutationRoutes...)
 }
 
 func LookupLifecycleRoute(method, pattern string) (RouteContract, bool) {

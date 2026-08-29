@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
@@ -52,6 +53,65 @@ func TestUnsafeLifecycleRouteRegistryHasStableUniqueContracts(t *testing.T) {
 			t.Errorf("%s %s source = %q, want %q", required.method, required.pattern, contract.TargetSource, required.source)
 		}
 	}
+}
+
+func TestUnsafeLifecycleRouteContractMatchesProductionRouter(t *testing.T) {
+	mounted := make(map[string]bool)
+	for _, pair := range walkRoutes(t, newRouteInventoryRouter(t)) {
+		mounted[normalizeLifecycleRoutePair(pair)] = true
+	}
+	registered := make(map[string]bool)
+	for _, contract := range LifecycleRouteContracts() {
+		pair := contract.Method + " " + contract.Pattern
+		registered[normalizeLifecycleRoutePair(pair)] = true
+		if !mounted[normalizeLifecycleRoutePair(pair)] {
+			t.Errorf("lifecycle registry contains stale or conditionally unmounted route %q", pair)
+		}
+	}
+	excluded := make(map[string]bool)
+	for _, route := range LifecycleOneShotRoutes() {
+		excluded[normalizeLifecycleRoutePair(route.Method+" "+route.Pattern)] = true
+	}
+	for _, route := range LifecycleNonMutationRoutes() {
+		pair := normalizeLifecycleRoutePair(route.Method + " " + route.Pattern)
+		excluded[pair] = true
+		if !mounted[pair] {
+			t.Errorf("reviewed nonmutation route is stale: %s", pair)
+		}
+	}
+
+	for pair := range mounted {
+		method, pattern := splitRoute(pair)
+		if !unsafeLifecycleCandidate(method, pattern) {
+			continue
+		}
+		if !registered[pair] && !excluded[pair] {
+			t.Errorf("unsafe lifecycle candidate is unclassified: %s", pair)
+		}
+	}
+}
+
+func unsafeLifecycleCandidate(method, pattern string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+	default:
+		return false
+	}
+	if strings.Contains(pattern, "{user_id}") || strings.Contains(pattern, "{userId}") ||
+		strings.Contains(pattern, "{account_id}") {
+		return true
+	}
+	if strings.HasPrefix(pattern, "/api/v1/admin/users/{id}") ||
+		pattern == "/api/v1/auth/setup" || pattern == "/api/v1/auth/signup" ||
+		strings.HasPrefix(pattern, "/api/v1/invitations/{token}") ||
+		strings.HasPrefix(pattern, "/api/v1/profiles") {
+		return true
+	}
+	return false
+}
+
+func normalizeLifecycleRoutePair(pair string) string {
+	return strings.TrimSuffix(pair, "/")
 }
 
 func TestLifecycleOneShotExclusionsStayOutsideReplayRegistry(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 )
 
 type RequestDigester func(method, routeID string, selectors map[string]string, query url.Values, body []byte) Digest
+type PreauthActorDigester func(intent string, trustAnchors ...string) Digest
 
 func NewRequestDigester(secret []byte) RequestDigester {
 	key := append([]byte(nil), secret...)
@@ -29,6 +30,21 @@ func NewRequestDigester(secret []byte) RequestDigester {
 		}
 		writeRequestDigestPart(mac, []byte(canonicalQuery(query)))
 		writeRequestDigestPart(mac, body)
+		var digest Digest
+		copy(digest[:], mac.Sum(nil))
+		return digest
+	}
+}
+
+func NewPreauthActorDigester(secret []byte) PreauthActorDigester {
+	key := append([]byte(nil), secret...)
+	return func(intent string, trustAnchors ...string) Digest {
+		mac := hmac.New(sha256.New, key)
+		_, _ = mac.Write([]byte("bloem.lifecycle-preauth-actor.v1\x00"))
+		writeRequestDigestPart(mac, []byte(intent))
+		for _, anchor := range trustAnchors {
+			writeRequestDigestPart(mac, []byte(anchor))
+		}
 		var digest Digest
 		copy(digest[:], mac.Sum(nil))
 		return digest
