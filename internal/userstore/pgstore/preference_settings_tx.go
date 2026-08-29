@@ -54,6 +54,18 @@ func (s *PostgresUserStore) WithPreferenceSettingsTransaction(
 	return nil
 }
 
+// PreferenceSettingsWriterInTransaction exposes the canonical preference
+// writer on a caller-owned lifecycle transaction.
+func (s *PostgresUserStore) PreferenceSettingsWriterInTransaction(
+	ctx context.Context, tx pgx.Tx,
+) (userstore.PreferenceSettingsWriter, error) {
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1, $2)",
+		preferenceSettingsAdvisoryClass, int32(s.userID)); err != nil {
+		return nil, fmt.Errorf("locking preference settings transaction: %w", err)
+	}
+	return &preferenceSettingsTx{exec: tx, userID: s.userID}, nil
+}
+
 func (tx *preferenceSettingsTx) ListProfileIDs(ctx context.Context) ([]string, error) {
 	rows, err := tx.exec.Query(ctx,
 		"SELECT id FROM user_profiles WHERE user_id = $1 ORDER BY created_at, id", tx.userID)

@@ -244,7 +244,16 @@ func getGroup(ctx context.Context, querier groupQueryRower, organizationID uuid.
 // used by platform-wide nested account routes, where there is deliberately no
 // organization selected in request context.
 func (s *GroupStore) GetForAccount(ctx context.Context, accountID int, id int64) (*Group, error) {
-	group, err := scanGroup(s.pool.QueryRow(ctx, `
+	return getGroupForAccount(ctx, s.pool, accountID, id)
+}
+
+// GetForAccountInTransaction resolves an account group in a caller-owned transaction.
+func (s *GroupStore) GetForAccountInTransaction(ctx context.Context, tx pgx.Tx, accountID int, id int64) (*Group, error) {
+	return getGroupForAccount(ctx, tx, accountID, id)
+}
+
+func getGroupForAccount(ctx context.Context, querier groupQueryRower, accountID int, id int64) (*Group, error) {
+	group, err := scanGroup(querier.QueryRow(ctx, `
 		SELECT `+accessGroupSelectColumns+`, COUNT(p.id)::int AS member_count
 		FROM access_groups g
 		LEFT JOIN user_profiles p
@@ -267,7 +276,16 @@ func (s *GroupStore) GetForAccount(ctx context.Context, accountID int, id int64)
 
 // GetDefault returns the group inherited by a new profile in an organization.
 func (s *GroupStore) GetDefault(ctx context.Context, organizationID uuid.UUID) (*Group, error) {
-	group, err := scanGroup(s.pool.QueryRow(ctx, `
+	return getDefaultGroup(ctx, s.pool, organizationID)
+}
+
+// GetDefaultInTransaction resolves the default group in a caller-owned transaction.
+func (s *GroupStore) GetDefaultInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID) (*Group, error) {
+	return getDefaultGroup(ctx, tx, organizationID)
+}
+
+func getDefaultGroup(ctx context.Context, querier groupQueryRower, organizationID uuid.UUID) (*Group, error) {
+	group, err := scanGroup(querier.QueryRow(ctx, `
 		SELECT `+accessGroupSelectColumns+`, COUNT(p.id)::int AS member_count
 		FROM access_groups g
 		LEFT JOIN user_profiles p

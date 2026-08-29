@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
+	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
@@ -314,6 +316,163 @@ func TestAdminUpdateUserLifecycleReplayDoesNotUpdateSameNumericReplacement(t *te
 	}
 	if invalidations != 1 {
 		t.Fatalf("invalidations after replay = %d, want 1", invalidations)
+	}
+}
+
+func TestAdminCreateProfileLifecycleReplayDoesNotCreateOnSameNumericReplacement(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	users := auth.NewUserRepository(pool)
+	actor, err := users.Create(ctx, models.CreateUserInput{Username: "profile-actor-" + uuid.NewString(), Email: uuid.NewString() + "@lifecycle.test", Password: "test-password", Role: models.RoleAdmin})
+	if err != nil {
+		t.Fatalf("create actor: %v", err)
+	}
+	maxProfiles := 4
+	target, err := users.Create(ctx, models.CreateUserInput{Username: "profile-target-" + uuid.NewString(), Email: uuid.NewString() + "@lifecycle.test", Password: "test-password", Role: models.RoleUser, MaxProfiles: &maxProfiles})
+	if err != nil {
+		t.Fatalf("create target: %v", err)
+	}
+	var organizationID uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT id FROM organizations WHERE is_default`).Scan(&organizationID); err != nil {
+		t.Fatalf("load default organization: %v", err)
+	}
+	for _, accountID := range []int{actor.ID, target.ID} {
+		if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active',$3)`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
+			t.Fatalf("create membership: %v", err)
+		}
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=ANY($1::integer[])`, []int{actor.ID, target.ID})
+	})
+
+	provider := pgstore.NewPostgresProvider(pool)
+	var defaultGroupID int64
+	if err := pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, organizationID).Scan(&defaultGroupID); err != nil {
+		t.Fatalf("load default group: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,is_primary,organization_id,access_group_id) VALUES ($1,$2,'Main',true,$3,$4)`, uuid.NewString(), target.ID, organizationID, defaultGroupID); err != nil {
+		t.Fatalf("create primary profile: %v", err)
+	}
+	handler := handlers.NewAdminHandler(users, pool, provider)
+	secret := []byte("profile-lifecycle-test-secret")
+	handler.SetLifecycleIdempotency(lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(pool), lifecycleidempotency.NewHMACKeyDigester(secret)), lifecycleidempotency.NewRequestDigester(secret))
+	router := chi.NewRouter()
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(apimw.SetClaims(r.Context(), &auth.Claims{UserID: actor.ID, AccountIncarnationID: actor.AccountIncarnationID.String(), Role: models.RoleAdmin})))
+		})
+	})
+	router.Post("/api/v1/admin/users/{user_id}/profiles", handler.HandleCreateUserProfile)
+	router.Put("/api/v1/admin/users/{user_id}/profiles/{profile_id}", handler.HandleUpdateUserProfile)
+	router.Delete("/api/v1/admin/users/{user_id}/profiles/{profile_id}", handler.HandleDeleteUserProfile)
+	router.Delete("/api/v1/admin/users/{user_id}/devices/{device_id}", handler.HandleDeleteUserDevice)
+	key := "profile-create-" + uuid.NewString()
+	request := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/"+strconv.Itoa(target.ID)+"/profiles", strings.NewReader(`{"name":"Guest"}`))
+		req.Header.Set("Idempotency-Key", key)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	first := request()
+	if first.Code != http.StatusCreated {
+		t.Fatalf("first create = %d: %s", first.Code, first.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(first.Body.Bytes(), &created); err != nil || created.ID == "" {
+		t.Fatalf("decode created profile: %v, body=%s", err, first.Body.String())
+	}
+	updateKey := "profile-update-" + uuid.NewString()
+	update := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/users/"+strconv.Itoa(target.ID)+"/profiles/"+created.ID, strings.NewReader(`{"name":"Visitor"}`))
+		req.Header.Set("Idempotency-Key", updateKey)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	firstUpdate := update()
+	if firstUpdate.Code != http.StatusOK {
+		t.Fatalf("first update = %d: %s", firstUpdate.Code, firstUpdate.Body.String())
+	}
+	deviceID := "device-" + uuid.NewString()
+	if _, err := pool.Exec(ctx, `INSERT INTO user_devices (user_id,profile_id,device_id,device_name) VALUES ($1,$2,$3,'Old device')`, target.ID, created.ID, deviceID); err != nil {
+		t.Fatalf("create device: %v", err)
+	}
+	deviceKey := "device-delete-" + uuid.NewString()
+	deleteDevice := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+strconv.Itoa(target.ID)+"/devices/"+deviceID, nil)
+		req.Header.Set("Idempotency-Key", deviceKey)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	if firstDeviceDelete := deleteDevice(); firstDeviceDelete.Code != http.StatusNoContent {
+		t.Fatalf("first device delete = %d: %s", firstDeviceDelete.Code, firstDeviceDelete.Body.String())
+	}
+	deleteKey := "profile-delete-" + uuid.NewString()
+	deleteProfile := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+strconv.Itoa(target.ID)+"/profiles/"+created.ID, nil)
+		req.Header.Set("Idempotency-Key", deleteKey)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	if firstDelete := deleteProfile(); firstDelete.Code != http.StatusNoContent {
+		t.Fatalf("first delete = %d: %s", firstDelete.Code, firstDelete.Body.String())
+	}
+	if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id=$1`, target.ID); err != nil {
+		t.Fatalf("delete target: %v", err)
+	}
+	var replacementIncarnation uuid.UUID
+	if err := pool.QueryRow(ctx, `INSERT INTO users (id,username,email,password_hash,role,max_profiles) VALUES ($1,$2,$3,'x','user',4) RETURNING account_incarnation_id`, target.ID, "replacement-"+uuid.NewString(), uuid.NewString()+"@lifecycle.test").Scan(&replacementIncarnation); err != nil {
+		t.Fatalf("create replacement: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','user')`, organizationID, target.ID); err != nil {
+		t.Fatalf("create replacement membership: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,is_primary,organization_id,access_group_id) VALUES ($1,$2,'Replacement',true,$3,$4)`, created.ID, target.ID, organizationID, defaultGroupID); err != nil {
+		t.Fatalf("create replacement profile: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO user_devices (user_id,profile_id,device_id,device_name) VALUES ($1,$2,$3,'Replacement device')`, target.ID, created.ID, deviceID); err != nil {
+		t.Fatalf("create replacement device: %v", err)
+	}
+	replay := request()
+	if replay.Code != first.Code || replay.Body.String() != first.Body.String() {
+		t.Fatalf("replay = %d %q, want %d %q", replay.Code, replay.Body.String(), first.Code, first.Body.String())
+	}
+	var replacementProfiles int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM user_profiles WHERE user_id=$1`, target.ID).Scan(&replacementProfiles); err != nil || replacementProfiles != 1 {
+		t.Fatalf("replacement profiles = %d, error = %v", replacementProfiles, err)
+	}
+	if replayUpdate := update(); replayUpdate.Code != firstUpdate.Code || replayUpdate.Body.String() != firstUpdate.Body.String() {
+		t.Fatalf("update replay = %d %q, want %d %q", replayUpdate.Code, replayUpdate.Body.String(), firstUpdate.Code, firstUpdate.Body.String())
+	}
+	if replayDelete := deleteProfile(); replayDelete.Code != http.StatusNoContent {
+		t.Fatalf("delete replay = %d: %s", replayDelete.Code, replayDelete.Body.String())
+	}
+	if replayDeviceDelete := deleteDevice(); replayDeviceDelete.Code != http.StatusNoContent {
+		t.Fatalf("device delete replay = %d: %s", replayDeviceDelete.Code, replayDeviceDelete.Body.String())
+	}
+	var replacementName string
+	if err := pool.QueryRow(ctx, `SELECT name FROM user_profiles WHERE user_id=$1 AND id=$2`, target.ID, created.ID).Scan(&replacementName); err != nil || replacementName != "Replacement" {
+		t.Fatalf("replacement profile name = %q, error = %v", replacementName, err)
+	}
+	var replacementDevice bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM user_devices WHERE user_id=$1 AND profile_id=$2 AND device_id=$3)`, target.ID, created.ID, deviceID).Scan(&replacementDevice); err != nil || !replacementDevice {
+		t.Fatalf("replacement device exists = %v, error = %v", replacementDevice, err)
 	}
 }
 

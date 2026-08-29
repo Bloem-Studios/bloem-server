@@ -167,6 +167,14 @@ func (h *AdminHandler) HandleListUserProfiles(w http.ResponseWriter, r *http.Req
 
 // HandleCreateUserProfile handles POST /admin/users/{user_id}/profiles.
 func (h *AdminHandler) HandleCreateUserProfile(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleCreateUserProfile(w, r)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return
@@ -280,6 +288,14 @@ func (h *AdminHandler) HandleCreateUserProfile(w http.ResponseWriter, r *http.Re
 
 // HandleUpdateUserProfile handles PUT /admin/users/{user_id}/profiles/{profile_id}.
 func (h *AdminHandler) HandleUpdateUserProfile(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleUpdateUserProfile(w, r)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return
@@ -377,6 +393,14 @@ func (h *AdminHandler) HandleUpdateUserProfile(w http.ResponseWriter, r *http.Re
 
 // HandleDeleteUserProfile handles DELETE /admin/users/{user_id}/profiles/{profile_id}.
 func (h *AdminHandler) HandleDeleteUserProfile(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleDeleteUserProfile(w, r)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return
@@ -532,6 +556,14 @@ func (h *AdminHandler) deviceBelongsToAnotherUser(ctx context.Context, selectedU
 
 // HandleDeleteUserDevice handles DELETE /admin/users/{user_id}/devices/{device_id}.
 func (h *AdminHandler) HandleDeleteUserDevice(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleDeleteUserDevice(w, r)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return

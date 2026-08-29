@@ -147,12 +147,21 @@ func createProfile(
 }
 
 func (s *PostgresUserStore) GetProfile(ctx context.Context, id string) (*userstore.Profile, error) {
-	row := s.pool.QueryRow(ctx, `
+	return getProfile(ctx, s.pool, s.userID, id)
+}
+
+// GetProfileInTransaction reads a profile through a caller-owned transaction.
+func (s *PostgresUserStore) GetProfileInTransaction(ctx context.Context, tx pgx.Tx, id string) (*userstore.Profile, error) {
+	return getProfile(ctx, tx, s.userID, id)
+}
+
+func getProfile(ctx context.Context, exec preferenceSettingsExecutor, userID int, id string) (*userstore.Profile, error) {
+	row := exec.QueryRow(ctx, `
 		SELECT id, name, avatar, pin_hash, COALESCE(login_email, ''), credential_revision, is_child, is_primary, max_content_rating,
 		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
 		       show_forced_subtitles, max_playback_quality, organization_id::text, access_group_id, created_at, updated_at
-		FROM user_profiles WHERE user_id = $1 AND id = $2`, s.userID, id)
+		FROM user_profiles WHERE user_id = $1 AND id = $2`, userID, id)
 
 	p, err := scanProfile(row)
 	if err == pgx.ErrNoRows {
@@ -161,7 +170,7 @@ func (s *PostgresUserStore) GetProfile(ctx context.Context, id string) (*usersto
 	if err != nil {
 		return nil, fmt.Errorf("querying profile %s: %w", id, err)
 	}
-	p.AllowedLibraryIDs, err = listProfileAllowedLibraries(ctx, s.pool, s.userID, p.ID)
+	p.AllowedLibraryIDs, err = listProfileAllowedLibraries(ctx, exec, userID, p.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -169,12 +178,21 @@ func (s *PostgresUserStore) GetProfile(ctx context.Context, id string) (*usersto
 }
 
 func (s *PostgresUserStore) ListProfiles(ctx context.Context) ([]userstore.Profile, error) {
-	rows, err := s.pool.Query(ctx, `
+	return listProfiles(ctx, s.pool, s.userID)
+}
+
+// ListProfilesInTransaction lists profiles through a caller-owned transaction.
+func (s *PostgresUserStore) ListProfilesInTransaction(ctx context.Context, tx pgx.Tx) ([]userstore.Profile, error) {
+	return listProfiles(ctx, tx, s.userID)
+}
+
+func listProfiles(ctx context.Context, exec preferenceSettingsExecutor, userID int) ([]userstore.Profile, error) {
+	rows, err := exec.Query(ctx, `
 		SELECT id, name, avatar, pin_hash, COALESCE(login_email, ''), credential_revision, is_child, is_primary, max_content_rating,
 		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
 		       show_forced_subtitles, max_playback_quality, organization_id::text, access_group_id, created_at, updated_at
-		FROM user_profiles WHERE user_id = $1 ORDER BY created_at ASC`, s.userID)
+		FROM user_profiles WHERE user_id = $1 ORDER BY created_at ASC`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("listing profiles: %w", err)
 	}
@@ -191,7 +209,7 @@ func (s *PostgresUserStore) ListProfiles(ctx context.Context) ([]userstore.Profi
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterating profile rows: %w", err)
 	}
-	if err := s.attachAllowedLibraries(ctx, profiles); err != nil {
+	if err := attachAllowedLibraries(ctx, exec, userID, profiles); err != nil {
 		return nil, err
 	}
 	return profiles, nil
@@ -333,21 +351,33 @@ func (s *PostgresUserStore) DeleteProfile(ctx context.Context, id string) error 
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
+	if err := deleteProfile(ctx, tx, s.userID, id); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// DeleteProfileInTransaction deletes a profile through a caller-owned transaction.
+func (s *PostgresUserStore) DeleteProfileInTransaction(ctx context.Context, tx pgx.Tx, id string) error {
+	return deleteProfile(ctx, tx, s.userID, id)
+}
+
+func deleteProfile(ctx context.Context, tx pgx.Tx, userID int, id string) error {
 	// Preferences belong to viewers, not creators, so remove every override
 	// for collections owned by the profile before those collections disappear.
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM user_collection_sort_preferences
 		WHERE user_id = $1 AND collection_kind = 'user' AND collection_id IN (
 			SELECT id FROM user_personal_collections WHERE user_id = $1 AND profile_id = $2
-		)`, s.userID, id); err != nil {
+		)`, userID, id); err != nil {
 		return fmt.Errorf("deleting collection sort preferences for profile %s: %w", id, err)
 	}
 
-	_, err = tx.Exec(ctx, `
+	_, err := tx.Exec(ctx, `
 		DELETE FROM user_personal_collection_items
 		WHERE user_id = $1 AND collection_id IN (
 			SELECT id FROM user_personal_collections WHERE user_id = $1 AND profile_id = $2
-		)`, s.userID, id)
+		)`, userID, id)
 	if err != nil {
 		return fmt.Errorf("deleting collection items for profile %s: %w", id, err)
 	}
@@ -367,12 +397,12 @@ func (s *PostgresUserStore) DeleteProfile(ctx context.Context, id string) error 
 		"user_setting_values",
 	}
 	for _, table := range cascadeTables {
-		if _, err := tx.Exec(ctx, fmt.Sprintf("DELETE FROM %s WHERE user_id = $1 AND profile_id = $2", table), s.userID, id); err != nil {
+		if _, err := tx.Exec(ctx, fmt.Sprintf("DELETE FROM %s WHERE user_id = $1 AND profile_id = $2", table), userID, id); err != nil {
 			return fmt.Errorf("deleting from %s for profile %s: %w", table, id, err)
 		}
 	}
 
-	result, err := tx.Exec(ctx, "DELETE FROM user_profiles WHERE user_id = $1 AND id = $2", s.userID, id)
+	result, err := tx.Exec(ctx, "DELETE FROM user_profiles WHERE user_id = $1 AND id = $2", userID, id)
 	if err != nil {
 		return fmt.Errorf("deleting profile %s: %w", id, err)
 	}
@@ -380,7 +410,7 @@ func (s *PostgresUserStore) DeleteProfile(ctx context.Context, id string) error 
 		return fmt.Errorf("profile %s not found", id)
 	}
 
-	return tx.Commit(ctx)
+	return nil
 }
 
 func (s *PostgresUserStore) VerifyPIN(ctx context.Context, profileID, pin string) (bool, error) {

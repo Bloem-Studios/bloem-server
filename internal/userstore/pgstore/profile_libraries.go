@@ -51,6 +51,10 @@ func listProfileAllowedLibraries(ctx context.Context, q profileLibraryQuerier, u
 // single batched query, avoiding the N+1 round trip a per-profile lookup
 // would create.
 func (s *PostgresUserStore) attachAllowedLibraries(ctx context.Context, profiles []userstore.Profile) error {
+	return attachAllowedLibraries(ctx, s.pool, s.userID, profiles)
+}
+
+func attachAllowedLibraries(ctx context.Context, q profileLibraryQuerier, userID int, profiles []userstore.Profile) error {
 	if len(profiles) == 0 {
 		return nil
 	}
@@ -58,16 +62,16 @@ func (s *PostgresUserStore) attachAllowedLibraries(ctx context.Context, profiles
 	for i := range profiles {
 		ids[i] = profiles[i].ID
 	}
-	rows, err := s.pool.Query(ctx,
+	rows, err := q.Query(ctx,
 		`SELECT profile_id, library_id
 		FROM user_profile_allowed_libraries
 		WHERE user_id = $1 AND profile_id = ANY($2)
 		ORDER BY library_id ASC`,
-		s.userID,
+		userID,
 		ids,
 	)
 	if err != nil {
-		return fmt.Errorf("listing allowed libraries for user %d: %w", s.userID, err)
+		return fmt.Errorf("listing allowed libraries for user %d: %w", userID, err)
 	}
 	defer rows.Close()
 
@@ -75,12 +79,12 @@ func (s *PostgresUserStore) attachAllowedLibraries(ctx context.Context, profiles
 	for rows.Next() {
 		var allowedLibrary userstore.ProfileAllowedLibrary
 		if err := rows.Scan(&allowedLibrary.ProfileID, &allowedLibrary.LibraryID); err != nil {
-			return fmt.Errorf("scanning allowed library for user %d: %w", s.userID, err)
+			return fmt.Errorf("scanning allowed library for user %d: %w", userID, err)
 		}
 		allowedLibraries = append(allowedLibraries, allowedLibrary)
 	}
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("iterating allowed libraries for user %d: %w", s.userID, err)
+		return fmt.Errorf("iterating allowed libraries for user %d: %w", userID, err)
 	}
 	userstore.AttachAllowedLibraries(profiles, allowedLibraries)
 	return nil
