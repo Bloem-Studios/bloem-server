@@ -70,6 +70,10 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 	if err != nil {
 		t.Fatalf("create member: %v", err)
 	}
+	seedProfileID := "tenant-member-profile-" + uuid.NewString()
+	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,organization_id,name,is_primary,access_group_id) SELECT $1,$2,$3,'Member',true,access_group_id FROM organization_memberships WHERE organization_id=$3 AND account_id=$2`, seedProfileID, member.ID, tenant.ID); err != nil {
+		t.Fatalf("create member profile: %v", err)
+	}
 	t.Cleanup(func() {
 		_ = store.DeleteTenantOrganization(context.Background(), tenant.ID)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=ANY($1::integer[])`, []int{actor.ID, member.ID})
@@ -149,7 +153,8 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 	}
 	sessions := auth.NewSessionRepository(pool)
 	singleSessionID := "single-session-" + uuid.NewString()
-	if err := sessions.Create(ctx, models.AuthSession{ID: singleSessionID, UserID: member.ID, ProfileID: &profileID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+	credentialRevision := int64(1)
+	if err := sessions.Create(ctx, models.AuthSession{ID: singleSessionID, UserID: member.ID, ProfileID: &profileID, ProfileCredentialRevision: &credentialRevision, DeviceID: "tenant-lifecycle-device", AuthMethod: "direct_profile", ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
 		t.Fatalf("create single session: %v", err)
 	}
 	singleSessionKey := "tenant-member-session-delete-" + uuid.NewString()
@@ -165,7 +170,7 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 		t.Fatalf("first session revoke = %d: %s", firstRevoke.Code, firstRevoke.Body.String())
 	}
 	otherSessionID := "other-session-" + uuid.NewString()
-	if err := sessions.Create(ctx, models.AuthSession{ID: otherSessionID, UserID: member.ID, ProfileID: &profileID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+	if err := sessions.Create(ctx, models.AuthSession{ID: otherSessionID, UserID: member.ID, ProfileID: &profileID, ProfileCredentialRevision: &credentialRevision, DeviceID: "tenant-lifecycle-other", AuthMethod: "direct_profile", ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
 		t.Fatalf("create other session: %v", err)
 	}
 	conflictingRequest := httptest.NewRequest(http.MethodDelete, path+"/auth-sessions/"+otherSessionID, nil)
@@ -190,7 +195,7 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 
 	allScopedID := "all-scoped-" + uuid.NewString()
 	allAccountID := "all-account-" + uuid.NewString()
-	if err := sessions.Create(ctx, models.AuthSession{ID: allScopedID, UserID: member.ID, ProfileID: &profileID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+	if err := sessions.Create(ctx, models.AuthSession{ID: allScopedID, UserID: member.ID, ProfileID: &profileID, ProfileCredentialRevision: &credentialRevision, DeviceID: "tenant-lifecycle-all", AuthMethod: "direct_profile", ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
 		t.Fatalf("create scoped all-session: %v", err)
 	}
 	if err := sessions.Create(ctx, models.AuthSession{ID: allAccountID, UserID: member.ID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
@@ -283,7 +288,7 @@ INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id)
 VALUES ($1,$2,'Replacement',$3,$4)`, replacementProfileID, member.ID, tenant.ID, accessGroupID); err != nil {
 		t.Fatalf("create replacement profile: %v", err)
 	}
-	if err := sessions.Create(ctx, models.AuthSession{ID: singleSessionID, UserID: member.ID, ProfileID: &replacementProfileID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+	if err := sessions.Create(ctx, models.AuthSession{ID: singleSessionID, UserID: member.ID, ProfileID: &replacementProfileID, ProfileCredentialRevision: &credentialRevision, DeviceID: "replacement-device", AuthMethod: "direct_profile", ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
 		t.Fatalf("create same-id replacement session: %v", err)
 	}
 	if replayRevoke := revokeSingle(); replayRevoke.Code != http.StatusNoContent {

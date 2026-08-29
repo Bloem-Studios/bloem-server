@@ -86,6 +86,32 @@ RETURNING account_incarnation_id`, accountID).Scan(&secondIncarnation); err != n
 	}
 }
 
+func TestLifecycleCoordinatorUsesOneRepeatableReadSnapshot(t *testing.T) {
+	ctx := context.Background()
+	pool := newLifecycleStoreDatabase(t)
+	coordinator := NewCoordinator(NewPostgresStore(pool), NewHMACKeyDigester([]byte("repeatable-read-test-secret")))
+	request := Request{
+		IdempotencyKey: "repeatable-read-lifecycle-key",
+		Binding: Binding{
+			ActorKind: ActorPreauthIntent, ActorSubjectDigest: testDigest(8), Method: "POST",
+			RouteID: "test.snapshot", RequestHash: testDigest(9), TargetSource: TargetBodyAccount,
+		},
+	}
+	_, err := coordinator.ExecuteCreate(ctx, request, func(ctx context.Context, tx pgx.Tx) ([]TargetBinding, Result, error) {
+		var isolation string
+		if err := tx.QueryRow(ctx, `SHOW transaction_isolation`).Scan(&isolation); err != nil {
+			return nil, Result{}, err
+		}
+		if isolation != "repeatable read" {
+			t.Fatalf("transaction isolation = %q", isolation)
+		}
+		return []TargetBinding{{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 1, AccountIncarnationID: uuid.New()}}, Result{Status: 201}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestResolveAccountTargetsCapturesEveryMembershipInCanonicalOrder(t *testing.T) {
 	ctx := context.Background()
 	pool := newLifecycleStoreDatabase(t)

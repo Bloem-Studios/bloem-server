@@ -490,7 +490,7 @@ func (h *V2AdminPeopleHandler) lifecycleService() (v2AdminPeopleLifecycleService
 
 func (h *V2AdminPeopleHandler) handleLifecyclePeopleMembership(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, accountID int, expectedRevision int64, status tenancy.MembershipStatus) {
 	claims, _ := middleware.GetAdminContextClaims(r.Context())
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "people.membership.update", lifecycleidempotency.TargetExactMembership, map[string]string{"account_id": strconv.Itoa(accountID)}, body)
+	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "people.membership.update", lifecycleidempotency.TargetExactMembership, map[string]string{"organization_id": tenant.OrganizationID.String(), "account_id": strconv.Itoa(accountID)}, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
@@ -520,7 +520,7 @@ func (h *V2AdminPeopleHandler) handleLifecyclePeopleMembership(w http.ResponseWr
 
 func (h *V2AdminPeopleHandler) handleLifecyclePeopleProfile(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, accountID int, profileID string, expectedRevision int64, groupID int) {
 	claims, _ := middleware.GetAdminContextClaims(r.Context())
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "people.profile.update", lifecycleidempotency.TargetPathAccount, map[string]string{"account_id": strconv.Itoa(accountID), "profile_id": profileID}, body)
+	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "people.profile.update", lifecycleidempotency.TargetPathAccount, map[string]string{"organization_id": tenant.OrganizationID.String(), "account_id": strconv.Itoa(accountID), "profile_id": profileID}, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
@@ -550,7 +550,7 @@ func (h *V2AdminPeopleHandler) handleLifecyclePeopleProfile(w http.ResponseWrite
 
 func (h *V2AdminPeopleHandler) lifecycleSelectionRequest(r *http.Request, tenant tenancy.Context, body []byte, routeID, selectionToken string) (lifecycleidempotency.Request, bool) {
 	claims, _ := middleware.GetAdminContextClaims(r.Context())
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetStoredSelection, nil, body)
+	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetStoredSelection, map[string]string{"organization_id": tenant.OrganizationID.String()}, body)
 	if !ok {
 		return lifecycleidempotency.Request{}, false
 	}

@@ -208,7 +208,9 @@ func TestV2AdminPeopleMembershipUpdateReplaysBeforeStoreAccess(t *testing.T) {
 	store := &adminPeopleServiceStub{}
 	handler := NewV2AdminPeopleHandler(store)
 	body := []byte(`{"person":{"organization_id":"10000000-0000-0000-0000-000000000001","account_id":42,"membership_id":"20000000-0000-0000-0000-000000000002","membership_status":"suspended","security_revision":4,"profiles":[]}}`)
-	handler.SetLifecycleIdempotency(replayLifecycleCoordinator{result: lifecycleidempotency.Result{Status: http.StatusOK, Body: body, Replayed: true}}, func(string, string, map[string]string, url.Values, []byte) lifecycleidempotency.Digest {
+	var digestSelectors map[string]string
+	handler.SetLifecycleIdempotency(replayLifecycleCoordinator{result: lifecycleidempotency.Result{Status: http.StatusOK, Body: body, Replayed: true}}, func(_ string, _ string, selectors map[string]string, _ url.Values, _ []byte) lifecycleidempotency.Digest {
+		digestSelectors = selectors
 		return lifecycleidempotency.Digest{1}
 	})
 	req := adminPeopleRequest(http.MethodPatch, "/api/v2/admin/organization/people/42/memberships/current", `{"expected_revision":3,"status":"suspended"}`, organizationID, 7, map[string]string{"account_id": "42"})
@@ -224,6 +226,9 @@ func TestV2AdminPeopleMembershipUpdateReplaysBeforeStoreAccess(t *testing.T) {
 	}
 	if store.calls != 0 {
 		t.Fatalf("store calls = %d, want receipt-first replay", store.calls)
+	}
+	if digestSelectors["organization_id"] != organizationID.String() {
+		t.Fatalf("organization digest selector = %q", digestSelectors["organization_id"])
 	}
 }
 

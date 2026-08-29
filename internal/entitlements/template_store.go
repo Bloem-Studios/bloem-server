@@ -234,7 +234,7 @@ func (s *Store) ApplyTemplateConfirmedInTransaction(ctx context.Context, tx pgx.
 
 func (s *Store) ApplyDefaultAccountTemplateConfirmedInTransaction(ctx context.Context, tx pgx.Tx, actorAccountID, accountID int, templateKey string, templateRevision int64, previewHash string) (ApplyResult, error) {
 	var organizationID uuid.UUID
-	if err := tx.QueryRow(ctx, `SELECT o.id FROM organizations o JOIN organization_memberships m ON m.organization_id=o.id WHERE o.is_default AND m.account_id=$1 AND m.status='active'`, accountID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
+	if err := tx.QueryRow(ctx, `SELECT o.id FROM organizations o JOIN organization_memberships m ON m.organization_id=o.id WHERE o.is_default AND m.account_id=$1 AND m.status='active' FOR UPDATE OF o`, accountID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
 		return ApplyResult{}, ErrAccountNotFound
 	} else if err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: resolve direct account organization: %w", err)
@@ -256,7 +256,7 @@ func (s *Store) ApplyDefaultAccountTemplateWithReceipt(ctx context.Context, acto
 	return s.applyWithReceipt(ctx, actorAccountID, "account", fmt.Sprint(accountID), idempotencyKey, templateKey, templateRevision, previewHash,
 		func(tx pgx.Tx, dryRun bool) (ApplyResult, error) {
 			var organizationID uuid.UUID
-			if err := tx.QueryRow(ctx, `SELECT o.id FROM organizations o JOIN organization_memberships m ON m.organization_id=o.id WHERE o.is_default AND m.account_id=$1 AND m.status='active'`, accountID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
+			if err := tx.QueryRow(ctx, `SELECT o.id FROM organizations o JOIN organization_memberships m ON m.organization_id=o.id WHERE o.is_default AND m.account_id=$1 AND m.status='active' FOR UPDATE OF o`, accountID).Scan(&organizationID); errors.Is(err, pgx.ErrNoRows) {
 				return ApplyResult{}, ErrAccountNotFound
 			} else if err != nil {
 				return ApplyResult{}, fmt.Errorf("entitlements: resolve direct account organization: %w", err)

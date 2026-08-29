@@ -33,7 +33,11 @@ func (s *PostgresStore) InTransaction(ctx context.Context, fn func(context.Conte
 	if s == nil || s.pool == nil {
 		return fmt.Errorf("lifecycle receipt store has no database pool")
 	}
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	// Lifecycle confirmation and mutation must observe one database snapshot.
+	// In particular, entitlement previews resolve dynamic library membership
+	// before materialization; READ COMMITTED could authorize one projection and
+	// persist another after a concurrent library/default-organization change.
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
 	if err != nil {
 		return fmt.Errorf("begin lifecycle receipt transaction: %w", err)
 	}
