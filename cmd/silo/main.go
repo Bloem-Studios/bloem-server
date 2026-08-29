@@ -3084,7 +3084,6 @@ func main() {
 
 		if heartbeatWriter != nil {
 			heartbeatWriter.Start()
-			defer heartbeatWriter.Stop()
 		}
 
 		// RefreshWorker is kept as a RefreshCandidateFinder for the task manager's
@@ -3480,9 +3479,13 @@ func main() {
 		}
 	}
 
-	// 2b. Remove this node's heartbeat and sessions from shared state.
+	// 2b. Stop heartbeat writes before removing this node's shared ownership.
+	// If the writer cannot be joined, leave the stale rows for TTL cleanup:
+	// deleting first would allow a late in-flight beat to recreate ownership.
 	if heartbeatWriter != nil {
-		if err := heartbeatWriter.CleanupSelf(shutdownCtx); err != nil {
+		if err := heartbeatWriter.StopAndWait(shutdownCtx); err != nil {
+			slog.Error("heartbeat shutdown error; skipping shared ownership cleanup", "error", err)
+		} else if err := heartbeatWriter.CleanupSelf(shutdownCtx); err != nil {
 			slog.Error("heartbeat cleanup error", "error", err)
 		}
 	}
