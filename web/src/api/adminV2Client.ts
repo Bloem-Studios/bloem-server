@@ -1,4 +1,5 @@
-import { getAccessToken } from "./client";
+import { getAccessToken, type RequestPolicy } from "./client";
+import { randomUUID } from "../lib/uuid";
 import type {
   AdminContextFailure,
   AdminContextKey,
@@ -24,6 +25,7 @@ const INVALIDATING_CONTEXT_ERRORS = new Set([
 let adminRequestAuthority: AdminRequestAuthority | null = null;
 let adminContextGeneration = 0;
 let contextFailureListener: ((failure: AdminContextFailure) => void) | null = null;
+const MAX_RETRYABLE_FAILURES = 2;
 
 interface WireOrganization {
   id: string;
@@ -135,7 +137,11 @@ async function readResponse<T>(response: Response): Promise<T> {
   return text.trim() ? (JSON.parse(text) as T) : (undefined as T);
 }
 
-export async function adminV2Api<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function adminV2Api<T>(
+  path: string,
+  init: RequestInit = {},
+  policy: RequestPolicy = safeMethod(init.method) ? "safe" : "none",
+): Promise<T> {
   const authority = adminRequestAuthority;
   if (!authority) {
     throw new AdminV2ClientError(
@@ -147,12 +153,43 @@ export async function adminV2Api<T>(path: string, init: RequestInit = {}): Promi
   const signal = init.signal
     ? AbortSignal.any([authority.controller.signal, init.signal])
     : authority.controller.signal;
-  const response = await fetch(`/api/v2/admin${path.startsWith("/") ? path : `/${path}`}`, {
-    ...init,
-    headers: requestHeaders(init, authority.token),
-    signal,
-  });
-  assertCurrentAuthority(authority);
+  const headers = requestHeaders(init, authority.token);
+  if (policy === "idempotentLifecycle" && !new Headers(headers).has("Idempotency-Key")) {
+    headers["idempotency-key"] = randomUUID();
+  }
+  let response: Response;
+  let refreshes = 0;
+  let retryableFailures = 0;
+  for (;;) {
+    try {
+      response = await fetch(`/api/v2/admin${path.startsWith("/") ? path : `/${path}`}`, {
+        ...init,
+        headers,
+        signal,
+      });
+    } catch (error) {
+      if (!canRetryAdminTransport(policy, retryableFailures, error)) throw error;
+      retryableFailures += 1;
+      continue;
+    }
+    assertCurrentAuthority(authority);
+    if (response.status === 401 && policy === "idempotentLifecycle" && refreshes === 0) {
+      refreshes += 1;
+      if (await refreshAdminAuthority(authority)) {
+        headers.authorization = `Bearer ${authority.token}`;
+        continue;
+      }
+    }
+    if (
+      policy !== "none" &&
+      retryableFailures < MAX_RETRYABLE_FAILURES &&
+      (response.status === 429 || response.status === 503)
+    ) {
+      retryableFailures += 1;
+      continue;
+    }
+    break;
+  }
   if (!response.ok) {
     const error = await parseError(response);
     assertCurrentAuthority(authority);
@@ -165,6 +202,37 @@ export async function adminV2Api<T>(path: string, init: RequestInit = {}): Promi
   const result = await readResponse<T>(response);
   assertCurrentAuthority(authority);
   return result;
+}
+
+function safeMethod(method?: string): boolean {
+  const normalized = (method ?? "GET").toUpperCase();
+  return normalized === "GET" || normalized === "HEAD" || normalized === "OPTIONS";
+}
+
+function canRetryAdminTransport(policy: RequestPolicy, failures: number, error: unknown): boolean {
+  return (
+    policy !== "none" &&
+    failures < MAX_RETRYABLE_FAILURES &&
+    !(error instanceof DOMException && error.name === "AbortError")
+  );
+}
+
+async function refreshAdminAuthority(authority: AdminRequestAuthority): Promise<boolean> {
+  const accountToken = getAccessToken();
+  if (!accountToken) return false;
+  try {
+    const session = await mintAdminContextSession(
+      authority.key,
+      accountToken,
+      authority.controller.signal,
+    );
+    assertCurrentAuthority(authority);
+    if (session.context.key !== authority.key) return false;
+    authority.token = session.accessToken;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function assertCurrentAuthority(authority: AdminRequestAuthority): void {

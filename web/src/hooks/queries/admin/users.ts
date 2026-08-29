@@ -197,10 +197,14 @@ export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: CreateUserRequest) =>
-      api("/admin/users", {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
+      api(
+        "/admin/users",
+        {
+          method: "POST",
+          body: JSON.stringify(body),
+        },
+        "idempotentLifecycle",
+      ),
     onSuccess: () => {
       toast.success("User created");
       queryClient.invalidateQueries({ queryKey: adminKeys.users() });
@@ -215,10 +219,14 @@ export function useUpdateUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, body }: { id: number; body: UpdateUserRequest }) =>
-      api(`/admin/users/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
+      api(
+        `/admin/users/${id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(body),
+        },
+        "idempotentLifecycle",
+      ),
     onSuccess: (_data, variables) => {
       toast.success("User updated");
       queryClient.invalidateQueries({ queryKey: adminKeys.users() });
@@ -235,7 +243,8 @@ export function useUpdateUser() {
 export function useDeleteUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => api(`/admin/users/${id}`, { method: "DELETE" }),
+    mutationFn: (id: number) =>
+      api(`/admin/users/${id}`, { method: "DELETE" }, "idempotentLifecycle"),
     onSuccess: () => {
       toast.success("User deleted");
       queryClient.invalidateQueries({ queryKey: adminKeys.users() });
@@ -287,10 +296,14 @@ export function useUpdateAdminUserSetting() {
       identity: AdminSettingIdentity;
       value: string;
     }) =>
-      api(adminSettingValuePath(userId, key, identity), {
-        method: "PUT",
-        body: JSON.stringify({ value: settingValueFromString(key, value) }),
-      }),
+      api(
+        adminSettingValuePath(userId, key, identity),
+        {
+          method: "PUT",
+          body: JSON.stringify({ value: settingValueFromString(key, value) }),
+        },
+        "idempotentLifecycle",
+      ),
     onSuccess: (_data, variables) => {
       toast.success("User setting updated");
       queryClient.invalidateQueries({ queryKey: adminKeys.userSettings(variables.userId) });
@@ -317,12 +330,16 @@ export function useDeleteAdminUserSetting() {
       if (key === SETTING_KEYS.NAV_SHORTCUTS) {
         // Shortcut history is revisioned and may not be erased. Its reset is
         // the atomic empty document accepted by the canonical admin endpoint.
-        return api(path, {
-          method: "PUT",
-          body: JSON.stringify({ value: { items: [] } }),
-        });
+        return api(
+          path,
+          {
+            method: "PUT",
+            body: JSON.stringify({ value: { items: [] } }),
+          },
+          "idempotentLifecycle",
+        );
       }
-      return api(path, { method: "DELETE" });
+      return api(path, { method: "DELETE" }, "idempotentLifecycle");
     },
     onSuccess: (_data, variables) => {
       toast.success("User setting reset");
@@ -414,10 +431,14 @@ export function useUpdateAdminUserDeviceSetting() {
       key: string;
       value: string;
     }) =>
-      api(adminSettingValuePath(userId, key, { scope: "profile_device", profileId, deviceId }), {
-        method: "PUT",
-        body: JSON.stringify({ value: settingValueFromString(key, value) }),
-      }),
+      api(
+        adminSettingValuePath(userId, key, { scope: "profile_device", profileId, deviceId }),
+        {
+          method: "PUT",
+          body: JSON.stringify({ value: settingValueFromString(key, value) }),
+        },
+        "idempotentLifecycle",
+      ),
     onSuccess: (_data, variables) => {
       toast.success("Device override updated");
       invalidateAdminDeviceCaches(queryClient, variables.userId);
@@ -445,9 +466,13 @@ export function useDeleteAdminUserDeviceSetting() {
       deviceId: string;
       key: string;
     }) =>
-      api(adminSettingValuePath(userId, key, { scope: "profile_device", profileId, deviceId }), {
-        method: "DELETE",
-      }),
+      api(
+        adminSettingValuePath(userId, key, { scope: "profile_device", profileId, deviceId }),
+        {
+          method: "DELETE",
+        },
+        "idempotentLifecycle",
+      ),
     onSuccess: (_data, variables) => {
       toast.success("Device override reset");
       invalidateAdminDeviceCaches(queryClient, variables.userId);
@@ -486,6 +511,7 @@ export function useDeleteAllAdminUserDeviceSettingsForDevice() {
           await api(
             adminSettingValuePath(userId, key, { scope: "profile_device", profileId, deviceId }),
             { method: "DELETE" },
+            "idempotentLifecycle",
           );
         } catch (err) {
           if (err instanceof ApiClientError && err.status === 404) continue;
@@ -527,8 +553,12 @@ export function useAdminDeviceDetail(userId: number, deviceId: string, enabled =
 export function useImpersonateUser() {
   return useMutation({
     mutationFn: (id: number) =>
-      api<LoginResponse>(`/admin/users/${id}/impersonate`, {
-        method: "POST",
-      }),
+      api<LoginResponse>(
+        `/admin/users/${id}/impersonate`,
+        {
+          method: "POST",
+        },
+        "idempotentLifecycle",
+      ),
   });
 }

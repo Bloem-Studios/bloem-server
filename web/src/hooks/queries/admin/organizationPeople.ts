@@ -223,6 +223,7 @@ export function useUpdateProfileGroup(contextKey: AdminContextKey) {
             group_id: groupId,
           }),
         },
+        "idempotentLifecycle",
       ),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -260,14 +261,18 @@ export function useCreatePeopleBulkJob(contextKey: AdminContextKey) {
       kind: "assign_group" | "suspend_memberships" | "reactivate_memberships";
       groupId?: number;
     }) =>
-      adminV2Api<{ job: PeopleBulkJob }>("/organization/people/bulk-jobs", {
-        method: "POST",
-        body: JSON.stringify({
-          selection_token: input.selectionToken,
-          kind: input.kind,
-          ...(input.groupId ? { group_id: input.groupId } : {}),
-        }),
-      }).then((result) => result.job),
+      adminV2Api<{ job: PeopleBulkJob }>(
+        "/organization/people/bulk-jobs",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            selection_token: input.selectionToken,
+            kind: input.kind,
+            ...(input.groupId ? { group_id: input.groupId } : {}),
+          }),
+        },
+        "idempotentLifecycle",
+      ).then((result) => result.job),
   });
 }
 

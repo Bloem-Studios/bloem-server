@@ -122,10 +122,14 @@ function usePlatformMutation<TInput, TResult>(
 export function useCreateOrganization() {
   return usePlatformMutation(
     (input: { name: string; slug: string; owner_account_id: number }) =>
-      adminV2Api<{ organization: PlatformOrganization }>("/platform/organizations", {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
+      adminV2Api<{ organization: PlatformOrganization }>(
+        "/platform/organizations",
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        },
+        "idempotentLifecycle",
+      ),
     () => organizationKeys.lists(),
   );
 }
@@ -147,6 +151,7 @@ export function useSetOrganizationStatus(id: string) {
       adminV2Api<{ organization: PlatformOrganization }>(
         organizationPath(id, input.status === "suspended" ? "/suspend" : "/reactivate"),
         { method: "POST", body: JSON.stringify({ expected_revision: input.expected_revision }) },
+        "idempotentLifecycle",
       ),
     () => organizationKeys.detail(id),
   );
@@ -161,6 +166,7 @@ export function useTransferOrganizationOwnership(id: string) {
           method: "POST",
           body: JSON.stringify({ ...input, confirmed: true }),
         },
+        "idempotentLifecycle",
       ),
     () => organizationKeys.detail(id),
   );
@@ -177,6 +183,7 @@ export function useCreateOrganizationMembership(id: string) {
       adminV2Api<{ membership: OrganizationMembership; organization: PlatformOrganization }>(
         organizationPath(id, "/memberships"),
         { method: "POST", body: JSON.stringify(input) },
+        "idempotentLifecycle",
       ),
     () => organizationKeys.detail(id),
     () => organizationKeys.membershipPages(id),
@@ -195,10 +202,14 @@ export function useUpdateOrganizationMembership(id: string) {
       return adminV2Api<{
         membership: OrganizationMembership;
         organization: PlatformOrganization;
-      }>(organizationPath(id, `/memberships/${encodeURIComponent(membership_id)}`), {
-        method: "PATCH",
-        body: JSON.stringify(body),
-      });
+      }>(
+        organizationPath(id, `/memberships/${encodeURIComponent(membership_id)}`),
+        {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        },
+        "idempotentLifecycle",
+      );
     },
     () => organizationKeys.detail(id),
     () => organizationKeys.membershipPages(id),

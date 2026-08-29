@@ -9,6 +9,7 @@ import {
   onAdminV2ContextFailure,
   setAdminV2Token,
 } from "./adminV2Client";
+import { setAccessToken } from "./client";
 
 describe("adminV2 client", () => {
   beforeEach(() => {
@@ -62,6 +63,89 @@ describe("adminV2 client", () => {
       code: "validation_failed",
       fields: { slug: "is already used" },
     });
+  });
+
+  it("does not replay an ordinary unsafe request after a 401", async () => {
+    activateAdminV2Context("expired-admin", "platform");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        Response.json({ error: "tenant_session_required", message: "expired" }, { status: 401 }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(adminV2Api("/unsafe", { method: "POST" }, "none")).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("retries lifecycle availability failures with one key and body", async () => {
+    activateAdminV2Context("admin-token", "platform");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ error: "busy" }, { status: 503 }))
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      adminV2Api(
+        "/platform/organizations",
+        { method: "POST", body: '{"name":"A"}' },
+        "idempotentLifecycle",
+      ),
+    ).resolves.toEqual({ ok: true });
+    const first = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const second = fetchMock.mock.calls[1]?.[1] as RequestInit;
+    expect(second.body).toBe(first.body);
+    expect((second.headers as Record<string, string>)["idempotency-key"]).toBe(
+      (first.headers as Record<string, string>)["idempotency-key"],
+    );
+  });
+
+  it("remints the selected context once before replaying a lifecycle 401", async () => {
+    setAccessToken("account-token");
+    activateAdminV2Context("expired-admin", "organization:org-a");
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/v2/admin/session") {
+        return jsonResponse({
+          access_token: "fresh-admin",
+          expires_at: "2026-08-13T12:15:00Z",
+          context: {
+            key: "organization:org-a",
+            scope: "organization",
+            organization_id: "org-a",
+            name: "Org A",
+            status: "active",
+            authority: "organization_admin",
+          },
+        });
+      }
+      const token = (init?.headers as Record<string, string>).authorization;
+      return token === "Bearer expired-admin"
+        ? Response.json({ error: "tenant_session_required", message: "expired" }, { status: 401 })
+        : Response.json({ ok: true });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      adminV2Api(
+        "/organization/people/7/profiles/p",
+        { method: "PATCH", body: '{"group_id":2}' },
+        "idempotentLifecycle",
+      ),
+    ).resolves.toEqual({ ok: true });
+    const mutationCalls = fetchMock.mock.calls.filter(
+      ([input]) => String(input) !== "/api/v2/admin/session",
+    );
+    expect(mutationCalls).toHaveLength(2);
+    expect((mutationCalls[1]?.[1]?.headers as Record<string, string>).authorization).toBe(
+      "Bearer fresh-admin",
+    );
+    expect((mutationCalls[1]?.[1]?.headers as Record<string, string>)["idempotency-key"]).toBe(
+      (mutationCalls[0]?.[1]?.headers as Record<string, string>)["idempotency-key"],
+    );
   });
 
   it("keeps the administrative token in memory while attaching it to v2 requests", async () => {

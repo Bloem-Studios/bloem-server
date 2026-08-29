@@ -13,6 +13,10 @@ let accessToken: string | null = null;
 let authContextVersion = 0;
 let refreshPromise: Promise<boolean> | null = null;
 
+export type RequestPolicy = "safe" | "none" | "idempotentLifecycle";
+
+const MAX_RETRYABLE_FAILURES = 2;
+
 export function setAccessToken(token: string | null) {
   if (accessToken !== token) authContextVersion += 1;
   accessToken = token;
@@ -430,8 +434,12 @@ async function readApiResponse<T>(res: Response): Promise<T> {
   return JSON.parse(text) as T;
 }
 
-export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  return readApiResponse<T>(await apiResponse(path, options));
+export async function api<T>(
+  path: string,
+  options: RequestInit = {},
+  policy?: RequestPolicy,
+): Promise<T> {
+  return readApiResponse<T>(await apiResponse(path, options, policy));
 }
 
 /**
@@ -451,7 +459,7 @@ export async function apiWithProfileRequestContext<T>(
   setHeader(headers, "Authorization", `Bearer ${snapshot.accessToken}`);
   setHeader(headers, "X-Profile-Id", snapshot.profileId);
   setHeader(headers, "X-Profile-Token", snapshot.profileToken ?? "");
-  const response = await apiResponseInternal(path, { ...options, headers }, snapshot);
+  const response = await apiResponseInternal(path, { ...options, headers }, "safe", snapshot);
   if (!isProfileRequestContextCurrent(snapshot)) {
     throw new StaleApiRequestContextError();
   }
@@ -466,13 +474,18 @@ export class StaleApiRequestContextError extends Error {
 }
 
 /** Performs an authenticated API request while leaving the successful body unread. */
-export async function apiResponse(path: string, options: RequestInit = {}): Promise<Response> {
-  return apiResponseInternal(path, options);
+export async function apiResponse(
+  path: string,
+  options: RequestInit = {},
+  policy?: RequestPolicy,
+): Promise<Response> {
+  return apiResponseInternal(path, options, resolveRequestPolicy(options, policy));
 }
 
 async function apiResponseInternal(
   path: string,
   options: RequestInit,
+  policy: RequestPolicy,
   snapshot?: ProfileRequestContextSnapshot,
 ): Promise<Response> {
   if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
@@ -483,55 +496,56 @@ async function apiResponseInternal(
     "Authorization",
   );
   const headers = buildApiHeaders(options);
+  if (policy === "idempotentLifecycle" && !hasHeader(headers, "Idempotency-Key")) {
+    setHeader(headers, "Idempotency-Key", randomUUID());
+  }
   const requestProfileId = headers["X-Profile-Id"] ?? null;
   const requestProfileToken = headers["X-Profile-Token"] ?? null;
-
-  let res = await fetch(`/api/v1${path}`, { ...options, headers });
-
-  if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
-    throw new StaleApiRequestContextError();
-  }
-
-  // Auto-refresh on 401. An ordinary explicit Authorization header opts out,
-  // but a captured profile request is a stronger contract: it may rotate the
-  // token only while its account/server generation remains current, then retry
-  // with the new access token and the exact captured profile/PIN headers.
-  if (
-    res.status === 401 &&
-    getRefreshToken() &&
-    (snapshot !== undefined || !explicitAuthorization)
-  ) {
+  let requestHeaders = headers;
+  let refreshes = 0;
+  let retryableFailures = 0;
+  let res: Response;
+  for (;;) {
+    try {
+      res = await fetch(`/api/v1${path}`, { ...options, headers: requestHeaders });
+    } catch (error) {
+      if (!canRetryTransport(policy, retryableFailures, error)) throw error;
+      retryableFailures += 1;
+      continue;
+    }
     if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
       throw new StaleApiRequestContextError();
     }
-    if (!refreshPromise) {
-      refreshPromise = attemptRefresh().finally(() => {
-        refreshPromise = null;
-      });
-    }
-    const refreshed = await refreshPromise;
-    if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
-      throw new StaleApiRequestContextError();
-    }
-    if (refreshed) {
-      // Keep the profile and device identity captured for the original
-      // request. A household profile can change while refresh is pending;
-      // rebuilding every header here could replay an old-profile mutation
-      // under the newly selected profile. Only the refreshed account token
-      // is allowed to change for this retry.
-      const refreshedHeaders = { ...headers };
-      if (accessToken) {
-        setHeader(refreshedHeaders, "Authorization", `Bearer ${accessToken}`);
-      } else if (snapshot) {
-        throw new StaleApiRequestContextError();
-      } else {
-        delete refreshedHeaders.Authorization;
+    if (
+      res.status === 401 &&
+      policy !== "none" &&
+      refreshes === 0 &&
+      getRefreshToken() &&
+      (snapshot !== undefined || !explicitAuthorization)
+    ) {
+      refreshes += 1;
+      if (!refreshPromise) {
+        refreshPromise = attemptRefresh().finally(() => {
+          refreshPromise = null;
+        });
       }
-      res = await fetch(`/api/v1${path}`, { ...options, headers: refreshedHeaders });
+      const refreshed = await refreshPromise;
       if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
         throw new StaleApiRequestContextError();
       }
+      if (refreshed) {
+        requestHeaders = { ...requestHeaders };
+        if (accessToken) setHeader(requestHeaders, "Authorization", `Bearer ${accessToken}`);
+        else if (snapshot) throw new StaleApiRequestContextError();
+        else delete requestHeaders.Authorization;
+        continue;
+      }
     }
+    if (canRetryResponse(policy, retryableFailures, res.status)) {
+      retryableFailures += 1;
+      continue;
+    }
+    break;
   }
 
   if (!res.ok) {
@@ -549,6 +563,26 @@ async function apiResponseInternal(
     throw apiClientErrorFrom(res.status, parsed);
   }
   return res;
+}
+
+function resolveRequestPolicy(options: RequestInit, policy?: RequestPolicy): RequestPolicy {
+  if (policy) return policy;
+  const method = (options.method ?? "GET").toUpperCase();
+  return method === "GET" || method === "HEAD" || method === "OPTIONS" ? "safe" : "none";
+}
+
+function canRetryResponse(policy: RequestPolicy, failures: number, status: number): boolean {
+  return (
+    policy !== "none" && failures < MAX_RETRYABLE_FAILURES && (status === 429 || status === 503)
+  );
+}
+
+function canRetryTransport(policy: RequestPolicy, failures: number, error: unknown): boolean {
+  return (
+    policy !== "none" &&
+    failures < MAX_RETRYABLE_FAILURES &&
+    !(error instanceof DOMException && error.name === "AbortError")
+  );
 }
 
 function buildApiHeaders(options: RequestInit = {}): Record<string, string> {

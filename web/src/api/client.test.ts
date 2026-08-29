@@ -173,6 +173,99 @@ describe("apiBlob", () => {
 });
 
 describe("api", () => {
+  it("does not replay an ordinary unsafe request after a 401", async () => {
+    setAccessToken("expired");
+    setRefreshToken("refresh-token");
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      Response.json({ error: "unauthorized", message: "expired" }, { status: 401 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(api("/unsafe", { method: "POST", body: "fixed" }, "none")).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("keeps one lifecycle key and body across one refresh", async () => {
+    setAccessToken("expired");
+    setRefreshToken("refresh-token");
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      calls.push({ url: String(input), init });
+      if (String(input) === "/api/v1/auth/refresh") {
+        return Response.json({ access_token: "fresh", refresh_token: "rotated", expires_in: 60 });
+      }
+      const headers = init?.headers as Record<string, string>;
+      if (headers.Authorization === "Bearer expired") {
+        return Response.json({ error: "unauthorized", message: "expired" }, { status: 401 });
+      }
+      return Response.json({ ok: true });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      api("/admin/users", { method: "POST", body: '{"name":"Ada"}' }, "idempotentLifecycle"),
+    ).resolves.toEqual({ ok: true });
+
+    const requests = calls.filter(({ url }) => url !== "/api/v1/auth/refresh");
+    expect(requests).toHaveLength(2);
+    expect(requests[0]?.init?.body).toBe(requests[1]?.init?.body);
+    const firstHeaders = requests[0]?.init?.headers as Record<string, string>;
+    const secondHeaders = requests[1]?.init?.headers as Record<string, string>;
+    expect(firstHeaders["Idempotency-Key"]).toBeTruthy();
+    expect(secondHeaders["Idempotency-Key"]).toBe(firstHeaders["Idempotency-Key"]);
+  });
+
+  it("retries a lifecycle 503 with the same key and body", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ error: "busy" }, { status: 503 }))
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      api("/admin/users/7", { method: "DELETE", body: "fixed" }, "idempotentLifecycle"),
+    ).resolves.toEqual({ ok: true });
+    const first = fetchMock.mock.calls[0]?.[1];
+    const second = fetchMock.mock.calls[1]?.[1];
+    expect(second?.body).toBe(first?.body);
+    expect((second?.headers as Record<string, string>)["Idempotency-Key"]).toBe(
+      (first?.headers as Record<string, string>)["Idempotency-Key"],
+    );
+  });
+
+  it("bounds lifecycle transport and 429 retries", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("connection reset"))
+      .mockResolvedValueOnce(Response.json({ error: "limited" }, { status: 429 }))
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      api("/admin/users/7", { method: "PUT", body: "fixed" }, "idempotentLifecycle"),
+    ).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const keys = fetchMock.mock.calls.map(
+      (call) => (call[1]?.headers as Record<string, string>)["Idempotency-Key"],
+    );
+    expect(new Set(keys).size).toBe(1);
+    expect(fetchMock.mock.calls.map((call) => call[1]?.body)).toEqual(["fixed", "fixed", "fixed"]);
+  });
+
+  it("stops after the lifecycle retry budget is exhausted", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      Response.json({ error: "busy", message: "still busy" }, { status: 503 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      api("/admin/users/7", { method: "DELETE" }, "idempotentLifecycle"),
+    ).rejects.toMatchObject({ status: 503 });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("keeps the originating profile isolated when retrying after token refresh", async () => {
     const localStorageState = new Map<string, string>();
     Object.defineProperty(globalThis, "localStorage", {
@@ -240,10 +333,14 @@ describe("api", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      api("/settings/values/ui.library_page_state?scope=profile_device", {
-        method: "PUT",
-        body: JSON.stringify({ value: { version: 1, libraries: {} } }),
-      }),
+      api(
+        "/settings/values/ui.library_page_state?scope=profile_device",
+        {
+          method: "PUT",
+          body: JSON.stringify({ value: { version: 1, libraries: {} } }),
+        },
+        "safe",
+      ),
     ).rejects.toMatchObject({ status: 403, code: "profile_unverified" });
 
     const requestCalls = fetchMock.mock.calls.filter(
