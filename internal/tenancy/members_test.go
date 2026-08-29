@@ -297,8 +297,8 @@ func TestMemberServiceDeleteOwnerPreservesAdminFreezeAndChoosesActiveReplacement
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Suspend(ctx, tenant.ID, suspended.ID); err != nil {
-		t.Fatal(err)
+	if _, err := pool.Exec(ctx, `UPDATE organization_memberships SET status='suspended' WHERE organization_id=$1 AND account_id=$2`, tenant.ID, suspended.ID); err != nil {
+		t.Fatalf("seed suspended replacement: %v", err)
 	}
 	if _, err := store.SetTenantOrganizationFrozen(ctx, tenant.ID, true); err != nil {
 		t.Fatal(err)
@@ -605,25 +605,10 @@ func TestMemberServiceCompatInvalidationRunsAfterCommittedSecurityMutation(t *te
 		t.Fatalf("password did not remain committed after compat failure: user=%+v err=%v", stored, err)
 	}
 
-	service.SetCompatSessionInvalidator(assertCommittedCallback(func(queryCtx context.Context) bool {
-		var enabled bool
-		var status string
-		err := pool.QueryRow(queryCtx, `SELECT u.enabled,m.status FROM users u
-			JOIN organization_memberships m ON m.account_id=u.id AND m.organization_id=$1
-			WHERE u.id=$2`, tenant.ID, member.ID).Scan(&enabled, &status)
-		return err == nil && !enabled && status == "suspended"
-	}))
-	if _, err := service.Suspend(ctx, tenant.ID, member.ID); !errors.Is(err, compatErr) {
-		t.Fatalf("suspend error = %v, want committed compat failure", err)
-	}
-	stored, err = service.Get(ctx, tenant.ID, member.ID)
-	if err != nil || stored.Enabled {
-		t.Fatalf("suspend did not remain committed after compat failure: user=%+v err=%v", stored, err)
-	}
 }
 
 func TestMemberServiceCompatInvalidationSurvivesRequestCancellationAndPrecedesReload(t *testing.T) {
-	for _, operation := range []string{"identity update", "password reset", "suspend"} {
+	for _, operation := range []string{"identity update", "password reset"} {
 		t.Run(operation, func(t *testing.T) {
 			ctx, pool, store := testTenantPool(t)
 			users := auth.NewUserRepository(pool)
@@ -663,8 +648,6 @@ func TestMemberServiceCompatInvalidationSurvivesRequestCancellationAndPrecedesRe
 				_, _ = service.Update(requestCtx, tenant.ID, member.ID, tenancy.UpdateMemberInput{Username: &username})
 			case "password reset":
 				_, _ = service.ResetPassword(requestCtx, tenant.ID, member.ID, "replacement-password")
-			case "suspend":
-				_, _ = service.Suspend(requestCtx, tenant.ID, member.ID)
 			}
 			if durableCompatSession || memoryCompatSession {
 				t.Fatalf("compat sessions remain: durable=%v memory=%v", durableCompatSession, memoryCompatSession)
@@ -685,12 +668,6 @@ func TestMemberServiceCompatInvalidationSurvivesRequestCancellationAndPrecedesRe
 				var passwordHash string
 				if err := pool.QueryRow(context.Background(), `SELECT password_hash FROM users WHERE id=$1`, member.ID).Scan(&passwordHash); err != nil || !auth.CheckPassword(&models.User{PasswordHash: passwordHash}, "replacement-password") {
 					t.Fatalf("committed password reset missing: %v", err)
-				}
-			case "suspend":
-				var enabled bool
-				var status string
-				if err := pool.QueryRow(context.Background(), `SELECT u.enabled,m.status FROM users u JOIN organization_memberships m ON m.account_id=u.id AND m.organization_id=$1 WHERE u.id=$2`, tenant.ID, member.ID).Scan(&enabled, &status); err != nil || enabled || status != "suspended" {
-					t.Fatalf("committed suspension = enabled %v status %q, %v", enabled, status, err)
 				}
 			}
 		})
@@ -862,16 +839,12 @@ func TestMemberServiceLifecycleIsTenantScopedAndRevokesResetSessions(t *testing.
 		t.Fatalf("create pre-suspend session: %v", err)
 	}
 	suspended, err := service.Suspend(ctx, tenant.ID, member.ID)
-	if err != nil || suspended.Enabled {
-		t.Fatalf("suspend = (%+v, %v)", suspended, err)
+	if !errors.Is(err, tenancy.ErrMembershipPolicyWriteUnavailable) {
+		t.Fatalf("suspend = (%+v, %v), want rollout unavailable", suspended, err)
 	}
 	suspendedSession, err := sessions.GetByID(ctx, suspendSessionID)
-	if err != nil || suspendedSession.RevokedAt == nil {
-		t.Fatalf("session after suspend = (%+v, %v)", suspendedSession, err)
-	}
-	resumed, err := service.Resume(ctx, tenant.ID, member.ID)
-	if err != nil || !resumed.Enabled {
-		t.Fatalf("resume = (%+v, %v)", resumed, err)
+	if err != nil || suspendedSession.RevokedAt != nil {
+		t.Fatalf("session after refused suspend = (%+v, %v)", suspendedSession, err)
 	}
 
 	if err := service.Delete(ctx, tenant.ID, member.ID); err != nil {

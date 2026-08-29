@@ -22,12 +22,13 @@ import (
 )
 
 var (
-	ErrMemberNotFound       = errors.New("tenancy: member not found")
-	ErrSlotQuotaExceeded    = errors.New("tenancy: member slot quota exceeded")
-	ErrTenantFrozen         = errors.New("tenancy: tenant is frozen")
-	ErrIdempotencyConflict  = errors.New("tenancy: idempotency command conflicts with prior request")
-	ErrUsernameConflict     = errors.New("tenancy: member username conflicts")
-	ErrInvalidMemberCommand = errors.New("tenancy: invalid member command")
+	ErrMemberNotFound                   = errors.New("tenancy: member not found")
+	ErrSlotQuotaExceeded                = errors.New("tenancy: member slot quota exceeded")
+	ErrTenantFrozen                     = errors.New("tenancy: tenant is frozen")
+	ErrIdempotencyConflict              = errors.New("tenancy: idempotency command conflicts with prior request")
+	ErrUsernameConflict                 = errors.New("tenancy: member username conflicts")
+	ErrInvalidMemberCommand             = errors.New("tenancy: invalid member command")
+	ErrMembershipPolicyWriteUnavailable = errors.New("tenancy: membership policy rollout is not writable")
 )
 
 // CreateMemberInput is the credential-bearing command for a tenant member.

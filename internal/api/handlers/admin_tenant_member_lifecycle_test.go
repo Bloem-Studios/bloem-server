@@ -121,48 +121,22 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 		t.Fatalf("state after replay = %+v, %v; want username %q", got, err, laterName)
 	}
 
-	stateRequest := func(action, key string) *httptest.ResponseRecorder {
-		req := httptest.NewRequest(http.MethodPost, path+"/"+action, nil)
-		req.Header.Set("Idempotency-Key", key)
-		recorder := httptest.NewRecorder()
-		router.ServeHTTP(recorder, req)
-		return recorder
-	}
 	suspendKey := "tenant-member-suspend-" + uuid.NewString()
-	firstSuspend := stateRequest("suspend", suspendKey)
-	if firstSuspend.Code != http.StatusOK {
-		t.Fatalf("first suspend = %d: %s", firstSuspend.Code, firstSuspend.Body.String())
-	}
-	if _, err := memberService.Resume(ctx, tenant.ID, member.ID); err != nil {
-		t.Fatalf("resume after first suspend: %v", err)
-	}
-	replaySuspend := stateRequest("suspend", suspendKey)
-	if replaySuspend.Code != http.StatusOK || replaySuspend.Body.String() != firstSuspend.Body.String() {
-		t.Fatalf("replay suspend = %d %s; first = %d %s", replaySuspend.Code, replaySuspend.Body.String(), firstSuspend.Code, firstSuspend.Body.String())
+	suspendRequest := httptest.NewRequest(http.MethodPost, path+"/suspend", nil)
+	suspendRequest.Header.Set("Idempotency-Key", suspendKey)
+	firstSuspend := httptest.NewRecorder()
+	router.ServeHTTP(firstSuspend, suspendRequest)
+	if firstSuspend.Code != http.StatusServiceUnavailable || firstSuspend.Header().Get("Retry-After") != "1" {
+		t.Fatalf("compatibility suspend = %d %s: %s", firstSuspend.Code, firstSuspend.Header().Get("Retry-After"), firstSuspend.Body.String())
 	}
 	got, err = memberService.Get(ctx, tenant.ID, member.ID)
 	if err != nil || !got.Enabled {
-		t.Fatalf("member after suspend replay = %+v, %v; want enabled", got, err)
+		t.Fatalf("member after refused suspend = %+v, %v; want enabled", got, err)
 	}
-
-	resumeKey := "tenant-member-resume-" + uuid.NewString()
-	firstResume := stateRequest("resume", resumeKey)
-	if firstResume.Code != http.StatusOK {
-		t.Fatalf("first resume = %d: %s", firstResume.Code, firstResume.Body.String())
-	}
-	if _, err := memberService.Suspend(ctx, tenant.ID, member.ID); err != nil {
-		t.Fatalf("suspend after first resume: %v", err)
-	}
-	replayResume := stateRequest("resume", resumeKey)
-	if replayResume.Code != http.StatusOK || replayResume.Body.String() != firstResume.Body.String() {
-		t.Fatalf("replay resume = %d %s; first = %d %s", replayResume.Code, replayResume.Body.String(), firstResume.Code, firstResume.Body.String())
-	}
-	got, err = memberService.Get(ctx, tenant.ID, member.ID)
-	if err != nil || got.Enabled {
-		t.Fatalf("member after resume replay = %+v, %v; want suspended", got, err)
-	}
-	if _, err := memberService.Resume(ctx, tenant.ID, member.ID); err != nil {
-		t.Fatalf("restore active member: %v", err)
+	keyDigest := lifecycleidempotency.NewHMACKeyDigester(secret)(suspendKey)
+	var suspendReceipts int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM lifecycle_request_receipts WHERE idempotency_key_digest=$1`, keyDigest[:]).Scan(&suspendReceipts); err != nil || suspendReceipts != 0 {
+		t.Fatalf("refused suspend receipts = %d, %v; want none", suspendReceipts, err)
 	}
 
 	resetKey := "tenant-member-reset-" + uuid.NewString()

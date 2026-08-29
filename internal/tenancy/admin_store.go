@@ -242,6 +242,9 @@ func (s *Store) CreateOrganization(ctx context.Context, input CreateOrganization
 	if err != nil {
 		return Organization{}, mapAdminWriteError("create organization", err)
 	}
+	if err = ensureTenantDefaultAccessGroup(ctx, tx, organization.ID); err != nil {
+		return Organization{}, fmt.Errorf("create organization default access group: %w", err)
+	}
 	if _, err = tx.Exec(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		VALUES ($1, $2, $3, $4)`, organization.ID, input.OwnerAccountID, MembershipActive, legacyRoleAdmin); err != nil {
