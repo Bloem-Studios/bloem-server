@@ -43,18 +43,26 @@ These routes use ordinary account sessions and require `X-Profile-Id`.
 Direct-profile sessions are limited by the router's `/api/v1` allowlist and
 are rejected before the v2 profile middleware runs.
 
-`feature_tokens` describe build-level, additive capabilities — including
+`feature_tokens` describe additive capabilities — including
 `watch_document_v1`, `device_pairing_v1`, `progress_sync_v1`, and
 `music_catalog_v1` — and clients must not use a server version for feature
-detection. A token does not prove that a dependency-conditional route is
+detection. Most tokens are build-level. `lifecycle_idempotency_v1` is present
+when the lifecycle coordinator is wired, while
+`lifecycle_idempotency_required_v1` additionally reflects the current rollout
+phase. Clients use a stable `Idempotency-Key` only when support is advertised,
+and preserve the same key across bounded retries; the full status contract is
+in the [v2 API reference](../bloem-v2-api-reference.md#shared-lifecycle-mutation-idempotency-v1-and-v2).
+A token does not prove that an unrelated dependency-conditional route is
 mounted in a particular deployment; clients still handle the route's response.
 
 ## Server identity is its own endpoint
 
 Identity is a sibling of the capability document rather than a section inside
-it. The capability document is a build constant that must never fail: a probe
-that can itself be unavailable leaves a client interpreting exactly the
-ambiguous state the probe exists to replace. Identity resolves the
+it. The capability document must never fail: a probe that can itself be
+unavailable leaves a client interpreting exactly the ambiguous state the probe
+exists to replace. Its lifecycle-required token is a dynamic rollout fact whose
+read failure is handled by omitting that token, while the response stays `200`.
+Identity resolves the
 `server.instance_id` setting through the database and legitimately answers
 `503`, and its `setup_complete` flips exactly once, so it is served `no-store`.
 Folding the two together would either make the capability probe fallible or

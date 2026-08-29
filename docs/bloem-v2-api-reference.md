@@ -147,9 +147,11 @@ default-deny `/api/v1` allowlist before this middleware runs.
 
 #### GET /api/v2/capabilities
 
-**Purpose.** The public, unauthenticated build-capability probe — "what does this server do", not
-"what may this caller do". Never fails: `HandleCapabilities` performs no I/O and always returns
-`200`.
+**Purpose.** The public, unauthenticated capability probe — "what does this server do", not
+"what may this caller do". It always returns `200`. Most fields are build constants; lifecycle
+idempotency also reflects whether the coordinator is wired and whether the server has finalized
+the header-required rollout phase. A failed rollout-phase read cannot make the probe fail: the
+support token remains present and the required token is conservatively omitted.
 
 **Auth.** None. Mounted directly on `/api/v2`, ahead of any auth middleware.
 
@@ -188,7 +190,8 @@ default-deny `/api/v1` allowlist before this middleware runs.
     "watch_document_v1",
     "device_pairing_v1",
     "progress_sync_v1",
-    "music_catalog_v1"
+    "music_catalog_v1",
+    "lifecycle_idempotency_v1"
   ]
 }
 ```
@@ -208,6 +211,9 @@ Field notes:
   result vocabulary; `device_pairing_v1` covers TV pairing (protocol details on
   `/auth/device/capability`, documented in the v1 reference); `declared_event_channels` covers the
   events-websocket declared-channel handshake (details on `/events/capability`).
+  `lifecycle_idempotency_v1` advertises the shared cross-version lifecycle mutation protocol
+  documented below. `lifecycle_idempotency_required_v1` is additionally present only after the
+  server enters the required phase.
 - `identity_schema` is a bare integer (currently always `1`), unrelated to `api_versions` on
   `GET /api/v2/server/identity`.
 
@@ -218,6 +224,48 @@ Field notes:
 No confirmed `bloem-android` call to this specific path was found in the source tree searched
 (android's compatibility probing lives in `SiloCompatibilityProbe.kt`, which targets `/api/v1`
 surfaces).
+
+---
+
+#### Shared lifecycle mutation idempotency (v1 and v2)
+
+The server coordinates the account, profile, organization, membership, device, login-session,
+settings, invitation-acceptance, and entitlement lifecycle mutations classified in
+`internal/api/lifecycle_routes.go`. This is an explicit registry, not a rule that every non-GET
+request is replayable. Credential exchanges and verification (`auth/login`, `auth/profile-login`,
+`auth/refresh`, profile PIN verification), profile avatar media writes, device pairing,
+plugin-launch credentials, and OAuth initiation/completion are reviewed one-shot exclusions.
+
+Clients negotiate before using the protocol:
+
+1. Read `GET /api/v2/capabilities` for the selected server activation.
+2. If `lifecycle_idempotency_v1` is absent, retain the legacy one-shot behavior: do not add an
+   idempotency key or automatically replay an unsafe request.
+3. If it is present, generate one globally unique opaque key for each logical user intent and send
+   it as `Idempotency-Key`. A valid key is 16–200 bytes of visible ASCII (`0x21`–`0x7e`), with no
+   whitespace. UUID strings satisfy the contract.
+4. Keep the same key, method, semantic route, selectors, query, and body for every retry of that
+   intent. A new user intent gets a new key; a retry never does.
+5. If `lifecycle_idempotency_required_v1` is present, every operation in the lifecycle registry
+   requires the header. The support and required tokens are independent: a client must not infer
+   support merely because it received or cached the required token.
+
+A completed retry returns the originally retained status, body, and selected response headers and
+adds `Idempotency-Replayed: true`. Receipts bind the key to the authenticated account incarnation,
+semantic route, canonical request, and resolved targets, preventing a deleted/recreated account or
+changed membership from inheriting an old command.
+
+| Status | Error code | Client behavior |
+| --- | --- | --- |
+| `400` | `idempotency_key_invalid` | The supplied key is outside the bounded visible-ASCII contract. Fix the client; do not retry it unchanged. |
+| `428` | `idempotency_key_required` | The server is in the required phase and this registered lifecycle mutation omitted the header. Reissue the same logical intent once with a new stable key. |
+| `409` | `idempotency_key_conflict` | The key is already bound to a different actor, request, semantic route, or target set. Stop; never retry a changed request under that key. |
+| `503` | `lifecycle_request_pending` | The key is already claimed but completion is not yet replayable. Honor `Retry-After` (currently `1`) and retry the exact request with the same key. |
+| `503` | `lifecycle_idempotency_unavailable` or `lifecycle_target_unavailable` | Request-safety or target resolution is temporarily unavailable. Preserve the intent and key; retry only with bounded backoff. |
+
+The outer preflight enforces missing or malformed headers before authentication and mutable
+actor/target lookup. The coordinator repeats the rollout-phase check while holding the shared
+handoff lock, so a phase transition cannot race an admitted unkeyed mutation.
 
 ---
 

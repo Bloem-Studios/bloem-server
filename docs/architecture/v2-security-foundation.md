@@ -44,7 +44,8 @@ clients match against. Its exact response is:
     "declared_event_channels",
     "watch_document_v1",
     "device_pairing_v1",
-    "progress_sync_v1"
+    "progress_sync_v1",
+    "lifecycle_idempotency_v1"
   ]
 }
 ```
@@ -53,6 +54,15 @@ clients match against. Its exact response is:
 is the fixed object of identity-model booleans this document has always
 published; `feature_tokens` is the open, versioned allowlist a client matches
 against, and every later capability lands there. Both grow additively.
+
+`lifecycle_idempotency_v1` is present only when the shared lifecycle
+coordinator is wired. Once the rollout is finalized,
+`lifecycle_idempotency_required_v1` is also advertised and registered lifecycle
+mutations without `Idempotency-Key` fail with `428`. The public probe remains
+available if its rollout-phase read fails: it keeps the support token, omits the
+required token, and still answers `200`. Client key/retry behavior and the
+`409`/`503` contract are documented in the
+[v2 API reference](../bloem-v2-api-reference.md#shared-lifecycle-mutation-idempotency-v1-and-v2).
 
 Direct-profile login, shared-device pairing, and delegated administrative roles
 are not implemented. The initial organization authority is the broad,

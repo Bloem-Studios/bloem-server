@@ -269,6 +269,14 @@ Admin routes are mounted behind the normal acting-admin authorization:
 - `DELETE /admin/users/{id}/settings/values/{key}?scope=<scope>` clears the
   selected row.
 
+The admin `PUT` and `DELETE` routes are registered account-lifecycle mutations.
+When `GET /api/v2/capabilities` advertises `lifecycle_idempotency_v1`, send one
+stable `Idempotency-Key` per logical edit and reuse it for an exact retry. The
+header becomes mandatory when `lifecycle_idempotency_required_v1` is also
+advertised. This is separate from the self-service settings API's
+`X-Silo-Mutation-Id`; negotiation, replay, and error behavior are documented in
+the [v2 API reference](bloem-v2-api-reference.md#shared-lifecycle-mutation-idempotency-v1-and-v2).
+
 Admin requests name profile/context identity with query parameters because the
 target user is not the admin's active session. In particular,
 `scope=profile_client` requires both `profile_id` and `client_family` query
@@ -277,6 +285,7 @@ parameters; it does not use `X-Silo-Client-Family`.
 ```http
 PUT /api/v1/admin/users/42/settings/values/ui.card_presentation?scope=profile_client&profile_id=main&client_family=tv
 Authorization: Bearer <admin-token>
+Idempotency-Key: <stable-uuid-for-this-intent>
 Content-Type: application/json
 
 {"value":{"poster_size":"large","caption":"artwork"}}
