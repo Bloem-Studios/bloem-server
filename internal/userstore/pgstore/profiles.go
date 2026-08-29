@@ -38,6 +38,13 @@ func (s *PostgresUserStore) CreateProfile(ctx context.Context, p userstore.Profi
 	return createProfile(ctx, s.pool, s.userID, p)
 }
 
+// CreateProfileInTransaction inserts a profile using a caller-owned
+// transaction. Account lifecycle creation uses it to bind the generated
+// profile to the same receipt as the account and membership.
+func (s *PostgresUserStore) CreateProfileInTransaction(ctx context.Context, tx pgx.Tx, p userstore.Profile) error {
+	return createProfile(ctx, tx, s.userID, p)
+}
+
 func createProfile(
 	ctx context.Context,
 	exec preferenceSettingsExecutor,

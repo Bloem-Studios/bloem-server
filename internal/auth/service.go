@@ -11,6 +11,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // Sentinel errors for service operations.
@@ -44,6 +45,18 @@ type SettingsGetter interface {
 // ownership state for the first account created during setup.
 type OwnershipBootstrapper interface {
 	ActivateInitialOwnership(ctx context.Context, accountID int) error
+}
+
+type transactionalOwnershipBootstrapper interface {
+	ActivateInitialOwnershipInTransaction(context.Context, pgx.Tx, int) error
+}
+
+type transactionalSetupUserRepository interface {
+	CountInTransaction(context.Context, pgx.Tx) (int, error)
+}
+
+type transactionalSessionRepository interface {
+	CreateInTransaction(context.Context, pgx.Tx, models.AuthSession) error
 }
 
 type serviceUserRepository interface {
@@ -467,6 +480,71 @@ func (s *Service) SetupInitialUser(
 	return s.Login(ctx, username, password, deviceName, ip)
 }
 
+// SetupInitialUserInTransaction creates the initial account, membership,
+// optional profile, ownership state and login session in the caller's
+// transaction. The returned generated identities are the exact lifecycle
+// receipt targets.
+func (s *Service) SetupInitialUserInTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	username, email, password string,
+	createDefaultProfile bool,
+	defaultProfileName string,
+	deviceName, ip string,
+) (*TokenPair, CreatedAccount, error) {
+	users, ok := s.users.(transactionalSetupUserRepository)
+	if !ok {
+		return nil, CreatedAccount{}, fmt.Errorf("account repository does not support transactional setup")
+	}
+	count, err := users.CountInTransaction(ctx, tx)
+	if err != nil {
+		return nil, CreatedAccount{}, err
+	}
+	if count != 0 {
+		return nil, CreatedAccount{}, ErrSetupAlreadyComplete
+	}
+	created, err := s.accounts.CreateAccountInTransaction(ctx, tx, CreateAccountInput{
+		User: models.CreateUserInput{
+			Username: username,
+			Email:    email,
+			Password: password,
+			Role:     legacyRoleAdmin,
+		},
+		DefaultProfile: DefaultProfileOptions{Enabled: createDefaultProfile, Name: defaultProfileName},
+	})
+	if err != nil {
+		return nil, CreatedAccount{}, fmt.Errorf("creating initial user: %w", err)
+	}
+	ownership, ok := s.ownership.(transactionalOwnershipBootstrapper)
+	if !ok {
+		return nil, CreatedAccount{}, fmt.Errorf("ownership bootstrapper does not support transactional setup")
+	}
+	if err := ownership.ActivateInitialOwnershipInTransaction(ctx, tx, created.User.ID); err != nil {
+		return nil, CreatedAccount{}, fmt.Errorf("activating initial ownership: %w", err)
+	}
+	sessions, ok := s.sessions.(transactionalSessionRepository)
+	if !ok {
+		return nil, CreatedAccount{}, fmt.Errorf("session repository does not support transactional setup")
+	}
+	sessionID := uuid.NewString()
+	if err := sessions.CreateInTransaction(ctx, tx, models.AuthSession{
+		ID: sessionID, UserID: created.User.ID, DeviceName: deviceName, IPAddress: ip,
+		ExpiresAt: time.Now().Add(s.jwt.RefreshExpiry()),
+	}); err != nil {
+		return nil, CreatedAccount{}, fmt.Errorf("creating session: %w", err)
+	}
+	pair, err := s.generateTokenPair(Claims{
+		UserID:               created.User.ID,
+		AccountIncarnationID: created.User.AccountIncarnationID.String(),
+		Role:                 created.User.Role,
+		SessionID:            sessionID,
+	})
+	if err != nil {
+		return nil, CreatedAccount{}, err
+	}
+	return pair, created, nil
+}
+
 // Signup creates a new user account using an invite code. Requires that
 // public signups are enabled via the "signup.enabled" server setting.
 func (s *Service) Signup(
@@ -512,6 +590,67 @@ func (s *Service) Signup(
 
 	// Log them in to create a session and return tokens.
 	return s.Login(ctx, username, password, deviceName, ip)
+}
+
+// SignupInTransaction redeems the invite and creates every account/session
+// target on the lifecycle coordinator's transaction.
+func (s *Service) SignupInTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	username, email, password, code string,
+	createDefaultProfile bool,
+	defaultProfileName string,
+	deviceName, ip string,
+) (*TokenPair, CreatedAccount, error) {
+	if s.settings == nil {
+		return nil, CreatedAccount{}, ErrSignupDisabled
+	}
+	enabled, err := s.settings.Get(ctx, "signup.enabled")
+	if err != nil {
+		return nil, CreatedAccount{}, fmt.Errorf("checking signup setting: %w", err)
+	}
+	if enabled != "true" {
+		return nil, CreatedAccount{}, ErrSignupDisabled
+	}
+	if s.inviteCodes == nil {
+		return nil, CreatedAccount{}, ErrInviteCodeNotFound
+	}
+	if err := s.inviteCodes.RedeemCodeInTransaction(ctx, tx, code); err != nil {
+		return nil, CreatedAccount{}, err
+	}
+	created, err := s.accounts.CreateAccountInTransaction(ctx, tx, CreateAccountInput{
+		User: models.CreateUserInput{
+			Username: username,
+			Email:    email,
+			Password: password,
+			Role:     legacyRoleUser,
+		},
+		DefaultProfile: DefaultProfileOptions{Enabled: createDefaultProfile, Name: defaultProfileName},
+	})
+	if err != nil {
+		return nil, CreatedAccount{}, fmt.Errorf("creating user: %w", err)
+	}
+	sessions, ok := s.sessions.(transactionalSessionRepository)
+	if !ok {
+		return nil, CreatedAccount{}, fmt.Errorf("session repository does not support transactional signup")
+	}
+	sessionID := uuid.NewString()
+	if err := sessions.CreateInTransaction(ctx, tx, models.AuthSession{
+		ID: sessionID, UserID: created.User.ID, DeviceName: deviceName, IPAddress: ip,
+		ExpiresAt: time.Now().Add(s.jwt.RefreshExpiry()),
+	}); err != nil {
+		return nil, CreatedAccount{}, fmt.Errorf("creating session: %w", err)
+	}
+	pair, err := s.generateTokenPair(Claims{
+		UserID:               created.User.ID,
+		AccountIncarnationID: created.User.AccountIncarnationID.String(),
+		Role:                 created.User.Role,
+		SessionID:            sessionID,
+	})
+	if err != nil {
+		return nil, CreatedAccount{}, err
+	}
+	return pair, created, nil
 }
 
 // IsSignupEnabled reports whether public signups are enabled.

@@ -9,6 +9,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/google/uuid"
 )
 
 type AccountUserRepository interface {
@@ -38,6 +39,14 @@ type MembershipProvisioner interface {
 	ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) error
 }
 
+type transactionalMembershipProvisioner interface {
+	ProvisionDefaultMembershipInTransaction(context.Context, pgx.Tx, int, string) (uuid.UUID, uuid.UUID, error)
+}
+
+type transactionalProfileCreator interface {
+	CreateProfileInTransaction(context.Context, pgx.Tx, userstore.Profile) error
+}
+
 type DefaultProfileOptions struct {
 	Enabled bool
 	Name    string
@@ -46,6 +55,16 @@ type DefaultProfileOptions struct {
 type CreateAccountInput struct {
 	User           models.CreateUserInput
 	DefaultProfile DefaultProfileOptions
+}
+
+// CreatedAccount contains every database-generated identity produced by one
+// account create. Lifecycle receipts persist these exact values before commit
+// so a replay never rediscovers a replacement numeric account.
+type CreatedAccount struct {
+	User           *models.User
+	OrganizationID uuid.UUID
+	MembershipID   uuid.UUID
+	ProfileID      string
 }
 
 // CreateDefaultProfile is createDefaultProfile, exported for
@@ -146,6 +165,67 @@ func (p *AccountProvisioner) CreateUserInTransaction(
 		return nil, true, nil
 	}
 	return user, false, err
+}
+
+// CreateAccountInTransaction creates the identity, default membership and
+// optional default profile on a caller-owned transaction.
+func (p *AccountProvisioner) CreateAccountInTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	input CreateAccountInput,
+) (CreatedAccount, error) {
+	user, conflict, err := p.CreateUserInTransaction(ctx, tx, input.User)
+	if err != nil {
+		return CreatedAccount{}, err
+	}
+	if conflict {
+		return CreatedAccount{}, ErrDuplicate
+	}
+	created := CreatedAccount{User: user}
+
+	if p.memberships != nil {
+		memberships, ok := p.memberships.(transactionalMembershipProvisioner)
+		if !ok {
+			return CreatedAccount{}, fmt.Errorf("membership provisioner does not support transactional creation")
+		}
+		created.OrganizationID, created.MembershipID, err = memberships.ProvisionDefaultMembershipInTransaction(
+			ctx, tx, user.ID, MembershipLegacyRole(input.User.Role),
+		)
+		if err != nil {
+			return CreatedAccount{}, fmt.Errorf("provision default membership: %w", err)
+		}
+	}
+
+	if !input.DefaultProfile.Enabled {
+		return created, nil
+	}
+	if p.storeProvider == nil {
+		return CreatedAccount{}, fmt.Errorf("user store provider unavailable")
+	}
+	store, err := p.storeProvider.ForUser(ctx, user.ID)
+	if err != nil {
+		return CreatedAccount{}, fmt.Errorf("open user store: %w", err)
+	}
+	profiles, ok := store.(transactionalProfileCreator)
+	if !ok {
+		return CreatedAccount{}, fmt.Errorf("user store does not support transactional profile creation")
+	}
+	name := strings.TrimSpace(input.DefaultProfile.Name)
+	if name == "" {
+		name = strings.TrimSpace(input.User.Username)
+	}
+	if name == "" {
+		return CreatedAccount{}, fmt.Errorf("default profile name is required")
+	}
+	created.ProfileID = uuid.NewString()
+	if err := profiles.CreateProfileInTransaction(ctx, tx, userstore.Profile{
+		ID:                  created.ProfileID,
+		Name:                name,
+		ShowForcedSubtitles: true,
+	}); err != nil {
+		return CreatedAccount{}, fmt.Errorf("store profile: %w", err)
+	}
+	return created, nil
 }
 
 // UpdateUser applies the native repository update and reports uniqueness

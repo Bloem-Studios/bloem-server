@@ -222,6 +222,13 @@ func (r *SessionRepository) Create(ctx context.Context, session models.AuthSessi
 	return r.createWithQuerier(ctx, r.pool, session)
 }
 
+// CreateInTransaction inserts a login session on a caller-owned transaction.
+// Public lifecycle creates use it so the encrypted token response can never be
+// committed separately from its account, membership and receipt.
+func (r *SessionRepository) CreateInTransaction(ctx context.Context, tx pgx.Tx, session models.AuthSession) error {
+	return r.createWithQuerier(ctx, tx, session)
+}
+
 // createWithQuerier inserts a new auth session using the provided exec-capable
 // database handle so callers can participate in an existing transaction.
 func (r *SessionRepository) createWithQuerier(

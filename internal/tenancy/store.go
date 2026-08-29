@@ -135,10 +135,6 @@ func (s *Store) GetMembership(ctx context.Context, accountID int, organizationID
 // request is a no-op; an existing membership with different role or state is
 // rejected so provisioning never overwrites protected state.
 func (s *Store) ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) (membership Membership, err error) {
-	if legacyRole != legacyRoleAdmin && legacyRole != legacyRoleUser {
-		return Membership{}, fmt.Errorf("provision default membership: invalid legacy role %q", legacyRole)
-	}
-
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Membership{}, fmt.Errorf("begin default membership provisioning: %w", err)
@@ -148,6 +144,30 @@ func (s *Store) ProvisionDefaultMembership(ctx context.Context, accountID int, l
 			_ = tx.Rollback(ctx)
 		}
 	}()
+
+	membership, err = s.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, legacyRole)
+	if err != nil {
+		return Membership{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Membership{}, fmt.Errorf("commit default membership provisioning: %w", err)
+	}
+	return membership, nil
+}
+
+// ProvisionDefaultMembershipInTransaction applies default-organization
+// membership provisioning on a caller-owned transaction. Lifecycle creates
+// use this so the generated account incarnation, membership and receipt are a
+// single commit unit.
+func (s *Store) ProvisionDefaultMembershipInTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	accountID int,
+	legacyRole string,
+) (Membership, error) {
+	if legacyRole != legacyRoleAdmin && legacyRole != legacyRoleUser {
+		return Membership{}, fmt.Errorf("provision default membership: invalid legacy role %q", legacyRole)
+	}
 
 	organization, err := scanOrganization(tx.QueryRow(ctx, `
 		SELECT `+organizationColumns+`
@@ -161,16 +181,13 @@ func (s *Store) ProvisionDefaultMembership(ctx context.Context, accountID int, l
 		return Membership{}, fmt.Errorf("lock default organization for membership: %w", err)
 	}
 
-	membership, err = scanMembership(tx.QueryRow(ctx, `
+	membership, err := scanMembership(tx.QueryRow(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (organization_id, account_id) DO NOTHING
 		RETURNING id, organization_id, account_id, status, legacy_role, security_revision`,
 		organization.ID, accountID, MembershipActive, legacyRole))
 	if err == nil {
-		if err := tx.Commit(ctx); err != nil {
-			return Membership{}, fmt.Errorf("commit default membership provisioning: %w", err)
-		}
 		return membership, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -191,9 +208,6 @@ func (s *Store) ProvisionDefaultMembership(ctx context.Context, accountID int, l
 	if membership.Status != MembershipActive || membership.LegacyRole != legacyRole {
 		return Membership{}, ErrMembershipConflict
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return Membership{}, fmt.Errorf("commit default membership idempotence: %w", err)
-	}
 	return membership, nil
 }
 
@@ -209,6 +223,23 @@ func (s *Store) ActivateInitialOwnership(ctx context.Context, accountID int) (st
 			_ = tx.Rollback(ctx)
 		}
 	}()
+	state, err = s.ActivateInitialOwnershipInTransaction(ctx, tx, accountID)
+	if err != nil {
+		return OwnershipState{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return OwnershipState{}, fmt.Errorf("commit ownership activation: %w", err)
+	}
+	return state, nil
+}
+
+// ActivateInitialOwnershipInTransaction assigns the initial platform and
+// default-organization owner using a caller-owned transaction.
+func (s *Store) ActivateInitialOwnershipInTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	accountID int,
+) (OwnershipState, error) {
 
 	var (
 		platformOwner      *int
@@ -279,9 +310,6 @@ func (s *Store) ActivateInitialOwnership(ctx context.Context, accountID int) (st
 	}
 
 	if platformOwner != nil && organization.OwnerAccountID != nil && organization.Status == OrganizationActive && !resolutionRequired {
-		if err := tx.Commit(ctx); err != nil {
-			return OwnershipState{}, fmt.Errorf("commit idempotent ownership activation: %w", err)
-		}
 		return OwnershipState{PlatformOwnerAccountID: accountID, Organization: organization}, nil
 	}
 
@@ -315,9 +343,6 @@ func (s *Store) ActivateInitialOwnership(ctx context.Context, accountID int) (st
 		return OwnershipState{}, mapOwnershipWriteError(err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return OwnershipState{}, fmt.Errorf("commit ownership activation: %w", err)
-	}
 	return OwnershipState{PlatformOwnerAccountID: accountID, Organization: organization}, nil
 }
 

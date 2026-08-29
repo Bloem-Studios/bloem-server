@@ -523,6 +523,15 @@ func (r *UserRepository) Count(ctx context.Context) (int, error) {
 	return count, nil
 }
 
+// CountInTransaction reads account cardinality on a caller-owned transaction.
+func (r *UserRepository) CountInTransaction(ctx context.Context, tx pgx.Tx) (int, error) {
+	var count int
+	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&count); err != nil {
+		return 0, fmt.Errorf("counting users: %w", err)
+	}
+	return count, nil
+}
+
 // isDuplicateKeyError checks if the error is a PostgreSQL unique_violation (code 23505).
 func isDuplicateKeyError(err error) bool {
 	var pgErr *pgconn.PgError
