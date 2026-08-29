@@ -95,12 +95,12 @@ SELECT file_path, probe_updated_at IS NULL
 
 func seedDolbyVisionProbeRows(ctx context.Context, t *testing.T, pool *pgxpool.Pool) int {
 	t.Helper()
-	name := fmt.Sprintf("task4-dolby-vision-probes-%d", time.Now().UnixNano())
+	folderSeed := fmt.Sprintf("task4-dolby-vision-probes-%d", time.Now().UnixNano())
 	var libraryID int
 	if err := pool.QueryRow(ctx, `
 INSERT INTO media_folders (type, name)
 VALUES ('movies', $1)
-RETURNING id`, name).Scan(&libraryID); err != nil {
+RETURNING id`, folderSeed).Scan(&libraryID); err != nil {
 		t.Fatalf("seed media folder: %v", err)
 	}
 
@@ -124,7 +124,7 @@ RETURNING id`, name).Scan(&libraryID); err != nil {
 		}
 		if _, err := pool.Exec(ctx, `
 INSERT INTO media_files (media_folder_id, file_path, video_tracks, probe_updated_at)
-VALUES ($1, $2, $3::jsonb, $4)`, libraryID, name, videoTracks, probeUpdatedAt); err != nil {
+VALUES ($1, $2, $3::jsonb, $4)`, libraryID, filepath.Join(folderSeed, name), videoTracks, probeUpdatedAt); err != nil {
 			t.Fatalf("seed %s media file: %v", name, err)
 		}
 	}

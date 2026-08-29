@@ -209,6 +209,12 @@ RETURNING id`).Scan(&userID)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, userID)
 	})
+	if _, err := pool.Exec(ctx, `
+INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+VALUES ((SELECT id FROM organizations WHERE is_default), $1, 'active', 'user')
+ON CONFLICT (organization_id, account_id) DO NOTHING`, userID); err != nil {
+		t.Fatalf("seeding user membership: %v", err)
+	}
 
 	if _, err := pool.Exec(ctx, `
 INSERT INTO user_profiles

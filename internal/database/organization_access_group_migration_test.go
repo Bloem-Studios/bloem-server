@@ -97,6 +97,11 @@ func TestProfileAccessGroupRequiredMigrationUpDownUp(t *testing.T) {
 		t.Fatalf("create profile owner: %v", err)
 	}
 	if _, err := db.Exec(context.Background(), `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		VALUES ($1, $2, 'active', 'user')`, organizationID, userID); err != nil {
+		t.Fatalf("seed profile owner membership: %v", err)
+	}
+	if _, err := db.Exec(context.Background(), `
 		INSERT INTO user_profiles (organization_id, access_group_id, user_id, id, name)
 		VALUES ($1, NULL, $2, 'profile-group-required', 'Required')`, organizationID, userID); err != nil {
 		t.Fatalf("seed nullable profile group: %v", err)
