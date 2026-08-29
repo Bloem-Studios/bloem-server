@@ -18,17 +18,28 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/google/uuid"
 
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
 // AdminTenantsHandler serves /api/v1/admin/tenants.
 type AdminTenantsHandler struct {
-	store    *tenancy.Store
-	userRepo UserRepository
+	store     *tenancy.Store
+	userRepo  UserRepository
+	lifecycle lifecycleidempotency.Coordinator
+	digest    lifecycleidempotency.RequestDigester
+}
+
+// SetLifecycleIdempotency installs receipt-first coordination for tenant
+// organization lifecycle mutations.
+func (h *AdminTenantsHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
+	h.lifecycle = coordinator
+	h.digest = digester
 }
 
 // NewAdminTenantsHandler builds the handler.
@@ -89,6 +100,11 @@ func (h *AdminTenantsHandler) tenantID(w http.ResponseWriter, r *http.Request) (
 // external_ref.service_id, so a replayed park fulfill job adopts the SAME
 // tenant organization instead of minting a second one.
 func (h *AdminTenantsHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "Invalid request body")
+		return
+	}
 	var req struct {
 		Name        string `json:"name"`
 		ExternalRef struct {
@@ -102,11 +118,11 @@ func (h *AdminTenantsHandler) HandleCreate(w http.ResponseWriter, r *http.Reques
 		EntitlementTemplateKey      string `json:"entitlement_template_key"`
 		EntitlementTemplateRevision int64  `json:"entitlement_template_revision"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_json", "Invalid request body")
 		return
 	}
-	tenant, err := h.store.CreateTenantOrganization(r.Context(), tenancy.CreateTenantOrganizationInput{
+	input := tenancy.CreateTenantOrganizationInput{
 		Name:                        req.Name,
 		ExternalOperatorID:          req.ExternalRef.OperatorID,
 		ExternalServiceID:           req.ExternalRef.ServiceID,
@@ -114,7 +130,12 @@ func (h *AdminTenantsHandler) HandleCreate(w http.ResponseWriter, r *http.Reques
 		Transcodes:                  req.Limits.Transcodes,
 		EntitlementTemplateKey:      req.EntitlementTemplateKey,
 		EntitlementTemplateRevision: req.EntitlementTemplateRevision,
-	})
+	}
+	if h.lifecycle != nil {
+		h.handleLifecycleCreate(w, r, input, body)
+		return
+	}
+	tenant, err := h.store.CreateTenantOrganization(r.Context(), input)
 	if err != nil {
 		if errors.Is(err, tenancy.ErrTenantOrganizationInvalid) {
 			writeError(w, http.StatusUnprocessableEntity, "validation",
@@ -202,6 +223,10 @@ func (h *AdminTenantsHandler) setFrozen(w http.ResponseWriter, r *http.Request, 
 	if !ok {
 		return
 	}
+	if h.lifecycle != nil {
+		h.handleLifecycleFrozen(w, r, id, frozen)
+		return
+	}
 	if _, err := h.store.SetTenantOrganizationFrozen(r.Context(), id, frozen); err != nil {
 		h.writeRepoError(w, err, "Failed to update tenant state")
 		return
@@ -220,6 +245,10 @@ func (h *AdminTenantsHandler) setFrozen(w http.ResponseWriter, r *http.Request, 
 func (h *AdminTenantsHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	id, ok := h.tenantID(w, r)
 	if !ok {
+		return
+	}
+	if h.lifecycle != nil {
+		h.handleLifecycleDelete(w, r, id)
 		return
 	}
 	memberIDs, err := h.store.TenantMemberAccountIDs(r.Context(), id)

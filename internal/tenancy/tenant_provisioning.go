@@ -136,6 +136,25 @@ func tenantSlug(name, externalServiceID string) string {
 // other organization (status 'active' requires an owner). The first admin
 // membership ProvisionTenantMembership creates activates it.
 func (s *Store) CreateTenantOrganization(ctx context.Context, input CreateTenantOrganizationInput) (TenantOrganization, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return TenantOrganization{}, fmt.Errorf("tenancy: begin tenant organization creation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	organization, err := s.CreateTenantOrganizationInTransaction(ctx, tx, input)
+	if err != nil {
+		return TenantOrganization{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return TenantOrganization{}, fmt.Errorf("tenancy: commit tenant organization creation: %w", err)
+	}
+	return s.withTenantUsage(ctx, organization)
+}
+
+// CreateTenantOrganizationInTransaction creates or adopts a tenant inside a
+// caller-owned transaction. The caller owns commit, rollback, and any durable
+// lifecycle receipt written alongside the tenant.
+func (s *Store) CreateTenantOrganizationInTransaction(ctx context.Context, tx pgx.Tx, input CreateTenantOrganizationInput) (TenantOrganization, error) {
 	name := strings.TrimSpace(input.Name)
 	externalServiceID := strings.TrimSpace(input.ExternalServiceID)
 	templateKey := strings.TrimSpace(input.EntitlementTemplateKey)
@@ -143,12 +162,6 @@ func (s *Store) CreateTenantOrganization(ctx context.Context, input CreateTenant
 		(templateKey == "") != (input.EntitlementTemplateRevision == 0) || input.EntitlementTemplateRevision < 0 {
 		return TenantOrganization{}, ErrTenantOrganizationInvalid
 	}
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return TenantOrganization{}, fmt.Errorf("tenancy: begin tenant organization creation: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
 	slug := tenantSlug(name, externalServiceID)
 	organization, err := scanTenantOrganization(tx.QueryRow(ctx, `
 		INSERT INTO organizations (slug, name, status, external_operator_id, external_service_id, slots, transcodes)
@@ -168,10 +181,11 @@ func (s *Store) CreateTenantOrganization(ctx context.Context, input CreateTenant
 	} else if err := ensureTenantDefaultAccessGroup(ctx, tx, organization.ID); err != nil {
 		return TenantOrganization{}, err
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return TenantOrganization{}, fmt.Errorf("tenancy: commit tenant organization creation: %w", err)
+	organization.SlotsUsed, err = tenantMembershipCount(ctx, tx, organization.ID)
+	if err != nil {
+		return TenantOrganization{}, err
 	}
-	return s.withTenantUsage(ctx, organization)
+	return organization, nil
 }
 
 // ensureTenantDefaultAccessGroup establishes the same safe fallback policy
@@ -339,20 +353,34 @@ func (s *Store) SetTenantOrganizationFrozen(ctx context.Context, id uuid.UUID, f
 	}
 	defer rollbackOnError(ctx, tx, &err)
 
+	organization, err = s.SetTenantOrganizationFrozenInTransaction(ctx, tx, id, frozen)
+	if err != nil {
+		return TenantOrganization{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return TenantOrganization{}, fmt.Errorf("tenancy: commit tenant freeze: %w", err)
+	}
+	s.CompleteTenantOrganizationMutationAfterCommit()
+	return organization, nil
+}
+
+// SetTenantOrganizationFrozenInTransaction changes tenant state in a
+// caller-owned transaction and returns the response snapshot to persist in a
+// lifecycle receipt.
+func (s *Store) SetTenantOrganizationFrozenInTransaction(ctx context.Context, tx pgx.Tx, id uuid.UUID, frozen bool) (TenantOrganization, error) {
 	current, err := s.lockTenantOrganization(ctx, tx, id)
 	if err != nil {
 		return TenantOrganization{}, err
 	}
-
+	used, err := tenantMembershipCount(ctx, tx, id)
+	if err != nil {
+		return TenantOrganization{}, err
+	}
 	var status OrganizationStatus
 	var reason string
 	if frozen {
 		status, reason = OrganizationSuspended, TenantFrozenReasonAdmin
 	} else {
-		used, countErr := tenantMembershipCount(ctx, tx, id)
-		if countErr != nil {
-			return TenantOrganization{}, countErr
-		}
 		if used > current.Slots {
 			status, reason = OrganizationSuspended, TenantFrozenReasonQuota
 		} else {
@@ -367,11 +395,8 @@ func (s *Store) SetTenantOrganizationFrozen(ctx context.Context, id uuid.UUID, f
 	if err != nil {
 		return TenantOrganization{}, fmt.Errorf("tenancy: set tenant organization frozen: %w", err)
 	}
-	if err = tx.Commit(ctx); err != nil {
-		return TenantOrganization{}, fmt.Errorf("tenancy: commit tenant freeze: %w", err)
-	}
-	s.invalidateTenantLimitsCache()
-	return s.withTenantUsage(ctx, updated)
+	updated.SlotsUsed = used
+	return updated, nil
 }
 
 // DeleteTenantOrganization retires a tenant organization. This is a SOFT
@@ -406,7 +431,26 @@ func (s *Store) SetTenantOrganizationFrozen(ctx context.Context, id uuid.UUID, f
 // names them as owner fails outright. Clearing it here removes that
 // ordering trap entirely.
 func (s *Store) DeleteTenantOrganization(ctx context.Context, id uuid.UUID) error {
-	tag, err := s.pool.Exec(ctx, `
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("tenancy: begin tenant organization deletion: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := s.DeleteTenantOrganizationInTransaction(ctx, tx, id); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("tenancy: commit tenant organization deletion: %w", err)
+	}
+	s.CompleteTenantOrganizationMutationAfterCommit()
+	return nil
+}
+
+// DeleteTenantOrganizationInTransaction retires a tenant in a caller-owned
+// transaction. Member accounts must be deleted in that same transaction by
+// the caller after owner_account_id has been cleared.
+func (s *Store) DeleteTenantOrganizationInTransaction(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
+	tag, err := tx.Exec(ctx, `
 		UPDATE organizations
 		SET slug = slug || '-retired-' || left(id::text, 8),
 			external_service_id = NULL, external_operator_id = '', slots = NULL, transcodes = NULL,
@@ -418,14 +462,27 @@ func (s *Store) DeleteTenantOrganization(ctx context.Context, id uuid.UUID) erro
 	if tag.RowsAffected() == 0 {
 		return ErrTenantOrganizationNotFound
 	}
-	s.invalidateTenantLimitsCache()
 	return nil
 }
 
 // TenantMemberAccountIDs returns the account ids of a tenant organization's
 // members, for the admin handler's teardown-before-delete.
 func (s *Store) TenantMemberAccountIDs(ctx context.Context, id uuid.UUID) ([]int, error) {
-	rows, err := s.pool.Query(ctx, `
+	return tenantMemberAccountIDs(ctx, s.pool, id)
+}
+
+// TenantMemberAccountIDsInTransaction returns the tenant's member accounts
+// through the caller-owned transaction used for atomic retirement.
+func (s *Store) TenantMemberAccountIDsInTransaction(ctx context.Context, tx pgx.Tx, id uuid.UUID) ([]int, error) {
+	return tenantMemberAccountIDs(ctx, tx, id)
+}
+
+type tenantMemberQuerier interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}
+
+func tenantMemberAccountIDs(ctx context.Context, querier tenantMemberQuerier, id uuid.UUID) ([]int, error) {
+	rows, err := querier.Query(ctx, `
 		SELECT m.account_id FROM organization_memberships m
 		JOIN organizations o ON o.id = m.organization_id
 		WHERE m.organization_id = $1 AND o.external_service_id IS NOT NULL
@@ -443,6 +500,12 @@ func (s *Store) TenantMemberAccountIDs(ctx context.Context, id uuid.UUID) ([]int
 		ids = append(ids, accountID)
 	}
 	return ids, rows.Err()
+}
+
+// CompleteTenantOrganizationMutationAfterCommit invalidates process-local
+// admission state after a caller-owned transaction commits.
+func (s *Store) CompleteTenantOrganizationMutationAfterCommit() {
+	s.invalidateTenantLimitsCache()
 }
 
 // TenantSlotFree reports whether a tenant organization can take one more

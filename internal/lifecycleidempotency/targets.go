@@ -81,3 +81,50 @@ FOR UPDATE`, accountID).Scan(&target.AccountIncarnationID); err != nil {
 	}
 	return target, nil
 }
+
+// ResolveTenantOrganizationTargets locks a live tenant and captures the
+// immutable identity of every current membership/account pair. An empty
+// tenant cannot be represented by the v1 receipt target schema, so callers
+// must retry after its first membership exists rather than write an
+// ambiguously unbound receipt.
+func ResolveTenantOrganizationTargets(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID) ([]TargetBinding, error) {
+	if organizationID == uuid.Nil {
+		return nil, ErrTargetNotFound
+	}
+	var lockedOrganization uuid.UUID
+	if err := tx.QueryRow(ctx, `
+SELECT id FROM public.organizations
+WHERE id=$1 AND external_service_id IS NOT NULL
+FOR UPDATE`, organizationID).Scan(&lockedOrganization); err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, ErrTargetNotFound
+		}
+		return nil, fmt.Errorf("lock lifecycle tenant organization target: %w", err)
+	}
+	rows, err := tx.Query(ctx, `
+SELECT memberships.id,memberships.account_id,users.account_incarnation_id
+FROM public.organization_memberships AS memberships
+JOIN public.users AS users ON users.id=memberships.account_id
+WHERE memberships.organization_id=$1
+ORDER BY memberships.id,memberships.account_id
+FOR UPDATE OF memberships,users`, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve lifecycle tenant organization targets: %w", err)
+	}
+	defer rows.Close()
+	targets := make([]TargetBinding, 0, 1)
+	for rows.Next() {
+		target := TargetBinding{OrganizationID: lockedOrganization}
+		if err := rows.Scan(&target.MembershipID, &target.AccountID, &target.AccountIncarnationID); err != nil {
+			return nil, fmt.Errorf("scan lifecycle tenant organization target: %w", err)
+		}
+		targets = append(targets, target)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate lifecycle tenant organization targets: %w", err)
+	}
+	if len(targets) == 0 {
+		return nil, ErrTargetUnavailable
+	}
+	return targets, nil
+}

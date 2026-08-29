@@ -188,6 +188,64 @@ func TestTenantOrganizationLifecycle(t *testing.T) {
 	t.Cleanup(func() { _ = store.DeleteTenantOrganization(context.Background(), recreated.ID) })
 }
 
+func TestTenantOrganizationCallerOwnedTransactionsRollback(t *testing.T) {
+	ctx, pool, store := testTenantPool(t)
+
+	createServiceID := uniqueServiceID(t, "rollback-create")
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.CreateTenantOrganizationInTransaction(ctx, tx, tenancy.CreateTenantOrganizationInput{
+		Name: "Rolled back create", ExternalServiceID: createServiceID, Slots: 1, Transcodes: 0,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var created bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM organizations WHERE external_service_id=$1)`, createServiceID).Scan(&created); err != nil || created {
+		t.Fatalf("create survived rollback=%v, err=%v", created, err)
+	}
+
+	tenant, err := store.CreateTenantOrganization(ctx, tenancy.CreateTenantOrganizationInput{
+		Name: "Rollback mutations", ExternalServiceID: uniqueServiceID(t, "rollback-mutate"), Slots: 1, Transcodes: 0,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.DeleteTenantOrganization(context.Background(), tenant.ID) })
+
+	tx, err = pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.SetTenantOrganizationFrozenInTransaction(ctx, tx, tenant.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if current, err := store.GetTenantOrganization(ctx, tenant.ID); err != nil || current.Frozen {
+		t.Fatalf("freeze survived rollback: %+v, err=%v", current, err)
+	}
+
+	tx, err = pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DeleteTenantOrganizationInTransaction(ctx, tx, tenant.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.GetTenantOrganization(ctx, tenant.ID); err != nil {
+		t.Fatalf("delete survived rollback: %v", err)
+	}
+}
+
 func TestTenantLimitsForUserSeesFreezesImmediately(t *testing.T) {
 	ctx, pool, store := testTenantPool(t)
 	serviceID := uniqueServiceID(t, "svc")

@@ -49,7 +49,10 @@ var (
 	ErrKeyMalformed   = errors.New("lifecycle idempotency key is malformed")
 	ErrInvalidBinding = errors.New("lifecycle idempotency binding is invalid")
 	ErrTargetNotFound = errors.New("lifecycle idempotency target not found")
-	ErrPending        = errors.New("lifecycle request is committed and pending completion")
+	// ErrTargetUnavailable means the live resource exists but cannot yet be
+	// represented by the receipt target schema (for example, an empty tenant).
+	ErrTargetUnavailable = errors.New("lifecycle idempotency target is temporarily unavailable")
+	ErrPending           = errors.New("lifecycle request is committed and pending completion")
 )
 
 type TargetBinding struct {

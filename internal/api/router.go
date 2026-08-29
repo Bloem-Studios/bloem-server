@@ -1356,6 +1356,13 @@ func NewRouter(deps Dependencies) chi.Router {
 				adminHandler.SetPlatformEntitlementBulk(entitlementStore, platformPeople, tenantOrgStore, platformAuthorizer, deps.AdminPeopleWorker)
 			}
 			adminTenantsHandler = handlers.NewAdminTenantsHandler(tenantOrgStore, userRepo)
+			if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
+				lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
+				adminTenantsHandler.SetLifecycleIdempotency(
+					lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+					lifecycleidempotency.NewRequestDigester(lifecycleSecret),
+				)
+			}
 			memberAccounts := auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider)
 			memberService := tenancy.NewMemberService(
 				deps.DB,
