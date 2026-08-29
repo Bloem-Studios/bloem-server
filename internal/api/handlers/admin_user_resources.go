@@ -840,6 +840,11 @@ func (h *AdminHandler) handleLifecycleRevokeUserSessions(w http.ResponseWriter, 
 		delete(selectors, "session_id")
 	}
 	actorID := claims.UserID
+	organizationID := adminResourceOrganization(r.Context())
+	var (
+		sessionExists    bool
+		scopedProfileIDs []string
+	)
 	request := lifecycleidempotency.Request{
 		IdempotencyKey: r.Header.Get("Idempotency-Key"),
 		Binding: lifecycleidempotency.Binding{
@@ -849,27 +854,100 @@ func (h *AdminHandler) handleLifecycleRevokeUserSessions(w http.ResponseWriter, 
 			TargetSource: lifecycleidempotency.TargetPathAccount,
 		},
 		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-			return lifecycleidempotency.ResolveAccountTargets(ctx, tx, userID)
+			targets, err := lifecycleidempotency.ResolveAccountTargets(ctx, tx, userID)
+			if err != nil {
+				return nil, err
+			}
+			if organizationID != uuid.Nil {
+				filtered := targets[:0]
+				for _, target := range targets {
+					if target.OrganizationID == organizationID {
+						filtered = append(filtered, target)
+					}
+				}
+				if len(filtered) == 0 {
+					return nil, lifecycleidempotency.ErrTargetNotFound
+				}
+				targets = filtered
+			}
+			if all {
+				if organizationID == uuid.Nil {
+					return targets, nil
+				}
+				rows, err := tx.Query(ctx, `SELECT id FROM user_profiles WHERE user_id=$1 AND organization_id=$2 ORDER BY id FOR UPDATE`, userID, organizationID)
+				if err != nil {
+					return nil, fmt.Errorf("lock organization profiles: %w", err)
+				}
+				defer rows.Close()
+				for rows.Next() {
+					var profileID string
+					if err := rows.Scan(&profileID); err != nil {
+						return nil, err
+					}
+					scopedProfileIDs = append(scopedProfileIDs, profileID)
+				}
+				if err := rows.Err(); err != nil {
+					return nil, err
+				}
+				for _, profileID := range scopedProfileIDs {
+					target := targets[0]
+					target.ProfileID = profileID
+					targets = append(targets, target)
+				}
+				return targets, nil
+			}
+
+			var (
+				ownerID   int
+				profileID *string
+			)
+			err = tx.QueryRow(ctx, `SELECT user_id,profile_id FROM auth_sessions WHERE id=$1 FOR UPDATE`, sessionID).Scan(&ownerID, &profileID)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return targets, nil
+			}
+			if err != nil {
+				return nil, fmt.Errorf("lock authentication session: %w", err)
+			}
+			if ownerID != userID {
+				return nil, auth.ErrSessionNotFound
+			}
+			if organizationID != uuid.Nil {
+				if profileID == nil {
+					return nil, auth.ErrSessionNotFound
+				}
+				var exists bool
+				if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM user_profiles WHERE user_id=$1 AND id=$2 AND organization_id=$3)`, userID, *profileID, organizationID).Scan(&exists); err != nil {
+					return nil, err
+				}
+				if !exists {
+					return nil, auth.ErrSessionNotFound
+				}
+				scopedProfileIDs = []string{*profileID}
+			}
+			sessionExists = true
+			targets[0].ResourceID = sessionID
+			if profileID != nil {
+				targets[0].ProfileID = *profileID
+			}
+			return targets, nil
 		},
 	}
 	mutated := all
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 		if all {
-			if _, err := tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL`, userID); err != nil {
+			query := `UPDATE auth_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL`
+			args := []any{userID}
+			if organizationID != uuid.Nil {
+				query += ` AND profile_id=ANY($2::text[])`
+				args = append(args, scopedProfileIDs)
+			}
+			if _, err := tx.Exec(ctx, query, args...); err != nil {
 				return lifecycleidempotency.Result{}, fmt.Errorf("revoke account sessions: %w", err)
 			}
 			return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
 		}
-		var ownerID int
-		err := tx.QueryRow(ctx, `SELECT user_id FROM auth_sessions WHERE id=$1 FOR UPDATE`, sessionID).Scan(&ownerID)
-		if errors.Is(err, pgx.ErrNoRows) {
+		if !sessionExists {
 			return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
-		}
-		if err != nil {
-			return lifecycleidempotency.Result{}, fmt.Errorf("lock authentication session: %w", err)
-		}
-		if ownerID != userID {
-			return lifecycleidempotency.Result{}, auth.ErrSessionNotFound
 		}
 		if _, err := tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at=NOW() WHERE id=$1`, sessionID); err != nil {
 			return lifecycleidempotency.Result{}, fmt.Errorf("revoke authentication session: %w", err)
@@ -885,7 +963,14 @@ func (h *AdminHandler) handleLifecycleRevokeUserSessions(w http.ResponseWriter, 
 		h.writeLifecycleMutationError(w, err)
 		return
 	}
-	if !result.Replayed && mutated && h.OnUserSessionsRevoked != nil {
+	if !result.Replayed && mutated && organizationID != uuid.Nil && h.OnUserProfileSessionsRevoked != nil {
+		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
+			return h.OnUserProfileSessionsRevoked(callbackCtx, userID, scopedProfileIDs)
+		}); err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
+			return
+		}
+	} else if !result.Replayed && mutated && h.OnUserSessionsRevoked != nil {
 		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
 			return h.OnUserSessionsRevoked(callbackCtx, userID)
 		}); err != nil {
