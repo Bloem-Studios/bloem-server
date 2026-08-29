@@ -312,8 +312,18 @@ func (r *SessionRepository) Revoke(ctx context.Context, id string) error {
 // the same sentinel so callers cannot accidentally perform an unscoped
 // mutation after resolving an account from the request URL.
 func (r *SessionRepository) RevokeByUserAndSession(ctx context.Context, userID int, sessionID string) error {
+	return revokeByUserAndSessionWithQuerier(ctx, r.pool, userID, sessionID)
+}
+
+// RevokeByUserAndSessionInTransaction applies the same ownership-scoped
+// revocation on a caller-owned transaction.
+func (r *SessionRepository) RevokeByUserAndSessionInTransaction(ctx context.Context, tx pgx.Tx, userID int, sessionID string) error {
+	return revokeByUserAndSessionWithQuerier(ctx, tx, userID, sessionID)
+}
+
+func revokeByUserAndSessionWithQuerier(ctx context.Context, querier sessionExecQuerier, userID int, sessionID string) error {
 	query := `UPDATE auth_sessions SET revoked_at = NOW() WHERE user_id = $1 AND id = $2`
-	tag, err := r.pool.Exec(ctx, query, userID, sessionID)
+	tag, err := querier.Exec(ctx, query, userID, sessionID)
 	if err != nil {
 		return fmt.Errorf("revoking session for user %d: %w", userID, err)
 	}
@@ -332,12 +342,22 @@ func (r *SessionRepository) RevokeAllByUser(ctx context.Context, userID int) err
 // session belonging to userID and one of the caller-validated profile IDs.
 // Account sessions and sessions for other users or profiles are preserved.
 func (r *SessionRepository) RevokeAllByUserAndProfiles(ctx context.Context, userID int, profileIDs []string) error {
+	return revokeAllByUserAndProfilesWithQuerier(ctx, r.pool, userID, profileIDs)
+}
+
+// RevokeAllByUserAndProfilesInTransaction applies the same account/profile
+// intersection on a caller-owned transaction.
+func (r *SessionRepository) RevokeAllByUserAndProfilesInTransaction(ctx context.Context, tx pgx.Tx, userID int, profileIDs []string) error {
+	return revokeAllByUserAndProfilesWithQuerier(ctx, tx, userID, profileIDs)
+}
+
+func revokeAllByUserAndProfilesWithQuerier(ctx context.Context, querier sessionExecQuerier, userID int, profileIDs []string) error {
 	query := `UPDATE auth_sessions
 		SET revoked_at = NOW()
 		WHERE user_id = $1
 		  AND profile_id = ANY($2::text[])
 		  AND revoked_at IS NULL`
-	if _, err := r.pool.Exec(ctx, query, userID, profileIDs); err != nil {
+	if _, err := querier.Exec(ctx, query, userID, profileIDs); err != nil {
 		return fmt.Errorf("revoking sessions for user %d and selected profiles: %w", userID, err)
 	}
 	return nil

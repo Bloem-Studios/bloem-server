@@ -39,3 +39,46 @@ func TestRevokeByUserAndSessionScopesTheMutation(t *testing.T) {
 		t.Fatalf("owned session validity = %v, %v; want revoked", valid, err)
 	}
 }
+
+func TestSessionRepositoryCallerTransactionControlsScopedRevoke(t *testing.T) {
+	service := newProfileCredentialService(t)
+	userID, profileID := newProfileCredentialFixture(t, service.pool, "session-caller-tx")
+	repository := NewSessionRepository(service.pool)
+	ctx := context.Background()
+	for _, id := range []string{"caller-tx-one", "caller-tx-two"} {
+		profile := profileID
+		if err := repository.Create(ctx, models.AuthSession{ID: id, UserID: userID, ProfileID: &profile, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+			t.Fatalf("create %s: %v", id, err)
+		}
+	}
+
+	tx, err := service.pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin single revoke: %v", err)
+	}
+	if err := repository.RevokeByUserAndSessionInTransaction(ctx, tx, userID, "caller-tx-one"); err != nil {
+		t.Fatalf("revoke one in transaction: %v", err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatalf("rollback single revoke: %v", err)
+	}
+	if valid, err := repository.IsValid(ctx, "caller-tx-one"); err != nil || !valid {
+		t.Fatalf("single session after rollback valid=%v, error=%v", valid, err)
+	}
+
+	tx, err = service.pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin profile revoke: %v", err)
+	}
+	if err := repository.RevokeAllByUserAndProfilesInTransaction(ctx, tx, userID, []string{profileID}); err != nil {
+		t.Fatalf("revoke profiles in transaction: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit profile revoke: %v", err)
+	}
+	for _, id := range []string{"caller-tx-one", "caller-tx-two"} {
+		if valid, err := repository.IsValid(ctx, id); err != nil || valid {
+			t.Fatalf("%s after commit valid=%v, error=%v", id, valid, err)
+		}
+	}
+}
