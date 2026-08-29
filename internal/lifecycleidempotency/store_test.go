@@ -202,6 +202,84 @@ VALUES ($1,$2,'active','user') RETURNING id`, organizationID, createdID).Scan(&m
 	}
 }
 
+func TestResolveTenantMemberTargetCapturesReplacementIncarnation(t *testing.T) {
+	ctx := context.Background()
+	pool := newLifecycleStoreDatabase(t)
+
+	tenantOrganization := uuid.New()
+	if _, err := pool.Exec(ctx, `
+INSERT INTO organizations (id,slug,name,status,external_operator_id,external_service_id,slots,transcodes)
+VALUES ($1,$2,'Lifecycle Tenant','initializing','operator-test',$3,2,1)`, tenantOrganization,
+		"lifecycle-tenant-"+uuid.NewString(), "service-"+uuid.NewString()); err != nil {
+		t.Fatalf("create tenant organization: %v", err)
+	}
+	create := func(username string) (int, uuid.UUID, uuid.UUID) {
+		t.Helper()
+		var accountID int
+		var incarnation uuid.UUID
+		if err := pool.QueryRow(ctx, `
+INSERT INTO users (username,email,password_hash,role)
+VALUES ($1,$2,'x','user')
+RETURNING id,account_incarnation_id`, username, username+"@example.test").Scan(&accountID, &incarnation); err != nil {
+			t.Fatalf("create account: %v", err)
+		}
+		var membershipID uuid.UUID
+		if err := pool.QueryRow(ctx, `
+INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+VALUES ($1,$2,'active','user') RETURNING id`, tenantOrganization, accountID).Scan(&membershipID); err != nil {
+			t.Fatalf("create membership: %v", err)
+		}
+		return accountID, incarnation, membershipID
+	}
+
+	accountID, firstIncarnation, firstMembership := create("tenant-member-first-" + uuid.NewString())
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin first resolver transaction: %v", err)
+	}
+	first, err := ResolveTenantMemberTarget(ctx, tx, tenantOrganization, accountID)
+	_ = tx.Rollback(ctx)
+	if err != nil {
+		t.Fatalf("resolve first target: %v", err)
+	}
+	if first != (TargetBinding{OrganizationID: tenantOrganization, MembershipID: firstMembership, AccountID: accountID, AccountIncarnationID: firstIncarnation}) {
+		t.Fatalf("first target = %+v", first)
+	}
+
+	if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id=$1`, accountID); err != nil {
+		t.Fatalf("delete first account: %v", err)
+	}
+	var replacementIncarnation uuid.UUID
+	if err := pool.QueryRow(ctx, `
+INSERT INTO users (id,username,email,password_hash,role)
+VALUES ($1,$2,$3,'x','user') RETURNING account_incarnation_id`, accountID,
+		"tenant-member-replacement-"+uuid.NewString(), uuid.NewString()+"@example.test").Scan(&replacementIncarnation); err != nil {
+		t.Fatalf("create replacement account: %v", err)
+	}
+	var replacementMembership uuid.UUID
+	if err := pool.QueryRow(ctx, `
+INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+VALUES ($1,$2,'active','user') RETURNING id`, tenantOrganization, accountID).Scan(&replacementMembership); err != nil {
+		t.Fatalf("create replacement membership: %v", err)
+	}
+
+	tx, err = pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin replacement resolver transaction: %v", err)
+	}
+	replacement, err := ResolveTenantMemberTarget(ctx, tx, tenantOrganization, accountID)
+	_ = tx.Rollback(ctx)
+	if err != nil {
+		t.Fatalf("resolve replacement target: %v", err)
+	}
+	if replacement.MembershipID != replacementMembership || replacement.AccountIncarnationID != replacementIncarnation {
+		t.Fatalf("replacement target = %+v", replacement)
+	}
+	if replacement.MembershipID == first.MembershipID || replacement.AccountIncarnationID == first.AccountIncarnationID {
+		t.Fatalf("replacement reused immutable identity: first=%+v replacement=%+v", first, replacement)
+	}
+}
+
 func newLifecycleStoreDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")

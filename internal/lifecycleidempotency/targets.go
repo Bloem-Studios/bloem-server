@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -38,4 +39,45 @@ FOR UPDATE OF users,memberships`, accountID)
 		return nil, ErrTargetNotFound
 	}
 	return targets, nil
+}
+
+// ResolveTenantMemberTarget locks a live organization, its selected
+// membership, and the membership's account in canonical order. Both the
+// membership id and account incarnation are retained so a replay can never
+// attach to a replacement that happens to reuse the same numeric account id.
+func ResolveTenantMemberTarget(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int) (TargetBinding, error) {
+	if organizationID == uuid.Nil || accountID <= 0 {
+		return TargetBinding{}, ErrTargetNotFound
+	}
+	var lockedOrganization uuid.UUID
+	if err := tx.QueryRow(ctx, `
+SELECT id FROM public.organizations
+WHERE id=$1 AND external_service_id IS NOT NULL
+FOR UPDATE`, organizationID).Scan(&lockedOrganization); err != nil {
+		if err == pgx.ErrNoRows {
+			return TargetBinding{}, ErrTargetNotFound
+		}
+		return TargetBinding{}, fmt.Errorf("lock lifecycle tenant organization target: %w", err)
+	}
+
+	target := TargetBinding{OrganizationID: lockedOrganization, AccountID: accountID}
+	if err := tx.QueryRow(ctx, `
+SELECT id FROM public.organization_memberships
+WHERE organization_id=$1 AND account_id=$2
+FOR UPDATE`, organizationID, accountID).Scan(&target.MembershipID); err != nil {
+		if err == pgx.ErrNoRows {
+			return TargetBinding{}, ErrTargetNotFound
+		}
+		return TargetBinding{}, fmt.Errorf("lock lifecycle tenant membership target: %w", err)
+	}
+	if err := tx.QueryRow(ctx, `
+SELECT account_incarnation_id FROM public.users
+WHERE id=$1
+FOR UPDATE`, accountID).Scan(&target.AccountIncarnationID); err != nil {
+		if err == pgx.ErrNoRows {
+			return TargetBinding{}, ErrTargetNotFound
+		}
+		return TargetBinding{}, fmt.Errorf("lock lifecycle tenant member account target: %w", err)
+	}
+	return target, nil
 }
