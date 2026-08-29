@@ -131,6 +131,9 @@ func TestReconcilerStartIsIdempotentAndStopAndWaitJoinsTickerLoop(t *testing.T) 
 	starters.Wait()
 	waitForReconcilerSignal(t, ctx, preSyncEntered, "ticker loop to enter PreSync")
 
+	// Install the stop fence synchronously before the blocked hook can resume.
+	// A goroutine-start signal alone would not prove StopAndWait had called Stop.
+	reconciler.Stop()
 	joinStarted := make(chan struct{})
 	joinResult := make(chan error, 1)
 	go func() {
@@ -228,6 +231,9 @@ func TestReconcilerStopAndWaitJoinsOwnerAndSuppressesQueuedFollowUp(t *testing.T
 		t.Fatalf("queued SyncNow: %v", err)
 	}
 
+	// Clear the queued follow-up synchronously before the current owner can
+	// resume. The asynchronous wait below still proves that owner is joined.
+	reconciler.Stop()
 	joinStarted := make(chan struct{})
 	joinResult := make(chan error, 1)
 	go func() {

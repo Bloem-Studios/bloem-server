@@ -145,6 +145,10 @@ func TestClusterSafeUserDBWorkerShutdownCleanupIsFinal(t *testing.T) {
 		t.Fatalf("queue reconciliation follow-up: %v", err)
 	}
 
+	// Match production's signal-first ordering in the test thread so the stop
+	// fence is installed before the held PostgreSQL connection is released.
+	reconciler.Stop()
+	writer.Stop()
 	shutdownStarted := make(chan struct{})
 	shutdownResult := make(chan error, 1)
 	go func() {
