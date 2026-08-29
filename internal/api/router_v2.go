@@ -73,7 +73,7 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 		if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
 			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 			platformHandler.SetLifecycleIdempotency(
-				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+				lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
 				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
 			)
 		}
@@ -92,7 +92,7 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 		if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
 			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 			entitlementHandler.SetLifecycleIdempotency(
-				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+				lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
 				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
 			)
 		}
@@ -106,7 +106,7 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
 			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 			peopleHandler.SetLifecycleIdempotency(
-				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+				lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
 				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
 			)
 		}

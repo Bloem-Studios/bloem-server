@@ -1,6 +1,7 @@
 package lifecycleidempotency
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -109,6 +110,42 @@ func TestLifecycleCoordinatorUsesOneRepeatableReadSnapshot(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestEncryptedCoordinatorDoesNotPersistIssuedTokensInPlaintext(t *testing.T) {
+	ctx := context.Background()
+	pool := newLifecycleStoreDatabase(t)
+	secret := []byte("encrypted-receipt-test-secret")
+	coordinator := NewEncryptedCoordinator(NewPostgresStore(pool), secret)
+	request := Request{
+		IdempotencyKey: "encrypted-public-response-key",
+		Binding: Binding{
+			ActorKind: ActorPreauthIntent, ActorSubjectDigest: testDigest(18), Method: "POST",
+			RouteID: "auth.signup", RequestHash: testDigest(19), TargetSource: TargetBodyAccount,
+		},
+	}
+	want := []byte(`{"access_token":"issued-access","refresh_token":"issued-refresh"}`)
+	first, err := coordinator.ExecuteCreate(ctx, request, func(context.Context, pgx.Tx) ([]TargetBinding, Result, error) {
+		return []TargetBinding{{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 41, AccountIncarnationID: uuid.New()}}, Result{Status: 201, Body: want}, nil
+	})
+	if err != nil || !bytes.Equal(first.Body, want) {
+		t.Fatalf("first response = %q, %v", first.Body, err)
+	}
+	keyDigest := NewHMACKeyDigester(secret)(request.IdempotencyKey)
+	var stored []byte
+	if err := pool.QueryRow(ctx, `SELECT response_body FROM lifecycle_request_receipts WHERE idempotency_key_digest=$1`, keyDigest[:]).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(stored, []byte("issued-access")) || bytes.Contains(stored, []byte("issued-refresh")) {
+		t.Fatalf("receipt stored issued token plaintext: %q", stored)
+	}
+	replay, err := coordinator.ExecuteCreate(ctx, request, func(context.Context, pgx.Tx) ([]TargetBinding, Result, error) {
+		t.Fatal("replay invoked account creation")
+		return nil, Result{}, nil
+	})
+	if err != nil || !replay.Replayed || !bytes.Equal(replay.Body, want) {
+		t.Fatalf("replay = %+v, %v", replay, err)
 	}
 }
 

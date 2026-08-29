@@ -504,7 +504,7 @@ func NewRouter(deps Dependencies) chi.Router {
 		authHandler = handlers.NewAuthHandler(authService, jwtService, deviceLoginService)
 		lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 		authHandler.SetLifecycleIdempotency(
-			lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+			lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
 			lifecycleidempotency.NewRequestDigester(lifecycleSecret),
 			lifecycleidempotency.NewPreauthActorDigester(lifecycleSecret),
 			serverIdentity,
@@ -850,7 +850,7 @@ func NewRouter(deps Dependencies) chi.Router {
 		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
 			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 			requestHandler.SetLifecycleIdempotency(
-				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+				lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
 				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
 			)
 		}
@@ -1330,7 +1330,7 @@ func NewRouter(deps Dependencies) chi.Router {
 		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
 			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 			adminHandler.SetLifecycleIdempotency(
-				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+				lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
 				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
 			)
 		}
@@ -1359,7 +1359,7 @@ func NewRouter(deps Dependencies) chi.Router {
 			if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
 				lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 				adminTenantsHandler.SetLifecycleIdempotency(
-					lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+					lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
 					lifecycleidempotency.NewRequestDigester(lifecycleSecret),
 				)
 			}
@@ -1375,7 +1375,7 @@ func NewRouter(deps Dependencies) chi.Router {
 			if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
 				lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 				adminTenantMembersHandler.SetLifecycleIdempotency(
-					lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+					lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
 					lifecycleidempotency.NewRequestDigester(lifecycleSecret),
 				)
 			}

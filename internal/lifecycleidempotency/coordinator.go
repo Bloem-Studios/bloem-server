@@ -2,10 +2,14 @@ package lifecycleidempotency
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"sort"
 	"unicode/utf8"
 
@@ -30,11 +34,30 @@ type KeyDigester func(string) Digest
 type coordinator struct {
 	store     Store
 	digestKey KeyDigester
+	responses cipher.AEAD
 }
 
 func NewCoordinator(store Store, digestKey KeyDigester) Coordinator {
 	return &coordinator{store: store, digestKey: digestKey}
 }
+
+// NewEncryptedCoordinator protects retained response bodies at rest. Lifecycle
+// receipts may contain newly issued access and refresh tokens, so production
+// wiring must use this constructor rather than persisting their JSON plaintext.
+func NewEncryptedCoordinator(store Store, secret []byte) Coordinator {
+	keyMaterial := sha256.Sum256(append([]byte("bloem.lifecycle-response.v1\x00"), secret...))
+	block, err := aes.NewCipher(keyMaterial[:])
+	if err != nil {
+		panic(fmt.Sprintf("create lifecycle response cipher: %v", err))
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		panic(fmt.Sprintf("create lifecycle response AEAD: %v", err))
+	}
+	return &coordinator{store: store, digestKey: NewHMACKeyDigester(secret), responses: aead}
+}
+
+var encryptedResponsePrefix = []byte("bloem-lifecycle-response-v1\x00")
 
 func NewHMACKeyDigester(secret []byte) KeyDigester {
 	key := append([]byte(nil), secret...)
@@ -101,7 +124,10 @@ func (c *coordinator) Execute(ctx context.Context, request Request, mutate Mutat
 			if receipt.State != StateCompleted {
 				return ErrPending
 			}
-			result = cloneResult(receipt.Result)
+			result, err = c.replayResult(receipt.Result, keyDigest)
+			if err != nil {
+				return err
+			}
 			result.Replayed = true
 			return nil
 		}
@@ -120,7 +146,11 @@ func (c *coordinator) Execute(ctx context.Context, request Request, mutate Mutat
 		if err != nil {
 			return err
 		}
-		if err := c.store.Complete(txCtx, tx, keyDigest, result); err != nil {
+		stored, err := c.storedResult(result, keyDigest)
+		if err != nil {
+			return err
+		}
+		if err := c.store.Complete(txCtx, tx, keyDigest, stored); err != nil {
 			return err
 		}
 		return nil
@@ -174,7 +204,10 @@ func (c *coordinator) ExecuteCreate(ctx context.Context, request Request, mutate
 			if receipt.State != StateCompleted {
 				return ErrPending
 			}
-			result = cloneResult(receipt.Result)
+			result, err = c.replayResult(receipt.Result, keyDigest)
+			if err != nil {
+				return err
+			}
 			result.Replayed = true
 			return nil
 		}
@@ -200,9 +233,51 @@ func (c *coordinator) ExecuteCreate(ctx context.Context, request Request, mutate
 			return err
 		}
 		result = createdResult
-		return c.store.Complete(txCtx, tx, keyDigest, result)
+		stored, err := c.storedResult(result, keyDigest)
+		if err != nil {
+			return err
+		}
+		return c.store.Complete(txCtx, tx, keyDigest, stored)
 	})
 	return result, err
+}
+
+func (c *coordinator) storedResult(result Result, keyDigest Digest) (Result, error) {
+	stored := cloneResult(result)
+	if c.responses == nil || len(stored.Body) == 0 {
+		return stored, nil
+	}
+	nonce := make([]byte, c.responses.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return Result{}, fmt.Errorf("generate lifecycle response nonce: %w", err)
+	}
+	sealed := c.responses.Seal(nil, nonce, stored.Body, keyDigest[:])
+	stored.Body = make([]byte, 0, len(encryptedResponsePrefix)+len(nonce)+len(sealed))
+	stored.Body = append(stored.Body, encryptedResponsePrefix...)
+	stored.Body = append(stored.Body, nonce...)
+	stored.Body = append(stored.Body, sealed...)
+	return stored, nil
+}
+
+func (c *coordinator) replayResult(stored Result, keyDigest Digest) (Result, error) {
+	result := cloneResult(stored)
+	if c.responses == nil || len(result.Body) == 0 {
+		return result, nil
+	}
+	if len(result.Body) < len(encryptedResponsePrefix) || !hmac.Equal(result.Body[:len(encryptedResponsePrefix)], encryptedResponsePrefix) {
+		return Result{}, fmt.Errorf("lifecycle response is not encrypted")
+	}
+	payload := result.Body[len(encryptedResponsePrefix):]
+	if len(payload) < c.responses.NonceSize() {
+		return Result{}, fmt.Errorf("lifecycle response ciphertext is truncated")
+	}
+	nonce, ciphertext := payload[:c.responses.NonceSize()], payload[c.responses.NonceSize():]
+	plaintext, err := c.responses.Open(nil, nonce, ciphertext, keyDigest[:])
+	if err != nil {
+		return Result{}, fmt.Errorf("decrypt lifecycle response: %w", err)
+	}
+	result.Body = plaintext
+	return result, nil
 }
 
 func validBinding(binding Binding) bool {
