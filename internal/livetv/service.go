@@ -177,6 +177,14 @@ func (s *Service) SetRecorder(recorder *Recorder) {
 	s.recorder = recorder
 }
 
+// Close stops service-owned background work and waits for it to exit.
+func (s *Service) Close(ctx context.Context) error {
+	if s == nil || s.recorder == nil {
+		return nil
+	}
+	return s.recorder.Close(ctx)
+}
+
 // SetArtworkCache attaches the lazy Live TV WebP/AVIF artwork cache.
 func (s *Service) SetArtworkCache(cache *ArtworkCache) {
 	if s != nil {

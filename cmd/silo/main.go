@@ -3550,6 +3550,11 @@ func main() {
 			slog.Error("abs compat shutdown error", "error", shutdownErr)
 		}
 	}
+	if liveTVSvc != nil {
+		if closeErr := liveTVSvc.Close(shutdownCtx); closeErr != nil {
+			slog.Error("live tv shutdown error", "error", closeErr)
+		}
+	}
 	if stopErr := streamTelemetryRegistry.Stop(shutdownCtx); stopErr != nil {
 		slog.Error("stream telemetry shutdown error", "error", stopErr)
 	}
