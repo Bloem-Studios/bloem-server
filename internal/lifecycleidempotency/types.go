@@ -96,7 +96,9 @@ type Receipt struct {
 }
 
 type Mutator func(context.Context, pgx.Tx, Binding) (Result, error)
+type CreateMutator func(context.Context, pgx.Tx) ([]TargetBinding, Result, error)
 
 type Coordinator interface {
 	Execute(context.Context, Request, Mutator) (Result, error)
+	ExecuteCreate(context.Context, Request, CreateMutator) (Result, error)
 }

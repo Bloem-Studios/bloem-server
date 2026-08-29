@@ -148,6 +148,60 @@ VALUES ($1,$2,'active','user')`, secondOrganization, accountID); err != nil {
 	}
 }
 
+func TestReceiptFirstCreateBindsGeneratedTargetAndReplays(t *testing.T) {
+	ctx := context.Background()
+	pool := newLifecycleStoreDatabase(t)
+	secret := []byte("create-store-test-secret")
+	coordinator := NewCoordinator(NewPostgresStore(pool), NewHMACKeyDigester(secret))
+	request := Request{
+		IdempotencyKey: "preauth-create-replay-key",
+		Binding: Binding{
+			ActorKind: ActorPreauthIntent, ActorSubjectDigest: testDigest(9), Method: "POST",
+			RouteID: "auth.signup", RequestHash: testDigest(10), TargetSource: TargetBodyAccount,
+		},
+	}
+	var organizationID uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT id FROM organizations WHERE is_default`).Scan(&organizationID); err != nil {
+		t.Fatalf("load default organization: %v", err)
+	}
+	var createdID int
+	first, err := coordinator.ExecuteCreate(ctx, request, func(ctx context.Context, tx pgx.Tx) ([]TargetBinding, Result, error) {
+		var incarnation, membershipID uuid.UUID
+		if err := tx.QueryRow(ctx, `
+INSERT INTO users (username,email,password_hash,role)
+VALUES ($1,$2,'x','user') RETURNING id,account_incarnation_id`, "receipt-create-"+uuid.NewString(), uuid.NewString()+"@receipt-create.test").Scan(&createdID, &incarnation); err != nil {
+			return nil, Result{}, err
+		}
+		if err := tx.QueryRow(ctx, `
+INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+VALUES ($1,$2,'active','user') RETURNING id`, organizationID, createdID).Scan(&membershipID); err != nil {
+			return nil, Result{}, err
+		}
+		return []TargetBinding{{
+			OrganizationID: organizationID, MembershipID: membershipID, AccountID: createdID,
+			AccountIncarnationID: incarnation,
+		}}, Result{Status: 201, Body: []byte(`{"created":true}`)}, nil
+	})
+	if err != nil || first.Replayed || first.Status != 201 {
+		t.Fatalf("first ExecuteCreate() = %+v, %v", first, err)
+	}
+	replayed, err := coordinator.ExecuteCreate(ctx, request, func(context.Context, pgx.Tx) ([]TargetBinding, Result, error) {
+		t.Fatal("replay created a second target")
+		return nil, Result{}, nil
+	})
+	if err != nil || !replayed.Replayed || string(replayed.Body) != `{"created":true}` {
+		t.Fatalf("replayed ExecuteCreate() = %+v, %v", replayed, err)
+	}
+	var accountCount, targetCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE id=$1`, createdID).Scan(&accountCount); err != nil || accountCount != 1 {
+		t.Fatalf("created account count = %d, %v", accountCount, err)
+	}
+	keyDigest := NewHMACKeyDigester(secret)(request.IdempotencyKey)
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM lifecycle_request_receipt_targets WHERE idempotency_key_digest=$1`, keyDigest[:]).Scan(&targetCount); err != nil || targetCount != 1 {
+		t.Fatalf("receipt target count = %d, %v", targetCount, err)
+	}
+}
+
 func newLifecycleStoreDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")

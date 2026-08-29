@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"sort"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -20,6 +21,7 @@ type Store interface {
 	Find(context.Context, pgx.Tx, Digest) (*Receipt, error)
 	LockActor(context.Context, pgx.Tx, Binding) error
 	Insert(context.Context, pgx.Tx, Receipt) error
+	BindTargets(context.Context, pgx.Tx, Digest, TargetSource, []TargetBinding) error
 	Complete(context.Context, pgx.Tx, Digest, Result) error
 }
 
@@ -126,6 +128,83 @@ func (c *coordinator) Execute(ctx context.Context, request Request, mutate Mutat
 	return result, err
 }
 
+func (c *coordinator) ExecuteCreate(ctx context.Context, request Request, mutate CreateMutator) (Result, error) {
+	if c.store == nil || c.digestKey == nil || mutate == nil {
+		return Result{}, fmt.Errorf("lifecycle idempotency coordinator is not configured")
+	}
+	if request.IdempotencyKey != "" && !ValidKey(request.IdempotencyKey) {
+		return Result{}, ErrKeyMalformed
+	}
+	if !validBinding(request.Binding) {
+		return Result{}, ErrInvalidBinding
+	}
+
+	var result Result
+	err := c.store.InTransaction(ctx, func(txCtx context.Context, tx pgx.Tx) error {
+		if err := c.store.LockHandoff(txCtx, tx); err != nil {
+			return err
+		}
+		phase, err := c.store.Phase(txCtx, tx)
+		if err != nil {
+			return err
+		}
+		if request.IdempotencyKey == "" {
+			if phase == PhaseRequired {
+				return ErrKeyRequired
+			}
+			if err := c.store.LockActor(txCtx, tx, request.Binding); err != nil {
+				return err
+			}
+			_, result, err = mutate(txCtx, tx)
+			return err
+		}
+
+		keyDigest := c.digestKey(request.IdempotencyKey)
+		if err := c.store.LockKey(txCtx, tx, keyDigest); err != nil {
+			return err
+		}
+		receipt, err := c.store.Find(txCtx, tx, keyDigest)
+		if err != nil {
+			return err
+		}
+		if receipt != nil {
+			if !sameRequestBinding(receipt.Binding, request.Binding) {
+				return ErrConflict
+			}
+			if receipt.State != StateCompleted {
+				return ErrPending
+			}
+			result = cloneResult(receipt.Result)
+			result.Replayed = true
+			return nil
+		}
+		if err := c.store.LockActor(txCtx, tx, request.Binding); err != nil {
+			return err
+		}
+		unresolved := request.Binding
+		unresolved.TargetSource = ""
+		unresolved.TargetSetDigest = Digest{}
+		unresolved.Targets = nil
+		if err := c.store.Insert(txCtx, tx, Receipt{KeyDigest: keyDigest, Binding: unresolved, State: StateBindingUnresolved}); err != nil {
+			return err
+		}
+		targets, createdResult, err := mutate(txCtx, tx)
+		if err != nil {
+			return err
+		}
+		targets = canonicalTargets(targets)
+		if !validTargets(targets) {
+			return ErrInvalidBinding
+		}
+		if err := c.store.BindTargets(txCtx, tx, keyDigest, request.Binding.TargetSource, targets); err != nil {
+			return err
+		}
+		result = createdResult
+		return c.store.Complete(txCtx, tx, keyDigest, result)
+	})
+	return result, err
+}
+
 func validBinding(binding Binding) bool {
 	if binding.Method == "" || binding.RouteID == "" || binding.TargetSource == "" || binding.RequestHash == (Digest{}) {
 		return false
@@ -164,9 +243,49 @@ func resolveBinding(ctx context.Context, tx pgx.Tx, request Request) (Binding, e
 	if err != nil {
 		return Binding{}, err
 	}
-	binding.Targets = append([]TargetBinding(nil), targets...)
+	binding.Targets = canonicalTargets(targets)
+	if !validTargets(binding.Targets) {
+		return Binding{}, ErrInvalidBinding
+	}
 	binding.TargetSetDigest = digestTargets(binding.Targets)
 	return binding, nil
+}
+
+func validTargets(targets []TargetBinding) bool {
+	if len(targets) == 0 {
+		return false
+	}
+	for _, target := range targets {
+		if target.OrganizationID == uuid.Nil || target.MembershipID == uuid.Nil ||
+			target.AccountID <= 0 || target.AccountIncarnationID == uuid.Nil {
+			return false
+		}
+	}
+	return true
+}
+
+func canonicalTargets(targets []TargetBinding) []TargetBinding {
+	canonical := append([]TargetBinding(nil), targets...)
+	sort.Slice(canonical, func(i, j int) bool {
+		left, right := canonical[i], canonical[j]
+		if left.OrganizationID != right.OrganizationID {
+			return left.OrganizationID.String() < right.OrganizationID.String()
+		}
+		if left.MembershipID != right.MembershipID {
+			return left.MembershipID.String() < right.MembershipID.String()
+		}
+		if left.AccountID != right.AccountID {
+			return left.AccountID < right.AccountID
+		}
+		if left.AccountIncarnationID != right.AccountIncarnationID {
+			return left.AccountIncarnationID.String() < right.AccountIncarnationID.String()
+		}
+		if left.ProfileID != right.ProfileID {
+			return left.ProfileID < right.ProfileID
+		}
+		return left.ResourceID < right.ResourceID
+	})
+	return canonical
 }
 
 func sameRequestBinding(stored, incoming Binding) bool {

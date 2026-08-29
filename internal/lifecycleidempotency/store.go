@@ -176,6 +176,11 @@ func (s *PostgresStore) Insert(ctx context.Context, tx pgx.Tx, receipt Receipt) 
 	if receipt.Result.OperationID != "" {
 		operationID = receipt.Result.OperationID
 	}
+	var targetSource, targetDigest any
+	if receipt.State != StateBindingUnresolved {
+		targetSource = receipt.Binding.TargetSource
+		targetDigest = receipt.Binding.TargetSetDigest[:]
+	}
 	if _, err := tx.Exec(ctx, `
 INSERT INTO public.lifecycle_request_receipts (
     idempotency_key_digest,actor_kind,actor_account_id,actor_account_incarnation_id,
@@ -184,8 +189,8 @@ INSERT INTO public.lifecycle_request_receipts (
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
 		receipt.KeyDigest[:], receipt.Binding.ActorKind, receipt.Binding.ActorAccountID,
 		receipt.Binding.ActorAccountIncarnationID, actorSubject, receipt.Binding.Method,
-		receipt.Binding.RouteID, receipt.Binding.RequestHash[:], receipt.Binding.TargetSource,
-		receipt.Binding.TargetSetDigest[:], operationID, receipt.State); err != nil {
+		receipt.Binding.RouteID, receipt.Binding.RequestHash[:], targetSource,
+		targetDigest, operationID, receipt.State); err != nil {
 		return fmt.Errorf("insert lifecycle receipt: %w", err)
 	}
 	for ordinal, target := range receipt.Binding.Targets {
@@ -205,6 +210,37 @@ VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, receipt.KeyDigest[:], ordinal,
 			target.AccountIncarnationID, profileID, resourceID); err != nil {
 			return fmt.Errorf("insert lifecycle receipt target %d: %w", ordinal, err)
 		}
+	}
+	return nil
+}
+
+func (s *PostgresStore) BindTargets(ctx context.Context, tx pgx.Tx, digest Digest, source TargetSource, targets []TargetBinding) error {
+	binding := Binding{Targets: targets}
+	receipt := Receipt{KeyDigest: digest, Binding: binding}
+	for ordinal, target := range receipt.Binding.Targets {
+		var profileID, resourceID any
+		if target.ProfileID != "" {
+			profileID = target.ProfileID
+		}
+		if target.ResourceID != "" {
+			resourceID = target.ResourceID
+		}
+		if _, err := tx.Exec(ctx, `
+INSERT INTO public.lifecycle_request_receipt_targets (
+    idempotency_key_digest,target_ordinal,organization_id,membership_id,
+    account_id,account_incarnation_id,profile_id,resource_id)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, digest[:], ordinal,
+			target.OrganizationID, target.MembershipID, target.AccountID,
+			target.AccountIncarnationID, profileID, resourceID); err != nil {
+			return fmt.Errorf("bind lifecycle receipt target %d: %w", ordinal, err)
+		}
+	}
+	targetSetDigest := digestTargets(targets)
+	if _, err := tx.Exec(ctx, `
+UPDATE public.lifecycle_request_receipts
+SET target_source=$2,target_set_digest=$3,state='bound'
+WHERE idempotency_key_digest=$1 AND state='binding_unresolved'`, digest[:], source, targetSetDigest[:]); err != nil {
+		return fmt.Errorf("bind lifecycle receipt targets: %w", err)
 	}
 	return nil
 }

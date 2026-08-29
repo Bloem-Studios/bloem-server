@@ -189,6 +189,48 @@ func TestLifecycleIdempotencyFirstKeyedRequestLocksActorBeforeTarget(t *testing.
 	}
 }
 
+func TestLifecycleIdempotencyCreateBindsDatabaseGeneratedTargetBeforeCompletion(t *testing.T) {
+	request := testRequest(41, uuid.New())
+	request.IdempotencyKey = "first-create-request-key"
+	request.Binding.Method = "POST"
+	request.Binding.RouteID = "account.create"
+	request.Binding.TargetSource = TargetBodyAccount
+	store := &recordingStore{phase: PhaseOptional}
+	generated := TargetBinding{
+		OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 77,
+		AccountIncarnationID: uuid.New(),
+	}
+
+	result, err := NewCoordinator(store, fixedDigester(testDigest(8))).ExecuteCreate(
+		context.Background(), request,
+		func(context.Context, pgx.Tx) ([]TargetBinding, Result, error) {
+			store.events = append(store.events, "create")
+			return []TargetBinding{generated}, Result{Status: 201, Body: []byte(`{"id":77}`)}, nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("ExecuteCreate() error: %v", err)
+	}
+	if result.Status != 201 || string(result.Body) != `{"id":77}` {
+		t.Fatalf("result = %+v", result)
+	}
+	want := []string{"actor", "insert", "create", "bind", "complete"}
+	if len(store.events) != len(want) {
+		t.Fatalf("events = %v, want %v", store.events, want)
+	}
+	for index := range want {
+		if store.events[index] != want[index] {
+			t.Fatalf("events = %v, want %v", store.events, want)
+		}
+	}
+	if store.inserted.State != StateBindingUnresolved || store.inserted.Binding.TargetSource != "" || len(store.inserted.Binding.Targets) != 0 {
+		t.Fatalf("initial receipt = %+v, want unresolved without targets", store.inserted)
+	}
+	if len(store.boundTargets) != 1 || store.boundTargets[0] != generated || store.boundSource != TargetBodyAccount {
+		t.Fatalf("bound source=%q targets=%+v", store.boundSource, store.boundTargets)
+	}
+}
+
 func testRequest(accountID int, incarnation uuid.UUID) Request {
 	return Request{Binding: Binding{
 		ActorKind: ActorAuthenticatedAccount, ActorAccountID: &accountID,
@@ -207,11 +249,14 @@ func testDigest(first byte) Digest {
 func fixedDigester(digest Digest) KeyDigester { return func(string) Digest { return digest } }
 
 type recordingStore struct {
-	phase       Phase
-	receipt     *Receipt
-	findCalls   int
-	insertCalls int
-	events      []string
+	phase        Phase
+	receipt      *Receipt
+	findCalls    int
+	insertCalls  int
+	events       []string
+	inserted     Receipt
+	boundSource  TargetSource
+	boundTargets []TargetBinding
 }
 
 func (s *recordingStore) InTransaction(ctx context.Context, fn func(context.Context, pgx.Tx) error) error {
@@ -228,9 +273,16 @@ func (s *recordingStore) LockActor(context.Context, pgx.Tx, Binding) error {
 	s.events = append(s.events, "actor")
 	return nil
 }
-func (s *recordingStore) Insert(_ context.Context, _ pgx.Tx, _ Receipt) error {
+func (s *recordingStore) Insert(_ context.Context, _ pgx.Tx, receipt Receipt) error {
 	s.insertCalls++
+	s.inserted = receipt
 	s.events = append(s.events, "insert")
+	return nil
+}
+func (s *recordingStore) BindTargets(_ context.Context, _ pgx.Tx, _ Digest, source TargetSource, targets []TargetBinding) error {
+	s.boundSource = source
+	s.boundTargets = append([]TargetBinding(nil), targets...)
+	s.events = append(s.events, "bind")
 	return nil
 }
 func (s *recordingStore) Complete(context.Context, pgx.Tx, Digest, Result) error {
