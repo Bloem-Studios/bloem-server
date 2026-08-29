@@ -1015,6 +1015,13 @@ func NewRouter(deps Dependencies) chi.Router {
 		if contract, err := settingscontract.Load(); err == nil {
 			settingValuesHandler = handlers.NewSettingValuesHandler(deps.UserStoreProvider, contract)
 			settingValuesHandler.EventsHub = deps.EventsHub
+			if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
+				lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
+				settingValuesHandler.SetLifecycleIdempotency(
+					lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
+					lifecycleidempotency.NewRequestDigester(lifecycleSecret),
+				)
+			}
 			// Household management: a primary profile acting for another
 			// profile on its own account. Without both of these the widening
 			// is unavailable rather than unguarded.

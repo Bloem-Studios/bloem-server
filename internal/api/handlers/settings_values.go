@@ -24,6 +24,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/cache"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	evt "github.com/Silo-Server/silo-server/internal/events"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/settingskeys"
 	"github.com/Silo-Server/silo-server/internal/settingsresolve"
@@ -40,11 +41,13 @@ import (
 // it lives at rather than being one of two hardcoded scopes, and an unknown key
 // is refused rather than stored in an open extension bag.
 type SettingValuesHandler struct {
-	storeProvider  userstore.UserStoreProvider
-	contract       *settingscontract.Manifest
-	resolver       *settingsresolve.Resolver
-	libraryLookup  libraryLookup
-	languageSource languageSuggestionSource
+	storeProvider   userstore.UserStoreProvider
+	contract        *settingscontract.Manifest
+	resolver        *settingsresolve.Resolver
+	libraryLookup   libraryLookup
+	languageSource  languageSuggestionSource
+	lifecycle       lifecycleidempotency.Coordinator
+	lifecycleDigest lifecycleidempotency.RequestDigester
 
 	// deviceSeen throttles device-registry refreshes, one upsert per
 	// deviceSeenThrottle window per (profile, device) — the same shape the
@@ -60,6 +63,13 @@ type SettingValuesHandler struct {
 	// simply unavailable — never that it is unguarded.
 	UserRepo      userLookup
 	ProfileTokens *access.ProfileTokenService
+}
+
+// SetLifecycleIdempotency installs receipt-first coordination for admin
+// account setting mutations.
+func (h *SettingValuesHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
+	h.lifecycle = coordinator
+	h.lifecycleDigest = digester
 }
 
 // languageSuggestionSource supplies the distinct original_language values the

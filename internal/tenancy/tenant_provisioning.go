@@ -556,21 +556,42 @@ func (s *Store) TenantOverQuota(ctx context.Context, id uuid.UUID) (bool, error)
 // it (assigns the owner, moves it to 'active') — a tenant is sold before any
 // admin account exists for it, so nothing else ever would.
 func (s *Store) ProvisionTenantMembership(ctx context.Context, organizationID uuid.UUID, accountID int, legacyRole string) (membership Membership, err error) {
-	if legacyRole != legacyRoleAdmin && legacyRole != legacyRoleUser {
-		return Membership{}, fmt.Errorf("tenancy: provision tenant membership: invalid legacy role %q", legacyRole)
-	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Membership{}, fmt.Errorf("tenancy: begin tenant membership provisioning: %w", err)
 	}
 	defer rollbackOnError(ctx, tx, &err)
 
-	organization, err := s.lockTenantOrganization(ctx, tx, organizationID)
+	membership, err = s.ProvisionTenantMembershipInTransaction(ctx, tx, organizationID, accountID, legacyRole)
 	if err != nil {
 		return Membership{}, err
 	}
 
-	membership, err = scanMembership(tx.QueryRow(ctx, `
+	if err = tx.Commit(ctx); err != nil {
+		return Membership{}, fmt.Errorf("tenancy: commit tenant membership provisioning: %w", err)
+	}
+	s.invalidateTenantLimitsCache()
+	return membership, nil
+}
+
+// ProvisionTenantMembershipInTransaction locks the tenant, enforces its slot
+// fence, and creates the membership on a caller-owned transaction.
+func (s *Store) ProvisionTenantMembershipInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, legacyRole string) (Membership, error) {
+	if legacyRole != legacyRoleAdmin && legacyRole != legacyRoleUser {
+		return Membership{}, fmt.Errorf("tenancy: provision tenant membership: invalid legacy role %q", legacyRole)
+	}
+	organization, err := s.lockTenantOrganization(ctx, tx, organizationID)
+	if err != nil {
+		return Membership{}, err
+	}
+	used, err := tenantMembershipCount(ctx, tx, organizationID)
+	if err != nil {
+		return Membership{}, err
+	}
+	if organization.Frozen || used >= organization.Slots {
+		return Membership{}, ErrTenantSlotsExhausted
+	}
+	membership, err := scanMembership(tx.QueryRow(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, organization_id, account_id, status, legacy_role, security_revision`,
@@ -578,19 +599,13 @@ func (s *Store) ProvisionTenantMembership(ctx context.Context, organizationID uu
 	if err != nil {
 		return Membership{}, fmt.Errorf("tenancy: create tenant membership: %w", err)
 	}
-
 	if legacyRole == legacyRoleAdmin && organization.ownerAccountID == nil {
-		if _, err = tx.Exec(ctx, `
+		if _, err := tx.Exec(ctx, `
 			UPDATE organizations SET owner_account_id = $2, status = $3, updated_at = now()
 			WHERE id = $1`, organizationID, accountID, OrganizationActive); err != nil {
 			return Membership{}, fmt.Errorf("tenancy: activate tenant organization owner: %w", err)
 		}
 	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return Membership{}, fmt.Errorf("tenancy: commit tenant membership provisioning: %w", err)
-	}
-	s.invalidateTenantLimitsCache()
 	return membership, nil
 }
 

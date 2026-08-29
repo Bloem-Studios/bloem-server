@@ -86,7 +86,6 @@ func adminResourceLifecycleScope(ctx context.Context, accountRoute string, userI
 		return []lifecycleidempotency.TargetBinding{target}, nil
 	}
 }
-
 func (h *AdminHandler) effectiveProfileLimitInTransaction(ctx context.Context, tx pgx.Tx, user *models.User) (int, *int64, error) {
 	if user == nil {
 		return 0, nil, nil

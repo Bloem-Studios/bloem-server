@@ -277,8 +277,17 @@ func (r *SessionRepository) createWithQuerier(
 
 // GetByID retrieves a session by its ID.
 func (r *SessionRepository) GetByID(ctx context.Context, id string) (*models.AuthSession, error) {
+	return r.getByIDWithQuerier(ctx, r.pool, id)
+}
+
+// GetByIDInTransaction reads a login session on a caller-owned transaction.
+func (r *SessionRepository) GetByIDInTransaction(ctx context.Context, tx pgx.Tx, id string) (*models.AuthSession, error) {
+	return r.getByIDWithQuerier(ctx, tx, id)
+}
+
+func (r *SessionRepository) getByIDWithQuerier(ctx context.Context, querier userCreateQuerier, id string) (*models.AuthSession, error) {
 	query := `SELECT ` + sessionColumns + ` FROM auth_sessions WHERE id = $1`
-	return scanSession(r.pool.QueryRow(ctx, query, id))
+	return scanSession(querier.QueryRow(ctx, query, id))
 }
 
 // ListByUser returns all sessions for a given user, ordered by created_at

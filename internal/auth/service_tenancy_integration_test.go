@@ -187,6 +187,57 @@ func TestSetupInitialUserInTransactionReturnsReplayTargetsAndCommitsAtomically(t
 	}
 }
 
+func TestStartImpersonationInTransactionRollsBackSession(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	pool := newAuthTenancyDisposableDatabase(t, ctx, dsn)
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate database: %v", err)
+	}
+	users := NewUserRepository(pool)
+	sessions := NewSessionRepository(pool)
+	service := NewService(nil, NewJWTService("test-secret", time.Hour, 24*time.Hour), sessions, users, NewInviteCodeRepository(pool), nil, pgstore.NewPostgresProvider(pool))
+	admin, err := users.Create(ctx, models.CreateUserInput{Username: "impersonation-admin", Email: "impersonation-admin@example.test", Password: "password", Role: models.RoleAdmin})
+	if err != nil {
+		t.Fatalf("create admin: %v", err)
+	}
+	target, err := users.Create(ctx, models.CreateUserInput{Username: "impersonation-target", Email: "impersonation-target@example.test", Password: "password", Role: models.RoleUser})
+	if err != nil {
+		t.Fatalf("create target: %v", err)
+	}
+	originalSession := models.AuthSession{ID: uuid.NewString(), UserID: admin.ID, ExpiresAt: time.Now().Add(time.Hour)}
+	if err := sessions.Create(ctx, originalSession); err != nil {
+		t.Fatalf("create original session: %v", err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	claims := &Claims{UserID: admin.ID, AccountIncarnationID: admin.AccountIncarnationID.String(), Role: models.RoleAdmin, SessionID: originalSession.ID}
+	pair, _, _, err := service.StartImpersonationInTransaction(WithClaims(ctx, claims), tx, admin.ID, target.ID, "browser", "127.0.0.1")
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		t.Fatalf("StartImpersonationInTransaction: %v", err)
+	}
+	if pair == nil || pair.AccessToken == "" || pair.RefreshToken == "" {
+		_ = tx.Rollback(ctx)
+		t.Fatal("transactional impersonation returned empty tokens")
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	var count int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM auth_sessions WHERE impersonator_user_id=$1`, admin.ID).Scan(&count); err != nil {
+		t.Fatalf("count impersonation sessions: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("impersonation sessions after rollback = %d, want 0", count)
+	}
+}
+
 func TestSignupInTransactionRollsBackInviteAccountAndSessionTogether(t *testing.T) {
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {

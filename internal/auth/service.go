@@ -57,6 +57,7 @@ type transactionalSetupUserRepository interface {
 
 type transactionalSessionRepository interface {
 	CreateInTransaction(context.Context, pgx.Tx, models.AuthSession) error
+	GetByIDInTransaction(context.Context, pgx.Tx, string) (*models.AuthSession, error)
 }
 
 type serviceUserRepository interface {
@@ -758,6 +759,70 @@ func (s *Service) StartImpersonation(ctx context.Context, adminUserID, targetUse
 		return nil, nil, nil, err
 	}
 
+	return pair, admin, target, nil
+}
+
+// StartImpersonationInTransaction creates the impersonated login session on a
+// caller-owned transaction so a lifecycle receipt and its token response are
+// committed atomically with that session.
+func (s *Service) StartImpersonationInTransaction(ctx context.Context, tx pgx.Tx, adminUserID, targetUserID int, deviceName, ip string) (*TokenPair, *models.User, *models.User, error) {
+	sessions, ok := any(s.sessions).(transactionalSessionRepository)
+	if !ok {
+		return nil, nil, nil, errors.New("session repository does not support caller-owned transactions")
+	}
+	users, ok := any(s.users).(interface {
+		GetByIDInTransaction(context.Context, pgx.Tx, int) (*models.User, error)
+	})
+	if !ok {
+		return nil, nil, nil, errors.New("account repository does not support caller-owned transactions")
+	}
+	if claims := ClaimsFromContext(ctx); claims != nil {
+		if claims.TokenType == TokenTypeAPIKey || claims.SessionID == "" {
+			return nil, nil, nil, ErrImpersonationNotAllowed
+		}
+		currentSession, err := sessions.GetByIDInTransaction(ctx, tx, claims.SessionID)
+		if err != nil {
+			if !IsSessionNotFound(err) {
+				return nil, nil, nil, fmt.Errorf("getting current session: %w", err)
+			}
+		} else if currentSession.ImpersonatorUserID != nil {
+			return nil, nil, nil, ErrAlreadyImpersonating
+		}
+	}
+	admin, err := users.GetByIDInTransaction(ctx, tx, adminUserID)
+	if err != nil {
+		if IsNotFound(err) {
+			return nil, nil, nil, ErrImpersonationNotAllowed
+		}
+		return nil, nil, nil, fmt.Errorf("getting admin user: %w", err)
+	}
+	if admin.Role != "admin" || !admin.Enabled || adminUserID == targetUserID {
+		return nil, nil, nil, ErrImpersonationNotAllowed
+	}
+	target, err := users.GetByIDInTransaction(ctx, tx, targetUserID)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("getting target user: %w", err)
+	}
+	if !target.Enabled || target.Role == "admin" {
+		return nil, nil, nil, ErrImpersonationNotAllowed
+	}
+	sessionID := uuid.NewString()
+	impersonatorUserID := admin.ID
+	startedAt := time.Now()
+	if err := sessions.CreateInTransaction(ctx, tx, models.AuthSession{
+		ID: sessionID, UserID: target.ID, DeviceName: deviceName, IPAddress: ip,
+		ExpiresAt: startedAt.Add(s.jwt.RefreshExpiry()), ImpersonatorUserID: &impersonatorUserID,
+		ImpersonationStartedAt: &startedAt,
+	}); err != nil {
+		return nil, nil, nil, fmt.Errorf("creating session: %w", err)
+	}
+	pair, err := s.generateTokenPair(Claims{
+		UserID: target.ID, AccountIncarnationID: target.AccountIncarnationID.String(), Role: target.Role,
+		SessionID: sessionID, ImpersonatorUserID: &impersonatorUserID,
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	return pair, admin, target, nil
 }
 

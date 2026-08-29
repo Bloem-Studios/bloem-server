@@ -146,6 +146,10 @@ type ImpersonationService interface {
 	StartImpersonation(ctx context.Context, adminUserID, targetUserID int, deviceName, ip string) (*auth.TokenPair, *models.User, *models.User, error)
 }
 
+type transactionalImpersonationService interface {
+	StartImpersonationInTransaction(context.Context, pgx.Tx, int, int, string, string) (*auth.TokenPair, *models.User, *models.User, error)
+}
+
 // AdminHandler handles admin-only HTTP endpoints for user management,
 // session listing, unmatched files, and system stats.
 type AdminHandler struct {
@@ -872,8 +876,13 @@ func (h *AdminHandler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreateUser handles POST /admin/users.
 func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
 	var req createUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
@@ -930,7 +939,7 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 	if req.Permissions.Set {
 		permissions = req.Permissions.Value
 	}
-	permissions, err := auth.NormalizePermissions(permissions)
+	permissions, err = auth.NormalizePermissions(permissions)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
@@ -983,6 +992,14 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 			Enabled: req.CreateDefaultProfile,
 			Name:    req.DefaultProfileName,
 		},
+	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleCreateUser(w, r, body, req, accountInput, directEntitlementRequested)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
 	}
 
 	var user *models.User
@@ -1639,6 +1656,14 @@ func (h *AdminHandler) HandleImpersonateUser(w http.ResponseWriter, r *http.Requ
 	targetID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user ID")
+		return
+	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleImpersonateUser(w, r, claims, targetID)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
 

@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/jackc/pgx/v5"
 )
 
 const settingMutationAdvisoryClass int32 = 0x534d5554 // "SMUT"
@@ -19,6 +20,12 @@ type postgresSettingMutationWriter struct {
 
 var _ userstore.SettingMutationTransactioner = (*PostgresUserStore)(nil)
 var _ userstore.SettingMutationWriter = (*postgresSettingMutationWriter)(nil)
+
+// SettingMutationWriterInTransaction binds canonical setting writes to a
+// caller-owned lifecycle transaction.
+func (s *PostgresUserStore) SettingMutationWriterInTransaction(_ context.Context, tx pgx.Tx) userstore.SettingMutationWriter {
+	return &postgresSettingMutationWriter{exec: tx, userID: s.userID}
+}
 
 // WithSettingMutationTransaction takes a transaction-scoped advisory lock
 // before reading mutation_id. The hash includes the user, so unrelated
