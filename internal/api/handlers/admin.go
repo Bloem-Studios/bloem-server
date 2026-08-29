@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/errgroup"
@@ -36,6 +37,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	evt "github.com/Silo-Server/silo-server/internal/events"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/markers"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/notifications"
@@ -142,6 +144,8 @@ type AdminHandler struct {
 	sessionRepo        adminUserSessionRepository
 	profileHandler     *ProfileHandler
 	accountProvisioner *auth.AccountProvisioner
+	lifecycle          lifecycleidempotency.Coordinator
+	lifecycleDigest    lifecycleidempotency.RequestDigester
 	DetailSvc          *catalog.DetailService
 	StatsSource        AdminStatsSource
 	HostStatsSource    HostStatsSource
@@ -267,6 +271,13 @@ func NewAdminHandler(
 // accounts created by the admin API.
 func (h *AdminHandler) SetMembershipProvisioner(provisioner auth.MembershipProvisioner) {
 	h.accountProvisioner.SetMembershipProvisioner(provisioner)
+}
+
+// SetLifecycleIdempotency installs the durable receipt coordinator used by
+// lifecycle mutation handlers. Both dependencies are required together.
+func (h *AdminHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
+	h.lifecycle = coordinator
+	h.lifecycleDigest = digester
 }
 
 // --- Request/Response types ---
@@ -1262,6 +1273,14 @@ func (h *AdminHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user ID")
 		return
 	}
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleDeleteUser(w, r, id, idStr)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 
 	err = h.userRepo.Delete(r.Context(), id)
 	if err != nil {
@@ -1279,6 +1298,82 @@ func (h *AdminHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) 
 	h.invalidateStats(r.Context(), cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(id))
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AdminHandler) handleLifecycleDeleteUser(w http.ResponseWriter, r *http.Request, id int, selector string) {
+	claims := apimw.GetClaims(r.Context())
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
+		return
+	}
+	actorIncarnation, err := uuid.Parse(claims.AccountIncarnationID)
+	if err != nil || actorIncarnation == uuid.Nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
+		return
+	}
+	actorID := claims.UserID
+	request := lifecycleidempotency.Request{
+		IdempotencyKey: r.Header.Get("Idempotency-Key"),
+		Binding: lifecycleidempotency.Binding{
+			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
+			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: "account.delete",
+			RequestHash:  h.lifecycleDigest(r.Method, "account.delete", map[string]string{"id": selector}, r.URL.Query(), nil),
+			TargetSource: lifecycleidempotency.TargetPathAccount,
+		},
+		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+			return lifecycleidempotency.ResolveAccountTargets(ctx, tx, id)
+		},
+	}
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		if err := h.accountProvisioner.DeleteUserInTransaction(ctx, tx, id); err != nil {
+			return lifecycleidempotency.Result{}, err
+		}
+		return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
+	})
+	if err != nil {
+		h.writeLifecycleMutationError(w, err)
+		return
+	}
+	if !result.Replayed {
+		if err := h.revokeUserSessions(r.Context(), id); err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke deleted user sessions")
+			return
+		}
+		h.invalidateStats(r.Context(), cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(id))
+	}
+	for key, values := range result.Headers {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+	status := result.Status
+	if status == 0 {
+		status = http.StatusNoContent
+	}
+	w.WriteHeader(status)
+	if len(result.Body) > 0 {
+		_, _ = w.Write(result.Body)
+	}
+}
+
+func (h *AdminHandler) writeLifecycleMutationError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, lifecycleidempotency.ErrKeyRequired):
+		writeError(w, http.StatusPreconditionRequired, "idempotency_key_required", "Idempotency-Key is required for this lifecycle mutation")
+	case errors.Is(err, lifecycleidempotency.ErrKeyMalformed):
+		writeError(w, http.StatusBadRequest, "idempotency_key_invalid", "Idempotency-Key must be a bounded opaque ASCII value")
+	case errors.Is(err, lifecycleidempotency.ErrConflict):
+		writeError(w, http.StatusConflict, "idempotency_key_conflict", "Idempotency-Key conflicts with its original lifecycle request")
+	case errors.Is(err, lifecycleidempotency.ErrTargetNotFound), auth.IsNotFound(err):
+		writeError(w, http.StatusNotFound, "not_found", "User not found")
+	case errors.Is(err, lifecycleidempotency.ErrPending):
+		w.Header().Set("Retry-After", "1")
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_request_pending", "Lifecycle request completion is pending")
+	case errors.Is(err, lifecycleidempotency.ErrInvalidBinding):
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Lifecycle request identity is no longer valid")
+	default:
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to delete user")
+	}
 }
 
 // HandleImpersonateUser handles POST /admin/users/{id}/impersonate.

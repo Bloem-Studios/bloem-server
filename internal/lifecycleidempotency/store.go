@@ -71,6 +71,29 @@ func (s *PostgresStore) LockKey(ctx context.Context, tx pgx.Tx, digest Digest) e
 	return nil
 }
 
+func (s *PostgresStore) LockActor(ctx context.Context, tx pgx.Tx, binding Binding) error {
+	if binding.ActorKind == ActorPreauthIntent {
+		return nil
+	}
+	if binding.ActorKind != ActorAuthenticatedAccount || binding.ActorAccountID == nil ||
+		binding.ActorAccountIncarnationID == nil {
+		return ErrInvalidBinding
+	}
+	var exists bool
+	err := tx.QueryRow(ctx, `
+SELECT true
+FROM public.users
+WHERE id=$1 AND account_incarnation_id=$2
+FOR SHARE`, *binding.ActorAccountID, *binding.ActorAccountIncarnationID).Scan(&exists)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return ErrInvalidBinding
+		}
+		return fmt.Errorf("lock lifecycle request actor: %w", err)
+	}
+	return nil
+}
+
 func (s *PostgresStore) Find(ctx context.Context, tx pgx.Tx, digest Digest) (*Receipt, error) {
 	var receipt Receipt
 	var keyBytes, requestHash, targetDigest, actorSubject []byte

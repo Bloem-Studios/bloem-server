@@ -163,6 +163,32 @@ func TestLifecycleIdempotencyRejectsActorWithoutImmutableIdentityBeforeTargetLoo
 	}
 }
 
+func TestLifecycleIdempotencyFirstKeyedRequestLocksActorBeforeTarget(t *testing.T) {
+	request := testRequest(41, uuid.New())
+	request.IdempotencyKey = "first-keyed-request-key"
+	store := &recordingStore{phase: PhaseOptional}
+	request.ResolveTargets = func(context.Context, pgx.Tx) ([]TargetBinding, error) {
+		store.events = append(store.events, "target")
+		return []TargetBinding{{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 41, AccountIncarnationID: uuid.New()}}, nil
+	}
+	_, err := NewCoordinator(store, fixedDigester(testDigest(8))).Execute(context.Background(), request, func(context.Context, pgx.Tx, Binding) (Result, error) {
+		store.events = append(store.events, "mutate")
+		return Result{Status: 204}, nil
+	})
+	if err != nil {
+		t.Fatalf("Execute() error: %v", err)
+	}
+	want := []string{"actor", "target", "insert", "mutate", "complete"}
+	if len(store.events) != len(want) {
+		t.Fatalf("events = %v, want %v", store.events, want)
+	}
+	for index := range want {
+		if store.events[index] != want[index] {
+			t.Fatalf("events = %v, want %v", store.events, want)
+		}
+	}
+}
+
 func testRequest(accountID int, incarnation uuid.UUID) Request {
 	return Request{Binding: Binding{
 		ActorKind: ActorAuthenticatedAccount, ActorAccountID: &accountID,
@@ -185,6 +211,7 @@ type recordingStore struct {
 	receipt     *Receipt
 	findCalls   int
 	insertCalls int
+	events      []string
 }
 
 func (s *recordingStore) InTransaction(ctx context.Context, fn func(context.Context, pgx.Tx) error) error {
@@ -197,8 +224,16 @@ func (s *recordingStore) Find(_ context.Context, _ pgx.Tx, _ Digest) (*Receipt, 
 	s.findCalls++
 	return s.receipt, nil
 }
-func (s *recordingStore) Insert(_ context.Context, _ pgx.Tx, _ Receipt) error {
-	s.insertCalls++
+func (s *recordingStore) LockActor(context.Context, pgx.Tx, Binding) error {
+	s.events = append(s.events, "actor")
 	return nil
 }
-func (s *recordingStore) Complete(context.Context, pgx.Tx, Digest, Result) error { return nil }
+func (s *recordingStore) Insert(_ context.Context, _ pgx.Tx, _ Receipt) error {
+	s.insertCalls++
+	s.events = append(s.events, "insert")
+	return nil
+}
+func (s *recordingStore) Complete(context.Context, pgx.Tx, Digest, Result) error {
+	s.events = append(s.events, "complete")
+	return nil
+}

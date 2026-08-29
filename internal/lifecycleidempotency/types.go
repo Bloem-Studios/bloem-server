@@ -48,6 +48,7 @@ var (
 	ErrKeyRequired    = errors.New("lifecycle idempotency key is required")
 	ErrKeyMalformed   = errors.New("lifecycle idempotency key is malformed")
 	ErrInvalidBinding = errors.New("lifecycle idempotency binding is invalid")
+	ErrTargetNotFound = errors.New("lifecycle idempotency target not found")
 	ErrPending        = errors.New("lifecycle request is committed and pending completion")
 )
 

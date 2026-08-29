@@ -18,6 +18,7 @@ type Store interface {
 	Phase(context.Context, pgx.Tx) (Phase, error)
 	LockKey(context.Context, pgx.Tx, Digest) error
 	Find(context.Context, pgx.Tx, Digest) (*Receipt, error)
+	LockActor(context.Context, pgx.Tx, Binding) error
 	Insert(context.Context, pgx.Tx, Receipt) error
 	Complete(context.Context, pgx.Tx, Digest, Result) error
 }
@@ -72,6 +73,9 @@ func (c *coordinator) Execute(ctx context.Context, request Request, mutate Mutat
 			if !validBinding(request.Binding) {
 				return ErrInvalidBinding
 			}
+			if err := c.store.LockActor(txCtx, tx, request.Binding); err != nil {
+				return err
+			}
 			binding, err := resolveBinding(txCtx, tx, request)
 			if err != nil {
 				return err
@@ -100,6 +104,9 @@ func (c *coordinator) Execute(ctx context.Context, request Request, mutate Mutat
 			return nil
 		}
 
+		if err := c.store.LockActor(txCtx, tx, request.Binding); err != nil {
+			return err
+		}
 		binding, err := resolveBinding(txCtx, tx, request)
 		if err != nil {
 			return err

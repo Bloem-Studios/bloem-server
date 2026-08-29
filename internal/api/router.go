@@ -1311,6 +1311,13 @@ func NewRouter(deps Dependencies) chi.Router {
 		adminHandler = handlers.NewAdminHandler(userRepo, deps.DB, deps.UserStoreProvider)
 		adminHandler.SetProfileHandler(profileHandler)
 		adminHandler.SetMembershipProvisioner(deps.MembershipProvisioner)
+		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
+			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
+			adminHandler.SetLifecycleIdempotency(
+				lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
+			)
+		}
 		if deps.DB != nil {
 			// The tenant admin API (bloem-park growth G2): a park tenant is
 			// an organization, so the same tenancy.Store the OPA subject
