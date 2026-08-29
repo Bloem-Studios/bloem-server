@@ -14,9 +14,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
@@ -656,6 +659,14 @@ func (h *AdminHandler) HandleListUserAuthSessions(w http.ResponseWriter, r *http
 // HandleRevokeUserAuthSession handles DELETE
 // /admin/users/{user_id}/auth-sessions/{session_id}.
 func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleRevokeUserSessions(w, r, false)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return
@@ -735,6 +746,14 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 // HandleRevokeAllUserAuthSessions handles DELETE
 // /admin/users/{user_id}/auth-sessions.
 func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.lifecycleDigest != nil {
+		h.handleLifecycleRevokeUserSessions(w, r, true)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return
@@ -784,6 +803,91 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 	if h.OnUserSessionsRevoked != nil {
 		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
 			return h.OnUserSessionsRevoked(callbackCtx, resources.user.ID)
+		}); err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
+			return
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AdminHandler) handleLifecycleRevokeUserSessions(w http.ResponseWriter, r *http.Request, all bool) {
+	userSelector := strings.TrimSpace(chi.URLParam(r, "user_id"))
+	userID, err := strconv.Atoi(userSelector)
+	if err != nil || userID <= 0 {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user id")
+		return
+	}
+	sessionID := strings.TrimSpace(chi.URLParam(r, "session_id"))
+	if !all && sessionID == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "Session ID is required")
+		return
+	}
+	claims := apimw.GetClaims(r.Context())
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
+		return
+	}
+	actorIncarnation, err := uuid.Parse(claims.AccountIncarnationID)
+	if err != nil || actorIncarnation == uuid.Nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
+		return
+	}
+	routeID := "account.session.delete"
+	selectors := map[string]string{"user_id": userSelector, "session_id": sessionID}
+	if all {
+		routeID = "account.sessions.delete"
+		delete(selectors, "session_id")
+	}
+	actorID := claims.UserID
+	request := lifecycleidempotency.Request{
+		IdempotencyKey: r.Header.Get("Idempotency-Key"),
+		Binding: lifecycleidempotency.Binding{
+			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
+			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: routeID,
+			RequestHash:  h.lifecycleDigest(r.Method, routeID, selectors, r.URL.Query(), nil),
+			TargetSource: lifecycleidempotency.TargetPathAccount,
+		},
+		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+			return lifecycleidempotency.ResolveAccountTargets(ctx, tx, userID)
+		},
+	}
+	mutated := all
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		if all {
+			if _, err := tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL`, userID); err != nil {
+				return lifecycleidempotency.Result{}, fmt.Errorf("revoke account sessions: %w", err)
+			}
+			return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
+		}
+		var ownerID int
+		err := tx.QueryRow(ctx, `SELECT user_id FROM auth_sessions WHERE id=$1 FOR UPDATE`, sessionID).Scan(&ownerID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
+		}
+		if err != nil {
+			return lifecycleidempotency.Result{}, fmt.Errorf("lock authentication session: %w", err)
+		}
+		if ownerID != userID {
+			return lifecycleidempotency.Result{}, auth.ErrSessionNotFound
+		}
+		if _, err := tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at=NOW() WHERE id=$1`, sessionID); err != nil {
+			return lifecycleidempotency.Result{}, fmt.Errorf("revoke authentication session: %w", err)
+		}
+		mutated = true
+		return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
+	})
+	if err != nil {
+		if errors.Is(err, auth.ErrSessionNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
+			return
+		}
+		h.writeLifecycleMutationError(w, err)
+		return
+	}
+	if !result.Replayed && mutated && h.OnUserSessionsRevoked != nil {
+		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
+			return h.OnUserSessionsRevoked(callbackCtx, userID)
 		}); err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
 			return
