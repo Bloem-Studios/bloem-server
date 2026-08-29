@@ -93,15 +93,19 @@ func TestAdminUserResourceRoutesUseProductionAdminBoundary(t *testing.T) {
 	}
 	for _, route := range adminUserResourceRouteContract {
 		path := requestPath(route.path)
-		unauthenticated := performJSONRequest(t, router, route.method, path, `{}`, "", nil)
+		body := `{}`
+		if route.method == http.MethodPost && strings.HasSuffix(route.path, "/profiles") {
+			body = `{"name":"Route Profile"}`
+		}
+		unauthenticated := performJSONRequest(t, router, route.method, path, body, "", nil)
 		if unauthenticated.Code != http.StatusUnauthorized {
 			t.Errorf("unauthenticated %s %s = %d %s, want 401", route.method, path, unauthenticated.Code, unauthenticated.Body.String())
 		}
-		nonAdmin := performJSONRequest(t, router, route.method, path, `{}`, userLogin.AccessToken, nil)
+		nonAdmin := performJSONRequest(t, router, route.method, path, body, userLogin.AccessToken, nil)
 		if nonAdmin.Code != http.StatusForbidden {
 			t.Errorf("non-admin %s %s = %d %s, want 403", route.method, path, nonAdmin.Code, nonAdmin.Body.String())
 		}
-		authorized := performJSONRequest(t, router, route.method, path, `{}`, login.AccessToken, nil)
+		authorized := performJSONRequest(t, router, route.method, path, body, login.AccessToken, nil)
 		if authorized.Code != http.StatusNotFound || !strings.Contains(authorized.Body.String(), `"error":"not_found"`) {
 			t.Errorf("authorized %s %s = %d %s, want handler not_found", route.method, path, authorized.Code, authorized.Body.String())
 		}

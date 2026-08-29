@@ -112,10 +112,13 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 	}
 	for _, route := range adminTenantMemberRouteContract {
 		path := requestPath(route.path)
-		headers := map[string]string{"Idempotency-Key": "route-command"}
+		headers := map[string]string{"Idempotency-Key": "route-command-0001"}
 		body := `{}`
 		if route.method == http.MethodPost && route.path == "/api/v1/admin/tenants/{tenant_id}/members" {
 			body = `{"username":"route-member","email":"route-member@example.test","password":"private-route-password"}`
+		}
+		if route.method == http.MethodPost && strings.HasSuffix(route.path, "/profiles") {
+			body = `{"name":"Route Profile"}`
 		}
 		unauthenticated := performJSONRequest(t, router, route.method, path, body, "", headers)
 		if unauthenticated.Code != http.StatusUnauthorized {
@@ -172,8 +175,8 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		}
 
 		replayed := performJSONRequest(t, router, http.MethodPost, memberPath, memberBody, adminLogin.AccessToken, memberHeaders)
-		if replayed.Code != http.StatusOK || !strings.Contains(replayed.Body.String(), `"user_id":`+strconv.Itoa(member.UserID)) {
-			t.Fatalf("replay member = %d %s, want 200 and the original user", replayed.Code, replayed.Body.String())
+		if replayed.Code != http.StatusCreated || !strings.Contains(replayed.Body.String(), `"user_id":`+strconv.Itoa(member.UserID)) {
+			t.Fatalf("replay member = %d %s, want the original 201 response and user", replayed.Code, replayed.Body.String())
 		}
 
 		profilesPath := memberPath + "/" + strconv.Itoa(member.UserID) + "/profiles"
@@ -347,15 +350,15 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 			t.Fatal(err)
 		}
 		suspendedMember := performJSONRequest(t, router, http.MethodPost, memberAPath+"/suspend", `{}`, adminLogin.AccessToken, nil)
-		if suspendedMember.Code != http.StatusOK {
-			t.Fatalf("suspend member = %d %s", suspendedMember.Code, suspendedMember.Body.String())
+		if suspendedMember.Code != http.StatusServiceUnavailable || !strings.Contains(suspendedMember.Body.String(), `"error":"membership_policy_rollout_pending"`) {
+			t.Fatalf("suspend member = %d %s, want rollout-pending 503", suspendedMember.Code, suspendedMember.Body.String())
 		}
-		if _, ok := compatStore.Get("compat-suspend"); ok {
-			t.Fatal("suspend left compat session valid")
+		if _, ok := compatStore.Get("compat-suspend"); !ok {
+			t.Fatal("blocked suspend invalidated a compatibility session")
 		}
 		resumedMember := performJSONRequest(t, router, http.MethodPost, memberAPath+"/resume", `{}`, adminLogin.AccessToken, nil)
 		if resumedMember.Code != http.StatusOK {
-			t.Fatalf("resume member = %d %s", resumedMember.Code, resumedMember.Body.String())
+			t.Fatalf("no-op resume member = %d %s, want 200", resumedMember.Code, resumedMember.Body.String())
 		}
 		compatInvalidationErr = context.DeadlineExceeded
 		committedEmail := "compat-failure-committed@example.test"
@@ -369,11 +372,12 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		if committedMember.Code != http.StatusOK || !strings.Contains(committedMember.Body.String(), `"email":"`+committedEmail+`"`) {
 			t.Fatalf("identity did not remain committed after compat failure = %d %s", committedMember.Code, committedMember.Body.String())
 		}
-		deletedA := performJSONRequest(t, router, http.MethodDelete, memberAPath, "", adminLogin.AccessToken, nil)
+		deleteHeaders := map[string]string{"Idempotency-Key": "delete-tenant-member-command"}
+		deletedA := performJSONRequest(t, router, http.MethodDelete, memberAPath, "", adminLogin.AccessToken, deleteHeaders)
 		if deletedA.Code != http.StatusNoContent {
 			t.Fatalf("delete tenant A membership = %d %s", deletedA.Code, deletedA.Body.String())
 		}
-		repeatedDeleteA := performJSONRequest(t, router, http.MethodDelete, memberAPath, "", adminLogin.AccessToken, nil)
+		repeatedDeleteA := performJSONRequest(t, router, http.MethodDelete, memberAPath, "", adminLogin.AccessToken, deleteHeaders)
 		if repeatedDeleteA.Code != http.StatusNoContent {
 			t.Fatalf("repeat delete tenant A membership = %d %s", repeatedDeleteA.Code, repeatedDeleteA.Body.String())
 		}

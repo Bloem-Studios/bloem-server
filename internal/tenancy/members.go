@@ -671,6 +671,12 @@ func (s *MemberService) DeleteInTransaction(ctx context.Context, tx pgx.Tx, tena
 			return fmt.Errorf("tenancy: delete unowned member account: %w", err)
 		}
 	} else {
+		if _, err := tx.Exec(ctx, `DELETE FROM user_device_settings WHERE user_id=$1 AND profile_id IN (SELECT id FROM user_profiles WHERE user_id=$1 AND organization_id=$2)`, userID, tenantID); err != nil {
+			return fmt.Errorf("tenancy: delete scoped member device settings: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM user_devices WHERE user_id=$1 AND profile_id IN (SELECT id FROM user_profiles WHERE user_id=$1 AND organization_id=$2)`, userID, tenantID); err != nil {
+			return fmt.Errorf("tenancy: delete scoped member devices: %w", err)
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM organization_memberships WHERE organization_id=$1 AND account_id=$2`, tenantID, userID); err != nil {
 			return fmt.Errorf("tenancy: delete scoped member membership: %w", err)
 		}

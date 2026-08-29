@@ -390,6 +390,8 @@ func deleteProfile(ctx context.Context, tx preferenceSettingsExecutor, userID in
 		"user_favorites",
 		"user_watchlist",
 		"user_watch_progress",
+		"user_device_settings",
+		"user_devices",
 		"user_collection_sort_preferences",
 		"user_personal_collections",
 		"user_series_playback_preferences",

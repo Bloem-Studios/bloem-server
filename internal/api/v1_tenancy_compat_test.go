@@ -21,6 +21,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/yaml.v3"
@@ -35,6 +36,24 @@ func (b v1TenancyBootstrap) ActivateInitialOwnership(ctx context.Context, accoun
 
 func (b v1TenancyBootstrap) ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) error {
 	_, err := b.store.ProvisionDefaultMembership(ctx, accountID, legacyRole)
+	return err
+}
+
+func (b v1TenancyBootstrap) ProvisionDefaultMembershipInTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	accountID int,
+	legacyRole string,
+) (uuid.UUID, uuid.UUID, error) {
+	membership, err := b.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, legacyRole)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	return membership.OrganizationID, membership.ID, nil
+}
+
+func (b v1TenancyBootstrap) ActivateInitialOwnershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int) error {
+	_, err := b.store.ActivateInitialOwnershipInTransaction(ctx, tx, accountID)
 	return err
 }
 
