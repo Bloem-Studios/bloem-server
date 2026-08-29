@@ -26,15 +26,18 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Lock is a held PostgreSQL session-level advisory lock, pinned to the
 // pool connection that acquired it. Callers must release it via Unlock
-// (typically deferred) once the guarded work completes, so the connection
-// returns to the pool.
+// (typically deferred) once the guarded work completes. A successfully
+// unlocked connection returns to the pool.
 type Lock struct {
+	mu   sync.Mutex
 	conn *pgxpool.Conn
 	key  int64
 }
@@ -70,24 +73,45 @@ func TryLock(ctx context.Context, pool *pgxpool.Pool, key int64) (*Lock, bool, e
 	return &Lock{conn: conn, key: key}, true, nil
 }
 
-// Unlock releases the advisory lock with pg_advisory_unlock and returns the
-// underlying connection to the pool. Safe to call on a nil *Lock (no-op),
-// so callers can unconditionally `defer lock.Unlock(ctx)` after a TryLock
-// that may have returned a nil lock.
+// Unlock releases the advisory lock with pg_advisory_unlock. A confirmed
+// unlock returns the underlying connection to the pool; otherwise the
+// connection is closed so a possibly held session lock cannot leak through
+// pool reuse. Safe to call repeatedly or on a nil *Lock (no-op), so callers
+// can unconditionally `defer lock.Unlock(ctx)` after a TryLock that may have
+// returned a nil lock.
 func (l *Lock) Unlock(ctx context.Context) error {
-	if l == nil || l.conn == nil {
+	if l == nil {
 		return nil
 	}
-	defer l.conn.Release()
+
+	l.mu.Lock()
+	conn := l.conn
+	l.conn = nil
+	l.mu.Unlock()
+	if conn == nil {
+		return nil
+	}
 
 	var unlocked bool
-	if err := l.conn.QueryRow(ctx, `SELECT pg_advisory_unlock($1)`, l.key).Scan(&unlocked); err != nil {
-		return fmt.Errorf("dblock: pg_advisory_unlock(%d): %w", l.key, err)
+	var unlockErr error
+	if err := conn.QueryRow(ctx, `SELECT pg_advisory_unlock($1)`, l.key).Scan(&unlocked); err != nil {
+		unlockErr = fmt.Errorf("dblock: pg_advisory_unlock(%d): %w", l.key, err)
+	} else if !unlocked {
+		unlockErr = fmt.Errorf("dblock: advisory lock %d was not held", l.key)
 	}
-	if !unlocked {
-		return fmt.Errorf("dblock: advisory lock %d was not held", l.key)
+	if unlockErr == nil {
+		conn.Release()
+		return nil
 	}
-	return nil
+
+	// The session may still own the advisory lock. Remove the connection from
+	// the pool before closing it with a bounded context independent of the
+	// caller, which commonly reaches this path because its context was canceled.
+	rawConn := conn.Hijack()
+	closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = rawConn.Close(closeCtx)
+	return unlockErr
 }
 
 // Key derives a stable int64 advisory-lock key from a human-readable job

@@ -2,11 +2,15 @@ package dblock
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -30,6 +34,77 @@ func newDBLockTestPool(t *testing.T) *pgxpool.Pool {
 	}
 	t.Cleanup(pool.Close)
 	return pool
+}
+
+func newSingleConnectionDBLockTestPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" && os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
+		t.Fatal("SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1")
+	}
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatalf("parse test database config: %v", err)
+	}
+	config.MaxConns = 1
+	config.MinConns = 0
+	config.MinIdleConns = 0
+
+	ctx := context.Background()
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		t.Fatalf("connect single-connection test database pool: %v", err)
+	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		t.Fatalf("ping single-connection test database pool: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	return pool
+}
+
+func acquireTestLock(t *testing.T, pool *pgxpool.Pool, name string) *Lock {
+	t.Helper()
+	lock, acquired, err := TryLock(context.Background(), pool, Key(name))
+	if err != nil {
+		t.Fatalf("TryLock: %v", err)
+	}
+	if !acquired {
+		t.Fatal("TryLock did not acquire an uncontended lock")
+	}
+	return lock
+}
+
+func requireConnectionRetired(t *testing.T, pool *pgxpool.Pool, retired *pgx.Conn, retiredPID uint32) {
+	t.Helper()
+	if !retired.PgConn().IsClosed() {
+		t.Fatal("failed unlock connection remains open")
+	}
+	stats := pool.Stat()
+	if stats.AcquiredConns() != 0 || stats.IdleConns() != 0 || stats.TotalConns() != 0 {
+		t.Fatalf(
+			"failed unlock connection remains accounted to pool: acquired=%d idle=%d total=%d",
+			stats.AcquiredConns(), stats.IdleConns(), stats.TotalConns(),
+		)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	replacement, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatalf("acquire replacement connection: %v", err)
+	}
+	defer replacement.Release()
+	if replacement.Conn() == retired {
+		t.Fatal("pool reused the exact connection whose unlock failed")
+	}
+	if replacement.Conn().PgConn().PID() == retiredPID {
+		t.Fatalf("pool reused backend PID %d after failed unlock", retiredPID)
+	}
 }
 
 // Two concurrent TryLock calls against the same key from two separate
@@ -121,6 +196,125 @@ func TestLock_UnlockNilIsNoop(t *testing.T) {
 	var l *Lock
 	if err := l.Unlock(context.Background()); err != nil {
 		t.Fatalf("unlock nil lock: %v", err)
+	}
+}
+
+func TestLock_UnlockFalseRetiresConnection(t *testing.T) {
+	pool := newSingleConnectionDBLockTestPool(t)
+	lock := acquireTestLock(t, pool, fmt.Sprintf("dblock-test-unlock-false-%d", time.Now().UnixNano()))
+	ctx := context.Background()
+	retired := lock.conn.Conn()
+	retiredPID := retired.PgConn().PID()
+
+	var unlocked bool
+	if err := lock.conn.QueryRow(ctx, `SELECT pg_advisory_unlock($1)`, lock.key).Scan(&unlocked); err != nil {
+		t.Fatalf("remove held advisory lock before Unlock: %v", err)
+	}
+	if !unlocked {
+		t.Fatal("test setup did not remove the held advisory lock")
+	}
+
+	err := lock.Unlock(ctx)
+	if err == nil || !strings.Contains(err.Error(), "was not held") {
+		t.Fatalf("Unlock error = %v, want advisory-lock-not-held error", err)
+	}
+	requireConnectionRetired(t, pool, retired, retiredPID)
+}
+
+func TestLock_UnlockQueryErrorRetiresConnection(t *testing.T) {
+	pool := newSingleConnectionDBLockTestPool(t)
+	lock := acquireTestLock(t, pool, fmt.Sprintf("dblock-test-unlock-error-%d", time.Now().UnixNano()))
+	retired := lock.conn.Conn()
+	retiredPID := retired.PgConn().PID()
+
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := lock.Unlock(canceledCtx)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Unlock error = %v, want context.Canceled", err)
+	}
+	requireConnectionRetired(t, pool, retired, retiredPID)
+}
+
+func TestLock_UnlockSuccessReleasesConnection(t *testing.T) {
+	pool := newSingleConnectionDBLockTestPool(t)
+	lock := acquireTestLock(t, pool, fmt.Sprintf("dblock-test-unlock-success-%d", time.Now().UnixNano()))
+	released := lock.conn.Conn()
+	releasedPID := released.PgConn().PID()
+
+	if err := lock.Unlock(context.Background()); err != nil {
+		t.Fatalf("Unlock: %v", err)
+	}
+	if released.PgConn().IsClosed() {
+		t.Fatal("successful unlock closed the pooled connection")
+	}
+	stats := pool.Stat()
+	if stats.AcquiredConns() != 0 || stats.IdleConns() != 1 || stats.TotalConns() != 1 {
+		t.Fatalf(
+			"successful unlock pool accounting: acquired=%d idle=%d total=%d, want 0/1/1",
+			stats.AcquiredConns(), stats.IdleConns(), stats.TotalConns(),
+		)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	reacquired, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatalf("reacquire released connection: %v", err)
+	}
+	defer reacquired.Release()
+	if reacquired.Conn() != released || reacquired.Conn().PgConn().PID() != releasedPID {
+		t.Fatalf(
+			"successful unlock did not return the same connection: got PID %d, want %d",
+			reacquired.Conn().PgConn().PID(), releasedPID,
+		)
+	}
+}
+
+func TestLock_UnlockRepeatedIsNoop(t *testing.T) {
+	pool := newSingleConnectionDBLockTestPool(t)
+	lock := acquireTestLock(t, pool, fmt.Sprintf("dblock-test-unlock-repeated-%d", time.Now().UnixNano()))
+
+	if err := lock.Unlock(context.Background()); err != nil {
+		t.Fatalf("first Unlock: %v", err)
+	}
+	if err := lock.Unlock(context.Background()); err != nil {
+		t.Fatalf("second Unlock: %v", err)
+	}
+}
+
+func TestLock_UnlockConcurrentIsNoopAfterFirstDetach(t *testing.T) {
+	pool := newSingleConnectionDBLockTestPool(t)
+	lock := acquireTestLock(t, pool, fmt.Sprintf("dblock-test-unlock-concurrent-%d", time.Now().UnixNano()))
+
+	const callers = 32
+	start := make(chan struct{})
+	results := make(chan error, callers)
+	var wg sync.WaitGroup
+	wg.Add(callers)
+	for range callers {
+		go func() {
+			defer wg.Done()
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					results <- fmt.Errorf("Unlock panicked: %v", recovered)
+				}
+			}()
+			<-start
+			results <- lock.Unlock(context.Background())
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+
+	for err := range results {
+		if err != nil {
+			t.Errorf("concurrent Unlock: %v", err)
+		}
+	}
+	if got := pool.Stat().AcquiredConns(); got != 0 {
+		t.Fatalf("acquired connections after concurrent Unlock = %d, want 0", got)
 	}
 }
 
