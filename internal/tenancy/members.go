@@ -385,44 +385,13 @@ func (s *MemberService) Get(ctx context.Context, tenantID uuid.UUID, userID int)
 
 // Update changes member identity through the native user repository.
 func (s *MemberService) Update(ctx context.Context, tenantID uuid.UUID, userID int, input UpdateMemberInput) (models.User, error) {
-	if err := s.RequireMembership(ctx, tenantID, userID); err != nil {
-		return models.User{}, err
-	}
-	update := models.UpdateUserInput{}
-	if input.Username != nil {
-		username := strings.TrimSpace(*input.Username)
-		if username == "" || len(username) > 255 || strings.IndexFunc(username, unicode.IsControl) >= 0 {
-			return models.User{}, ErrInvalidMemberCommand
-		}
-		update.Username = &username
-	}
-	if input.Email != nil {
-		email := strings.TrimSpace(*input.Email)
-		parsed, err := mail.ParseAddress(email)
-		if err != nil || parsed.Address != email || !strings.Contains(email, "@") || len(email) > 320 {
-			return models.User{}, ErrInvalidMemberCommand
-		}
-		update.Email = &email
-	}
-	if update.Username == nil && update.Email == nil {
-		return models.User{}, ErrInvalidMemberCommand
-	}
 	tx, err := s.beginMemberMutation(ctx, tenantID, userID)
 	if err != nil {
 		return models.User{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	conflict, err := s.accounts.UpdateUserInTransaction(ctx, tx, userID, update)
-	if conflict {
-		return models.User{}, ErrUsernameConflict
-	}
-	if err != nil {
-		return models.User{}, fmt.Errorf("tenancy: update member: %w", err)
-	}
-	if s.sessions != nil {
-		if err := s.sessions.RevokeAllByUserInTransaction(ctx, tx, userID); err != nil {
-			return models.User{}, fmt.Errorf("tenancy: revoke changed member sessions: %w", err)
-		}
+	if _, err := s.UpdateInTransaction(ctx, tx, tenantID, userID, input); err != nil {
+		return models.User{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return models.User{}, fmt.Errorf("tenancy: commit member update: %w", err)
@@ -479,28 +448,8 @@ func (s *MemberService) setSuspended(ctx context.Context, tenantID uuid.UUID, us
 		return models.User{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	enabled := !suspended
-	if _, err := s.accounts.UpdateUserInTransaction(ctx, tx, userID, models.UpdateUserInput{Enabled: &enabled}); err != nil {
-		return models.User{}, fmt.Errorf("tenancy: update member enabled state: %w", err)
-	}
-	status := MembershipActive
-	if suspended {
-		status = MembershipSuspended
-	}
-	tag, err := tx.Exec(ctx, `
-		UPDATE organization_memberships
-		SET status = $3, security_revision = security_revision + 1, updated_at = now()
-		WHERE organization_id = $1 AND account_id = $2`, tenantID, userID, status)
-	if err != nil {
-		return models.User{}, fmt.Errorf("tenancy: update member status: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return models.User{}, ErrMemberNotFound
-	}
-	if suspended && s.sessions != nil {
-		if err := s.sessions.RevokeAllByUserInTransaction(ctx, tx, userID); err != nil {
-			return models.User{}, fmt.Errorf("tenancy: revoke suspended member sessions: %w", err)
-		}
+	if _, err := s.SetSuspendedInTransaction(ctx, tx, tenantID, userID, suspended); err != nil {
+		return models.User{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return models.User{}, fmt.Errorf("tenancy: commit member state: %w", err)
@@ -519,24 +468,13 @@ func (s *MemberService) setSuspended(ctx context.Context, tenantID uuid.UUID, us
 
 // ResetPassword replaces the native password and revokes all login sessions.
 func (s *MemberService) ResetPassword(ctx context.Context, tenantID uuid.UUID, userID int, password string) (models.User, error) {
-	if err := s.RequireMembership(ctx, tenantID, userID); err != nil {
-		return models.User{}, err
-	}
-	if len(password) < 8 || len(password) > 72 {
-		return models.User{}, ErrInvalidMemberCommand
-	}
 	tx, err := s.beginMemberMutation(ctx, tenantID, userID)
 	if err != nil {
 		return models.User{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := s.accounts.UpdateUserInTransaction(ctx, tx, userID, models.UpdateUserInput{Password: &password}); err != nil {
-		return models.User{}, fmt.Errorf("tenancy: reset member password: %w", err)
-	}
-	if s.sessions != nil {
-		if err := s.sessions.RevokeAllByUserInTransaction(ctx, tx, userID); err != nil {
-			return models.User{}, fmt.Errorf("tenancy: revoke reset member sessions: %w", err)
-		}
+	if _, err := s.ResetPasswordInTransaction(ctx, tx, tenantID, userID, password); err != nil {
+		return models.User{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return models.User{}, fmt.Errorf("tenancy: commit member password reset: %w", err)

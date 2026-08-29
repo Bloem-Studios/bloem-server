@@ -447,13 +447,17 @@ func TestMemberServiceIdentityAndSessionRevocationAreAtomic(t *testing.T) {
 }
 
 func TestMemberServiceCallerOwnedTransactionControlsIdentityMutation(t *testing.T) {
-	ctx, pool, store, service, _ := newMemberService(t)
+	ctx, pool, store, service, sessions := newMemberService(t)
 	tenant := createMemberTenant(t, ctx, store, 1)
 	member, _, err := service.Create(ctx, tenant.ID, "caller-tx-create-"+uuid.NewString(), memberInput("caller-tx-"+uuid.NewString()))
 	if err != nil {
 		t.Fatalf("create member: %v", err)
 	}
 	t.Cleanup(func() { _ = service.Delete(context.Background(), tenant.ID, member.ID) })
+	sessionID := uuid.NewString()
+	if err := sessions.Create(ctx, models.AuthSession{ID: sessionID, UserID: member.ID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+		t.Fatalf("create member session: %v", err)
+	}
 
 	rolledBackName := "rolled-back-" + uuid.NewString()
 	tx, err := pool.Begin(ctx)
@@ -469,6 +473,9 @@ func TestMemberServiceCallerOwnedTransactionControlsIdentityMutation(t *testing.
 	unchanged, err := service.Get(ctx, tenant.ID, member.ID)
 	if err != nil || unchanged.Username != member.Username {
 		t.Fatalf("after rollback = %+v, %v; want username %q", unchanged, err, member.Username)
+	}
+	if valid, err := sessions.IsValid(ctx, sessionID); err != nil || !valid {
+		t.Fatalf("session after rollback valid = %v, error = %v", valid, err)
 	}
 
 	committedName := "committed-" + uuid.NewString()
@@ -489,6 +496,9 @@ func TestMemberServiceCallerOwnedTransactionControlsIdentityMutation(t *testing.
 	got, err := service.Get(ctx, tenant.ID, member.ID)
 	if err != nil || got.Username != committedName {
 		t.Fatalf("after commit = %+v, %v; want username %q", got, err, committedName)
+	}
+	if valid, err := sessions.IsValid(ctx, sessionID); err != nil || valid {
+		t.Fatalf("session after commit valid = %v, error = %v", valid, err)
 	}
 }
 

@@ -1356,6 +1356,13 @@ func NewRouter(deps Dependencies) chi.Router {
 			)
 			memberService.SetCompatSessionInvalidator(deps.OnUserSessionsRevoked)
 			adminTenantMembersHandler = handlers.NewAdminTenantMembersHandler(memberService, adminHandler)
+			if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
+				lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
+				adminTenantMembersHandler.SetLifecycleIdempotency(
+					lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+					lifecycleidempotency.NewRequestDigester(lifecycleSecret),
+				)
+			}
 			memberService.SetResourcePurger(adminTenantMembersHandler)
 		}
 		adminHandler.SessionsLoader = playbackSessionsLoader

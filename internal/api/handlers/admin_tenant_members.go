@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
@@ -32,10 +35,19 @@ type tenantMemberService interface {
 type AdminTenantMembersHandler struct {
 	members    tenantMemberService
 	adminUsers *AdminHandler
+	lifecycle  lifecycleidempotency.Coordinator
+	digest     lifecycleidempotency.RequestDigester
 }
 
 func NewAdminTenantMembersHandler(members tenantMemberService, adminUsers *AdminHandler) *AdminTenantMembersHandler {
 	return &AdminTenantMembersHandler{members: members, adminUsers: adminUsers}
+}
+
+// SetLifecycleIdempotency installs the durable coordinator used by tenant
+// member lifecycle mutations.
+func (h *AdminTenantMembersHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
+	h.lifecycle = coordinator
+	h.digest = digester
 }
 
 // PurgeOrganizationResources adapts the full Task 4 profile lifecycle for a
@@ -172,8 +184,17 @@ func (h *AdminTenantMembersHandler) HandleUpdate(w http.ResponseWriter, r *http.
 		Username *string `json:"username"`
 		Email    *string `json:"email"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	raw, err := io.ReadAll(r.Body)
+	if err != nil || json.NewDecoder(bytes.NewReader(raw)).Decode(&req) != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
+	if h.lifecycle != nil && h.digest != nil {
+		h.handleLifecycleUpdate(w, r, tenantID, userID, req.Username, req.Email, raw)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
 	member, err := h.members.Update(r.Context(), tenantID, userID, tenancy.UpdateMemberInput{
@@ -187,10 +208,26 @@ func (h *AdminTenantMembersHandler) HandleUpdate(w http.ResponseWriter, r *http.
 }
 
 func (h *AdminTenantMembersHandler) HandleSuspend(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.digest != nil {
+		h.handleLifecycleState(w, r, true)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	h.changeMemberState(w, r, h.members.Suspend, "Failed to suspend tenant member")
 }
 
 func (h *AdminTenantMembersHandler) HandleResume(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycle != nil && h.digest != nil {
+		h.handleLifecycleState(w, r, false)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	h.changeMemberState(w, r, h.members.Resume, "Failed to resume tenant member")
 }
 
@@ -202,8 +239,17 @@ func (h *AdminTenantMembersHandler) HandleResetPassword(w http.ResponseWriter, r
 	var req struct {
 		Password string `json:"password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	raw, err := io.ReadAll(r.Body)
+	if err != nil || json.NewDecoder(bytes.NewReader(raw)).Decode(&req) != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
+	if h.lifecycle != nil && h.digest != nil {
+		h.handleLifecycleResetPassword(w, r, tenantID, userID, req.Password, raw)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
 	member, err := h.members.ResetPassword(r.Context(), tenantID, userID, req.Password)
