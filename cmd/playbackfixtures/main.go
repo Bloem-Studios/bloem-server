@@ -286,12 +286,13 @@ func goldenDecisionResponse() playback.DecisionResponseV3 {
 	subtitleSource := goldenMediaFile()
 	file.ExternalSubtitles = subtitleSource.ExternalSubtitles
 	file.SubtitleTracks = subtitleSource.SubtitleTracks
+	request := goldenStartRequest()
 	now, err := time.Parse(time.RFC3339, "2029-12-31T23:55:00Z")
 	if err != nil {
 		fail("parse golden planner time: %v", err)
 	}
 	result := playback.PlanPlaybackV3(playback.PlannerInputV3{
-		Request:             goldenStartRequest(),
+		Request:             request,
 		RequestedFile:       file,
 		EffectiveFile:       file,
 		AudioTrackIndex:     0,
@@ -313,11 +314,12 @@ func goldenDecisionResponse() playback.DecisionResponseV3 {
 	plan.Subtitle.Inventory = playback.ScopeSubtitleInventoryV3(goldenSessionID, file, plan.Subtitle.Inventory)
 
 	return playback.DecisionResponseV3{
-		ProtocolVersion: playback.ProtocolV3,
-		ServerFeatures:  playback.ServerFeaturesV3(),
-		Outcome:         playback.OutcomePlayableV3,
-		SessionID:       goldenSessionID,
-		PlaybackPlan:    &plan,
+		ProtocolVersion:          playback.ProtocolV3,
+		ServerFeatures:           playback.ServerFeaturesV3(),
+		NegotiatedClientFeatures: append([]string(nil), request.ClientFeatures...),
+		Outcome:                  playback.OutcomePlayableV3,
+		SessionID:                goldenSessionID,
+		PlaybackPlan:             &plan,
 	}
 }
 
