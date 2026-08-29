@@ -42,6 +42,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/intromarkers"
 	"github.com/Silo-Server/silo-server/internal/invitations"
 	"github.com/Silo-Server/silo-server/internal/libraryingest"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/literaryworks"
 	"github.com/Silo-Server/silo-server/internal/livetv"
 	"github.com/Silo-Server/silo-server/internal/logstream"
@@ -3844,6 +3845,14 @@ func playbackSessionLimitProvider(
 func useBaseMiddleware(r chi.Router, deps Dependencies) {
 	// Standard middleware.
 	r.Use(middleware.RequestID)
+	if deps.DB != nil {
+		phase := lifecycleidempotency.NewPostgresStore(deps.DB).CurrentPhase
+		preflight := apimw.NewLifecycleIdempotencyPreflight(phase, func(method, path string) bool {
+			_, matched := MatchLifecycleRoute(method, path)
+			return matched
+		})
+		r.Use(preflight.Handler)
+	}
 
 	// Client IP resolution must run before request logging.
 	if deps.ClientIPResolver != nil {

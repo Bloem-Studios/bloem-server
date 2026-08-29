@@ -17,21 +17,22 @@ var (
 
 // Claims represents the custom JWT claims used for authentication.
 type Claims struct {
-	UserID             int    `json:"user_id"`
-	Role               string `json:"role"`
-	SessionID          string `json:"session_id"`
-	ProfileID          string `json:"profile_id,omitempty"`
-	DeviceID           string `json:"device_id,omitempty"`
-	TokenType          string `json:"token_type"`
-	ImpersonatorUserID *int   `json:"impersonator_user_id,omitempty"`
-	APIKeyID           int64  `json:"api_key_id,omitempty"`
-	RateTier           string `json:"rate_tier,omitempty"`
-	OrganizationID     string `json:"organization_id,omitempty"`
-	MembershipID       string `json:"membership_id,omitempty"`
-	PolicyRevision     int64  `json:"policy_revision,omitempty"`
-	SecurityRevision   int64  `json:"security_revision,omitempty"`
-	AuthMethod         string `json:"auth_method,omitempty"`
-	CredentialRevision int64  `json:"credential_revision,omitempty"`
+	UserID               int    `json:"user_id"`
+	AccountIncarnationID string `json:"account_incarnation_id,omitempty"`
+	Role                 string `json:"role"`
+	SessionID            string `json:"session_id"`
+	ProfileID            string `json:"profile_id,omitempty"`
+	DeviceID             string `json:"device_id,omitempty"`
+	TokenType            string `json:"token_type"`
+	ImpersonatorUserID   *int   `json:"impersonator_user_id,omitempty"`
+	APIKeyID             int64  `json:"api_key_id,omitempty"`
+	RateTier             string `json:"rate_tier,omitempty"`
+	OrganizationID       string `json:"organization_id,omitempty"`
+	MembershipID         string `json:"membership_id,omitempty"`
+	PolicyRevision       int64  `json:"policy_revision,omitempty"`
+	SecurityRevision     int64  `json:"security_revision,omitempty"`
+	AuthMethod           string `json:"auth_method,omitempty"`
+	CredentialRevision   int64  `json:"credential_revision,omitempty"`
 	// APIKeyScopes carries the authenticating API key's scopes; empty for
 	// JWT sessions and unscoped keys. Never serialized into issued JWTs —
 	// it only exists on claims built for API-key requests.

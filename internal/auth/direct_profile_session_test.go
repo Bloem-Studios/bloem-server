@@ -212,6 +212,13 @@ func TestDirectProfileRefreshRefusesRotatedCredential(t *testing.T) {
 	if err != nil {
 		t.Fatalf("validate refresh token: %v", err)
 	}
+	var accountIncarnation string
+	if err := credentials.pool.QueryRow(ctx, `SELECT account_incarnation_id::text FROM users WHERE id=$1`, accountID).Scan(&accountIncarnation); err != nil {
+		t.Fatalf("load account incarnation: %v", err)
+	}
+	if claims.AccountIncarnationID != accountIncarnation {
+		t.Fatalf("direct-profile token incarnation = %q, want %q", claims.AccountIncarnationID, accountIncarnation)
+	}
 	if _, err := credentials.pool.Exec(ctx, `
 		UPDATE user_profiles SET credential_revision = credential_revision + 1
 		WHERE user_id = $1 AND id = $2`, accountID, profileID); err != nil {

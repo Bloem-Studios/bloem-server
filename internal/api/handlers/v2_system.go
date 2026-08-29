@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
@@ -23,6 +24,7 @@ type V2SystemHandler struct {
 	// follow capability discovery rather than version sniffing, so this must
 	// track the actual route.
 	directProfileLogin bool
+	lifecyclePhase     func(context.Context) (lifecycleidempotency.Phase, error)
 }
 
 func NewV2SystemHandler(organizations V2OrganizationStore) *V2SystemHandler {
@@ -32,6 +34,13 @@ func NewV2SystemHandler(organizations V2OrganizationStore) *V2SystemHandler {
 // SetDirectProfileLoginAvailable records that direct profile login is served.
 func (h *V2SystemHandler) SetDirectProfileLoginAvailable(available bool) {
 	h.directProfileLogin = available
+}
+
+// SetLifecycleIdempotencyPhase records that the durable lifecycle coordinator
+// is wired and supplies its current enforcement phase. Support and enforcement
+// are separate tokens so clients can safely adopt keys during rollout.
+func (h *V2SystemHandler) SetLifecycleIdempotencyPhase(reader func(context.Context) (lifecycleidempotency.Phase, error)) {
+	h.lifecyclePhase = reader
 }
 
 // Aggregate feature tokens. Each names a client-visible capability of this
@@ -130,7 +139,14 @@ type v2CapabilityFeatures struct {
 // leaves a client interpreting the same ambiguous status the probe exists to
 // replace. The slices are cloned so no caller can mutate the shared
 // advertisement.
-func (h *V2SystemHandler) HandleCapabilities(w http.ResponseWriter, _ *http.Request) {
+func (h *V2SystemHandler) HandleCapabilities(w http.ResponseWriter, request *http.Request) {
+	featureTokens := slices.Clone(v2CapabilityTokens)
+	if h.lifecyclePhase != nil {
+		featureTokens = append(featureTokens, "lifecycle_idempotency_v1")
+		if phase, err := h.lifecyclePhase(request.Context()); err == nil && phase == lifecycleidempotency.PhaseRequired {
+			featureTokens = append(featureTokens, "lifecycle_idempotency_required_v1")
+		}
+	}
 	writeJSON(w, http.StatusOK, v2CapabilitiesResponse{
 		API:            "v2",
 		IdentitySchema: 1,
@@ -141,7 +157,7 @@ func (h *V2SystemHandler) HandleCapabilities(w http.ResponseWriter, _ *http.Requ
 			DirectProfileLogin:      h.directProfileLogin,
 		},
 		MediaTypes:    slices.Clone(mediaTypesServed),
-		FeatureTokens: slices.Clone(v2CapabilityTokens),
+		FeatureTokens: featureTokens,
 	})
 }
 

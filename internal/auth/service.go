@@ -154,17 +154,18 @@ func (s *Service) LoginProfile(ctx context.Context, email, password string, devi
 		return nil, SessionSubject{}, fmt.Errorf("creating direct profile session: %w", err)
 	}
 	pair, err := s.generateTokenPair(Claims{
-		UserID:             subject.AccountID,
-		Role:               legacyRoleUser,
-		SessionID:          sessionID,
-		ProfileID:          subject.ProfileID,
-		OrganizationID:     subject.OrganizationID,
-		MembershipID:       subject.MembershipID,
-		PolicyRevision:     subject.PolicyRevision,
-		SecurityRevision:   subject.SecurityRevision,
-		AuthMethod:         AuthMethodDirectProfile,
-		DeviceID:           device.ID,
-		CredentialRevision: subject.CredentialRevision,
+		UserID:               subject.AccountID,
+		AccountIncarnationID: subject.AccountIncarnationID,
+		Role:                 legacyRoleUser,
+		SessionID:            sessionID,
+		ProfileID:            subject.ProfileID,
+		OrganizationID:       subject.OrganizationID,
+		MembershipID:         subject.MembershipID,
+		PolicyRevision:       subject.PolicyRevision,
+		SecurityRevision:     subject.SecurityRevision,
+		AuthMethod:           AuthMethodDirectProfile,
+		DeviceID:             device.ID,
+		CredentialRevision:   subject.CredentialRevision,
 	})
 	if err != nil {
 		return nil, SessionSubject{}, err
@@ -339,9 +340,10 @@ func (s *Service) CompleteOAuthLogin(ctx context.Context, in OAuthLoginInput) (*
 		return nil, nil, fmt.Errorf("creating session: %w", err)
 	}
 	pair, err := s.generateTokenPair(Claims{
-		UserID:    user.ID,
-		Role:      user.Role,
-		SessionID: sessionID,
+		UserID:               user.ID,
+		AccountIncarnationID: user.AccountIncarnationID.String(),
+		Role:                 user.Role,
+		SessionID:            sessionID,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -401,9 +403,10 @@ func (s *Service) loginWithProvider(
 	}
 
 	pair, err := s.generateTokenPair(Claims{
-		UserID:    user.ID,
-		Role:      user.Role,
-		SessionID: sessionID,
+		UserID:               user.ID,
+		AccountIncarnationID: user.AccountIncarnationID.String(),
+		Role:                 user.Role,
+		SessionID:            sessionID,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -584,10 +587,11 @@ func (s *Service) StartImpersonation(ctx context.Context, adminUserID, targetUse
 	}
 
 	pair, err := s.generateTokenPair(Claims{
-		UserID:             target.ID,
-		Role:               target.Role,
-		SessionID:          sessionID,
-		ImpersonatorUserID: &impersonatorUserID,
+		UserID:               target.ID,
+		AccountIncarnationID: target.AccountIncarnationID.String(),
+		Role:                 target.Role,
+		SessionID:            sessionID,
+		ImpersonatorUserID:   &impersonatorUserID,
 	})
 	if err != nil {
 		return nil, nil, nil, err
@@ -660,18 +664,19 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 	}
 
 	return s.generateTokenPair(Claims{
-		UserID:             user.ID,
-		Role:               user.Role,
-		SessionID:          session.ID,
-		ImpersonatorUserID: session.ImpersonatorUserID,
-		ProfileID:          claims.ProfileID,
-		OrganizationID:     claims.OrganizationID,
-		MembershipID:       claims.MembershipID,
-		PolicyRevision:     claims.PolicyRevision,
-		SecurityRevision:   claims.SecurityRevision,
-		AuthMethod:         claims.AuthMethod,
-		DeviceID:           claims.DeviceID,
-		CredentialRevision: claims.CredentialRevision,
+		UserID:               user.ID,
+		AccountIncarnationID: user.AccountIncarnationID.String(),
+		Role:                 user.Role,
+		SessionID:            session.ID,
+		ImpersonatorUserID:   session.ImpersonatorUserID,
+		ProfileID:            claims.ProfileID,
+		OrganizationID:       claims.OrganizationID,
+		MembershipID:         claims.MembershipID,
+		PolicyRevision:       claims.PolicyRevision,
+		SecurityRevision:     claims.SecurityRevision,
+		AuthMethod:           claims.AuthMethod,
+		DeviceID:             claims.DeviceID,
+		CredentialRevision:   claims.CredentialRevision,
 	})
 }
 
@@ -729,17 +734,18 @@ func (s *Service) refreshDirectProfile(
 	}
 
 	return s.generateTokenPair(Claims{
-		UserID:             subject.AccountID,
-		Role:               legacyRoleUser,
-		SessionID:          session.ID,
-		ProfileID:          subject.ProfileID,
-		DeviceID:           subject.Device.ID,
-		OrganizationID:     subject.OrganizationID,
-		MembershipID:       subject.MembershipID,
-		PolicyRevision:     subject.PolicyRevision,
-		SecurityRevision:   subject.SecurityRevision,
-		AuthMethod:         AuthMethodDirectProfile,
-		CredentialRevision: subject.CredentialRevision,
+		UserID:               subject.AccountID,
+		AccountIncarnationID: subject.AccountIncarnationID,
+		Role:                 legacyRoleUser,
+		SessionID:            session.ID,
+		ProfileID:            subject.ProfileID,
+		DeviceID:             subject.Device.ID,
+		OrganizationID:       subject.OrganizationID,
+		MembershipID:         subject.MembershipID,
+		PolicyRevision:       subject.PolicyRevision,
+		SecurityRevision:     subject.SecurityRevision,
+		AuthMethod:           AuthMethodDirectProfile,
+		CredentialRevision:   subject.CredentialRevision,
 	})
 }
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/google/uuid"
 )
 
 var errOwnershipActivation = errors.New("ownership activation failed")
@@ -44,11 +45,12 @@ type setupUserRepository struct {
 
 func (r *setupUserRepository) Create(_ context.Context, input models.CreateUserInput) (*models.User, error) {
 	r.user = &models.User{
-		ID:       47,
-		Username: input.Username,
-		Email:    input.Email,
-		Role:     input.Role,
-		Enabled:  true,
+		ID:                   47,
+		AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"),
+		Username:             input.Username,
+		Email:                input.Email,
+		Role:                 input.Role,
+		Enabled:              true,
 	}
 	return r.user, nil
 }
@@ -144,9 +146,9 @@ func TestSetupInitialUserOwnership_ActivatesCreatedAccountBeforeLogin(t *testing
 			t.Fatalf("membership provisioning = accounts %v roles %v, want account 47 as admin before ownership", memberships.accountIDs, memberships.legacyRoles)
 		}
 	}
-	service, _, provider, sessions := newSetupInitialUserService(bootstrapper)
+	service, users, provider, sessions := newSetupInitialUserService(bootstrapper)
 	service.SetMembershipProvisioner(memberships)
-	provider.user = &models.User{ID: 47, Username: "admin", Role: "admin", Enabled: true}
+	provider.user = &models.User{ID: 47, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Username: "admin", Role: "admin", Enabled: true}
 
 	pair, user, err := service.SetupInitialUser(
 		context.Background(), "admin", "admin@example.test", "password", false, "", "browser", "127.0.0.1",
@@ -156,6 +158,13 @@ func TestSetupInitialUserOwnership_ActivatesCreatedAccountBeforeLogin(t *testing
 	}
 	if pair == nil || pair.AccessToken == "" || pair.RefreshToken == "" {
 		t.Fatalf("token pair = %#v, want issued tokens", pair)
+	}
+	claims, err := service.jwt.ValidateToken(pair.AccessToken)
+	if err != nil {
+		t.Fatalf("validate setup access token: %v", err)
+	}
+	if claims.AccountIncarnationID != users.user.AccountIncarnationID.String() {
+		t.Fatalf("setup token incarnation = %q, want %s", claims.AccountIncarnationID, users.user.AccountIncarnationID)
 	}
 	if user == nil || user.ID != 47 {
 		t.Fatalf("user = %#v, want created account 47", user)

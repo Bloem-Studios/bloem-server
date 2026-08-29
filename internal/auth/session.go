@@ -82,10 +82,11 @@ func (r *SessionRepository) CreateProfileSessionIfCurrent(
 	}
 
 	var accountID int
+	var accountIncarnationID string
 	var enabled bool
 	err = tx.QueryRow(ctx, `
-		SELECT id, enabled FROM users WHERE id = $1
-		FOR SHARE`, subject.AccountID).Scan(&accountID, &enabled)
+		SELECT id, account_incarnation_id::text, enabled FROM users WHERE id = $1
+		FOR SHARE`, subject.AccountID).Scan(&accountID, &accountIncarnationID, &enabled)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrSessionRevoked
@@ -126,15 +127,16 @@ func (r *SessionRepository) CreateProfileSessionIfCurrent(
 	}
 
 	current := SessionSubject{
-		AccountID:          accountID,
-		ProfileID:          profileID,
-		OrganizationID:     profileOrganizationID,
-		MembershipID:       membershipID,
-		PolicyRevision:     policyRevision,
-		SecurityRevision:   securityRevision,
-		CredentialRevision: credentialRevision,
-		Device:             subject.Device,
-		AuthMethod:         subject.AuthMethod,
+		AccountID:            accountID,
+		AccountIncarnationID: accountIncarnationID,
+		ProfileID:            profileID,
+		OrganizationID:       profileOrganizationID,
+		MembershipID:         membershipID,
+		PolicyRevision:       policyRevision,
+		SecurityRevision:     securityRevision,
+		CredentialRevision:   credentialRevision,
+		Device:               subject.Device,
+		AuthMethod:           subject.AuthMethod,
 	}
 	if current != subject || !enabled ||
 		organizationID != subject.OrganizationID ||

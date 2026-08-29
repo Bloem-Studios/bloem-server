@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // User represents a row in the users table.
 //
@@ -12,6 +16,7 @@ import "time"
 // access.EffectivePolicyForUser.
 type User struct {
 	ID                        int
+	AccountIncarnationID      uuid.UUID
 	Email                     string
 	Username                  string
 	PasswordHash              string

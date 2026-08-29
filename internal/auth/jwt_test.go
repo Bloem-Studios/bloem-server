@@ -6,9 +6,33 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/golang-jwt/jwt/v5"
 )
+
+func TestJWTAccountIncarnationRoundTrips(t *testing.T) {
+	const secret = "incarnation-round-trip-secret"
+	service := auth.NewJWTService(secret, time.Hour, 24*time.Hour)
+	incarnation := uuid.New()
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.Claims{
+		UserID: 17, Role: "user", SessionID: "session-incarnation",
+		AccountIncarnationID: incarnation.String(),
+		TokenType:            auth.TokenTypeAccess,
+		RegisteredClaims:     jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour))},
+	}).SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("generateAccessToken() error: %v", err)
+	}
+	claims, err := service.ValidateToken(token)
+	if err != nil {
+		t.Fatalf("ValidateToken() error: %v", err)
+	}
+	if claims.AccountIncarnationID != incarnation.String() {
+		t.Fatalf("account incarnation = %q, want %q", claims.AccountIncarnationID, incarnation)
+	}
+}
 
 const testSecret = "super-secret-test-key-for-jwt-testing"
 

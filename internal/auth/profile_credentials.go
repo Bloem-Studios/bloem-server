@@ -55,15 +55,16 @@ type DeviceClaim struct {
 // session. It carries the tenant facts resolved at credential verification so
 // callers do not need to infer an organization from a profile ID.
 type SessionSubject struct {
-	AccountID          int
-	ProfileID          string
-	OrganizationID     string
-	MembershipID       string
-	PolicyRevision     int64
-	SecurityRevision   int64
-	CredentialRevision int64
-	Device             DeviceClaim
-	AuthMethod         string
+	AccountID            int
+	AccountIncarnationID string
+	ProfileID            string
+	OrganizationID       string
+	MembershipID         string
+	PolicyRevision       int64
+	SecurityRevision     int64
+	CredentialRevision   int64
+	Device               DeviceClaim
+	AuthMethod           string
 }
 
 // ProfileCredentialService owns optional direct profile credentials. Account
@@ -171,6 +172,7 @@ func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, pass
 	)
 	err := s.pool.QueryRow(ctx, `
 		SELECT profiles.user_id,
+		       users.account_incarnation_id::text,
 		       profiles.id,
 		       profiles.organization_id::text,
 		       memberships.id::text,
@@ -192,6 +194,7 @@ func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, pass
 		 AND memberships.account_id = profiles.user_id
 		WHERE registry.normalized_email = public.bloem_normalize_login_email($1)`, email).Scan(
 		&subject.AccountID,
+		&subject.AccountIncarnationID,
 		&subject.ProfileID,
 		&subject.OrganizationID,
 		&subject.MembershipID,
@@ -249,6 +252,7 @@ func (s *ProfileCredentialService) CurrentSessionSubject(
 	)
 	err := s.pool.QueryRow(ctx, `
 		SELECT profiles.user_id,
+		       users.account_incarnation_id::text,
 		       profiles.id,
 		       profiles.organization_id::text,
 		       memberships.id::text,
@@ -266,6 +270,7 @@ func (s *ProfileCredentialService) CurrentSessionSubject(
 		 AND memberships.account_id = profiles.user_id
 		WHERE profiles.user_id = $1 AND profiles.id = $2`, accountID, profileID).Scan(
 		&subject.AccountID,
+		&subject.AccountIncarnationID,
 		&subject.ProfileID,
 		&subject.OrganizationID,
 		&subject.MembershipID,

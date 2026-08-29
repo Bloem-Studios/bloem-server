@@ -12,6 +12,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/invitations"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -101,6 +102,9 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 		compatibilityHandler = handlers.NewV2AdminCompatibilityHandler(deps.CompatApplications, deps.PublicURL)
 	}
 	system := handlers.NewV2SystemHandler(store)
+	if deps.DB != nil {
+		system.SetLifecycleIdempotencyPhase(lifecycleidempotency.NewPostgresStore(deps.DB).CurrentPhase)
+	}
 	// Advertise from the condition that actually mounts /auth/profile-login:
 	// the auth stack builds only with both a database and a config, and a
 	// capability that disagrees with the route table is worse than no

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
@@ -56,6 +57,38 @@ func TestV2CapabilitiesExactContract(t *testing.T) {
 		`"watch_document_v1","device_pairing_v1","progress_sync_v1","music_catalog_v1"]}`
 	if strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("body = %s, want %s", rec.Body.String(), want)
+	}
+}
+
+func TestV2CapabilitiesDistinguishLifecycleSupportFromEnforcement(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		phase        lifecycleidempotency.Phase
+		wantRequired bool
+	}{
+		{name: "optional", phase: lifecycleidempotency.PhaseOptional},
+		{name: "required", phase: lifecycleidempotency.PhaseRequired, wantRequired: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			handler := NewV2SystemHandler(nil)
+			handler.SetLifecycleIdempotencyPhase(func(context.Context) (lifecycleidempotency.Phase, error) {
+				return test.phase, nil
+			})
+			rec := httptest.NewRecorder()
+			handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, "/api/v2/capabilities", nil))
+			var body struct {
+				FeatureTokens []string `json:"feature_tokens"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decode capabilities: %v", err)
+			}
+			if !slices.Contains(body.FeatureTokens, "lifecycle_idempotency_v1") {
+				t.Fatalf("support token missing: %v", body.FeatureTokens)
+			}
+			if got := slices.Contains(body.FeatureTokens, "lifecycle_idempotency_required_v1"); got != test.wantRequired {
+				t.Fatalf("required token = %t, want %t: %v", got, test.wantRequired, body.FeatureTokens)
+			}
+		})
 	}
 }
 
