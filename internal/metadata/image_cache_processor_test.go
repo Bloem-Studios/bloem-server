@@ -467,7 +467,7 @@ func TestImageCacheProcessorRetriesTargetAfterConcurrentWorkerFinishes(t *testin
 
 func TestImageCacheProcessorStopsWaitingOnStuckBackgroundWorker(t *testing.T) {
 	// A worker that claimed the job and died holds its lease for
-	// imageCacheLeaseDuration. The interactive refresh must not block that
+	// ImageCacheLeaseDuration. The interactive refresh must not block that
 	// long: it gives up and reports the artwork as still pending.
 	jobs := &targetImageCacheJobs{alwaysRunning: true}
 	processor := NewImageCacheProcessorWithTargets(
@@ -692,8 +692,8 @@ func TestImageCacheProcessorAppliesPerJobTimeout(t *testing.T) {
 	if !ok {
 		t.Fatal("per-job context has no deadline; one stalled download/upload can block the whole batch forever")
 	}
-	if remaining := time.Until(deadline); remaining <= 0 || remaining > imageCacheJobTimeout {
-		t.Fatalf("per-job deadline is %s from now, want (0, %s]", remaining, imageCacheJobTimeout)
+	if remaining := time.Until(deadline); remaining <= 0 || remaining > ImageCacheJobTimeout {
+		t.Fatalf("per-job deadline is %s from now, want (0, %s]", remaining, ImageCacheJobTimeout)
 	}
 }
 

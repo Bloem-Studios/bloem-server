@@ -34,19 +34,21 @@ const (
 	imageCacheDiscoveryBatchSize = 1000
 	// Waiting for a background worker to release a job polls with backoff and
 	// gives up after immediateImageCacheIdleTimeout without progress. The
-	// worker's own lease runs for imageCacheLeaseDuration, and its pod can die
+	// worker's own lease runs for ImageCacheLeaseDuration, and its pod can die
 	// while holding it, so an interactive refresh must not wait that long.
 	immediateImageCacheMinPoll     = 100 * time.Millisecond
 	immediateImageCacheMaxPoll     = 2 * time.Second
 	immediateImageCacheIdleTimeout = 30 * time.Second
-	// imageCacheJobTimeout bounds a single job's download/read, resize, and
-	// upload. Without it, one stalled network call blocks processClaimedJobs'
-	// wg.Wait() forever, which in turn holds runUntilIdle's single-execution
-	// gate forever: no lease ever expires because nothing calls ClaimDue again
-	// to run recoverExpiredRunning. Generous relative to a single image (well
-	// under the 15-minute lease and the 10-minute run budget) so it only fires
-	// on a genuinely stuck job, not a slow one.
-	imageCacheJobTimeout = 90 * time.Second
+
+	// ImageCacheJobTimeout bounds one job end to end: source check, download
+	// (which also has its own 30-second cap in imagecache), variant encode, and
+	// uploads. Only the download had a deadline before; a hung upload or encode
+	// could hold a job past its claim lease, letting another worker reclaim and
+	// duplicate it. Two minutes is generous for the slowest realistic job, and
+	// worker/claim-page sizing (internal/taskmanager/tasks) relies on it to
+	// prove a claimed page always drains inside ImageCacheLeaseDuration. A job
+	// that hits it is marked failed and retried on the normal backoff.
+	ImageCacheJobTimeout = 2 * time.Minute
 )
 
 // ErrTargetArtworkPending reports that some of a refreshed target's artwork was
@@ -169,7 +171,7 @@ type ImageCacheProcessor struct {
 
 	// jobTimeout bounds a single job's download/read, resize, and upload, so
 	// one stalled network call cannot block processClaimedJobs' wg.Wait()
-	// forever. Zero means imageCacheJobTimeout.
+	// forever. Zero means ImageCacheJobTimeout.
 	jobTimeout time.Duration
 
 	// runGate serializes the scheduled queue drain and explicit full backfill.
@@ -240,7 +242,7 @@ func NewImageCacheProcessorWithTargets(
 		targets:         targets,
 		logger:          slog.Default(),
 		idleWaitTimeout: immediateImageCacheIdleTimeout,
-		jobTimeout:      imageCacheJobTimeout,
+		jobTimeout:      ImageCacheJobTimeout,
 		runGate:         make(chan struct{}, 1),
 	}
 	p.runGate <- struct{}{}
@@ -448,7 +450,11 @@ loop:
 		go func(job *models.MetadataImageCacheJob) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			jobCtx, cancel := context.WithTimeout(ctx, p.jobTimeout)
+			jobTimeout := p.jobTimeout
+			if jobTimeout <= 0 {
+				jobTimeout = ImageCacheJobTimeout
+			}
+			jobCtx, cancel := context.WithTimeout(ctx, jobTimeout)
 			defer cancel()
 			result := p.processOne(jobCtx, job)
 			mu.Lock()
