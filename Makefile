@@ -1,4 +1,4 @@
-.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures
+.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -182,8 +182,13 @@ verify-playback-fixtures:
 	done
 	@echo "playback fixtures are current"
 
-# Check committed content for local machine path leaks.
-verify-local-paths:
+# Verify the workflow helper cannot merge any head other than the one CI tested.
+verify-upstream-sync-merge:
+	scripts/verify-upstream-sync-merge_test.sh
+
+# Check committed content for local machine path leaks. This target is part of
+# the CI/release gate, so keep the upstream merge fixture attached here too.
+verify-local-paths: verify-upstream-sync-merge
 	scripts/check-local-path-leaks.sh
 
 # Create a timestamped Goose SQL migration. Usage: make migrate-create NAME=add_thing

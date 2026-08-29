@@ -30,46 +30,38 @@ jobs:
       startsWith(github.event.workflow_run.head_branch, 'upstream-sync/')
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve the pull request
-        id: find
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: ${{ github.event.workflow_run.head_branch }}
-        run: |
-          number=$(gh pr list \
-            --repo "$GITHUB_REPOSITORY" \
-            --head "$BRANCH" \
-            --state open \
-            --json number \
-            --jq '.[0].number // empty')
-          if [ -z "$number" ]; then
-            echo "No open PR for $BRANCH — already merged or closed. Nothing to do."
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "found=true" >> "$GITHUB_OUTPUT"
-            echo "number=$number" >> "$GITHUB_OUTPUT"
-          fi
+      # workflow_run can be caused by code from an untrusted pull request. Load
+      # the merge helper from the repository's default branch, never that head.
+      - name: Checkout the trusted merge helper
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
 
-      - name: Merge
+      - name: Merge the exact head tested by CI
         id: merge
-        if: steps.find.outputs.found == 'true' && github.event.workflow_run.conclusion == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_SYNC_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          UPSTREAM_SYNC_REPOSITORY: ${{ github.repository }}
+          UPSTREAM_SYNC_HEAD_REPOSITORY: ${{ github.event.workflow_run.head_repository.full_name }}
+          UPSTREAM_SYNC_BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          UPSTREAM_SYNC_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          UPSTREAM_SYNC_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           # A merge commit, not a squash: this PR's whole value is that it
           # carries upstream's individual commits, and squashing would make the
           # next merge-base calculation treat every one of them as unmerged.
-          if gh pr merge "${{ steps.find.outputs.number }}" --repo "$GITHUB_REPOSITORY" --merge --delete-branch; then
-            echo "merged=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "merged=false" >> "$GITHUB_OUTPUT"
-            echo "Merge command failed — PR left open." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          scripts/verify-upstream-sync-merge.sh
 
       - name: Report to Discord
-        if: steps.find.outputs.found == 'true'
+        if: always()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MERGE_RESULT: ${{ steps.merge.outputs.result }}
+          PR_FOUND: ${{ steps.merge.outputs.found }}
+          PR_NUMBER: ${{ steps.merge.outputs.pr_number }}
+          PR_MERGED: ${{ steps.merge.outputs.merged }}
         uses: actions/github-script@v7
         with:
           script: |
@@ -78,37 +70,99 @@ jobs:
               core.warning('DISCORD_WEBHOOK_URL is not set; skipping notification.');
               return;
             }
-            const number = '${{ steps.find.outputs.number }}';
-            const ciPassed = '${{ github.event.workflow_run.conclusion }}' === 'success';
-            const merged = '${{ steps.merge.outputs.merged }}' === 'true';
-            const prUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/pull/${number}`;
-            const ciUrl = '${{ github.event.workflow_run.html_url }}';
-
-            let embed;
-            if (merged) {
-              embed = {
-                title: `Upstream sync merged (#${number})`,
-                url: prUrl,
+            const result = process.env.MERGE_RESULT || '';
+            const found = process.env.PR_FOUND === 'true';
+            const merged = process.env.PR_MERGED === 'true';
+            const number = process.env.PR_NUMBER || '';
+            const reports = {
+              merged: {
+                title: 'Upstream sync merged',
                 color: 0x4FBF7B,
-                description: 'CI passed and the upstream merge is on `main`.',
-              };
-            } else if (!ciPassed) {
-              embed = {
-                title: `Upstream sync blocked by CI (#${number})`,
-                url: ciUrl,
-                color: 0xE04F4F,
-                description:
-                  `CI concluded \`${{ github.event.workflow_run.conclusion }}\` on the upstream merge. ` +
-                  `The PR is open and \`main\` is untouched.`,
-              };
-            } else {
-              embed = {
-                title: `Upstream sync could not merge (#${number})`,
-                url: prUrl,
+                description: 'CI passed and the exact tested head was merged into `main`.',
+              },
+              head_mismatch: {
+                title: 'Upstream sync head changed after CI',
                 color: 0xE0A44F,
-                description: 'CI passed but the merge command failed — likely a conflict with a newer `main`. Needs hands.',
-              };
+                description: 'The open PR no longer points at the tested commit. No merge was attempted.',
+              },
+              duplicate_prs: {
+                title: 'Upstream sync merge is ambiguous',
+                color: 0xE04F4F,
+                description: 'More than one matching open PR was found. No merge was attempted.',
+              },
+              ci_not_success: {
+                title: 'Upstream sync blocked by CI',
+                color: 0xE04F4F,
+                description: 'CI did not succeed, so no merge was attempted.',
+              },
+              merge_failed: {
+                title: 'Upstream sync could not merge',
+                color: 0xE0A44F,
+                description: 'The exact tested head was found, but GitHub rejected the merge. The PR remains open.',
+              },
+              invalid_tested_sha: {
+                title: 'Upstream sync merge rejected invalid CI data',
+                color: 0xE04F4F,
+                description: 'The tested commit identifier was invalid. No merge was attempted.',
+              },
+              invalid_pr_data: {
+                title: 'Upstream sync merge rejected invalid PR data',
+                color: 0xE04F4F,
+                description: 'GitHub returned an invalid pull-request record. No merge was attempted.',
+              },
+              lookup_failed: {
+                title: 'Upstream sync PR lookup failed',
+                color: 0xE04F4F,
+                description: 'The pull request could not be resolved. No merge was attempted.',
+              },
+              invalid_pr_json: {
+                title: 'Upstream sync PR lookup was invalid',
+                color: 0xE04F4F,
+                description: 'GitHub returned an invalid pull-request snapshot. No merge was attempted.',
+              },
+              unexpected_branch: {
+                title: 'Upstream sync merge rejected an unexpected branch',
+                color: 0xE04F4F,
+                description: 'The workflow event was outside the upstream-sync branch boundary. No merge was attempted.',
+              },
+              unexpected_repository: {
+                title: 'Upstream sync merge rejected an unexpected repository',
+                color: 0xE04F4F,
+                description: 'The workflow head did not come from this repository. No merge was attempted.',
+              },
+              unexpected_pr: {
+                title: 'Upstream sync merge rejected an unexpected pull request',
+                color: 0xE04F4F,
+                description: 'The pull request identity did not match the tested branch and repository. No merge was attempted.',
+              },
+            };
+            const report = Object.prototype.hasOwnProperty.call(reports, result)
+              ? reports[result]
+              : undefined;
+            if (!report || result === 'no_pr') {
+              if (result && result !== 'no_pr') {
+                core.warning('Merge helper returned an unknown result; skipping notification.');
+              }
+              return;
             }
+            if (merged !== (result === 'merged')) {
+              core.warning('Merge helper returned inconsistent merge state; skipping notification.');
+              return;
+            }
+            if (found && !/^[1-9][0-9]*$/.test(number)) {
+              core.warning('Merge helper returned an invalid PR number; skipping notification.');
+              return;
+            }
+
+            const runUrl = context.payload.workflow_run.html_url;
+            const fallbackUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions`;
+            const prUrl = found
+              ? `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/pull/${number}`
+              : undefined;
+            const embed = {
+              ...report,
+              url: prUrl || runUrl || fallbackUrl,
+            };
 
             const res = await fetch(webhook, {
               method: 'POST',
@@ -116,5 +170,5 @@ jobs:
               body: JSON.stringify({ username: 'Upstream sync', embeds: [embed] }),
             });
             if (!res.ok) {
-              core.setFailed(`Discord webhook failed with ${res.status}: ${await res.text()}`);
+              core.setFailed(`Discord webhook failed with HTTP ${res.status}.`);
             }
