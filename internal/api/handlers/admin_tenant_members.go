@@ -265,6 +265,14 @@ func (h *AdminTenantMembersHandler) HandleDelete(w http.ResponseWriter, r *http.
 	if !ok {
 		return
 	}
+	if h.lifecycle != nil && h.digest != nil {
+		h.handleLifecycleDelete(w, r, tenantID, userID)
+		return
+	}
+	if r.Header.Get("Idempotency-Key") != "" {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+		return
+	}
 	if err := h.members.Delete(r.Context(), tenantID, userID); err != nil {
 		h.writeError(w, err, "Failed to delete tenant member")
 		return

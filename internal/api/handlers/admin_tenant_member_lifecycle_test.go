@@ -25,7 +25,7 @@ import (
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
-func TestTenantMemberUpdateLifecycleReplaysStoredResultWithoutRemutating(t *testing.T) {
+func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t *testing.T) {
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
@@ -88,6 +88,7 @@ func TestTenantMemberUpdateLifecycleReplaysStoredResultWithoutRemutating(t *test
 		})
 	})
 	router.Put("/api/v1/admin/tenants/{tenant_id}/members/{user_id}", handler.HandleUpdate)
+	router.Delete("/api/v1/admin/tenants/{tenant_id}/members/{user_id}", handler.HandleDelete)
 	path := "/api/v1/admin/tenants/" + tenant.ID.String() + "/members/" + strconv.Itoa(member.ID)
 	key := "tenant-member-update-" + uuid.NewString()
 	request := func(name string) *httptest.ResponseRecorder {
@@ -115,5 +116,36 @@ func TestTenantMemberUpdateLifecycleReplaysStoredResultWithoutRemutating(t *test
 	got, err := memberService.Get(ctx, tenant.ID, member.ID)
 	if err != nil || got.Username != laterName {
 		t.Fatalf("state after replay = %+v, %v; want username %q", got, err, laterName)
+	}
+
+	deleteKey := "tenant-member-delete-" + uuid.NewString()
+	deleteRequest := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodDelete, path, nil)
+		req.Header.Set("Idempotency-Key", deleteKey)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	if firstDelete := deleteRequest(); firstDelete.Code != http.StatusNoContent {
+		t.Fatalf("first delete = %d: %s", firstDelete.Code, firstDelete.Body.String())
+	}
+	var replacementIncarnation uuid.UUID
+	if err := pool.QueryRow(ctx, `
+INSERT INTO users (id,username,email,password_hash,role)
+VALUES ($1,$2,$3,'x','user') RETURNING account_incarnation_id`, member.ID,
+		"replacement-"+uuid.NewString(), uuid.NewString()+"@tenant-lifecycle.test").Scan(&replacementIncarnation); err != nil {
+		t.Fatalf("create same-number replacement: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+VALUES ($1,$2,'active','user')`, tenant.ID, member.ID); err != nil {
+		t.Fatalf("create replacement membership: %v", err)
+	}
+	if replayDelete := deleteRequest(); replayDelete.Code != http.StatusNoContent {
+		t.Fatalf("replay delete = %d: %s", replayDelete.Code, replayDelete.Body.String())
+	}
+	var replacementPresent bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id=$1 AND account_incarnation_id=$2)`, member.ID, replacementIncarnation).Scan(&replacementPresent); err != nil || !replacementPresent {
+		t.Fatalf("replacement present = %v, error = %v", replacementPresent, err)
 	}
 }

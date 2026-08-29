@@ -20,7 +20,9 @@ type tenantMemberTransactionalService interface {
 	UpdateInTransaction(context.Context, pgx.Tx, uuid.UUID, int, tenancy.UpdateMemberInput) (models.User, error)
 	SetSuspendedInTransaction(context.Context, pgx.Tx, uuid.UUID, int, bool) (models.User, error)
 	ResetPasswordInTransaction(context.Context, pgx.Tx, uuid.UUID, int, string) (models.User, error)
+	DeleteInTransaction(context.Context, pgx.Tx, uuid.UUID, int) error
 	InvalidateCompatSessionsAfterCommit(context.Context, int, string) error
+	CompleteDeleteAfterCommit(context.Context, uuid.UUID, int) error
 }
 
 func (h *AdminTenantMembersHandler) lifecycleService(w http.ResponseWriter) (tenantMemberTransactionalService, bool) {
@@ -90,6 +92,22 @@ func (h *AdminTenantMembersHandler) handleLifecycleResetPassword(w http.Response
 			return memberLifecycleJSONResult(http.StatusOK, toTenantMemberResponse(member))
 		}, func(ctx context.Context) error {
 			return service.InvalidateCompatSessionsAfterCommit(ctx, userID, "password reset")
+		})
+}
+
+func (h *AdminTenantMembersHandler) handleLifecycleDelete(w http.ResponseWriter, r *http.Request, tenantID uuid.UUID, userID int) {
+	service, ok := h.lifecycleService(w)
+	if !ok {
+		return
+	}
+	h.executeMemberLifecycle(w, r, tenantID, userID, "tenant.member.delete", nil,
+		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+			if err := service.DeleteInTransaction(ctx, tx, tenantID, userID); err != nil {
+				return lifecycleidempotency.Result{}, err
+			}
+			return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
+		}, func(ctx context.Context) error {
+			return service.CompleteDeleteAfterCommit(ctx, tenantID, userID)
 		})
 }
 

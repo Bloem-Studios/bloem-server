@@ -502,6 +502,46 @@ func TestMemberServiceCallerOwnedTransactionControlsIdentityMutation(t *testing.
 	}
 }
 
+func TestMemberServiceCallerOwnedTransactionControlsDelete(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 1)
+	member, _, err := service.Create(ctx, tenant.ID, "caller-delete-create-"+uuid.NewString(), memberInput("caller-delete-"+uuid.NewString()))
+	if err != nil {
+		t.Fatalf("create member: %v", err)
+	}
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin rollback transaction: %v", err)
+	}
+	if err := service.DeleteInTransaction(ctx, tx, tenant.ID, member.ID); err != nil {
+		t.Fatalf("delete in rollback transaction: %v", err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	if _, err := service.Get(ctx, tenant.ID, member.ID); err != nil {
+		t.Fatalf("member missing after rollback: %v", err)
+	}
+
+	tx, err = pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin commit transaction: %v", err)
+	}
+	if err := service.DeleteInTransaction(ctx, tx, tenant.ID, member.ID); err != nil {
+		t.Fatalf("delete in commit transaction: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+	if err := service.CompleteDeleteAfterCommit(ctx, tenant.ID, member.ID); err != nil {
+		t.Fatalf("complete delete: %v", err)
+	}
+	if _, err := service.Get(ctx, tenant.ID, member.ID); !errors.Is(err, tenancy.ErrMemberNotFound) {
+		t.Fatalf("get after commit error = %v, want member not found", err)
+	}
+}
+
 func TestMemberServiceCompatInvalidationRunsAfterCommittedSecurityMutation(t *testing.T) {
 	ctx, pool, store, service, sessions := newMemberService(t)
 	tenant := createMemberTenant(t, ctx, store, 2)

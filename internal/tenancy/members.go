@@ -502,6 +502,23 @@ func (s *MemberService) Delete(ctx context.Context, tenantID uuid.UUID, userID i
 		return fmt.Errorf("tenancy: begin member delete: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if err := s.DeleteInTransaction(ctx, tx, tenantID, userID); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("tenancy: commit member delete: %w", err)
+	}
+	return s.CompleteDeleteAfterCommit(ctx, tenantID, userID)
+}
+
+// DeleteInTransaction applies tenant membership/account deletion on a
+// caller-owned transaction. Lifecycle callers resolve and lock the exact
+// membership before invoking it; legacy callers may call it directly and it
+// acquires the same domain locks itself.
+func (s *MemberService) DeleteInTransaction(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, userID int) error {
+	if s == nil || tx == nil || tenantID == uuid.Nil || userID <= 0 {
+		return ErrMemberNotFound
+	}
 	tenant, err := s.store.lockTenantOrganization(ctx, tx, tenantID)
 	if errors.Is(err, ErrTenantOrganizationNotFound) {
 		return ErrMemberNotFound
@@ -518,12 +535,6 @@ func (s *MemberService) Delete(ctx context.Context, tenantID uuid.UUID, userID i
 		}
 		if !tombstoned {
 			return ErrMemberNotFound
-		}
-		if err := tx.Commit(ctx); err != nil {
-			return fmt.Errorf("tenancy: commit repeated member delete: %w", err)
-		}
-		if s.resources != nil {
-			return s.resources.PurgeOrganizationResources(ctx, tenantID, userID)
 		}
 		return nil
 	}
@@ -620,11 +631,23 @@ func (s *MemberService) Delete(ctx context.Context, tenantID uuid.UUID, userID i
 			return fmt.Errorf("tenancy: record member delete tombstone: %w", err)
 		}
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("tenancy: commit member delete: %w", err)
-	}
+	return nil
+}
+
+// CompleteDeleteAfterCommit performs cache and external resource effects only
+// after the durable delete transaction has committed. A surviving account
+// means the delete removed one membership and its organization-scoped
+// resources still need purging.
+func (s *MemberService) CompleteDeleteAfterCommit(ctx context.Context, tenantID uuid.UUID, userID int) error {
 	s.store.invalidateTenantLimitsCache()
-	if !deleteGlobal && s.resources != nil {
+	if s.resources == nil {
+		return nil
+	}
+	var accountPresent bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id=$1)`, userID).Scan(&accountPresent); err != nil {
+		return fmt.Errorf("tenancy: check deleted member account: %w", err)
+	}
+	if accountPresent {
 		if err := s.resources.PurgeOrganizationResources(ctx, tenantID, userID); err != nil {
 			return fmt.Errorf("tenancy: purge scoped member resources: %w", err)
 		}
