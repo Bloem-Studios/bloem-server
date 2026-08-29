@@ -60,6 +60,11 @@ type v2AdminPeopleLifecycleService interface {
 	UpdateProfileGroupInTransaction(context.Context, pgx.Tx, uuid.UUID, int, int, string, int64, int) (adminpeople.PersonSummary, error)
 }
 
+type v2AdminPeopleLifecycleJobService interface {
+	EnqueueBulkInTransaction(context.Context, pgx.Tx, uuid.UUID, int, adminpeople.BulkAction) (adminpeople.BulkResult, error)
+	EnqueuePolicyBulkForScopeInTransaction(context.Context, pgx.Tx, uuid.UUID, int, adminpeople.PolicyBulkAction, adminpeople.PolicyOperationScope) (adminpeople.BulkResult, error)
+}
+
 type v2AdminPeopleLifecycleSelectionResolver interface {
 	ResolveLifecycleSelectionTargets(context.Context, pgx.Tx, uuid.UUID, string) ([]lifecycleidempotency.TargetBinding, error)
 }
@@ -572,8 +577,12 @@ func (h *V2AdminPeopleHandler) handleLifecyclePeopleBulkJob(w http.ResponseWrite
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, _ pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		queued, err := h.service.ExecuteBulk(adminPeopleMutationContext(r.WithContext(ctx)), tenant.OrganizationID, tenant.AccountID, action)
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		service, ok := h.service.(v2AdminPeopleLifecycleJobService)
+		if !ok {
+			return lifecycleidempotency.Result{}, errors.New("lifecycle people service unavailable")
+		}
+		queued, err := service.EnqueueBulkInTransaction(adminPeopleMutationContext(r.WithContext(ctx)), tx, tenant.OrganizationID, tenant.AccountID, action)
 		if err != nil {
 			return lifecycleidempotency.Result{}, err
 		}
@@ -597,8 +606,12 @@ func (h *V2AdminPeopleHandler) handleLifecyclePeoplePolicyJob(w http.ResponseWri
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, _ pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		queued, err := h.service.EnqueuePolicyBulk(adminPeopleMutationContext(r.WithContext(ctx)), tenant.OrganizationID, tenant.AccountID, action)
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		service, ok := h.service.(v2AdminPeopleLifecycleJobService)
+		if !ok {
+			return lifecycleidempotency.Result{}, errors.New("lifecycle people service unavailable")
+		}
+		queued, err := service.EnqueuePolicyBulkForScopeInTransaction(adminPeopleMutationContext(r.WithContext(ctx)), tx, tenant.OrganizationID, tenant.AccountID, action, adminpeople.PolicyOperationScopeOrganization)
 		if err != nil {
 			return lifecycleidempotency.Result{}, err
 		}

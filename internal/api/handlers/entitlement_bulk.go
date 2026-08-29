@@ -47,6 +47,10 @@ type PlatformEntitlementBulkPeopleService interface {
 	CancelPolicyBulkJob(context.Context, uuid.UUID, int, string) (adminpeople.BulkResult, error)
 }
 
+type platformEntitlementBulkLifecyclePeopleService interface {
+	EnqueuePolicyBulkForScopeInTransaction(context.Context, pgx.Tx, uuid.UUID, int, adminpeople.PolicyBulkAction, adminpeople.PolicyOperationScope) (adminpeople.BulkResult, error)
+}
+
 type PlatformEntitlementBulkOrganizationStore interface {
 	DefaultOrganization(context.Context) (tenancy.Organization, error)
 	GetOrganization(context.Context, uuid.UUID) (tenancy.Organization, error)
@@ -275,12 +279,16 @@ func (h *AdminHandler) handleLifecyclePlatformPolicyJob(w http.ResponseWriter, r
 		}
 		return resolver.ResolveLifecycleSelectionTargets(ctx, tx, organizationID, action.SelectionToken)
 	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, _ pgx.Tx, binding lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, binding lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 		resolvedOrganization := organizationID
 		if resolvedOrganization == uuid.Nil && len(binding.Targets) > 0 {
 			resolvedOrganization = binding.Targets[0].OrganizationID
 		}
-		queued, err := h.platformEntitlementPeople.EnqueuePolicyBulkForScope(platformEntitlementBulkMutationContext(r.WithContext(ctx), actorID), resolvedOrganization, actorID, action, platformEntitlementOperationScope(direct))
+		service, ok := h.platformEntitlementPeople.(platformEntitlementBulkLifecyclePeopleService)
+		if !ok {
+			return lifecycleidempotency.Result{}, errors.New("lifecycle entitlement service unavailable")
+		}
+		queued, err := service.EnqueuePolicyBulkForScopeInTransaction(platformEntitlementBulkMutationContext(r.WithContext(ctx), actorID), tx, resolvedOrganization, actorID, action, platformEntitlementOperationScope(direct))
 		if err != nil {
 			return lifecycleidempotency.Result{}, err
 		}

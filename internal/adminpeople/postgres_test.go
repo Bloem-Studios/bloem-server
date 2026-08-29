@@ -187,6 +187,37 @@ func TestServiceCleanupRemovesExpiredSelectionsEvenAfterUse(t *testing.T) {
 	}
 }
 
+func TestEnqueueBulkInTransactionRollsBackWithCaller(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := fixture.pool.Begin(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueueBulkInTransaction(fixture.ctx, tx, fixture.orgA, fixture.ownerID, BulkAction{SelectionToken: selection.Token, Kind: BulkSuspendMemberships})
+	if err != nil {
+		_ = tx.Rollback(fixture.ctx)
+		t.Fatal(err)
+	}
+	var visible bool
+	if err := tx.QueryRow(fixture.ctx, `SELECT EXISTS(SELECT 1 FROM admin_jobs WHERE id=$1)`, queued.JobID).Scan(&visible); err != nil || !visible {
+		_ = tx.Rollback(fixture.ctx)
+		t.Fatalf("job visible in caller transaction = %t, %v", visible, err)
+	}
+	if err := tx.Rollback(fixture.ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT EXISTS(SELECT 1 FROM admin_jobs WHERE id=$1)`, queued.JobID).Scan(&visible); err != nil {
+		t.Fatal(err)
+	}
+	if visible {
+		t.Fatalf("job %s survived caller rollback", queued.JobID)
+	}
+}
+
 func TestServiceCleanupTerminalBulkJobsIsBoundedAndPreservesActiveJobs(t *testing.T) {
 	fixture := newPeopleFixture(t)
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@"})
@@ -1093,6 +1124,45 @@ func TestPolicyBulkConfirmationRejectsCrossOperationScope(t *testing.T) {
 				t.Fatalf("cross-scope confirmation error = %v, want ErrInvalidPolicyConfirmation", err)
 			}
 		})
+	}
+}
+
+func TestEnqueuePolicyBulkInTransactionRollsBackWithCaller(t *testing.T) {
+	fixture := newPeopleFixture(t)
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET role='admin' WHERE id=$1`, fixture.ownerID); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := PolicyCommand{Kind: PolicyRestoreDefaultEntitlement}
+	ctx := WithMutationActor(fixture.ctx, MutationActor{AccountID: fixture.ownerID, Authority: AuthorityPlatformAdmin, SecurityRevision: 1, PolicyRevision: 1})
+	preview, err := fixture.service.PreviewPolicyForScope(ctx, fixture.orgA, fixture.ownerID, selection.Token, command, PolicyOperationScopeOrganization)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := fixture.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := fixture.service.EnqueuePolicyBulkForScopeInTransaction(ctx, tx, fixture.orgA, fixture.ownerID, PolicyBulkAction{
+		SelectionToken: selection.Token, ConfirmationToken: preview.ConfirmationToken,
+		IdempotencyKey: "caller-transaction-rollback", Command: command,
+	}, PolicyOperationScopeOrganization)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		t.Fatal(err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var jobExists, receiptExists bool
+	if err := fixture.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM admin_jobs WHERE id=$1), EXISTS(SELECT 1 FROM admin_people_bulk_job_receipts WHERE job_id=$1)`, queued.JobID).Scan(&jobExists, &receiptExists); err != nil {
+		t.Fatal(err)
+	}
+	if jobExists || receiptExists {
+		t.Fatalf("caller rollback left job=%t receipt=%t", jobExists, receiptExists)
 	}
 }
 

@@ -832,7 +832,26 @@ func (s *Service) ExecuteBulk(ctx context.Context, organizationID uuid.UUID, act
 }
 
 func (s *Service) EnqueueBulk(ctx context.Context, organizationID uuid.UUID, actorID int, action BulkAction) (BulkResult, error) {
-	if validateBulkAction(action) != nil || s == nil || s.pool == nil || organizationID == uuid.Nil || actorID <= 0 {
+	if s == nil || s.pool == nil {
+		return BulkResult{}, ErrInvalidBulkAction
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return BulkResult{}, fmt.Errorf("begin people bulk enqueue: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	result, err := s.EnqueueBulkInTransaction(ctx, tx, organizationID, actorID, action)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return BulkResult{}, err
+	}
+	return result, nil
+}
+
+func (s *Service) EnqueueBulkInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID int, action BulkAction) (BulkResult, error) {
+	if validateBulkAction(action) != nil || s == nil || s.pool == nil || tx == nil || organizationID == uuid.Nil || actorID <= 0 {
 		return BulkResult{}, ErrInvalidBulkAction
 	}
 	actor, err := mutationActor(ctx, actorID)
@@ -843,11 +862,6 @@ func (s *Service) EnqueueBulk(ctx context.Context, organizationID uuid.UUID, act
 	if err != nil {
 		return BulkResult{}, err
 	}
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return BulkResult{}, fmt.Errorf("begin people bulk enqueue: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
 	actionKey := action.Kind + ":"
 	if action.GroupID != nil {
 		actionKey += strconv.Itoa(*action.GroupID)
@@ -858,8 +872,7 @@ func (s *Service) EnqueueBulk(ctx context.Context, organizationID uuid.UUID, act
 	var existing string
 	err = tx.QueryRow(ctx, `SELECT job_id FROM admin_people_bulk_jobs WHERE organization_id=$1 AND selection_reference=$2 AND action_key=$3`, organizationID, reference, actionKey).Scan(&existing)
 	if err == nil {
-		_ = tx.Commit(ctx)
-		return s.GetBulkJob(ctx, organizationID, existing)
+		return getBulkJobInTransaction(ctx, tx, organizationID, existing)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return BulkResult{}, err
@@ -912,9 +925,6 @@ func (s *Service) EnqueueBulk(ctx context.Context, organizationID uuid.UUID, act
 	if err = recordPeopleAudit(ctx, tx, actorID, "people.bulk_job_created", "bulk_job", jobID, organizationID, 0, 0, 0, "success", nil, map[string]any{"kind": action.Kind, "matched": len(record.targets), "excluded": record.excluded}); err != nil {
 		return BulkResult{}, err
 	}
-	if err = tx.Commit(ctx); err != nil {
-		return BulkResult{}, err
-	}
 	return initial, nil
 }
 
@@ -923,9 +933,28 @@ func (s *Service) EnqueuePolicyBulk(ctx context.Context, organizationID uuid.UUI
 }
 
 func (s *Service) EnqueuePolicyBulkForScope(ctx context.Context, organizationID uuid.UUID, actorID int, action PolicyBulkAction, operationScope PolicyOperationScope) (BulkResult, error) {
+	if s == nil || s.pool == nil {
+		return BulkResult{}, ErrInvalidPolicyCommand
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	result, err := s.EnqueuePolicyBulkForScopeInTransaction(ctx, tx, organizationID, actorID, action, operationScope)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return BulkResult{}, err
+	}
+	return result, nil
+}
+
+func (s *Service) EnqueuePolicyBulkForScopeInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID int, action PolicyBulkAction, operationScope PolicyOperationScope) (BulkResult, error) {
 	key := strings.TrimSpace(action.IdempotencyKey)
 	commandDigest, digestErr := PolicyCommandDigest(action.Command)
-	if s == nil || s.pool == nil || organizationID == uuid.Nil || actorID <= 0 || key == "" || len(key) > 128 || strings.TrimSpace(action.SelectionToken) == "" || strings.TrimSpace(action.ConfirmationToken) == "" || digestErr != nil || !validPolicyOperationScope(operationScope) {
+	if s == nil || s.pool == nil || tx == nil || organizationID == uuid.Nil || actorID <= 0 || key == "" || len(key) > 128 || strings.TrimSpace(action.SelectionToken) == "" || strings.TrimSpace(action.ConfirmationToken) == "" || digestErr != nil || !validPolicyOperationScope(operationScope) {
 		return BulkResult{}, ErrInvalidPolicyCommand
 	}
 	reference, err := s.parseSelectionReference(action.SelectionToken)
@@ -937,11 +966,6 @@ func (s *Service) EnqueuePolicyBulkForScope(ctx context.Context, organizationID 
 		receiptScope = payload.OperationScope
 	}
 	requestDigest := policyBulkRequestDigest(reference, commandDigest, receiptScope)
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return BulkResult{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
 	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, organizationID.String()+":"+strconv.Itoa(actorID)+":"+key); err != nil {
 		return BulkResult{}, err
 	}
@@ -951,10 +975,7 @@ func (s *Service) EnqueuePolicyBulkForScope(ctx context.Context, organizationID 
 		if priorDigest != requestDigest {
 			return BulkResult{}, ErrBulkIdempotencyConflict
 		}
-		if err := tx.Commit(ctx); err != nil {
-			return BulkResult{}, err
-		}
-		return s.GetBulkJob(ctx, organizationID, priorJob)
+		return getBulkJobInTransaction(ctx, tx, organizationID, priorJob)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return BulkResult{}, err
@@ -996,10 +1017,7 @@ func (s *Service) EnqueuePolicyBulkForScope(ctx context.Context, organizationID 
 		if _, err := tx.Exec(ctx, `INSERT INTO admin_people_bulk_job_receipts (organization_id,actor_account_id,idempotency_key,request_digest,job_id) VALUES ($1,$2,$3,$4,$5)`, organizationID, actorID, key, requestDigest, existing); err != nil {
 			return BulkResult{}, err
 		}
-		if err := tx.Commit(ctx); err != nil {
-			return BulkResult{}, err
-		}
-		return s.GetBulkJob(ctx, organizationID, existing)
+		return getBulkJobInTransaction(ctx, tx, organizationID, existing)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return BulkResult{}, err
@@ -1041,9 +1059,6 @@ func (s *Service) EnqueuePolicyBulkForScope(ctx context.Context, organizationID 
 	}
 	ctx = WithMutationActor(ctx, confirmation.Actor)
 	if err = recordPeopleAudit(ctx, tx, actorID, "people.bulk_policy_job_created", "bulk_job", jobID, organizationID, 0, 0, 0, "success", nil, map[string]any{"kind": action.Command.Kind, "matched": len(record.targets), "target_cohort_id": target.ID, "target_group_id": target.AccessGroupID}); err != nil {
-		return BulkResult{}, err
-	}
-	if err = tx.Commit(ctx); err != nil {
 		return BulkResult{}, err
 	}
 	return initial, nil
@@ -1795,8 +1810,19 @@ func (s *Service) GetBulkJob(ctx context.Context, organizationID uuid.UUID, jobI
 		return BulkResult{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	result, err := getBulkJobInTransaction(ctx, tx, organizationID, jobID)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return BulkResult{}, err
+	}
+	return result, nil
+}
+
+func getBulkJobInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, jobID string) (BulkResult, error) {
 	var status string
-	err = tx.QueryRow(ctx, `SELECT j.status FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1 AND b.organization_id=$2`, jobID, organizationID).Scan(&status)
+	err := tx.QueryRow(ctx, `SELECT j.status FROM admin_jobs j JOIN admin_people_bulk_jobs b ON b.job_id=j.id WHERE j.id=$1 AND b.organization_id=$2`, jobID, organizationID).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return BulkResult{}, ErrNotFound
 	}
@@ -1808,9 +1834,6 @@ func (s *Service) GetBulkJob(ctx context.Context, organizationID uuid.UUID, jobI
 		return BulkResult{}, err
 	}
 	result.Status = status
-	if err = tx.Commit(ctx); err != nil {
-		return BulkResult{}, err
-	}
 	return result, nil
 }
 
