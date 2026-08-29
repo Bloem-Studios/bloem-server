@@ -98,7 +98,7 @@ func TestLifecycleSessionRevocationPreservesOrganizationScope(t *testing.T) {
 	router.Delete("/users/{user_id}/auth-sessions", handler.HandleRevokeAllUserAuthSessions)
 
 	foreignReq := httptest.NewRequest(http.MethodDelete, "/users/"+strconv.Itoa(target.ID)+"/auth-sessions/"+sessionB, nil)
-	foreignReq.Header.Set("Idempotency-Key", "scoped-foreign-session-key")
+	foreignReq.Header.Set("Idempotency-Key", "scoped-foreign-"+uuid.NewString())
 	foreign := httptest.NewRecorder()
 	router.ServeHTTP(foreign, foreignReq)
 	if foreign.Code != http.StatusNotFound {
@@ -106,7 +106,7 @@ func TestLifecycleSessionRevocationPreservesOrganizationScope(t *testing.T) {
 	}
 
 	allReq := httptest.NewRequest(http.MethodDelete, "/users/"+strconv.Itoa(target.ID)+"/auth-sessions", nil)
-	allReq.Header.Set("Idempotency-Key", "scoped-all-sessions-key")
+	allReq.Header.Set("Idempotency-Key", "scoped-all-"+uuid.NewString())
 	all := httptest.NewRecorder()
 	router.ServeHTTP(all, allReq)
 	if all.Code != http.StatusNoContent {
