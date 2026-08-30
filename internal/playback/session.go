@@ -626,6 +626,18 @@ func (m *SessionManager) acquireFleetReservation(ctx context.Context, session *S
 	if store == nil {
 		return nil
 	}
+	// Upstream Silo has no fleet reservation: it admits on the in-memory caps
+	// alone. Keep exactly that path when a reservation has nothing to protect.
+	// A client that authenticated without an active profile cannot even be
+	// expressed as a ReservationRequest -- valid() requires a profile -- so
+	// gating on it turns "no profile" into ErrReservationInvalid and refuses
+	// playback that Silo serves without complaint.
+	//
+	// A tenant session still reserves: the shared tenant transcode pool is the
+	// thing the reservation exists to defend, and it must never go unmetered.
+	if session.ProfileID == "" && limits.TenantID == "" {
+		return nil
+	}
 	request := ReservationRequest{
 		SessionID:         session.ID,
 		AccountID:         session.UserID,

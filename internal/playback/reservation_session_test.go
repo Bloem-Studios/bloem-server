@@ -183,3 +183,57 @@ func TestSessionManagerReplacementReservationCommitsCancelsAndRollsBack(t *testi
 		t.Fatalf("rollback did not restore direct reservation: %#v", got)
 	}
 }
+
+// A client that authenticates without an active profile cannot be expressed as
+// a ReservationRequest (valid() requires a profile), so gating its start on the
+// fleet reservation turned "no profile" into ErrReservationInvalid and refused
+// playback that upstream Silo serves. With nothing to meter -- no profile and
+// no tenant -- the start must fall back to Silo's in-memory admission instead.
+func TestProfilelessNonTenantStartFallsBackToSiloAdmission(t *testing.T) {
+	store := &recordingReservationStore{acquireErr: ErrReservationInvalid}
+	manager := NewSessionManager(6, 2)
+	manager.SetReservationStore(store, time.Minute)
+	manager.SetLimitProvider(func(context.Context, int, string) (SessionLimits, error) {
+		return SessionLimits{MaxStreams: 3, MaxTranscodes: 1}, nil
+	})
+
+	session, err := manager.StartSession(7, "", 42, PlayDirect, false)
+	if err != nil {
+		t.Fatalf("profileless start must succeed like Silo, got %v", err)
+	}
+	if session == nil || session.ID == "" {
+		t.Fatal("expected a session")
+	}
+	if len(store.acquires) != 0 {
+		t.Fatalf("no reservation should be attempted, got %d", len(store.acquires))
+	}
+	// Teardown must tolerate a session that never reserved.
+	if err := manager.StopSession(session.ID); err != nil {
+		t.Fatalf("stop: %v", err)
+	}
+	if len(store.releases) != 0 {
+		t.Fatalf("no release should be attempted, got %d", len(store.releases))
+	}
+}
+
+// The tenant pool is the thing the reservation defends, so a tenant session
+// still reserves even when the caller carries no profile: letting it through
+// unmetered would let a paid shared pool be overrun.
+func TestProfilelessTenantStartStillReserves(t *testing.T) {
+	store := &recordingReservationStore{}
+	manager := NewSessionManager(6, 2)
+	manager.SetReservationStore(store, time.Minute)
+	manager.SetLimitProvider(func(context.Context, int, string) (SessionLimits, error) {
+		return SessionLimits{MaxStreams: 3, MaxTranscodes: 1, TenantID: "tenant-1", TenantMaxTranscodes: 2}, nil
+	})
+
+	if _, err := manager.StartSession(7, "", 42, PlayTranscode, false); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	if len(store.acquires) != 1 {
+		t.Fatalf("tenant session must still reserve, acquires = %d", len(store.acquires))
+	}
+	if store.acquires[0].TenantID != "tenant-1" {
+		t.Fatalf("request = %#v", store.acquires[0])
+	}
+}
