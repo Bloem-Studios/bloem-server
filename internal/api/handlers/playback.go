@@ -82,6 +82,26 @@ type transcodePermissionChecker interface {
 	CheckTranscodingAllowed(ctx context.Context, userID int, profileID string, requiresVideoTranscode bool) error
 }
 
+func (h *PlaybackHandler) ensureUserTranscodingAllowed(w http.ResponseWriter, r *http.Request, userID int, profileID string, requiresVideoTranscode bool) bool {
+	checker, ok := h.sessionMgr.(transcodePermissionChecker)
+	if !ok {
+		return true
+	}
+	if err := checker.CheckTranscodingAllowed(r.Context(), userID, profileID, requiresVideoTranscode); err != nil {
+		if errors.Is(err, playback.ErrTranscodingDisabled) {
+			writeError(w, http.StatusForbidden, "transcoding_disabled", "Transcoding is disabled for your user")
+			return false
+		}
+		if errors.Is(err, playback.ErrAudioTranscodingDisabled) {
+			writeError(w, http.StatusForbidden, "audio_transcoding_disabled", "Audio transcoding is disabled for your user")
+			return false
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to verify transcoding access")
+		return false
+	}
+	return true
+}
+
 type PlaybackItemAccessChecker interface {
 	EnsureAccessible(ctx context.Context, contentID string, filter catalog.AccessFilter) error
 }
