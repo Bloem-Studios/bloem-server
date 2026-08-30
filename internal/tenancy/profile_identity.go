@@ -30,7 +30,7 @@ func NewProfileIdentityResolver(query profileIdentityQuerier) *ProfileIdentityRe
 	if query != nil {
 		resolver.list = func(ctx context.Context, accountID int) ([]LegacyProfileIdentity, error) {
 			rows, err := query.Query(ctx, `
-				SELECT memberships.organization_id, users.access_group_id
+				SELECT memberships.organization_id, memberships.access_group_id
 				FROM organization_memberships AS memberships
 				JOIN organizations ON organizations.id = memberships.organization_id
 				JOIN users ON users.id = memberships.account_id
