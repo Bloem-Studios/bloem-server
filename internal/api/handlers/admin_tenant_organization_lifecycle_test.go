@@ -38,6 +38,11 @@ func tenantOrganizationLifecycleHarness(t *testing.T) (*pgxpool.Pool, *tenancy.S
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatal(err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 	users := auth.NewUserRepository(pool)
 	actor, err := users.Create(ctx, models.CreateUserInput{
 		Username: "tenant-org-actor-" + uuid.NewString(), Email: uuid.NewString() + "@tenant-org.test",
@@ -159,7 +164,10 @@ WHERE id=$1`, tenant.ID, "replacement-"+uuid.NewString(), "replacement-service-"
 	}
 	if _, err := pool.Exec(ctx, `
 INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-VALUES ($1,$2,'active','user')`, tenant.ID, member.ID); err != nil {
+SELECT $1,$2,'active','user'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, tenant.ID, member.ID); err != nil {
 		t.Fatal(err)
 	}
 	if got := lifecycleTenantRequest(t, router, http.MethodDelete, deletePath, deleteKey, nil); got.Code != http.StatusNoContent {

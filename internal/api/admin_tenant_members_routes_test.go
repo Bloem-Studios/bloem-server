@@ -45,6 +45,11 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 	if err := database.RunMigrations(context.Background(), pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership first-run setup creates.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(context.Background(), pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 	cfg := &config.Config{Auth: config.AuthConfig{
 		JWTSecret: "admin-tenant-member-route-secret", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour,
 	}}
@@ -211,7 +216,7 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 			t.Fatalf("decode tenant B: %+v %v", tenantB, err)
 		}
 		if _, err := pool.Exec(context.Background(), `INSERT INTO organization_memberships
-			(organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','user')`, tenantB.TenantID, member.UserID); err != nil {
+			(organization_id,account_id,status,legacy_role) SELECT $1,$2,'active','user' WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, tenantB.TenantID, member.UserID); err != nil {
 			t.Fatalf("seed shared tenant membership: %v", err)
 		}
 		profilesPathB := "/api/v1/admin/tenants/" + tenantB.TenantID + "/members/" + strconv.Itoa(member.UserID) + "/profiles"
@@ -349,16 +354,21 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		if err := compatStore.Put(jellycompat.Session{Token: "compat-suspend", StreamAppUserID: member.UserID, ProfileID: profileB.ID}); err != nil {
 			t.Fatal(err)
 		}
+		// This arm asserted the rollout-pending 503 the compatibility phase
+		// produced. Once the authority is finalized a suspend simply succeeds, so
+		// what is worth pinning here is that it takes effect and carries the
+		// compatibility session with it -- a suspended member must not keep a
+		// live compat session behind the admin surface.
 		suspendedMember := performJSONRequest(t, router, http.MethodPost, memberAPath+"/suspend", `{}`, adminLogin.AccessToken, nil)
-		if suspendedMember.Code != http.StatusServiceUnavailable || !strings.Contains(suspendedMember.Body.String(), `"error":"membership_policy_rollout_pending"`) {
-			t.Fatalf("suspend member = %d %s, want rollout-pending 503", suspendedMember.Code, suspendedMember.Body.String())
+		if suspendedMember.Code != http.StatusOK || !strings.Contains(suspendedMember.Body.String(), `"status":"suspended"`) {
+			t.Fatalf("suspend member = %d %s, want 200 suspended", suspendedMember.Code, suspendedMember.Body.String())
 		}
-		if _, ok := compatStore.Get("compat-suspend"); !ok {
-			t.Fatal("blocked suspend invalidated a compatibility session")
+		if _, ok := compatStore.Get("compat-suspend"); ok {
+			t.Fatal("suspend left a live compatibility session for a suspended member")
 		}
 		resumedMember := performJSONRequest(t, router, http.MethodPost, memberAPath+"/resume", `{}`, adminLogin.AccessToken, nil)
 		if resumedMember.Code != http.StatusOK {
-			t.Fatalf("no-op resume member = %d %s, want 200", resumedMember.Code, resumedMember.Body.String())
+			t.Fatalf("resume member = %d %s, want 200", resumedMember.Code, resumedMember.Body.String())
 		}
 		compatInvalidationErr = context.DeadlineExceeded
 		committedEmail := "compat-failure-committed@example.test"

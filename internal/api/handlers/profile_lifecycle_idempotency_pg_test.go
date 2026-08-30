@@ -18,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
@@ -37,6 +38,11 @@ func TestDirectProfileLifecycleReplaysAndRollsBack(t *testing.T) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatal(err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 	users := auth.NewUserRepository(pool)
 	account, err := users.Create(ctx, models.CreateUserInput{
 		Username: "profile-lifecycle-" + uuid.NewString(), Email: uuid.NewString() + "@profile-lifecycle.test",
@@ -48,7 +54,9 @@ func TestDirectProfileLifecycleReplaysAndRollsBack(t *testing.T) {
 	t.Cleanup(func() { _ = users.Delete(context.Background(), account.ID) })
 	if _, err := pool.Exec(ctx, `
 INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-SELECT id,$1,'active','admin' FROM organizations WHERE is_default`, account.ID); err != nil {
+SELECT id,$1,'active','admin' FROM organizations WHERE is_default AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, account.ID); err != nil {
 		t.Fatal(err)
 	}
 	provider := pgstore.NewPostgresProvider(pool)
@@ -147,18 +155,13 @@ SELECT id,$1,'active','admin' FROM organizations WHERE is_default`, account.ID);
 		t.Fatalf("create replay remutated replacement: %+v", replacement)
 	}
 
-	var receiptsBefore int
-	_ = pool.QueryRow(ctx, `SELECT count(*) FROM lifecycle_request_receipts`).Scan(&receiptsBefore)
-	fencedName := "Fenced " + uuid.NewString()
-	fenced := call(http.MethodPost, "/api/v1/profiles/", "profile-fenced-"+uuid.NewString(), map[string]string{"name": fencedName, "pin": "1234"})
-	if fenced.Code != http.StatusServiceUnavailable || fenced.Header().Get("Retry-After") != "1" {
-		t.Fatalf("fenced create=%d headers=%v body=%s", fenced.Code, fenced.Header(), fenced.Body.String())
-	}
-	var profileExists bool
-	_ = pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM user_profiles WHERE user_id=$1 AND name=$2)`, account.ID, fencedName).Scan(&profileExists)
-	var receiptsAfter int
-	_ = pool.QueryRow(ctx, `SELECT count(*) FROM lifecycle_request_receipts`).Scan(&receiptsAfter)
-	if profileExists || receiptsAfter != receiptsBefore {
-		t.Fatalf("fenced mutation residue profile=%v receipts=%d->%d", profileExists, receiptsBefore, receiptsAfter)
-	}
+	// The fenced-create arm used to run here. It relied on the database sitting in
+	// the compatibility phase, where a profile mutation trips
+	// membership_policy_fenced and the handler answers 503 with Retry-After.
+	//
+	// Finalization drops users_membership_policy_authority_fence, so that error
+	// cannot occur once the authority has handed over, and this binary cannot
+	// operate in the compatibility phase at all -- creating the account above is
+	// itself a policy write. The handler mapping stays for servers still mid
+	// rollout; there is no way to exercise it from here without pretending.
 }

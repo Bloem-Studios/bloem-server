@@ -21,6 +21,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
 )
@@ -38,6 +39,11 @@ func TestAdminDeleteUserLifecycleReplayDoesNotDeleteSameNumericReplacement(t *te
 	t.Cleanup(pool.Close)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
+	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 
 	users := auth.NewUserRepository(pool)
@@ -62,7 +68,10 @@ func TestAdminDeleteUserLifecycleReplayDoesNotDeleteSameNumericReplacement(t *te
 	for _, accountID := range []int{actor.ID, target.ID} {
 		if _, err := pool.Exec(ctx, `
 INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-VALUES ($1,$2,'active',$3)`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
+SELECT $1,$2,'active',$3
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
 			t.Fatalf("create membership for %d: %v", accountID, err)
 		}
 	}
@@ -110,7 +119,10 @@ RETURNING account_incarnation_id`, target.ID, "replacement-"+uuid.NewString(), u
 	}
 	if _, err := pool.Exec(ctx, `
 INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-VALUES ($1,$2,'active','user')`, organizationID, target.ID); err != nil {
+SELECT $1,$2,'active','user'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, target.ID); err != nil {
 		t.Fatalf("create replacement membership: %v", err)
 	}
 
@@ -140,6 +152,11 @@ func TestRequestLimitLifecycleReplayDoesNotUpdateSameNumericReplacement(t *testi
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 	users := auth.NewUserRepository(pool)
 	actor, err := users.Create(ctx, models.CreateUserInput{Username: "limit-actor-" + uuid.NewString(), Email: uuid.NewString() + "@lifecycle.test", Password: "test-password", Role: models.RoleAdmin})
 	if err != nil {
@@ -154,7 +171,11 @@ func TestRequestLimitLifecycleReplayDoesNotUpdateSameNumericReplacement(t *testi
 		t.Fatalf("load default organization: %v", err)
 	}
 	for _, accountID := range []int{actor.ID, target.ID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active',$3)`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+SELECT $1,$2,'active',$3
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
 			t.Fatalf("create membership: %v", err)
 		}
 	}
@@ -195,7 +216,11 @@ func TestRequestLimitLifecycleReplayDoesNotUpdateSameNumericReplacement(t *testi
 	if _, err := pool.Exec(ctx, `INSERT INTO users (id,username,email,password_hash,role) VALUES ($1,$2,$3,'x','user')`, target.ID, "replacement-"+uuid.NewString(), uuid.NewString()+"@lifecycle.test"); err != nil {
 		t.Fatalf("create replacement: %v", err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,max_profiles) VALUES ($1,$2,'active','user',4)`, organizationID, target.ID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,max_profiles)
+SELECT $1,$2,'active','user',4
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, target.ID); err != nil {
 		t.Fatalf("create replacement membership: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO request_user_limits (user_id,limit_mode,max_requests,window_days,approval_mode) VALUES ($1,'custom',99,30,'auto')`, target.ID); err != nil {
@@ -228,6 +253,11 @@ func TestAdminUpdateUserLifecycleReplayDoesNotUpdateSameNumericReplacement(t *te
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 	users := auth.NewUserRepository(pool)
 	actor, err := users.Create(ctx, models.CreateUserInput{Username: "update-actor-" + uuid.NewString(), Email: uuid.NewString() + "@lifecycle.test", Password: "test-password", Role: models.RoleAdmin})
 	if err != nil {
@@ -242,7 +272,11 @@ func TestAdminUpdateUserLifecycleReplayDoesNotUpdateSameNumericReplacement(t *te
 		t.Fatalf("load default organization: %v", err)
 	}
 	for _, accountID := range []int{actor.ID, target.ID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active',$3)`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+SELECT $1,$2,'active',$3
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
 			t.Fatalf("create membership: %v", err)
 		}
 	}
@@ -296,7 +330,11 @@ func TestAdminUpdateUserLifecycleReplayDoesNotUpdateSameNumericReplacement(t *te
 	if err := pool.QueryRow(ctx, `INSERT INTO users (id,username,email,password_hash,role,enabled) VALUES ($1,$2,$3,'x','user',true) RETURNING account_incarnation_id`, target.ID, "replacement-"+uuid.NewString(), uuid.NewString()+"@lifecycle.test").Scan(&replacementIncarnation); err != nil {
 		t.Fatalf("create replacement: %v", err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','user')`, organizationID, target.ID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+SELECT $1,$2,'active','user'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, target.ID); err != nil {
 		t.Fatalf("create replacement membership: %v", err)
 	}
 	replacementSessionID := uuid.NewString()
@@ -333,6 +371,11 @@ func TestAdminCreateProfileLifecycleReplayDoesNotCreateOnSameNumericReplacement(
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 	users := auth.NewUserRepository(pool)
 	actor, err := users.Create(ctx, models.CreateUserInput{Username: "profile-actor-" + uuid.NewString(), Email: uuid.NewString() + "@lifecycle.test", Password: "test-password", Role: models.RoleAdmin})
 	if err != nil {
@@ -348,7 +391,11 @@ func TestAdminCreateProfileLifecycleReplayDoesNotCreateOnSameNumericReplacement(
 		t.Fatalf("load default organization: %v", err)
 	}
 	for _, accountID := range []int{actor.ID, target.ID} {
-		if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active',$3)`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+SELECT $1,$2,'active',$3
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
 			t.Fatalf("create membership: %v", err)
 		}
 	}
@@ -440,7 +487,11 @@ func TestAdminCreateProfileLifecycleReplayDoesNotCreateOnSameNumericReplacement(
 	if err := pool.QueryRow(ctx, `INSERT INTO users (id,username,email,password_hash,role) VALUES ($1,$2,$3,'x','user') RETURNING account_incarnation_id`, target.ID, "replacement-"+uuid.NewString(), uuid.NewString()+"@lifecycle.test").Scan(&replacementIncarnation); err != nil {
 		t.Fatalf("create replacement: %v", err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','user')`, organizationID, target.ID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+SELECT $1,$2,'active','user'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, target.ID); err != nil {
 		t.Fatalf("create replacement membership: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,is_primary,organization_id,access_group_id) VALUES ($1,$2,'Replacement',true,$3,$4)`, created.ID, target.ID, organizationID, defaultGroupID); err != nil {
@@ -490,6 +541,11 @@ func TestAdminRevokeSessionsLifecycleReplayDoesNotRevokeSameNumericReplacement(t
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 
 	users := auth.NewUserRepository(pool)
 	actor, err := users.Create(ctx, models.CreateUserInput{
@@ -505,7 +561,10 @@ func TestAdminRevokeSessionsLifecycleReplayDoesNotRevokeSameNumericReplacement(t
 	}
 	if _, err := pool.Exec(ctx, `
 INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-VALUES ($1,$2,'active','admin')`, organizationID, actor.ID); err != nil {
+SELECT $1,$2,'active','admin'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, actor.ID); err != nil {
 		t.Fatalf("create actor membership: %v", err)
 	}
 	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, actor.ID) })
@@ -529,7 +588,11 @@ VALUES ($1,$2,'active','admin')`, organizationID, actor.ID); err != nil {
 			if createErr != nil {
 				t.Fatalf("create target: %v", createErr)
 			}
-			if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','user')`, organizationID, target.ID); err != nil {
+			if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+SELECT $1,$2,'active','user'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, target.ID); err != nil {
 				t.Fatalf("create target membership: %v", err)
 			}
 			sessionID := uuid.NewString()
@@ -575,7 +638,11 @@ VALUES ($1,$2,'active','admin')`, organizationID, actor.ID); err != nil {
 			if err := pool.QueryRow(ctx, `INSERT INTO users (id,username,email,password_hash,role) VALUES ($1,$2,$3,'x','user') RETURNING account_incarnation_id`, target.ID, "replacement-"+uuid.NewString(), uuid.NewString()+"@lifecycle.test").Scan(&replacementIncarnation); err != nil {
 				t.Fatalf("create replacement: %v", err)
 			}
-			if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','user')`, organizationID, target.ID); err != nil {
+			if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+SELECT $1,$2,'active','user'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, target.ID); err != nil {
 				t.Fatalf("create replacement membership: %v", err)
 			}
 			replacementSessionID := uuid.NewString()

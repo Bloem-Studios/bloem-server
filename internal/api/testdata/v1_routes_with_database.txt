@@ -4,6 +4,7 @@ DELETE /api/v1/admin/collection-groups/{id}
 DELETE /api/v1/admin/collections/{id}
 DELETE /api/v1/admin/collections/{id}/image
 DELETE /api/v1/admin/collections/{id}/items/{item_id}
+DELETE /api/v1/admin/dashboard/layout
 DELETE /api/v1/admin/diagnostics/reports/{id}
 DELETE /api/v1/admin/history-import-sources/{id}
 DELETE /api/v1/admin/history-imports/mappings/{id}
@@ -72,6 +73,8 @@ GET /api/v1/admin/catalog/search/status
 GET /api/v1/admin/collections/
 GET /api/v1/admin/collections/template-bundles
 GET /api/v1/admin/collections/templates
+GET /api/v1/admin/dashboard/capabilities
+GET /api/v1/admin/dashboard/layout
 GET /api/v1/admin/devices
 GET /api/v1/admin/devices/{user_id}/{device_id}
 GET /api/v1/admin/diagnostics/reports/
@@ -84,6 +87,7 @@ GET /api/v1/admin/history-imports/mappings
 GET /api/v1/admin/history-imports/runs
 GET /api/v1/admin/history-imports/runs/{id}
 GET /api/v1/admin/history-imports/sources/{id}/users
+GET /api/v1/admin/host-stats
 GET /api/v1/admin/invitations/
 GET /api/v1/admin/invite-codes/
 GET /api/v1/admin/items/{id}/files
@@ -108,15 +112,22 @@ GET /api/v1/admin/sessions
 GET /api/v1/admin/sessions/capabilities
 GET /api/v1/admin/settings
 GET /api/v1/admin/settings/effective
+GET /api/v1/admin/settings/restart-keys
 GET /api/v1/admin/settings/sections
 GET /api/v1/admin/settings/sensitive-status
 GET /api/v1/admin/settings/{key}
 GET /api/v1/admin/stats
+GET /api/v1/admin/stats/downloads
+GET /api/v1/admin/stats/playback-activity
+GET /api/v1/admin/stats/timeseries
+GET /api/v1/admin/stats/top-activity
+GET /api/v1/admin/stream-telemetry/parity
 GET /api/v1/admin/subtitle-providers/
 GET /api/v1/admin/subtitles/
 GET /api/v1/admin/subtitles/{id}/download
 GET /api/v1/admin/system/build
 GET /api/v1/admin/system/hw-accel
+GET /api/v1/admin/system/resources
 GET /api/v1/admin/tenants
 GET /api/v1/admin/tenants/{id}
 GET /api/v1/admin/tenants/{tenant_id}/members
@@ -188,6 +199,7 @@ GET /api/v1/history/
 GET /api/v1/home/layout
 GET /api/v1/home/sections
 GET /api/v1/home/sections/{id}/items
+GET /api/v1/images/capability
 GET /api/v1/invitations/{token}/
 GET /api/v1/items/trailers/capability
 GET /api/v1/library-playback-prefs/
@@ -425,6 +437,7 @@ PUT /api/v1/admin/collections/order
 PUT /api/v1/admin/collections/{id}
 PUT /api/v1/admin/collections/{id}/items/order
 PUT /api/v1/admin/collections/{id}/items/{item_id}
+PUT /api/v1/admin/dashboard/layout
 PUT /api/v1/admin/history-import-sources/{id}
 PUT /api/v1/admin/history-imports/mappings/{id}
 PUT /api/v1/admin/history-imports/sources/{id}/token

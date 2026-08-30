@@ -46,6 +46,11 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 	if err := database.MigrateDownTo(ctx, pool, migrations.FS, "sql", opaTenantIdentityPredecessor); err != nil {
 		t.Fatalf("migrate to tenant-identity predecessor: %v", err)
 	}
@@ -92,6 +97,11 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate tenant foundation: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 
 	tenantStore := tenancy.NewStore(pool)
 	tenantResolver := tenancy.NewResolver(tenantStore)
@@ -130,7 +140,10 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	}
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-		VALUES ($1, $2, 'active', 'admin')`, foreignOrganizationID, foreignAccountID); err != nil {
+SELECT $1, $2, 'active', 'admin'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrganizationID, foreignAccountID); err != nil {
 		t.Fatalf("create second organization membership: %v", err)
 	}
 	groups := access.NewGroupStore(pool)

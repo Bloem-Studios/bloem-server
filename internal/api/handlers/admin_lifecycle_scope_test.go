@@ -17,6 +17,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
@@ -33,6 +34,11 @@ func TestLifecycleSessionRevocationPreservesOrganizationScope(t *testing.T) {
 	t.Cleanup(pool.Close)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
+	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 	users := auth.NewUserRepository(pool)
 	actor, err := users.Create(ctx, models.CreateUserInput{Username: "scope-actor-" + uuid.NewString(), Email: uuid.NewString() + "@lifecycle.test", Password: "test-password", Role: models.RoleAdmin})
@@ -55,7 +61,11 @@ func TestLifecycleSessionRevocationPreservesOrganizationScope(t *testing.T) {
 		}
 		groupIDs[organizationID] = groupID
 		for _, accountID := range []int{actor.ID, target.ID} {
-			if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active',$3)`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
+			if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+SELECT $1,$2,'active',$3
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == actor.ID]); err != nil {
 				t.Fatalf("create membership: %v", err)
 			}
 		}

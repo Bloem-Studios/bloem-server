@@ -154,7 +154,11 @@ func newInvitationLifecycleFixture(t *testing.T, ctx context.Context, pool *pgxp
 	if _, err := pool.Exec(ctx, `INSERT INTO organizations (id,slug,name,status,owner_account_id) VALUES ($1,$2,'Invited Organization','active',$3)`, organizationID, "invited-"+organizationID.String(), inviter.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','admin')`, organizationID, inviter.ID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+SELECT $1,$2,'active','admin'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationID, inviter.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO access_groups (organization_id,name,is_default) VALUES ($1,$2,true)`, organizationID, "Default "+organizationID.String()); err != nil {
@@ -226,6 +230,11 @@ func newInvitationLifecycleDatabase(t *testing.T, ctx context.Context) *pgxpool.
 	})
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatal(err)
+	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 	return pool
 }

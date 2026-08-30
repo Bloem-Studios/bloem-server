@@ -14,6 +14,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/compatapp"
 	"github.com/Silo-Server/silo-server/internal/database"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -252,6 +253,11 @@ func newCompatAdapterService(t *testing.T) *compatapp.Service {
 	pool := newCompatAdapterDisposableDatabase(t, ctx, dsn)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate database: %v", err)
+	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 	return compatapp.NewService(pool)
 }

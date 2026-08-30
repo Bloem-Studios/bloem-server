@@ -42,6 +42,11 @@ func tenantTestServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 	handler := handlers.NewAdminTenantsHandler(tenancy.NewStore(pool), auth.NewUserRepository(pool))
 	r := chi.NewRouter()
 	r.Post("/api/v1/admin/tenants", handler.HandleCreate)
@@ -215,6 +220,11 @@ func TestAdminHandlerCreateUserEnforcesTenantSlotQuota(t *testing.T) {
 	t.Cleanup(pool.Close)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
+	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 
 	tenantStore := tenancy.NewStore(pool)

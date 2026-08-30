@@ -47,6 +47,11 @@ func newMultitenantAdminAcceptanceFixture(t *testing.T) *multitenantAdminAccepta
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 
 	password := "correct horse battery staple"
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
@@ -84,12 +89,18 @@ func newMultitenantAdminAcceptanceFixture(t *testing.T) *multitenantAdminAccepta
 		}
 		if err := pool.QueryRow(ctx, `
 			INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-			VALUES ($1,$2,'active','admin') RETURNING id`, fixture.organizationIDs[index], sharedAccountID).Scan(&fixture.membershipIDs[index]); err != nil {
+SELECT $1,$2,'active','admin'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role RETURNING id`, fixture.organizationIDs[index], sharedAccountID).Scan(&fixture.membershipIDs[index]); err != nil {
 			t.Fatalf("create shared membership %d: %v", index, err)
 		}
 		if _, err := pool.Exec(ctx, `
 			INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-			VALUES ($1,$2,'active','user')`, fixture.organizationIDs[index], organizationOnly[index]); err != nil {
+SELECT $1,$2,'active','user'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organizationIDs[index], organizationOnly[index]); err != nil {
 			t.Fatalf("create organization-only membership %d: %v", index, err)
 		}
 

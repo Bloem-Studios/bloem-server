@@ -36,6 +36,11 @@ func TestAdminUserResourceRoutesUseProductionAdminBoundary(t *testing.T) {
 	if err := database.RunMigrations(context.Background(), pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership first-run setup creates.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(context.Background(), pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 	cfg := &config.Config{Auth: config.AuthConfig{
 		JWTSecret: "admin-user-route-contract-secret", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour,
 	}}
@@ -117,6 +122,11 @@ func TestProfileRoutesWithoutS3PreserveNilAvatarStore(t *testing.T) {
 	pool := newDisposableAPIDatabase(t, "bloem_no_s3_profiles_", true)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
+	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 	cfg := &config.Config{Auth: config.AuthConfig{
 		JWTSecret: "no-s3-profile-lifecycle-secret", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour,

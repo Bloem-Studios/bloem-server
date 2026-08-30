@@ -40,6 +40,11 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write including the membership a new account is given.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 	users := auth.NewUserRepository(pool)
 	actor, err := users.Create(ctx, models.CreateUserInput{
 		Username: "tenant-lifecycle-actor-" + uuid.NewString(), Email: uuid.NewString() + "@tenant-lifecycle.test",
@@ -52,7 +57,11 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 	if err := pool.QueryRow(ctx, `SELECT id FROM organizations WHERE is_default`).Scan(&defaultOrganization); err != nil {
 		t.Fatalf("load default organization: %v", err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','admin')`, defaultOrganization, actor.ID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+SELECT $1,$2,'active','admin'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, defaultOrganization, actor.ID); err != nil {
 		t.Fatalf("create actor membership: %v", err)
 	}
 	store := tenancy.NewStore(pool)
@@ -419,7 +428,10 @@ VALUES ($1,$2,$3,'x','user') RETURNING account_incarnation_id`, member.ID,
 	}
 	if _, err := pool.Exec(ctx, `
 INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-VALUES ($1,$2,'active','user')`, tenant.ID, member.ID); err != nil {
+SELECT $1,$2,'active','user'
+WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+ON CONFLICT (organization_id, account_id) DO UPDATE
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, tenant.ID, member.ID); err != nil {
 		t.Fatalf("create replacement membership: %v", err)
 	}
 	var accessGroupID int64
