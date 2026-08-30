@@ -67,10 +67,24 @@ const allColumns = `u.id, u.account_incarnation_id, u.email, u.username, u.passw
 	m.max_streams, m.max_transcodes, m.transcode_allowed, m.audio_transcode_allowed, COALESCE(m.max_profiles, 5), m.download_allowed,
 	m.download_transcode_allowed, m.requests_allowed, m.access_group_id, u.created_at, u.updated_at`
 
-// userSource joins an account to its policy in the default organization.
+// userSource joins an account to the membership that represents it.
+//
+// models.User is account-shaped while policy is per-membership, so one row has
+// to stand for the account. The default organization wins when the account
+// belongs to it, which reproduces the pre-handoff behaviour for every ordinary
+// deployment; a tenant member that exists only inside its own organization
+// projects that membership instead, which is the only one it has. Callers that
+// need a specific organization's policy query organization_memberships directly
+// and never come through here.
 const userSource = ` FROM users u
-	LEFT JOIN organizations o ON o.is_default
-	LEFT JOIN organization_memberships m ON m.account_id = u.id AND m.organization_id = o.id`
+	LEFT JOIN LATERAL (
+		SELECT memberships.*
+		FROM organization_memberships AS memberships
+		JOIN organizations AS orgs ON orgs.id = memberships.organization_id
+		WHERE memberships.account_id = u.id
+		ORDER BY orgs.is_default DESC, memberships.created_at ASC, memberships.id ASC
+		LIMIT 1
+	) m ON TRUE`
 
 // scanUser scans a single row into a *models.User.
 func scanUser(row pgx.Row) (*models.User, error) {
@@ -268,7 +282,7 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 		}
 		return nil, fmt.Errorf("creating user: %w", err)
 	}
-	if err := insertDefaultMembershipPolicy(ctx, querier, accountID, membershipLegacyRole(input.Role), policyCols, policyArgs, defaultGroupExpr); err != nil {
+	if err := insertDefaultMembershipPolicy(ctx, querier, accountID, membershipLegacyRole(input.Role), accessGroupID, policyCols, policyArgs, defaultGroupExpr); err != nil {
 		return nil, err
 	}
 
@@ -585,7 +599,14 @@ func applyMembershipPolicyUpdate(ctx context.Context, querier userMutationQuerie
 	// implicit transaction that performs the update.
 	statement := fmt.Sprintf(
 		`%sUPDATE organization_memberships SET %s
-		 WHERE account_id = $%d AND organization_id = (SELECT id FROM organizations WHERE is_default)
+		 WHERE id = (
+			SELECT memberships.id
+			FROM organization_memberships AS memberships
+			JOIN organizations AS orgs ON orgs.id = memberships.organization_id
+			WHERE memberships.account_id = $%d
+			ORDER BY orgs.is_default DESC, memberships.created_at ASC, memberships.id ASC
+			LIMIT 1
+		   )
 		   AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`,
 		prefix, strings.Join(set, ", "), len(args),
 	)
@@ -696,15 +717,22 @@ func derefSlice(value *[]int) []int {
 // seed_legacy_membership_policy requires the v1 writer marker once the authority
 // is finalized, and the marker is transaction-local, so it is set on the same
 // querier immediately before the insert.
-func insertDefaultMembershipPolicy(ctx context.Context, querier userCreateQuerier, accountID int, legacyRole string, cols []string, args []any, defaultGroupExpr string) error {
+func insertDefaultMembershipPolicy(ctx context.Context, querier userCreateQuerier, accountID int, legacyRole string, explicitGroupID *int64, cols []string, args []any, defaultGroupExpr string) error {
+	// The membership belongs to the organization that owns the account's group,
+	// not necessarily the default one: tenancy creates member accounts against a
+	// tenant organization and hands us that organization's group, and
+	// organization_memberships_organization_access_group_fkey ties the pair
+	// together. Fall back to the default organization only when no group was
+	// supplied.
+	organizationExpr := `(SELECT COALESCE(
+		(SELECT g.organization_id FROM access_groups g WHERE g.id = $3),
+		(SELECT id FROM organizations WHERE is_default)
+	) WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL)`
 	columns := append([]string{"organization_id", "account_id", "status", "legacy_role"}, cols...)
-	values := []string{
-		"(SELECT id FROM organizations WHERE is_default AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL)",
-		"$1", "'active'", "$2",
-	}
-	insertArgs := []any{accountID, legacyRole}
+	values := []string{organizationExpr, "$1", "'active'", "$2"}
+	insertArgs := []any{accountID, legacyRole, explicitGroupID}
 	for i, value := range args {
-		values = append(values, fmt.Sprintf("$%d", i+3))
+		values = append(values, fmt.Sprintf("$%d", i+4))
 		insertArgs = append(insertArgs, value)
 	}
 	if defaultGroupExpr != "" {

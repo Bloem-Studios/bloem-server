@@ -235,7 +235,8 @@ func (s *Store) ProvisionMembershipInTransaction(
 	}
 	membership, err := scanMembership(tx.QueryRow(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-		VALUES ($1,$2,$3,$4)
+		SELECT $1,$2,$3,$4
+		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
 		RETURNING id,organization_id,account_id,status,legacy_role,security_revision`,
 		organizationID, accountID, MembershipActive, legacyRole))
 	if err != nil {

@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/database"
@@ -22,18 +23,59 @@ import (
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
+// testTenantPool returns a pool whose membership policy authority has been
+// handed over, which is the steady state almost every test wants.
 func testTenantPool(t *testing.T) (context.Context, *pgxpool.Pool, *tenancy.Store) {
+	t.Helper()
+	ctx, pool, store := buildTenantPool(t)
+	// The compatibility phase freezes every policy write. Hand the authority
+	// over so these tests exercise the state that follows the rollout.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
+	return ctx, pool, store
+}
+
+// buildTenantPool leaves the authority in the compatibility phase,
+// for the tests that assert what the freeze itself does.
+//
+// It builds its own database rather than sharing one. Finalization is per
+// database and one-way, so a freeze test cannot share with the tests that hand
+// the authority over: whichever ran first would decide what the other sees.
+func buildTenantPool(t *testing.T) (context.Context, *pgxpool.Pool, *tenancy.Store) {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
+	admin, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		t.Fatalf("connect test database: %v", err)
+		t.Fatalf("connect maintenance database: %v", err)
 	}
-	t.Cleanup(pool.Close)
+	name := fmt.Sprintf("bloem_tenancy_freeze_%d", time.Now().UnixNano())
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
+		admin.Close()
+		t.Fatalf("create disposable database: %v", err)
+	}
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		admin.Close()
+		t.Fatalf("parse test database URL: %v", err)
+	}
+	config.ConnConfig.Database = name
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		admin.Close()
+		t.Fatalf("connect disposable database: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Close()
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_, _ = admin.Exec(cleanupCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
+		admin.Close()
+	})
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

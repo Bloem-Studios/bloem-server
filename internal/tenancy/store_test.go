@@ -32,7 +32,8 @@ func TestStoreMembershipReadsAndDatabaseConstraints(t *testing.T) {
 
 	if _, err := fixture.pool.Exec(fixture.ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-		VALUES ($1, $2, 'active', 'user')`, defaultOrganization.ID, fixture.adminID); err == nil {
+		SELECT $1, $2, 'active', 'user'
+		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, defaultOrganization.ID, fixture.adminID); err == nil {
 		t.Fatal("duplicate membership insert succeeded")
 	} else if !isUniqueViolation(err) {
 		t.Fatalf("duplicate membership error = %v, want unique violation", err)
@@ -290,6 +291,11 @@ func newTenancyFixture(t *testing.T) (*Store, tenancyFixture) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
+	// The compatibility phase freezes every policy write, including the
+	// membership provisioning under test. Hand the authority over first.
+	if _, err := FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 
 	fixture := tenancyFixture{ctx: ctx, pool: pool, suffix: fmt.Sprintf("%d", time.Now().UnixNano())}
 	fixture.adminID = fixture.insertAccount(t, "admin", "admin")
@@ -301,7 +307,8 @@ func newTenancyFixture(t *testing.T) (*Store, tenancyFixture) {
 	}{{fixture.adminID, "admin"}, {fixture.otherID, "user"}} {
 		if _, err := pool.Exec(ctx, `
 			INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-			VALUES ($1, $2, 'active', $3)`, organization.ID, account.id, account.role); err != nil {
+			SELECT $1, $2, 'active', $3
+			WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, organization.ID, account.id, account.role); err != nil {
 			t.Fatalf("add active membership: %v", err)
 		}
 	}

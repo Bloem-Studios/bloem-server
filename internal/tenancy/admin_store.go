@@ -259,7 +259,8 @@ func (s *Store) CreateOrganizationInTransaction(ctx context.Context, tx pgx.Tx, 
 	}
 	if _, err = tx.Exec(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-		VALUES ($1, $2, $3, $4)`, organization.ID, input.OwnerAccountID, MembershipActive, legacyRoleAdmin); err != nil {
+		SELECT $1, $2, $3, $4
+		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, organization.ID, input.OwnerAccountID, MembershipActive, legacyRoleAdmin); err != nil {
 		return Organization{}, mapAdminWriteError("create owner membership", err)
 	}
 	if err = recordOrganizationAudit(ctx, tx, actor, "organization.created", organization, 0, organization.PolicyRevision, nil, organizationAdminAuditState(organization)); err != nil {
@@ -594,7 +595,8 @@ func (s *Store) CreateMembershipInTransaction(ctx context.Context, tx pgx.Tx, or
 	}
 	membership, err = scanMembership(tx.QueryRow(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-		VALUES ($1, $2, $3, $4)
+		SELECT $1, $2, $3, $4
+		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
 		RETURNING id, organization_id, account_id, status, legacy_role, security_revision`, organizationID, input.AccountID, input.Status, input.LegacyRole))
 	if err != nil {
 		return Membership{}, Organization{}, mapAdminWriteError("create membership", err)

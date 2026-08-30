@@ -29,13 +29,21 @@ func (r *observingMemberUserRepository) GetByID(ctx context.Context, userID int)
 	return r.base.GetByID(ctx, userID)
 }
 
+func buildMemberService(
+	t *testing.T,
+	pool func(*testing.T) (context.Context, *pgxpool.Pool, *tenancy.Store),
+) (context.Context, *pgxpool.Pool, *tenancy.Store, *tenancy.MemberService, *auth.SessionRepository) {
+	t.Helper()
+	ctx, db, store := pool(t)
+	users := auth.NewUserRepository(db)
+	accounts := auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(db))
+	sessions := auth.NewSessionRepository(db)
+	return ctx, db, store, tenancy.NewMemberService(db, accounts, users, sessions), sessions
+}
+
 func newMemberService(t *testing.T) (context.Context, *pgxpool.Pool, *tenancy.Store, *tenancy.MemberService, *auth.SessionRepository) {
 	t.Helper()
-	ctx, pool, store := testTenantPool(t)
-	users := auth.NewUserRepository(pool)
-	accounts := auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(pool))
-	sessions := auth.NewSessionRepository(pool)
-	return ctx, pool, store, tenancy.NewMemberService(pool, accounts, users, sessions), sessions
+	return buildMemberService(t, testTenantPool)
 }
 
 func createMemberTenant(t *testing.T, ctx context.Context, store *tenancy.Store, slots int) tenancy.TenantOrganization {
@@ -224,7 +232,8 @@ func TestMemberServiceDeleteRetryIsDurableForPreReceiptMember(t *testing.T) {
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships
 		(organization_id,account_id,status,legacy_role)
-		VALUES ($1,$2,'active','user')`, tenant.ID, userID); err != nil {
+		SELECT $1,$2,'active','user'
+		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, tenant.ID, userID); err != nil {
 		t.Fatalf("seed pre-receipt membership: %v", err)
 	}
 
@@ -252,7 +261,8 @@ func TestMemberServiceDeletePreservesGlobalUserWithAnotherMembership(t *testing.
 	}
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-		VALUES ($1, $2, 'active', 'user')`, tenantB.ID, member.ID); err != nil {
+		SELECT $1, $2, 'active', 'user'
+		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, tenantB.ID, member.ID); err != nil {
 		t.Fatalf("seed second membership: %v", err)
 	}
 	var groupB int64
@@ -839,12 +849,12 @@ func TestMemberServiceLifecycleIsTenantScopedAndRevokesResetSessions(t *testing.
 		t.Fatalf("create pre-suspend session: %v", err)
 	}
 	suspended, err := service.Suspend(ctx, tenant.ID, member.ID)
-	if !errors.Is(err, tenancy.ErrMembershipPolicyWriteUnavailable) {
-		t.Fatalf("suspend = (%+v, %v), want rollout unavailable", suspended, err)
+	if err != nil || suspended.Enabled {
+		t.Fatalf("suspend = (%+v, %v)", suspended, err)
 	}
 	suspendedSession, err := sessions.GetByID(ctx, suspendSessionID)
-	if err != nil || suspendedSession.RevokedAt != nil {
-		t.Fatalf("session after refused suspend = (%+v, %v)", suspendedSession, err)
+	if err != nil || suspendedSession.RevokedAt == nil {
+		t.Fatalf("session after suspend = (%+v, %v)", suspendedSession, err)
 	}
 
 	if err := service.Delete(ctx, tenant.ID, member.ID); err != nil {
