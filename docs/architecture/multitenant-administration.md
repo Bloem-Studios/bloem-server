@@ -85,6 +85,30 @@ organization-scoped throughout. This under-serves rather than over-serves --
 organization, so a client sees one organization's libraries and never a union
 across them.
 
+### Keeping it that way
+
+Two guards hold the compatibility promise, and they are deliberately different
+mechanisms.
+
+`TestV1RouteSurfaceWithADatabaseIsUnchanged` compares the whole surface against a
+golden file and is regenerated whenever the surface changes. It is good at
+showing a diff. It is not a guarantee: an addition and a removal look alike in
+it, and regenerating absorbs both.
+
+`TestV1SiloRouteContractIsNeverNarrowed` is the guarantee. It asserts every route
+in `testdata/v1_routes_silo_contract.txt` is still served, and that file only
+shrinks when someone deletes a line. Adding routes needs no change to it, because
+an addition cannot break a client that never calls it; removing one is a visible,
+reviewable act with a removals entry to write in
+[v1-scope.md](v1-scope.md).
+
+Behaviour needs its own guard, because the route surface cannot see it. A client
+broke once during this work with no route change at all: it browsed before the
+viewer picked a profile, and the profile-less subject resolved through the
+deployment default organization rather than the account's own tenant, so a
+tenant's end user was told its tenant did not exist. That class of regression is
+what `TestSiloClientSubjectResolutionMatrix` above exists to catch.
+
 ## Access group deletion
 
 Deleting an access group reassigns its members to the organization's default
