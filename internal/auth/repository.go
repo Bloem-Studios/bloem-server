@@ -607,7 +607,9 @@ func applyMembershipPolicyUpdate(ctx context.Context, querier userMutationQuerie
 			ORDER BY orgs.is_default DESC, memberships.created_at ASC, memberships.id ASC
 			LIMIT 1
 		   )
-		   AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`,
+		   AND set_config('bloem.membership_policy_writer',
+				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
+				     THEN 'v1' ELSE '' END, true) IS NOT NULL`,
 		prefix, strings.Join(set, ", "), len(args),
 	)
 	if _, err := querier.Exec(ctx, statement, args...); err != nil {
@@ -727,7 +729,9 @@ func insertDefaultMembershipPolicy(ctx context.Context, querier userCreateQuerie
 	organizationExpr := `(SELECT COALESCE(
 		(SELECT g.organization_id FROM access_groups g WHERE g.id = $3),
 		(SELECT id FROM organizations WHERE is_default)
-	) WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL)`
+	) WHERE set_config('bloem.membership_policy_writer',
+				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
+				     THEN 'v1' ELSE '' END, true) IS NOT NULL)`
 	columns := append([]string{"organization_id", "account_id", "status", "legacy_role"}, cols...)
 	values := []string{organizationExpr, "$1", "'active'", "$2"}
 	insertArgs := []any{accountID, legacyRole, explicitGroupID}

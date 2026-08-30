@@ -1564,7 +1564,9 @@ func (s *Service) executeBulkRecord(ctx context.Context, tx pgx.Tx, organization
 		if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET status=$2,security_revision=security_revision+1,updated_at=now() WHERE id=$1`, membershipID, target); err != nil {
 			return "", "", err
 		}
-		if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+		if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
+				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
+				     THEN 'v1' ELSE '' END, true)`); err != nil {
 			return "", "", err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, membershipID); err != nil {
@@ -1654,7 +1656,9 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	} else if _, err := tx.Exec(ctx, `UPDATE user_profiles SET access_group_id=$3,updated_at=now() WHERE organization_id=$1 AND user_id=$2 AND access_group_id=$4 AND access_group_id<>$3`, organizationID, snapshot.AccountID, targetGroupID, currentGroupID); err != nil {
 		return "", "", err
 	}
-	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
+				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
+				     THEN 'v1' ELSE '' END, true)`); err != nil {
 		return "", "", err
 	}
 	if _, err := tx.Exec(ctx, `
@@ -1781,7 +1785,9 @@ func bumpPersonRevisions(ctx context.Context, tx pgx.Tx, membershipID uuid.UUID,
 	if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET security_revision=security_revision+1,updated_at=now() WHERE id=$1`, membershipID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
+				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
+				     THEN 'v1' ELSE '' END, true)`); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, membershipID); err != nil {
@@ -1908,7 +1914,9 @@ func (s *Service) UpdateMembershipInTransaction(ctx context.Context, tx pgx.Tx, 
 		if _, err = tx.Exec(ctx, `UPDATE organization_memberships SET status=$2,security_revision=security_revision+1,updated_at=now() WHERE id=$1`, id, status); err != nil {
 			return PersonSummary{}, err
 		}
-		if _, err = tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+		if _, err = tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
+				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
+				     THEN 'v1' ELSE '' END, true)`); err != nil {
 			return PersonSummary{}, err
 		}
 		if _, err = tx.Exec(ctx, `UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, id); err != nil {

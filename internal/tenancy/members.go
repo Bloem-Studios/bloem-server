@@ -283,7 +283,9 @@ func (s *MemberService) Create(
 	if _, err = tx.Exec(ctx, `
 		INSERT INTO organization_memberships (id, organization_id, account_id, status, legacy_role)
 		SELECT $1, $2, $3, $4, $5
-		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+		WHERE set_config('bloem.membership_policy_writer',
+				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
+				     THEN 'v1' ELSE '' END, true) IS NOT NULL
 		ON CONFLICT (organization_id, account_id) DO UPDATE
 		SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`,
 		uuid.New(), tenantID, created.ID, MembershipActive, legacyRoleUser); err != nil {
@@ -356,7 +358,9 @@ func (s *MemberService) CreateInTransaction(ctx context.Context, tx pgx.Tx, tena
 		return models.User{}, uuid.Nil, fmt.Errorf("tenancy: create member account: %w", err)
 	}
 	membershipID := uuid.New()
-	if _, err := tx.Exec(ctx, `INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role) SELECT $1,$2,$3,$4,$5 WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+	if _, err := tx.Exec(ctx, `INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role) SELECT $1,$2,$3,$4,$5 WHERE set_config('bloem.membership_policy_writer',
+				CASE WHEN (SELECT phase FROM public.membership_policy_authority WHERE singleton) = 'finalized'
+				     THEN 'v1' ELSE '' END, true) IS NOT NULL
 		ON CONFLICT (organization_id, account_id) DO UPDATE
 		SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, membershipID, tenantID, created.ID, MembershipActive, legacyRoleUser); err != nil {
 		return models.User{}, uuid.Nil, fmt.Errorf("tenancy: create member membership: %w", err)
