@@ -204,11 +204,11 @@ type accountPolicyBatchProfile struct {
 func loadAccountPolicyBatchAccounts(ctx context.Context, tx pgx.Tx, requestedOrganizationID uuid.UUID, accountIDs []int) (map[int]accountPolicyBatchAccount, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT memberships.organization_id,
-		       users.id,users.role,users.permissions,users.library_ids,users.max_playback_quality,
-		       users.access_policy_revision,users.max_streams,users.max_transcodes,
-		       users.transcode_allowed,users.audio_transcode_allowed,users.max_profiles,
-		       users.download_allowed,users.download_transcode_allowed,users.requests_allowed,
-		       users.access_group_id,groups.id,groups.managed_template_key,
+		       users.id,users.role,memberships.permissions,memberships.library_ids,memberships.max_playback_quality,
+		       memberships.access_policy_revision,memberships.max_streams,memberships.max_transcodes,
+		       memberships.transcode_allowed,memberships.audio_transcode_allowed,memberships.max_profiles,
+		       memberships.download_allowed,memberships.download_transcode_allowed,memberships.requests_allowed,
+		       memberships.access_group_id,groups.id,groups.managed_template_key,
 		       revisions.cohort_id,revisions.revision,
 		       COALESCE(revisions.source_template_key,groups.managed_template_key),
 		       COALESCE(revisions.source_template_revision,groups.managed_template_revision),
@@ -222,7 +222,7 @@ func loadAccountPolicyBatchAccounts(ctx context.Context, tx pgx.Tx, requestedOrg
 		JOIN organizations ON organizations.id=memberships.organization_id
 		LEFT JOIN access_groups groups
 		  ON groups.organization_id=memberships.organization_id
-		 AND groups.id=users.access_group_id
+		 AND groups.id=memberships.access_group_id
 		LEFT JOIN entitlement_policy_cohort_revisions revisions
 		  ON revisions.organization_id=groups.organization_id
 		 AND revisions.access_group_id=groups.id
@@ -470,16 +470,18 @@ func loadAccountPolicyUser(ctx context.Context, tx pgx.Tx, organizationID uuid.U
 		sourceTemplateRevision *int64
 	)
 	err := tx.QueryRow(ctx, `
-		SELECT u.id,u.role,u.permissions,u.library_ids,u.max_playback_quality,
-		       u.access_policy_revision,u.max_streams,u.max_transcodes,
-		       u.transcode_allowed,u.audio_transcode_allowed,u.max_profiles,
-		       u.download_allowed,u.download_transcode_allowed,u.requests_allowed,
-		       u.access_group_id,g.id,g.managed_template_key,revisions.cohort_id,
+		SELECT u.id,u.role,m.permissions,m.library_ids,m.max_playback_quality,
+		       m.access_policy_revision,m.max_streams,m.max_transcodes,
+		       m.transcode_allowed,m.audio_transcode_allowed,m.max_profiles,
+		       m.download_allowed,m.download_transcode_allowed,m.requests_allowed,
+		       m.access_group_id,g.id,g.managed_template_key,revisions.cohort_id,
 		       revisions.revision,COALESCE(revisions.source_template_key,g.managed_template_key),
 		       COALESCE(revisions.source_template_revision,g.managed_template_revision)
 		FROM users u
+		JOIN organization_memberships m
+		  ON m.account_id=u.id AND m.organization_id=$1
 		LEFT JOIN access_groups g
-		  ON g.organization_id=$1 AND g.id=u.access_group_id
+		  ON g.organization_id=$1 AND g.id=m.access_group_id
 		LEFT JOIN entitlement_policy_cohort_revisions revisions
 		  ON revisions.organization_id=g.organization_id
 		 AND revisions.access_group_id=g.id
@@ -658,15 +660,17 @@ func (p accountPolicyGroupProvider) ResolvePolicy(ctx context.Context, subject a
 			subject.OrganizationID, subject.AccountID, subject.ProfileID))
 	}
 	return scanAccountPolicyGroupPolicy(p.tx.QueryRow(ctx, `
-		SELECT users.access_group_id,groups.id,groups.library_ids,
+		SELECT memberships.access_group_id,groups.id,groups.library_ids,
 		       groups.max_playback_quality,groups.playback_allowed,
 		       groups.download_allowed,groups.download_transcode_allowed,
 		       groups.transcode_allowed,groups.audio_transcode_allowed,
 		       groups.max_streams,groups.max_profiles,groups.max_transcodes,
 		       groups.allowed_permissions,groups.requests_allowed
 		FROM users
+		JOIN organization_memberships memberships
+		  ON memberships.account_id=users.id AND memberships.organization_id=$1
 		LEFT JOIN access_groups groups
-		  ON groups.organization_id=$1 AND groups.id=users.access_group_id
+		  ON groups.organization_id=$1 AND groups.id=memberships.access_group_id
 		WHERE users.id=$2`, subject.OrganizationID, subject.AccountID))
 }
 

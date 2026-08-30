@@ -360,7 +360,7 @@ func (s *Store) GetDefaultAccountEntitlement(ctx context.Context, accountID int)
 	result.AccountID = accountID
 	var reconciled *time.Time
 	err := s.pool.QueryRow(ctx, `
-		SELECT o.id,u.access_group_id,COALESCE(g.name,''),COALESCE(g.managed_template_key,''),
+		SELECT o.id,m.access_group_id,COALESCE(g.name,''),COALESCE(g.managed_template_key,''),
 		       COALESCE(g.managed_template_revision,0),g.library_ids,g.playback_allowed,
 		       g.max_streams,g.max_profiles,g.transcode_allowed,g.max_transcodes,
 		       g.download_allowed,g.download_transcode_allowed,g.max_playback_quality,
@@ -460,11 +460,11 @@ func (s *Store) applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organiz
 	}
 	var priorGroupID *int64
 	if err := tx.QueryRow(ctx, `
-		SELECT u.access_group_id
+		SELECT m.access_group_id
 		FROM users u
 		JOIN organization_memberships m ON m.account_id=u.id
 		WHERE u.id=$1 AND m.organization_id=$2 AND m.status='active'
-		FOR UPDATE OF u`, accountID, organizationID).Scan(&priorGroupID); errors.Is(err, pgx.ErrNoRows) {
+		FOR UPDATE OF m`, accountID, organizationID).Scan(&priorGroupID); errors.Is(err, pgx.ErrNoRows) {
 		return ApplyResult{}, ErrAccountNotFound
 	} else if err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: lock direct account: %w", err)
@@ -590,9 +590,12 @@ func (s *Store) applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organiz
 		}
 		// Exact-revision groups are shared. Dynamic all-libraries resolution can
 		// change the group policy, so invalidate every other account using it.
+		if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+			return ApplyResult{}, fmt.Errorf("entitlements: mark membership policy writer: %w", err)
+		}
 		rows, err := tx.Query(ctx, `
-			UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now()
-			WHERE access_group_id=$1 AND id<>$2 RETURNING id`, result.GroupID, accountID)
+			UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1,updated_at=now()
+			WHERE access_group_id=$1 AND account_id<>$2 RETURNING account_id`, result.GroupID, accountID)
 		if err != nil {
 			return ApplyResult{}, fmt.Errorf("entitlements: invalidate shared direct group members: %w", err)
 		}
@@ -623,9 +626,12 @@ func (s *Store) applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organiz
 		WHERE user_id=$1 AND organization_id=$2 AND access_group_id=ANY($3)`, accountID, organizationID, moveGroupIDs, result.GroupID); err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: reconcile direct profiles: %w", err)
 	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: mark membership policy writer: %w", err)
+	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE users SET access_group_id=$2,access_policy_revision=access_policy_revision+1,updated_at=now()
-		WHERE id=$1`, accountID, result.GroupID); err != nil {
+		UPDATE organization_memberships SET access_group_id=$2,access_policy_revision=access_policy_revision+1,updated_at=now()
+		WHERE account_id=$1 AND organization_id=$3`, accountID, result.GroupID, organizationID); err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: assign direct account template: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO entitlement_audit_events
@@ -1079,7 +1085,7 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 			if err := tx.QueryRow(ctx, `
 			SELECT count(*)::int
 			FROM user_profiles p
-			JOIN users u ON u.id=p.user_id AND u.access_group_id=$2
+			JOIN organization_memberships u ON u.account_id=p.user_id AND u.organization_id=$1 AND u.access_group_id=$2
 			WHERE p.organization_id=$1 AND p.access_group_id=$2
 			  AND EXISTS (
 				SELECT 1 FROM organization_memberships m
@@ -1127,15 +1133,16 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 		}
 	} else if group.ManagedCohortID != nil {
 		if moveFormerDefaultAssignments {
+			if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+				return ApplyResult{}, fmt.Errorf("entitlements: mark membership policy writer: %w", err)
+			}
 			rows, err := tx.Query(ctx, `
-			UPDATE users u
+			UPDATE organization_memberships u
 			SET access_group_id=$3,access_policy_revision=access_policy_revision+1,updated_at=now()
 			WHERE u.access_group_id=$2
-			  AND EXISTS (
-				SELECT 1 FROM organization_memberships m
-				WHERE m.organization_id=$1 AND m.account_id=u.id AND m.status='active'
-			  )
-			RETURNING u.id`, tenantID, formerDefaultGroupID, group.ID)
+			  AND u.organization_id=$1
+			  AND u.status='active'
+			RETURNING u.account_id`, tenantID, formerDefaultGroupID, group.ID)
 			if err != nil {
 				return ApplyResult{}, fmt.Errorf("entitlements: move former default account assignments: %w", err)
 			}
@@ -1200,12 +1207,16 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 			return ApplyResult{}, fmt.Errorf("entitlements: exact cohort adopted group %d, want materialized group %d", adopted.AccessGroupID, result.GroupID)
 		}
 	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+		return ApplyResult{}, fmt.Errorf("entitlements: mark membership policy writer: %w", err)
+	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE users SET access_policy_revision=access_policy_revision+1
-		WHERE id IN (
+		UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1
+		WHERE organization_id=$1
+		  AND account_id IN (
 			SELECT DISTINCT user_id FROM user_profiles
 			WHERE organization_id=$1 AND access_group_id=$2
-		) AND NOT (id=ANY($3::integer[]))`, tenantID, result.GroupID, movedAccountIDs); err != nil {
+		) AND NOT (account_id=ANY($3::integer[]))`, tenantID, result.GroupID, movedAccountIDs); err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: bump managed group member revisions: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO entitlement_audit_events
