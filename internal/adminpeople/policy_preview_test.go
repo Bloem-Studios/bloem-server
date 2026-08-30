@@ -19,7 +19,7 @@ func TestPolicyPreviewUsesImmutableAuthoritativeSelectionSnapshot(t *testing.T) 
 	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
 	customGroup := fixture.addGroup(t, fixture.orgA, "Preview custom", false)
 	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Custom profile", customGroup)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2 AND id<>$4`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID, customProfile); err != nil {
@@ -117,7 +117,7 @@ func TestPolicyPreviewDoesNotCallPolicyEquivalentAccountInDifferentCohortComplia
 		WHERE target.id=$1`, customGroup, restricted.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.sharedAccountID, customGroup); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID, customGroup); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2`, fixture.orgA, fixture.sharedAccountID, customGroup); err != nil {
@@ -143,7 +143,7 @@ func TestPolicyPreviewPartitionsCustomProfileAlreadyAssignedToTarget(t *testing.
 	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
 	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Already premium", int(premium.AccessGroupID))
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2 AND id<>$4`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID, customProfile); err != nil {
@@ -390,7 +390,7 @@ func TestPolicyPreviewMarksMembershipAndProfileDriftStale(t *testing.T) {
 	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
 	customGroup := fixture.addGroup(t, fixture.orgA, "Drift custom", false)
 	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Drift profile", customGroup)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2 AND id<>$4`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID, customProfile); err != nil {
@@ -418,7 +418,7 @@ func TestPolicyPreviewMarksMembershipAndProfileDriftStale(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET security_revision=security_revision+1 WHERE organization_id=$1 AND account_id=$2`, fixture.orgA, fixture.sharedAccountID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET security_revision=security_revision+1 WHERE organization_id=$1 AND account_id=$2 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.orgA, fixture.sharedAccountID); err != nil {
 		t.Fatal(err)
 	}
 	membershipPreview, err := fixture.service.PreviewPolicy(ctx, fixture.orgA, fixture.ownerID, membershipSelection.Token, command)
@@ -434,7 +434,7 @@ func TestPolicyPreviewConfirmationRejectsEveryMaterialBindingChange(t *testing.T
 	fixture := newPeopleFixture(t)
 	store := entitlements.NewTemplateStore(fixture.pool)
 	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
@@ -483,7 +483,7 @@ func TestPolicyPreviewConfirmationRejectsEveryMaterialBindingChange(t *testing.T
 			}
 		})
 	}
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET security_revision=security_revision+1 WHERE id=$1`, fixture.ownerMembershipID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET security_revision=security_revision+1 WHERE id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.ownerMembershipID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.service.ValidatePolicyConfirmation(ctx, fixture.orgA, fixture.ownerID, selection.Token, command, preview.ConfirmationToken); !errors.Is(err, ErrInvalidPolicyConfirmation) {
@@ -502,7 +502,7 @@ func TestPolicyPreviewConfirmationInvalidatesOnObservedPolicyRevisionChange(t *t
 	fixture := newPeopleFixture(t)
 	store := entitlements.NewTemplateStore(fixture.pool)
 	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
@@ -518,7 +518,7 @@ func TestPolicyPreviewConfirmationInvalidatesOnObservedPolicyRevisionChange(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1 WHERE account_id=$1`, fixture.sharedAccountID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1 WHERE account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.service.ValidatePolicyConfirmation(ctx, fixture.orgA, fixture.ownerID, selection.Token, command, preview.ConfirmationToken); !errors.Is(err, ErrInvalidPolicyConfirmation) {
@@ -530,7 +530,7 @@ func TestValidatePolicyConfirmationInTxLocksObservedStateUntilCallerCommit(t *te
 	fixture := newPeopleFixture(t)
 	store := entitlements.NewTemplateStore(fixture.pool)
 	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
@@ -561,7 +561,7 @@ func TestValidatePolicyConfirmationInTxLocksObservedStateUntilCallerCommit(t *te
 	if _, err := mutationTx.Exec(ctx, `SET LOCAL lock_timeout='100ms'`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := mutationTx.Exec(ctx, `UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1 WHERE account_id=$1`, fixture.sharedAccountID); err == nil || !strings.Contains(strings.ToLower(err.Error()), "lock timeout") {
+	if _, err := mutationTx.Exec(ctx, `UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1 WHERE account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID); err == nil || !strings.Contains(strings.ToLower(err.Error()), "lock timeout") {
 		t.Fatalf("concurrent observed-state update error = %v, want lock timeout", err)
 	}
 }
@@ -643,7 +643,7 @@ func createUnadoptedPreviewGroup(t *testing.T, fixture *peopleFixture, key strin
 
 func assignPreviewGroup(t *testing.T, fixture *peopleFixture, groupID int) {
 	t.Helper()
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.sharedAccountID, groupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID, groupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2`, fixture.orgA, fixture.sharedAccountID, groupID); err != nil {

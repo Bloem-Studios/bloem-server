@@ -442,7 +442,8 @@ func newCohortFixture(t *testing.T) *cohortFixture {
 		RETURNING id`, "cohort-"+suffix+"@example.test", "cohort-"+suffix).Scan(&actorID))
 	execMembershipPolicy(t, ctx, pool, `
 		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,access_group_id)
-		VALUES ($1,$2,'active','admin',$3)`, tenant.ID, actorID, applied.GroupID)
+		SELECT $1,$2,'active','admin',$3
+		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, tenant.ID, actorID, applied.GroupID)
 	_, err = pool.Exec(ctx, `
 		INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id,is_primary)
 		VALUES ($1,$2,'Primary',$3,$4,true)`, uuid.NewString(), actorID, tenant.ID, applied.GroupID)

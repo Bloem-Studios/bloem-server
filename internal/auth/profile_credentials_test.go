@@ -108,7 +108,7 @@ func TestDirectProfileLoginRejectsDisabledOrSuspendedSubject(t *testing.T) {
 	if _, err := service.pool.Exec(ctx, `UPDATE users SET enabled = true WHERE id = $1`, accountID); err != nil {
 		t.Fatalf("enable account: %v", err)
 	}
-	if _, err := service.pool.Exec(ctx, `UPDATE organization_memberships SET status = 'suspended' WHERE account_id = $1`, accountID); err != nil {
+	if _, err := service.pool.Exec(ctx, `UPDATE organization_memberships SET status = 'suspended' WHERE account_id = $1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, accountID); err != nil {
 		t.Fatalf("suspend membership: %v", err)
 	}
 	if _, err := service.Authenticate(ctx, "disabled-profile@example.test", "profile-password", DeviceClaim{}); !errors.Is(err, ErrInvalidCredentials) {

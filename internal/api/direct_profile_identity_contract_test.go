@@ -141,7 +141,7 @@ func TestDirectProfileIdentityContractAgainstRealRouter(t *testing.T) {
 
 	// Phase 3: a token outlived by the membership's security revision.
 	bindings["stale_security_token"] = loginDirect(directPassword)
-	if _, err := pool.Exec(ctx, `UPDATE organization_memberships SET security_revision = security_revision + 1 WHERE account_id = $1`, accountID); err != nil {
+	if _, err := pool.Exec(ctx, `UPDATE organization_memberships SET security_revision = security_revision + 1 WHERE account_id = $1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, accountID); err != nil {
 		t.Fatalf("rotate security revision: %v", err)
 	}
 	runRevocation("a stale membership security revision is refused")

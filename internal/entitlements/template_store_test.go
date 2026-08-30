@@ -612,7 +612,7 @@ func TestProfileEntitlementLimitIsOrganizationScopedAndConcurrentSafe(t *testing
 	var firstGroupID int64
 	require.NoError(t, pool.QueryRow(ctx, `SELECT o.id,g.id FROM organizations o JOIN access_groups g ON g.organization_id=o.id AND g.is_default WHERE o.is_default`).Scan(&firstOrganizationID, &firstGroupID))
 	accountID := insertDirectEntitlementAccount(t, ctx, pool, firstOrganizationID, firstGroupID, "profile-cap")
-	_, err := pool.Exec(ctx, `UPDATE organization_memberships SET max_profiles=1 WHERE account_id=$1`, accountID)
+	_, err := pool.Exec(ctx, `UPDATE organization_memberships SET max_profiles=1 WHERE account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, accountID)
 	require.NoError(t, err)
 
 	start := make(chan struct{})
@@ -637,7 +637,7 @@ func TestProfileEntitlementLimitIsOrganizationScopedAndConcurrentSafe(t *testing
 		Name: "Second cap tenant", ExternalOperatorID: "cap-" + uuid.NewString(), ExternalServiceID: "cap-" + uuid.NewString(), Slots: 1, Transcodes: 1,
 	})
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role) VALUES ($1,$2,$3,'active','user')`, uuid.New(), tenant.ID, accountID)
+	_, err = pool.Exec(ctx, `INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role) SELECT $1,$2,$3,'active','user' WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, uuid.New(), tenant.ID, accountID)
 	require.NoError(t, err)
 	var secondGroupID int64
 	require.NoError(t, pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, tenant.ID).Scan(&secondGroupID))
@@ -752,7 +752,8 @@ func insertDirectEntitlementAccount(t *testing.T, ctx context.Context, pool *pgx
 	// fixture has to place it there rather than on users.
 	_, err := pool.Exec(ctx, `
 		INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role,access_group_id)
-		VALUES ($1,$2,$3,'active','user',$4)`, uuid.New(), organizationID, accountID, defaultGroupID)
+		SELECT $1,$2,$3,'active','user',$4
+		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, uuid.New(), organizationID, accountID, defaultGroupID)
 	require.NoError(t, err)
 	return accountID
 }

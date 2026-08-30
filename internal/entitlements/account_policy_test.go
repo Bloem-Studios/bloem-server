@@ -22,7 +22,7 @@ func TestGetAccountPolicyReturnsExactManagedProvenance(t *testing.T) {
 	require.NoError(t, fixture.pool.QueryRow(fixture.ctx,
 		`SELECT cohort_id FROM entitlement_policy_cohort_revisions WHERE id=$1`, cohort.ID,
 	).Scan(&stableCohortID))
-	_, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET audio_transcode_allowed=true WHERE account_id=$1`, fixture.actorID)
+	_, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET audio_transcode_allowed=true WHERE account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.actorID)
 	require.NoError(t, err)
 
 	snapshot, err := fixture.store.GetAccountPolicy(fixture.ctx, fixture.organizationID, fixture.actorID)
@@ -66,7 +66,7 @@ func TestGetAccountPolicyReturnsDerivedCohortAndProfileExceptions(t *testing.T) 
 	require.NoError(t, fixture.pool.QueryRow(fixture.ctx, `
 		SELECT id FROM user_profiles
 		WHERE organization_id=$1 AND user_id=$2 AND is_primary`, fixture.organizationID, fixture.actorID).Scan(&inheritedProfileID))
-	_, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.actorID, derived.AccessGroupID)
+	_, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.actorID, derived.AccessGroupID)
 	require.NoError(t, err)
 	_, err = fixture.pool.Exec(fixture.ctx, `
 		UPDATE user_profiles SET access_group_id=$2
@@ -110,7 +110,7 @@ func TestGetAccountPolicyResolvesDynamicAllLibrariesForCustomGroup(t *testing.T)
 	insertEntitlementLibrary(t, fixture.ctx, fixture.pool, "policy-read-"+uuid.NewString(), true)
 	wantLibraries := entitlementEnabledLibraryIDs(t, fixture.ctx, fixture.pool)
 	customGroupID := insertAccountPolicyGroup(t, fixture, "Dynamic all", nil, 4)
-	_, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.actorID, customGroupID)
+	_, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.actorID, customGroupID)
 	require.NoError(t, err)
 
 	snapshot, err := fixture.store.GetAccountPolicy(fixture.ctx, fixture.organizationID, fixture.actorID)
@@ -125,7 +125,7 @@ func TestGetAccountPolicyResolvesDynamicAllLibrariesForCustomGroup(t *testing.T)
 
 func TestGetAccountPolicyDoesNotSynthesizeMissingCohortProvenance(t *testing.T) {
 	fixture := newCohortFixture(t)
-	_, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET access_group_id=NULL WHERE account_id=$1`, fixture.actorID)
+	_, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET access_group_id=NULL WHERE account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.actorID)
 	require.NoError(t, err)
 
 	snapshot, err := fixture.store.GetAccountPolicy(fixture.ctx, fixture.organizationID, fixture.actorID)
@@ -187,7 +187,8 @@ func TestEntitlementSnapshotDirectScopeUsesDefaultOrganization(t *testing.T) {
 		"policy-direct-"+suffix+"@example.test", "policy-direct-"+suffix).Scan(&accountID))
 	_, err := fixture.pool.Exec(fixture.ctx, `
 		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,access_group_id)
-		VALUES ($1,$2,'active','user',$3)`, organizationID, accountID, groupID)
+		SELECT $1,$2,'active','user',$3
+		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, organizationID, accountID, groupID)
 	require.NoError(t, err)
 	_, err = fixture.pool.Exec(fixture.ctx, `
 		INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id,is_primary)

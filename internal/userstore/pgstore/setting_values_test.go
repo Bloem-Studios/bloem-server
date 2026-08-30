@@ -416,7 +416,7 @@ func TestProfileOrganizationAndAccessGroupPersistence(t *testing.T) {
 		LIMIT 1`).Scan(&organizationID, &accessGroupID); err != nil {
 		t.Fatalf("load default profile identity: %v", err)
 	}
-	if _, err := pool.Exec(ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, userID, accessGroupID); err != nil {
+	if _, err := pool.Exec(ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, userID, accessGroupID); err != nil {
 		t.Fatalf("assign legacy group: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `

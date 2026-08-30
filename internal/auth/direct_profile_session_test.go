@@ -559,8 +559,8 @@ func TestDirectProfileLoginLosesRaceWithSubjectChanges(t *testing.T) {
 		"account disabled":       `UPDATE users SET enabled = false WHERE id = $1`,
 		"organization suspended": `UPDATE organizations SET status = 'suspended' WHERE id = (SELECT organization_id FROM user_profiles WHERE user_id = $1 LIMIT 1)`,
 		"policy rotated":         `UPDATE organizations SET policy_revision = policy_revision + 1 WHERE id = (SELECT organization_id FROM user_profiles WHERE user_id = $1 LIMIT 1)`,
-		"membership suspended":   `UPDATE organization_memberships SET status = 'suspended' WHERE account_id = $1`,
-		"security rotated":       `UPDATE organization_memberships SET security_revision = security_revision + 1 WHERE account_id = $1`,
+		"membership suspended":   `UPDATE organization_memberships SET status = 'suspended' WHERE account_id = $1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`,
+		"security rotated":       `UPDATE organization_memberships SET security_revision = security_revision + 1 WHERE account_id = $1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			ctx := context.Background()
