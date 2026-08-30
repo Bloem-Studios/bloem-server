@@ -15,6 +15,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
@@ -306,6 +307,12 @@ func newAccessGroupUserRepoDBTest(t *testing.T) (context.Context, *pgxpool.Pool,
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
+	// A freshly migrated database is in the compatibility phase, which freezes
+	// every policy write. Hand the authority over so these tests exercise the
+	// steady state the repository now targets.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 
 	var tableName *string
 	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.access_groups')::text`).Scan(&tableName); err != nil {
@@ -473,6 +480,15 @@ func insertAuthAccessGroupTestUser(t *testing.T, ctx context.Context, pool *pgxp
 		"auth-access-group-test-"+suffix,
 	).Scan(&id); err != nil {
 		t.Fatalf("insert user: %v", err)
+	}
+	// The account's policy lives on its default-organization membership now, so
+	// a directly-inserted account needs one or every policy update matches no row.
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		SELECT id, $1, 'active', 'user' FROM organizations
+		WHERE is_default AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+		ON CONFLICT (organization_id, account_id) DO NOTHING`, id); err != nil {
+		t.Fatalf("seed account membership: %v", err)
 	}
 	return id
 }

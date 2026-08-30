@@ -289,6 +289,11 @@ func newProfileCredentialService(t *testing.T) profileCredentialTestService {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
+	// Hand the policy authority over before seeding: the compatibility phase
+	// freezes every policy write, including the membership a new account gets.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
+	}
 	activateProfileCredentialTestTenant(t, pool)
 	return profileCredentialTestService{ProfileCredentialService: NewProfileCredentialService(pool), pool: pool}
 }

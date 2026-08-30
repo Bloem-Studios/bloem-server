@@ -40,7 +40,7 @@ func TestAccessGroupSetClause(t *testing.T) {
 		setClause, predicate, cte, args, nextArgIndex := accessGroupSetClause(
 			models.UpdateUserInput{Role: &user}, 3,
 		)
-		wantExpr := "(CASE WHEN role = '" + models.RoleAdmin +
+		wantExpr := "(CASE WHEN legacy_role = '" + models.RoleAdmin +
 			"' THEN (SELECT id FROM default_group) ELSE access_group_id END)"
 		if setClause != "access_group_id = "+wantExpr {
 			t.Fatalf("setClause = %q", setClause)
@@ -48,7 +48,7 @@ func TestAccessGroupSetClause(t *testing.T) {
 		if predicate != "access_group_id IS DISTINCT FROM "+wantExpr {
 			t.Fatalf("predicate = %q", predicate)
 		}
-		if cte != "default_group AS (SELECT id FROM access_groups WHERE is_default)" {
+		if cte != "default_group AS (SELECT g.id FROM access_groups g JOIN organizations o ON o.id = g.organization_id WHERE o.is_default AND g.is_default)" {
 			t.Fatalf("cte = %q", cte)
 		}
 		// The same alias appears in both setClause and predicate above, so
@@ -68,7 +68,7 @@ func TestAccessGroupSetClause(t *testing.T) {
 		setClause, predicate, cte, args, nextArgIndex := accessGroupSetClause(
 			models.UpdateUserInput{AccessGroupID: models.SetValue(groupID)}, 5,
 		)
-		wantExpr := "(CASE WHEN role = '" + models.RoleAdmin + "' THEN NULL ELSE $5::bigint END)"
+		wantExpr := "(CASE WHEN legacy_role = '" + models.RoleAdmin + "' THEN NULL ELSE $5::bigint END)"
 		if setClause != "access_group_id = "+wantExpr {
 			t.Fatalf("setClause = %q", setClause)
 		}

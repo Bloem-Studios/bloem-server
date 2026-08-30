@@ -268,7 +268,7 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 		}
 		return nil, fmt.Errorf("creating user: %w", err)
 	}
-	if err := insertDefaultMembershipPolicy(ctx, querier, accountID, policyCols, policyArgs, defaultGroupExpr); err != nil {
+	if err := insertDefaultMembershipPolicy(ctx, querier, accountID, membershipLegacyRole(input.Role), policyCols, policyArgs, defaultGroupExpr); err != nil {
 		return nil, err
 	}
 
@@ -329,6 +329,10 @@ type userUpdateColumn struct {
 	set               bool
 	value             any
 	bumpsAccessPolicy bool
+	// mirrorsToMembership names the organization_memberships column that has to
+	// track this users column. role/legacy_role are the same fact in two places,
+	// and accessGroupSetClause reads legacy_role to decide an admin's group.
+	mirrorsToMembership string
 }
 
 // accessGroupSetClause builds the SET clause and access-policy predicate for
@@ -354,7 +358,10 @@ type userUpdateColumn struct {
 // literal subselect it would run twice per UPDATE, but a CTE referenced more
 // than once is materialized once by Postgres.
 func accessGroupSetClause(input models.UpdateUserInput, argIndex int) (setClause, predicate, defaultGroupCTE string, args []any, nextArgIndex int) {
-	const isAdmin = "role = '" + models.RoleAdmin + "'"
+	// The clause now runs against organization_memberships, whose role column is
+	// legacy_role; role itself stayed on users. The two are kept in step by
+	// createWithQuerier and by the role branch of this same update.
+	const isAdmin = "legacy_role = '" + models.RoleAdmin + "'"
 	nextArgIndex = argIndex
 	switch {
 	case input.Role != nil && *input.Role == models.RoleAdmin:
@@ -363,7 +370,7 @@ func accessGroupSetClause(input models.UpdateUserInput, argIndex int) (setClause
 		args = []any{(*int64)(nil)}
 		nextArgIndex++
 	case input.Role != nil && !input.AccessGroupID.Set:
-		defaultGroupCTE = "default_group AS (SELECT id FROM access_groups WHERE is_default)"
+		defaultGroupCTE = "default_group AS (SELECT g.id FROM access_groups g JOIN organizations o ON o.id = g.organization_id WHERE o.is_default AND g.is_default)"
 		expr := "(CASE WHEN " + isAdmin + " THEN (SELECT id FROM default_group) ELSE access_group_id END)"
 		setClause = "access_group_id = " + expr
 	case input.Role == nil && input.AccessGroupID.Set && input.AccessGroupID.Value != nil:
@@ -436,7 +443,7 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 		{column: "username", set: username != nil, value: username},
 		{column: "password_hash", set: passwordHash != nil, value: passwordHash},
 		{column: "local_password_login_enabled", set: input.LocalPasswordLoginEnabled != nil, value: input.LocalPasswordLoginEnabled},
-		{column: "role", set: input.Role != nil, value: input.Role, bumpsAccessPolicy: true},
+		{column: "role", set: input.Role != nil, value: input.Role, bumpsAccessPolicy: true, mirrorsToMembership: "legacy_role"},
 		{column: "permissions", set: input.Permissions != nil, value: permissions, bumpsAccessPolicy: true},
 		{column: "enabled", set: input.Enabled != nil, value: input.Enabled, bumpsAccessPolicy: true},
 		{column: "library_ids", set: input.LibraryIDs.Set, value: derefSlice(input.LibraryIDs.Value)},
@@ -484,6 +491,14 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 		}
 		placeholder := fmt.Sprintf("$%d", argIndex)
 		setClauses = append(setClauses, fmt.Sprintf("%s = %s", col.column, placeholder))
+		if col.mirrorsToMembership != "" {
+			membershipSet = append(membershipSet, fmt.Sprintf("%s = $%d", col.mirrorsToMembership, len(membershipArgs)+1))
+			mirrored := col.value
+			if role, ok := col.value.(*string); ok && role != nil {
+				mirrored = membershipLegacyRole(*role)
+			}
+			membershipArgs = append(membershipArgs, mirrored)
+		}
 		if col.bumpsAccessPolicy {
 			// role and enabled still live on users, but the revision they bump is
 			// the membership's. Comparing across tables afterwards would see the
@@ -512,9 +527,13 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 	}
 
 	if len(setClauses) == 0 {
-		// Nothing to update; still verify the user exists.
-		_, err := scanUser(querier.QueryRow(ctx, `SELECT `+allColumns+userSource+` WHERE u.id = $1`, id))
-		return err
+		// Nothing left on the account row itself. Verify it exists, then apply
+		// the policy half: an update that only touches policy columns now
+		// changes nothing on users, and returning here would silently drop it.
+		if _, err := scanUser(querier.QueryRow(ctx, `SELECT `+allColumns+userSource+` WHERE u.id = $1`, id)); err != nil {
+			return err
+		}
+		return applyMembershipPolicyUpdate(ctx, querier, id, membershipSet, membershipPredicates, membershipArgs, bumpFromAccountColumns, defaultGroupCTE)
 	}
 
 	// Always bump updated_at.
@@ -545,9 +564,6 @@ func applyMembershipPolicyUpdate(ctx context.Context, querier userMutationQuerie
 	if len(set) == 0 && !alwaysBump {
 		return nil
 	}
-	if _, err := querier.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
-		return fmt.Errorf("marking membership policy writer: %w", err)
-	}
 	switch {
 	case alwaysBump:
 		set = append(set, "access_policy_revision = access_policy_revision + 1")
@@ -563,9 +579,14 @@ func applyMembershipPolicyUpdate(ctx context.Context, querier userMutationQuerie
 	if defaultGroupCTE != "" {
 		prefix = "WITH " + defaultGroupCTE + " "
 	}
+	// The v1 writer marker is transaction-local, and this querier is often a
+	// pool rather than a transaction, so a separate SET LOCAL would not survive
+	// to this statement. Evaluating set_config in the WHERE marks the same
+	// implicit transaction that performs the update.
 	statement := fmt.Sprintf(
 		`%sUPDATE organization_memberships SET %s
-		 WHERE account_id = $%d AND organization_id = (SELECT id FROM organizations WHERE is_default)`,
+		 WHERE account_id = $%d AND organization_id = (SELECT id FROM organizations WHERE is_default)
+		   AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`,
 		prefix, strings.Join(set, ", "), len(args),
 	)
 	if _, err := querier.Exec(ctx, statement, args...); err != nil {
@@ -675,15 +696,15 @@ func derefSlice(value *[]int) []int {
 // seed_legacy_membership_policy requires the v1 writer marker once the authority
 // is finalized, and the marker is transaction-local, so it is set on the same
 // querier immediately before the insert.
-func insertDefaultMembershipPolicy(ctx context.Context, querier userCreateQuerier, accountID int, cols []string, args []any, defaultGroupExpr string) error {
-	if _, err := querier.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
-		return fmt.Errorf("marking membership policy writer: %w", err)
-	}
+func insertDefaultMembershipPolicy(ctx context.Context, querier userCreateQuerier, accountID int, legacyRole string, cols []string, args []any, defaultGroupExpr string) error {
 	columns := append([]string{"organization_id", "account_id", "status", "legacy_role"}, cols...)
-	values := []string{"(SELECT id FROM organizations WHERE is_default)", "$1", "'active'", "'user'"}
-	insertArgs := []any{accountID}
+	values := []string{
+		"(SELECT id FROM organizations WHERE is_default AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL)",
+		"$1", "'active'", "$2",
+	}
+	insertArgs := []any{accountID, legacyRole}
 	for i, value := range args {
-		values = append(values, fmt.Sprintf("$%d", i+2))
+		values = append(values, fmt.Sprintf("$%d", i+3))
 		insertArgs = append(insertArgs, value)
 	}
 	if defaultGroupExpr != "" {
@@ -698,4 +719,15 @@ func insertDefaultMembershipPolicy(ctx context.Context, querier userCreateQuerie
 		return fmt.Errorf("creating account membership policy: %w", err)
 	}
 	return nil
+}
+
+// membershipLegacyRole narrows an account role to the two values
+// organization_memberships.legacy_role accepts. Roles beyond admin are ordinary
+// members as far as tenant membership is concerned; the account keeps its full
+// role on users.
+func membershipLegacyRole(role string) string {
+	if role == models.RoleAdmin {
+		return models.RoleAdmin
+	}
+	return "user"
 }
