@@ -34,6 +34,7 @@ const TRANSCODING_ESSENTIAL_KEYS = [
 const TRANSCODING_ADVANCED_KEYS = [
   "playback.ffmpeg_path",
   "playback.transcode_dir",
+  "playback.segment_retention_seconds",
   "playback.hw_device",
   "playback.local_transcode_fallback",
   "playback.proxy_policy",
@@ -328,6 +329,15 @@ export default function PlaybackSettings() {
                 restartRequired={restartKeys.has("transcode_throttle_seconds")}
               />
             )}
+            <SettingField
+              label="Transcode back buffer"
+              type="number"
+              unit="seconds"
+              hint="Keeps this much already-downloaded media for instant backward seeking, then reclaims older transcode segments. Use 0 to disable cleanup; enabled values must be at least 120 seconds. Pair with transcode throttling to bound both behind- and ahead-of-client disk usage."
+              value={form.getValue("playback.segment_retention_seconds")}
+              onChange={(v) => form.setValue("playback.segment_retention_seconds", v)}
+              restartRequired={restartKeys.has("playback.segment_retention_seconds")}
+            />
             <SettingField
               label="Chapter thumbnail workers"
               type="number"

@@ -24,6 +24,7 @@ import { useRequestFeatureStatus } from "@/hooks/queries/useRequests";
 import { useLiveTVChannels } from "@/hooks/queries/useLiveTV";
 import { useSidebarPins, useToggleSidebarPin } from "@/hooks/queries/sidebarPins";
 import { useViewTransitionNavigate } from "@/hooks/useViewTransition";
+import { SEARCH_SHORTCUT_LABEL } from "@/lib/keyboardShortcut";
 import { pluginRouteHref } from "@/lib/pluginRouteHref";
 import {
   buildLibraryCollectionCatalogHref,
@@ -747,7 +748,7 @@ export default function AppSidebar({ onNavigate, collapsed = false }: AppSidebar
                       showLabels ? "opacity-100" : "opacity-0"
                     }`}
                   >
-                    {"\u2318"}K
+                    {SEARCH_SHORTCUT_LABEL}
                   </kbd>
                 </ViewTransitionLink>
               </li>

@@ -22,6 +22,7 @@ const mockState = vi.hoisted(() => ({
     canPollDashboard: true,
     canApplyRealtimeUpdates: true,
   },
+  pathname: "/",
 }));
 
 vi.mock("@/hooks/useAuth", () => {
@@ -41,7 +42,7 @@ vi.mock("@/api/client", () => ({
 }));
 
 vi.mock("react-router", () => ({
-  useLocation: () => ({ pathname: "/" }),
+  useLocation: () => ({ pathname: mockState.pathname }),
 }));
 
 class FakeWebSocket {
@@ -192,6 +193,7 @@ describe("RealtimeEventsProvider", () => {
       canPollDashboard: true,
       canApplyRealtimeUpdates: true,
     };
+    mockState.pathname = "/";
   });
 
   afterEach(() => {
@@ -263,6 +265,57 @@ describe("RealtimeEventsProvider", () => {
     });
 
     expect(FakeWebSocket.instances).toHaveLength(2);
+  });
+
+  it("defers broad catch-up refetches until foreground playback exits", () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    const refetchQueries = vi.spyOn(queryClient, "refetchQueries").mockResolvedValue(undefined);
+    mockState.pathname = "/watch/movie-1";
+    const provider = () => (
+      <QueryClientProvider client={queryClient}>
+        <RealtimeEventsProvider>
+          <div />
+        </RealtimeEventsProvider>
+      </QueryClientProvider>
+    );
+
+    const view = render(provider());
+
+    act(() => {
+      mockState.pageActivity = {
+        ...mockState.pageActivity,
+        isVisible: false,
+        canApplyRealtimeUpdates: false,
+      };
+      view.rerender(provider());
+    });
+
+    act(() => {
+      mockState.pageActivity = {
+        ...mockState.pageActivity,
+        isVisible: true,
+        canApplyRealtimeUpdates: true,
+      };
+      view.rerender(provider());
+    });
+
+    expect(refetchQueries).not.toHaveBeenCalled();
+
+    act(() => {
+      mockState.pathname = "/item/movie-1";
+      view.rerender(provider());
+    });
+
+    expect(refetchQueries).toHaveBeenCalledTimes(1);
+    expect(refetchQueries).toHaveBeenCalledWith({
+      type: "active",
+      predicate: expect.any(Function),
+    });
   });
 
   it("preserves cached watched state when a favorite-only event arrives", async () => {

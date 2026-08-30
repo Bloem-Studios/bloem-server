@@ -242,6 +242,7 @@ func TestNormalizeAdminSettingRejectsInvalidValues(t *testing.T) {
 		{key: "theme.catalog_url", value: "https://example.com/catalog.json"},
 		{key: "redis.url", value: "not-a-url"},
 		{key: "playback.header_authenticated_media_mode", value: "always"},
+		{key: "playback.segment_retention_seconds", value: "119"},
 		{key: "scanner.max_concurrent_libraries", value: "0"},
 		{key: "scanner.max_concurrent_scoped", value: "-1"},
 		{key: "scanner.empty_trash_after_scan", value: "sometimes"},
@@ -280,6 +281,20 @@ func TestNormalizeHeaderAuthenticatedMediaMode(t *testing.T) {
 		if got != test.want {
 			t.Fatalf("NormalizeAdminSetting(%q) = %q, want %q", test.raw, got, test.want)
 		}
+	}
+}
+
+func TestNormalizeAdminSettingAcceptsSegmentRetentionBounds(t *testing.T) {
+	for _, value := range []string{"0", "120", "86400"} {
+		t.Run(value, func(t *testing.T) {
+			got, err := NormalizeAdminSetting("playback.segment_retention_seconds", value)
+			if err != nil {
+				t.Fatalf("NormalizeAdminSetting: %v", err)
+			}
+			if got != value {
+				t.Fatalf("normalized retention = %q, want %q", got, value)
+			}
+		})
 	}
 }
 
