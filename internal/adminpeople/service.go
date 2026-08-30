@@ -1654,19 +1654,23 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	} else if _, err := tx.Exec(ctx, `UPDATE user_profiles SET access_group_id=$3,updated_at=now() WHERE organization_id=$1 AND user_id=$2 AND access_group_id=$4 AND access_group_id<>$3`, organizationID, snapshot.AccountID, targetGroupID, currentGroupID); err != nil {
 		return "", "", err
 	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+		return "", "", err
+	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE users SET
+		UPDATE organization_memberships AS memberships SET
 			access_group_id=$2,
 			max_profiles=(SELECT CASE
-				WHEN max_profiles > 0 THEN max_profiles
-				WHEN managed_template_key IS NOT NULL OR managed_cohort_id IS NOT NULL THEN 1
-				ELSE users.max_profiles
-			END FROM access_groups WHERE organization_id=$3 AND id=$2),
+				WHEN groups.max_profiles > 0 THEN groups.max_profiles
+				WHEN groups.managed_template_key IS NOT NULL OR groups.managed_cohort_id IS NOT NULL THEN 1
+				ELSE memberships.max_profiles
+			END FROM access_groups AS groups WHERE groups.organization_id=$3 AND groups.id=$2),
 			library_ids=NULL,max_playback_quality=NULL,max_streams=NULL,max_transcodes=NULL,
 			transcode_allowed=NULL,audio_transcode_allowed=NULL,download_allowed=NULL,
 			download_transcode_allowed=NULL,requests_allowed=NULL,
 			access_policy_revision=access_policy_revision+1,updated_at=now()
-		WHERE id=$1`, snapshot.AccountID, targetGroupID, organizationID); err != nil {
+		WHERE memberships.account_id=$1 AND memberships.organization_id=$3`,
+		snapshot.AccountID, targetGroupID, organizationID); err != nil {
 		return "", "", err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET security_revision=security_revision+1,updated_at=now() WHERE id=$1`, membershipID); err != nil {
