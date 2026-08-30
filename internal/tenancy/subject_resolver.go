@@ -13,6 +13,9 @@ import (
 // by an account. Implementations must hide profiles owned by another account.
 type ProfileOrganizationResolver interface {
 	ProfileOrganization(context.Context, int, string) (uuid.UUID, error)
+	// AccountOrganization answers which organization represents the account when
+	// no profile names one. See Store.AccountOrganization.
+	AccountOrganization(context.Context, int) (uuid.UUID, error)
 }
 
 // SubjectResolver turns an out-of-request account/profile identity into the
@@ -34,6 +37,23 @@ func (r *SubjectResolver) ResolveSubjectTenant(ctx context.Context, accountID in
 		return Context{}, ErrTenantUnavailable
 	}
 	if profileID == "" {
+		// A profile-less subject resolves through the organization that
+		// represents the account. Falling straight through to the deployment
+		// default told a tenant's own end user that its tenant did not exist,
+		// because it holds no membership there — and a Silo client browses
+		// profile-less until the viewer picks a profile.
+		if r.profiles != nil {
+			organizationID, err := r.profiles.AccountOrganization(ctx, accountID)
+			switch {
+			case err == nil && organizationID != uuid.Nil:
+				return r.tenants.ResolveProfile(ctx, accountID, organizationID)
+			case errors.Is(err, ErrMembershipNotFound):
+				// No membership anywhere: keep the legacy answer so a
+				// pre-tenancy account still resolves through the default.
+			case err != nil:
+				return Context{}, err
+			}
+		}
 		return r.tenants.Resolve(ctx, accountID, nil, true)
 	}
 	if r.profiles == nil {

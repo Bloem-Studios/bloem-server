@@ -396,3 +396,38 @@ func mapOwnershipWriteError(err error) error {
 	}
 	return fmt.Errorf("write ownership activation: %w", err)
 }
+
+// AccountOrganization answers which organization represents an account when no
+// profile names one.
+//
+// A Silo client only sends X-Profile-Id once a profile has been selected, so
+// content requests before that arrive profileless. Resolving those through the
+// deployment default organization tells a tenant's own end user that its tenant
+// does not exist, because it holds no membership there.
+//
+// The account's own organization is the answer, chosen with the same precedence
+// the account policy projection uses (auth.userSource): the default
+// organization when the account belongs to it, otherwise its earliest
+// membership. Keeping the two in step means there is one notion of "the
+// account's organization" rather than two that can disagree.
+func (s *Store) AccountOrganization(ctx context.Context, accountID int) (uuid.UUID, error) {
+	if s == nil || s.pool == nil || accountID <= 0 {
+		return uuid.Nil, ErrTenantUnavailable
+	}
+	var organizationID uuid.UUID
+	err := s.pool.QueryRow(ctx, `
+		SELECT memberships.organization_id
+		FROM organization_memberships AS memberships
+		JOIN organizations AS orgs ON orgs.id = memberships.organization_id
+		WHERE memberships.account_id = $1
+		  AND memberships.status <> 'invited'
+		ORDER BY orgs.is_default DESC, memberships.created_at ASC, memberships.id ASC
+		LIMIT 1`, accountID).Scan(&organizationID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, ErrMembershipNotFound
+	}
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("%w: load account organization: %w", ErrTenantUnavailable, err)
+	}
+	return organizationID, nil
+}

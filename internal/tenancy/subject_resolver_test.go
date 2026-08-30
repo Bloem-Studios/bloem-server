@@ -13,6 +13,21 @@ type subjectProfileOrganizationStub struct {
 	err            error
 	accountID      int
 	profileID      string
+	// accountOrganizationID is what a profile-less subject resolves through.
+	// uuid.Nil with no error keeps the legacy default-organization fallback.
+	accountOrganizationID  uuid.UUID
+	accountOrganizationErr error
+}
+
+func (s *subjectProfileOrganizationStub) AccountOrganization(_ context.Context, accountID int) (uuid.UUID, error) {
+	s.accountID = accountID
+	if s.accountOrganizationErr != nil {
+		return uuid.Nil, s.accountOrganizationErr
+	}
+	if s.accountOrganizationID == uuid.Nil {
+		return uuid.Nil, ErrMembershipNotFound
+	}
+	return s.accountOrganizationID, nil
 }
 
 type subjectResolverStoreStub struct {
