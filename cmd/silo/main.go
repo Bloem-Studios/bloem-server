@@ -856,6 +856,12 @@ func normalizeLoadedConfig(cfg *config.Config) {
 
 // main starts the Silo server or a requested maintenance command.
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "membership-policy" {
+		if err := runMembershipPolicyCommand(context.Background(), os.Args[2:]); err != nil {
+			log.Fatalf("membership-policy: %v", err)
+		}
+		return
+	}
 	if len(os.Args) > 1 && os.Args[1] == "compat-web" {
 		if err := runCompatWebCommand(context.Background(), os.Args[2:]); err != nil {
 			log.Fatalf("compat-web: %v", err)
