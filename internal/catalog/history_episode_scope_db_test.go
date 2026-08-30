@@ -47,6 +47,7 @@ func TestResolveHistoryEpisodeScope(t *testing.T) {
 	).Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
+	seedDefaultOrgMembership(t, ctx, pool, userID)
 	profileID := fmt.Sprintf("00000000-0000-4000-8000-%012d", suffix%1_000_000_000_000)
 	if _, err := pool.Exec(ctx,
 		`INSERT INTO user_profiles (id, user_id, name, organization_id, access_group_id)

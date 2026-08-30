@@ -46,8 +46,13 @@ func TestPlayableTargetResolverProfileStateAvailabilityAndAccess(t *testing.T) {
 	`, id("user")+"@example.invalid").Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
+	seedDefaultOrgMembership(t, ctx, pool, userID)
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO user_profiles (id, user_id, name) VALUES ($1, $3, 'A'), ($2, $3, 'B')
+		INSERT INTO user_profiles (id, user_id, name, organization_id, access_group_id)
+		SELECT p.id, $3, p.name, o.id, ag.id
+		FROM (VALUES ($1::text, 'A'), ($2::text, 'B')) AS p(id, name)
+		JOIN organizations o ON o.is_default
+		JOIN access_groups ag ON ag.organization_id = o.id AND ag.is_default
 	`, profileA, profileB, userID); err != nil {
 		t.Fatalf("seed profiles: %v", err)
 	}
@@ -355,6 +360,7 @@ func TestPlayableTargetResolverResumesDeepInsideLongSeries(t *testing.T) {
 	`, fmt.Sprintf("deep-%d@example.invalid", suffix)).Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
+	seedDefaultOrgMembership(t, ctx, pool, userID)
 	if err := pool.QueryRow(ctx, `INSERT INTO media_folders (type, name, enabled) VALUES ('series', $1, TRUE) RETURNING id`, series).Scan(&folderID); err != nil {
 		t.Fatalf("seed folder: %v", err)
 	}
@@ -363,7 +369,12 @@ func TestPlayableTargetResolverResumesDeepInsideLongSeries(t *testing.T) {
 		_, _ = pool.Exec(ctx, `DELETE FROM media_items WHERE content_id = $1`, series)
 		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, folderID)
 	})
-	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id, user_id, name) VALUES ($1, $2, 'Deep')`, profileID, userID); err != nil {
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO user_profiles (id, user_id, name, organization_id, access_group_id)
+		SELECT $1, $2, 'Deep', o.id, ag.id
+		FROM organizations o
+		JOIN access_groups ag ON ag.organization_id = o.id AND ag.is_default
+		WHERE o.is_default`, profileID, userID); err != nil {
 		t.Fatalf("seed profile: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `

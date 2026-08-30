@@ -562,6 +562,7 @@ func seedNextUpTestOwner(t *testing.T, ctx context.Context, pool *pgxpool.Pool, 
 		deleteCatalogTestMediaFolders(t, ctx, pool, folderID)
 		t.Fatalf("seed user: %v", err)
 	}
+	seedDefaultOrgMembership(t, ctx, pool, userID)
 
 	profileID := fmt.Sprintf("00000000-0000-4000-8000-%012d", time.Now().UnixNano()%1_000_000_000_000)
 	if _, err := pool.Exec(ctx, `
