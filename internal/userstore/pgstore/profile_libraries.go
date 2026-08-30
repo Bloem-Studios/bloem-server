@@ -47,13 +47,6 @@ func listProfileAllowedLibraries(ctx context.Context, q profileLibraryQuerier, u
 	return libraryIDs, nil
 }
 
-// attachAllowedLibraries fills AllowedLibraryIDs for every profile with a
-// single batched query, avoiding the N+1 round trip a per-profile lookup
-// would create.
-func (s *PostgresUserStore) attachAllowedLibraries(ctx context.Context, profiles []userstore.Profile) error {
-	return attachAllowedLibraries(ctx, s.pool, s.userID, profiles)
-}
-
 func attachAllowedLibraries(ctx context.Context, q profileLibraryQuerier, userID int, profiles []userstore.Profile) error {
 	if len(profiles) == 0 {
 		return nil

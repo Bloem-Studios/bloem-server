@@ -85,7 +85,7 @@ func readCollectionImageMultipart(r *http.Request, fieldName string) ([]byte, er
 		return nil, fmt.Errorf("%w: file exceeds 10 MB limit", errCollectionArtworkInput)
 	}
 	if err := validateCollectionImageData(data); err != nil {
-		return nil, fmt.Errorf("%w: %v", errCollectionArtworkInput, err)
+		return nil, fmt.Errorf("%w: %w", errCollectionArtworkInput, err)
 	}
 	return data, nil
 }
@@ -105,7 +105,7 @@ func downloadCollectionImageURL(ctx context.Context, client *outbound.Client, ra
 		return nil, fmt.Errorf("%w: downloading image: %w", errCollectionArtworkInput, err)
 	}
 	if err := validateCollectionImageData(response.Body); err != nil {
-		return nil, fmt.Errorf("%w: %v", errCollectionArtworkInput, err)
+		return nil, fmt.Errorf("%w: %w", errCollectionArtworkInput, err)
 	}
 	return response.Body, nil
 }

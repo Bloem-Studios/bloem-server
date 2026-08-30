@@ -28,7 +28,7 @@ type ArtifactStore interface {
 }
 
 // Maximum wall-clock time a single admin job execution may run before its
-// context is cancelled. This is the safety net that prevents a hung
+// context is canceled. This is the safety net that prevents a hung
 // operation (e.g. an unreachable S3 endpoint) from blocking the job queue
 // indefinitely, while still giving large jobs a budget that matches their
 // actual scope.
@@ -847,7 +847,7 @@ func (r *Runner) cancelJob(id string, current, total int, message string) {
 	}
 	job, err := r.repo.Cancel(ctx, id, message, time.Now().UTC().Add(r.retention))
 	if err != nil {
-		slog.Warn("admin jobs: failed to mark job cancelled", "job_id", id, "error", err)
+		slog.Warn("admin jobs: failed to mark job canceled", "job_id", id, "error", err)
 		return
 	}
 	if r.realtimeHub != nil {

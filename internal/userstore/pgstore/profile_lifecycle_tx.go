@@ -2,6 +2,7 @@ package pgstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -25,7 +26,7 @@ func (tx *preferenceSettingsTx) GetProfile(ctx context.Context, id string) (*use
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
 		       show_forced_subtitles, max_playback_quality, organization_id::text, access_group_id, created_at, updated_at
 		FROM user_profiles WHERE user_id = $1 AND id = $2`, tx.userID, id))
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {

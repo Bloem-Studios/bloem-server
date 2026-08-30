@@ -2222,7 +2222,7 @@ func main() {
 			userStoreProvider = pgstore.NewPostgresProvider(deps.DB)
 			slog.Info("user store initialized", "backend", "postgres")
 		}
-		defer userStoreProvider.Close()
+		defer func() { _ = userStoreProvider.Close() }()
 	}
 
 	var policySystem *policy.System
@@ -2437,7 +2437,7 @@ func main() {
 	// Host CPU/memory/network sampling needs no database — it's a pure
 	// /proc reader — so it's wired unconditionally rather than gated on
 	// deps.DB like the stats provider above. Run exits on its own once
-	// appCtx is cancelled at shutdown; nothing further to defer.
+	// appCtx is canceled at shutdown; nothing further to defer.
 	hostStatsSampler := hoststats.NewSampler(2 * time.Second)
 	go hostStatsSampler.Run(appCtx)
 	deps.HostStatsSource = hostStatsSampler
@@ -2517,7 +2517,7 @@ func main() {
 				perKeyLimiter = ratelimit.NewRedisLimiter(redisClient)
 				globalLimiter = ratelimit.NewRedisLimiter(redisClient)
 				isMemory = false
-				defer redisClient.Close()
+				defer func() { _ = redisClient.Close() }()
 			}
 		}
 
@@ -2596,7 +2596,7 @@ func main() {
 			activityWriter = activitylog.NewRedisWriter(actRedisClient)
 			activityConsumer = activitylog.NewConsumer(pool, actRedisClient, logStreamHub)
 			go activityConsumer.RunRedis(appCtx)
-			defer actRedisClient.Close()
+			defer func() { _ = actRedisClient.Close() }()
 		}
 	}
 
@@ -3480,7 +3480,7 @@ func main() {
 
 	// Run non-critical startup work in the background so it doesn't delay the
 	// HTTP listener from accepting connections. Steps run sequentially and stop
-	// early if the app context is cancelled (shutdown).
+	// early if the app context is canceled (shutdown).
 	if len(backgroundInit) > 0 {
 		go func() {
 			start := time.Now()

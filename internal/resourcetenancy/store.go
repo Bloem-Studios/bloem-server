@@ -39,7 +39,7 @@ func (s *Store) ListLibraries(ctx context.Context, organizationID uuid.UUID) ([]
 		   OR (ro.kind='platform' AND e.id IS NOT NULL)
 		ORDER BY lower(f.name),f.id`, organizationID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: list organization libraries: %v", ErrResourceUnavailable, err)
+		return nil, fmt.Errorf("%w: list organization libraries: %w", ErrResourceUnavailable, err)
 	}
 	defer rows.Close()
 	items := make([]LibraryProjection, 0)
@@ -50,7 +50,7 @@ func (s *Store) ListLibraries(ctx context.Context, organizationID uuid.UUID) ([]
 		var status *EntitlementStatus
 		var revision *int64
 		if err := rows.Scan(&item.FolderID, &item.Name, &item.Type, &ownerKind, &entitlementID, &entitlementOrganizationID, &status, &revision); err != nil {
-			return nil, fmt.Errorf("%w: scan organization library: %v", ErrResourceUnavailable, err)
+			return nil, fmt.Errorf("%w: scan organization library: %w", ErrResourceUnavailable, err)
 		}
 		if ownerKind == OwnerOrganization {
 			item.AccessKind = LibraryOwned
@@ -63,7 +63,7 @@ func (s *Store) ListLibraries(ctx context.Context, organizationID uuid.UUID) ([]
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: iterate organization libraries: %v", ErrResourceUnavailable, err)
+		return nil, fmt.Errorf("%w: iterate organization libraries: %w", ErrResourceUnavailable, err)
 	}
 	return items, nil
 }
@@ -86,7 +86,7 @@ func (s *Store) SetLibraryEntitlementStatus(ctx context.Context, organizationID 
 		return result, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return LibraryEntitlement{}, fmt.Errorf("%w: update library entitlement: %v", ErrResourceUnavailable, err)
+		return LibraryEntitlement{}, fmt.Errorf("%w: update library entitlement: %w", ErrResourceUnavailable, err)
 	}
 	var current int64
 	err = s.pool.QueryRow(ctx, `SELECT security_revision FROM organization_entitlements WHERE organization_id=$1 AND media_folder_id=$2 AND status IN ('active','suspended')`, organizationID, folderID).Scan(&current)
@@ -94,7 +94,7 @@ func (s *Store) SetLibraryEntitlementStatus(ctx context.Context, organizationID 
 		return LibraryEntitlement{}, ErrResourceHidden
 	}
 	if err != nil {
-		return LibraryEntitlement{}, fmt.Errorf("%w: load library entitlement revision: %v", ErrResourceUnavailable, err)
+		return LibraryEntitlement{}, fmt.Errorf("%w: load library entitlement revision: %w", ErrResourceUnavailable, err)
 	}
 	return LibraryEntitlement{}, ErrAuthorizationStateChanged
 }
@@ -109,7 +109,7 @@ func (s *Store) DeleteLibraryEntitlement(ctx context.Context, organizationID uui
 		WHERE organization_id=$1 AND media_folder_id=$2 AND security_revision=$3
 		  AND status IN ('active','suspended')`, organizationID, folderID, expectedRevision)
 	if err != nil {
-		return fmt.Errorf("%w: revoke library entitlement: %v", ErrResourceUnavailable, err)
+		return fmt.Errorf("%w: revoke library entitlement: %w", ErrResourceUnavailable, err)
 	}
 	if tag.RowsAffected() > 0 {
 		return nil
@@ -120,7 +120,7 @@ func (s *Store) DeleteLibraryEntitlement(ctx context.Context, organizationID uui
 		return ErrResourceHidden
 	}
 	if err != nil {
-		return fmt.Errorf("%w: load library entitlement revision: %v", ErrResourceUnavailable, err)
+		return fmt.Errorf("%w: load library entitlement revision: %w", ErrResourceUnavailable, err)
 	}
 	return ErrAuthorizationStateChanged
 }
@@ -149,7 +149,7 @@ func (s *Store) AvailableMediaFolderIDs(ctx context.Context, tenant tenancy.Cont
 		   OR (owners.kind = 'platform' AND entitlements.id IS NOT NULL)
 		ORDER BY folders.id`, tenant.OrganizationID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: load available media folders: %v", ErrResourceUnavailable, err)
+		return nil, fmt.Errorf("%w: load available media folders: %w", ErrResourceUnavailable, err)
 	}
 	defer rows.Close()
 
@@ -157,12 +157,12 @@ func (s *Store) AvailableMediaFolderIDs(ctx context.Context, tenant tenancy.Cont
 	for rows.Next() {
 		var id int
 		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("%w: scan available media folder: %v", ErrResourceUnavailable, err)
+			return nil, fmt.Errorf("%w: scan available media folder: %w", ErrResourceUnavailable, err)
 		}
 		ids = append(ids, id)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: load available media folders: %v", ErrResourceUnavailable, err)
+		return nil, fmt.Errorf("%w: load available media folders: %w", ErrResourceUnavailable, err)
 	}
 	return ids, nil
 }
@@ -198,7 +198,7 @@ func (s *Store) RootOwner(ctx context.Context, root RootRef) (Owner, error) {
 	if err := row.Scan(&owner.ID, &owner.Kind, &owner.OrganizationID, &owner.Revision); errors.Is(err, pgx.ErrNoRows) {
 		return Owner{}, ErrResourceHidden
 	} else if err != nil {
-		return Owner{}, fmt.Errorf("%w: load root owner: %v", ErrResourceUnavailable, err)
+		return Owner{}, fmt.Errorf("%w: load root owner: %w", ErrResourceUnavailable, err)
 	}
 	return owner, nil
 }
@@ -282,7 +282,7 @@ func (s *Store) activeEntitlement(ctx context.Context, organizationID uuid.UUID,
 	); errors.Is(err, pgx.ErrNoRows) {
 		return Entitlement{}, ErrResourceHidden
 	} else if err != nil {
-		return Entitlement{}, fmt.Errorf("%w: load root entitlement: %v", ErrResourceUnavailable, err)
+		return Entitlement{}, fmt.Errorf("%w: load root entitlement: %w", ErrResourceUnavailable, err)
 	}
 	return entitlement, nil
 }

@@ -176,7 +176,7 @@ func (s *Server) SessionStore() *SessionStore {
 }
 
 // StartBackgroundTasks starts background goroutines tied to the server lifecycle.
-// Call this once after constructing the server; goroutines stop when ctx is cancelled.
+// Call this once after constructing the server; goroutines stop when ctx is canceled.
 // The returned channel closes after the initial terminal recovery scan so
 // callers can order broader stale-session sweeps behind authoritative compat
 // recovery without delaying HTTP startup.

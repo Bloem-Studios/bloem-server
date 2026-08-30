@@ -935,7 +935,7 @@ func (s *Scanner) scanPaths(
 		return nil, walkErr
 	}
 
-	// If the scan was cancelled, return partial results without marking
+	// If the scan was canceled, return partial results without marking
 	// files as missing or deleting records — that would corrupt state.
 	if ctx.Err() != nil {
 		return result, ctx.Err()
@@ -1171,7 +1171,7 @@ func (s *Scanner) scanFolderByRoots(
 			//
 			// Suspect-empty children are protected unless the operator has
 			// explicitly confirmed cleanup — that confirmation is the
-			// deliberate way to retire an emptied root, and honouring it here
+			// deliberate way to retire an emptied root, and honoring it here
 			// is what stops the allowance being consumed to no effect.
 			// Unreachable roots are protected either way: an outage is never
 			// a confirmation to erase a root's catalog.
@@ -1356,7 +1356,7 @@ func (s *Scanner) scanFolderByRoots(
 	}
 
 	// Reuse the same protected set the scoped cleanup used, so membership
-	// removal and the trash sweep below honour roots the mid-loop re-probe
+	// removal and the trash sweep below honor roots the mid-loop re-probe
 	// found offline. Rebuilding from only the initial probe here would let a
 	// child that dropped during this scan have its already-missing rows hard
 	// deleted once they pass the removal grace — by the very scan that
@@ -3260,41 +3260,6 @@ func shouldSkipStableConfirmedScanState(
 	return true
 }
 
-func scannerUpdateReasons(
-	existing *models.MediaFile,
-	fileSize int64,
-	fileModifiedAt time.Time,
-	assignment fileRootAssignment,
-	groupAssignment fileGroupAssignment,
-	libraryType string,
-	canRepairProbe bool,
-) []string {
-	if existing == nil {
-		return nil
-	}
-
-	reasons := make([]string, 0, 6)
-	if existing.FileSize != fileSize {
-		reasons = append(reasons, "size_changed")
-	}
-	if !sameFileModifiedAt(existing.FileModifiedAt, fileModifiedAt) {
-		reasons = append(reasons, "mtime_changed")
-	}
-	if existing.MissingSince != nil {
-		reasons = append(reasons, "was_missing")
-	}
-	if canRepairProbe && NeedsCriticalProbeRepair(existing) {
-		reasons = append(reasons, "probe_repair")
-	}
-	if rootAssignmentChanged(existing, assignment, libraryType) {
-		reasons = append(reasons, "root_assignment_changed")
-	}
-	if groupAssignmentChanged(existing, groupAssignment) {
-		reasons = append(reasons, "group_assignment_changed")
-	}
-	return reasons
-}
-
 func shouldSkipStableConfirmedFile(
 	existing *models.MediaFile,
 	itemStatus string,
@@ -3735,75 +3700,6 @@ func scanStateRootAssignmentChanged(existing *scanStateFile, assignment fileRoot
 }
 
 func scanStateGroupAssignmentChanged(existing *scanStateFile, assignment fileGroupAssignment) bool {
-	if existing == nil {
-		return true
-	}
-	if filepath.Clean(existing.ObservedRootPath) != filepath.Clean(assignment.ObservedRootPath) {
-		return true
-	}
-	if existing.ContentGroupKey != assignment.ContentGroupKey ||
-		existing.GroupKeyVersion != assignment.GroupKeyVersion ||
-		existing.BaseTitle != assignment.BaseTitle ||
-		existing.BaseYear != assignment.BaseYear ||
-		existing.BaseType != assignment.BaseType ||
-		existing.IdentityConfidence != assignment.Confidence {
-		return true
-	}
-	return !identityEvidenceEqual(existing.IdentityJSON, assignment.EvidenceJSON)
-}
-
-func rootAssignmentChanged(existing *models.MediaFile, assignment fileRootAssignment, libraryType string) bool {
-	if existing == nil {
-		return true
-	}
-	expectedRoot := assignment.RootPath
-	if expectedRoot == "" {
-		if root, ok := naming.DetectCanonicalRoot(existing.FilePath, libraryType); ok {
-			expectedRoot = filepath.Clean(root.RootPath)
-		}
-	}
-	if filepath.Clean(existing.CanonicalRootPath) != filepath.Clean(expectedRoot) {
-		return true
-	}
-
-	hints := naming.ParseVariantHints(existing.FilePath, libraryType)
-	if existing.EditionSource == "import" && existing.EditionKey != "" {
-		hints = &naming.VariantHints{
-			EditionRaw:            existing.EditionRaw,
-			EditionKey:            existing.EditionKey,
-			EditionSource:         existing.EditionSource,
-			EditionConfidence:     existing.EditionConfidence,
-			PresentationKind:      existing.PresentationKind,
-			PresentationGroupKey:  existing.PresentationGroupKey,
-			PresentationPartIndex: existing.PresentationPartIndex,
-			MultiEpisodeStart:     existing.MultiEpisodeStart,
-			MultiEpisodeEnd:       existing.MultiEpisodeEnd,
-		}
-	}
-	if hints == nil {
-		hints = &naming.VariantHints{}
-	}
-	if existing.EditionRaw != hints.EditionRaw ||
-		existing.EditionKey != hints.EditionKey ||
-		existing.EditionSource != hints.EditionSource ||
-		existing.PresentationKind != hints.PresentationKind ||
-		existing.PresentationGroupKey != hints.PresentationGroupKey ||
-		existing.PresentationPartIndex != hints.PresentationPartIndex ||
-		existing.MultiEpisodeStart != hints.MultiEpisodeStart ||
-		existing.MultiEpisodeEnd != hints.MultiEpisodeEnd {
-		return true
-	}
-	switch {
-	case existing.EditionConfidence == nil && hints.EditionConfidence == nil:
-		return false
-	case existing.EditionConfidence == nil || hints.EditionConfidence == nil:
-		return true
-	default:
-		return *existing.EditionConfidence != *hints.EditionConfidence
-	}
-}
-
-func groupAssignmentChanged(existing *models.MediaFile, assignment fileGroupAssignment) bool {
 	if existing == nil {
 		return true
 	}

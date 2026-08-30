@@ -4744,7 +4744,7 @@ type sessionLockCapacityAdvisorV3 interface {
 }
 
 // acquireReplanSlotV3 blocks until a replan slot frees or the request context
-// is cancelled; excess replans queue here holding no DB resources at all.
+// is canceled; excess replans queue here holding no DB resources at all.
 func (h *PlaybackHandler) acquireReplanSlotV3(ctx context.Context) (func(), error) {
 	h.v3ReplanSlotsOnce.Do(func() {
 		capacity := maxConcurrentReplansV3
@@ -4838,7 +4838,7 @@ func (h *PlaybackHandler) StartV3Maintenance(ctx context.Context) {
 			case now := <-ticker.C:
 				cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				if _, err := h.PlanStoreV3.CleanupExpired(cleanupCtx, now); err != nil {
-					slog.Warn("playback v3 cleanup failed", "error", err)
+					slog.WarnContext(ctx, "playback v3 cleanup failed", "error", err)
 				}
 				cancel()
 			}
@@ -5005,7 +5005,7 @@ func remapAudioSelectionV3(source, target *models.MediaFile, request *playback.S
 		}
 		fileID, kind, ordinal, ok := playback.ParseTrackIDV3(request.AudioTrackID)
 		if !ok || kind != "audio" || fileID != source.ID {
-			return errors.New("The selected audio track identity is invalid for the source file.")
+			return errors.New("The selected audio track identity is invalid for the source file.") //nolint:staticcheck // ST1005: user-facing copy, sent verbatim as transportErrorV3.message.
 		}
 		request.AudioTrackIndex = &ordinal
 	}
@@ -5028,13 +5028,13 @@ func (h *PlaybackHandler) remapSubtitleSelectionV3(ctx context.Context, source, 
 		}
 		fileID, kind, ordinal, ok := playback.ParseTrackIDV3(request.SubtitleTrackID)
 		if !ok || kind != "subtitle" || fileID != source.ID {
-			return errors.New("The selected subtitle track identity is invalid for the source file.")
+			return errors.New("The selected subtitle track identity is invalid for the source file.") //nolint:staticcheck // ST1005: user-facing copy, sent verbatim as transportErrorV3.message.
 		}
 		request.SubtitleTrackIndex = &ordinal
 	}
 	index := *request.SubtitleTrackIndex
 	if index < 0 {
-		return errors.New("The selected subtitle track index is invalid.")
+		return errors.New("The selected subtitle track index is invalid.") //nolint:staticcheck // ST1005: user-facing copy, sent verbatim as transportErrorV3.message.
 	}
 	targetIndex := -1
 	switch {
@@ -5071,7 +5071,7 @@ func (h *PlaybackHandler) remapSubtitleSelectionV3(ctx context.Context, source, 
 		}
 	}
 	if targetIndex < 0 {
-		return errors.New("The selected subtitle track is unavailable in the effective file version.")
+		return errors.New("The selected subtitle track is unavailable in the effective file version.") //nolint:staticcheck // ST1005: user-facing copy, sent verbatim as transportErrorV3.message.
 	}
 	request.SubtitleTrackIndex = &targetIndex
 	request.SubtitleTrackID = playback.TrackIDV3(target.ID, "subtitle", targetIndex)
@@ -5484,15 +5484,6 @@ func sanitizeDiagnosticsV3(values map[string]string) map[string]string {
 		result[key] = value
 	}
 	return result
-}
-
-func containsStringFoldV3(values []string, wanted string) bool {
-	for _, value := range values {
-		if strings.EqualFold(value, wanted) {
-			return true
-		}
-	}
-	return false
 }
 
 // containsStringExactV3 compares attempt keys byte-for-byte: they are

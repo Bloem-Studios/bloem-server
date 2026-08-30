@@ -449,7 +449,7 @@ func (s *Scanner) upsertMusicTrack(
 	return albumID, nil
 }
 
-// musicMediaFile is the one boundary between the music catalogue scanner and
+// musicMediaFile is the one boundary between the music catalog scanner and
 // playback. Keep the complete normalized probe here: a partial copy can render
 // album metadata successfully while every playback planner correctly rejects
 // the same file as source_metadata_incomplete.

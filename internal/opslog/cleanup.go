@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -142,6 +143,10 @@ func LoadRetentionPolicy(ctx context.Context, store SettingsStore) (RetentionPol
 
 	rawBuckets, err := store.Get(ctx, keyBucketPolicies)
 	if err != nil || strings.TrimSpace(rawBuckets) == "" {
+		// An unset or unreadable bucket-policy row leaves the global policy
+		// built above in force, which is the documented default. Failing here
+		// would disable opslog cleanup entirely on a transient settings read.
+		//nolint:nilerr // deliberate default-policy fallback, see above.
 		return policy, nil
 	}
 
@@ -480,13 +485,19 @@ func scopeFilterArgs(component, level string) (string, []any, int) {
 }
 
 func parseInt(s string) int {
-	var v int
-	fmt.Sscanf(s, "%d", &v)
+	// Malformed input yields 0, which callers treat as "unset".
+	v, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil {
+		return 0
+	}
 	return v
 }
 
 func parseInt64(s string) int64 {
-	var v int64
-	fmt.Sscanf(s, "%d", &v)
+	// Malformed input yields 0, which callers treat as "unset".
+	v, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
+	if err != nil {
+		return 0
+	}
 	return v
 }

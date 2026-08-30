@@ -777,17 +777,6 @@ func decodeOrganizationCursor(cursor string) (OrganizationCursor, error) {
 	return value, nil
 }
 
-func (s *Store) organizationMutationMiss(ctx context.Context, organizationID uuid.UUID) error {
-	var present bool
-	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM organizations WHERE id = $1)`, organizationID).Scan(&present); err != nil {
-		return fmt.Errorf("inspect organization mutation conflict: %w", err)
-	}
-	if !present {
-		return ErrOrganizationNotFound
-	}
-	return ErrAuthorizationStateChanged
-}
-
 func rollbackOnError(ctx context.Context, tx pgx.Tx, err *error) {
 	if *err != nil {
 		_ = tx.Rollback(ctx)

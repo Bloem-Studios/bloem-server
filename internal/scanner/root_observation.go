@@ -102,10 +102,6 @@ func ObserveRoot(filePath string, libraryType string) (RootObservation, bool) {
 	return observationFromAssignment(assignment), true
 }
 
-func collectRootObservations(filePaths []string, libraryType string) []RootObservation {
-	return inferRootAssignments(filePaths, libraryType, 0, nil).Observations
-}
-
 func collectScannedRoots(
 	filePaths []string,
 	libraryType string,

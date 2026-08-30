@@ -64,7 +64,7 @@ func (s *Store) ProfileOrganization(ctx context.Context, accountID int, profileI
 		return uuid.Nil, ErrTenantNotFoundOrHidden
 	}
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("%w: load profile organization: %v", ErrTenantUnavailable, err)
+		return uuid.Nil, fmt.Errorf("%w: load profile organization: %w", ErrTenantUnavailable, err)
 	}
 	return organizationID, nil
 }

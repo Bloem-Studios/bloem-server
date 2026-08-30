@@ -58,7 +58,7 @@ func TenantFactsFromContext(ctx context.Context, expectedAccountID int) (TenantF
 		tenant.PolicyRevision <= 0 || tenant.SecurityRevision <= 0 ||
 		tenant.MembershipStatus != tenancy.MembershipActive ||
 		(tenant.OrganizationStatus != tenancy.OrganizationActive &&
-			!(tenant.Legacy && tenant.OrganizationDefault && tenant.OrganizationStatus == tenancy.OrganizationInitializing)) {
+			(!tenant.Legacy || !tenant.OrganizationDefault || tenant.OrganizationStatus != tenancy.OrganizationInitializing)) {
 		return TenantFacts{}, fmt.Errorf("%w: resolved tenant context is incomplete or inactive", ErrTenantFactsUnavailable)
 	}
 	return TenantFacts{

@@ -1168,7 +1168,7 @@ func (m *SessionManager) CancelReplacementReservation(sessionID string) {
 		delete(m.sessions, sessionID)
 		m.mu.Unlock()
 		m.releaseFleetReservation(&copy)
-		slog.Warn("failed to restore playback reservation after cancelled replacement; session removed", "component", "playback", "session", sessionID, "error", err)
+		slog.Warn("failed to restore playback reservation after canceled replacement; session removed", "component", "playback", "session", sessionID, "error", err)
 		return
 	}
 	session.replacementReservationPrevious = nil

@@ -76,7 +76,7 @@ type TranscodeManager struct {
 	StartThrottler func(ctx context.Context, ts *TranscodeSession)
 	// StrictAdmissionFn reports whether reconstruct admission fails CLOSED when
 	// the limit provider itself cannot be evaluated. Nil or false is upstream
-	// Silo's behaviour: admit the session ungated rather than collapse a
+	// Silo's behavior: admit the session ungated rather than collapse a
 	// transient dependency error into a permanent 404. True is the stricter
 	// Bloem posture — never admit a session whose limits were never checked,
 	// accepting that a Postgres blip during a post-restart reconstruct wave
@@ -143,7 +143,7 @@ func NewTranscodeManager() *TranscodeManager {
 }
 
 // strictAdmission reports whether reconstruct admission should fail closed on an
-// unevaluated limit provider. Defaults to false (upstream behaviour) when the
+// unevaluated limit provider. Defaults to false (upstream behavior) when the
 // hook is unwired, so a manager built without settings access is never
 // accidentally stricter than Silo.
 func (m *TranscodeManager) strictAdmission() bool {
@@ -692,7 +692,7 @@ func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str
 				"user", card.UserID, "method", method, "error", err)
 			return nil, nil, false
 		}
-		// Default (upstream Silo) behaviour: fail open and admit the session
+		// Default (upstream Silo) behavior: fail open and admit the session
 		// WITHOUT the limit gate. Denying here would collapse a recoverable
 		// dependency error into a permanent 404 and stop playback for a user who
 		// is within their limits. The cap re-applies on the next fresh

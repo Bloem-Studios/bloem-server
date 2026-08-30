@@ -380,7 +380,7 @@ func (h *V2AdminPlatformHandler) HandleUpdateOrganization(w http.ResponseWriter,
 	}
 	fields := map[string]string{}
 	if request.ExpectedRevision <= 0 {
-		fields["expected_revision"] = "must be a positive revision"
+		fields[compatFieldExpectedRevision] = compatRevisionValidationMessage
 	}
 	if request.Name == nil && request.Slug == nil {
 		fields["organization"] = "must include name or slug"
@@ -468,7 +468,7 @@ func (h *V2AdminPlatformHandler) handleOrganizationStatus(w http.ResponseWriter,
 		return
 	}
 	if request.ExpectedRevision <= 0 {
-		writeAdminValidation(w, map[string]string{"expected_revision": "must be a positive revision"})
+		writeAdminValidation(w, map[string]string{compatFieldExpectedRevision: compatRevisionValidationMessage})
 		return
 	}
 	if h.lifecycle != nil && h.lifecycleDigest != nil {
@@ -517,7 +517,7 @@ func (h *V2AdminPlatformHandler) HandleTransferOwnership(w http.ResponseWriter, 
 	}
 	fields := map[string]string{}
 	if request.ExpectedRevision <= 0 {
-		fields["expected_revision"] = "must be a positive revision"
+		fields[compatFieldExpectedRevision] = compatRevisionValidationMessage
 	}
 	if request.OwnerAccountID <= 0 {
 		fields["owner_account_id"] = "must identify an account"
@@ -612,7 +612,7 @@ func (h *V2AdminPlatformHandler) HandleCreateMembership(w http.ResponseWriter, r
 	}
 	fields := map[string]string{}
 	if request.ExpectedRevision <= 0 {
-		fields["expected_revision"] = "must be a positive revision"
+		fields[compatFieldExpectedRevision] = compatRevisionValidationMessage
 	}
 	if request.AccountID <= 0 {
 		fields["account_id"] = "must identify an account"
@@ -673,7 +673,7 @@ func (h *V2AdminPlatformHandler) HandleUpdateMembership(w http.ResponseWriter, r
 	}
 	fields := map[string]string{}
 	if request.ExpectedRevision <= 0 {
-		fields["expected_revision"] = "must be a positive revision"
+		fields[compatFieldExpectedRevision] = compatRevisionValidationMessage
 	}
 	if request.LegacyRole == nil && request.Status == nil {
 		fields["membership"] = "must include legacy_role or status"

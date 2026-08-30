@@ -909,7 +909,7 @@ func (h *PlaybackHandler) allow4KVideoTranscode(ctx context.Context) bool {
 
 // strictReconstructAdmission reports the operator's admission posture for a
 // reconstruct whose limit provider could not be evaluated. Defaults to upstream
-// Silo's fail-open behaviour when the setting is unset or unreadable — a
+// Silo's fail-open behavior when the setting is unset or unreadable — a
 // settings-store outage must not itself become the reason playback is refused.
 func (h *PlaybackHandler) strictReconstructAdmission() bool {
 	if h.SettingsRepo == nil {
@@ -1049,7 +1049,7 @@ func NewPlaybackHandler(
 		if h.sessionMgr != nil && h.tm.CloseTranscodeSessionIf(sessionID, dead, nodeURL) {
 			if h.playbackStore != nil {
 				if playSession, ok := h.playbackStore.FindByUpstreamSessionID(sessionID); ok {
-					h.dispatchCompatScrobble(ctx, compatScrobblePause, playSession, upstreamSession, nil)
+					_ = h.dispatchCompatScrobble(ctx, compatScrobblePause, playSession, upstreamSession, nil)
 				}
 			}
 			_ = h.sessionMgr.StopSession(sessionID)
@@ -3084,13 +3084,4 @@ func (v *compatIntValue) UnmarshalJSON(data []byte) error {
 func compatIntValuePtr(value int) *compatIntValue {
 	v := compatIntValue(value)
 	return &v
-}
-
-func (h *PlaybackHandler) playbackUnavailable(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, ErrSessionNotFound):
-		writeError(w, http.StatusUnauthorized, "Unauthorized", "Authentication failed")
-	default:
-		writeCompatUpstreamError(w, err)
-	}
 }

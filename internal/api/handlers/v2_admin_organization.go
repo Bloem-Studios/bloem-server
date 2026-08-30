@@ -126,7 +126,7 @@ func (h *V2AdminOrganizationHandler) HandleCreateGroup(w http.ResponseWriter, r 
 	if !requireOrganizationRevision(w, tenant, request.ExpectedRevision) {
 		return
 	}
-	input, ok := request.accessGroupCreateRequest.toInput(w)
+	input, ok := request.toInput(w)
 	if !ok {
 		return
 	}
@@ -160,7 +160,7 @@ func (h *V2AdminOrganizationHandler) HandleUpdateGroup(w http.ResponseWriter, r 
 	if !requireOrganizationRevision(w, tenant, request.ExpectedRevision) {
 		return
 	}
-	input, ok := request.accessGroupUpdateRequest.toInput(w)
+	input, ok := request.toInput(w)
 	if !ok {
 		return
 	}
@@ -262,7 +262,7 @@ func (h *V2AdminOrganizationHandler) HandleDeleteEntitlement(w http.ResponseWrit
 		return
 	}
 	if request.ExpectedRevision <= 0 {
-		writeAdminValidation(w, map[string]string{"expected_revision": "must be positive"})
+		writeAdminValidation(w, map[string]string{compatFieldExpectedRevision: "must be positive"})
 		return
 	}
 	if err := h.resources.DeleteLibraryEntitlement(r.Context(), tenant.OrganizationID, folderID, request.ExpectedRevision); err != nil {
@@ -386,7 +386,7 @@ func requireV2OrganizationContext(w http.ResponseWriter, r *http.Request) (tenan
 
 func requireOrganizationRevision(w http.ResponseWriter, tenant tenancy.Context, expected int64) bool {
 	if expected <= 0 {
-		writeAdminValidation(w, map[string]string{"expected_revision": "must be a positive revision"})
+		writeAdminValidation(w, map[string]string{compatFieldExpectedRevision: compatRevisionValidationMessage})
 		return false
 	}
 	if expected != tenant.PolicyRevision {

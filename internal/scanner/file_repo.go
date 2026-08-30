@@ -2283,7 +2283,7 @@ func (r *FileRepository) MarkMatchAttempted(ctx context.Context, fileID int) err
 	return err
 }
 
-// IsMatchSuppressed reports whether a raw unmatched file has been cancelled
+// IsMatchSuppressed reports whether a raw unmatched file has been canceled
 // from background matching.
 func (r *FileRepository) IsMatchSuppressed(ctx context.Context, fileID int) (bool, error) {
 	var suppressed bool
@@ -2820,7 +2820,7 @@ func (r *FileRepository) DeleteMissingByFolder(ctx context.Context, folderID int
 //
 // This is the proactive counterpart to ListRootsWithOnlyMissingFiles. That
 // query requires a root to have NO live rows left, which means it can only
-// recognise a lost mount after a scan has already marked its files missing —
+// recognize a lost mount after a scan has already marked its files missing —
 // i.e. after the damage is done. For deciding whether to mark in the first
 // place, the question is simply "does the catalog believe anything lives
 // here", because an empty-but-reachable directory that still owns cataloged

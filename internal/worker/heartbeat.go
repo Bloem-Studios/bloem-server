@@ -78,7 +78,7 @@ func (hw *HeartbeatWriter) run() {
 	if hw.lifecycleCtx.Err() != nil {
 		return
 	}
-	hw.beatWithTimeout("initial heartbeat failed")
+	hw.beatWithTimeout("initial")
 
 	ticker := time.NewTicker(hw.interval)
 	defer ticker.Stop()
@@ -90,16 +90,16 @@ func (hw *HeartbeatWriter) run() {
 			if hw.lifecycleCtx.Err() != nil {
 				return
 			}
-			hw.beatWithTimeout("heartbeat failed")
+			hw.beatWithTimeout("periodic")
 		}
 	}
 }
 
-func (hw *HeartbeatWriter) beatWithTimeout(message string) {
+func (hw *HeartbeatWriter) beatWithTimeout(phase string) {
 	ctx, cancel := context.WithTimeout(hw.lifecycleCtx, 5*time.Second)
 	defer cancel()
 	if err := hw.Beat(ctx); err != nil {
-		slog.Error(message, "error", err, "node", hw.nodeID)
+		slog.ErrorContext(ctx, "heartbeat failed", "phase", phase, "error", err, "node", hw.nodeID)
 	}
 }
 

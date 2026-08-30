@@ -3,6 +3,7 @@ package lifecycleidempotency
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -90,7 +91,7 @@ FROM public.users
 WHERE id=$1 AND account_incarnation_id=$2
 FOR SHARE`, *binding.ActorAccountID, *binding.ActorAccountIncarnationID).Scan(&exists)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrInvalidBinding
 		}
 		return fmt.Errorf("lock lifecycle request actor: %w", err)
@@ -120,7 +121,7 @@ FOR UPDATE`, digest[:]).Scan(
 		&responseStatus, &responseBody, &responseHeaders,
 	)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("find lifecycle receipt: %w", err)

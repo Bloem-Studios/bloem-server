@@ -315,6 +315,11 @@ func (h *ImagesHandler) resolveItemImageURLFromTag(ctx context.Context, routeID,
 	// never reach this generic resolver.
 	contentID, err := decodeContentID(h.codec, routeID)
 	if err != nil {
+		// A route ID that is not a content ID simply has no item artwork to
+		// resolve here; the (found=false) return is the miss signal and callers
+		// fall back to the placeholder. Propagating this would turn an ordinary
+		// miss into a 500.
+		//nolint:nilerr // deliberate not-found fallback, see above.
 		return catalog.ResolvedImageURL{}, false, nil
 	}
 	return h.resolveItemImageURLFromReposWithoutSession(ctx, routeID, contentID, imageType, imageSize, tag)
@@ -487,6 +492,10 @@ func (h *ImagesHandler) resolveLibraryImageURLFromTag(ctx context.Context, route
 	}
 	folder, err := h.folderRepo.GetByID(ctx, libraryID)
 	if err != nil {
+		// Missing library folder means there is no library poster to serve, and
+		// artwork is a best-effort surface: a lookup failure degrades to the
+		// placeholder rather than failing the whole image request.
+		//nolint:nilerr // deliberate not-found fallback, see above.
 		return catalog.ResolvedImageURL{}, false, nil
 	}
 	if folder.PosterPath == "" || !h.imageTags.Equal(

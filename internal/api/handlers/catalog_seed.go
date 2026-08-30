@@ -546,6 +546,13 @@ func writeCatalogSeedError(w http.ResponseWriter, status int, code, message stri
 
 const defaultLocalImportDir = "/catalog-seeds"
 
+// These sentinels are matched with errors.Is and then rendered verbatim into
+// the API response body via writeError(..., err.Error()), so their text is
+// client-visible copy rather than an internal error fragment that gets wrapped
+// into a larger sentence. Lowercasing them to satisfy ST1005 would change the
+// message admins see, which is a client-visible contract change.
+//
+//nolint:staticcheck // ST1005: deliberate user-facing sentences, see above.
 var (
 	errCatalogSeedImportSourceRequired    = errors.New("Provide exactly one source: local_path, export_job_id, artifact_key, or remote_url")
 	errCatalogSeedImportSourceConflict    = errors.New("Provide only one catalog seed source")
@@ -772,7 +779,7 @@ func parseCatalogImportOptions(r *http.Request) (catalogseed.ImportOptions, erro
 	var rewrites []catalogseed.PathRewrite
 	if raw := r.FormValue("path_rewrites"); raw != "" {
 		if err := json.Unmarshal([]byte(raw), &rewrites); err != nil {
-			return catalogseed.ImportOptions{}, errors.New("Invalid path_rewrites")
+			return catalogseed.ImportOptions{}, errors.New("Invalid path_rewrites") //nolint:staticcheck // ST1005: user-facing API copy, rendered verbatim by writeError.
 		}
 	}
 

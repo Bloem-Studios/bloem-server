@@ -828,7 +828,7 @@ func validateWebComponentDirectory(path string) (WebComponentMetadata, error) {
 		return WebComponentMetadata{}, fmt.Errorf("invalid Jellyfin Web metadata version %q", metadata.Version)
 	}
 	if strings.TrimSpace(metadata.License) == "" {
-		return WebComponentMetadata{}, errors.New("Jellyfin Web metadata license is missing")
+		return WebComponentMetadata{}, errors.New("missing Jellyfin Web metadata license")
 	}
 	if _, err := normalizeWebSourceURL(metadata.SourceURL); err != nil {
 		return WebComponentMetadata{}, err

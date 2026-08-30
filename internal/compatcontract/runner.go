@@ -421,6 +421,11 @@ func runWebSocketCase(ctx context.Context, target Target, base *url.URL, c Case,
 	}
 
 	conn, response, err := websocket.DefaultDialer.DialContext(ctx, wsURL.String(), headers)
+	// The handshake response is returned on both the success and failure paths
+	// and carries an open body that the dialer never closes for us.
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
 	if err != nil {
 		if c.Exception != "" && response != nil && matchesException(c.Exception, response.StatusCode) {
 			result.Status = response.StatusCode

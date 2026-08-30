@@ -591,7 +591,7 @@ func TestReconstructSession_Ownership(t *testing.T) {
 }
 
 // acquireReconstructSlot must bound concurrent reconstructs and let a caller
-// whose request is cancelled give up its place instead of queueing dead work.
+// whose request is canceled give up its place instead of queueing dead work.
 func TestAcquireReconstructSlot(t *testing.T) {
 	m := &TranscodeManager{reconstructSem: make(chan struct{}, 1)}
 
@@ -600,11 +600,11 @@ func TestAcquireReconstructSlot(t *testing.T) {
 		t.Fatal("first acquire should succeed")
 	}
 
-	// Cap is full: a cancelled request must back off rather than block forever.
-	cancelled, cancel := context.WithCancel(context.Background())
+	// Cap is full: a canceled request must back off rather than block forever.
+	canceled, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, ok := m.acquireReconstructSlot(cancelled); ok {
-		t.Fatal("acquire on a full semaphore with a cancelled context must fail")
+	if _, ok := m.acquireReconstructSlot(canceled); ok {
+		t.Fatal("acquire on a full semaphore with a canceled context must fail")
 	}
 
 	// Releasing frees the slot for the next reconstruct.

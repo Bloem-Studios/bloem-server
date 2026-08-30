@@ -185,7 +185,7 @@ func TestTwoReplicaRelayDeliversGenerationTaggedCommandOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	defer subscription.Close()
+	defer func() { _ = subscription.Close() }()
 
 	if err := relayA.Publish(ctx, command); err != nil {
 		t.Fatalf("Publish: %v", err)
@@ -485,7 +485,7 @@ func openDistributedTestRedis(t *testing.T) *redis.Client {
 	}
 	client := redis.NewClient(&redis.Options{Addr: address})
 	if err := client.Ping(context.Background()).Err(); err != nil {
-		client.Close()
+		_ = client.Close()
 		t.Skipf("Redis unavailable: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Close() })

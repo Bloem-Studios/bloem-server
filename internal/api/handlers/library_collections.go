@@ -308,29 +308,6 @@ type libraryCollectionGroupResponse struct {
 	SortOrder       int    `json:"sort_order"`
 }
 
-type libraryCollectionGroupsListResponse struct {
-	Groups             []libraryCollectionGroupResponse `json:"groups"`
-	UngroupedSortOrder int                              `json:"ungrouped_sort_order"`
-}
-
-type createLibraryCollectionGroupRequest struct {
-	LibraryID       int    `json:"library_id"`
-	Name            string `json:"name"`
-	Slug            string `json:"slug"`
-	DefaultSortMode string `json:"default_sort_mode"`
-}
-
-type updateLibraryCollectionGroupRequest struct {
-	Name            *string `json:"name"`
-	Slug            *string `json:"slug"`
-	DefaultSortMode *string `json:"default_sort_mode"`
-}
-
-type reorderLibraryCollectionGroupsRequest struct {
-	LibraryID  int      `json:"library_id"`
-	OrderedIDs []string `json:"ordered_ids"`
-}
-
 type libraryCollectionsListResponse struct {
 	Collections []libraryCollectionResponse      `json:"collections"`
 	Groups      []libraryCollectionGroupResponse `json:"groups,omitempty"`
@@ -1294,7 +1271,7 @@ func (h *LibraryCollectionHandler) HandleUpdateAdminCollection(w http.ResponseWr
 		ManagementKey:    req.ManagementKey,
 		SyncSchedule:     req.SyncSchedule,
 	}); err != nil {
-		if err == catalog.ErrLibraryCollectionNotFound {
+		if errors.Is(err, catalog.ErrLibraryCollectionNotFound) {
 			writeError(w, http.StatusNotFound, "not_found", "Collection not found")
 			return
 		}
@@ -1964,7 +1941,7 @@ func (h *LibraryCollectionHandler) applyTemplateBundle(
 			// in_use_by_section). The adoption flags itself with that reason so
 			// admins can tell "adopted because delete failed" apart from a
 			// straight "already_exists".
-			if !(req.DryRun && req.DeleteExisting) {
+			if !req.DryRun || !req.DeleteExisting {
 				existingBySlug := remainingByLibrarySlug[templateBundleExistingCollectionKey{
 					LibraryID: library.ID,
 					Slug:      slugifyCollectionName(tmpl.Title),
@@ -3544,6 +3521,10 @@ func buildTMDBDiscoverSourceConfig(mediaType string, spec importTMDBDiscoverSpec
 		Mode:      collectionSourceModeTMDBDiscover,
 		MediaType: mediaType,
 		Limit:     limit,
+		// Kept as an explicit field mapping rather than a struct conversion: the
+		// conversion only compiles while the internal spec and the wire body stay
+		// field-for-field identical, and silently couples the two shapes together.
+		//nolint:staticcheck // S1016: deliberate explicit mapping, see above.
 		Discover: tmdbDiscoverConfigBody{
 			WithGenres:       spec.WithGenres,
 			WithoutGenres:    spec.WithoutGenres,
@@ -3723,7 +3704,7 @@ func (h *LibraryCollectionHandler) processArtworkInputs(r *http.Request, collect
 
 		switch {
 		case err == nil:
-		case err == http.ErrMissingFile:
+		case errors.Is(err, http.ErrMissingFile):
 			if sourceByType[imageType] == "" {
 				continue
 			}

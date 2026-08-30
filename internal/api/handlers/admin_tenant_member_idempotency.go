@@ -143,7 +143,7 @@ func (h *AdminTenantMembersHandler) handleLifecycleRevokeAuthSession(w http.Resp
 			var profileID *string
 			err := tx.QueryRow(ctx, `
 SELECT user_id,profile_id FROM auth_sessions WHERE id=$1 FOR UPDATE`, sessionID).Scan(&sessionUserID, &profileID)
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
 			}
 			if err != nil {

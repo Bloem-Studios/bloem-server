@@ -50,6 +50,12 @@ func (relay *RedisRoomRelay) Claim(ctx context.Context, roomID string, generatio
 		return false, ErrRoomRelayUnavailable
 	}
 	key := fmt.Sprintf("bloem:watch-together:claim:v1:%s:%d:%s", roomID, generation, commandID)
+	// go-redis implements SetNX as SET key value EX ttl NX, which is exactly the
+	// "Set with NX option" the deprecation notice asks for; the notice is echoed
+	// from the Redis SETNX command docs, not from go-redis dropping the method.
+	// Rewriting this claim primitive to SetArgs would change the not-acquired
+	// signal from (false, nil) to redis.Nil for no behavioral gain.
+	//nolint:staticcheck // SA1019: see above.
 	return relay.client.SetNX(ctx, key, "1", ttl).Result()
 }
 

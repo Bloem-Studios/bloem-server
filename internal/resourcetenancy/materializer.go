@@ -49,7 +49,7 @@ func (m *Materializer) MaterializeDefaultBundle(
 
 	tx, err := m.pool.Begin(ctx)
 	if err != nil {
-		return MaterializationResult{}, fmt.Errorf("%w: begin bundle materialization: %v", ErrResourceUnavailable, err)
+		return MaterializationResult{}, fmt.Errorf("%w: begin bundle materialization: %w", ErrResourceUnavailable, err)
 	}
 	defer func() {
 		if err != nil {
@@ -65,7 +65,7 @@ func (m *Materializer) MaterializeDefaultBundle(
 		FOR UPDATE`, organizationID).Scan(&organizationStatus); errors.Is(err, pgx.ErrNoRows) {
 		return MaterializationResult{}, ErrOrganizationUnavailable
 	} else if err != nil {
-		return MaterializationResult{}, fmt.Errorf("%w: lock organization: %v", ErrResourceUnavailable, err)
+		return MaterializationResult{}, fmt.Errorf("%w: lock organization: %w", ErrResourceUnavailable, err)
 	}
 	if organizationStatus != "active" {
 		return MaterializationResult{}, ErrOrganizationUnavailable
@@ -82,7 +82,7 @@ func (m *Materializer) MaterializeDefaultBundle(
 		FOR UPDATE OF bundles`).Scan(&result.BundleID, &result.Revision); errors.Is(err, pgx.ErrNoRows) {
 		return MaterializationResult{}, ErrDefaultBundleUnavailable
 	} else if err != nil {
-		return MaterializationResult{}, fmt.Errorf("%w: lock default bundle: %v", ErrResourceUnavailable, err)
+		return MaterializationResult{}, fmt.Errorf("%w: lock default bundle: %w", ErrResourceUnavailable, err)
 	}
 
 	var memberCount int64
@@ -90,7 +90,7 @@ func (m *Materializer) MaterializeDefaultBundle(
 		SELECT count(*)
 		FROM entitlement_bundle_members
 		WHERE bundle_id=$1 AND bundle_revision=$2`, result.BundleID, result.Revision).Scan(&memberCount); err != nil {
-		return MaterializationResult{}, fmt.Errorf("%w: count default bundle members: %v", ErrResourceUnavailable, err)
+		return MaterializationResult{}, fmt.Errorf("%w: count default bundle members: %w", ErrResourceUnavailable, err)
 	}
 
 	command, err := tx.Exec(ctx, `
@@ -126,7 +126,7 @@ func (m *Materializer) MaterializeDefaultBundle(
 			WHERE status IN ('active', 'suspended') AND media_folder_id IS NOT NULL
 			DO NOTHING`, organizationID, result.BundleID, accountID, service, result.Revision)
 	if err != nil {
-		return MaterializationResult{}, fmt.Errorf("%w: materialize library entitlements: %v", ErrResourceUnavailable, err)
+		return MaterializationResult{}, fmt.Errorf("%w: materialize library entitlements: %w", ErrResourceUnavailable, err)
 	}
 	result.Created += command.RowsAffected()
 
@@ -163,7 +163,7 @@ func (m *Materializer) MaterializeDefaultBundle(
 			WHERE status IN ('active', 'suspended') AND plugin_installation_id IS NOT NULL
 			DO NOTHING`, organizationID, result.BundleID, accountID, service, result.Revision)
 	if err != nil {
-		return MaterializationResult{}, fmt.Errorf("%w: materialize plugin entitlements: %v", ErrResourceUnavailable, err)
+		return MaterializationResult{}, fmt.Errorf("%w: materialize plugin entitlements: %w", ErrResourceUnavailable, err)
 	}
 	result.Created += command.RowsAffected()
 
@@ -183,7 +183,7 @@ func (m *Materializer) MaterializeDefaultBundle(
 			  AND entitlements.media_folder_id IS NOT DISTINCT FROM members.media_folder_id
 			  AND entitlements.plugin_installation_id IS NOT DISTINCT FROM members.plugin_installation_id
 		  )`, result.BundleID, result.Revision, organizationID).Scan(&coveredCount); err != nil {
-		return MaterializationResult{}, fmt.Errorf("%w: verify bundle materialization: %v", ErrResourceUnavailable, err)
+		return MaterializationResult{}, fmt.Errorf("%w: verify bundle materialization: %w", ErrResourceUnavailable, err)
 	}
 	if coveredCount != memberCount || result.Created > memberCount {
 		return MaterializationResult{}, fmt.Errorf("%w: bundle coverage %d of %d", ErrResourceUnavailable, coveredCount, memberCount)
@@ -191,7 +191,7 @@ func (m *Materializer) MaterializeDefaultBundle(
 	result.Existing = memberCount - result.Created
 
 	if err = tx.Commit(ctx); err != nil {
-		return MaterializationResult{}, fmt.Errorf("%w: commit bundle materialization: %v", ErrResourceUnavailable, err)
+		return MaterializationResult{}, fmt.Errorf("%w: commit bundle materialization: %w", ErrResourceUnavailable, err)
 	}
 	return result, nil
 }

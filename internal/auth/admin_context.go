@@ -123,8 +123,8 @@ func (s *adminContextTokenService) Parse(tokenStr string) (AdminContextClaims, e
 	if err != nil || !token.Valid || jwtClaims.TokenType != "admin_context" || jwtClaims.ExpiresAt == nil || jwtClaims.IssuedAt == nil {
 		return AdminContextClaims{}, fmt.Errorf("%w: token validation failed", ErrInvalidAdminContext)
 	}
-	issuedAt := jwtClaims.IssuedAt.Time.UTC()
-	expiresAt := jwtClaims.ExpiresAt.Time.UTC()
+	issuedAt := jwtClaims.IssuedAt.UTC()
+	expiresAt := jwtClaims.ExpiresAt.UTC()
 	if !issuedAt.Before(expiresAt) || expiresAt.Sub(issuedAt) > AdminContextTokenLifetime {
 		return AdminContextClaims{}, fmt.Errorf("%w: invalid token lifetime", ErrInvalidAdminContext)
 	}

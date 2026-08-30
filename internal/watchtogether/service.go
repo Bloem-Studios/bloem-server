@@ -2000,8 +2000,9 @@ func (s *Service) Vote(
 		return nil, fmt.Errorf("watch together suggestions unavailable")
 	}
 
-	_, live, err := s.getOrLoadLiveRoom(ctx, roomID)
-	if err != nil {
+	// The live room is deliberately re-read from s.rooms under the mutex below;
+	// this call is for its load side effect and error only.
+	if _, _, err := s.getOrLoadLiveRoom(ctx, roomID); err != nil {
 		return nil, err
 	}
 
@@ -2024,7 +2025,7 @@ func (s *Service) Vote(
 	}
 
 	s.mu.Lock()
-	live = s.rooms[roomID]
+	live := s.rooms[roomID]
 	s.mu.Unlock()
 	s.dispatchSuggestionUpdate(ctx, live, suggestions)
 
@@ -2042,8 +2043,9 @@ func (s *Service) Unvote(
 		return nil, fmt.Errorf("watch together suggestions unavailable")
 	}
 
-	_, live, err := s.getOrLoadLiveRoom(ctx, roomID)
-	if err != nil {
+	// The live room is deliberately re-read from s.rooms under the mutex below;
+	// this call is for its load side effect and error only.
+	if _, _, err := s.getOrLoadLiveRoom(ctx, roomID); err != nil {
 		return nil, err
 	}
 
@@ -2066,7 +2068,7 @@ func (s *Service) Unvote(
 	}
 
 	s.mu.Lock()
-	live = s.rooms[roomID]
+	live := s.rooms[roomID]
 	s.mu.Unlock()
 	s.dispatchSuggestionUpdate(ctx, live, suggestions)
 

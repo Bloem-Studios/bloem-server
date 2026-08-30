@@ -2,6 +2,7 @@ package lifecycleidempotency
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -54,7 +55,7 @@ func ResolveTenantMemberTarget(ctx context.Context, tx pgx.Tx, organizationID uu
 SELECT id FROM public.organizations
 WHERE id=$1 AND external_service_id IS NOT NULL
 FOR UPDATE`, organizationID).Scan(&lockedOrganization); err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return TargetBinding{}, ErrTargetNotFound
 		}
 		return TargetBinding{}, fmt.Errorf("lock lifecycle tenant organization target: %w", err)
@@ -65,7 +66,7 @@ FOR UPDATE`, organizationID).Scan(&lockedOrganization); err != nil {
 SELECT id FROM public.organization_memberships
 WHERE organization_id=$1 AND account_id=$2
 FOR UPDATE`, organizationID, accountID).Scan(&target.MembershipID); err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return TargetBinding{}, ErrTargetNotFound
 		}
 		return TargetBinding{}, fmt.Errorf("lock lifecycle tenant membership target: %w", err)
@@ -74,7 +75,7 @@ FOR UPDATE`, organizationID, accountID).Scan(&target.MembershipID); err != nil {
 SELECT account_incarnation_id FROM public.users
 WHERE id=$1
 FOR UPDATE`, accountID).Scan(&target.AccountIncarnationID); err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return TargetBinding{}, ErrTargetNotFound
 		}
 		return TargetBinding{}, fmt.Errorf("lock lifecycle tenant member account target: %w", err)
@@ -96,7 +97,7 @@ func ResolveTenantOrganizationTargets(ctx context.Context, tx pgx.Tx, organizati
 SELECT id FROM public.organizations
 WHERE id=$1 AND external_service_id IS NOT NULL
 FOR UPDATE`, organizationID).Scan(&lockedOrganization); err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrTargetNotFound
 		}
 		return nil, fmt.Errorf("lock lifecycle tenant organization target: %w", err)
@@ -147,7 +148,7 @@ JOIN public.organization_memberships AS memberships
 WHERE profiles.user_id=$1 AND profiles.id=$2
 FOR UPDATE OF memberships,users,profiles`, accountID, profileID).Scan(
 		&target.OrganizationID, &target.MembershipID, &target.AccountID, &target.AccountIncarnationID, &target.ProfileID)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return TargetBinding{}, ErrTargetNotFound
 	}
 	if err != nil {

@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -212,7 +211,7 @@ func migrateOfficialSchema(t *testing.T, ctx context.Context, pool *pgxpool.Pool
 	if err != nil {
 		t.Fatalf("create pinned official migration provider: %v", err)
 	}
-	defer provider.Close()
+	defer func() { _ = provider.Close() }()
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("migrate pinned official schema: %v", err)
 	}
@@ -490,13 +489,4 @@ func waitForHealth(t *testing.T, baseURL string, logs *bytes.Buffer) {
 		time.Sleep(200 * time.Millisecond)
 	}
 	t.Fatalf("official Silo baseline did not become healthy\n%s", logs.String())
-}
-
-func databaseNameFromURL(t *testing.T, dsn string) string {
-	t.Helper()
-	parsed, err := url.Parse(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return strings.TrimPrefix(parsed.Path, "/")
 }

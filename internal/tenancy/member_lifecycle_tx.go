@@ -139,7 +139,7 @@ SELECT u.id,u.username,u.email,u.enabled
 FROM users u
 JOIN organization_memberships m ON m.account_id=u.id
 WHERE m.organization_id=$1 AND u.id=$2`, tenantID, userID).Scan(&user.ID, &user.Username, &user.Email, &user.Enabled)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return models.User{}, ErrMemberNotFound
 	}
 	if err != nil {

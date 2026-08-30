@@ -1631,7 +1631,7 @@ type RenderDeviceInfo struct {
 func describeRenderDevice(renderDevPath string) string {
 	name := filepath.Base(renderDevPath)
 	vendor := readSysfsID(filepath.Join(sysClassDRMDir, name, "device", "vendor"))
-	label := ""
+	var label string
 	switch vendor {
 	case "0x8086":
 		label = "Intel GPU"

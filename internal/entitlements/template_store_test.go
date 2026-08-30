@@ -66,7 +66,7 @@ func (testRequirements) False(t *testing.T, value bool, message ...any) {
 func (testRequirements) Nil(t *testing.T, value any, message ...any) {
 	t.Helper()
 	v := reflect.ValueOf(value)
-	if value != nil && (!v.IsValid() || (v.Kind() != reflect.Ptr && v.Kind() != reflect.Slice && v.Kind() != reflect.Map && v.Kind() != reflect.Interface && v.Kind() != reflect.Func) || !v.IsNil()) {
+	if value != nil && (!v.IsValid() || (v.Kind() != reflect.Pointer && v.Kind() != reflect.Slice && v.Kind() != reflect.Map && v.Kind() != reflect.Interface && v.Kind() != reflect.Func) || !v.IsNil()) {
 		t.Fatalf("got %#v, want nil %v", value, message)
 	}
 }

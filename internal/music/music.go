@@ -1,4 +1,4 @@
-// Package music owns Bloem's additive first-party music catalogue contract.
+// Package music owns Bloem's additive first-party music catalog contract.
 package music
 
 import (

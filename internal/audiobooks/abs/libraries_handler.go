@@ -256,7 +256,7 @@ func (h *Handler) handleLibraryItems(w http.ResponseWriter, r *http.Request) {
 	}
 	pageSlice := collapsed[pageStart:pageEnd]
 
-	// Serialise.
+	// Serialize.
 	var results any
 	if minified {
 		mins := make([]MinifiedLibraryItem, len(pageSlice))
@@ -1024,30 +1024,6 @@ func siloFilesToAudioTracks(contentID string, files []*models.MediaFile, baseURL
 		startOffset += duration
 	}
 	return tracks
-}
-
-// slugify produces a stable ID-from-name, identical to the plugin's translate.go
-// implementation so derived IDs round-trip consistently.
-func slugify(name string) string {
-	var b strings.Builder
-	prevDash := true
-	for _, r := range strings.ToLower(name) {
-		switch {
-		case isLetterOrDigit(r):
-			b.WriteRune(r)
-			prevDash = false
-		default:
-			if !prevDash && b.Len() > 0 {
-				b.WriteRune('-')
-				prevDash = true
-			}
-		}
-	}
-	return strings.TrimRight(b.String(), "-")
-}
-
-func isLetterOrDigit(r rune) bool {
-	return (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
 }
 
 // includeHas tests whether an "include" comma-separated query value contains

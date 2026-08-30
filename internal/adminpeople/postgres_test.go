@@ -408,10 +408,10 @@ func TestServiceBulkJobIsDurableResumableAndIdempotent(t *testing.T) {
 	if one.Status != "running" || one.ProgressCurrent != 1 {
 		t.Fatalf("first batch = %+v", one)
 	}
-	cancelled, cancel := context.WithCancel(ctx)
+	canceled, cancel := context.WithCancel(ctx)
 	cancel()
-	if _, err := fixture.service.ProcessBulkJob(cancelled, fixture.orgA, queued.JobID); !errors.Is(err, context.Canceled) {
-		t.Fatalf("cancelled process error = %v", err)
+	if _, err := fixture.service.ProcessBulkJob(canceled, fixture.orgA, queued.JobID); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled process error = %v", err)
 	}
 	observed, err := fixture.service.GetBulkJob(fixture.ctx, fixture.orgA, queued.JobID)
 	if err != nil || observed.Status != "running" || observed.ProgressCurrent != 1 {

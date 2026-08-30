@@ -2,6 +2,7 @@ package pgstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -114,7 +115,7 @@ func createProfile(
 			FROM access_groups
 			WHERE organization_id = $1
 			  AND is_default`, p.OrganizationID).Scan(&defaultGroupID); err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				return fmt.Errorf("resolving default access group for profile %s: %w", p.ID, tenancy.ErrTenantNotFoundOrHidden)
 			}
 			return fmt.Errorf("resolving default access group for profile %s: %w", p.ID, err)
@@ -164,7 +165,7 @@ func getProfile(ctx context.Context, exec preferenceSettingsExecutor, userID int
 		FROM user_profiles WHERE user_id = $1 AND id = $2`, userID, id)
 
 	p, err := scanProfile(row)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -421,7 +422,7 @@ func (s *PostgresUserStore) VerifyPIN(ctx context.Context, profileID, pin string
 		"SELECT pin_hash FROM user_profiles WHERE user_id = $1 AND id = $2",
 		s.userID, profileID,
 	).Scan(&pinHash)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return false, fmt.Errorf("profile %s not found", profileID)
 	}
 	if err != nil {
@@ -432,7 +433,7 @@ func (s *PostgresUserStore) VerifyPIN(ctx context.Context, profileID, pin string
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(pinHash), []byte(pin))
-	if err == bcrypt.ErrMismatchedHashAndPassword {
+	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 		return false, nil
 	}
 	if err != nil {

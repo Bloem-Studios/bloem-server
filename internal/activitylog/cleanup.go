@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -53,7 +55,7 @@ func SeedDefaults(ctx context.Context, store SettingsStore) error {
 }
 
 // RunCleanup starts a background goroutine that runs batched deletes daily.
-// Blocks until ctx is cancelled.
+// Blocks until ctx is canceled.
 func RunCleanup(ctx context.Context, pool *pgxpool.Pool, store SettingsStore, pm PartitionManager) {
 	// Run once at startup, then every 24 hours
 	CleanupOnce(ctx, pool, store, pm)
@@ -173,7 +175,10 @@ func deleteExpiredRowsBefore(ctx context.Context, pool *pgxpool.Pool, cutoff tim
 }
 
 func parseInt(s string) int {
-	var v int
-	fmt.Sscanf(s, "%d", &v)
+	// Malformed input yields 0, which callers treat as "unset".
+	v, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil {
+		return 0
+	}
 	return v
 }
