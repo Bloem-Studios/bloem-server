@@ -35,8 +35,26 @@ func openDirectRunTestRepository(t *testing.T) (context.Context, *pgxpool.Pool, 
 		t.Fatalf("seed media folder: %v", err)
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id = $1`, folderID)
+		cleanupCtx := context.Background()
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM scan_runs WHERE media_folder_id = $1`, folderID)
+		_, _ = pool.Exec(cleanupCtx, `DELETE FROM media_folders WHERE id = $1`, folderID)
 	})
+
+	// ClaimNextAccepted claims the oldest claimable run in the WHOLE table, not
+	// one scoped to this folder, so any run left claimable by an earlier suite
+	// wins the race and the assertions below describe someone else's row. Retire
+	// those leftovers: scan_runs rows do not outlive the suite that made them,
+	// and this test database is the scan queue's own.
+	if _, err := pool.Exec(ctx, `
+		UPDATE scan_runs
+		SET status = 'failed',
+			error_message = 'retired by scanqueue test setup',
+			completed_at = NOW(),
+			updated_at = NOW()
+		WHERE status IN ('accepted', 'running')
+		  AND media_folder_id <> $1`, folderID); err != nil {
+		t.Fatalf("retire pre-existing claimable scan runs: %v", err)
+	}
 
 	return ctx, pool, NewRepository(pool), folderID
 }
