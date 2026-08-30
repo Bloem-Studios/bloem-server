@@ -40,6 +40,51 @@ organization-bound selections. Bulk work is durable, bounded, audited, and
 reports exact successes, skips, and failures. Destructive confirmations name
 the organization and affected count.
 
+## Silo client compatibility
+
+Silo clients are a supported caller against a multi-tenant deployment. They have
+no concept of organizations: they authenticate as an account and ask
+account-shaped questions. Two facts about them drive the design.
+
+**They send `X-Profile-Id` conditionally.** silo-android guards it with
+`activeProfileId?.let`, silo-apple with `if let profileId`, and the web client
+with `if (profileId && ...)`. So a client browses profile-less until the viewer
+picks a profile, and callers with no profile concept at all -- API keys, the
+audiobookshelf surface -- never send it.
+
+**They need an answer every time.** An empty account-level answer reads to a
+client as "no entitlements", which is indistinguishable from a locked-out user.
+
+The resulting contract, pinned by
+`TestSiloClientSubjectResolutionMatrix` in `internal/tenancy`:
+
+| Account | Without a profile | With a profile |
+| --- | --- | --- |
+| Tenant member (one organization) | its own tenant | the same tenant |
+| Default-organization account | the default organization | the profile's organization |
+| Member of several organizations | the default organization, else its earliest membership | the profile's organization |
+| No membership at all | the pre-tenancy default-organization answer | n/a |
+
+Two invariants hold this together:
+
+- **Picking a profile must not move an account between organizations.** A client
+  that browses before selection and then selects must see one tenant, not two.
+- **One notion of "the account's organization".** `Store.AccountOrganization` and
+  the account policy projection in `auth.userSource` use the same precedence --
+  the default organization when the account belongs to it, otherwise its earliest
+  membership. Two independent rules would eventually disagree, and the disagreement
+  would surface as a client seeing entitlements from one organization and content
+  from another.
+
+The ambiguity that remains is confined to an account holding memberships in
+several organizations, which is an administrator. A Silo client cannot express
+which organization it means, so it gets the deterministic choice above;
+administrators who need a specific organization use the admin surfaces, which are
+organization-scoped throughout. This under-serves rather than over-serves --
+`catalog.AccessFilter` carries a resolved library list rather than an
+organization, so a client sees one organization's libraries and never a union
+across them.
+
 ## Access group deletion
 
 Deleting an access group reassigns its members to the organization's default
