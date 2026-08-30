@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -239,8 +240,29 @@ func (r *SessionRepository) createWithQuerier(
 	if session.ID == "" {
 		session.ID = uuid.New().String()
 	}
+	// auth_sessions_direct_profile_binding_check ties the three profile columns
+	// together: an account session carries no profile, and a direct-profile
+	// session carries both the profile and the credential revision it was
+	// authorized at. Defaulting to "account" whenever the caller left the method
+	// blank produced a row that names a profile while claiming to be an account
+	// session, which the constraint rejects with a raw 23514.
 	if session.AuthMethod == "" {
-		session.AuthMethod = "account"
+		if session.ProfileID != nil {
+			session.AuthMethod = "direct_profile"
+		} else {
+			session.AuthMethod = "account"
+		}
+	}
+	if session.AuthMethod == "direct_profile" {
+		// The constraint also demands a device: a direct-profile session is bound
+		// to the client that authorized it, so an anonymous one cannot be revoked
+		// by device the way the scoped revoke paths expect.
+		if session.ProfileID == nil || session.ProfileCredentialRevision == nil || strings.TrimSpace(session.DeviceID) == "" {
+			return fmt.Errorf("creating session: a direct profile session requires a profile, its credential revision, and a device id")
+		}
+	}
+	if session.AuthMethod == "account" && session.ProfileID != nil {
+		return fmt.Errorf("creating session: an account session cannot name a profile")
 	}
 
 	query := `INSERT INTO auth_sessions

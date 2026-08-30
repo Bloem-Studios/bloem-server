@@ -45,9 +45,10 @@ func TestSessionRepositoryCallerTransactionControlsScopedRevoke(t *testing.T) {
 	userID, profileID := newProfileCredentialFixture(t, service.pool, "session-caller-tx")
 	repository := NewSessionRepository(service.pool)
 	ctx := context.Background()
+	profileRevision := int64(1)
 	for _, id := range []string{"caller-tx-one", "caller-tx-two"} {
 		profile := profileID
-		if err := repository.Create(ctx, models.AuthSession{ID: id, UserID: userID, ProfileID: &profile, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+		if err := repository.Create(ctx, models.AuthSession{ID: id, UserID: userID, DeviceID: "device-" + id, ProfileID: &profile, ProfileCredentialRevision: &profileRevision, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
 			t.Fatalf("create %s: %v", id, err)
 		}
 	}
