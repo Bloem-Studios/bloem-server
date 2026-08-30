@@ -50,7 +50,15 @@ func TestClusterSafeUserDBFencesActiveAndForeignSQLiteNodes(t *testing.T) {
 		t.Fatalf("same-node restart after stale heartbeat: %v", err)
 	}
 
-	if _, err := pool.Exec(context.Background(), `DELETE FROM node_heartbeats WHERE node_id = $1`, ownerNode); err != nil {
+	// The delete fence only admits a session that names the node and the instance
+	// the row carries, so a fixture tidying up has to name them too.
+	if _, err := pool.Exec(context.Background(), `
+		DELETE FROM node_heartbeats
+		WHERE node_id = $1
+		  AND set_config('bloem.heartbeat_cleanup_writer', 'v1', true) IS NOT NULL
+		  AND set_config('bloem.heartbeat_cleanup_node_id', $1, true) IS NOT NULL
+		  AND set_config('bloem.heartbeat_cleanup_instance_id', instance_id::text, true) IS NOT NULL`,
+		ownerNode); err != nil {
 		t.Fatalf("remove restarted owner heartbeat: %v", err)
 	}
 	if err := userdb.EnforceClusterSafeBackend(context.Background(), pool, "sqlite", foreignNode, "integrated"); !errors.Is(err, userdb.ErrSQLiteOwnedByAnotherNode) {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/Silo-Server/silo-server/internal/nodeidentity"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -46,7 +46,7 @@ func newHeartbeatWriter(store heartbeatStore, nodeID, nodeType, nodeURL string) 
 	lifecycleCtx, cancel := context.WithCancel(context.Background())
 	return &HeartbeatWriter{
 		store:        store,
-		instanceID:   uuid.NewString(),
+		instanceID:   nodeidentity.InstanceID(),
 		nodeID:       nodeID,
 		nodeType:     nodeType,
 		nodeURL:      nodeURL,
@@ -166,9 +166,17 @@ func (hw *HeartbeatWriter) CleanupSelf(ctx context.Context) error {
 		return fmt.Errorf("deleting sessions for node %s: %w", hw.nodeID, err)
 	}
 
+	// A heartbeat may only be deleted by a session that names the exact node and
+	// instance it is retiring, so a sweep cannot blindly drop another node's row.
+	// This node knows both. The markers are transaction-local and this store
+	// only exposes Exec, so they ride in the statement itself.
 	_, err = hw.store.Exec(ctx, `
-		DELETE FROM node_heartbeats WHERE node_id = $1
-	`, hw.nodeID)
+		DELETE FROM node_heartbeats
+		WHERE node_id = $1
+		  AND set_config('bloem.heartbeat_cleanup_writer', 'v1', true) IS NOT NULL
+		  AND set_config('bloem.heartbeat_cleanup_node_id', $1, true) IS NOT NULL
+		  AND set_config('bloem.heartbeat_cleanup_instance_id', $2, true) IS NOT NULL
+	`, hw.nodeID, hw.instanceID)
 	if err != nil {
 		return fmt.Errorf("deleting heartbeat for node %s: %w", hw.nodeID, err)
 	}

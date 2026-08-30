@@ -144,11 +144,14 @@ func (c *SessionCleaner) CleanStale(ctx context.Context) (int, error) {
 	totalDeleted += tag.RowsAffected()
 
 	// 2. Clean up stale heartbeat rows.
-	if _, err := c.pool.Exec(ctx, `
-		DELETE FROM node_heartbeats
-		WHERE updated_at < NOW() - make_interval(secs => $1::double precision)
-	`, nodeHeartbeatCleanup.Seconds()); err != nil {
-		return int(totalDeleted), fmt.Errorf("cleaning stale heartbeats: %w", err)
+	//
+	// A heartbeat may only be deleted by a session that names the exact node and
+	// instance it retires, so this cannot be one blind bulk delete: the sweeper
+	// reads the stale rows first and retires them one at a time, declaring each.
+	// That is the point of the fence -- a sweep must not be able to drop a live
+	// node's row by accident.
+	if err := c.purgeStaleHeartbeats(ctx); err != nil {
+		return int(totalDeleted), err
 	}
 
 	// 3. Active sessions: 45s grace on last_sync_at.
@@ -253,6 +256,55 @@ func (c *SessionCleaner) closeAbandonedABSSessions(ctx context.Context) error {
 		  AND COALESCE(last_sync_at, started_at) < NOW() - make_interval(secs => $1::double precision)
 	`, absStaleOpenSessionGrace.Seconds()); err != nil {
 		return fmt.Errorf("closing abandoned abs sessions: %w", err)
+	}
+	return nil
+}
+
+// purgeStaleHeartbeats retires heartbeat rows older than the cleanup window,
+// naming each node and instance so the delete fence admits it.
+func (c *SessionCleaner) purgeStaleHeartbeats(ctx context.Context) error {
+	rows, err := c.pool.Query(ctx, `
+		SELECT node_id, instance_id
+		FROM node_heartbeats
+		WHERE updated_at < NOW() - make_interval(secs => $1::double precision)
+	`, nodeHeartbeatCleanup.Seconds())
+	if err != nil {
+		return fmt.Errorf("listing stale heartbeats: %w", err)
+	}
+	type staleHeartbeat struct {
+		nodeID     string
+		instanceID *string
+	}
+	var stale []staleHeartbeat
+	for rows.Next() {
+		var entry staleHeartbeat
+		if err := rows.Scan(&entry.nodeID, &entry.instanceID); err != nil {
+			rows.Close()
+			return fmt.Errorf("scanning stale heartbeat: %w", err)
+		}
+		stale = append(stale, entry)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("listing stale heartbeats: %w", err)
+	}
+
+	for _, entry := range stale {
+		if entry.instanceID == nil {
+			// A row from before nodes declared an instance cannot be named, so the
+			// fence will not admit it. Leave it rather than fail the whole sweep;
+			// it is inert, and a restart of that node replaces it.
+			continue
+		}
+		if _, err := c.pool.Exec(ctx, `
+			DELETE FROM node_heartbeats
+			WHERE node_id = $1
+			  AND set_config('bloem.heartbeat_cleanup_writer', 'v1', true) IS NOT NULL
+			  AND set_config('bloem.heartbeat_cleanup_node_id', $1, true) IS NOT NULL
+			  AND set_config('bloem.heartbeat_cleanup_instance_id', $2, true) IS NOT NULL
+		`, entry.nodeID, *entry.instanceID); err != nil {
+			return fmt.Errorf("retiring stale heartbeat for node %s: %w", entry.nodeID, err)
+		}
 	}
 	return nil
 }

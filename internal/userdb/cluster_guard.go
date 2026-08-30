@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/Silo-Server/silo-server/internal/nodeidentity"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -88,7 +88,7 @@ func EnforceClusterSafeBackend(ctx context.Context, pool *pgxpool.Pool, backend,
 			node_url = NULL,
 			updated_at = NOW(),
 			schema_capabilities = EXCLUDED.schema_capabilities,
-			instance_id = EXCLUDED.instance_id`, nodeID, nodeType, uuid.NewString()); err != nil {
+			instance_id = EXCLUDED.instance_id`, nodeID, nodeType, nodeidentity.InstanceID()); err != nil {
 		return fmt.Errorf("reserve active SQLite owner: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `UPDATE userdb_sqlite_owner SET updated_at = NOW() WHERE singleton = TRUE`); err != nil {
