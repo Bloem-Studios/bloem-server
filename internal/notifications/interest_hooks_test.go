@@ -4,8 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/userdb"
@@ -326,5 +329,89 @@ func TestInterestTrackingStoreForwardsRollupWhenSupported(t *testing.T) {
 	}
 	if _, ok := wrapped.(userstore.SettingValueCompareAndSetter); !ok {
 		t.Error("rollup-capable wrapper dropped SettingValueCompareAndSetter")
+	}
+}
+
+// lifecycleCapableStore is a UserStore that can also run a profile lifecycle
+// mutation inside a caller-owned transaction, standing in for the Postgres
+// backend.
+type lifecycleCapableStore struct {
+	userstore.UserStore
+	called bool
+}
+
+func (s *lifecycleCapableStore) WithProfileLifecycleTransaction(
+	_ context.Context,
+	_ pgx.Tx,
+	_ func(userstore.ProfileLifecycleWriter) error,
+) error {
+	s.called = true
+	return nil
+}
+
+// TestInterestTrackingStoreForwardsProfileLifecycle covers the regression that
+// took profile creation down in production: the wrapper embeds the UserStore
+// *interface*, so an unforwarded optional method is simply absent, the
+// handler's capability probe fails, and every profile create/update/delete
+// answers 503 "lifecycle safety unavailable" in a couple of milliseconds.
+func TestInterestTrackingStoreForwardsProfileLifecycle(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if err := userdb.InitSchema(db); err != nil {
+		t.Fatalf("init schema: %v", err)
+	}
+
+	inner := &lifecycleCapableStore{UserStore: userdb.NewSQLiteUserStore(db)}
+	provider := WrapUserStoreProvider(preferenceTransactionTestProvider{store: inner}, &System{})
+	wrapped, err := provider.ForUser(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("ForUser: %v", err)
+	}
+
+	transactioner, ok := wrapped.(userstore.ProfileLifecycleTransactioner)
+	if !ok {
+		t.Fatal("interest-tracking wrapper dropped ProfileLifecycleTransactioner; every profile lifecycle mutation 503s")
+	}
+	if err := transactioner.WithProfileLifecycleTransaction(context.Background(), nil, nil); err != nil {
+		t.Fatalf("WithProfileLifecycleTransaction: %v", err)
+	}
+	if !inner.called {
+		t.Error("wrapper advertised the lifecycle capability but did not delegate to the backing store")
+	}
+}
+
+// TestInterestTrackingStoreReportsProfileLifecycleUnsupported is the other
+// half: a backend that genuinely cannot run the transaction must surface the
+// sentinel so the handler still answers "unavailable" rather than panicking on
+// a nil delegate.
+func TestInterestTrackingStoreReportsProfileLifecycleUnsupported(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if err := userdb.InitSchema(db); err != nil {
+		t.Fatalf("init schema: %v", err)
+	}
+
+	inner := userdb.NewSQLiteUserStore(db)
+	if _, ok := userstore.UserStore(inner).(userstore.ProfileLifecycleTransactioner); ok {
+		t.Fatal("test setup: SQLite store unexpectedly implements ProfileLifecycleTransactioner")
+	}
+	provider := WrapUserStoreProvider(preferenceTransactionTestProvider{store: inner}, &System{})
+	wrapped, err := provider.ForUser(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("ForUser: %v", err)
+	}
+	transactioner, ok := wrapped.(userstore.ProfileLifecycleTransactioner)
+	if !ok {
+		t.Fatal("wrapper must advertise the capability and report unsupported at call time")
+	}
+	err = transactioner.WithProfileLifecycleTransaction(context.Background(), nil, nil)
+	if !errors.Is(err, userstore.ErrProfileLifecycleUnsupported) {
+		t.Errorf("want ErrProfileLifecycleUnsupported, got %v", err)
 	}
 }

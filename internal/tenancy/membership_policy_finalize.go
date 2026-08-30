@@ -82,6 +82,11 @@ func FinalizeMembershipPolicyAuthority(ctx context.Context, pool *pgxpool.Pool) 
 	// it. Draining those superseded rows is safe and mechanical -- the node has
 	// demonstrably upgraded, because its current heartbeat points elsewhere.
 	//
+	// The heartbeat may also be gone entirely, which is what a replaced container
+	// leaves behind and is stronger evidence of retirement than a stale one. An
+	// inner join missed those, so every accumulated dead node blocked the
+	// handover forever.
+	//
 	// A legacy observation that is merely STALE is deliberately not drained here:
 	// that node may simply be down and could come back still speaking the legacy
 	// protocol, so retiring it is an operator judgement, not a side effect of
@@ -92,11 +97,13 @@ func FinalizeMembershipPolicyAuthority(ctx context.Context, pool *pgxpool.Pool) 
 	if _, err := tx.Exec(ctx, `
 		UPDATE public.membership_policy_rollout_observations AS observations
 		SET state = 'drained', drained_at = GREATEST(now(), observations.last_seen_at)
-		FROM public.node_heartbeats AS heartbeats
-		WHERE heartbeats.node_id = observations.node_id
-		  AND observations.state = 'legacy'
+		WHERE observations.state = 'legacy'
 		  AND observations.instance_id IS NULL
-		  AND heartbeats.membership_policy_rollout_observation_id IS DISTINCT FROM observations.observation_id`); err != nil {
+		  AND NOT EXISTS (
+			SELECT 1 FROM public.node_heartbeats AS heartbeats
+			WHERE heartbeats.node_id = observations.node_id
+			  AND heartbeats.membership_policy_rollout_observation_id = observations.observation_id
+		  )`); err != nil {
 		return false, fmt.Errorf("tenancy: drain superseded legacy observations: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_observation_writer', '', true)`); err != nil {

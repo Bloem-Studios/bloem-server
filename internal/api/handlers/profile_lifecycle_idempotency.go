@@ -344,7 +344,7 @@ func (h *ProfileHandler) writeProfileLifecycleError(w http.ResponseWriter, err e
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Lifecycle request identity is no longer valid")
 	case errors.Is(err, lifecycleidempotency.ErrTargetNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Profile not found")
-	case errors.Is(err, errLifecycleUnavailable):
+	case errors.Is(err, errLifecycleUnavailable), errors.Is(err, userstore.ErrProfileLifecycleUnsupported):
 		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 	case errors.Is(err, access.ErrProfileUnverified):
 		writeProfileManagementPermissionError(w, err)
