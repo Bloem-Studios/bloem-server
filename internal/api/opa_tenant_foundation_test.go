@@ -73,9 +73,9 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	}
 	var accountID int
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users (username, email, password_hash, role, enabled, access_group_id)
-		VALUES ($1, 'opa-foundation-owner@example.test', $2, 'admin', true, $3)
-		RETURNING id`, username, passwordHash, defaultGroupID).Scan(&accountID); err != nil {
+		INSERT INTO users (username, email, password_hash, role, enabled)
+		VALUES ($1, 'opa-foundation-owner@example.test', $2, 'admin', true)
+		RETURNING id`, username, passwordHash).Scan(&accountID); err != nil {
 		t.Fatalf("create pre-existing account: %v", err)
 	}
 	pinHash, err := bcrypt.GenerateFromPassword([]byte("2468"), bcrypt.MinCost)
@@ -116,9 +116,9 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 
 	var foreignAccountID int
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users (username, email, password_hash, role, enabled, access_group_id)
-		VALUES ('opa-foundation-foreign-owner', 'opa-foundation-foreign@example.test', $1, 'admin', true, $2)
-		RETURNING id`, passwordHash, defaultGroupID).Scan(&foreignAccountID); err != nil {
+		INSERT INTO users (username, email, password_hash, role, enabled)
+		VALUES ('opa-foundation-foreign-owner', 'opa-foundation-foreign@example.test', $1, 'admin', true)
+		RETURNING id`, passwordHash).Scan(&foreignAccountID); err != nil {
 		t.Fatalf("create foreign organization account: %v", err)
 	}
 	var foreignOrganizationID uuid.UUID

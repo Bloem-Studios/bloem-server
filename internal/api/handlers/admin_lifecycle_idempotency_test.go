@@ -195,7 +195,7 @@ func TestRequestLimitLifecycleReplayDoesNotUpdateSameNumericReplacement(t *testi
 	if _, err := pool.Exec(ctx, `INSERT INTO users (id,username,email,password_hash,role) VALUES ($1,$2,$3,'x','user')`, target.ID, "replacement-"+uuid.NewString(), uuid.NewString()+"@lifecycle.test"); err != nil {
 		t.Fatalf("create replacement: %v", err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','user')`, organizationID, target.ID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,max_profiles) VALUES ($1,$2,'active','user',4)`, organizationID, target.ID); err != nil {
 		t.Fatalf("create replacement membership: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO request_user_limits (user_id,limit_mode,max_requests,window_days,approval_mode) VALUES ($1,'custom',99,30,'auto')`, target.ID); err != nil {
@@ -437,7 +437,7 @@ func TestAdminCreateProfileLifecycleReplayDoesNotCreateOnSameNumericReplacement(
 		t.Fatalf("delete target: %v", err)
 	}
 	var replacementIncarnation uuid.UUID
-	if err := pool.QueryRow(ctx, `INSERT INTO users (id,username,email,password_hash,role,max_profiles) VALUES ($1,$2,$3,'x','user',4) RETURNING account_incarnation_id`, target.ID, "replacement-"+uuid.NewString(), uuid.NewString()+"@lifecycle.test").Scan(&replacementIncarnation); err != nil {
+	if err := pool.QueryRow(ctx, `INSERT INTO users (id,username,email,password_hash,role) VALUES ($1,$2,$3,'x','user') RETURNING account_incarnation_id`, target.ID, "replacement-"+uuid.NewString(), uuid.NewString()+"@lifecycle.test").Scan(&replacementIncarnation); err != nil {
 		t.Fatalf("create replacement: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active','user')`, organizationID, target.ID); err != nil {

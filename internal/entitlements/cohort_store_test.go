@@ -437,13 +437,12 @@ func newCohortFixture(t *testing.T) *cohortFixture {
 	var actorID int
 	suffix := uuid.NewString()
 	require.NoError(t, pool.QueryRow(ctx, `
-		INSERT INTO users (email,username,password_hash,role,access_group_id)
-		VALUES ($1,$2,'test-hash','user',$3)
-		RETURNING id`, "cohort-"+suffix+"@example.test", "cohort-"+suffix, applied.GroupID).Scan(&actorID))
-	_, err = pool.Exec(ctx, `
-		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-		VALUES ($1,$2,'active','admin')`, tenant.ID, actorID)
-	require.NoError(t, err)
+		INSERT INTO users (email,username,password_hash,role)
+		VALUES ($1,$2,'test-hash','user')
+		RETURNING id`, "cohort-"+suffix+"@example.test", "cohort-"+suffix).Scan(&actorID))
+	execMembershipPolicy(t, ctx, pool, `
+		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,access_group_id)
+		VALUES ($1,$2,'active','admin',$3)`, tenant.ID, actorID, applied.GroupID)
 	_, err = pool.Exec(ctx, `
 		INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id,is_primary)
 		VALUES ($1,$2,'Primary',$3,$4,true)`, uuid.NewString(), actorID, tenant.ID, applied.GroupID)
@@ -511,8 +510,8 @@ func (f *cohortFixture) snapshotGroup(groupID int64) cohortGroupSnapshot {
 		&snapshot.RequestsAllowed,
 	))
 	require.NoError(f.t, f.pool.QueryRow(f.ctx, `
-		SELECT COALESCE(array_agg(id ORDER BY id) FILTER (WHERE id IS NOT NULL),'{}')
-		FROM users WHERE access_group_id=$1`, groupID).Scan(&snapshot.AccountIDs))
+		SELECT COALESCE(array_agg(account_id ORDER BY account_id) FILTER (WHERE account_id IS NOT NULL),'{}')
+		FROM organization_memberships WHERE access_group_id=$1`, groupID).Scan(&snapshot.AccountIDs))
 	require.NoError(f.t, f.pool.QueryRow(f.ctx, `
 		SELECT COALESCE(array_agg(id ORDER BY id) FILTER (WHERE id IS NOT NULL),'{}')
 		FROM user_profiles WHERE organization_id=$1 AND access_group_id=$2`, f.organizationID, groupID).Scan(&snapshot.ProfileIDs))

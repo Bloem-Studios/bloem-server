@@ -60,8 +60,8 @@ func newMultitenantAdminAcceptanceFixture(t *testing.T) *multitenantAdminAccepta
 	insertAccount := func(username string) int {
 		var id int
 		err := pool.QueryRow(ctx, `
-			INSERT INTO users (username,email,password_hash,role,enabled,access_group_id)
-			VALUES ($1,$2,$3,'user',true,$4) RETURNING id`, username, username+"@example.test", passwordHash, bootstrapGroupID).Scan(&id)
+			INSERT INTO users (username,email,password_hash,role,enabled)
+			VALUES ($1,$2,$3,'user',true) RETURNING id`, username, username+"@example.test", passwordHash).Scan(&id)
 		if err != nil {
 			t.Fatalf("create account %q: %v", username, err)
 		}

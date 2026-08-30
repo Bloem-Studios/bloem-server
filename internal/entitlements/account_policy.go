@@ -261,6 +261,7 @@ func loadAccountPolicyBatchAccounts(ctx context.Context, tx pgx.Tx, requestedOrg
 		if err != nil {
 			return nil, err
 		}
+		account.user.Permissions = nilIfEmptyPermissions(account.user.Permissions)
 		accounts[account.user.ID] = account
 	}
 	if err := rows.Err(); err != nil {
@@ -500,6 +501,7 @@ func loadAccountPolicyUser(ctx context.Context, tx pgx.Tx, organizationID uuid.U
 	if err != nil {
 		return nil, accountPolicyGroup{}, fmt.Errorf("entitlements: load account policy subject: %w", err)
 	}
+	user.Permissions = nilIfEmptyPermissions(user.Permissions)
 	return &user, makeAccountPolicyGroup(groupID, managedTemplateKey, cohortID, cohortRevision, sourceTemplateKey, sourceTemplateRevision), nil
 }
 
@@ -748,6 +750,21 @@ func effectivePolicySnapshot(effective accesspolicy.EffectiveUserPolicy, current
 		AllowedPermissions:       appendNilPreservingStrings(effective.Permissions),
 		RequestsAllowed:          effective.RequestsAllowed,
 	}
+}
+
+// nilIfEmptyPermissions restores the "no account override" signal that moving
+// the policy authority off users would otherwise erase.
+//
+// users.permissions was nullable, so NULL meant "this account overrides
+// nothing" and the group's allowed_permissions stood. organization_memberships
+// declares the column NOT NULL DEFAULT '{}', so the same absence now arrives as
+// a non-nil empty slice, which appendNilPreservingStrings faithfully reports as
+// an override granting nothing at all.
+func nilIfEmptyPermissions(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	return values
 }
 
 func appendNilPreservingStrings(values []string) []string {

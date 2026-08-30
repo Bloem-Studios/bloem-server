@@ -1590,16 +1590,16 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 		SELECT m.id,m.status,m.security_revision,m.access_policy_revision,COALESCE(m.access_group_id,0),
 		       COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),COALESCE(r.revision,0),
 		       COALESCE(r.source_template_key,g.managed_template_key,''),COALESCE(r.source_template_revision,g.managed_template_revision,0),
-		       u.library_ids IS NOT NULL OR u.max_playback_quality IS NOT NULL OR
-		       u.max_streams IS NOT NULL OR u.max_transcodes IS NOT NULL OR
+		       m.library_ids IS NOT NULL OR m.max_playback_quality IS NOT NULL OR
+		       m.max_streams IS NOT NULL OR m.max_transcodes IS NOT NULL OR
 		       m.max_profiles IS DISTINCT FROM CASE
 		           WHEN g.max_profiles > 0 THEN g.max_profiles
 		           WHEN g.managed_template_key IS NOT NULL OR g.managed_cohort_id IS NOT NULL THEN 1
 		           ELSE m.max_profiles
 		       END OR
-		       u.transcode_allowed IS NOT NULL OR u.audio_transcode_allowed IS NOT NULL OR
-		       u.download_allowed IS NOT NULL OR u.download_transcode_allowed IS NOT NULL OR
-		       u.requests_allowed IS NOT NULL
+		       m.transcode_allowed IS NOT NULL OR m.audio_transcode_allowed IS NOT NULL OR
+		       m.download_allowed IS NOT NULL OR m.download_transcode_allowed IS NOT NULL OR
+		       m.requests_allowed IS NOT NULL
 		FROM organization_memberships m
 		JOIN users u ON u.id=m.account_id
 		LEFT JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=m.access_group_id

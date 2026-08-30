@@ -369,15 +369,15 @@ func (s *Service) currentPolicyMemberships(ctx context.Context, organizationID u
 func currentPolicyMembershipsWithDB(ctx context.Context, db policyPreviewDB, organizationID uuid.UUID, accountIDs []int) (map[int]policySelectionMembership, error) {
 	rows, err := db.Query(ctx, `
 		SELECT m.account_id,m.id,m.status,m.security_revision,
-		       COALESCE(u.access_group_id,0),
+		       COALESCE(m.access_group_id,0),
 		       COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),
 		       COALESCE(r.revision,0),
 		       COALESCE(r.source_template_key,g.managed_template_key,''),
 		       COALESCE(r.source_template_revision,g.managed_template_revision,0),
-		       u.permissions,u.max_profiles
+		       m.permissions,m.max_profiles
 		FROM organization_memberships m
 		JOIN users u ON u.id=m.account_id
-		LEFT JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=u.access_group_id
+		LEFT JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=m.access_group_id
 		LEFT JOIN entitlement_policy_cohort_revisions r
 		  ON r.organization_id=g.organization_id AND r.id=g.managed_cohort_id AND r.access_group_id=g.id
 		WHERE m.organization_id=$1 AND m.account_id=ANY($2::integer[])`, organizationID, accountIDs)
@@ -685,7 +685,7 @@ func lockPolicyConfirmationPolicies(ctx context.Context, tx pgx.Tx, organization
 		FROM access_groups
 		WHERE organization_id=$1
 		  AND (id=ANY($2::bigint[])
-		       OR id IN (SELECT access_group_id FROM users WHERE id=ANY($3::integer[]) AND access_group_id IS NOT NULL)
+		       OR id IN (SELECT access_group_id FROM organization_memberships WHERE organization_id=$1 AND account_id=ANY($3::integer[]) AND access_group_id IS NOT NULL)
 		       OR id IN (SELECT access_group_id FROM user_profiles WHERE organization_id=$1 AND user_id=ANY($3::integer[]) AND access_group_id IS NOT NULL))
 		ORDER BY id
 		FOR SHARE`, organizationID, groupIDs, accountIDs); err != nil {

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -19,11 +20,15 @@ type heartbeatStore interface {
 // this node is alive. All node types (integrated, api, proxy, transcode)
 // should run a HeartbeatWriter.
 type HeartbeatWriter struct {
-	store    heartbeatStore
-	nodeID   string
-	nodeType string
-	nodeURL  string
-	interval time.Duration
+	store heartbeatStore
+	// instanceID identifies THIS process. The rollout observations key a capable
+	// node by (node_id, instance_id) so a restart is a new observation rather
+	// than a silent reuse of the old one.
+	instanceID string
+	nodeID     string
+	nodeType   string
+	nodeURL    string
+	interval   time.Duration
 
 	lifecycleCtx context.Context
 	cancel       context.CancelFunc
@@ -41,6 +46,7 @@ func newHeartbeatWriter(store heartbeatStore, nodeID, nodeType, nodeURL string) 
 	lifecycleCtx, cancel := context.WithCancel(context.Background())
 	return &HeartbeatWriter{
 		store:        store,
+		instanceID:   uuid.NewString(),
 		nodeID:       nodeID,
 		nodeType:     nodeType,
 		nodeURL:      nodeURL,
@@ -53,14 +59,26 @@ func newHeartbeatWriter(store heartbeatStore, nodeID, nodeType, nodeURL string) 
 
 // Beat performs a single heartbeat upsert.
 func (hw *HeartbeatWriter) Beat(ctx context.Context) error {
+	// Once the membership policy authority is finalized,
+	// register_membership_policy_heartbeat rejects any heartbeat that does not
+	// declare the membership_policy_v1 capability, because a node that still
+	// speaks the legacy protocol must not silently pass for a capable one.
+	//
+	// The marker is transaction-local (SET LOCAL), and this store only exposes
+	// Exec, so it rides in the statement itself: the WHERE is evaluated while
+	// producing the row, which is before the trigger fires, and a lone statement
+	// is its own transaction.
 	_, err := hw.store.Exec(ctx, `
-		INSERT INTO node_heartbeats (node_id, node_type, node_url, updated_at)
-		VALUES ($1, $2, $3, NOW())
+		INSERT INTO node_heartbeats (node_id, node_type, node_url, updated_at, schema_capabilities, instance_id)
+		SELECT $1, $2, $3, NOW(), ARRAY['membership_policy_v1'], $4::uuid
+		WHERE set_config('bloem.schema_capability_writer', 'v1', true) IS NOT NULL
 		ON CONFLICT (node_id) DO UPDATE SET
-			node_type  = EXCLUDED.node_type,
-			node_url   = EXCLUDED.node_url,
-			updated_at = NOW()
-	`, hw.nodeID, hw.nodeType, hw.nodeURL)
+			node_type           = EXCLUDED.node_type,
+			node_url            = EXCLUDED.node_url,
+			updated_at          = NOW(),
+			schema_capabilities = EXCLUDED.schema_capabilities,
+			instance_id         = EXCLUDED.instance_id
+	`, hw.nodeID, hw.nodeType, hw.nodeURL, hw.instanceID)
 	if err != nil {
 		return fmt.Errorf("heartbeat upsert: %w", err)
 	}

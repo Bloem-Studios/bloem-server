@@ -416,7 +416,7 @@ func TestProfileOrganizationAndAccessGroupPersistence(t *testing.T) {
 		LIMIT 1`).Scan(&organizationID, &accessGroupID); err != nil {
 		t.Fatalf("load default profile identity: %v", err)
 	}
-	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = $2 WHERE id = $1`, userID, accessGroupID); err != nil {
+	if _, err := pool.Exec(ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, userID, accessGroupID); err != nil {
 		t.Fatalf("assign legacy group: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `
@@ -451,14 +451,14 @@ func TestProfileOrganizationAndAccessGroupPersistence(t *testing.T) {
 	}
 
 	var legacyGroupID *int64
-	if err := pool.QueryRow(ctx, `SELECT access_group_id FROM users WHERE id = $1`, userID).Scan(&legacyGroupID); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT access_group_id FROM organization_memberships WHERE account_id = $1`, userID).Scan(&legacyGroupID); err != nil {
 		t.Fatalf("load legacy assignment: %v", err)
 	}
 	if legacyGroupID == nil || *legacyGroupID != accessGroupID {
 		t.Fatalf("legacy access group changed: %v", legacyGroupID)
 	}
 	var legacyMemberCount int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE access_group_id = $1`, accessGroupID).Scan(&legacyMemberCount); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM organization_memberships WHERE access_group_id = $1`, accessGroupID).Scan(&legacyMemberCount); err != nil {
 		t.Fatalf("count legacy members: %v", err)
 	}
 	if legacyMemberCount < 1 {
@@ -550,6 +550,23 @@ func newProfileIdentityTestUser(t *testing.T) (*pgxpool.Pool, int) {
 	})
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
+	}
+	// A freshly migrated database sits in the compatibility phase, a policy
+	// freeze in which neither write path works. Declare this deployment the v1
+	// writer for every later session, then hand the authority over.
+	for _, setting := range []string{"bloem.membership_policy_writer", "bloem.schema_capability_writer"} {
+		if _, err := admin.Exec(ctx, fmt.Sprintf("ALTER DATABASE %s SET %s = %s",
+			pgx.Identifier{name}.Sanitize(), setting, pgx.Identifier{"v1"}.Sanitize())); err != nil {
+			t.Fatalf("mark disposable database as policy writer: %v", err)
+		}
+	}
+	pool.Close()
+	pool, err = pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		t.Fatalf("reconnect disposable database: %v", err)
+	}
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 
 	var userID int

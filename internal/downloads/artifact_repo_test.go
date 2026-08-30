@@ -735,7 +735,7 @@ func TestArtifactRemoteRequeueAtomicallyQueuesCleanup(t *testing.T) {
 	}
 	var userID int
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO users (username, role, download_allowed) VALUES ($1, 'user', true) RETURNING id`,
+		`INSERT INTO users (username, role) VALUES ($1, 'user') RETURNING id`,
 		fmt.Sprintf("requeue-user-%d", time.Now().UnixNano()),
 	).Scan(&userID); err != nil {
 		t.Fatal(err)
@@ -963,7 +963,7 @@ func TestHasActiveLinkCoversEphemeralRows(t *testing.T) {
 
 	var userID int
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO users (username, role, download_allowed) VALUES ($1, 'user', true) RETURNING id`,
+		`INSERT INTO users (username, role) VALUES ($1, 'user') RETURNING id`,
 		fmt.Sprintf("linkuser-%d", time.Now().UnixNano()),
 	).Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)

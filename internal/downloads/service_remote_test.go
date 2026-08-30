@@ -83,7 +83,7 @@ func TestServiceRequeuesReadyArtifactWhenRemoteFileIsMissing(t *testing.T) {
 	}
 	var userID int
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO users (username, role, download_allowed) VALUES ($1, 'user', true) RETURNING id`,
+		`INSERT INTO users (username, role) VALUES ($1, 'user') RETURNING id`,
 		fmt.Sprintf("missing-remote-user-%d", time.Now().UnixNano()),
 	).Scan(&userID); err != nil {
 		t.Fatal(err)

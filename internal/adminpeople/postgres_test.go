@@ -854,7 +854,7 @@ func TestPolicyBulkJobMovesInheritedProfilesAndPreservesCustomProfiles(t *testin
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
 	customGroup := fixture.addGroup(t, fixture.orgA, "Policy custom", false)
 	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Custom policy", customGroup)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2 AND id<>$4`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID, customProfile); err != nil {
@@ -916,14 +916,12 @@ func TestPolicyBulkJobClearsManagedAccountOverridesAndAuditsEffectivePolicy(t *t
 	customGroup := fixture.addGroup(t, fixture.orgA, "Override custom", false)
 	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Override custom profile", customGroup)
 	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), standard.AccessGroupID)
-	if _, err := fixture.pool.Exec(fixture.ctx, `
-		UPDATE users SET
+	execMembershipPolicy(t, fixture.ctx, fixture.pool, `
+		UPDATE organization_memberships SET
 			library_ids='{}'::integer[],max_playback_quality='720p',max_streams=1,max_transcodes=1,
 			transcode_allowed=false,audio_transcode_allowed=false,download_allowed=false,
 			download_transcode_allowed=false,requests_allowed=false
-		WHERE id=$1`, fixture.sharedAccountID); err != nil {
-		t.Fatal(err)
-	}
+		WHERE organization_id=$2 AND account_id=$1`, fixture.sharedAccountID, fixture.orgA)
 
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
 	if err != nil {
@@ -969,7 +967,7 @@ func TestPolicyBulkJobClearsManagedAccountOverridesAndAuditsEffectivePolicy(t *t
 		       transcode_allowed IS NULL AND audio_transcode_allowed IS NULL AND
 		       download_allowed IS NULL AND download_transcode_allowed IS NULL AND
 		       requests_allowed IS NULL
-		FROM users WHERE id=$1`, fixture.sharedAccountID).Scan(&managedOverridesCleared); err != nil {
+		FROM organization_memberships WHERE organization_id=$2 AND account_id=$1`, fixture.sharedAccountID, fixture.orgA).Scan(&managedOverridesCleared); err != nil {
 		t.Fatal(err)
 	}
 	if !managedOverridesCleared {
@@ -1002,7 +1000,7 @@ func TestPolicyBulkJobReconcilesOverridesOnAlreadyAssignedCohort(t *testing.T) {
 	store := entitlements.NewTemplateStore(fixture.pool)
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
 	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), premium.AccessGroupID)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET max_streams=1 WHERE id=$1`, fixture.sharedAccountID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET max_streams=1 WHERE account_id=$1`, fixture.sharedAccountID); err != nil {
 		t.Fatal(err)
 	}
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
@@ -1024,7 +1022,7 @@ func TestPolicyBulkJobReconcilesOverridesOnAlreadyAssignedCohort(t *testing.T) {
 		t.Fatalf("completed=%+v err=%v", completed, err)
 	}
 	var maxStreams *int
-	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT max_streams FROM users WHERE id=$1`, fixture.sharedAccountID).Scan(&maxStreams); err != nil {
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT max_streams FROM organization_memberships WHERE account_id=$1`, fixture.sharedAccountID).Scan(&maxStreams); err != nil {
 		t.Fatal(err)
 	}
 	if maxStreams != nil {
@@ -1041,7 +1039,7 @@ func TestPolicyBulkJobReconcilesNonNullableMaxProfilesOnAlreadyAssignedCohort(t 
 	store := entitlements.NewTemplateStore(fixture.pool)
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
 	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), premium.AccessGroupID)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET max_profiles=1 WHERE id=$1`, fixture.sharedAccountID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET max_profiles=1 WHERE account_id=$1`, fixture.sharedAccountID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1084,7 +1082,7 @@ func TestPolicyBulkJobReconcilesNonNullableMaxProfilesOnAlreadyAssignedCohort(t 
 		}
 	}
 	var persisted int
-	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT max_profiles FROM users WHERE id=$1`, fixture.sharedAccountID).Scan(&persisted); err != nil {
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT max_profiles FROM organization_memberships WHERE account_id=$1`, fixture.sharedAccountID).Scan(&persisted); err != nil {
 		t.Fatal(err)
 	}
 	if persisted != preview.Target.Policy.MaxProfiles {
@@ -1278,7 +1276,7 @@ func TestPolicyBulkJobRestartResumesWithoutRepeatingCompletedTargets(t *testing.
 		accountID, _ := fixture.addAccount(t, fixture.orgA, fmt.Sprintf("policy-restart-%d@example.test", index), fmt.Sprintf("Policy Restart %d", index), fmt.Sprintf("Policy Restart Profile %d", index), int(standard.AccessGroupID), false)
 		accountIDs = append(accountIDs, accountID)
 	}
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=ANY($1::integer[])`, accountIDs, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=ANY($1::integer[])`, accountIDs, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "policy-restart-"})
@@ -1325,7 +1323,7 @@ func TestPolicyBulkJobRejectsPayloadMismatchAndCancelsWithoutEffects(t *testing.
 	store := entitlements.NewTemplateStore(fixture.pool)
 	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
@@ -1612,7 +1610,7 @@ func TestPolicyBulkJobCommitsSuccessfulTargetsAcrossPartialFailure(t *testing.T)
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
 	first, _ := fixture.addAccount(t, fixture.orgA, "partial-policy-a@example.test", "Partial A", "Partial A", int(standard.AccessGroupID), false)
 	second, _ := fixture.addAccount(t, fixture.orgA, "partial-policy-b@example.test", "Partial B", "Partial B", int(standard.AccessGroupID), false)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=ANY($1::integer[])`, []int{first, second}, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=ANY($1::integer[])`, []int{first, second}, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "partial-policy-"})
@@ -1748,14 +1746,14 @@ func TestPolicyBulkJobExecutesTenThousandTargetsExactlyOnce(t *testing.T) {
 	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
 	if _, err := fixture.pool.Exec(fixture.ctx, `
-		INSERT INTO users (email,username,password_hash,role,enabled,access_group_id)
-		SELECT 'policy-10k-'||n||'@example.test','Policy 10k '||n,'hash','user',true,$1
-		FROM generate_series(1,10000) n`, standard.AccessGroupID); err != nil {
+		INSERT INTO users (email,username,password_hash,role,enabled)
+		SELECT 'policy-10k-'||n||'@example.test','Policy 10k '||n,'hash','user',true
+		FROM generate_series(1,10000) n`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `
-		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-		SELECT $1,id,'active','user' FROM users WHERE email LIKE 'policy-10k-%@example.test'`, fixture.orgA); err != nil {
+		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,access_group_id)
+		SELECT $1,id,'active','user',$2 FROM users WHERE email LIKE 'policy-10k-%@example.test'`, fixture.orgA, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "policy-10k-"})
@@ -1784,7 +1782,7 @@ func TestPolicyBulkJobExecutesTenThousandTargetsExactlyOnce(t *testing.T) {
 
 func assignAccountAndInheritedProfiles(t *testing.T, fixture *peopleFixture, accountID int, oldGroupID, newGroupID int64) {
 	t.Helper()
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, accountID, newGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1`, accountID, newGroupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2 AND access_group_id=$4`, fixture.orgA, accountID, newGroupID, oldGroupID); err != nil {
@@ -1918,7 +1916,7 @@ func (f *peopleFixture) assertProfileGroup(t *testing.T, accountID int, profileI
 func (f *peopleFixture) assertAccountGroup(t *testing.T, accountID, want int) {
 	t.Helper()
 	var got int
-	if err := f.pool.QueryRow(f.ctx, `SELECT access_group_id FROM users WHERE id=$1`, accountID).Scan(&got); err != nil {
+	if err := f.pool.QueryRow(f.ctx, `SELECT access_group_id FROM organization_memberships WHERE account_id=$1`, accountID).Scan(&got); err != nil {
 		t.Fatal(err)
 	}
 	if got != want {
@@ -1940,7 +1938,7 @@ func (f *peopleFixture) assertMembershipRevision(t *testing.T, org uuid.UUID, ac
 func (f *peopleFixture) assertAccountPolicyRevision(t *testing.T, accountID int, want int64) {
 	t.Helper()
 	var got int64
-	if err := f.pool.QueryRow(f.ctx, `SELECT access_policy_revision FROM users WHERE id=$1`, accountID).Scan(&got); err != nil {
+	if err := f.pool.QueryRow(f.ctx, `SELECT access_policy_revision FROM organization_memberships WHERE account_id=$1`, accountID).Scan(&got); err != nil {
 		t.Fatal(err)
 	}
 	if got != want {

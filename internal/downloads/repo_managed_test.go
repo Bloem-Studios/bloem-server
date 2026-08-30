@@ -80,7 +80,7 @@ func seedManagedFixture(t *testing.T) managedFixture {
 
 	var userID int
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO users (username, role, download_allowed) VALUES ($1, 'user', true) RETURNING id`,
+		`INSERT INTO users (username, role) VALUES ($1, 'user') RETURNING id`,
 		fmt.Sprintf("dluser-%d", suffix),
 	).Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)
@@ -397,7 +397,7 @@ func TestManagedEntryWithoutPostgresProfileRow(t *testing.T) {
 	}
 	var userID int
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO users (username, role, download_allowed) VALUES ($1, 'user', true) RETURNING id`,
+		`INSERT INTO users (username, role) VALUES ($1, 'user') RETURNING id`,
 		fmt.Sprintf("dlsqlite-%d", suffix),
 	).Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)

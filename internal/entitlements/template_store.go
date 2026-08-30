@@ -368,7 +368,7 @@ func (s *Store) GetDefaultAccountEntitlement(ctx context.Context, accountID int)
 		FROM users u
 		JOIN organization_memberships m ON m.account_id=u.id AND m.status='active'
 		JOIN organizations o ON o.id=m.organization_id AND o.is_default
-		JOIN access_groups g ON g.organization_id=o.id AND g.id=u.access_group_id
+		JOIN access_groups g ON g.organization_id=o.id AND g.id=m.access_group_id
 		WHERE u.id=$1`, accountID).Scan(
 		&result.OrganizationID, &result.GroupID, &result.GroupName, &result.TemplateKey,
 		&result.TemplateRevision, &result.Policy.LibraryIDs, &result.Policy.PlaybackAllowed,
@@ -1085,12 +1085,10 @@ func (s *Store) applyTemplateInTx(ctx context.Context, tx pgx.Tx, tenantID uuid.
 			if err := tx.QueryRow(ctx, `
 			SELECT count(*)::int
 			FROM user_profiles p
-			JOIN organization_memberships u ON u.account_id=p.user_id AND u.organization_id=$1 AND u.access_group_id=$2
-			WHERE p.organization_id=$1 AND p.access_group_id=$2
-			  AND EXISTS (
-				SELECT 1 FROM organization_memberships m
-				WHERE m.organization_id=$1 AND m.account_id=u.id AND m.status='active'
-			  )`, tenantID, formerDefaultGroupID).Scan(&result.ProfilesMoved); err != nil {
+			JOIN organization_memberships u
+			  ON u.account_id=p.user_id AND u.organization_id=$1
+			 AND u.access_group_id=$2 AND u.status='active'
+			WHERE p.organization_id=$1 AND p.access_group_id=$2`, tenantID, formerDefaultGroupID).Scan(&result.ProfilesMoved); err != nil {
 				return ApplyResult{}, fmt.Errorf("entitlements: count former default profile assignments: %w", err)
 			}
 		}

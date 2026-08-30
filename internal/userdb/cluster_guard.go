@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -72,13 +73,22 @@ func EnforceClusterSafeBackend(ctx context.Context, pool *pgxpool.Pool, backend,
 		return fmt.Errorf("%w: node=%q", ErrSQLiteNodeAlreadyActive, nodeID)
 	}
 
+	// register_membership_policy_heartbeat rejects heartbeats that do not declare
+	// the membership_policy_v1 capability once the authority is finalized. This
+	// write already runs inside the caller's transaction, so the marker can be
+	// set directly.
+	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.schema_capability_writer', 'v1', true)`); err != nil {
+		return fmt.Errorf("mark schema capability writer: %w", err)
+	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO node_heartbeats (node_id, node_type, updated_at)
-		VALUES ($1, $2, NOW())
+		INSERT INTO node_heartbeats (node_id, node_type, updated_at, schema_capabilities, instance_id)
+		VALUES ($1, $2, NOW(), ARRAY['membership_policy_v1'], $3::uuid)
 		ON CONFLICT (node_id) DO UPDATE SET
 			node_type = EXCLUDED.node_type,
 			node_url = NULL,
-			updated_at = NOW()`, nodeID, nodeType); err != nil {
+			updated_at = NOW(),
+			schema_capabilities = EXCLUDED.schema_capabilities,
+			instance_id = EXCLUDED.instance_id`, nodeID, nodeType, uuid.NewString()); err != nil {
 		return fmt.Errorf("reserve active SQLite owner: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `UPDATE userdb_sqlite_owner SET updated_at = NOW() WHERE singleton = TRUE`); err != nil {
