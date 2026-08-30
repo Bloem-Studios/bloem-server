@@ -50,10 +50,27 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 
 // allColumns is the list of columns returned by all SELECT queries.
 // Kept in one place so scanUser stays in sync.
-const allColumns = `id, account_incarnation_id, email, username, password_hash, local_password_login_enabled, role, permissions, enabled,
-	library_ids, max_playback_quality, access_policy_revision,
-	max_streams, max_transcodes, transcode_allowed, audio_transcode_allowed, max_profiles, download_allowed,
-	download_transcode_allowed, requests_allowed, access_group_id, created_at, updated_at`
+//
+// Identity stays on users; the policy columns were moved to
+// organization_memberships by 20260829085838_membership_policy_isolation and are
+// read back through userSource. models.User is an account-shaped view, so it
+// projects the membership in the DEFAULT organization -- which is the same row
+// these columns held before the handoff for any deployment with one
+// organization. Callers that need a specific tenant's policy (adminpeople,
+// entitlements) already query organization_memberships directly and do not come
+// through here.
+//
+// COALESCE mirrors the pre-handoff nullability: an account with no default-org
+// membership reads as the unset policy it used to have on users.
+const allColumns = `u.id, u.account_incarnation_id, u.email, u.username, u.password_hash, u.local_password_login_enabled, u.role, COALESCE(m.permissions, '{}'), u.enabled,
+	m.library_ids, m.max_playback_quality, COALESCE(m.access_policy_revision, 1),
+	m.max_streams, m.max_transcodes, m.transcode_allowed, m.audio_transcode_allowed, COALESCE(m.max_profiles, 5), m.download_allowed,
+	m.download_transcode_allowed, m.requests_allowed, m.access_group_id, u.created_at, u.updated_at`
+
+// userSource joins an account to its policy in the default organization.
+const userSource = ` FROM users u
+	LEFT JOIN organizations o ON o.is_default
+	LEFT JOIN organization_memberships m ON m.account_id = u.id AND m.organization_id = o.id`
 
 // scanUser scans a single row into a *models.User.
 func scanUser(row pgx.Row) (*models.User, error) {
@@ -140,6 +157,7 @@ func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInpu
 
 type userCreateQuerier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }
 
 type userMutationQuerier interface {
@@ -175,13 +193,11 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 		return nil, err
 	}
 
-	// Policy columns are written explicitly: a nil pointer stores NULL, which
-	// means "inherit from the access group" (the columns carry no defaults).
+	// Identity lives on users; the policy columns moved to
+	// organization_memberships, so they are inserted there afterwards. A nil
+	// pointer still stores NULL, which means "inherit from the access group".
 	cols := []string{
-		"email", "username", "password_hash", "local_password_login_enabled", "role", "permissions",
-		"library_ids", "max_playback_quality", "max_streams", "max_transcodes",
-		"transcode_allowed", "audio_transcode_allowed", "download_allowed", "download_transcode_allowed",
-		"requests_allowed",
+		"email", "username", "password_hash", "local_password_login_enabled", "role",
 	}
 	args := []any{
 		NormalizeEmail(input.Email),
@@ -189,6 +205,13 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 		string(hash),
 		localPasswordLoginEnabled,
 		input.Role,
+	}
+	policyCols := []string{
+		"permissions", "library_ids", "max_playback_quality", "max_streams", "max_transcodes",
+		"transcode_allowed", "audio_transcode_allowed", "download_allowed",
+		"download_transcode_allowed", "requests_allowed",
+	}
+	policyArgs := []any{
 		permissions,
 		input.LibraryIDs,
 		normalizeQualityOverride(input.MaxPlaybackQuality),
@@ -203,16 +226,16 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 
 	// Optional columns: nil means use DB default.
 	if input.MaxProfiles != nil {
-		cols = append(cols, "max_profiles")
-		args = append(args, *input.MaxProfiles)
+		policyCols = append(policyCols, "max_profiles")
+		policyArgs = append(policyArgs, *input.MaxProfiles)
 	}
 	accessGroupID := input.AccessGroupID
 	if input.Role == models.RoleAdmin {
 		accessGroupID = nil
 	}
 	if accessGroupID != nil {
-		cols = append(cols, "access_group_id")
-		args = append(args, *accessGroupID)
+		policyCols = append(policyCols, "access_group_id")
+		policyArgs = append(policyArgs, *accessGroupID)
 	}
 
 	// Build placeholders: $1, $2, ..., $N
@@ -223,22 +246,33 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 	// Admins stay ungrouped: scope/action decisions are role-blind, so the
 	// default group's ceilings would cap the server owner (mirrors the
 	// exclusion in the assign_default_group_to_existing_users migration).
+	defaultGroupExpr := ""
 	if accessGroupID == nil && input.Role != models.RoleAdmin {
-		cols = append(cols, "access_group_id")
-		placeholders = append(placeholders, `(SELECT g.id
+		defaultGroupExpr = `(SELECT g.id
 			FROM access_groups g
 			JOIN organizations o ON o.id = g.organization_id
 			WHERE o.is_default
-			  AND g.is_default)`)
+			  AND g.is_default)`
 	}
 
-	query := fmt.Sprintf("INSERT INTO users (%s) VALUES (%s) RETURNING %s",
+	// The account row carries identity only now, so it is created first and the
+	// policy lands on its default-organization membership.
+	query := fmt.Sprintf("INSERT INTO users (%s) VALUES (%s) RETURNING id",
 		strings.Join(cols, ", "),
 		strings.Join(placeholders, ", "),
-		allColumns,
 	)
+	var accountID int
+	if err := querier.QueryRow(ctx, query, args...).Scan(&accountID); err != nil {
+		if isDuplicateKeyError(err) {
+			return nil, ErrDuplicate
+		}
+		return nil, fmt.Errorf("creating user: %w", err)
+	}
+	if err := insertDefaultMembershipPolicy(ctx, querier, accountID, policyCols, policyArgs, defaultGroupExpr); err != nil {
+		return nil, err
+	}
 
-	row := querier.QueryRow(ctx, query, args...)
+	row := querier.QueryRow(ctx, `SELECT `+allColumns+userSource+` WHERE u.id = $1`, accountID)
 
 	user, err := scanUser(row)
 	if err != nil {
@@ -253,25 +287,25 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 
 // GetByID retrieves a user by their numeric ID.
 func (r *UserRepository) GetByID(ctx context.Context, id int) (*models.User, error) {
-	query := `SELECT ` + allColumns + ` FROM users WHERE id = $1`
+	query := `SELECT ` + allColumns + userSource + ` WHERE u.id = $1`
 	return scanUser(r.pool.QueryRow(ctx, query, id))
 }
 
 // GetByIDInTransaction reads an account through a caller-owned transaction.
 func (r *UserRepository) GetByIDInTransaction(ctx context.Context, tx pgx.Tx, id int) (*models.User, error) {
-	query := `SELECT ` + allColumns + ` FROM users WHERE id = $1`
+	query := `SELECT ` + allColumns + userSource + ` WHERE u.id = $1`
 	return scanUser(tx.QueryRow(ctx, query, id))
 }
 
 // GetByUsername retrieves a user by their username (case-insensitive).
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*models.User, error) {
-	query := `SELECT ` + allColumns + ` FROM users WHERE username = $1`
+	query := `SELECT ` + allColumns + userSource + ` WHERE u.username = $1`
 	return scanUser(r.pool.QueryRow(ctx, query, NormalizeUsername(username)))
 }
 
 // GetByEmail retrieves a user by their email address (case-insensitive).
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
-	query := `SELECT ` + allColumns + ` FROM users WHERE email = $1`
+	query := `SELECT ` + allColumns + userSource + ` WHERE u.email = $1`
 	return scanUser(r.pool.QueryRow(ctx, query, NormalizeEmail(email)))
 }
 
@@ -280,6 +314,16 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 // invalidate durable session/profile tokens by bumping
 // access_policy_revision. Values are pre-computed, so every entry is safe to
 // build even when set is false.
+// membershipPolicyColumns are the columns 20260829085838_membership_policy_isolation
+// moved off users, so an update naming one has to target the account's
+// default-organization membership instead.
+var membershipPolicyColumns = map[string]bool{
+	"permissions": true, "library_ids": true, "max_playback_quality": true,
+	"max_streams": true, "max_transcodes": true, "transcode_allowed": true,
+	"audio_transcode_allowed": true, "max_profiles": true, "download_allowed": true,
+	"download_transcode_allowed": true, "requests_allowed": true, "access_group_id": true,
+}
+
 type userUpdateColumn struct {
 	column            string
 	set               bool
@@ -416,13 +460,35 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 	accessPolicyPredicates := []string{}
 	args := []any{}
 	argIndex := 1
+	// Policy columns live on the account's membership now, so they are collected
+	// separately and applied in their own statement below.
+	membershipSet := []string{}
+	membershipPredicates := []string{}
+	membershipArgs := []any{}
+	bumpFromAccountColumns := false
 	for _, col := range columns {
 		if !col.set {
+			continue
+		}
+		if membershipPolicyColumns[col.column] {
+			placeholder := fmt.Sprintf("$%d", len(membershipArgs)+1)
+			membershipSet = append(membershipSet, fmt.Sprintf("%s = %s", col.column, placeholder))
+			if col.bumpsAccessPolicy {
+				membershipPredicates = append(
+					membershipPredicates,
+					fmt.Sprintf("%s IS DISTINCT FROM %s", col.column, placeholder),
+				)
+			}
+			membershipArgs = append(membershipArgs, col.value)
 			continue
 		}
 		placeholder := fmt.Sprintf("$%d", argIndex)
 		setClauses = append(setClauses, fmt.Sprintf("%s = %s", col.column, placeholder))
 		if col.bumpsAccessPolicy {
+			// role and enabled still live on users, but the revision they bump is
+			// the membership's. Comparing across tables afterwards would see the
+			// value already written, so record the intent instead.
+			bumpFromAccountColumns = true
 			accessPolicyPredicates = append(
 				accessPolicyPredicates,
 				fmt.Sprintf("%s IS DISTINCT FROM %s", col.column, placeholder),
@@ -435,39 +501,27 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 	// access_group_id is not a plain userUpdateColumn: what gets written
 	// depends on the row's current role, so it is assembled directly rather
 	// than through the generic column loop above.
+	// access_group_id moved to the membership with the rest of the policy, so
+	// its clause is built against the membership placeholder sequence.
 	var defaultGroupCTE string
-	if setClause, predicate, cte, groupArgs, nextArgIndex := accessGroupSetClause(input, argIndex); setClause != "" {
-		setClauses = append(setClauses, setClause)
-		accessPolicyPredicates = append(accessPolicyPredicates, predicate)
+	if setClause, predicate, cte, groupArgs, _ := accessGroupSetClause(input, len(membershipArgs)+1); setClause != "" {
+		membershipSet = append(membershipSet, setClause)
+		membershipPredicates = append(membershipPredicates, predicate)
 		defaultGroupCTE = cte
-		args = append(args, groupArgs...)
-		argIndex = nextArgIndex
+		membershipArgs = append(membershipArgs, groupArgs...)
 	}
 
 	if len(setClauses) == 0 {
 		// Nothing to update; still verify the user exists.
-		_, err := scanUser(querier.QueryRow(ctx, `SELECT `+allColumns+` FROM users WHERE id = $1`, id))
+		_, err := scanUser(querier.QueryRow(ctx, `SELECT `+allColumns+userSource+` WHERE u.id = $1`, id))
 		return err
-	}
-
-	if len(accessPolicyPredicates) > 0 {
-		setClauses = append(setClauses, fmt.Sprintf(
-			"access_policy_revision = CASE WHEN %s THEN access_policy_revision + 1 ELSE access_policy_revision END",
-			strings.Join(accessPolicyPredicates, " OR "),
-		))
 	}
 
 	// Always bump updated_at.
 	setClauses = append(setClauses, "updated_at = NOW()")
 
-	var query string
-	if defaultGroupCTE != "" {
-		query = fmt.Sprintf("WITH %s UPDATE users SET %s WHERE id = $%d",
-			defaultGroupCTE, strings.Join(setClauses, ", "), argIndex)
-	} else {
-		query = fmt.Sprintf("UPDATE users SET %s WHERE id = $%d",
-			strings.Join(setClauses, ", "), argIndex)
-	}
+	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d",
+		strings.Join(setClauses, ", "), argIndex)
 	args = append(args, id)
 
 	tag, err := querier.Exec(ctx, query, args...)
@@ -482,6 +536,44 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 		return ErrNotFound
 	}
 
+	return applyMembershipPolicyUpdate(ctx, querier, id, membershipSet, membershipPredicates, membershipArgs, bumpFromAccountColumns, defaultGroupCTE)
+}
+
+// applyMembershipPolicyUpdate writes the policy half of an account update to the
+// account's default-organization membership, which is where those columns moved.
+func applyMembershipPolicyUpdate(ctx context.Context, querier userMutationQuerier, id int, set, predicates []string, args []any, alwaysBump bool, defaultGroupCTE string) error {
+	if len(set) == 0 && !alwaysBump {
+		return nil
+	}
+	if _, err := querier.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+		return fmt.Errorf("marking membership policy writer: %w", err)
+	}
+	switch {
+	case alwaysBump:
+		set = append(set, "access_policy_revision = access_policy_revision + 1")
+	case len(predicates) > 0:
+		set = append(set, fmt.Sprintf(
+			"access_policy_revision = CASE WHEN %s THEN access_policy_revision + 1 ELSE access_policy_revision END",
+			strings.Join(predicates, " OR "),
+		))
+	}
+	set = append(set, "updated_at = NOW()")
+	args = append(args, id)
+	prefix := ""
+	if defaultGroupCTE != "" {
+		prefix = "WITH " + defaultGroupCTE + " "
+	}
+	statement := fmt.Sprintf(
+		`%sUPDATE organization_memberships SET %s
+		 WHERE account_id = $%d AND organization_id = (SELECT id FROM organizations WHERE is_default)`,
+		prefix, strings.Join(set, ", "), len(args),
+	)
+	if _, err := querier.Exec(ctx, statement, args...); err != nil {
+		if isDuplicateKeyError(err) {
+			return fmt.Errorf("%w: %s", ErrDuplicate, extractConstraint(err))
+		}
+		return fmt.Errorf("updating account membership policy: %w", err)
+	}
 	return nil
 }
 
@@ -510,7 +602,7 @@ func (r *UserRepository) deleteWithQuerier(ctx context.Context, querier userMuta
 
 // List returns all users ordered by ID ascending.
 func (r *UserRepository) List(ctx context.Context) ([]*models.User, error) {
-	query := `SELECT ` + allColumns + ` FROM users ORDER BY id ASC`
+	query := `SELECT ` + allColumns + userSource + ` ORDER BY u.id ASC`
 	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("listing users: %w", err)
@@ -576,4 +668,34 @@ func derefSlice(value *[]int) []int {
 		return []int{}
 	}
 	return *value
+}
+
+// insertDefaultMembershipPolicy places a new account's policy on its membership
+// in the default organization, which is where the authority moved.
+// seed_legacy_membership_policy requires the v1 writer marker once the authority
+// is finalized, and the marker is transaction-local, so it is set on the same
+// querier immediately before the insert.
+func insertDefaultMembershipPolicy(ctx context.Context, querier userCreateQuerier, accountID int, cols []string, args []any, defaultGroupExpr string) error {
+	if _, err := querier.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
+		return fmt.Errorf("marking membership policy writer: %w", err)
+	}
+	columns := append([]string{"organization_id", "account_id", "status", "legacy_role"}, cols...)
+	values := []string{"(SELECT id FROM organizations WHERE is_default)", "$1", "'active'", "'user'"}
+	insertArgs := []any{accountID}
+	for i, value := range args {
+		values = append(values, fmt.Sprintf("$%d", i+2))
+		insertArgs = append(insertArgs, value)
+	}
+	if defaultGroupExpr != "" {
+		columns = append(columns, "access_group_id")
+		values = append(values, defaultGroupExpr)
+	}
+	statement := fmt.Sprintf(
+		"INSERT INTO organization_memberships (%s) VALUES (%s) ON CONFLICT (organization_id, account_id) DO NOTHING",
+		strings.Join(columns, ", "), strings.Join(values, ", "),
+	)
+	if _, err := querier.Exec(ctx, statement, insertArgs...); err != nil {
+		return fmt.Errorf("creating account membership policy: %w", err)
+	}
+	return nil
 }
