@@ -693,6 +693,13 @@ func TestApplyTemplateWithReceiptIsAtomicAndReplicaSafe(t *testing.T) {
 	require.NoError(t, err)
 	tenant, err := tenancy.NewStore(pool).CreateTenantOrganization(ctx, tenancy.CreateTenantOrganizationInput{Name: "Atomic receipt tenant", ExternalServiceID: uuid.NewString(), Slots: 2, Transcodes: 1})
 	require.NoError(t, err)
+	// created_by_account_id is a real foreign key, so the actor has to exist.
+	var actorID int
+	require.NoError(t, pool.QueryRow(ctx, `
+		INSERT INTO users (email,username,password_hash,role)
+		VALUES ($1,$2,'test-hash','admin') RETURNING id`,
+		"receipt-actor-"+uuid.NewString()+"@example.test", "receipt-actor-"+uuid.NewString()).Scan(&actorID))
+	require.NoError(t, err)
 	preview, err := store.ApplyTemplate(ctx, tenant.ID, template.Key, template.Revision, true)
 	require.NoError(t, err)
 
@@ -704,7 +711,7 @@ func TestApplyTemplateWithReceiptIsAtomicAndReplicaSafe(t *testing.T) {
 	results := make(chan outcome, 2)
 	for range 2 {
 		go func() {
-			result, repeated, err := store.ApplyTemplateWithReceipt(ctx, 1, tenant.ID, "same-command", template.Key, template.Revision, entitlements.PreviewHash(preview))
+			result, repeated, err := store.ApplyTemplateWithReceipt(ctx, actorID, tenant.ID, "same-command", template.Key, template.Revision, entitlements.PreviewHash(preview))
 			results <- outcome{result, repeated, err}
 		}()
 	}

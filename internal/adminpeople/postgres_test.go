@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -1635,7 +1636,18 @@ func TestPolicyBulkJobCommitsSuccessfulTargetsAcrossPartialFailure(t *testing.T)
 		t.Fatalf("partial completion=%+v err=%v", completed, err)
 	}
 	fixture.assertAccountGroup(t, first, int(premium.AccessGroupID))
-	fixture.assertAccountGroup(t, second, int(standard.AccessGroupID))
+	// The second target's membership was deleted above to make it not-found, and
+	// the group lives on the membership now, so there is no stale account-level
+	// group left to assert. What matters is that the failed target gained none.
+	var secondMemberships int
+	if err := fixture.pool.QueryRow(fixture.ctx,
+		`SELECT count(*) FROM organization_memberships WHERE organization_id=$1 AND account_id=$2`,
+		fixture.orgA, second).Scan(&secondMemberships); err != nil {
+		t.Fatal(err)
+	}
+	if secondMemberships != 0 {
+		t.Fatalf("failed target regained %d membership(s) in the organization", secondMemberships)
+	}
 }
 
 func TestPolicyBulkJobConcurrentIdenticalEnqueueReturnsOneJob(t *testing.T) {
@@ -1752,8 +1764,11 @@ func TestPolicyBulkJobExecutesTenThousandTargetsExactlyOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `
-		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,access_group_id)
-		SELECT $1,id,'active','user',$2 FROM users WHERE email LIKE 'policy-10k-%@example.test'`, fixture.orgA, standard.AccessGroupID); err != nil {
+		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,access_group_id,permissions)
+		SELECT $1,id,'active','user',$2,$3 FROM users
+		WHERE email LIKE 'policy-10k-%@example.test'
+		  AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`,
+		fixture.orgA, standard.AccessGroupID, auth.DefaultUserPermissions()); err != nil {
 		t.Fatal(err)
 	}
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "policy-10k-"})
@@ -1864,7 +1879,12 @@ func (f *peopleFixture) insertUser(t *testing.T, email, username string) int {
 func (f *peopleFixture) addMembership(t *testing.T, org uuid.UUID, accountID int, role string) uuid.UUID {
 	t.Helper()
 	var id uuid.UUID
-	if err := f.pool.QueryRow(f.ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) SELECT $1,$2,'active',$3 WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL RETURNING id`, org, accountID, role).Scan(&id); err != nil {
+	// permissions on a membership is a MASK over the group's allowed_permissions,
+	// and the column defaults to an empty array where users.permissions defaulted
+	// to the standard set. A fixture creating a membership directly has to supply
+	// what the account repository would have, or every effective policy computes
+	// to no permissions at all.
+	if err := f.pool.QueryRow(f.ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,permissions) SELECT $1,$2,'active',$3,$4 WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL RETURNING id`, org, accountID, role, auth.DefaultUserPermissions()).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
 	return id
@@ -1921,8 +1941,18 @@ func (f *peopleFixture) assertProfileGroup(t *testing.T, accountID int, profileI
 
 func (f *peopleFixture) assertAccountGroup(t *testing.T, accountID, want int) {
 	t.Helper()
+	// The group is per membership now, so an account that is not a member of the
+	// organization under test has no group here rather than a stale account-level
+	// one. Read the membership that represents the account, the same precedence
+	// the account policy projection uses.
 	var got int
-	if err := f.pool.QueryRow(f.ctx, `SELECT access_group_id FROM organization_memberships WHERE account_id=$1`, accountID).Scan(&got); err != nil {
+	if err := f.pool.QueryRow(f.ctx, `
+		SELECT memberships.access_group_id
+		FROM organization_memberships AS memberships
+		JOIN organizations AS orgs ON orgs.id = memberships.organization_id
+		WHERE memberships.account_id = $1
+		ORDER BY (memberships.organization_id = $2) DESC, orgs.is_default DESC, memberships.id ASC
+		LIMIT 1`, accountID, f.orgA).Scan(&got); err != nil {
 		t.Fatal(err)
 	}
 	if got != want {

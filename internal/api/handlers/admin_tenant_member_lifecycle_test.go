@@ -287,17 +287,20 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, defaultOrgani
 	suspendRequest.Header.Set("Idempotency-Key", suspendKey)
 	firstSuspend := httptest.NewRecorder()
 	router.ServeHTTP(firstSuspend, suspendRequest)
-	if firstSuspend.Code != http.StatusServiceUnavailable || firstSuspend.Header().Get("Retry-After") != "1" {
-		t.Fatalf("compatibility suspend = %d %s: %s", firstSuspend.Code, firstSuspend.Header().Get("Retry-After"), firstSuspend.Body.String())
+	// This arm asserted the rollout-pending 503 the compatibility phase produced.
+	// Once the authority is finalized a suspend succeeds, so what is worth pinning
+	// is that it takes effect and records its idempotency receipt.
+	if firstSuspend.Code != http.StatusOK {
+		t.Fatalf("suspend = %d: %s", firstSuspend.Code, firstSuspend.Body.String())
 	}
 	got, err = memberService.Get(ctx, tenant.ID, member.ID)
-	if err != nil || !got.Enabled {
-		t.Fatalf("member after refused suspend = %+v, %v; want enabled", got, err)
+	if err != nil || got.Enabled {
+		t.Fatalf("member after suspend = %+v, %v; want disabled", got, err)
 	}
 	keyDigest := lifecycleidempotency.NewHMACKeyDigester(secret)(suspendKey)
 	var suspendReceipts int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM lifecycle_request_receipts WHERE idempotency_key_digest=$1`, keyDigest[:]).Scan(&suspendReceipts); err != nil || suspendReceipts != 0 {
-		t.Fatalf("refused suspend receipts = %d, %v; want none", suspendReceipts, err)
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM lifecycle_request_receipts WHERE idempotency_key_digest=$1`, keyDigest[:]).Scan(&suspendReceipts); err != nil || suspendReceipts != 1 {
+		t.Fatalf("suspend receipts = %d, %v; want one", suspendReceipts, err)
 	}
 
 	var profileID string

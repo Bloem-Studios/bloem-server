@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
@@ -441,9 +442,10 @@ func newCohortFixture(t *testing.T) *cohortFixture {
 		VALUES ($1,$2,'test-hash','user')
 		RETURNING id`, "cohort-"+suffix+"@example.test", "cohort-"+suffix).Scan(&actorID))
 	execMembershipPolicy(t, ctx, pool, `
-		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,access_group_id)
-		SELECT $1,$2,'active','admin',$3
-		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, tenant.ID, actorID, applied.GroupID)
+		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,access_group_id,permissions)
+		SELECT $1,$2,'active','admin',$3,$4
+		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`,
+		tenant.ID, actorID, applied.GroupID, auth.DefaultUserPermissions())
 	_, err = pool.Exec(ctx, `
 		INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id,is_primary)
 		VALUES ($1,$2,'Primary',$3,$4,true)`, uuid.NewString(), actorID, tenant.ID, applied.GroupID)
