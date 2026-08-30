@@ -86,6 +86,11 @@ RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 COPY --from=build /silo /usr/local/bin/silo
 EXPOSE 8080 8096 13378
-HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+# A release that carries a migration can spend minutes before the health
+# endpoint answers, and a 10s start period marked those containers unhealthy
+# while they were doing exactly what they should. start-interval keeps a normal
+# boot just as fast to report healthy (polls every 5s until the first success),
+# so the long start period costs nothing on an ordinary deploy.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10m --start-interval=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8080}/api/v1/health || exit 1
 ENTRYPOINT ["silo"]
