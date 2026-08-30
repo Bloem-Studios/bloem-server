@@ -968,6 +968,7 @@ func TestHasActiveLinkCoversEphemeralRows(t *testing.T) {
 	).Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
+	seedDefaultOrgMembership(t, ctx, pool, userID)
 	contentID := fmt.Sprintf("link-content-%d", time.Now().UnixNano())
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM downloads WHERE user_id = $1`, userID)

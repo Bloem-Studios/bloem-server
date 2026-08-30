@@ -85,6 +85,7 @@ func seedManagedFixture(t *testing.T) managedFixture {
 	).Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
+	seedDefaultOrgMembership(t, ctx, pool, userID)
 
 	profileA := fmt.Sprintf("dlp-a-%d", suffix)
 	profileB := fmt.Sprintf("dlp-b-%d", suffix)
@@ -401,6 +402,7 @@ func TestManagedEntryWithoutPostgresProfileRow(t *testing.T) {
 	).Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
+	seedDefaultOrgMembership(t, ctx, pool, userID)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM downloads WHERE user_id = $1`, userID)
 		_, _ = pool.Exec(ctx, `DELETE FROM user_devices WHERE user_id = $1`, userID)
