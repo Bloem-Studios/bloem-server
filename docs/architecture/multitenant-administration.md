@@ -40,6 +40,33 @@ organization-bound selections. Bulk work is durable, bounded, audited, and
 reports exact successes, skips, and failures. Destructive confirmations name
 the organization and affected count.
 
+## Access group deletion
+
+Deleting an access group reassigns its members to the organization's default
+group and reports the count, rather than detaching them. The
+`(organization_id, access_group_id)` foreign key from
+`organization_memberships` to `access_groups` is `ON DELETE RESTRICT`, so a
+group that still holds members cannot be dropped: the restriction is the proof
+that the reassignment covered everything, not a workflow the operator is
+expected to hit.
+
+This is a deliberate divergence from upstream Silo, which declares
+`users.access_group_id REFERENCES access_groups(id) ON DELETE SET NULL`.
+There, deleting a group succeeds and silently detaches its members to no group
+at all, which `GetPolicyForUser` reads as "no access-group restrictions" — so
+removing a group quietly widens what its former members can reach. An
+administrative delete must never be a privilege grant, which is why the
+reassign-to-default behaviour is kept even though it costs a divergence from
+upstream. Do not resolve a future upstream conflict here by taking Silo's
+`SET NULL`.
+
+Known gap: `GroupStore.DeleteWithImpact` reassigns `user_profiles`, but
+`20260829085838_membership_policy_isolation` backfilled
+`organization_memberships.access_group_id` as a second holder of the same
+reference, and that column is frozen until the membership policy authority
+reaches its `finalized` phase. The membership half of the reassignment
+therefore has to land together with the authority handoff, not before it.
+
 ## Compatibility and audit
 
 All `/api/v1` Silo contracts remain unchanged and resolve the default
