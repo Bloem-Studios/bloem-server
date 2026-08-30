@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -106,14 +107,13 @@ func TestGroupStoreCRUDAndMemberCountsDB(t *testing.T) {
 	var assigned int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*)
-		FROM users
-		WHERE username LIKE $1 AND access_group_id IS NOT NULL`,
-		"access-group-test-"+suffix+"%",
+		FROM organization_memberships
+		WHERE access_group_id = $1`, group.ID,
 	).Scan(&assigned); err != nil {
-		t.Fatalf("count assigned users after delete: %v", err)
+		t.Fatalf("count memberships still on the deleted group: %v", err)
 	}
 	if assigned != 0 {
-		t.Fatalf("assigned users after delete = %d, want 0", assigned)
+		t.Fatalf("memberships still on the deleted group = %d, want 0", assigned)
 	}
 	defaultGroupID := defaultAccessGroupSeedID(t, ctx, pool, organizationID)
 	var reassigned int
@@ -535,12 +535,12 @@ func TestGroupStoreDeleteDefaultRejectedDB(t *testing.T) {
 	var hasGroup bool
 	if err := pool.QueryRow(ctx, `
 		SELECT access_group_id IS NOT NULL
-		FROM users
-		WHERE id = $1`, userID).Scan(&hasGroup); err != nil {
+		FROM organization_memberships
+		WHERE account_id = $1`, userID).Scan(&hasGroup); err != nil {
 		t.Fatalf("load default group member: %v", err)
 	}
 	if !hasGroup {
-		t.Fatalf("user access_group_id cleared by rejected default-group delete")
+		t.Fatalf("membership access_group_id cleared by rejected default-group delete")
 	}
 	assertSingleDefaultGroup(t, ctx, pool, organizationID, group.ID)
 
@@ -551,14 +551,18 @@ func TestGroupStoreDeleteDefaultRejectedDB(t *testing.T) {
 	if err := store.Delete(ctx, organizationID, other.ID); err != nil {
 		t.Fatalf("Delete(non-default) error: %v", err)
 	}
+	// Bloem reassigns a deleted group's members to the organization default
+	// rather than detaching them the way upstream Silo's ON DELETE SET NULL
+	// does, so the membership must now point at the default group.
+	var reassignedMembershipGroupID int64
 	if err := pool.QueryRow(ctx, `
-		SELECT access_group_id IS NOT NULL
-		FROM users
-		WHERE id = $1`, otherUserID).Scan(&hasGroup); err != nil {
+		SELECT access_group_id
+		FROM organization_memberships
+		WHERE account_id = $1`, otherUserID).Scan(&reassignedMembershipGroupID); err != nil {
 		t.Fatalf("load deleted group member: %v", err)
 	}
-	if hasGroup {
-		t.Fatalf("user access_group_id remained set after deleting non-default group")
+	if reassignedMembershipGroupID != group.ID {
+		t.Fatalf("membership group after delete = %d, want the default %d", reassignedMembershipGroupID, group.ID)
 	}
 	var reassignedGroupID int64
 	if err := pool.QueryRow(ctx, `
@@ -664,6 +668,17 @@ func prepareAccessGroupTestDatabase(ctx context.Context, dsn string) (*pgxpool.C
 		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
 		admin.Close()
 		return nil, nil, fmt.Errorf("migrate disposable database: %w", err)
+	}
+	// 20260829085838_membership_policy_isolation leaves a freshly migrated
+	// database in the compatibility phase, which is a policy FREEZE: writes are
+	// fenced on users and frozen on organization_memberships. These tests
+	// exercise policy mutation, so they run in the steady state the handover
+	// produces rather than mid-freeze.
+	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
+		pool.Close()
+		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
+		admin.Close()
+		return nil, nil, fmt.Errorf("finalize membership policy authority: %w", err)
 	}
 	pool.Close()
 	cleanup := func() error {
@@ -939,14 +954,44 @@ func insertAccessGroupTestUser(
 	username := fmt.Sprintf("access-group-test-%s-%d", suffix, time.Now().UnixNano())
 	var id int
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users (username, role, enabled, access_group_id, access_policy_revision)
-		VALUES ($1, 'user', true, $2, $3)
-		RETURNING id`,
-		username,
-		groupID,
-		revision,
-	).Scan(&id); err != nil {
+		INSERT INTO users (username, role, enabled)
+		VALUES ($1, 'user', true)
+		RETURNING id`, username).Scan(&id); err != nil {
 		t.Fatalf("insert test user: %v", err)
+	}
+	// The account's group and policy revision live on its membership now, not on
+	// users: finalization renames those columns away. Derive the organization
+	// from the group so no call site has to thread one through.
+	var organizationID uuid.UUID
+	if groupID != nil {
+		if err := pool.QueryRow(ctx,
+			`SELECT organization_id FROM access_groups WHERE id = $1`, *groupID).Scan(&organizationID); err != nil {
+			t.Fatalf("resolve organization for group %d: %v", *groupID, err)
+		}
+	} else if err := pool.QueryRow(ctx,
+		`SELECT id FROM organizations WHERE is_default`).Scan(&organizationID); err != nil {
+		t.Fatalf("resolve default organization: %v", err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin membership seed: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := tenancy.MarkMembershipPolicyWriter(ctx, tx); err != nil {
+		t.Fatalf("mark membership policy writer: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO organization_memberships
+			(organization_id, account_id, status, legacy_role, access_group_id, access_policy_revision)
+		VALUES ($1, $2, 'active', 'user', $3, $4)
+		ON CONFLICT (organization_id, account_id) DO UPDATE
+		SET access_group_id = EXCLUDED.access_group_id,
+			access_policy_revision = EXCLUDED.access_policy_revision`,
+		organizationID, id, groupID, revision); err != nil {
+		t.Fatalf("seed account membership: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit membership seed: %v", err)
 	}
 	return id
 }
@@ -991,9 +1036,9 @@ func accessPolicyRevisionForUser(t *testing.T, ctx context.Context, pool *pgxpoo
 	var revision int64
 	if err := pool.QueryRow(ctx, `
 		SELECT access_policy_revision
-		FROM users
-		WHERE id = $1`, userID).Scan(&revision); err != nil {
-		t.Fatalf("load access_policy_revision for user %d: %v", userID, err)
+		FROM organization_memberships
+		WHERE account_id = $1`, userID).Scan(&revision); err != nil {
+		t.Fatalf("load access_policy_revision for account %d: %v", userID, err)
 	}
 	return revision
 }

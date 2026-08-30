@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -261,8 +262,10 @@ func getGroupForAccount(ctx context.Context, querier groupQueryRower, accountID 
 		 AND p.access_group_id = g.id
 		WHERE g.id = $2
 		  AND EXISTS (
-			SELECT 1 FROM users u
-			WHERE u.id = $1 AND u.access_group_id = g.id
+			SELECT 1 FROM organization_memberships m
+			WHERE m.account_id = $1
+			  AND m.organization_id = g.organization_id
+			  AND m.access_group_id = g.id
 		  )
 		GROUP BY g.id`, accountID, id))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -538,10 +541,14 @@ func (s *GroupStore) Update(ctx context.Context, organizationID uuid.UUID, id in
 		return nil, ErrGroupNotFound
 	}
 	if authorizationChanged {
+		if err := tenancy.MarkMembershipPolicyWriter(ctx, tx); err != nil {
+			return nil, err
+		}
 		if _, err := tx.Exec(ctx, `
-			UPDATE users
+			UPDATE organization_memberships
 			SET access_policy_revision = access_policy_revision + 1
-			WHERE id IN (
+			WHERE organization_id = $1
+			  AND account_id IN (
 				SELECT DISTINCT user_id
 				FROM user_profiles
 				WHERE organization_id = $1
@@ -627,10 +634,14 @@ func (s *GroupStore) DeleteWithImpact(ctx context.Context, organizationID uuid.U
 		return GroupDeletionImpact{}, fmt.Errorf("loading replacement default access group: %w", err)
 	}
 
+	if err := tenancy.MarkMembershipPolicyWriter(ctx, tx); err != nil {
+		return GroupDeletionImpact{}, err
+	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE users
+		UPDATE organization_memberships
 		SET access_policy_revision = access_policy_revision + 1
-		WHERE id IN (
+		WHERE organization_id = $1
+		  AND account_id IN (
 			SELECT DISTINCT user_id
 			FROM user_profiles
 			WHERE organization_id = $1
@@ -646,6 +657,25 @@ func (s *GroupStore) DeleteWithImpact(ctx context.Context, organizationID uuid.U
 		  AND access_group_id = $2`, organizationID, id, defaultGroupID)
 	if err != nil {
 		return GroupDeletionImpact{}, fmt.Errorf("reassigning deleted access group profiles: %w", err)
+	}
+	// Memberships hold access_group_id too, under
+	// organization_memberships_organization_access_group_fkey ON DELETE RESTRICT.
+	// Reassigning only the profiles leaves memberships pointing at the doomed
+	// group and the DELETE below fails with a raw 23001.
+	//
+	// Upstream Silo declares users.access_group_id ON DELETE SET NULL, so a
+	// delete there silently detaches members and drops them to "no group", which
+	// reads downstream as no access-group restrictions at all. Reassigning to the
+	// organization default instead is deliberate: deleting a group must never
+	// silently widen what its members can reach. See
+	// docs/architecture/multitenant-administration.md.
+	if _, err := tx.Exec(ctx, `
+		UPDATE organization_memberships
+		SET access_group_id = $3,
+			updated_at = NOW()
+		WHERE organization_id = $1
+		  AND access_group_id = $2`, organizationID, id, defaultGroupID); err != nil {
+		return GroupDeletionImpact{}, fmt.Errorf("reassigning deleted access group memberships: %w", err)
 	}
 	tag, err := tx.Exec(ctx, `
 		DELETE FROM access_groups
@@ -707,14 +737,15 @@ func (s *GroupStore) ResolvePolicy(ctx context.Context, subject GroupSubject) (*
 			g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 			g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
 			g.max_transcodes, g.allowed_permissions, g.requests_allowed
-		FROM users u
+		FROM organization_memberships u
 		JOIN organizations o
 		  ON o.id = $1
 		 AND o.is_default
+		 AND o.id = u.organization_id
 		LEFT JOIN access_groups g
 		  ON g.organization_id = o.id
 		 AND g.id = u.access_group_id
-		WHERE u.id = $2`, subject.OrganizationID, subject.AccountID))
+		WHERE u.account_id = $2`, subject.OrganizationID, subject.AccountID))
 }
 
 func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
