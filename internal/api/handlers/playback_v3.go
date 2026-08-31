@@ -3452,6 +3452,17 @@ func (h *PlaybackHandler) HandleReplanPlaybackV3(w http.ResponseWriter, r *http.
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
+	body, legacySiloApple, err := normalizeSiloApplePlaybackV3Body(body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
+	if legacySiloApple {
+		original := w
+		buffered := newBufferedPlaybackResponse()
+		w = buffered
+		defer func() { flushSiloApplePlaybackV3Response(original, buffered) }()
+	}
 	var req playback.ReplanRequestV3
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid replan request")

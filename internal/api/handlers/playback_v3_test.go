@@ -1017,6 +1017,54 @@ func TestHandleStartPlaybackV3ReturnsExecutableDirectPlan(t *testing.T) {
 	}
 }
 
+func TestHandleStartPlaybackV3AcceptsSiloAppleDraftV3Shape(t *testing.T) {
+	file := v3HandlerFixtureFile(t)
+	manager := playback.NewSessionManager(0, 0)
+	handler := NewPlaybackHandler(manager, testPlaybackFileResolver{file: file})
+	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{"allow_4k_transcode": "true"}}
+	handler.ItemAccess = allowAllPlaybackItemAccess{}
+
+	start := v3HandlerStartRequest()
+	start.PlaybackAttemptID = "apple:compat-attempt-0001"
+	body := marshalV3StartRequest(t, start)
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		t.Fatal(err)
+	}
+	capabilities := payload["client_capabilities"].(map[string]any)
+	delete(capabilities, "video_evidence")
+	delete(capabilities, "audio_evidence")
+	context := payload["client_playback_context"].(map[string]any)
+	context["platform"] = "ios"
+	context["engines"] = context["deliveries"]
+	delete(context, "deliveries")
+	device := context["device"].(map[string]any)
+	delete(device, "platform")
+	output := context["output"].(map[string]any)
+	output["output_route_generation"] = 123
+	delete(output, "output_context_id")
+	legacyBody, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/playback/start", bytes.NewReader(legacyBody))
+	req = req.WithContext(newAuthorizedPlaybackContext())
+	rr := httptest.NewRecorder()
+	handler.HandleStartPlayback(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, body = %s", rr.Code, rr.Body.String())
+	}
+	var response map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	plan := response["playback_plan"].(map[string]any)
+	if got := plan["engine"]; got != "media3_direct" {
+		t.Fatalf("engine = %v, want media3_direct", got)
+	}
+}
+
 func TestHandleStartPlaybackV3NegotiatesHeaderAuthenticatedDirectAndSubtitleURLs(t *testing.T) {
 	for _, test := range []struct {
 		name       string
