@@ -196,3 +196,27 @@ func TestNormalizePushRelayURLRequiresAllowlistedOrigin(t *testing.T) {
 		t.Fatal("arbitrary relay origin accepted")
 	}
 }
+
+// TestDefaultPushRelayIsBloemsOwn is a boundary test, not a string test.
+//
+// The default is the origin every self-hosted Bloem server registers with when
+// an operator has configured nothing, and NormalizePushRelayURL enforces it as
+// the only origin allowed. Pointing it at Silo's relay would route Bloem device
+// tokens and delivery metadata through infrastructure Silo controls, delivered
+// on Silo's own APNs/FCM credentials — which is precisely what running a
+// separate relay exists to prevent. That is a privacy regression no compiler
+// catches and no reviewer notices in a diff of one URL.
+func TestDefaultPushRelayIsBloemsOwn(t *testing.T) {
+	if DefaultPushRelayURL != "https://push.bloem-studios.com" {
+		t.Fatalf("default push relay must be Bloem's own, got %q", DefaultPushRelayURL)
+	}
+	if strings.Contains(DefaultPushRelayURL, "siloserver.org") {
+		t.Fatal("default push relay must never be Silo's relay")
+	}
+
+	// And the allow-list must actually refuse Silo's relay, so a stored setting
+	// cannot reach it either.
+	if _, err := NormalizePushRelayURL("https://push.siloserver.org", ""); err == nil {
+		t.Fatal("Silo's relay must not be an accepted relay_url")
+	}
+}
