@@ -1036,7 +1036,12 @@ func TestHandleStartPlaybackV3AcceptsSiloAppleDraftV3Shape(t *testing.T) {
 	delete(capabilities, "audio_evidence")
 	context := payload["client_playback_context"].(map[string]any)
 	context["platform"] = "ios"
-	context["engines"] = context["deliveries"]
+	deliveries := context["deliveries"].(map[string]any)
+	context["engines"] = map[string]any{
+		"media3_direct":            deliveries[playback.DeliveryClassOriginalHTTPV3],
+		"media3_progressive_remux": deliveries[playback.DeliveryClassProgressiveV3],
+		"media3_hls":               deliveries[playback.DeliveryClassHLSV3],
+	}
 	delete(context, "deliveries")
 	device := context["device"].(map[string]any)
 	delete(device, "platform")

@@ -1385,7 +1385,21 @@ func normalizeSiloApplePlaybackV3Body(body []byte) ([]byte, bool, error) {
 		return body, false, nil
 	}
 	if _, hasDeliveries := context["deliveries"]; !hasDeliveries {
-		context["deliveries"] = engines
+		var legacyEngines map[string]json.RawMessage
+		if err := json.Unmarshal(engines, &legacyEngines); err != nil {
+			return body, false, nil
+		}
+		deliveries := make(map[string]json.RawMessage, 3)
+		if direct, ok := legacyEngines["media3_direct"]; ok {
+			deliveries[playback.DeliveryClassOriginalHTTPV3] = direct
+		}
+		if progressive, ok := legacyEngines["media3_progressive_remux"]; ok {
+			deliveries[playback.DeliveryClassProgressiveV3] = progressive
+		}
+		if hls, ok := legacyEngines["media3_hls"]; ok {
+			deliveries[playback.DeliveryClassHLSV3] = hls
+		}
+		context["deliveries"], _ = json.Marshal(deliveries)
 	}
 
 	var capabilities map[string]json.RawMessage
