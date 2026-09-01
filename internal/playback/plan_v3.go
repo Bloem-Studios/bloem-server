@@ -73,6 +73,10 @@ type PlannerInputV3 struct {
 	Now                 time.Time
 	AttemptedKeys       []string
 	AdditionalSubtitles []SubtitleInventoryEntryV3
+	// ForceTranscode makes the planner take the adapted route even when a
+	// source-preserving route validates (admin replan override, S-5a). The
+	// audio-only family ignores it: it has no transcode route to force.
+	ForceTranscode bool
 }
 
 // SourceExecutionMetadataV3 is the immutable source probe snapshot used to
@@ -193,6 +197,15 @@ func PlanPlaybackV3(input PlannerInputV3) PlannerResultV3 {
 	remuxSubtitleOK := remuxSubtitle.Terminal == nil && !remuxSubtitle.RequiresBurn
 	hlsRemuxSubtitleOK := hlsSubtitle.Terminal == nil && !hlsSubtitle.RequiresBurn
 	quality := ResolveQualityPolicyV3(input.Request, source)
+	if input.ForceTranscode && !quality.RequiresTranscode {
+		// Pinned by an admin replan: keep the resolved rung (original quality
+		// or the capped rung) but route it through the transcoder. ExplicitRung
+		// keeps the automatic "reduction unavailable" fallback below from
+		// undoing the pin.
+		quality.RequiresTranscode = true
+		quality.ExplicitRung = true
+		quality.Reason = "admin_transcode_forced"
+	}
 	videoOK, videoEvidenceInsufficient := videoEligibleV3(source, input.Request)
 	var high10Quirk *AppliedQuirkV3
 	if !videoOK {

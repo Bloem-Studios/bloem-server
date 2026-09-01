@@ -365,6 +365,11 @@ func (h *NotificationsHandler) HandleUpdatePreferences(w http.ResponseWriter, r 
 	writeJSON(w, http.StatusOK, prefs)
 }
 
+type capabilityRemoteControl struct {
+	Admin     bool `json:"admin"`
+	Household bool `json:"household"`
+}
+
 type capabilityResponse struct {
 	InApp       capabilityInApp          `json:"in_app"`
 	ApplePush   capabilityPush           `json:"apple_push"`
@@ -378,6 +383,9 @@ type capabilityResponse struct {
 	Announcements  bool     `json:"announcements"`
 	SupportedTypes []string `json:"supported_types"`
 	Dismiss        bool     `json:"dismiss"`
+	// S-5a (docs/specs/admin-remote-control.md §D): the sender side exists;
+	// clients still only receive per their own advertised list.
+	RemoteControl capabilityRemoteControl `json:"remote_control"`
 }
 
 // capabilityAccountChannel describes an account-level digest channel (email,
@@ -491,5 +499,6 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		Announcements:  true,
 		SupportedTypes: notifications.SupportedDeliveryTypes(),
 		Dismiss:        true,
+		RemoteControl:  capabilityRemoteControl{Admin: true, Household: true},
 	})
 }

@@ -177,6 +177,11 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 			h.syncSessionsNow(context.Background(), "realtime_hello")
 		}
 		h.touchSessionActivity(sessionID)
+		if h.RemoteObserver != nil {
+			if session, err := h.sessionMgr.GetSession(sessionID); err == nil && session != nil {
+				h.RemoteObserver.OnHello(context.Background(), remoteSessionInfo(session), hello.Capabilities.Commands)
+			}
+		}
 		return nil
 	case playback.RealtimeMessageTypeAck:
 		var ack playback.AckEnvelope
@@ -192,6 +197,11 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 		h.touchSessionActivity(sessionID)
 		if h.CommandTracker != nil {
 			h.CommandTracker.Ack(ack.CommandID)
+		}
+		if h.RemoteObserver != nil {
+			if record, ok := h.getRealtimeCommand(ack.CommandID); !ok || record.SessionID == sessionID {
+				h.RemoteObserver.OnAck(context.Background(), ack.CommandID)
+			}
 		}
 		return nil
 	case playback.RealtimeMessageTypeResult:
@@ -222,6 +232,9 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 			return nil
 		}
 		h.forgetRealtimeCommand(result.CommandID)
+		if h.RemoteObserver != nil {
+			h.RemoteObserver.OnResult(context.Background(), result.CommandID, result.Status == playback.RealtimeResultStatusCompleted, result.Error)
+		}
 		if result.Status != playback.RealtimeResultStatusCompleted {
 			// A rejected plan_invalidated leaves the client running a route the
 			// server has withdrawn, and the tracker's deadline was already

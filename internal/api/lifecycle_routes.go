@@ -97,6 +97,7 @@ var lifecycleOneShotRoutes = []ReviewedOneShotRoute{
 	{http.MethodPost, "/api/v1/profiles/{id}/verify-pin", "credential verification"},
 	{http.MethodPut, "/api/v1/profiles/{id}/avatar", "streaming upload"},
 	{http.MethodDelete, "/api/v1/profiles/{id}/avatar", "one-shot media mutation"},
+	{http.MethodPost, "/api/v1/profiles/household/sessions/{session_id}/commands", "one-shot playback remote command"},
 	{http.MethodPost, "/api/v1/auth/device/start", "device pairing"},
 	{http.MethodPost, "/api/v1/auth/device/poll", "device pairing"},
 	{http.MethodPost, "/api/v1/auth/plugin-launch", "short-lived credential issuance"},

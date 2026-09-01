@@ -36,6 +36,7 @@ type Session struct {
 	ClientBuild          string // opaque reported client build identifier, when available
 	ClientChannel        string // opaque reported client distribution channel, when available
 	ClientUserAgent      string // trimmed request user agent for the playback session
+	DeviceID             string // registered device id the playing client identified with (X-Silo-Device-Id / claims), when known
 	IsJellyfinCompat     bool   // immutable origin identity for Jellyfin compatibility sessions
 	// RequireMediaAuthorization distinguishes v3 transports whose session ID is
 	// only a route identifier from legacy HLS transports where that UUID also
@@ -1514,6 +1515,19 @@ func (m *SessionManager) SetTranscodeStreamDetails(sessionID, targetVideoCodec, 
 }
 
 // SetTranscodeNodeURL assigns a transcode node URL to an existing session.
+// SetDeviceID records the device a session's client identified with. Remote
+// control (S-5a) resolves the device's advertised command list through it.
+func (m *SessionManager) SetDeviceID(sessionID, deviceID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, ok := m.sessions[sessionID]
+	if !ok {
+		return ErrSessionNotFound
+	}
+	s.DeviceID = deviceID
+	return nil
+}
+
 func (m *SessionManager) SetTranscodeNodeURL(sessionID, url string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
