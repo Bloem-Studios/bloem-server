@@ -201,3 +201,8 @@ func ParseAlertBody(raw []byte) (*AlertBody, bool) {
 	}
 	return &body, true
 }
+
+// IsAppLink is the exported form of validAlertLink: the deeplink / CTA URL
+// rule shared by every engagement subsystem (https URL, bloem:// deeplink, or
+// an app-relative path).
+func IsAppLink(raw string) bool { return validAlertLink(raw) }

@@ -23,6 +23,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/ai/jobrunner"
 	"github.com/Silo-Server/silo-server/internal/ai/llm"
+	"github.com/Silo-Server/silo-server/internal/ambience"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -64,6 +65,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/playback/planstore"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/policy"
+	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	"github.com/Silo-Server/silo-server/internal/remote"
@@ -113,6 +115,8 @@ type Dependencies struct {
 	S3Private                    *s3client.Client              // private internal bucket client (may be nil)
 	S3UserDB                     *s3client.Client              // user-db bucket client (may be nil)
 	BrandingService              *branding.Service             // white-label branding (nil when DB unavailable)
+	Ambience                     *ambience.Service             // S-3 seasonal ambience packs (nil when DB unavailable)
+	Promotions                   *promotions.Service           // S-2 promotion cards (nil when DB unavailable)
 	FolderRepo                   *catalog.FolderRepository     // media folder repository (may be nil)
 	FileRepo                     *scanner.FileRepository       // media file repository (may be nil)
 	Scanner                      *scanner.Scanner              // scanner instance (may be nil)
@@ -1751,8 +1755,15 @@ func NewRouter(deps Dependencies) chi.Router {
 				sectionFetcher.RecommendationReader = recommendations.NewReader(sectionFetcher.RecommendationRepo, ratingsRepo, deps.RecWorker, deps.UserStoreProvider)
 			}
 		}
+		if deps.Promotions != nil {
+			// S-2: the `promoted` home section resolves through the fetcher.
+			sectionFetcher.Promotions = deps.Promotions
+		}
 		sections.InstallRecipeDelegate(sectionFetcher)
 		sectionHandler = handlers.NewSectionHandler(sectionRepo, sectionFetcher)
+		if deps.Promotions != nil {
+			sectionHandler.Promotions = deps.Promotions
+		}
 		sectionHandler.CollectionRepo = sectionFetcher.CollectionRepo
 		sectionHandler.FolderRepo = deps.FolderRepo
 		if deps.UserStoreProvider != nil {
@@ -2091,6 +2102,26 @@ func NewRouter(deps Dependencies) chi.Router {
 		var brandingHandler *handlers.BrandingHandler
 		if deps.BrandingService != nil {
 			brandingHandler = handlers.NewBrandingHandler(deps.BrandingService)
+			if deps.Ambience != nil {
+				// S-3: active deployment-wide packs ride on the public
+				// branding payload so effects work on the login screen.
+				brandingHandler.SetAmbience(deps.Ambience)
+			}
+		}
+		// Ambience artwork serving is public (pre-login); the registry CRUD
+		// is registered in the admin group. Both mount only when the
+		// registry is wired (the route goldens do not wire it).
+		var ambienceHandler *handlers.AmbienceHandler
+		if deps.Ambience != nil {
+			ambienceHandler = handlers.NewAmbienceHandler(deps.Ambience)
+			r.Get("/ambience/assets/{ref}", ambienceHandler.HandleServeAsset)
+		}
+		// S-2 promotions: admin CRUD is registered in the admin group, the
+		// profile-scoped delivery route beside the home dismissals. Both
+		// mount only when the service is wired (the route goldens do not).
+		var adminPromotionsHandler *handlers.AdminPromotionsHandler
+		if deps.Promotions != nil {
+			adminPromotionsHandler = handlers.NewAdminPromotionsHandler(deps.Promotions)
 		}
 
 		if webhookSyncHandler != nil {
@@ -2471,6 +2502,10 @@ func NewRouter(deps Dependencies) chi.Router {
 						deps.Notifications.SetImageResolver(detailSvc)
 					}
 					notificationsHandler := handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub)
+					if deps.Ambience != nil {
+						notificationsHandler.SetAmbience(deps.Ambience)
+					}
+					notificationsHandler.SetPromotions(deps.Promotions != nil)
 					r.With(apimw.RequireProfile).Post("/devices/push/apple", notificationsHandler.HandleRegisterApplePushDevice)
 					// Discord DM channel: the linked identity and mode hang off
 					// the login account, not a profile, so these stay outside
@@ -2777,6 +2812,10 @@ func NewRouter(deps Dependencies) chi.Router {
 						r.Put("/{surface}/{item_id}", homeDismissalHandler.HandleUpsertDismissal)
 						r.Delete("/{surface}/{item_id}", homeDismissalHandler.HandleDeleteDismissal)
 					})
+				}
+				if deps.Promotions != nil {
+					// S-2 detail / pre-playback delivery (docs/specs/client-engagement.md section B.3).
+					r.With(apimw.RequireProfile).Get("/promotions", handlers.NewPromotionsHandler(deps.Promotions).HandleList)
 				}
 
 				if watchProviderHandler != nil {
@@ -3479,6 +3518,29 @@ func NewRouter(deps Dependencies) chi.Router {
 									r.Get("/", announcementsHandler.HandleList)
 									r.Post("/", announcementsHandler.HandleCreate)
 									r.Delete("/{id}", announcementsHandler.HandleDelete)
+								})
+							}
+							if ambienceHandler != nil {
+								// S-3 seasonal pack registry (docs/specs/client-engagement.md section C).
+								r.Route("/ambience", func(r chi.Router) {
+									r.Get("/", ambienceHandler.HandleList)
+									r.Post("/", ambienceHandler.HandleCreate)
+									r.Put("/{id}", ambienceHandler.HandleUpdate)
+									r.Delete("/{id}", ambienceHandler.HandleDelete)
+									// Standalone upload (the authoring side pushes
+									// artwork before any pack exists); must be
+									// registered before the {id} pattern.
+									r.Post("/assets", ambienceHandler.HandleUploadAsset)
+									r.Post("/{id}/assets", ambienceHandler.HandleAttachAsset)
+								})
+							}
+							if adminPromotionsHandler != nil {
+								// S-2 promotion CRUD (docs/specs/client-engagement.md section B.1).
+								r.Route("/promotions", func(r chi.Router) {
+									r.Get("/", adminPromotionsHandler.HandleList)
+									r.Post("/", adminPromotionsHandler.HandleCreate)
+									r.Put("/{id}", adminPromotionsHandler.HandleUpdate)
+									r.Delete("/{id}", adminPromotionsHandler.HandleDelete)
 								})
 							}
 							if adminIntroHandler != nil {

@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/Silo-Server/silo-server/internal/ambience"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/notifications"
+	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -26,6 +28,10 @@ type NotificationsHandler struct {
 	hub    *evt.Hub
 	// dismissStore overrides System.Deliveries for the dismiss route (tests).
 	dismissStore deliveryDismisser
+	// ambience is the optional S-3 pack registry echoed on the capability payload.
+	ambience ambienceAccountSource
+	// promotions advertises the S-2 delivery surfaces on the capability payload.
+	promotions bool
 }
 
 // NewNotificationsHandler creates a NotificationsHandler.
@@ -383,10 +389,34 @@ type capabilityResponse struct {
 	Announcements  bool     `json:"announcements"`
 	SupportedTypes []string `json:"supported_types"`
 	Dismiss        bool     `json:"dismiss"`
+	// S-3 (docs/specs/client-engagement.md section C): the same block as
+	// the branding payload. Key present = capability exists, [] = nothing
+	// active, key absent = dormant (registry not wired). Carries the active
+	// packs for this account (deployment-wide + the account's organizations).
+	Ambience *[]ambience.Wire `json:"ambience,omitempty"`
+	// S-2 (docs/specs/client-engagement.md section B.5): key present =
+	// promotions are delivered on the listed surfaces; absent = dormant.
+	Promotions *capabilityPromotions `json:"promotions,omitempty"`
 	// S-5a (docs/specs/admin-remote-control.md §D): the sender side exists;
 	// clients still only receive per their own advertised list.
 	RemoteControl capabilityRemoteControl `json:"remote_control"`
 }
+
+// capabilityPromotions advertises the S-2 delivery surfaces.
+type capabilityPromotions struct {
+	Surfaces []string `json:"surfaces"`
+}
+
+// SetPromotions advertises the S-2 promotions capability.
+func (h *NotificationsHandler) SetPromotions(enabled bool) { h.promotions = enabled }
+
+// ambienceAccountSource supplies the active packs visible to an account.
+type ambienceAccountSource interface {
+	ActiveForAccount(ctx context.Context, accountID int) ([]ambience.Wire, error)
+}
+
+// SetAmbience wires the S-3 pack registry into the capability payload.
+func (h *NotificationsHandler) SetAmbience(src ambienceAccountSource) { h.ambience = src }
 
 // capabilityAccountChannel describes an account-level digest channel (email,
 // Discord DMs).
@@ -485,6 +515,18 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 			}
 		}
 	}
+	var ambienceBlock *[]ambience.Wire
+	if h.ambience != nil {
+		active := []ambience.Wire{}
+		if packs, err := h.ambience.ActiveForAccount(r.Context(), apimw.GetUserID(r.Context())); err == nil && packs != nil {
+			active = packs
+		}
+		ambienceBlock = &active
+	}
+	var promotionsBlock *capabilityPromotions
+	if h.promotions {
+		promotionsBlock = &capabilityPromotions{Surfaces: promotions.Surfaces}
+	}
 	writeJSON(w, http.StatusOK, capabilityResponse{
 		InApp:       capabilityInApp{Enabled: h.system.Settings.UIEnabled(r.Context())},
 		ApplePush:   applePush,
@@ -499,6 +541,8 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		Announcements:  true,
 		SupportedTypes: notifications.SupportedDeliveryTypes(),
 		Dismiss:        true,
+		Ambience:       ambienceBlock,
+		Promotions:     promotionsBlock,
 		RemoteControl:  capabilityRemoteControl{Admin: true, Household: true},
 	})
 }

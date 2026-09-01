@@ -42,6 +42,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/activitylog"
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
+	"github.com/Silo-Server/silo-server/internal/ambience"
 	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/artworkkey"
@@ -82,6 +83,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/markers"
 	"github.com/Silo-Server/silo-server/internal/mdblist"
 	"github.com/Silo-Server/silo-server/internal/metadata"
+	"github.com/Silo-Server/silo-server/internal/promotions"
+	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 
 	// Built-in metadata providers self-register into the metadata package's
 	// builtin registry on import; buildProviders resolves their seeded chain
@@ -2677,6 +2680,18 @@ func main() {
 		brandingStore = deps.S3Public
 	}
 	brandingSvc := branding.NewService(settingsRepo, brandingStore)
+
+	// S-3 seasonal ambience packs share the public asset bucket with branding
+	// (same nil-interface rule) and the sections seasonal clock.
+	var ambienceStore ambience.AssetStore
+	if deps.S3Public != nil {
+		ambienceStore = deps.S3Public
+	}
+	if pool != nil {
+		deps.Ambience = ambience.NewService(pool, recipes.RealClock{}, ambienceStore)
+		// S-2 promotion cards: dismissals ride on the per-profile user store.
+		deps.Promotions = promotions.NewService(pool, recipes.RealClock{}, deps.UserStoreProvider)
+	}
 
 	// Live TV is a single shared service used by the native API, Jellyfin
 	// compatibility surface, guide sync, DVR processing, and HLS playback.

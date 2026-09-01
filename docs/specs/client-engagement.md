@@ -54,9 +54,13 @@ New small subsystem; delivery rides existing surfaces.
    Admin CRUD: `/admin/promotions`.
 2. **Home delivery**: new `SectionType` `promoted` in `internal/sections/types.go:13-51` with a
    resolver in the fetcher — promo cards flow through the existing `/home/layout` +
-   `/home/sections` contract. Old clients ignore the unknown section type; capability-aware v3
-   clients render it. Card items carry free-form fields (not media items) — the section item
-   union grows an optional `promo` variant.
+   `/home/sections` contract, **opt-in per request**: the section is delivered only when the
+   client sends `promoted=1`. Old clients cannot be relied on to ignore an unknown section type
+   (pre-S-2 and upstream-compat clients decode `section_type` as a plain string with no
+   unknown-type drop), so without the parameter the home responses are identical to a build
+   without S-2; capability-aware v3 clients learn support from the capability echo, opt in, and
+   render the row. Card items carry free-form fields (not media items) — the section item union
+   grows an optional `promo` variant.
 3. **Detail/pre-playback delivery**: `GET /promotions?surface=detail&content_id=…` (and
    `surface=pre_playback`). Detail responses have no extensibility slot today; a separate fetch
    keeps the v1 contract untouched.
@@ -263,3 +267,325 @@ no_recipients`, `503 unavailable` (notification system not wired).
 `GET /api/v1/admin/notifications/announcements` → `{"announcements": [<announcement>, ...]}`
 newest first. `DELETE /api/v1/admin/notifications/announcements/{id}` → `204` (withdraw,
 idempotent), `404 not_found`.
+
+---
+
+## Implementation notes (S-3) — shipped on `feat/s3-ambience`
+
+Everything below is additive; the v1 route-contract goldens are unchanged (the ambience routes
+mount only when `Dependencies.Ambience` is wired, which the golden fixtures do not do; the new
+fields on the branding and capability payloads are new keys only).
+
+### Storage
+
+Migration `20260901192510_ambience_packs.sql` creates `ambience_packs`: `id` (ULID),
+`effect_id`, `starts_at`, `ends_at`, `intensity` (0.0–1.0, CHECK), `surfaces text[]`
+(default `{all}`), `assets jsonb` (`{banner_url?, sprites?}`), `organization_id uuid` nullable
+(FK → `organizations`, `ON DELETE CASCADE`; NULL = deployment-wide), `created_by`,
+`created_at`, `updated_at`; CHECK `starts_at < ends_at`. One row per season; the server has no
+per-season logic (`internal/ambience`).
+
+### Validation (`ambience.Normalize`, at write time)
+
+`effect_id` is a required lowercase slug (`^[a-z0-9][a-z0-9_-]{0,63}$`, open set — `snow`,
+`pumpkins`, `halloween-2026`…); `window.starts_at`/`window.ends_at` are both required with
+`starts_at < ends_at`; `intensity` defaults to `1.0` and must be within `[0, 1]`; `surfaces`
+defaults to `["all"]`, vocabulary `{all, home, login}`, deduplicated, `all` absorbs the rest;
+`assets.banner_url` and each `assets.sprites[]` entry (max 32) must be an `https://` URL with a
+host or a server-served path `/api/v1/ambience/assets/<ref>` (`http:`, `data:`, `javascript:`,
+protocol-relative and other app paths are rejected).
+
+### Schedule evaluation
+
+The registry reuses the sections seasonal clock (`recipes.Clock`; production `RealClock`, tests
+`FixedClock`). A pack is active when `starts_at <= now < ends_at` (inclusive start, exclusive
+end, evaluated in SQL against the clock's instant). Windows are still emitted so clients honour
+the bounds locally.
+
+### Wire shape (one shape on both payloads)
+
+```json
+{"id": "01J…", "effect_id": "snow",
+ "window": {"starts_at": "RFC3339", "ends_at": "RFC3339"},
+ "intensity": 0.5, "surfaces": ["all"], "assets": {"banner_url": "…", "sprites": ["…"]}}
+```
+
+- `GET /theme/branding` (unauthenticated) gains `"ambience": [<wire>, …]` — the active
+  **deployment-wide** packs only (org-scoped packs never leak pre-login). Always present, `[]`
+  when none or when the registry is not wired; registry errors degrade to `[]`.
+- `GET /notifications/capability` (authenticated) gains the same `"ambience": [<wire>, …]` block
+  — active deployment-wide packs plus the active packs of every **active** organization the
+  calling account has an **active** membership in. Key present = capability exists, `[]` =
+  supported but nothing active, key absent = dormant (registry not wired).
+- Clients: unknown `effect_id` + `assets` → generic artwork renderer; unknown + no assets →
+  ignore. Intensity is a hint; the local "reduce effects" toggle wins.
+
+### Asset serving
+
+`GET /ambience/assets/{ref}` (public, mounted with the registry): streams stored artwork with
+`ETag`, `Cache-Control: public, max-age=31536000, immutable`, `nosniff`, and the branding asset
+CSP. Refs are content-addressed (`<16 hex of sha256>.<png|webp|jpg|gif>`), so traversal or
+foreign refs are 404. Storage is the public assets bucket (`S3Public`, key `ambience/<ref>`),
+the same store branding uses; without S3 the registry still works with external `https://`
+URLs and `storage_available` on the admin list says so.
+
+### Admin routes (`/admin/ambience`, beside the S-1 announcements CRUD, same admin group)
+
+- `GET /` → `{"packs": [<pack>, …], "storage_available": bool}` soonest window first.
+- `POST /` → `201` with the pack (below). `PUT /{id}` is a full replacement with the same body →
+  `200`. `DELETE /{id}` → `204`; `404 not_found` for unknown ids (stored artwork objects are
+  left in place, same orphan policy as branding).
+- `POST /assets` (standalone, no pack — the authoring side pushes artwork before any pack
+  exists) → multipart `file` (PNG/WebP/JPEG/GIF, sniffed not trusted, ≤8 MiB; the request body
+  is hard-capped at 9 MiB → `413 too_large`) with text fields `asset_id` (garden's uuid),
+  `kind` (`campaign_card_16x9|season_banner|season_sprite`, else `400`), `checksum` (sha256 hex
+  of the bytes, verified → `400` on mismatch) and `content_type` (ignored; bytes are sniffed)
+  → `201` with the public URL at the top level and the stored asset under `asset` (second
+  contract block below); `415 unsupported_image`, `503 unavailable` (no S3). **Idempotent on
+  `asset_id`** (table `ambience_assets`: asset_id, kind, checksum, ref, content_type,
+  size_bytes): the same `asset_id` + same checksum returns the existing URL without re-storing;
+  same `asset_id` + different checksum replaces the object ref. Rows keep `kind` and `asset_id`
+  beside the ref so packs and later campaigns can reference artwork by garden's id. All fields
+  are optional for ad-hoc uploads (no `asset_id` = no registry row).
+- `POST /{id}/assets` → same upload plus optional `slot` = `banner` (default; replaces) |
+  `sprite` (appends, max 32, checked **before** the object is stored) → `201`
+  `{"url": "/api/v1/ambience/assets/<ref>", "slot": "…", "pack": <pack>}`; the pack row is
+  locked while `assets` is rewritten so concurrent attaches never lose entries; `415
+  unsupported_image`, `413 too_large`, `503 unavailable` (no S3), `404 not_found`.
+- `organization_id` naming an unknown organization is `400 bad_request`
+  (`organization_id does not exist`), not a 500.
+- Errors: `400 bad_request` (validation, message names the field), `503 unavailable` (registry
+  not wired).
+
+### Admin ambience contract (source of truth for the garden client)
+
+Request and response copied from the passing handler test
+`TestAdminAmbienceCreateReturnsCreatedPack` (`internal/api/handlers/admin_ambience_test.go`).
+`intensity` and `surfaces` may be omitted (defaults `1.0` / `["all"]`); `organization_id` is a
+uuid string or null; `assets` may be `{}`. Asset URLs returned by the upload endpoints are
+server-relative (`/api/v1/ambience/assets/<ref>`) and are accepted as-is in `assets`.
+
+```json
+POST /api/v1/admin/ambience
+{
+  "effect_id": "halloween",
+  "window": {"starts_at": "2026-10-24T00:00:00Z", "ends_at": "2026-11-01T00:00:00Z"},
+  "intensity": 0.7,
+  "surfaces": ["home", "login"],
+  "assets": {
+    "banner_url": "https://cdn.example/halloween/banner.png",
+    "sprites": ["https://cdn.example/halloween/pumpkin.png"]
+  },
+  "organization_id": null
+}
+```
+
+Response `201 Created` (`created_by` = calling admin's user id):
+
+```json
+{
+  "id": "pack-1",
+  "effect_id": "halloween",
+  "window": {"starts_at": "2026-10-24T00:00:00Z", "ends_at": "2026-11-01T00:00:00Z"},
+  "intensity": 0.7,
+  "surfaces": ["home", "login"],
+  "assets": {
+    "banner_url": "https://cdn.example/halloween/banner.png",
+    "sprites": ["https://cdn.example/halloween/pumpkin.png"]
+  },
+  "organization_id": null,
+  "created_by": 42,
+  "created_at": "2026-10-24T00:00:00Z",
+  "updated_at": "2026-10-24T00:00:00Z"
+}
+```
+
+Standalone artwork upload, copied from the passing handler test
+`TestAdminAmbienceStandaloneUploadReturnsPublicURL` (same file). The request is the multipart
+shape bloem-garden's `HTTPAssetTransport` sends (`internal/engagement/assetsync.go`); garden reads
+the URL from top-level `url` (or `asset.url`).
+
+```
+POST /api/v1/admin/ambience/assets
+Content-Type: multipart/form-data; boundary=…
+
+asset_id=3f1c2a9e-1d2b-4c3d-8e4f-5a6b7c8d9e0f   (garden uuid; idempotency key)
+kind=season_banner                               (campaign_card_16x9|season_banner|season_sprite)
+checksum=<sha256 hex>                            (verified against the bytes)
+content_type=image/png                           (ignored, the bytes are sniffed)
+file=@banner.png                                 (required; Content-Type: image/png)
+```
+
+Response `201 Created` (`<hex>` = sha256 of the bytes, `<ref>` = its first 16 hex chars + ext):
+
+```json
+{
+  "asset": {
+    "asset_id": "3f1c2a9e-1d2b-4c3d-8e4f-5a6b7c8d9e0f",
+    "kind": "season_banner",
+    "ref": "<ref>.png",
+    "url": "/api/v1/ambience/assets/<ref>.png",
+    "checksum": "<hex>",
+    "content_type": "image/png",
+    "size_bytes": 71
+  },
+  "url": "/api/v1/ambience/assets/<ref>.png"
+}
+```
+
+A retry with the same `asset_id` and `checksum` answers `201` with the identical body and stores
+nothing new.
+
+---
+
+## Implementation notes (S-2) — shipped on `feat/s2-promotions`
+
+Everything below is additive; the v1 route-contract goldens are unchanged (the promotion routes
+mount only when `Dependencies.Promotions` is wired, which the golden fixtures do not do; the
+`promoted` section type, the `promo` item variant and the capability key are new keys only).
+
+### Storage
+
+Migration `20260901200121_promotions.sql` creates `promotions`: `id` (ULID), `organization_id`
+uuid nullable (FK → `organizations`, `ON DELETE CASCADE`; NULL = deployment-wide), `surfaces
+text[]` (non-empty), `placement jsonb` (`{home_position?, detail_slot?, content_ids?}`),
+`kicker`, `headline`, `subtitle`, `image_url`, `image_width`/`image_height` nullable,
+`deeplink`, `cta jsonb` nullable (`{label, url}`), `priority`, `starts_at`/`ends_at` (CHECK
+`starts_at < ends_at`), `targeting jsonb` (the S-1 `AnnouncementTargeting` shape), `dismissible`
+(default true), `created_by`, `created_at`, `updated_at`. It also widens the
+`user_home_item_dismissals` surface CHECK to `promo:home | promo:detail | promo:pre_playback`
+so per-item promo dismissals reuse the existing per-profile dismissal store (no new table).
+There are deliberately **no timer / forced-wait columns** (amendment 3).
+
+### Validation (`promotions.Normalize`, at write time)
+
+`surfaces` is required, vocabulary `{home, detail, pre_playback}`, deduplicated; `headline` is
+required (≤120), `kicker` ≤40, `subtitle` ≤200; `image_url` is required and must pass the S-3
+asset validator `ambience.IsAssetURL` (an `https://` URL with a host or a server asset path
+`/api/v1/ambience/assets/<ref>` — amendment 4: campaign artwork is uploaded through the S-3
+`POST /admin/ambience/assets` route with `kind=campaign_card_16x9`); `image_width`/`image_height`
+must be given together, positive, and 16:9 within ±1% (`1920x1080`, `1600x900`, `1366x768` pass;
+poster aspect is rejected); `deeplink` and `cta.url` follow the S-1 link rule
+(`notifications.IsAppLink`: https, `bloem://`, app path — `http:`, `javascript:`, `data:`,
+protocol-relative rejected); `cta.label` is required with a CTA (≤40); `starts_at`/`ends_at`
+required with `starts_at < ends_at`; `targeting` is canonicalised by the S-1
+`notifications.ValidateTargeting` (audience `all|role|organization|library|explicit`, side
+fields outside their audience dropped); `placement.home_position` ≥ 0,
+`placement.content_ids` ≤64 non-empty entries; `dismissible` defaults to `true`; unknown body
+keys (e.g. a `wait_seconds`) are ignored, never stored, never echoed.
+
+### Delivery evaluation (`promotions.Service.Active` / `ActiveHome`)
+
+A promotion is delivered when `starts_at <= now < ends_at` (the sections seasonal clock,
+`recipes.Clock`), the surface is listed, the row is deployment-wide or belongs to one of the
+viewer's active organizations, the targeting matches the viewer (`role` = the account's `users.role`;
+`organization` = active membership; `library` = the profile's allowed library ids, unrestricted
+access matches; `explicit` = user id or profile id listed), `placement.content_ids` is empty or
+contains the request's `content_id` (rows with `content_ids` are skipped when no `content_id`
+is given), and the profile has not dismissed it on that surface. Order: `priority DESC,
+starts_at, id`. Dismissal-store failures degrade to "nothing dismissed" (logged).
+
+### Home delivery
+
+`SectionType` `promoted` (`internal/sections/types.go`) resolves in
+`Fetcher.fetchPromotedSection` (never cached: per-profile). `SectionWithItems.Promos` carries
+the cards; `Items` stays empty. Delivery is **opt-in per request** with the query parameter
+`promoted=1`, accepted on `/home/layout`, `/home/sections` and
+`/home/sections/{id}/items`; absent or any other value means no `promoted` row is delivered —
+synthetic or admin-pinned — and the responses are byte-identical to `main`
+(`/home/sections/system-promoted/items` is then `404 not_found`). Admin section create/update
+rejects `promoted` outside the `home` scope (`validatePromotedScope`), so no library surface can
+ever carry a promoted row past the gate. When the request opts in,
+`Dependencies.Promotions` is wired and the profile has active home cards,
+`SectionHandler.maybeInjectPromoted` inserts a synthetic row
+`{"id": "system-promoted", "section_type": "promoted", "title": "Promoted"}` at the first
+card's `placement.home_position` (default `1`, clamped to the layout) unless the admin layout
+already contains a `promoted` section (admins may create one through the sections CRUD to pin
+its position). The cards resolved for placement ride on the resolved row
+(`ResolvedSection.Promos`), so `/home/sections` evaluates `ActiveHome` once per request. On
+the wire the section's `items[]` entries are the `promo` variant of the item union:
+`{"content_id": "<promotion id>", "type": "promo", "title": "<headline>", "genres": [],
+"keywords": [], "status": "", "promo": <card>}`. The opt-in contract is proven end to end over
+the three handlers in `TestHomeEndpointsDeliverPromotedOnlyWhenOptedIn` (DB-backed) and at the
+unit level in `TestMaybeInjectPromotedRequiresTheOptInParameter`.
+
+### Client routes
+
+- `GET /promotions?surface=detail|pre_playback&content_id=…` (profile-scoped, mounted beside
+  `/home/dismissals`) → `{"surface": "detail", "promotions": [<card>, …]}` (`[]` when nothing
+  applies). `surface=home` and unknown surfaces are `400 bad_request` (home rides on the section).
+  `503 unavailable` when the service is not wired.
+- Dismiss: `PUT /home/dismissals/promo:<surface>/<promotion id>` with body `{}`; undo with
+  `DELETE` on the same path. `validHomeSurface` accepts `promo:home`, `promo:detail`,
+  `promo:pre_playback`. Dismissals are per profile and per surface.
+- Capability (`GET /notifications/capability`): `"promotions": {"surfaces": ["home", "detail",
+  "pre_playback"]}` beside the S-1 and S-3 blocks; key absent = dormant. A client that sees the
+  key opts in to the home row with `promoted=1` on the home endpoints.
+
+### Admin routes (`/admin/promotions`, beside the S-1 announcements and S-3 ambience CRUD, same admin group)
+
+- `GET /` → `{"promotions": [<promotion>, …], "surfaces": ["home","detail","pre_playback"]}`,
+  highest priority first.
+- `POST /` → `201` with the promotion (contract below). `PUT /{id}` is a full replacement with
+  the same body → `200`. `DELETE /{id}` → `204`; `404 not_found` for unknown ids.
+- `organization_id` naming an unknown organization is `400 bad_request`
+  (`organization_id does not exist`). Errors: `400 bad_request` (validation, message names the
+  field), `503 unavailable` (service not wired).
+- Impressions / clicks: out of scope (nothing stored, no event route).
+
+### Admin promotions contract (source of truth for the garden client)
+
+Request and response copied from the passing handler test
+`TestAdminPromotionsCreateReturnsCreatedPromotion` (`internal/api/handlers/admin_promotions_test.go`).
+`placement`, `subtitle`, `image_width`/`image_height`, `deeplink`, `cta`, `priority`,
+`targeting` (default `{"audience":"all"}`), `dismissible` (default `true`) and
+`organization_id` (default null) may be omitted.
+
+`POST /api/v1/admin/promotions`
+
+```json
+{
+  "surfaces": ["home", "detail", "pre_playback"],
+  "placement": {"home_position": 1, "detail_slot": "below_hero", "content_ids": ["movie-1"]},
+  "kicker": "New this week",
+  "headline": "The Bloem Winter Collection",
+  "subtitle": "Ten films, one long weekend.",
+  "image_url": "https://cdn.example/winter-16x9.jpg",
+  "image_width": 1920,
+  "image_height": 1080,
+  "deeplink": "bloem://collection/winter",
+  "cta": {"label": "Browse", "url": "/collections/winter"},
+  "priority": 5,
+  "starts_at": "2026-11-20T00:00:00Z",
+  "ends_at": "2026-12-01T00:00:00Z",
+  "targeting": {"audience": "all"},
+  "dismissible": true
+}
+```
+
+`201 Created`
+
+```json
+{"id":"01PROMO","organization_id":null,"surfaces":["home","detail","pre_playback"],"placement":{"home_position":1,"detail_slot":"below_hero","content_ids":["movie-1"]},"kicker":"New this week","headline":"The Bloem Winter Collection","subtitle":"Ten films, one long weekend.","image_url":"https://cdn.example/winter-16x9.jpg","image_width":1920,"image_height":1080,"deeplink":"bloem://collection/winter","cta":{"label":"Browse","url":"/collections/winter"},"priority":5,"starts_at":"2026-11-20T00:00:00Z","ends_at":"2026-12-01T00:00:00Z","targeting":{"audience":"all"},"dismissible":true,"created_by":42,"created_at":"2026-11-20T00:00:00Z","updated_at":"2026-11-20T00:00:00Z"}
+```
+
+### Promo card wire shape
+
+One shape on both delivery paths, copied from the passing tests
+`TestPromotionsListForwardsSurfaceContentAndViewer` and
+`TestBuildSectionsResponseEmitsPromoItemVariant`; `subtitle`, `deeplink` and `cta` are
+omitted when empty. The card carries **no timer, wait, skip or countdown field** — the tests
+assert the key set — so the client always keeps "continue to content" as the default action
+on the pre-playback surface.
+
+`GET /api/v1/promotions?surface=detail&content_id=movie-1`
+
+```json
+{"surface":"detail","promotions":[{"id":"01PROMO","kicker":"New this week","headline":"The Bloem Winter Collection","subtitle":"Ten films, one long weekend.","image_url":"https://cdn.example/winter-16x9.jpg","deeplink":"bloem://collection/winter","cta":{"label":"Browse","url":"/collections/winter"},"dismissible":true}]}
+```
+
+The same card inside the home `promoted` section (`/home/sections?promoted=1`):
+
+```json
+{"id":"system-promoted","section_type":"promoted","title":"Promoted","featured":false,"item_limit":1,"total_count":1,"is_custom":false,"customized":false,"items":[{"content_id":"01PROMO","type":"promo","title":"The Bloem Winter Collection","genres":[],"keywords":[],"status":"","promo":{"id":"01PROMO","kicker":"New this week","headline":"The Bloem Winter Collection","subtitle":"Ten films, one long weekend.","image_url":"https://cdn.example/winter-16x9.jpg","deeplink":"bloem://collection/winter","cta":{"label":"Browse","url":"/collections/winter"},"dismissible":true}}]}
+```
