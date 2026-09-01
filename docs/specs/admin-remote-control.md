@@ -294,3 +294,15 @@ Capability advertisement (`PUT /api/v1/devices/{device_id}/remote-control`):
 {"version": 1, "commands": ["pause", "seek", "replan", "collect_diagnostics"]}
 ```
 → `200 {"device_id": "device-9", "version": 1, "commands": ["collect_diagnostics", "pause", "replan", "seek"]}`
+
+### Deferred minors from the S-5a review (ledgered 2026-09-02, pick up in S-5b)
+
+- `Service.OpenReplanOverrides`: a newest `replan` row that is TTL-expired but still `sent`
+  (no deadline fired, e.g. restart mid-command) yields no pin instead of falling back to the
+  previous live row; loop over candidates or lazily expire on read.
+- Admin-side device forget paths (`admin_user_resources.go`, `admin_tenant_members.go`) do not
+  call `Service.ForgetDevice`; a stale `remote_device_capabilities` row lingers (advertise
+  re-checks the registry, so nothing new can be created). Also covers the v3→v2 downgrade edge:
+  bind the row to the client version and trust it only on match.
+- `OnSessionEnded` expires every open command by name; a client that calls `/playback/stop`
+  before its `result` frame is processed leaves a succeeded `stop` audited as `expired`.
