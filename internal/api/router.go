@@ -68,6 +68,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
+	"github.com/Silo-Server/silo-server/internal/remote"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/s3client"
@@ -1104,6 +1105,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	// Build playback handler if session manager is available.
 	var playbackHandler *handlers.PlaybackHandler
 	var adminPlaybackControlHandler *handlers.AdminPlaybackControlHandler
+	var remoteControlHandler *handlers.RemoteControlHandler
 	var playbackCommandDispatcher *playback.CommandDispatcher
 	var streamHandler *handlers.StreamHandler
 	if deps.SessionMgr != nil {
@@ -1272,6 +1274,31 @@ func NewRouter(deps Dependencies) chi.Router {
 		}
 		subtitleAINotifier = playback.NewSubtitleReadyNotifier(deps.SessionMgr, realtimeHub, subtitleInventoryResolver)
 		adminPlaybackControlHandler = handlers.NewAdminPlaybackControlHandler(playbackHandler)
+
+		// Admin remote control, session rail (S-5a,
+		// docs/specs/admin-remote-control.md). The sender rides the playback
+		// handler's existing socket path; the audit lives in Postgres when
+		// there is one. Mounted under the same session-manager guard as the
+		// socket itself, so the /api/v1 route golden is unchanged.
+		{
+			var remoteStore remote.Store = remote.NewMemoryStore()
+			if deps.DB != nil {
+				remoteStore = remote.NewPostgresStore(deps.DB)
+			}
+			var remoteLimiter ratelimit.RateLimiter
+			if deps.RateLimitMW != nil {
+				remoteLimiter = deps.RateLimitMW.SharedLimiter()
+			}
+			remoteService := remote.NewService(remoteStore, handlers.NewPlaybackRemoteSender(playbackHandler), remoteLimiter, remote.DefaultConfig())
+			playbackHandler.RemoteObserver = remoteService
+			if deviceHandler != nil {
+				deviceHandler.RemoteCapabilities = remoteService
+			}
+			remoteControlHandler = handlers.NewRemoteControlHandler(remoteService, playbackHandler, profileHandler, deps.UserStoreProvider)
+			if remoteControlHandler != nil && playbackSessionsLoader != nil {
+				remoteControlHandler.SessionsLoader = playbackSessionsLoader
+			}
+		}
 
 		if deps.DB != nil && deps.FileRepo != nil && viewerResolver != nil && deps.Config != nil && detailSvc != nil {
 			roomTokenService := watchtogether.NewRoomTokenService(deps.Config.Auth.JWTSecret, 24*time.Hour)
@@ -2640,6 +2667,9 @@ func NewRouter(deps Dependencies) chi.Router {
 						// existing household-parent permission checks.
 						household := r.With(apimw.RejectDirectProfileSession)
 						household.Get("/household/sessions", profileHandler.HandleListHouseholdSessions)
+						if remoteControlHandler != nil {
+							household.Post("/household/sessions/{session_id}/commands", remoteControlHandler.HandleHouseholdSendSessionCommand)
+						}
 						household.Get("/", profileHandler.HandleListProfiles)
 						household.Post("/", profileHandler.HandleCreateProfile)
 						household.Delete("/{id}", profileHandler.HandleDeleteProfile)
@@ -2663,6 +2693,11 @@ func NewRouter(deps Dependencies) chi.Router {
 						r.Get("/", deviceHandler.HandleListDevices)
 						r.Delete("/{device_id}", deviceHandler.HandleForgetDevice)
 						r.Delete("/{device_id}/settings", deviceHandler.HandleClearDeviceSettings)
+						if remoteControlHandler != nil {
+							// Capability handshake (S-5a §A): the device
+							// advertises its remote_control block.
+							r.Put("/{device_id}/remote-control", remoteControlHandler.HandleAdvertiseDevice)
+						}
 					})
 				}
 
@@ -3868,6 +3903,14 @@ func NewRouter(deps Dependencies) chi.Router {
 							}
 							if diagnosticsHandler != nil {
 								handlers.RegisterAdminDiagnosticsRoutes(r, diagnosticsHandler)
+							}
+							if remoteControlHandler != nil {
+								r.Route("/remote", func(r chi.Router) {
+									r.Get("/sessions", remoteControlHandler.HandleListSessions)
+									r.Post("/sessions/{session_id}/commands", remoteControlHandler.HandleAdminSendSessionCommand)
+									r.Get("/commands/{command_id}", remoteControlHandler.HandleGetCommand)
+									r.Get("/audit", remoteControlHandler.HandleListAudit)
+								})
 							}
 							if adminPlaybackControlHandler != nil {
 								r.Post("/sessions/{session_id}/pause", adminPlaybackControlHandler.HandlePauseSession)

@@ -117,6 +117,10 @@ POST /api/v1/admin/notifications/push/relay/register	non-media
 GET /api/v1/admin/playback-history	non-media
 GET /api/v1/admin/rate-limits/config	non-media
 PUT /api/v1/admin/rate-limits/config	non-media
+GET /api/v1/admin/remote/audit	non-media
+GET /api/v1/admin/remote/commands/{command_id}	non-media
+GET /api/v1/admin/remote/sessions	non-media
+POST /api/v1/admin/remote/sessions/{session_id}/commands	non-media
 GET /api/v1/admin/request-integrations	non-media
 POST /api/v1/admin/request-integrations	non-media
 DELETE /api/v1/admin/request-integrations/{id}	non-media

@@ -244,6 +244,14 @@ type PlaybackHandler struct {
 	copySeekAnchor    copySeekAnchorResolver
 	realtimeCommandMu sync.Mutex
 	realtimeCommands  map[string]playbackCommandRecord
+	// RemoteObserver mirrors the session socket's hello/ack/result frames
+	// into the remote control audit (S-5a). Nil when remote control is not
+	// wired; every call site checks.
+	RemoteObserver RemoteObserver
+	// RemoteCommandDeadline bounds how long a remote command may wait for an
+	// ack before the server-side fallback fires. Zero means the copy-safety
+	// invalidation deadline; tests shorten it.
+	RemoteCommandDeadline time.Duration
 	// tm owns the transcode-session lifecycle (live map, recipe cards, and
 	// restart reconstruct) shared with the jellycompat handler. The handler
 	// delegates all transcode-session and recipe operations to it.
@@ -1090,6 +1098,7 @@ func (h *PlaybackHandler) finalizeSessionStop(ctx context.Context, session *play
 		ctx = context.Background()
 	}
 	h.cancelPlaybackStartSideEffectsV3(ctx, session.ID)
+	h.notifyRemoteSessionEnded(ctx, session.ID)
 
 	stopResult := h.persistStopAndHistory(ctx, session)
 	if h.WatchScrobbler != nil {
@@ -1140,6 +1149,7 @@ func (h *PlaybackHandler) finalizeSessionAbort(ctx context.Context, session *pla
 		ctx = context.Background()
 	}
 	h.cancelPlaybackStartSideEffectsV3(ctx, session.ID)
+	h.notifyRemoteSessionEnded(ctx, session.ID)
 
 	if h.WatchScrobbler != nil && h.fileResolver != nil {
 		if file, err := h.loadFileByPreferredID(ctx, requestedMediaFileID(session), session.MediaFileID); err == nil && file != nil {

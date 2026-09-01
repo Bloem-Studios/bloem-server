@@ -371,6 +371,11 @@ func (h *NotificationsHandler) HandleUpdatePreferences(w http.ResponseWriter, r 
 	writeJSON(w, http.StatusOK, prefs)
 }
 
+type capabilityRemoteControl struct {
+	Admin     bool `json:"admin"`
+	Household bool `json:"household"`
+}
+
 type capabilityResponse struct {
 	InApp       capabilityInApp          `json:"in_app"`
 	ApplePush   capabilityPush           `json:"apple_push"`
@@ -392,6 +397,9 @@ type capabilityResponse struct {
 	// S-2 (docs/specs/client-engagement.md section B.5): key present =
 	// promotions are delivered on the listed surfaces; absent = dormant.
 	Promotions *capabilityPromotions `json:"promotions,omitempty"`
+	// S-5a (docs/specs/admin-remote-control.md §D): the sender side exists;
+	// clients still only receive per their own advertised list.
+	RemoteControl capabilityRemoteControl `json:"remote_control"`
 }
 
 // capabilityPromotions advertises the S-2 delivery surfaces.
@@ -535,5 +543,6 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		Dismiss:        true,
 		Ambience:       ambienceBlock,
 		Promotions:     promotionsBlock,
+		RemoteControl:  capabilityRemoteControl{Admin: true, Household: true},
 	})
 }

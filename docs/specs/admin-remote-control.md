@@ -138,3 +138,171 @@ PR-sized package with route-contract tests.
 `bloem-android-v3/docs/plan/tasks/WP-24-remote-control.md` (engine-level command executor for
 both session and device rails; capability advertisement; user-facing surfaces for messages and
 reasons). v2 clients are explicitly NOT touched.
+
+## Implementation notes (S-5a) — session rail, on `feat/s5a-remote-control`
+
+Everything below is additive; the v1 route-contract goldens are unchanged (every new route mounts
+only when the playback session manager is wired, exactly like the control socket itself, which the
+golden fixtures do not do). Device rail (§B.2/B.3), device-scoped commands and the admin UI are
+S-5b/S-5c and not touched. The durable rules are in
+[docs/architecture/admin-remote-control.md](../architecture/admin-remote-control.md); the notes
+here are the how.
+
+### Storage
+
+Migration `20260901200034_remote_commands.sql`:
+
+- `remote_commands`: `id`, `scope` (`session|device`), `target_session_id`, `target_device_id`,
+  `target_user_id`, `target_profile_id`, `tenant_id`, `name`, `payload jsonb`, `issued_by`
+  (`user:<id>` for admins, `profile:<id>` for household members — ids only), `issuer_kind`
+  (`admin|household`), `reason`, `state`, `result jsonb`, `error`, `created_at/sent_at/acked_at/
+  finished_at/expires_at`. Indexes on `(target_session_id, state)`, `(target_device_id, state)` and
+  `created_at DESC`. Terminal rows never transition again (a late duplicate result is ignored).
+- `remote_device_capabilities (user_id, profile_id, device_id) → version, commands jsonb`: the
+  persisted §A handshake. Kept beside the audit, not on `user_devices`, so the Silo-identical
+  device registry paths (Postgres and SQLite) stay untouched. No row = not controllable.
+
+### Capability handshake (§A)
+
+Two additive ways in, same row: `PUT /api/v1/devices/{device_id}/remote-control` with
+`{"version":1,"commands":[...]}` (profile-scoped; the device must be registered to the calling
+profile — 404 otherwise, as the device routes answer — and names must be command names the server
+knows, including the S-5b device names so a v3 client can announce its full list today), and the
+control socket's existing `hello.capabilities.commands`, which the server persists against the
+session's device when non-empty. The upstream hello validator only knows the upstream socket
+vocabulary, so the handler strips the remote-control-only names (`replan`, `collect_diagnostics`,
+`refresh_settings`, `sign_out`) before running it and hands the full list to the remote service; a
+hello listing the §A example connects, and a name unknown to both vocabularies still fails the hello
+as upstream does. A v2 hello (empty list) leaves the device untouched. `DELETE /devices/{device_id}`
+(forget) deletes the row. The
+session's device is `X-Silo-Device-Id` at `/playback/start` (falling back to the session claims'
+`device_id`), recorded as `Session.DeviceID`. The server refuses — `state: rejected_unsupported`,
+row written, nothing sent — any command the device did not list.
+`GET /api/v1/notifications/capabilities` grows `remote_control: {admin: true, household: true}`.
+
+### Sender
+
+`internal/remote` — `ValidateSessionPayload` (spec §C table, strict decode, unknown fields
+rejected; `terminate` needs a non-empty reason; `set_audio_track` cannot be `off`), `Store`
+(Postgres + memory), `Service.SendToSession`: validate → session lookup → scope check → rate limit
+(30/min/issuer through the shared `ratelimit` limiter, key `remote:<kind>:<issuer>`) → device
+capability check → `sent` row → deliver. Delivery goes through the playback handler's existing
+`CommandDispatcher`/`RealtimeHub`/`CommandTracker` path via `NewPlaybackRemoteSender`; no second
+socket registry. Missing or closed socket → **409 `session_not_connected`** and the row is left
+`failed`. The socket's `ack` → `accepted` (only from the session the command was sent to),
+`result` → `done|rejected` (with the client's error), and the 8 s command deadline → `expired`
+(for `stop`/`terminate` the server also tears the session down, as the admin control routes
+already do). An unanswered command that never hit its deadline reads as `expired` once
+`expires_at` (60 s) has passed, and every command still open when its session ends is expired
+then. `ttl_seconds` in the request body belongs to the device rail: a non-zero value on a session
+command is `400 invalid_payload`, not ignored.
+
+### `replan` (§C, new)
+
+`{name:"replan", payload:{overrides:{transcode: auto|force|direct, max_bitrate_kbps?, video_codec?,
+audio_codec?, container?}, reason}}` pins `playback.PlanOverridesV3` on the session and emits
+`plan_invalidated` (`reason: admin_replan`, `plan_id` = the current plan) with the command's own
+`command_id`, through the same negotiation the copy-safety notifier applies: the attempt must have
+negotiated `plan_invalidated_v1` and the socket must be live, otherwise **409 `replan_unavailable`**.
+The client's next `POST /playback/{session_id}/replan` sees the durable start request narrowed by
+`ApplyPlanOverridesV3` (bandwidth cap lowered, never raised; `direct` clears cap/estimate/metered
+and asks for original quality; codec/container pins filter the advertised decode capabilities, so
+they decide what counts as directly playable — the transcode recipe stays the server's h264/aac)
+plus `PlannerInputV3.ForceTranscode` for `force`. Household members cannot send `replan`.
+
+The pin is not process memory: the replan handler reads the session's newest replan command row in
+`sent | accepted | done` from the remote store (`Service.OpenReplanOverrides`) and derives the
+overrides from its payload, so an instance that never delivered the command applies it when it
+serves the client's `/replan`. What stays single-instance is the socket delivery itself: the
+`RealtimeHub` is per process, so the admin's send must land on the instance holding the session's
+socket (a miss is `409 session_not_connected`). The command is marked **`done`** when the client's
+replan commits (`OnSessionReplanned`, result `{status, plan_id}`). That fires on *any* client replan
+for the session — a seek re-anchor or failure recovery that happens to follow the command counts —
+which is acceptable because every replan after the pin plans with the overrides applied, so the
+observable outcome ("the session now runs the admin's plan") is the same whichever replan came
+first. `done` keeps the pin (later client replans keep the admin's plan); `rejected`, `expired`
+(deadline, TTL, or session end) and `failed` release it; a newer replan replaces it.
+
+### Endpoints (§D)
+
+Admin, inside the `requireActingAdmin` group: `GET /admin/remote/sessions` (the admin sessions
+loader rows plus `remote_control {device_id, connected, controllable, commands}` and
+`plan_summary`; buffer health from progress reports is not surfaced yet), `POST
+/admin/remote/sessions/{session_id}/commands` → `201` command row, `GET
+/admin/remote/commands/{command_id}`, `GET /admin/remote/audit?session_id&issued_by&issuer_kind&
+limit&offset`. Tenancy reuses `adminResourceOrganization` (the scoping the tenant-member device
+routes apply): when set, sessions whose `TenantID` differs are hidden and refused with 403.
+`GET /admin/remote/devices` is deferred to S-5b with the device rail. Household: `POST
+/profiles/household/sessions/{session_id}/commands`, same body, primary profile or admin only
+(the household sessions listing's rule), sessions of the caller's own account only, reduced set
+(`pause unpause play_pause seek stop set_volume set_audio_track set_subtitle_track
+display_message`) → 403 `command_not_allowed` otherwise.
+
+### Command contract
+
+Request (`POST /api/v1/admin/remote/sessions/{session_id}/commands`, from
+`TestRemoteControlAdminSendsAndTracksAckResultOverFakeSocket`):
+
+```json
+{"name": "seek", "payload": {"position_ms": 90000}, "reason": "skip recap"}
+```
+
+Response `201` (and the shape of `GET /admin/remote/commands/{command_id}` and each audit row):
+
+```json
+{
+  "command_id": "5f1c…",
+  "scope": "session",
+  "session_id": "sess-…",
+  "device_id": "device-1",
+  "user_id": 7,
+  "profile_id": "profile-1",
+  "name": "seek",
+  "payload": {"position_ms": 90000},
+  "issued_by": "user:1",
+  "issuer_kind": "admin",
+  "reason": "skip recap",
+  "state": "sent",
+  "created_at": "2026-09-01T20:00:00Z",
+  "sent_at": "2026-09-01T20:00:00Z",
+  "expires_at": "2026-09-01T20:01:00Z"
+}
+```
+
+`state` walks `sent → accepted → done | rejected`, or `expired`; `rejected_unsupported` (device did
+not list the command) and `failed` (delivery error) are terminal at creation. After a result,
+`result` is `{"status":"completed"}` / `{"status":"rejected"}` (`error` carries the client's
+error), and for `replan` `{"status":"completed","plan_id":"…"}`. Frame on the wire, unchanged
+protocol:
+
+```json
+{"type": "command", "command_id": "5f1c…", "session_id": "sess-…", "name": "seek",
+ "reason": "skip recap", "issued_by": {"kind": "admin"}, "deadline_ms": 8000,
+ "payload": {"position_ms": 90000}}
+```
+
+Replan request → same response shape with `name: "replan"`; the client receives
+`{"type":"command","name":"plan_invalidated","payload":{"reason":"admin_replan","plan_id":"…"}}`.
+
+Errors: `400 invalid_payload | unknown_command | reason_required | bad_request`,
+`403 forbidden | command_not_allowed`, `404 not_found`, `409 session_not_connected |
+replan_unavailable`, `429 rate_limited`.
+
+Capability advertisement (`PUT /api/v1/devices/{device_id}/remote-control`):
+
+```json
+{"version": 1, "commands": ["pause", "seek", "replan", "collect_diagnostics"]}
+```
+→ `200 {"device_id": "device-9", "version": 1, "commands": ["collect_diagnostics", "pause", "replan", "seek"]}`
+
+### Deferred minors from the S-5a review (ledgered 2026-09-02, pick up in S-5b)
+
+- `Service.OpenReplanOverrides`: a newest `replan` row that is TTL-expired but still `sent`
+  (no deadline fired, e.g. restart mid-command) yields no pin instead of falling back to the
+  previous live row; loop over candidates or lazily expire on read.
+- Admin-side device forget paths (`admin_user_resources.go`, `admin_tenant_members.go`) do not
+  call `Service.ForgetDevice`; a stale `remote_device_capabilities` row lingers (advertise
+  re-checks the registry, so nothing new can be created). Also covers the v3→v2 downgrade edge:
+  bind the row to the client version and trust it only on match.
+- `OnSessionEnded` expires every open command by name; a client that calls `/playback/stop`
+  before its `result` frame is processed leaves a succeeded `stop` audited as `expired`.
