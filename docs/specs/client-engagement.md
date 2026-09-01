@@ -54,9 +54,13 @@ New small subsystem; delivery rides existing surfaces.
    Admin CRUD: `/admin/promotions`.
 2. **Home delivery**: new `SectionType` `promoted` in `internal/sections/types.go:13-51` with a
    resolver in the fetcher — promo cards flow through the existing `/home/layout` +
-   `/home/sections` contract. Old clients ignore the unknown section type; capability-aware v3
-   clients render it. Card items carry free-form fields (not media items) — the section item
-   union grows an optional `promo` variant.
+   `/home/sections` contract, **opt-in per request**: the section is delivered only when the
+   client sends `promoted=1`. Old clients cannot be relied on to ignore an unknown section type
+   (pre-S-2 and upstream-compat clients decode `section_type` as a plain string with no
+   unknown-type drop), so without the parameter the home responses are identical to a build
+   without S-2; capability-aware v3 clients learn support from the capability echo, opt in, and
+   render the row. Card items carry free-form fields (not media items) — the section item union
+   grows an optional `promo` variant.
 3. **Detail/pre-playback delivery**: `GET /promotions?surface=detail&content_id=…` (and
    `surface=pre_playback`). Detail responses have no extensibility slot today; a separate fetch
    keeps the v1 contract untouched.
@@ -485,17 +489,23 @@ starts_at, id`. Dismissal-store failures degrade to "nothing dismissed" (logged)
 
 `SectionType` `promoted` (`internal/sections/types.go`) resolves in
 `Fetcher.fetchPromotedSection` (never cached: per-profile). `SectionWithItems.Promos` carries
-the cards; `Items` stays empty. When `Dependencies.Promotions` is wired and the profile has
-active home cards, `SectionHandler.maybeInjectPromoted` inserts a synthetic row
-`{"id": "system-promoted", "section_type": "promoted", "title": "Promoted"}` into
-`/home/layout`, `/home/sections` and `/home/sections/system-promoted/items` at the first
+the cards; `Items` stays empty. Delivery is **opt-in per request** with the query parameter
+`promoted=1`, accepted on `/home/layout`, `/home/sections` and
+`/home/sections/{id}/items`; absent or any other value means no `promoted` row is delivered —
+synthetic or admin-pinned — and the responses are byte-identical to `main`
+(`/home/sections/system-promoted/items` is then `404 not_found`). When the request opts in,
+`Dependencies.Promotions` is wired and the profile has active home cards,
+`SectionHandler.maybeInjectPromoted` inserts a synthetic row
+`{"id": "system-promoted", "section_type": "promoted", "title": "Promoted"}` at the first
 card's `placement.home_position` (default `1`, clamped to the layout) unless the admin layout
 already contains a `promoted` section (admins may create one through the sections CRUD to pin
-its position). On the wire the section's `items[]` entries are the `promo` variant of the item
-union: `{"content_id": "<promotion id>", "type": "promo", "title": "<headline>", "genres": [],
-"keywords": [], "status": "", "promo": <card>}`. Old clients ignore the unknown section type
-(`TestOldClientsIgnoreThePromotedSectionType`; there is no shared v1 fixture decoder in this
-repository, so the test models the old-client decode directly).
+its position). The cards resolved for placement ride on the resolved row
+(`ResolvedSection.Promos`), so `/home/sections` evaluates `ActiveHome` once per request. On
+the wire the section's `items[]` entries are the `promo` variant of the item union:
+`{"content_id": "<promotion id>", "type": "promo", "title": "<headline>", "genres": [],
+"keywords": [], "status": "", "promo": <card>}`. The opt-in contract is proven end to end over
+the three handlers in `TestHomeEndpointsDeliverPromotedOnlyWhenOptedIn` (DB-backed) and at the
+unit level in `TestMaybeInjectPromotedRequiresTheOptInParameter`.
 
 ### Client routes
 
@@ -507,7 +517,8 @@ repository, so the test models the old-client decode directly).
   `DELETE` on the same path. `validHomeSurface` accepts `promo:home`, `promo:detail`,
   `promo:pre_playback`. Dismissals are per profile and per surface.
 - Capability (`GET /notifications/capability`): `"promotions": {"surfaces": ["home", "detail",
-  "pre_playback"]}` beside the S-1 and S-3 blocks; key absent = dormant.
+  "pre_playback"]}` beside the S-1 and S-3 blocks; key absent = dormant. A client that sees the
+  key opts in to the home row with `promoted=1` on the home endpoints.
 
 ### Admin routes (`/admin/promotions`, beside the S-1 announcements and S-3 ambience CRUD, same admin group)
 
@@ -571,7 +582,7 @@ on the pre-playback surface.
 {"surface":"detail","promotions":[{"id":"01PROMO","kicker":"New this week","headline":"The Bloem Winter Collection","subtitle":"Ten films, one long weekend.","image_url":"https://cdn.example/winter-16x9.jpg","deeplink":"bloem://collection/winter","cta":{"label":"Browse","url":"/collections/winter"},"dismissible":true}]}
 ```
 
-The same card inside the home `promoted` section (`/home/sections`):
+The same card inside the home `promoted` section (`/home/sections?promoted=1`):
 
 ```json
 {"id":"system-promoted","section_type":"promoted","title":"Promoted","featured":false,"item_limit":1,"total_count":1,"is_custom":false,"customized":false,"items":[{"content_id":"01PROMO","type":"promo","title":"The Bloem Winter Collection","genres":[],"keywords":[],"status":"","promo":{"id":"01PROMO","kicker":"New this week","headline":"The Bloem Winter Collection","subtitle":"Ten films, one long weekend.","image_url":"https://cdn.example/winter-16x9.jpg","deeplink":"bloem://collection/winter","cta":{"label":"Browse","url":"/collections/winter"},"dismissible":true}}]}
