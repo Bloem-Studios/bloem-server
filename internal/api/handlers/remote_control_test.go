@@ -363,40 +363,175 @@ func TestRemoteControlReplanEmitsPlanInvalidatedAndCompletesOnPlanFetch(t *testi
 	if payload.PlanID != "plan-old" || payload.Reason != PlanInvalidatedAdminReplan {
 		t.Fatalf("plan_invalidated payload = %+v", payload)
 	}
-	overrides, ok := h.playback.remotePlanOverridesV3(h.session.ID)
-	if !ok || overrides.Transcode != "force" || overrides.MaxBitrateKbps != 3000 {
+	overrides, ok := h.playback.remotePlanOverridesV3(ctx, h.session.ID)
+	if !ok || overrides.Transcode != "force" || overrides.MaxBitrateKbps != 3000 || !overrides.ForceTranscode() {
 		t.Fatalf("pinned overrides = %+v ok=%v", overrides, ok)
 	}
-	if !h.playback.remoteForceTranscodeV3(h.session.ID) {
-		t.Fatal("force transcode not pinned")
-	}
-	narrowed := h.playback.applyRemotePlanOverridesV3(h.session.ID, playback.StartRequestV3{})
-	if narrowed.BandwidthCapKbps == nil || *narrowed.BandwidthCapKbps != 3000 {
-		t.Fatalf("replan request not narrowed: %+v", narrowed.BandwidthCapKbps)
+	narrowed, applied := h.playback.applyRemotePlanOverridesV3(ctx, h.session.ID, playback.StartRequestV3{})
+	if narrowed.BandwidthCapKbps == nil || *narrowed.BandwidthCapKbps != 3000 || !applied.ForceTranscode() {
+		t.Fatalf("replan request not narrowed: %+v %+v", narrowed.BandwidthCapKbps, applied)
 	}
 
-	// The client's plan fetch completes the command.
+	// The client's plan fetch completes the command; the pin survives it so
+	// later client replans (seek re-anchor) keep the admin's plan.
 	h.playback.notifyRemoteSessionReplanned(ctx, h.session.ID, &playback.PlanV3{PlanID: "plan-new"})
 	got, _ := h.service.Get(ctx, command.ID)
 	if got.State != remote.StateDone || !strings.Contains(string(got.Result), `"plan_id":"plan-new"`) {
 		t.Fatalf("replan after plan fetch = %+v", got)
 	}
+	if _, ok := h.playback.remotePlanOverridesV3(ctx, h.session.ID); !ok {
+		t.Fatal("pin released by the client's first replan")
+	}
 
-	// Session end clears the pin.
-	_ = h.playback.stopPlaybackSessionByID(ctx, h.session.ID, true)
-	if _, ok := h.playback.remotePlanOverridesV3(h.session.ID); ok {
-		t.Fatal("pinned overrides survived session stop")
+	// A fresh handler instance sharing only the store (a second API node
+	// serving the client's /replan) applies the same pin.
+	other := NewPlaybackHandler(h.sessions)
+	other.RemoteObserver = remote.NewService(h.store, NewPlaybackRemoteSender(other), nil, remote.DefaultConfig())
+	otherNarrowed, otherApplied := other.applyRemotePlanOverridesV3(ctx, h.session.ID, playback.StartRequestV3{})
+	if otherNarrowed.BandwidthCapKbps == nil || *otherNarrowed.BandwidthCapKbps != 3000 || !otherApplied.ForceTranscode() {
+		t.Fatalf("second instance did not apply the pin: %+v %+v", otherNarrowed.BandwidthCapKbps, otherApplied)
+	}
+}
+
+func TestRemoteControlReplanStillOpenAtSessionEndIsExpiredAndReleasesPin(t *testing.T) {
+	h := newRemoteTestHarness(t, true)
+	ctx := context.Background()
+	if err := h.service.AdvertiseDevice(ctx, 7, "profile-1", "device-1", 1, []playback.CommandName{remote.CommandReplan}); err != nil {
+		t.Fatal(err)
+	}
+	planStore := playback.NewMemoryPlanStoreV3()
+	h.playback.PlanStoreV3 = planStore
+	record := playback.AttemptRecordV3{SessionID: h.session.ID, PlaybackAttemptID: "attempt-1", CurrentPlanID: "plan-old", ExpiresAt: time.Now().Add(time.Hour)}
+	record.NormalizedRequest.ClientFeatures = []string{playback.FeaturePlanInvalidatedV3}
+	if err := planStore.SaveAttempt(ctx, record); err != nil {
+		t.Fatal(err)
+	}
+	command := decodeRemoteCommand(t, h.adminRequest(t, `{"name":"replan","payload":{"overrides":{"transcode":"force"}},"reason":"buffering"}`))
+	if _, ok := h.playback.remotePlanOverridesV3(ctx, h.session.ID); !ok {
+		t.Fatal("pin not readable while the replan is open")
+	}
+	if err := h.playback.stopPlaybackSessionByID(ctx, h.session.ID, true); err != nil {
+		t.Fatalf("stop: %v", err)
+	}
+	got, _ := h.service.Get(ctx, command.ID)
+	if got.State != remote.StateExpired || got.Error == "" {
+		t.Fatalf("open replan after session end = %+v", got)
+	}
+	if _, ok := h.playback.remotePlanOverridesV3(ctx, h.session.ID); ok {
+		t.Fatal("pin survived an expired replan")
+	}
+}
+
+// remoteEndedObserver forwards to the service and reports OnSessionEnded on a
+// channel so a test can wait on the teardown instead of sleeping.
+type remoteEndedObserver struct {
+	*remote.Service
+	ended chan string
+}
+
+func (o *remoteEndedObserver) OnSessionEnded(ctx context.Context, sessionID string) {
+	o.Service.OnSessionEnded(ctx, sessionID)
+	o.ended <- sessionID
+}
+
+func TestRemoteControlDeadlineExpiresCommandAndTearsDownStop(t *testing.T) {
+	h := newRemoteTestHarness(t, true)
+	ctx := context.Background()
+	observer := &remoteEndedObserver{Service: h.service, ended: make(chan string, 1)}
+	h.playback.RemoteObserver = observer
+	h.playback.RemoteCommandDeadline = time.Millisecond
+
+	command := decodeRemoteCommand(t, h.adminRequest(t, `{"name":"stop","reason":"bedtime"}`))
+	if command.State != remote.StateSent {
+		t.Fatalf("state = %s", command.State)
+	}
+	select {
+	case id := <-observer.ended:
+		if id != h.session.ID {
+			t.Fatalf("ended session = %s want %s", id, h.session.ID)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("deadline fallback never ended the session")
+	}
+	got, err := h.service.Get(ctx, command.ID)
+	if err != nil || got.State != remote.StateExpired || got.Error == "" || got.FinishedAt == nil {
+		t.Fatalf("after deadline = %+v err = %v", got, err)
+	}
+	if _, err := h.sessions.GetSession(h.session.ID); err == nil {
+		t.Fatal("stop deadline fallback left the session alive")
+	}
+}
+
+func TestRemoteControlHelloAcceptsRemoteOnlyNames(t *testing.T) {
+	h := newRemoteTestHarness(t, true)
+	ctx := context.Background()
+	hello, _ := json.Marshal(playback.HelloEnvelope{Type: playback.RealtimeMessageTypeHello, SessionID: h.session.ID,
+		Client:       playback.HelloClientInfo{Name: "bloem-android", Version: "3.0.0"},
+		Capabilities: playback.HelloCapabilities{Commands: []playback.CommandName{playback.CommandPause, remote.CommandReplan, "collect_diagnostics"}}})
+	if err := h.playback.handleRealtimeClientMessage(h.session.ID, hello); err != nil {
+		t.Fatalf("hello listing remote-only names rejected: %v", err)
+	}
+	session, err := h.sessions.GetSession(h.session.ID)
+	if err != nil || !session.HasRealtimeConnection {
+		t.Fatalf("session not connected after hello: %+v err=%v", session, err)
+	}
+	capability, err := h.service.DeviceCapability(ctx, 7, "profile-1", "device-1")
+	if err != nil || capability == nil || len(capability.Commands) != 3 || !capability.Supports(remote.CommandReplan) || !capability.Supports("collect_diagnostics") || !capability.Supports(playback.CommandPause) {
+		t.Fatalf("capability after hello = %+v err = %v", capability, err)
+	}
+	// Names unknown to both vocabularies still fail the upstream validator.
+	bogus, _ := json.Marshal(playback.HelloEnvelope{Type: playback.RealtimeMessageTypeHello, SessionID: h.session.ID,
+		Client: playback.HelloClientInfo{Name: "x", Version: "1"}, Capabilities: playback.HelloCapabilities{Commands: []playback.CommandName{"reboot"}}})
+	if err := h.playback.handleRealtimeClientMessage(h.session.ID, bogus); err == nil {
+		t.Fatal("hello with an unknown command name was accepted")
+	}
+}
+
+func TestRemoteControlAckFromAnotherSessionIsIgnored(t *testing.T) {
+	h := newRemoteTestHarness(t, true)
+	ctx := context.Background()
+	other, err := h.sessions.StartSession(7, "profile-1", 101, playback.PlayDirect, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := decodeRemoteCommand(t, h.adminRequest(t, `{"name":"pause"}`))
+	ack, _ := json.Marshal(playback.AckEnvelope{Type: playback.RealtimeMessageTypeAck, CommandID: command.ID, SessionID: other.ID, Status: playback.RealtimeAckStatusAccepted})
+	_ = h.playback.handleRealtimeClientMessage(other.ID, ack)
+	got, _ := h.service.Get(ctx, command.ID)
+	if got.State != remote.StateSent {
+		t.Fatalf("another session's ack moved the command to %s", got.State)
+	}
+}
+
+func TestRemoteControlTTLSecondsRejectedOnSessionRail(t *testing.T) {
+	h := newRemoteTestHarness(t, true)
+	rr := h.adminRequest(t, `{"name":"pause","ttl_seconds":60}`)
+	var resp errorResponse
+	_ = json.NewDecoder(rr.Body).Decode(&resp)
+	if rr.Code != http.StatusBadRequest || resp.Error != "invalid_payload" {
+		t.Fatalf("ttl_seconds on a session command = %d %q", rr.Code, resp.Error)
+	}
+	if len(h.conn.frames) != 0 {
+		t.Fatal("rejected command reached the socket")
 	}
 }
 
 func TestRemoteControlAdvertiseDeviceEndpoint(t *testing.T) {
+	deviceHandler, store := newDevicesTestHandler(t)
+	seedDevice(t, store, "profile-1", "device-9", "Shield")
 	h := newRemoteTestHarness(t, false)
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/devices/device-9/remote-control", strings.NewReader(`{"version":1,"commands":["pause","seek","replan","collect_diagnostics"]}`))
-	req = withPlaybackRouteParam(req, "device_id", "device-9")
-	ctx := apimw.SetClaims(req.Context(), &auth.Claims{UserID: 7, Role: "user"})
-	ctx = apimw.SetProfileID(ctx, "profile-1")
-	rr := httptest.NewRecorder()
-	h.handler.HandleAdvertiseDevice(rr, req.WithContext(ctx))
+	h.handler.storeProv = testUserStoreProvider{store: store}
+	deviceHandler.RemoteCapabilities = h.service
+	advertise := func(deviceID, body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/devices/"+deviceID+"/remote-control", strings.NewReader(body))
+		req = withPlaybackRouteParam(req, "device_id", deviceID)
+		ctx := apimw.SetClaims(req.Context(), &auth.Claims{UserID: 1, Role: "user"})
+		ctx = apimw.SetProfileID(ctx, "profile-1")
+		rr := httptest.NewRecorder()
+		h.handler.HandleAdvertiseDevice(rr, req.WithContext(ctx))
+		return rr
+	}
+	rr := advertise("device-9", `{"version":1,"commands":["pause","seek","replan","collect_diagnostics"]}`)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("advertise = %d %s", rr.Code, rr.Body.String())
 	}
@@ -405,11 +540,21 @@ func TestRemoteControlAdvertiseDeviceEndpoint(t *testing.T) {
 	if resp.DeviceID != "device-9" || resp.Version != 1 || len(resp.Commands) != 4 {
 		t.Fatalf("advertise response = %+v", resp)
 	}
-	bad := httptest.NewRequest(http.MethodPut, "/api/v1/devices/device-9/remote-control", strings.NewReader(`{"commands":["reboot"]}`))
-	bad = withPlaybackRouteParam(bad, "device_id", "device-9")
-	rr = httptest.NewRecorder()
-	h.handler.HandleAdvertiseDevice(rr, bad.WithContext(ctx))
-	if rr.Code != http.StatusBadRequest {
+	if rr := advertise("device-9", `{"commands":["reboot"]}`); rr.Code != http.StatusBadRequest {
 		t.Fatalf("unknown command advertise = %d", rr.Code)
+	}
+	// A device this profile never registered is not this caller's to advertise.
+	if rr := advertise("device-of-someone-else", `{"commands":["pause"]}`); rr.Code != http.StatusNotFound {
+		t.Fatalf("unowned device advertise = %d %s", rr.Code, rr.Body.String())
+	}
+	if c, _ := h.service.DeviceCapability(context.Background(), 1, "profile-1", "device-of-someone-else"); c != nil {
+		t.Fatal("capability row created for an unowned device")
+	}
+	// Forgetting the device drops its block.
+	if rec := routeDevice(t, deviceHandler, http.MethodDelete, "/devices/device-9", "device-9", "profile-1", deviceHandler.HandleForgetDevice); rec.Code != http.StatusNoContent {
+		t.Fatalf("forget = %d %s", rec.Code, rec.Body.String())
+	}
+	if c, _ := h.service.DeviceCapability(context.Background(), 1, "profile-1", "device-9"); c != nil {
+		t.Fatal("capability row survived forget")
 	}
 }

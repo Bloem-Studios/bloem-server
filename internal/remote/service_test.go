@@ -312,3 +312,82 @@ func TestAdvertiseDeviceRejectsUnknownNames(t *testing.T) {
 		t.Fatalf("hello list not persisted")
 	}
 }
+
+func TestOpenReplanOverridesReadsNewestLiveRowFromStore(t *testing.T) {
+	svc, store, _ := newTestService(t)
+	ctx := context.Background()
+	if _, ok := svc.OpenReplanOverrides(ctx, "s1"); ok {
+		t.Fatal("pin without any replan")
+	}
+	first, err := svc.SendToSession(ctx, adminInput("s1", CommandReplan, `{"overrides":{"transcode":"force","max_bitrate_kbps":2000}}`, "buffering"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A second service over the same store (another instance) sees the pin.
+	other := NewService(store, &fakeSender{}, nil, DefaultConfig())
+	if got, ok := other.OpenReplanOverrides(ctx, "s1"); !ok || got.MaxBitrateKbps != 2000 || !got.ForceTranscode() {
+		t.Fatalf("other instance pin = %+v ok=%v", got, ok)
+	}
+	// Completion keeps the pin; a newer replan replaces it.
+	svc.OnSessionReplanned(ctx, "s1", "plan-2")
+	if got, ok := svc.OpenReplanOverrides(ctx, "s1"); !ok || got.MaxBitrateKbps != 2000 {
+		t.Fatalf("pin after done = %+v ok=%v", got, ok)
+	}
+	second, err := svc.SendToSession(ctx, adminInput("s1", CommandReplan, `{"overrides":{"transcode":"direct"}}`, "try direct"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := svc.OpenReplanOverrides(ctx, "s1"); !ok || got.Transcode != "direct" || got.MaxBitrateKbps != 0 {
+		t.Fatalf("newest replan not pinned: %+v ok=%v", got, ok)
+	}
+	// A rejected newest replan falls back to the previous live one.
+	svc.OnResult(ctx, second.ID, false, "cannot")
+	if got, ok := svc.OpenReplanOverrides(ctx, "s1"); !ok || got.MaxBitrateKbps != 2000 {
+		t.Fatalf("pin after rejected newest = %+v ok=%v", got, ok)
+	}
+	// Session end expires whatever is still open and only that.
+	third, err := svc.SendToSession(ctx, adminInput("s1", CommandReplan, `{"overrides":{"transcode":"auto","video_codec":"h264"}}`, "pin codec"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.OnSessionEnded(ctx, "s1")
+	if got, _ := svc.Get(ctx, third.ID); got.State != StateExpired {
+		t.Fatalf("open replan at session end = %s", got.State)
+	}
+	if got, _ := svc.Get(ctx, first.ID); got.State != StateDone {
+		t.Fatalf("done replan touched at session end: %s", got.State)
+	}
+	if got, ok := svc.OpenReplanOverrides(ctx, "s1"); !ok || got.MaxBitrateKbps != 2000 {
+		t.Fatalf("pin after session end = %+v ok=%v", got, ok)
+	}
+	// An unanswered replan past its TTL is not a pin.
+	base := time.Now()
+	svc.SetClock(func() time.Time { return base })
+	if _, err := svc.SendToSession(ctx, adminInput("s1", CommandReplan, `{"overrides":{"transcode":"force","max_bitrate_kbps":500}}`, "late")); err != nil {
+		t.Fatal(err)
+	}
+	svc.SetClock(func() time.Time { return base.Add(2 * time.Minute) })
+	if got, ok := svc.OpenReplanOverrides(ctx, "s1"); ok && got.MaxBitrateKbps == 500 {
+		t.Fatalf("expired replan still pinned: %+v", got)
+	}
+}
+
+func TestForgetDeviceDropsCapabilityAndRemoteOnlyNames(t *testing.T) {
+	svc, _, _ := newTestService(t)
+	ctx := context.Background()
+	if err := svc.ForgetDevice(ctx, 7, "p1", "dev-1"); err != nil {
+		t.Fatal(err)
+	}
+	if c, _ := svc.DeviceCapability(ctx, 7, "p1", "dev-1"); c != nil {
+		t.Fatal("capability survived forget")
+	}
+	cmd, err := svc.SendToSession(ctx, adminInput("s1", playback.CommandPause, ``, ""))
+	if err != nil || cmd.State != StateRejectedUnsupported {
+		t.Fatalf("forgotten device still controllable: %+v err=%v", cmd, err)
+	}
+	for name, want := range map[playback.CommandName]bool{CommandReplan: true, "collect_diagnostics": true, playback.CommandPause: false, "reboot": false} {
+		if got := IsRemoteOnlyCommand(name); got != want {
+			t.Errorf("IsRemoteOnlyCommand(%s) = %v want %v", name, got, want)
+		}
+	}
+}

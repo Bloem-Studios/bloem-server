@@ -88,4 +88,25 @@ func TestPostgresStoreRoundTrip(t *testing.T) {
 	if _, err := store.Get(ctx, "missing"); !errors.Is(err, ErrCommandNotFound) {
 		t.Fatalf("missing err = %v", err)
 	}
+	latest, err := store.LatestSessionCommand(ctx, sessionID, CommandReplan, []State{StateSent, StateAccepted, StateDone})
+	if err != nil || latest == nil || latest.ID != cmd.ID {
+		t.Fatalf("latest = %+v err = %v", latest, err)
+	}
+	if none, err := store.LatestSessionCommand(ctx, sessionID, CommandReplan, []State{StateSent}); err != nil || none != nil {
+		t.Fatalf("latest in other states = %+v err = %v", none, err)
+	}
+	open := &Command{ID: uuid.NewString(), Scope: ScopeSession, TargetSessionID: sessionID, TargetUserID: user.ID, Name: playback.CommandPause, IssuedBy: "admin:1", IssuerKind: IssuerAdmin, State: StateSent, CreatedAt: now.Add(time.Minute)}
+	if err := store.Insert(ctx, open); err != nil {
+		t.Fatal(err)
+	}
+	ids, err = store.TransitionOpenSessionCommands(ctx, sessionID, "", StateExpired, nil, "session ended", now.Add(2*time.Minute))
+	if err != nil || len(ids) != 1 || ids[0] != open.ID {
+		t.Fatalf("any-name transition ids=%v err=%v", ids, err)
+	}
+	if err := store.DeleteDeviceCapability(ctx, user.ID, "p1", "dev-1"); err != nil {
+		t.Fatal(err)
+	}
+	if gone, err := store.GetDeviceCapability(ctx, user.ID, "p1", "dev-1"); err != nil || gone != nil {
+		t.Fatalf("capability after delete = %+v err = %v", gone, err)
+	}
 }
