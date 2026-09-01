@@ -11,6 +11,7 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/notifications"
+	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -29,6 +30,8 @@ type NotificationsHandler struct {
 	dismissStore deliveryDismisser
 	// ambience is the optional S-3 pack registry echoed on the capability payload.
 	ambience ambienceAccountSource
+	// promotions advertises the S-2 delivery surfaces on the capability payload.
+	promotions bool
 }
 
 // NewNotificationsHandler creates a NotificationsHandler.
@@ -386,7 +389,18 @@ type capabilityResponse struct {
 	// active, key absent = dormant (registry not wired). Carries the active
 	// packs for this account (deployment-wide + the account's organizations).
 	Ambience *[]ambience.Wire `json:"ambience,omitempty"`
+	// S-2 (docs/specs/client-engagement.md section B.5): key present =
+	// promotions are delivered on the listed surfaces; absent = dormant.
+	Promotions *capabilityPromotions `json:"promotions,omitempty"`
 }
+
+// capabilityPromotions advertises the S-2 delivery surfaces.
+type capabilityPromotions struct {
+	Surfaces []string `json:"surfaces"`
+}
+
+// SetPromotions advertises the S-2 promotions capability.
+func (h *NotificationsHandler) SetPromotions(enabled bool) { h.promotions = enabled }
 
 // ambienceAccountSource supplies the active packs visible to an account.
 type ambienceAccountSource interface {
@@ -501,6 +515,10 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		}
 		ambienceBlock = &active
 	}
+	var promotionsBlock *capabilityPromotions
+	if h.promotions {
+		promotionsBlock = &capabilityPromotions{Surfaces: promotions.Surfaces}
+	}
 	writeJSON(w, http.StatusOK, capabilityResponse{
 		InApp:       capabilityInApp{Enabled: h.system.Settings.UIEnabled(r.Context())},
 		ApplePush:   applePush,
@@ -516,5 +534,6 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		SupportedTypes: notifications.SupportedDeliveryTypes(),
 		Dismiss:        true,
 		Ambience:       ambienceBlock,
+		Promotions:     promotionsBlock,
 	})
 }

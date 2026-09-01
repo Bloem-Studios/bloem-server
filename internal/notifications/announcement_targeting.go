@@ -239,3 +239,10 @@ func (s systemRecipientSource) ProfileLibraryAllowed(ctx context.Context, userID
 	}
 	return false, nil
 }
+
+// ValidateTargeting is the exported form of validateTargeting for the other
+// engagement subsystems (S-2 promotions) that reuse the announcement audience
+// vocabulary. Errors wrap ErrAnnouncementInvalid.
+func ValidateTargeting(in AnnouncementTargeting) (AnnouncementTargeting, error) {
+	return validateTargeting(in)
+}
