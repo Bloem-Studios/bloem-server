@@ -155,6 +155,12 @@ func TestDeliveryRepositoryFiltersExpiredAndDismissed(t *testing.T) {
 	if ok, err := repo.Dismiss(ctx, "other-profile", "plain"); err != nil || ok {
 		t.Fatalf("dismiss across profiles must not transition: ok=%v err=%v", ok, err)
 	}
+	if ok, err := repo.Dismiss(ctx, profile, "expired"); err != nil || ok {
+		t.Fatalf("expired rows are not dismissible: ok=%v err=%v", ok, err)
+	}
+	if row, err := repo.GetByID(ctx, profile, "expired"); err != nil || row != nil {
+		t.Fatalf("GetByID must hide expired rows: row=%v err=%v", row, err)
+	}
 	// Plain rows (no body) can be dismissed too.
 	if ok, err := repo.Dismiss(ctx, profile, "plain"); err != nil || !ok {
 		t.Fatalf("dismiss plain: ok=%v err=%v", ok, err)
@@ -311,6 +317,10 @@ func TestAnnouncementServiceCreateFansOutAndWithdraws(t *testing.T) {
 				t.Fatalf("withdrawn announcement still visible to %s", profile)
 			}
 		}
+	}
+	// The read-then-withdrawn row is expired: GET /notifications/{id} 404s.
+	if row, err := system.Deliveries.GetByID(ctx, "p1", dispatchedID(dispatcher, "p1")); err != nil || row != nil {
+		t.Fatalf("withdrawn read row must not be fetchable by id: row=%v err=%v", row, err)
 	}
 	got, _ := svc.repo.Get(ctx, created.ID)
 	if got == nil || got.WithdrawnAt == nil {

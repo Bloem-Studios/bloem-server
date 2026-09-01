@@ -42,7 +42,9 @@ func (f *fakeAnnouncementService) Withdraw(_ context.Context, id string) error {
 func TestAdminAnnouncementsCreateReturnsCreatedWithRecipientCount(t *testing.T) {
 	svc := &fakeAnnouncementService{}
 	h := &AdminAnnouncementsHandler{service: svc}
-	body := `{"type":"system.alert","body":{"title":"Maintenance","body":"Tonight","severity":"warning","dismissible":true},"targeting":{"audience":"role","role":"admin"}}`
+	// This request body is the client contract quoted in
+	// docs/specs/client-engagement.md "Implementation notes (S-1)".
+	body := `{"type":"system.alert","body":{"title":"Maintenance","body":"Tonight","severity":"warning","deeplink":"bloem://settings/status","image_url":"https://cdn.example/banner.png","dismissible":true,"cta":{"label":"Status","url":"https://status.example"},"expires_at":"2030-01-01T00:00:00Z"},"targeting":{"audience":"role","role":"admin"}}`
 	rec := httptest.NewRecorder()
 	h.HandleCreate(rec, downloadTestRequest(http.MethodPost, "/admin/notifications/announcements", []byte(body), 42, "", ""))
 	if rec.Code != http.StatusCreated {
@@ -55,8 +57,11 @@ func TestAdminAnnouncementsCreateReturnsCreatedWithRecipientCount(t *testing.T) 
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.ID != "ann-1" || got.RecipientCount != 3 {
+	if got.ID != "ann-1" || got.RecipientCount != 3 || got.Body.Deeplink != "bloem://settings/status" || got.Body.CTA == nil {
 		t.Fatalf("unexpected response: %+v", got)
+	}
+	if !strings.HasPrefix(rec.Body.String(), `{"id":"ann-1","type":"system.alert","body":{"title":"Maintenance"`) {
+		t.Fatalf("response must carry a top-level id first: %s", rec.Body.String())
 	}
 }
 

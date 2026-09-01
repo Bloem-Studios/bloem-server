@@ -111,10 +111,10 @@ func NormalizeAlertBody(in AlertBody, now time.Time) (AlertBody, error) {
 		out.Dismissible = false
 	}
 	if out.Deeplink != "" && !validAlertLink(out.Deeplink) {
-		return AlertBody{}, fmt.Errorf("%w: deeplink must be an absolute URL or an app path", ErrAlertBodyInvalid)
+		return AlertBody{}, fmt.Errorf("%w: deeplink must be an https URL, a bloem:// deeplink, or an app path", ErrAlertBodyInvalid)
 	}
 	if out.ImageURL != "" && !validAlertHTTPURL(out.ImageURL) {
-		return AlertBody{}, fmt.Errorf("%w: image_url must be an http(s) URL", ErrAlertBodyInvalid)
+		return AlertBody{}, fmt.Errorf("%w: image_url must be an https URL", ErrAlertBodyInvalid)
 	}
 	if out.CTA != nil {
 		cta := AlertCTA{Label: strings.TrimSpace(out.CTA.Label), URL: strings.TrimSpace(out.CTA.URL)}
@@ -128,7 +128,7 @@ func NormalizeAlertBody(in AlertBody, now time.Time) (AlertBody, error) {
 				return AlertBody{}, fmt.Errorf("%w: cta label exceeds %d characters", ErrAlertBodyInvalid, alertCTAMaxLen)
 			}
 			if !validAlertLink(cta.URL) {
-				return AlertBody{}, fmt.Errorf("%w: cta url must be an absolute URL or an app path", ErrAlertBodyInvalid)
+				return AlertBody{}, fmt.Errorf("%w: cta url must be an https URL, a bloem:// deeplink, or an app path", ErrAlertBodyInvalid)
 			}
 			out.CTA = &cta
 		}
@@ -147,9 +147,14 @@ func NormalizeAlertBody(in AlertBody, now time.Time) (AlertBody, error) {
 	return out, nil
 }
 
-// validAlertLink accepts absolute http(s) URLs and app-relative paths
-// ("/item/abc"); anything else (javascript:, data:, protocol-relative) is
-// rejected because clients open these without further vetting.
+// alertAppScheme is the custom scheme the bloem clients register for
+// deeplinks ("bloem://settings/status").
+const alertAppScheme = "bloem"
+
+// validAlertLink accepts https URLs, bloem:// app deeplinks, and app-relative
+// paths ("/item/abc"). javascript:, data:, protocol-relative "//" and every
+// other scheme are rejected because clients open these without further
+// vetting. Applies to deeplink and cta.url.
 func validAlertLink(raw string) bool {
 	if len(raw) > alertURLMaxLen {
 		return false
@@ -157,9 +162,22 @@ func validAlertLink(raw string) bool {
 	if strings.HasPrefix(raw, "/") {
 		return !strings.HasPrefix(raw, "//")
 	}
-	return validAlertHTTPURL(raw)
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	switch strings.ToLower(parsed.Scheme) {
+	case "https":
+		return parsed.Host != ""
+	case alertAppScheme:
+		return true
+	default:
+		return false
+	}
 }
 
+// validAlertHTTPURL accepts https URLs only (image_url: fetched by clients,
+// never mixed content).
 func validAlertHTTPURL(raw string) bool {
 	if len(raw) > alertURLMaxLen {
 		return false
@@ -168,7 +186,7 @@ func validAlertHTTPURL(raw string) bool {
 	if err != nil || parsed.Host == "" {
 		return false
 	}
-	return parsed.Scheme == "http" || parsed.Scheme == "https"
+	return parsed.Scheme == "https"
 }
 
 // ParseAlertBody decodes a stored body column; (nil, false) when the row

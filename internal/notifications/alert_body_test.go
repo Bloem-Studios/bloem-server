@@ -63,13 +63,26 @@ func TestNormalizeAlertBodyAcceptsLinksAndExpiry(t *testing.T) {
 	future := now.Add(time.Hour).In(time.FixedZone("x", 3600))
 	got, err := NormalizeAlertBody(AlertBody{
 		Title:     "t",
-		Deeplink:  "/item/abc",
+		Deeplink:  "bloem://settings/status",
 		ImageURL:  "https://cdn.example/banner.png",
 		CTA:       &AlertCTA{Label: " Open ", URL: "https://example.com/x"},
 		ExpiresAt: &future,
 	}, now)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Deeplink != "bloem://settings/status" {
+		t.Fatalf("bloem:// deeplink should be accepted verbatim, got %q", got.Deeplink)
+	}
+	for _, link := range []string{"https://example.com/x", "bloem://home", "/item/abc"} {
+		if !validAlertLink(link) {
+			t.Errorf("validAlertLink(%q) should accept", link)
+		}
+	}
+	for _, link := range []string{"javascript:alert(1)", "data:text/html,x", "//evil.example/x", "http://example.com"} {
+		if validAlertLink(link) {
+			t.Errorf("validAlertLink(%q) should reject", link)
+		}
 	}
 	if got.CTA == nil || got.CTA.Label != "Open" {
 		t.Fatalf("cta should be trimmed and kept, got %+v", got.CTA)

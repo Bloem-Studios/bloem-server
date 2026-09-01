@@ -241,10 +241,12 @@ func (r *DeliveryRepository) ListSync(ctx context.Context, profileID string, sin
 	return scanDeliveryRows(rows)
 }
 
-// GetByID returns one delivery scoped to the profile; (nil, nil) when absent.
+// GetByID returns one delivery scoped to the profile; (nil, nil) when absent
+// or expired (a withdrawn-then-read row is expired, so a client holding a
+// stale snapshot cannot re-fetch it by id). Dismissed rows stay fetchable.
 func (r *DeliveryRepository) GetByID(ctx context.Context, profileID, id string) (*DeliveryRow, error) {
 	rows, err := r.pool.Query(ctx,
-		deliveryRowSelect+` WHERE d.profile_id = $1 AND d.id = $2`, profileID, id)
+		deliveryRowSelect+` WHERE d.profile_id = $1 AND d.id = $2 AND `+deliveryNotExpired, profileID, id)
 	if err != nil {
 		return nil, fmt.Errorf("get delivery: %w", err)
 	}
@@ -438,11 +440,12 @@ var ErrDeliveryNotDismissible = errors.New("notification is not dismissible")
 // says dismissible=false are refused with ErrDeliveryNotDismissible.
 func (r *DeliveryRepository) Dismiss(ctx context.Context, profileID, id string) (bool, error) {
 	var dismissible *bool
-	var alreadyDismissed bool
+	var alreadyDismissed, expired bool
 	err := r.pool.QueryRow(ctx, `
-		SELECT (body->>'dismissible')::boolean, dismissed_at IS NOT NULL
+		SELECT (body->>'dismissible')::boolean, dismissed_at IS NOT NULL,
+		       expires_at IS NOT NULL AND expires_at <= now()
 		FROM notification_deliveries WHERE profile_id = $1 AND id = $2`,
-		profileID, id).Scan(&dismissible, &alreadyDismissed)
+		profileID, id).Scan(&dismissible, &alreadyDismissed, &expired)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -452,7 +455,9 @@ func (r *DeliveryRepository) Dismiss(ctx context.Context, profileID, id string) 
 	if dismissible != nil && !*dismissible {
 		return false, ErrDeliveryNotDismissible
 	}
-	if alreadyDismissed {
+	if alreadyDismissed || expired {
+		// Expired rows are invisible everywhere else; dismissing one is a
+		// no-op rather than a state change.
 		return false, nil
 	}
 	tag, err := r.pool.Exec(ctx, `
