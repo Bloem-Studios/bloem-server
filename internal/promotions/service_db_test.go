@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/database"
-	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
@@ -314,7 +313,6 @@ func TestActiveHonoursContentIDsAndDismissals(t *testing.T) {
 	if err != nil || len(cards) != 1 {
 		t.Fatalf("undismissed card returns: %v %v", ids(cards), err)
 	}
-	_ = notifications.AudienceAll
 }
 
 func TestActiveHomeUsesFirstCardsPlacementPosition(t *testing.T) {

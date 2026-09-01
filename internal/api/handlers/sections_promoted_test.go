@@ -25,8 +25,13 @@ func (f *fakeHomePromoSource) ActiveHome(context.Context, promotions.Viewer) ([]
 	return f.cards, f.position, nil
 }
 
+// profileRequest is an opted-in (`promoted=1`) profile-scoped home request.
 func profileRequest() *http.Request {
-	req := httptest.NewRequest(http.MethodGet, "/home/layout", nil)
+	return profileRequestFor("/home/layout?promoted=1")
+}
+
+func profileRequestFor(target string) *http.Request {
+	req := httptest.NewRequest(http.MethodGet, target, nil)
 	ctx := apimw.SetClaims(req.Context(), &auth.Claims{UserID: 7, Role: "user"})
 	return req.WithContext(apimw.SetProfileID(ctx, "p1"))
 }
@@ -45,6 +50,9 @@ func TestMaybeInjectPromotedInsertsAtPlacementPosition(t *testing.T) {
 	got := h.maybeInjectPromoted(profileRequest(), homeRows(sections.SectionContinueWatching, sections.SectionRecentlyAdded, sections.SectionWatchlist))
 	if len(got) != 4 || got[2].SectionType != sections.SectionPromoted || got[2].ID != SystemPromotedSectionID || got[2].ItemLimit != 2 {
 		t.Fatalf("unexpected layout: %+v", got)
+	}
+	if len(got[2].Promos) != 2 || got[2].Promos[0].ID != "a" || src.calls != 1 {
+		t.Fatalf("injected row must carry the resolved cards (calls=%d): %+v", src.calls, got[2].Promos)
 	}
 	// Positions beyond the layout clamp to the end; the default lands after the first row.
 	src.position = 99
@@ -67,7 +75,7 @@ func TestMaybeInjectPromotedSkipsWhenDormantEmptyAnonymousOrAlreadyPresent(t *te
 		t.Fatalf("no cards: %+v", got)
 	}
 	src := &fakeHomePromoSource{cards: []promotions.Card{promoCard("a")}, position: 1}
-	anon := httptest.NewRequest(http.MethodGet, "/home/layout", nil)
+	anon := httptest.NewRequest(http.MethodGet, "/home/layout?promoted=1", nil)
 	if got := (&SectionHandler{Promotions: src}).maybeInjectPromoted(anon, rows); len(got) != 2 || src.calls != 0 {
 		t.Fatalf("anonymous must not query: %+v calls=%d", got, src.calls)
 	}
@@ -121,37 +129,42 @@ func TestBuildSectionsResponseEmitsPromoItemVariant(t *testing.T) {
 	t.Logf("promoted section wire: %s", raw)
 }
 
-// Forward compatibility: a pre-S-2 client decodes the layout with its known
-// section-type set and drops what it does not know. There is no shared v1
-// fixture decoder in this repository, so the old-client behaviour is modelled
-// here: the `promoted` row is ignored, the rest of the layout is intact.
-func TestOldClientsIgnoreThePromotedSectionType(t *testing.T) {
-	layout := homeLayoutResponse{Sections: []resolvedSectionLayoutResponse{
-		{ID: "cw", SectionType: "continue_watching", Title: "Continue Watching"},
-		{ID: SystemPromotedSectionID, SectionType: "promoted", Title: "Promoted", ItemLimit: 2},
-		{ID: "recent", SectionType: "recently_added", Title: "Recently Added"},
-	}}
-	raw, err := json.Marshal(layout)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var decoded struct {
-		Sections []struct {
-			ID          string `json:"id"`
-			SectionType string `json:"section_type"`
-		} `json:"sections"`
-	}
-	if err := json.Unmarshal(raw, &decoded); err != nil {
-		t.Fatal(err)
-	}
-	known := map[string]bool{"continue_watching": true, "recently_added": true}
-	kept := 0
-	for _, s := range decoded.Sections {
-		if known[s.SectionType] {
-			kept++
+// The promoted section is opt-in per request: pre-S-2 and upstream-compat
+// clients decode section_type as a plain string with no unknown-type drop,
+// so without `promoted=1` neither the synthetic row nor an admin-pinned
+// promoted row is delivered and the source is never queried. The end-to-end
+// wire check over the three home endpoints lives in
+// TestHomeEndpointsDeliverPromotedOnlyWhenOptedIn (DB-backed).
+func TestMaybeInjectPromotedRequiresTheOptInParameter(t *testing.T) {
+	src := &fakeHomePromoSource{cards: []promotions.Card{promoCard("a")}, position: 1}
+	rows := homeRows(sections.SectionContinueWatching, sections.SectionRecentlyAdded)
+	for _, target := range []string{"/home/layout", "/home/sections?promoted=0", "/home/sections?promoted=true", "/home/sections/system-promoted/items?promoted="} {
+		got := (&SectionHandler{Promotions: src}).maybeInjectPromoted(profileRequestFor(target), rows)
+		if len(got) != 2 || src.calls != 0 {
+			t.Fatalf("%s: must not inject or query (calls=%d): %+v", target, src.calls, got)
+		}
+		for _, s := range got {
+			if s.SectionType == sections.SectionPromoted {
+				t.Fatalf("%s: promoted row delivered without opt-in: %+v", target, got)
+			}
 		}
 	}
-	if len(decoded.Sections) != 3 || kept != 2 {
-		t.Fatalf("old client must keep 2 of 3 rows: %s", raw)
+	// An admin-pinned promoted row is dropped too without the opt-in and
+	// kept (untouched, source not queried) with it.
+	pinned := homeRows(sections.SectionPromoted, sections.SectionContinueWatching)
+	if got := (&SectionHandler{Promotions: src}).maybeInjectPromoted(profileRequestFor("/home/layout"), pinned); len(got) != 1 || got[0].SectionType != sections.SectionContinueWatching || src.calls != 0 {
+		t.Fatalf("pinned without opt-in: %+v calls=%d", got, src.calls)
+	}
+	if got := (&SectionHandler{Promotions: src}).maybeInjectPromoted(profileRequestFor("/home/layout?promoted=1"), pinned); len(got) != 2 || got[0].ID != "promoted" || src.calls != 0 {
+		t.Fatalf("pinned with opt-in: %+v calls=%d", got, src.calls)
+	}
+	for _, target := range []string{"/home/layout?promoted=1", "/home/sections?promoted=1&image_size=medium", "/home/sections/system-promoted/items?promoted=1"} {
+		got := (&SectionHandler{Promotions: src}).maybeInjectPromoted(profileRequestFor(target), rows)
+		if len(got) != 3 || got[1].SectionType != sections.SectionPromoted {
+			t.Fatalf("%s: opt-in must inject: %+v", target, got)
+		}
+	}
+	if src.calls != 3 {
+		t.Fatalf("opted-in requests query once each: calls=%d", src.calls)
 	}
 }

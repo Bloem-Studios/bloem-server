@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/promotions"
 )
 
 // SectionType enumerates the supported section types.
@@ -163,6 +164,11 @@ type ResolvedSection struct {
 	// list of series on the generic recently-added query path. Native TV rails
 	// leave this false to use scan-event-aware episode/series grouping.
 	DisableTVEventGrouping bool `json:"-"`
+
+	// Promos carries the S-2 promotion cards already resolved for a
+	// SectionPromoted row (the home handler resolves them to place the
+	// synthetic section). Nil means the fetcher resolves them itself.
+	Promos []promotions.Card `json:"-"`
 }
 
 // FilterConfig represents the rule-group filter structure.

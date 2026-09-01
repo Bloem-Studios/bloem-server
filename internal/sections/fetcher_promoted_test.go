@@ -13,10 +13,12 @@ type fakePromoSource struct {
 	cards  []promotions.Card
 	viewer promotions.Viewer
 	err    error
+	calls  int
 }
 
 func (f *fakePromoSource) ActiveHome(_ context.Context, v promotions.Viewer) ([]promotions.Card, int, error) {
 	f.viewer = v
+	f.calls++
 	return f.cards, promotions.DefaultHomePosition, f.err
 }
 
@@ -53,5 +55,30 @@ func TestFetchOnePromotedWithoutSourceOrUserIsEmpty(t *testing.T) {
 	}
 	if !ValidSectionTypes[SectionPromoted] {
 		t.Fatal("promoted must be a valid section type")
+	}
+}
+
+// The home handler resolves the cards to place the synthetic section and
+// carries them on the resolved row; the fetcher must deliver those without
+// a second source query (and still honor the item limit).
+func TestFetchOnePromotedUsesCardsCarriedOnTheResolvedRow(t *testing.T) {
+	src := &fakePromoSource{cards: []promotions.Card{{ID: "from-source"}}}
+	carried := []promotions.Card{{ID: "a", Headline: "A"}, {ID: "b", Headline: "B"}, {ID: "c", Headline: "C"}}
+	resolved := ResolvedSection{ID: "system-promoted", SectionType: SectionPromoted, ItemLimit: 2, Promos: carried}
+
+	got, err := (&Fetcher{Promotions: src}).FetchOne(context.Background(), resolved, nil, nil, 7, "p1", catalog.AccessFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if src.calls != 0 {
+		t.Fatalf("carried cards must not re-query the source: calls=%d", src.calls)
+	}
+	if got.TotalCount != 3 || len(got.Promos) != 2 || got.Promos[0].ID != "a" || got.Promos[1].ID != "b" || len(got.Items) != 0 {
+		t.Fatalf("unexpected section: total=%d promos=%+v items=%d", got.TotalCount, got.Promos, len(got.Items))
+	}
+	// Carried cards win even when no source is wired (admin preview paths).
+	got, err = (&Fetcher{}).FetchOne(context.Background(), resolved, nil, nil, 7, "p1", catalog.AccessFilter{})
+	if err != nil || len(got.Promos) != 2 {
+		t.Fatalf("carried without source: %+v %v", got.Promos, err)
 	}
 }

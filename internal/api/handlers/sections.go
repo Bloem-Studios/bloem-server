@@ -1654,12 +1654,31 @@ func (h *SectionHandler) maybeInjectNextUp(ctx context.Context, resolved []secti
 // SystemPromotedSectionID is the id of the synthetic S-2 home section.
 const SystemPromotedSectionID = "system-promoted"
 
-// maybeInjectPromoted inserts a synthetic SectionPromoted row when the
-// profile has active home promotion cards and the admin layout carries no
-// promoted section of its own. The row lands at the first card's
+// promotedOptInParam is the query parameter a client sends on the home
+// endpoints to receive the S-2 `promoted` section. Pre-S-2 and
+// upstream-compat clients decode section_type as a plain string with no
+// unknown-type drop, so the row is never delivered unless asked for.
+const promotedOptInParam = "promoted"
+
+// wantsPromoted reports whether the request opted in to the `promoted`
+// section (`promoted=1`). Absent or any other value keeps the response
+// identical to a build without S-2.
+func wantsPromoted(r *http.Request) bool {
+	return r.URL.Query().Get(promotedOptInParam) == "1"
+}
+
+// maybeInjectPromoted delivers the S-2 `promoted` home section to clients
+// that opted in with `promoted=1`. Without the opt-in every promoted row —
+// synthetic or admin-pinned — is dropped from the layout. With it, when the
+// profile has active home cards and the admin layout carries no promoted
+// section of its own, a synthetic row lands at the first card's
 // placement.home_position (default promotions.DefaultHomePosition), clamped
-// to the layout.
+// to the layout; the resolved cards ride on the row so the fetcher does not
+// query them again.
 func (h *SectionHandler) maybeInjectPromoted(r *http.Request, resolved []sections.ResolvedSection) []sections.ResolvedSection {
+	if !wantsPromoted(r) {
+		return dropPromotedSections(resolved)
+	}
 	if h.Promotions == nil {
 		return resolved
 	}
@@ -1697,11 +1716,34 @@ func (h *SectionHandler) maybeInjectPromoted(r *http.Request, resolved []section
 		Title:       "Promoted",
 		ItemLimit:   len(cards),
 		Position:    position,
+		Promos:      cards,
 	}
 	out := make([]sections.ResolvedSection, 0, len(resolved)+1)
 	out = append(out, resolved[:position]...)
 	out = append(out, promoted)
 	out = append(out, resolved[position:]...)
+	return out
+}
+
+// dropPromotedSections removes SectionPromoted rows; the input is returned
+// untouched when it has none.
+func dropPromotedSections(resolved []sections.ResolvedSection) []sections.ResolvedSection {
+	keep := true
+	for _, s := range resolved {
+		if s.SectionType == sections.SectionPromoted {
+			keep = false
+			break
+		}
+	}
+	if keep {
+		return resolved
+	}
+	out := make([]sections.ResolvedSection, 0, len(resolved))
+	for _, s := range resolved {
+		if s.SectionType != sections.SectionPromoted {
+			out = append(out, s)
+		}
+	}
 	return out
 }
 

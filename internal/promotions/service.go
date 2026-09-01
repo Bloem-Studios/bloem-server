@@ -263,9 +263,13 @@ func (s *Service) activePromotions(ctx context.Context, q Query) ([]Promotion, e
 		return nil, nil
 	}
 
-	role, roleErr := s.viewerRole(ctx, q.Viewer.UserID)
-	var orgs map[string]bool
-	var orgsErr error
+	var (
+		role       string
+		roleLoaded bool
+		roleErr    error
+		orgs       map[string]bool
+		orgsErr    error
+	)
 	dismissed := s.dismissed(ctx, q.Viewer, q.Surface)
 
 	kept := promos[:0]
@@ -278,6 +282,10 @@ func (s *Service) activePromotions(ctx context.Context, q Query) ([]Promotion, e
 		}
 		switch p.Targeting.Audience {
 		case notifications.AudienceRole:
+			if !roleLoaded {
+				role, roleErr = s.viewerRole(ctx, q.Viewer.UserID)
+				roleLoaded = true
+			}
 			if roleErr != nil {
 				return nil, roleErr
 			}

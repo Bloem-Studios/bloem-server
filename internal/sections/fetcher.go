@@ -1038,15 +1038,20 @@ func (f *Fetcher) filterNextUpDismissals(ctx context.Context, userID int, profil
 
 // fetchPromotedSection resolves the S-2 promotion cards for the profile.
 // Per-profile (targeting + dismissals), so never cached; the access filter's
-// allowed libraries feed library targeting.
+// allowed libraries feed library targeting. Cards the caller already
+// resolved (ResolvedSection.Promos) are used as is.
 func (f *Fetcher) fetchPromotedSection(ctx context.Context, resolved ResolvedSection, userID int, profileID string, filter catalog.AccessFilter) (SectionWithItems, error) {
 	result := SectionWithItems{ResolvedSection: resolved, Items: []*models.MediaItem{}}
-	if f.Promotions == nil || userID <= 0 {
-		return result, nil
-	}
-	cards, _, err := f.Promotions.ActiveHome(ctx, promotions.Viewer{UserID: userID, ProfileID: profileID, LibraryIDs: filter.AllowedLibraryIDs})
-	if err != nil {
-		return SectionWithItems{}, err
+	cards := resolved.Promos
+	if cards == nil {
+		if f.Promotions == nil || userID <= 0 {
+			return result, nil
+		}
+		var err error
+		cards, _, err = f.Promotions.ActiveHome(ctx, promotions.Viewer{UserID: userID, ProfileID: profileID, LibraryIDs: filter.AllowedLibraryIDs})
+		if err != nil {
+			return SectionWithItems{}, err
+		}
 	}
 	result.TotalCount = len(cards)
 	if resolved.ItemLimit > 0 && len(cards) > resolved.ItemLimit {
