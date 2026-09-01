@@ -201,6 +201,16 @@ func validateSectionConfig(sectionType sections.SectionType, config json.RawMess
 	return "", true
 }
 
+// validatePromotedScope keeps promoted rows on the home surface only: that is
+// the sole surface whose handlers apply the promoted=1 opt-in gate, so a
+// promoted row anywhere else would reach clients that never asked for it.
+func validatePromotedScope(sectionType sections.SectionType, scope string) (string, bool) {
+	if sectionType == sections.SectionPromoted && scope != "" && scope != "home" {
+		return "promoted sections are only valid in the home scope", false
+	}
+	return "", true
+}
+
 func validateSectionScope(scope string, libraryID *int) (string, bool) {
 	switch scope {
 	case "", "home":
@@ -278,6 +288,11 @@ func (h *SectionHandler) HandleCreateSection(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	if msg, ok := validatePromotedScope(sections.SectionType(req.SectionType), scope); !ok {
+		writeError(w, http.StatusBadRequest, "bad_request", msg)
+		return
+	}
+
 	if msg, ok := validateSectionConfig(sections.SectionType(req.SectionType), req.Config); !ok {
 		writeError(w, http.StatusBadRequest, "bad_request", msg)
 		return
@@ -334,6 +349,10 @@ func (h *SectionHandler) HandleUpdateSection(w http.ResponseWriter, r *http.Requ
 		existing.Position = *req.Position
 	}
 	if req.SectionType != "" {
+		if msg, ok := validatePromotedScope(sections.SectionType(req.SectionType), existing.Scope); !ok {
+			writeError(w, http.StatusBadRequest, "bad_request", msg)
+			return
+		}
 		existing.SectionType = sections.SectionType(req.SectionType)
 	}
 	if req.Title != "" {

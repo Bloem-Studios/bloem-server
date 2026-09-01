@@ -493,7 +493,9 @@ the cards; `Items` stays empty. Delivery is **opt-in per request** with the quer
 `promoted=1`, accepted on `/home/layout`, `/home/sections` and
 `/home/sections/{id}/items`; absent or any other value means no `promoted` row is delivered —
 synthetic or admin-pinned — and the responses are byte-identical to `main`
-(`/home/sections/system-promoted/items` is then `404 not_found`). When the request opts in,
+(`/home/sections/system-promoted/items` is then `404 not_found`). Admin section create/update
+rejects `promoted` outside the `home` scope (`validatePromotedScope`), so no library surface can
+ever carry a promoted row past the gate. When the request opts in,
 `Dependencies.Promotions` is wired and the profile has active home cards,
 `SectionHandler.maybeInjectPromoted` inserts a synthetic row
 `{"id": "system-promoted", "section_type": "promoted", "title": "Promoted"}` at the first

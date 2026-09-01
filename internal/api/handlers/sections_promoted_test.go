@@ -168,3 +168,28 @@ func TestMaybeInjectPromotedRequiresTheOptInParameter(t *testing.T) {
 		t.Fatalf("opted-in requests query once each: calls=%d", src.calls)
 	}
 }
+
+func TestValidatePromotedScopeRejectsNonHomeScopes(t *testing.T) {
+	cases := []struct {
+		name        string
+		sectionType sections.SectionType
+		scope       string
+		ok          bool
+	}{
+		{"promoted home", sections.SectionPromoted, "home", true},
+		{"promoted default scope", sections.SectionPromoted, "", true},
+		{"promoted library", sections.SectionPromoted, "library", false},
+		{"other type library", sections.SectionContinueWatching, "library", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			msg, ok := validatePromotedScope(tc.sectionType, tc.scope)
+			if ok != tc.ok {
+				t.Fatalf("validatePromotedScope(%q, %q) ok = %v, want %v", tc.sectionType, tc.scope, ok, tc.ok)
+			}
+			if !ok && msg == "" {
+				t.Fatal("rejection must carry a message")
+			}
+		})
+	}
+}
