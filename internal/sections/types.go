@@ -49,6 +49,11 @@ const (
 	SectionGenreRoulette  SectionType = "genre_roulette"
 	SectionAnniversaries  SectionType = "anniversaries"
 	SectionShortWatches   SectionType = "short_watches"
+
+	// SectionPromoted delivers S-2 promotion cards (docs/specs/client-engagement.md
+	// section B). Its items are free-form promo cards, not media items; clients
+	// that predate it ignore the unknown section type.
+	SectionPromoted SectionType = "promoted"
 )
 
 // ValidSectionTypes is the set of all valid section type values.
@@ -86,6 +91,7 @@ var ValidSectionTypes = map[SectionType]bool{
 	SectionGenreRoulette:       true,
 	SectionAnniversaries:       true,
 	SectionShortWatches:        true,
+	SectionPromoted:            true,
 }
 
 // PageSection is an admin-defined section stored in PostgreSQL.

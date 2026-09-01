@@ -431,3 +431,148 @@ Response `201 Created` (`<hex>` = sha256 of the bytes, `<ref>` = its first 16 he
 
 A retry with the same `asset_id` and `checksum` answers `201` with the identical body and stores
 nothing new.
+
+---
+
+## Implementation notes (S-2) — shipped on `feat/s2-promotions`
+
+Everything below is additive; the v1 route-contract goldens are unchanged (the promotion routes
+mount only when `Dependencies.Promotions` is wired, which the golden fixtures do not do; the
+`promoted` section type, the `promo` item variant and the capability key are new keys only).
+
+### Storage
+
+Migration `20260901200121_promotions.sql` creates `promotions`: `id` (ULID), `organization_id`
+uuid nullable (FK → `organizations`, `ON DELETE CASCADE`; NULL = deployment-wide), `surfaces
+text[]` (non-empty), `placement jsonb` (`{home_position?, detail_slot?, content_ids?}`),
+`kicker`, `headline`, `subtitle`, `image_url`, `image_width`/`image_height` nullable,
+`deeplink`, `cta jsonb` nullable (`{label, url}`), `priority`, `starts_at`/`ends_at` (CHECK
+`starts_at < ends_at`), `targeting jsonb` (the S-1 `AnnouncementTargeting` shape), `dismissible`
+(default true), `created_by`, `created_at`, `updated_at`. It also widens the
+`user_home_item_dismissals` surface CHECK to `promo:home | promo:detail | promo:pre_playback`
+so per-item promo dismissals reuse the existing per-profile dismissal store (no new table).
+There are deliberately **no timer / forced-wait columns** (amendment 3).
+
+### Validation (`promotions.Normalize`, at write time)
+
+`surfaces` is required, vocabulary `{home, detail, pre_playback}`, deduplicated; `headline` is
+required (≤120), `kicker` ≤40, `subtitle` ≤200; `image_url` is required and must pass the S-3
+asset validator `ambience.IsAssetURL` (an `https://` URL with a host or a server asset path
+`/api/v1/ambience/assets/<ref>` — amendment 4: campaign artwork is uploaded through the S-3
+`POST /admin/ambience/assets` route with `kind=campaign_card_16x9`); `image_width`/`image_height`
+must be given together, positive, and 16:9 within ±1% (`1920x1080`, `1600x900`, `1366x768` pass;
+poster aspect is rejected); `deeplink` and `cta.url` follow the S-1 link rule
+(`notifications.IsAppLink`: https, `bloem://`, app path — `http:`, `javascript:`, `data:`,
+protocol-relative rejected); `cta.label` is required with a CTA (≤40); `starts_at`/`ends_at`
+required with `starts_at < ends_at`; `targeting` is canonicalised by the S-1
+`notifications.ValidateTargeting` (audience `all|role|organization|library|explicit`, side
+fields outside their audience dropped); `placement.home_position` ≥ 0,
+`placement.content_ids` ≤64 non-empty entries; `dismissible` defaults to `true`; unknown body
+keys (e.g. a `wait_seconds`) are ignored, never stored, never echoed.
+
+### Delivery evaluation (`promotions.Service.Active` / `ActiveHome`)
+
+A promotion is delivered when `starts_at <= now < ends_at` (the sections seasonal clock,
+`recipes.Clock`), the surface is listed, the row is deployment-wide or belongs to one of the
+viewer's active organizations, the targeting matches the viewer (`role` = the account's `users.role`;
+`organization` = active membership; `library` = the profile's allowed library ids, unrestricted
+access matches; `explicit` = user id or profile id listed), `placement.content_ids` is empty or
+contains the request's `content_id` (rows with `content_ids` are skipped when no `content_id`
+is given), and the profile has not dismissed it on that surface. Order: `priority DESC,
+starts_at, id`. Dismissal-store failures degrade to "nothing dismissed" (logged).
+
+### Home delivery
+
+`SectionType` `promoted` (`internal/sections/types.go`) resolves in
+`Fetcher.fetchPromotedSection` (never cached: per-profile). `SectionWithItems.Promos` carries
+the cards; `Items` stays empty. When `Dependencies.Promotions` is wired and the profile has
+active home cards, `SectionHandler.maybeInjectPromoted` inserts a synthetic row
+`{"id": "system-promoted", "section_type": "promoted", "title": "Promoted"}` into
+`/home/layout`, `/home/sections` and `/home/sections/system-promoted/items` at the first
+card's `placement.home_position` (default `1`, clamped to the layout) unless the admin layout
+already contains a `promoted` section (admins may create one through the sections CRUD to pin
+its position). On the wire the section's `items[]` entries are the `promo` variant of the item
+union: `{"content_id": "<promotion id>", "type": "promo", "title": "<headline>", "genres": [],
+"keywords": [], "status": "", "promo": <card>}`. Old clients ignore the unknown section type
+(`TestOldClientsIgnoreThePromotedSectionType`; there is no shared v1 fixture decoder in this
+repository, so the test models the old-client decode directly).
+
+### Client routes
+
+- `GET /promotions?surface=detail|pre_playback&content_id=…` (profile-scoped, mounted beside
+  `/home/dismissals`) → `{"surface": "detail", "promotions": [<card>, …]}` (`[]` when nothing
+  applies). `surface=home` and unknown surfaces are `400 bad_request` (home rides on the section).
+  `503 unavailable` when the service is not wired.
+- Dismiss: `PUT /home/dismissals/promo:<surface>/<promotion id>` with body `{}`; undo with
+  `DELETE` on the same path. `validHomeSurface` accepts `promo:home`, `promo:detail`,
+  `promo:pre_playback`. Dismissals are per profile and per surface.
+- Capability (`GET /notifications/capability`): `"promotions": {"surfaces": ["home", "detail",
+  "pre_playback"]}` beside the S-1 and S-3 blocks; key absent = dormant.
+
+### Admin routes (`/admin/promotions`, beside the S-1 announcements and S-3 ambience CRUD, same admin group)
+
+- `GET /` → `{"promotions": [<promotion>, …], "surfaces": ["home","detail","pre_playback"]}`,
+  highest priority first.
+- `POST /` → `201` with the promotion (contract below). `PUT /{id}` is a full replacement with
+  the same body → `200`. `DELETE /{id}` → `204`; `404 not_found` for unknown ids.
+- `organization_id` naming an unknown organization is `400 bad_request`
+  (`organization_id does not exist`). Errors: `400 bad_request` (validation, message names the
+  field), `503 unavailable` (service not wired).
+- Impressions / clicks: out of scope (nothing stored, no event route).
+
+### Admin promotions contract (source of truth for the garden client)
+
+Request and response copied from the passing handler test
+`TestAdminPromotionsCreateReturnsCreatedPromotion` (`internal/api/handlers/admin_promotions_test.go`).
+`placement`, `subtitle`, `image_width`/`image_height`, `deeplink`, `cta`, `priority`,
+`targeting` (default `{"audience":"all"}`), `dismissible` (default `true`) and
+`organization_id` (default null) may be omitted.
+
+`POST /api/v1/admin/promotions`
+
+```json
+{
+  "surfaces": ["home", "detail", "pre_playback"],
+  "placement": {"home_position": 1, "detail_slot": "below_hero", "content_ids": ["movie-1"]},
+  "kicker": "New this week",
+  "headline": "The Bloem Winter Collection",
+  "subtitle": "Ten films, one long weekend.",
+  "image_url": "https://cdn.example/winter-16x9.jpg",
+  "image_width": 1920,
+  "image_height": 1080,
+  "deeplink": "bloem://collection/winter",
+  "cta": {"label": "Browse", "url": "/collections/winter"},
+  "priority": 5,
+  "starts_at": "2026-11-20T00:00:00Z",
+  "ends_at": "2026-12-01T00:00:00Z",
+  "targeting": {"audience": "all"},
+  "dismissible": true
+}
+```
+
+`201 Created`
+
+```json
+{"id":"01PROMO","organization_id":null,"surfaces":["home","detail","pre_playback"],"placement":{"home_position":1,"detail_slot":"below_hero","content_ids":["movie-1"]},"kicker":"New this week","headline":"The Bloem Winter Collection","subtitle":"Ten films, one long weekend.","image_url":"https://cdn.example/winter-16x9.jpg","image_width":1920,"image_height":1080,"deeplink":"bloem://collection/winter","cta":{"label":"Browse","url":"/collections/winter"},"priority":5,"starts_at":"2026-11-20T00:00:00Z","ends_at":"2026-12-01T00:00:00Z","targeting":{"audience":"all"},"dismissible":true,"created_by":42,"created_at":"2026-11-20T00:00:00Z","updated_at":"2026-11-20T00:00:00Z"}
+```
+
+### Promo card wire shape
+
+One shape on both delivery paths, copied from the passing tests
+`TestPromotionsListForwardsSurfaceContentAndViewer` and
+`TestBuildSectionsResponseEmitsPromoItemVariant`; `subtitle`, `deeplink` and `cta` are
+omitted when empty. The card carries **no timer, wait, skip or countdown field** — the tests
+assert the key set — so the client always keeps "continue to content" as the default action
+on the pre-playback surface.
+
+`GET /api/v1/promotions?surface=detail&content_id=movie-1`
+
+```json
+{"surface":"detail","promotions":[{"id":"01PROMO","kicker":"New this week","headline":"The Bloem Winter Collection","subtitle":"Ten films, one long weekend.","image_url":"https://cdn.example/winter-16x9.jpg","deeplink":"bloem://collection/winter","cta":{"label":"Browse","url":"/collections/winter"},"dismissible":true}]}
+```
+
+The same card inside the home `promoted` section (`/home/sections`):
+
+```json
+{"id":"system-promoted","section_type":"promoted","title":"Promoted","featured":false,"item_limit":1,"total_count":1,"is_custom":false,"customized":false,"items":[{"content_id":"01PROMO","type":"promo","title":"The Bloem Winter Collection","genres":[],"keywords":[],"status":"","promo":{"id":"01PROMO","kicker":"New this week","headline":"The Bloem Winter Collection","subtitle":"Ten films, one long weekend.","image_url":"https://cdn.example/winter-16x9.jpg","deeplink":"bloem://collection/winter","cta":{"label":"Browse","url":"/collections/winter"},"dismissible":true}}]}
+```

@@ -83,6 +83,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/markers"
 	"github.com/Silo-Server/silo-server/internal/mdblist"
 	"github.com/Silo-Server/silo-server/internal/metadata"
+	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 
 	// Built-in metadata providers self-register into the metadata package's
@@ -2688,6 +2689,8 @@ func main() {
 	}
 	if pool != nil {
 		deps.Ambience = ambience.NewService(pool, recipes.RealClock{}, ambienceStore)
+		// S-2 promotion cards: dismissals ride on the per-profile user store.
+		deps.Promotions = promotions.NewService(pool, recipes.RealClock{}, deps.UserStoreProvider)
 	}
 
 	// Live TV is a single shared service used by the native API, Jellyfin

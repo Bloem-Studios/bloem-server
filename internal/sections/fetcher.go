@@ -19,6 +19,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/overlays"
+	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -30,6 +31,16 @@ type SectionWithItems struct {
 	Items      []*models.MediaItem `json:"items"`
 	TotalCount int                 `json:"total_count"`
 	ItemMeta   map[string]SectionItemMeta
+
+	// Promos carries the S-2 promotion cards of a SectionPromoted row. Items
+	// stays empty for that type: promo cards are not media items.
+	Promos []promotions.Card `json:"promos,omitempty"`
+}
+
+// PromoSource supplies the active home promotion cards for a profile
+// (production: *promotions.Service). LibraryIDs nil means unrestricted access.
+type PromoSource interface {
+	ActiveHome(ctx context.Context, viewer promotions.Viewer) ([]promotions.Card, int, error)
 }
 
 // SectionItemMeta carries optional per-item metadata for richer section UIs.
@@ -91,6 +102,9 @@ type Fetcher struct {
 	// Snapshots are produced out-of-band by TrendingRefresher, so the read path
 	// never calls the upstream provider.
 	TrendingSnapshots trendingSnapshotGetter
+
+	// Promotions resolves SectionPromoted rows. Nil renders that section empty.
+	Promotions PromoSource
 
 	candidateCacheMu sync.Mutex
 	candidateCache   *editorialCandidateCache
@@ -280,6 +294,10 @@ func (f *Fetcher) FetchOne(ctx context.Context, resolved ResolvedSection, librar
 	}
 	if resolved.SectionType == SectionNextInSeries {
 		result, err = f.fetchNextInSeriesSection(ctx, resolved, libraryID, libraryIDs, userID, profileID, filter)
+		return result, err
+	}
+	if resolved.SectionType == SectionPromoted {
+		result, err = f.fetchPromotedSection(ctx, resolved, userID, profileID, filter)
 		return result, err
 	}
 	if resolved.SectionType == SectionEditorialSpotlight || resolved.SectionType == SectionGenreRoulette {
@@ -1016,6 +1034,26 @@ func (f *Fetcher) filterNextUpDismissals(ctx context.Context, userID int, profil
 		filtered = append(filtered, result)
 	}
 	return filtered
+}
+
+// fetchPromotedSection resolves the S-2 promotion cards for the profile.
+// Per-profile (targeting + dismissals), so never cached; the access filter's
+// allowed libraries feed library targeting.
+func (f *Fetcher) fetchPromotedSection(ctx context.Context, resolved ResolvedSection, userID int, profileID string, filter catalog.AccessFilter) (SectionWithItems, error) {
+	result := SectionWithItems{ResolvedSection: resolved, Items: []*models.MediaItem{}}
+	if f.Promotions == nil || userID <= 0 {
+		return result, nil
+	}
+	cards, _, err := f.Promotions.ActiveHome(ctx, promotions.Viewer{UserID: userID, ProfileID: profileID, LibraryIDs: filter.AllowedLibraryIDs})
+	if err != nil {
+		return SectionWithItems{}, err
+	}
+	result.TotalCount = len(cards)
+	if resolved.ItemLimit > 0 && len(cards) > resolved.ItemLimit {
+		cards = cards[:resolved.ItemLimit]
+	}
+	result.Promos = cards
+	return result, nil
 }
 
 // FetchAll runs all section queries in parallel and returns sections with items.

@@ -18,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/imagesize"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -40,6 +41,9 @@ type SectionHandler struct {
 	CollectionRepo        *catalog.LibraryCollectionRepository
 	SortPreferenceCleaner *userstore.CollectionSortPreferenceCleaner
 	EbookProgress         EbookReaderProgressLister
+	// Promotions injects the S-2 `promoted` home section when the profile
+	// has active cards (nil = dormant).
+	Promotions sections.PromoSource
 }
 
 // NewSectionHandler creates a new SectionHandler.
@@ -491,6 +495,9 @@ type sectionItemResponse struct {
 	ItemSource        string                 `json:"item_source,omitempty"`
 	UserState         *itemUserStateResponse `json:"user_state,omitempty"`
 	UpcomingEvent     *upcomingEventResponse `json:"upcoming_event,omitempty"`
+	// Promo is the S-2 card variant carried by `promoted` sections; such
+	// items have type "promo" and content_id = the promotion id.
+	Promo *promotions.Card `json:"promo,omitempty"`
 }
 
 type resolvedSectionResponse struct {
@@ -537,6 +544,7 @@ func (h *SectionHandler) HandleHomeLayout(w http.ResponseWriter, r *http.Request
 
 	userID := apimw.GetUserID(r.Context())
 	resolved = h.maybeInjectNextUp(r.Context(), resolved, userID)
+	resolved = h.maybeInjectPromoted(r, resolved)
 
 	resp := homeLayoutResponse{
 		Sections: make([]resolvedSectionLayoutResponse, 0, len(resolved)),
@@ -602,6 +610,7 @@ func (h *SectionHandler) HandleHomeSections(w http.ResponseWriter, r *http.Reque
 
 	userID := apimw.GetUserID(r.Context())
 	resolved = h.maybeInjectNextUp(r.Context(), resolved, userID)
+	resolved = h.maybeInjectPromoted(r, resolved)
 	withItems := h.fetcher.FetchAll(r.Context(), resolved, nil, libraryIDs, userID, profileID, accessFilter)
 	withItems = applyDiversityFilter(withItems)
 	withItems = dropEmptySeasonalSections(withItems)
@@ -626,6 +635,7 @@ func (h *SectionHandler) HandleHomeSectionItems(w http.ResponseWriter, r *http.R
 	}
 	userID := apimw.GetUserID(r.Context())
 	resolved = h.maybeInjectNextUp(r.Context(), resolved, userID)
+	resolved = h.maybeInjectPromoted(r, resolved)
 
 	for _, s := range resolved {
 		if s.ID != sectionID {
@@ -1348,6 +1358,9 @@ func (h *SectionHandler) buildSectionsResponse(r *http.Request, withItems []sect
 			imageKey := sectionItemImageKey{sectionID: s.ID, contentID: item.ContentID}
 			items = append(items, h.toSectionItemResponse(s.SectionType, item, meta, overlaySummaries[item.ContentID], userStates[item.ContentID], imageURLs[imageKey], playTargets[playableTargetKeyForItem(item)]))
 		}
+		for i := range s.Promos {
+			items = append(items, promoSectionItem(s.Promos[i]))
+		}
 		resp.Sections = append(resp.Sections, resolvedSectionResponse{
 			ID:          s.ID,
 			SectionType: string(s.SectionType),
@@ -1361,6 +1374,21 @@ func (h *SectionHandler) buildSectionsResponse(r *http.Request, withItems []sect
 		})
 	}
 	return resp
+}
+
+// promoSectionItem projects an S-2 card onto the section item union: the
+// `promo` variant (type "promo", content_id = promotion id, title =
+// headline). Media fields stay at their zero values.
+func promoSectionItem(card promotions.Card) sectionItemResponse {
+	c := card
+	return sectionItemResponse{
+		ContentID: c.ID,
+		Type:      "promo",
+		Title:     c.Headline,
+		Genres:    []string{},
+		Keywords:  []string{},
+		Promo:     &c,
+	}
 }
 
 // sectionProgressStore resolves the acting profile's store so play-target
@@ -1621,6 +1649,60 @@ func (h *SectionHandler) maybeInjectNextUp(ctx context.Context, resolved []secti
 		return injectNextUpSection(resolved)
 	}
 	return resolved
+}
+
+// SystemPromotedSectionID is the id of the synthetic S-2 home section.
+const SystemPromotedSectionID = "system-promoted"
+
+// maybeInjectPromoted inserts a synthetic SectionPromoted row when the
+// profile has active home promotion cards and the admin layout carries no
+// promoted section of its own. The row lands at the first card's
+// placement.home_position (default promotions.DefaultHomePosition), clamped
+// to the layout.
+func (h *SectionHandler) maybeInjectPromoted(r *http.Request, resolved []sections.ResolvedSection) []sections.ResolvedSection {
+	if h.Promotions == nil {
+		return resolved
+	}
+	userID := apimw.GetUserID(r.Context())
+	profileID := apimw.GetProfileID(r.Context())
+	if userID <= 0 || profileID == "" {
+		return resolved
+	}
+	for _, s := range resolved {
+		if s.SectionType == sections.SectionPromoted {
+			return resolved
+		}
+	}
+	viewer := promotions.Viewer{UserID: userID, ProfileID: profileID}
+	if scope, ok := access.GetScope(r.Context()); ok {
+		viewer.LibraryIDs = scope.AllowedLibraryIDs
+	}
+	cards, position, err := h.Promotions.ActiveHome(r.Context(), viewer)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "resolving home promotions", "component", "api", "error", err)
+		return resolved
+	}
+	if len(cards) == 0 {
+		return resolved
+	}
+	if position < 0 {
+		position = 0
+	}
+	if position > len(resolved) {
+		position = len(resolved)
+	}
+	promoted := sections.ResolvedSection{
+		ID:          SystemPromotedSectionID,
+		SectionType: sections.SectionPromoted,
+		Title:       "Promoted",
+		ItemLimit:   len(cards),
+		Position:    position,
+	}
+	out := make([]sections.ResolvedSection, 0, len(resolved)+1)
+	out = append(out, resolved[:position]...)
+	out = append(out, promoted)
+	out = append(out, resolved[position:]...)
+	return out
 }
 
 // injectNextUpSection inserts a synthetic SectionNextUp entry after the

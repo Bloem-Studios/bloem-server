@@ -9,6 +9,7 @@ import (
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	evt "github.com/Silo-Server/silo-server/internal/events"
+	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -130,6 +131,9 @@ func (h *HomeDismissalHandler) HandleDeleteDismissal(w http.ResponseWriter, r *h
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// validHomeSurface accepts the media surfaces plus the S-2 promo surfaces
+// ("promo:home", "promo:detail", "promo:pre_playback"), whose item ids are
+// promotion ids (per-item "don't show this again").
 func validHomeSurface(surface string) bool {
-	return surface == userstore.HomeSurfaceContinueWatching || surface == userstore.HomeSurfaceNextUp
+	return surface == userstore.HomeSurfaceContinueWatching || surface == userstore.HomeSurfaceNextUp || promotions.IsDismissalSurface(surface)
 }
