@@ -23,6 +23,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/ai/jobrunner"
 	"github.com/Silo-Server/silo-server/internal/ai/llm"
+	"github.com/Silo-Server/silo-server/internal/ambience"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -112,6 +113,7 @@ type Dependencies struct {
 	S3Private                    *s3client.Client              // private internal bucket client (may be nil)
 	S3UserDB                     *s3client.Client              // user-db bucket client (may be nil)
 	BrandingService              *branding.Service             // white-label branding (nil when DB unavailable)
+	Ambience                     *ambience.Service             // S-3 seasonal ambience packs (nil when DB unavailable)
 	FolderRepo                   *catalog.FolderRepository     // media folder repository (may be nil)
 	FileRepo                     *scanner.FileRepository       // media file repository (may be nil)
 	Scanner                      *scanner.Scanner              // scanner instance (may be nil)
@@ -2067,6 +2069,19 @@ func NewRouter(deps Dependencies) chi.Router {
 		var brandingHandler *handlers.BrandingHandler
 		if deps.BrandingService != nil {
 			brandingHandler = handlers.NewBrandingHandler(deps.BrandingService)
+			if deps.Ambience != nil {
+				// S-3: active deployment-wide packs ride on the public
+				// branding payload so effects work on the login screen.
+				brandingHandler.SetAmbience(deps.Ambience)
+			}
+		}
+		// Ambience artwork serving is public (pre-login); the registry CRUD
+		// is registered in the admin group. Both mount only when the
+		// registry is wired (the route goldens do not wire it).
+		var ambienceHandler *handlers.AmbienceHandler
+		if deps.Ambience != nil {
+			ambienceHandler = handlers.NewAmbienceHandler(deps.Ambience)
+			r.Get("/ambience/assets/{ref}", ambienceHandler.HandleServeAsset)
 		}
 
 		if webhookSyncHandler != nil {
@@ -2447,6 +2462,9 @@ func NewRouter(deps Dependencies) chi.Router {
 						deps.Notifications.SetImageResolver(detailSvc)
 					}
 					notificationsHandler := handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub)
+					if deps.Ambience != nil {
+						notificationsHandler.SetAmbience(deps.Ambience)
+					}
 					r.With(apimw.RequireProfile).Post("/devices/push/apple", notificationsHandler.HandleRegisterApplePushDevice)
 					// Discord DM channel: the linked identity and mode hang off
 					// the login account, not a profile, so these stay outside
@@ -3447,6 +3465,20 @@ func NewRouter(deps Dependencies) chi.Router {
 									r.Get("/", announcementsHandler.HandleList)
 									r.Post("/", announcementsHandler.HandleCreate)
 									r.Delete("/{id}", announcementsHandler.HandleDelete)
+								})
+							}
+							if ambienceHandler != nil {
+								// S-3 seasonal pack registry (docs/specs/client-engagement.md section C).
+								r.Route("/ambience", func(r chi.Router) {
+									r.Get("/", ambienceHandler.HandleList)
+									r.Post("/", ambienceHandler.HandleCreate)
+									r.Put("/{id}", ambienceHandler.HandleUpdate)
+									r.Delete("/{id}", ambienceHandler.HandleDelete)
+									// Standalone upload (the authoring side pushes
+									// artwork before any pack exists); must be
+									// registered before the {id} pattern.
+									r.Post("/assets", ambienceHandler.HandleUploadAsset)
+									r.Post("/{id}/assets", ambienceHandler.HandleAttachAsset)
 								})
 							}
 							if adminIntroHandler != nil {

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/Silo-Server/silo-server/internal/ambience"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/notifications"
@@ -26,6 +27,8 @@ type NotificationsHandler struct {
 	hub    *evt.Hub
 	// dismissStore overrides System.Deliveries for the dismiss route (tests).
 	dismissStore deliveryDismisser
+	// ambience is the optional S-3 pack registry echoed on the capability payload.
+	ambience ambienceAccountSource
 }
 
 // NewNotificationsHandler creates a NotificationsHandler.
@@ -378,7 +381,20 @@ type capabilityResponse struct {
 	Announcements  bool     `json:"announcements"`
 	SupportedTypes []string `json:"supported_types"`
 	Dismiss        bool     `json:"dismiss"`
+	// S-3 (docs/specs/client-engagement.md section C): the same block as
+	// the branding payload. Key present = capability exists, [] = nothing
+	// active, key absent = dormant (registry not wired). Carries the active
+	// packs for this account (deployment-wide + the account's organizations).
+	Ambience *[]ambience.Wire `json:"ambience,omitempty"`
 }
+
+// ambienceAccountSource supplies the active packs visible to an account.
+type ambienceAccountSource interface {
+	ActiveForAccount(ctx context.Context, accountID int) ([]ambience.Wire, error)
+}
+
+// SetAmbience wires the S-3 pack registry into the capability payload.
+func (h *NotificationsHandler) SetAmbience(src ambienceAccountSource) { h.ambience = src }
 
 // capabilityAccountChannel describes an account-level digest channel (email,
 // Discord DMs).
@@ -477,6 +493,14 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 			}
 		}
 	}
+	var ambienceBlock *[]ambience.Wire
+	if h.ambience != nil {
+		active := []ambience.Wire{}
+		if packs, err := h.ambience.ActiveForAccount(r.Context(), apimw.GetUserID(r.Context())); err == nil && packs != nil {
+			active = packs
+		}
+		ambienceBlock = &active
+	}
 	writeJSON(w, http.StatusOK, capabilityResponse{
 		InApp:       capabilityInApp{Enabled: h.system.Settings.UIEnabled(r.Context())},
 		ApplePush:   applePush,
@@ -491,5 +515,6 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		Announcements:  true,
 		SupportedTypes: notifications.SupportedDeliveryTypes(),
 		Dismiss:        true,
+		Ambience:       ambienceBlock,
 	})
 }

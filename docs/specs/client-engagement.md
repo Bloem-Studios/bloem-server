@@ -263,3 +263,171 @@ no_recipients`, `503 unavailable` (notification system not wired).
 `GET /api/v1/admin/notifications/announcements` → `{"announcements": [<announcement>, ...]}`
 newest first. `DELETE /api/v1/admin/notifications/announcements/{id}` → `204` (withdraw,
 idempotent), `404 not_found`.
+
+---
+
+## Implementation notes (S-3) — shipped on `feat/s3-ambience`
+
+Everything below is additive; the v1 route-contract goldens are unchanged (the ambience routes
+mount only when `Dependencies.Ambience` is wired, which the golden fixtures do not do; the new
+fields on the branding and capability payloads are new keys only).
+
+### Storage
+
+Migration `20260901192510_ambience_packs.sql` creates `ambience_packs`: `id` (ULID),
+`effect_id`, `starts_at`, `ends_at`, `intensity` (0.0–1.0, CHECK), `surfaces text[]`
+(default `{all}`), `assets jsonb` (`{banner_url?, sprites?}`), `organization_id uuid` nullable
+(FK → `organizations`, `ON DELETE CASCADE`; NULL = deployment-wide), `created_by`,
+`created_at`, `updated_at`; CHECK `starts_at < ends_at`. One row per season; the server has no
+per-season logic (`internal/ambience`).
+
+### Validation (`ambience.Normalize`, at write time)
+
+`effect_id` is a required lowercase slug (`^[a-z0-9][a-z0-9_-]{0,63}$`, open set — `snow`,
+`pumpkins`, `halloween-2026`…); `window.starts_at`/`window.ends_at` are both required with
+`starts_at < ends_at`; `intensity` defaults to `1.0` and must be within `[0, 1]`; `surfaces`
+defaults to `["all"]`, vocabulary `{all, home, login}`, deduplicated, `all` absorbs the rest;
+`assets.banner_url` and each `assets.sprites[]` entry (max 32) must be an `https://` URL with a
+host or a server-served path `/api/v1/ambience/assets/<ref>` (`http:`, `data:`, `javascript:`,
+protocol-relative and other app paths are rejected).
+
+### Schedule evaluation
+
+The registry reuses the sections seasonal clock (`recipes.Clock`; production `RealClock`, tests
+`FixedClock`). A pack is active when `starts_at <= now < ends_at` (inclusive start, exclusive
+end, evaluated in SQL against the clock's instant). Windows are still emitted so clients honour
+the bounds locally.
+
+### Wire shape (one shape on both payloads)
+
+```json
+{"id": "01J…", "effect_id": "snow",
+ "window": {"starts_at": "RFC3339", "ends_at": "RFC3339"},
+ "intensity": 0.5, "surfaces": ["all"], "assets": {"banner_url": "…", "sprites": ["…"]}}
+```
+
+- `GET /theme/branding` (unauthenticated) gains `"ambience": [<wire>, …]` — the active
+  **deployment-wide** packs only (org-scoped packs never leak pre-login). Always present, `[]`
+  when none or when the registry is not wired; registry errors degrade to `[]`.
+- `GET /notifications/capability` (authenticated) gains the same `"ambience": [<wire>, …]` block
+  — active deployment-wide packs plus the active packs of every **active** organization the
+  calling account has an **active** membership in. Key present = capability exists, `[]` =
+  supported but nothing active, key absent = dormant (registry not wired).
+- Clients: unknown `effect_id` + `assets` → generic artwork renderer; unknown + no assets →
+  ignore. Intensity is a hint; the local "reduce effects" toggle wins.
+
+### Asset serving
+
+`GET /ambience/assets/{ref}` (public, mounted with the registry): streams stored artwork with
+`ETag`, `Cache-Control: public, max-age=31536000, immutable`, `nosniff`, and the branding asset
+CSP. Refs are content-addressed (`<16 hex of sha256>.<png|webp|jpg|gif>`), so traversal or
+foreign refs are 404. Storage is the public assets bucket (`S3Public`, key `ambience/<ref>`),
+the same store branding uses; without S3 the registry still works with external `https://`
+URLs and `storage_available` on the admin list says so.
+
+### Admin routes (`/admin/ambience`, beside the S-1 announcements CRUD, same admin group)
+
+- `GET /` → `{"packs": [<pack>, …], "storage_available": bool}` soonest window first.
+- `POST /` → `201` with the pack (below). `PUT /{id}` is a full replacement with the same body →
+  `200`. `DELETE /{id}` → `204`; `404 not_found` for unknown ids (stored artwork objects are
+  left in place, same orphan policy as branding).
+- `POST /assets` (standalone, no pack — the authoring side pushes artwork before any pack
+  exists) → multipart `file` (PNG/WebP/JPEG/GIF, sniffed not trusted, ≤8 MiB; the request body
+  is hard-capped at 9 MiB → `413 too_large`) with text fields `asset_id` (garden's uuid),
+  `kind` (`campaign_card_16x9|season_banner|season_sprite`, else `400`), `checksum` (sha256 hex
+  of the bytes, verified → `400` on mismatch) and `content_type` (ignored; bytes are sniffed)
+  → `201` with the public URL at the top level and the stored asset under `asset` (second
+  contract block below); `415 unsupported_image`, `503 unavailable` (no S3). **Idempotent on
+  `asset_id`** (table `ambience_assets`: asset_id, kind, checksum, ref, content_type,
+  size_bytes): the same `asset_id` + same checksum returns the existing URL without re-storing;
+  same `asset_id` + different checksum replaces the object ref. Rows keep `kind` and `asset_id`
+  beside the ref so packs and later campaigns can reference artwork by garden's id. All fields
+  are optional for ad-hoc uploads (no `asset_id` = no registry row).
+- `POST /{id}/assets` → same upload plus optional `slot` = `banner` (default; replaces) |
+  `sprite` (appends, max 32, checked **before** the object is stored) → `201`
+  `{"url": "/api/v1/ambience/assets/<ref>", "slot": "…", "pack": <pack>}`; the pack row is
+  locked while `assets` is rewritten so concurrent attaches never lose entries; `415
+  unsupported_image`, `413 too_large`, `503 unavailable` (no S3), `404 not_found`.
+- `organization_id` naming an unknown organization is `400 bad_request`
+  (`organization_id does not exist`), not a 500.
+- Errors: `400 bad_request` (validation, message names the field), `503 unavailable` (registry
+  not wired).
+
+### Admin ambience contract (source of truth for the garden client)
+
+Request and response copied from the passing handler test
+`TestAdminAmbienceCreateReturnsCreatedPack` (`internal/api/handlers/admin_ambience_test.go`).
+`intensity` and `surfaces` may be omitted (defaults `1.0` / `["all"]`); `organization_id` is a
+uuid string or null; `assets` may be `{}`. Asset URLs returned by the upload endpoints are
+server-relative (`/api/v1/ambience/assets/<ref>`) and are accepted as-is in `assets`.
+
+```json
+POST /api/v1/admin/ambience
+{
+  "effect_id": "halloween",
+  "window": {"starts_at": "2026-10-24T00:00:00Z", "ends_at": "2026-11-01T00:00:00Z"},
+  "intensity": 0.7,
+  "surfaces": ["home", "login"],
+  "assets": {
+    "banner_url": "https://cdn.example/halloween/banner.png",
+    "sprites": ["https://cdn.example/halloween/pumpkin.png"]
+  },
+  "organization_id": null
+}
+```
+
+Response `201 Created` (`created_by` = calling admin's user id):
+
+```json
+{
+  "id": "pack-1",
+  "effect_id": "halloween",
+  "window": {"starts_at": "2026-10-24T00:00:00Z", "ends_at": "2026-11-01T00:00:00Z"},
+  "intensity": 0.7,
+  "surfaces": ["home", "login"],
+  "assets": {
+    "banner_url": "https://cdn.example/halloween/banner.png",
+    "sprites": ["https://cdn.example/halloween/pumpkin.png"]
+  },
+  "organization_id": null,
+  "created_by": 42,
+  "created_at": "2026-10-24T00:00:00Z",
+  "updated_at": "2026-10-24T00:00:00Z"
+}
+```
+
+Standalone artwork upload, copied from the passing handler test
+`TestAdminAmbienceStandaloneUploadReturnsPublicURL` (same file). The request is the multipart
+shape bloem-garden's `HTTPAssetTransport` sends (`internal/engagement/assetsync.go`); garden reads
+the URL from top-level `url` (or `asset.url`).
+
+```
+POST /api/v1/admin/ambience/assets
+Content-Type: multipart/form-data; boundary=…
+
+asset_id=3f1c2a9e-1d2b-4c3d-8e4f-5a6b7c8d9e0f   (garden uuid; idempotency key)
+kind=season_banner                               (campaign_card_16x9|season_banner|season_sprite)
+checksum=<sha256 hex>                            (verified against the bytes)
+content_type=image/png                           (ignored, the bytes are sniffed)
+file=@banner.png                                 (required; Content-Type: image/png)
+```
+
+Response `201 Created` (`<hex>` = sha256 of the bytes, `<ref>` = its first 16 hex chars + ext):
+
+```json
+{
+  "asset": {
+    "asset_id": "3f1c2a9e-1d2b-4c3d-8e4f-5a6b7c8d9e0f",
+    "kind": "season_banner",
+    "ref": "<ref>.png",
+    "url": "/api/v1/ambience/assets/<ref>.png",
+    "checksum": "<hex>",
+    "content_type": "image/png",
+    "size_bytes": 71
+  },
+  "url": "/api/v1/ambience/assets/<ref>.png"
+}
+```
+
+A retry with the same `asset_id` and `checksum` answers `201` with the identical body and stores
+nothing new.
