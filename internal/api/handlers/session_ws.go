@@ -14,6 +14,7 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/remote"
 )
 
 type realtimeClientMessage struct {
@@ -167,7 +168,14 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 		if err := json.Unmarshal(data, &hello); err != nil {
 			return err
 		}
-		if err := hello.Validate(); err != nil {
+		// Remote control (S-5a): a v3 client may list names the upstream socket
+		// vocabulary does not know (replan, the device-rail names). The upstream
+		// validator runs over the upstream-known names only; the full list goes
+		// to the remote observer, which validates it itself. Anything unknown to
+		// both still fails here, exactly as upstream.
+		upstream := hello
+		upstream.Capabilities.Commands = upstreamHelloCommands(hello.Capabilities.Commands)
+		if err := upstream.Validate(); err != nil {
 			return err
 		}
 		if hello.SessionID != sessionID {
@@ -199,7 +207,8 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 			h.CommandTracker.Ack(ack.CommandID)
 		}
 		if h.RemoteObserver != nil {
-			if record, ok := h.getRealtimeCommand(ack.CommandID); !ok || record.SessionID == sessionID {
+			// Only the session the command was sent to may move it to accepted.
+			if record, ok := h.getRealtimeCommand(ack.CommandID); ok && record.SessionID == sessionID {
 				h.RemoteObserver.OnAck(context.Background(), ack.CommandID)
 			}
 		}
@@ -264,4 +273,17 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 	default:
 		return playback.ErrInvalidRealtimePayload
 	}
+}
+
+// upstreamHelloCommands drops the remote-control-only names from a hello's
+// command list so the upstream validator sees only its own vocabulary.
+func upstreamHelloCommands(commands []playback.CommandName) []playback.CommandName {
+	kept := make([]playback.CommandName, 0, len(commands))
+	for _, name := range commands {
+		if remote.IsRemoteOnlyCommand(name) {
+			continue
+		}
+		kept = append(kept, name)
+	}
+	return kept
 }

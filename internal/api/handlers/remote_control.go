@@ -23,10 +23,6 @@ import (
 // carries. Clients treat the reason as opaque and act on plan_id alone.
 const PlanInvalidatedAdminReplan = "admin_replan"
 
-// remoteCommandDeadline bounds how long a session command may wait for an
-// ack before the server-side fallback fires.
-const remoteCommandDeadline = playback.CopySafetyInvalidationDeadline
-
 // RemoteObserver receives the session socket's frames for the remote
 // control audit (S-5a). Every method is optional to call and safe on nil.
 type RemoteObserver interface {
@@ -35,6 +31,11 @@ type RemoteObserver interface {
 	OnResult(ctx context.Context, commandID string, completed bool, errText string)
 	OnDeadline(ctx context.Context, commandID string)
 	OnSessionReplanned(ctx context.Context, sessionID, planID string)
+	// OnSessionEnded finalizes whatever is still open on a session that ended.
+	OnSessionEnded(ctx context.Context, sessionID string)
+	// OpenReplanOverrides returns the overrides an admin replan pinned on a
+	// session, read from durable state so every instance applies them.
+	OpenReplanOverrides(ctx context.Context, sessionID string) (playback.PlanOverridesV3, bool)
 }
 
 func remoteSessionInfo(session *playback.Session) remote.SessionInfo {
@@ -48,53 +49,42 @@ func remoteSessionInfo(session *playback.Session) remote.SessionInfo {
 	}
 }
 
-// pinRemotePlanOverrides stores the overrides an admin replan pinned; the
-// client's next /replan reads them through remotePlanOverridesV3.
-func (h *PlaybackHandler) pinRemotePlanOverrides(sessionID string, overrides playback.PlanOverridesV3) {
-	if h == nil || sessionID == "" {
-		return
+// remoteCommandDeadline is how long a remote command may wait for an ack
+// before the server-side fallback fires.
+func (h *PlaybackHandler) remoteCommandDeadline() time.Duration {
+	if h != nil && h.RemoteCommandDeadline > 0 {
+		return h.RemoteCommandDeadline
 	}
-	h.remotePlanOverridesMu.Lock()
-	if h.remotePlanOverrides == nil {
-		h.remotePlanOverrides = map[string]playback.PlanOverridesV3{}
-	}
-	h.remotePlanOverrides[sessionID] = overrides
-	h.remotePlanOverridesMu.Unlock()
+	return playback.CopySafetyInvalidationDeadline
 }
 
-func (h *PlaybackHandler) clearRemotePlanOverrides(sessionID string) {
-	if h == nil || sessionID == "" {
-		return
-	}
-	h.remotePlanOverridesMu.Lock()
-	delete(h.remotePlanOverrides, sessionID)
-	h.remotePlanOverridesMu.Unlock()
-}
-
-// remotePlanOverridesV3 returns the pinned overrides for a session, if any.
-func (h *PlaybackHandler) remotePlanOverridesV3(sessionID string) (playback.PlanOverridesV3, bool) {
-	if h == nil || sessionID == "" {
+// remotePlanOverridesV3 returns the overrides an admin replan pinned on a
+// session. The pin is the session's newest live replan command row in the
+// remote store, so an instance that never delivered the command applies it
+// too; only the socket delivery itself is per-instance.
+func (h *PlaybackHandler) remotePlanOverridesV3(ctx context.Context, sessionID string) (playback.PlanOverridesV3, bool) {
+	if h == nil || h.RemoteObserver == nil || sessionID == "" {
 		return playback.PlanOverridesV3{}, false
 	}
-	h.remotePlanOverridesMu.Lock()
-	overrides, ok := h.remotePlanOverrides[sessionID]
-	h.remotePlanOverridesMu.Unlock()
-	return overrides, ok
+	return h.RemoteObserver.OpenReplanOverrides(ctx, sessionID)
 }
 
 // applyRemotePlanOverridesV3 narrows a replan's start request by the pinned
-// overrides. The durable attempt record is never rewritten.
-func (h *PlaybackHandler) applyRemotePlanOverridesV3(sessionID string, start playback.StartRequestV3) playback.StartRequestV3 {
-	overrides, ok := h.remotePlanOverridesV3(sessionID)
+// overrides and returns them for the planner's ForceTranscode input. The
+// durable attempt record is never rewritten.
+func (h *PlaybackHandler) applyRemotePlanOverridesV3(ctx context.Context, sessionID string, start playback.StartRequestV3) (playback.StartRequestV3, playback.PlanOverridesV3) {
+	overrides, ok := h.remotePlanOverridesV3(ctx, sessionID)
 	if !ok {
-		return start
+		return start, playback.PlanOverridesV3{}
 	}
-	return playback.ApplyPlanOverridesV3(start, overrides)
+	return playback.ApplyPlanOverridesV3(start, overrides), overrides
 }
 
-func (h *PlaybackHandler) remoteForceTranscodeV3(sessionID string) bool {
-	overrides, ok := h.remotePlanOverridesV3(sessionID)
-	return ok && overrides.ForceTranscode()
+func (h *PlaybackHandler) notifyRemoteSessionEnded(ctx context.Context, sessionID string) {
+	if h == nil || h.RemoteObserver == nil || sessionID == "" {
+		return
+	}
+	h.RemoteObserver.OnSessionEnded(ctx, sessionID)
 }
 
 func (h *PlaybackHandler) notifyRemoteSessionReplanned(ctx context.Context, sessionID string, plan *playback.PlanV3) {
@@ -136,7 +126,8 @@ func (s *playbackRemoteSender) Dispatch(ctx context.Context, command playback.Co
 	}
 	h := s.playback
 	sessionID, commandID := command.SessionID, command.CommandID
-	command.DeadlineMS = int(remoteCommandDeadline / time.Millisecond)
+	deadline := h.remoteCommandDeadline()
+	command.DeadlineMS = int(deadline / time.Millisecond)
 	tearDown := command.Name == playback.CommandStop || command.Name == playback.CommandTerminate
 	fallback := func() {
 		h.forgetRealtimeCommand(commandID)
@@ -148,7 +139,7 @@ func (s *playbackRemoteSender) Dispatch(ctx context.Context, command playback.Co
 		}
 	}
 	h.rememberRealtimeCommand(commandID, sessionID, command.Name)
-	result := h.CommandDispatcher.DispatchToSession(command, remoteCommandDeadline, fallback)
+	result := h.CommandDispatcher.DispatchToSession(command, deadline, fallback)
 	if result.DispatchErr != nil {
 		h.forgetRealtimeCommand(commandID)
 		return result.DispatchErr
@@ -156,9 +147,11 @@ func (s *playbackRemoteSender) Dispatch(ctx context.Context, command playback.Co
 	return nil
 }
 
-// Replan pins the overrides and withdraws the session's current plan with a
-// plan_invalidated command, exactly as the copy-safety notifier does.
-func (s *playbackRemoteSender) Replan(ctx context.Context, sessionID, commandID string, overrides playback.PlanOverridesV3, reason string) (string, error) {
+// Replan withdraws the session's current plan with a plan_invalidated
+// command, exactly as the copy-safety notifier does. The overrides themselves
+// are not held here: the client's replan reads them from the command row
+// (OpenReplanOverrides), so any instance serving that replan applies them.
+func (s *playbackRemoteSender) Replan(ctx context.Context, sessionID, commandID string, _ playback.PlanOverridesV3, reason string) (string, error) {
 	if s == nil || s.playback == nil || s.playback.CommandDispatcher == nil {
 		return "", playback.ErrCommandDispatchUnavailable
 	}
@@ -193,25 +186,24 @@ func (s *playbackRemoteSender) Replan(ctx context.Context, sessionID, commandID 
 	}
 	command.Reason = reason
 	command.IssuedBy = &playback.CommandIssuedBy{Kind: string(remote.IssuerAdmin)}
-	command.DeadlineMS = int(remoteCommandDeadline / time.Millisecond)
+	deadline := h.remoteCommandDeadline()
+	command.DeadlineMS = int(deadline / time.Millisecond)
 
-	h.pinRemotePlanOverrides(sessionID, overrides)
 	fallback := func() {
 		// The client never answered: the withdrawn plan is still running, so
 		// end the session the way an unnegotiated client is ended (system
-		// teardown keeps the recipe card for recovery).
+		// teardown keeps the recipe card for recovery). OnDeadline expires the
+		// command row, which releases the pin.
 		h.forgetRealtimeCommand(commandID)
-		h.clearRemotePlanOverrides(sessionID)
 		if h.RemoteObserver != nil {
 			h.RemoteObserver.OnDeadline(context.WithoutCancel(ctx), commandID)
 		}
 		_ = h.stopPlaybackSessionByID(context.WithoutCancel(ctx), sessionID, false)
 	}
 	h.rememberRealtimeCommand(commandID, sessionID, playback.CommandPlanInvalidated)
-	result := h.CommandDispatcher.DispatchToSession(command, remoteCommandDeadline, fallback)
+	result := h.CommandDispatcher.DispatchToSession(command, deadline, fallback)
 	if result.DispatchErr != nil {
 		h.forgetRealtimeCommand(commandID)
-		h.clearRemotePlanOverrides(sessionID)
 		return "", result.DispatchErr
 	}
 	return planID, nil
@@ -241,8 +233,8 @@ type remoteCommandRequest struct {
 	Name    playback.CommandName `json:"name"`
 	Payload json.RawMessage      `json:"payload,omitempty"`
 	Reason  string               `json:"reason,omitempty"`
-	// TTLSeconds is accepted for wire compatibility with the device rail
-	// (S-5b); session commands are never queued so it is ignored here.
+	// TTLSeconds belongs to the device rail (S-5b). Session commands are
+	// never queued, so a non-zero value is refused rather than ignored.
 	TTLSeconds int `json:"ttl_seconds,omitempty"`
 }
 
@@ -337,6 +329,10 @@ func decodeRemoteCommandRequest(w http.ResponseWriter, r *http.Request) (remoteC
 	}
 	if strings.TrimSpace(string(req.Name)) == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "Command name is required")
+		return req, false
+	}
+	if req.TTLSeconds != 0 {
+		writeError(w, http.StatusBadRequest, "invalid_payload", "ttl_seconds applies to device commands only; session commands are never queued")
 		return req, false
 	}
 	return req, true
@@ -476,6 +472,31 @@ func (h *RemoteControlHandler) HandleAdvertiseDevice(w http.ResponseWriter, r *h
 	var req remoteCapabilityRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16*1024)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		return
+	}
+	// Only a device this profile registered may advertise. 404 rather than
+	// 403, as the device routes do: a 403 would confirm the id exists.
+	if h.storeProv == nil {
+		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Device registry is unavailable")
+		return
+	}
+	store, err := h.storeProv.ForUser(r.Context(), userID)
+	if err != nil || store == nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
+		return
+	}
+	registry, isRegistry := store.(userstore.DeviceRegistry)
+	if !isRegistry {
+		writeError(w, http.StatusNotFound, "not_found", "Device not found")
+		return
+	}
+	owned, err := registry.DeviceExists(r.Context(), profileID, deviceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to look up device")
+		return
+	}
+	if !owned {
+		writeError(w, http.StatusNotFound, "not_found", "Device not found")
 		return
 	}
 	if err := h.service.AdvertiseDevice(r.Context(), userID, profileID, deviceID, req.Version, req.Commands); err != nil {

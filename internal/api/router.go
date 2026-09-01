@@ -1291,6 +1291,9 @@ func NewRouter(deps Dependencies) chi.Router {
 			}
 			remoteService := remote.NewService(remoteStore, handlers.NewPlaybackRemoteSender(playbackHandler), remoteLimiter, remote.DefaultConfig())
 			playbackHandler.RemoteObserver = remoteService
+			if deviceHandler != nil {
+				deviceHandler.RemoteCapabilities = remoteService
+			}
 			remoteControlHandler = handlers.NewRemoteControlHandler(remoteService, playbackHandler, profileHandler, deps.UserStoreProvider)
 			if remoteControlHandler != nil && playbackSessionsLoader != nil {
 				remoteControlHandler.SessionsLoader = playbackSessionsLoader

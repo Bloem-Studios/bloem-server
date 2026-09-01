@@ -279,7 +279,7 @@ func (s *Service) AdvertiseDevice(ctx context.Context, userID int, profileID, de
 		version = CapabilityVersion
 	}
 	for _, name := range commands {
-		if !IsSessionCommand(name) && playback.ValidateCommandName(name) != nil && !deviceOnlyCommand(name) {
+		if !IsAdvertisableCommand(name) {
 			return fmt.Errorf("%w: %s", ErrUnknownCommand, name)
 		}
 	}
@@ -302,6 +302,74 @@ func deviceOnlyCommand(name playback.CommandName) bool {
 		return true
 	}
 	return false
+}
+
+// IsAdvertisableCommand reports whether a device may list name in its
+// remote_control block: every session-rail name, the S-5b device-rail names,
+// and the upstream socket vocabulary.
+func IsAdvertisableCommand(name playback.CommandName) bool {
+	return IsSessionCommand(name) || deviceOnlyCommand(name) || playback.ValidateCommandName(name) == nil
+}
+
+// IsRemoteOnlyCommand reports whether name is a remote control name the
+// upstream socket vocabulary does not know (replan, the device-rail names).
+// The socket hello validator is upstream code; the API layer strips these
+// before running it and hands the full list to OnHello.
+func IsRemoteOnlyCommand(name playback.CommandName) bool {
+	return IsAdvertisableCommand(name) && playback.ValidateCommandName(name) != nil
+}
+
+// ForgetDevice drops a device's remote_control block; the device registry
+// forget path calls it so a forgotten device is not controllable.
+func (s *Service) ForgetDevice(ctx context.Context, userID int, profileID, deviceID string) error {
+	if s == nil || s.store == nil {
+		return errors.New("remote control is not configured")
+	}
+	return s.store.DeleteDeviceCapability(ctx, userID, profileID, deviceID)
+}
+
+// replanPinStates are the states in which a replan command keeps its
+// overrides pinned on the session: from the moment it is sent until the
+// session ends. done is included on purpose: the pin must outlive the
+// client's first replan so later replans (seek re-anchor, recovery) keep the
+// admin's plan. rejected / expired / failed release it.
+var replanPinStates = []State{StateSent, StateAccepted, StateDone}
+
+// OpenReplanOverrides returns the overrides pinned on a session by its newest
+// live replan command. The pin is read from the store, not from memory, so an
+// instance that never delivered the command applies it too.
+func (s *Service) OpenReplanOverrides(ctx context.Context, sessionID string) (playback.PlanOverridesV3, bool) {
+	if s == nil || s.store == nil || sessionID == "" {
+		return playback.PlanOverridesV3{}, false
+	}
+	command, err := s.store.LatestSessionCommand(ctx, sessionID, CommandReplan, replanPinStates)
+	if err != nil {
+		slog.WarnContext(ctx, "remote replan pin not read", "component", "remote", "session_id", sessionID, "error", err)
+		return playback.PlanOverridesV3{}, false
+	}
+	if command == nil {
+		return playback.PlanOverridesV3{}, false
+	}
+	if !command.State.Terminal() && command.ExpiresAt != nil && s.now().UTC().After(*command.ExpiresAt) {
+		return playback.PlanOverridesV3{}, false
+	}
+	var payload ReplanPayload
+	if err := json.Unmarshal(command.Payload, &payload); err != nil {
+		slog.WarnContext(ctx, "remote replan pin payload unreadable", "component", "remote", "command_id", command.ID, "error", err)
+		return playback.PlanOverridesV3{}, false
+	}
+	return payload.Overrides.PlanOverrides(), true
+}
+
+// OnSessionEnded finalizes every command still open on a session that has
+// ended: nothing can answer them any more.
+func (s *Service) OnSessionEnded(ctx context.Context, sessionID string) {
+	if s == nil || s.store == nil || sessionID == "" {
+		return
+	}
+	if _, err := s.store.TransitionOpenSessionCommands(ctx, sessionID, "", StateExpired, nil, "session ended before the command completed", s.now().UTC()); err != nil {
+		slog.WarnContext(ctx, "remote commands not finalized at session end", "component", "remote", "session_id", sessionID, "error", err)
+	}
 }
 
 // OnHello records the command list a client announced on its session

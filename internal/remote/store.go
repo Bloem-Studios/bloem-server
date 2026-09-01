@@ -84,11 +84,16 @@ type Store interface {
 	// timestamp. Terminal rows are left alone and reported as ok=false.
 	Transition(ctx context.Context, id string, state State, result json.RawMessage, errText string, at time.Time) (bool, error)
 	// TransitionOpenSessionCommands applies Transition to every non-terminal
-	// command with the given name on a session and returns the ids moved.
+	// command with the given name (any name when empty) on a session and
+	// returns the ids moved.
 	TransitionOpenSessionCommands(ctx context.Context, sessionID string, name playback.CommandName, state State, result json.RawMessage, errText string, at time.Time) ([]string, error)
+	// LatestSessionCommand returns the newest command with the given name on
+	// a session whose state is one of states, or nil when there is none.
+	LatestSessionCommand(ctx context.Context, sessionID string, name playback.CommandName, states []State) (*Command, error)
 	ListAudit(ctx context.Context, query AuditQuery) ([]Command, error)
 	UpsertDeviceCapability(ctx context.Context, capability DeviceCapability) error
 	GetDeviceCapability(ctx context.Context, userID int, profileID, deviceID string) (*DeviceCapability, error)
+	DeleteDeviceCapability(ctx context.Context, userID int, profileID, deviceID string) error
 }
 
 func stampFor(command *Command, state State, at time.Time) {
@@ -212,7 +217,7 @@ func (s *PostgresStore) TransitionOpenSessionCommands(ctx context.Context, sessi
 		resultArg = result
 	}
 	rows, err := s.pool.Query(ctx, `UPDATE remote_commands SET `+transitionSQL(state, 1)+`
-		WHERE target_session_id = $5 AND name = $6 AND state NOT IN `+terminalStateList()+` RETURNING id`,
+		WHERE target_session_id = $5 AND ($6 = '' OR name = $6) AND state NOT IN `+terminalStateList()+` RETURNING id`,
 		state, resultArg, errText, at, sessionID, string(name))
 	if err != nil {
 		return nil, fmt.Errorf("transition session remote commands: %w", err)
@@ -227,6 +232,29 @@ func (s *PostgresStore) TransitionOpenSessionCommands(ctx context.Context, sessi
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
+}
+
+func (s *PostgresStore) LatestSessionCommand(ctx context.Context, sessionID string, name playback.CommandName, states []State) (*Command, error) {
+	if s == nil || s.pool == nil {
+		return nil, errors.New("remote store not configured")
+	}
+	if len(states) == 0 {
+		return nil, nil
+	}
+	stateArgs := make([]string, len(states))
+	for i, state := range states {
+		stateArgs[i] = string(state)
+	}
+	c, err := scanCommand(s.pool.QueryRow(ctx, `SELECT `+commandColumns+` FROM remote_commands
+		WHERE target_session_id = $1 AND name = $2 AND state = ANY($3)
+		ORDER BY created_at DESC, id DESC LIMIT 1`, sessionID, string(name), stateArgs))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("latest session remote command: %w", err)
+	}
+	return c, nil
 }
 
 func (s *PostgresStore) ListAudit(ctx context.Context, query AuditQuery) ([]Command, error) {
@@ -315,6 +343,16 @@ func (s *PostgresStore) GetDeviceCapability(ctx context.Context, userID int, pro
 		return nil, fmt.Errorf("decode remote device capability: %w", err)
 	}
 	return &c, nil
+}
+
+func (s *PostgresStore) DeleteDeviceCapability(ctx context.Context, userID int, profileID, deviceID string) error {
+	if s == nil || s.pool == nil {
+		return errors.New("remote store not configured")
+	}
+	if _, err := s.pool.Exec(ctx, `DELETE FROM remote_device_capabilities WHERE user_id = $1 AND profile_id = $2 AND device_id = $3`, userID, profileID, deviceID); err != nil {
+		return fmt.Errorf("delete remote device capability: %w", err)
+	}
+	return nil
 }
 
 func normalizePage(limit, offset int) (int, int) {
@@ -412,7 +450,7 @@ func (m *MemoryStore) TransitionOpenSessionCommands(_ context.Context, sessionID
 	var ids []string
 	for _, id := range m.order {
 		c := m.commands[id]
-		if c.TargetSessionID != sessionID || c.Name != name {
+		if c.TargetSessionID != sessionID || (name != "" && c.Name != name) {
 			continue
 		}
 		if m.transitionLocked(c, state, result, errText, at) {
@@ -420,6 +458,24 @@ func (m *MemoryStore) TransitionOpenSessionCommands(_ context.Context, sessionID
 		}
 	}
 	return ids, nil
+}
+
+func (m *MemoryStore) LatestSessionCommand(_ context.Context, sessionID string, name playback.CommandName, states []State) (*Command, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for i := len(m.order) - 1; i >= 0; i-- {
+		c := m.commands[m.order[i]]
+		if c.TargetSessionID != sessionID || c.Name != name {
+			continue
+		}
+		for _, state := range states {
+			if c.State == state {
+				cp := *c
+				return &cp, nil
+			}
+		}
+	}
+	return nil, nil
 }
 
 func (m *MemoryStore) ListAudit(_ context.Context, query AuditQuery) ([]Command, error) {
@@ -475,4 +531,11 @@ func (m *MemoryStore) GetDeviceCapability(_ context.Context, userID int, profile
 	cp := c
 	cp.Commands = append([]playback.CommandName(nil), c.Commands...)
 	return &cp, nil
+}
+
+func (m *MemoryStore) DeleteDeviceCapability(_ context.Context, userID int, profileID, deviceID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.capabilities, capabilityKey(userID, profileID, deviceID))
+	return nil
 }
