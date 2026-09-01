@@ -47,7 +47,11 @@ func TestHandleApplePushDisplayDB(t *testing.T) {
 			status text NOT NULL DEFAULT 'delivered',
 			read_at timestamptz,
 			delivered_at timestamptz,
-			created_at timestamptz NOT NULL DEFAULT now()
+			created_at timestamptz NOT NULL DEFAULT now(),
+			body jsonb,
+			expires_at timestamptz,
+			dismissed_at timestamptz,
+			announcement_id text
 		);
 		CREATE TEMP TABLE episodes (
 			content_id text PRIMARY KEY,

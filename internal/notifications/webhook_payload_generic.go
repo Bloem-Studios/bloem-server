@@ -34,6 +34,9 @@ type genericWebhookBody struct {
 	// matched item); approved/declined have no catalog item yet, so the
 	// request's own title rides here.
 	Request *genericWebhookRequest `json:"request,omitempty"`
+	// Alert is present for system.alert / system.announcement deliveries:
+	// the stored AlertBody verbatim.
+	Alert *AlertBody `json:"alert,omitempty"`
 }
 
 type genericWebhookSeries struct {
@@ -88,6 +91,10 @@ func BuildGenericWebhookPayload(row DeliveryRow, webhookID string, test bool) ([
 		}
 	}
 	switch row.Type {
+	case DeliveryTypeSystemAlert, DeliveryTypeSystemAnnouncement:
+		if alert, ok := ParseAlertBody(row.Body); ok {
+			body.Alert = alert
+		}
 	case DeliveryTypeRequestFulfilled, DeliveryTypeRequestApproved, DeliveryTypeRequestDeclined:
 		flags := parseRequestFlags(row.ReasonFlags)
 		body.Request = &genericWebhookRequest{

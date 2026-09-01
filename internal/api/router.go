@@ -2493,6 +2493,8 @@ func NewRouter(deps Dependencies) chi.Router {
 						})
 						r.Get("/{id}", notificationsHandler.HandleGet)
 						r.Post("/{id}/read", notificationsHandler.HandleMarkRead)
+						// Dismiss is distinct from read (S-1, AMENDMENT 2).
+						r.Post("/{id}/dismiss", notificationsHandler.HandleDismiss)
 					})
 				}
 
@@ -3436,6 +3438,15 @@ func NewRouter(deps Dependencies) chi.Router {
 									r.Delete("/{id}", serverChannelsHandler.HandleDelete)
 									r.Post("/{id}/rotate-secret", serverChannelsHandler.HandleRotateSecret)
 									r.Post("/{id}/test", serverChannelsHandler.HandleTest)
+								})
+							}
+							if deps.Notifications != nil {
+								// S-1 admin compose (docs/specs/client-engagement.md §A.5).
+								announcementsHandler := handlers.NewAdminAnnouncementsHandler(deps.Notifications)
+								r.Route("/notifications/announcements", func(r chi.Router) {
+									r.Get("/", announcementsHandler.HandleList)
+									r.Post("/", announcementsHandler.HandleCreate)
+									r.Delete("/{id}", announcementsHandler.HandleDelete)
 								})
 							}
 							if adminIntroHandler != nil {

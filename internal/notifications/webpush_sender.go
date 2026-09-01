@@ -63,6 +63,10 @@ func buildWebPushPayload(row DeliveryRow, posterURL string) ([]byte, error) {
 		payload.Icon = posterURL
 	case DeliveryTypeRequestFulfilled:
 		payload.Icon = posterURL
+	case DeliveryTypeSystemAlert, DeliveryTypeSystemAnnouncement:
+		if body, ok := ParseAlertBody(row.Body); ok {
+			payload.Icon = body.ImageURL
+		}
 	}
 	return json.Marshal(payload)
 }

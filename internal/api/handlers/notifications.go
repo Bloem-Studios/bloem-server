@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -22,6 +24,8 @@ const (
 type NotificationsHandler struct {
 	system *notifications.System
 	hub    *evt.Hub
+	// dismissStore overrides System.Deliveries for the dismiss route (tests).
+	dismissStore deliveryDismisser
 }
 
 // NewNotificationsHandler creates a NotificationsHandler.
@@ -63,10 +67,21 @@ func parseNotificationsLimit(r *http.Request, fallback int) int {
 	return min(limit, notificationsMaxLimit)
 }
 
+// parseIncludeDismissed reads the `include_dismissed` query flag shared by
+// the list and sync endpoints. Expired rows are never served regardless.
+func parseIncludeDismissed(r *http.Request) bool {
+	switch r.URL.Query().Get("include_dismissed") {
+	case "1", "true":
+		return true
+	}
+	return false
+}
+
 // HandleList handles GET /notifications (newest-first inbox page).
 func (h *NotificationsHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	profileID := apimw.GetProfileID(r.Context())
 	unreadOnly := r.URL.Query().Get("status") == "unread"
+	includeDismissed := parseIncludeDismissed(r)
 	limit := parseNotificationsLimit(r, notificationsDefaultLimit)
 
 	var before *notifications.Cursor
@@ -79,7 +94,7 @@ func (h *NotificationsHandler) HandleList(w http.ResponseWriter, r *http.Request
 		before = &cursor
 	}
 
-	rows, err := h.system.Deliveries.ListInbox(r.Context(), profileID, unreadOnly, limit, before)
+	rows, err := h.system.Deliveries.ListInbox(r.Context(), profileID, unreadOnly, includeDismissed, limit, before)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list notifications")
 		return
@@ -108,7 +123,7 @@ func (h *NotificationsHandler) HandleSync(w http.ResponseWriter, r *http.Request
 		since = &cursor
 	}
 
-	rows, err := h.system.Deliveries.ListSync(r.Context(), profileID, since, limit)
+	rows, err := h.system.Deliveries.ListSync(r.Context(), profileID, since, parseIncludeDismissed(r), limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to sync notifications")
 		return
@@ -212,6 +227,58 @@ func (h *NotificationsHandler) HandleMarkRead(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// deliveryDismisser is the repository seam HandleDismiss uses; tests
+// substitute a fake, production uses System.Deliveries.
+type deliveryDismisser interface {
+	Dismiss(ctx context.Context, profileID, id string) (bool, error)
+	Exists(ctx context.Context, profileID, id string) (bool, error)
+}
+
+func (h *NotificationsHandler) dismisser() deliveryDismisser {
+	if h.dismissStore != nil {
+		return h.dismissStore
+	}
+	return h.system.Deliveries
+}
+
+// HandleDismiss handles POST /notifications/{id}/dismiss. Dismiss is
+// distinct from read: it hides the alert banner/row from feeds (unless the
+// client asks for include_dismissed) and leaves read state alone. Critical
+// alerts (dismissible=false) answer 409.
+func (h *NotificationsHandler) HandleDismiss(w http.ResponseWriter, r *http.Request) {
+	userID := apimw.GetUserID(r.Context())
+	profileID := apimw.GetProfileID(r.Context())
+	id := chi.URLParam(r, "id")
+	store := h.dismisser()
+
+	transitioned, err := store.Dismiss(r.Context(), profileID, id)
+	if errors.Is(err, notifications.ErrDeliveryNotDismissible) {
+		writeError(w, http.StatusConflict, "not_dismissible", "This notification cannot be dismissed")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to dismiss notification")
+		return
+	}
+	if !transitioned {
+		exists, err := store.Exists(r.Context(), profileID, id)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to dismiss notification")
+			return
+		}
+		if !exists {
+			writeError(w, http.StatusNotFound, "not_found", "Notification not found")
+			return
+		}
+	}
+	if transitioned && h.hub != nil {
+		_ = h.hub.PublishJSON(r.Context(), evt.ChannelNotifications, notifications.EventNotificationDismissed,
+			map[string]any{"profile_id": profileID, "id": id},
+			evt.PublishOptions{UserID: userID, ProfileID: profileID})
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // HandleReadAll handles POST /notifications/read-all.
 func (h *NotificationsHandler) HandleReadAll(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
@@ -306,6 +373,11 @@ type capabilityResponse struct {
 	Webhooks    capabilityWebhooks       `json:"webhooks"`
 	Email       capabilityAccountChannel `json:"email"`
 	Discord     capabilityAccountChannel `json:"discord"`
+	// S-1 (docs/specs/client-engagement.md §A.7): clients gate the alert
+	// banner, the dismiss action, and type-specific rendering on these.
+	Announcements  bool     `json:"announcements"`
+	SupportedTypes []string `json:"supported_types"`
+	Dismiss        bool     `json:"dismiss"`
 }
 
 // capabilityAccountChannel describes an account-level digest channel (email,
@@ -413,5 +485,11 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		Webhooks:    webhooks,
 		Email:       email,
 		Discord:     discordCap,
+		// Announcements are a server feature, not a per-profile setting:
+		// advertise them whenever the system runs (the admin compose route
+		// is mounted under the same condition).
+		Announcements:  true,
+		SupportedTypes: notifications.SupportedDeliveryTypes(),
+		Dismiss:        true,
 	})
 }

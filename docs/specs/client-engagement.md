@@ -115,3 +115,80 @@ section type; `ambience` windows on branding/capability.
    forced wait (no such fields exist).
 4. Authoring note (garden split still pending): whatever authors campaigns must be able to attach
    the artwork assets (banner/sprites/16:9 cards) — asset upload is part of the authoring surface.
+
+---
+
+## Implementation notes (S-1) — shipped on `feat/s1-alerts`
+
+Everything below is additive; the v1 route-contract goldens are unchanged (the new routes mount
+only when the notification system is wired, which the golden fixtures do not do).
+
+### Storage
+
+Migration `20260901120000_system_alert_notifications.sql`:
+
+- `notification_deliveries` gains `body jsonb` (the AlertBody, NULL for release types),
+  `expires_at timestamptz` (denormalised from `body.expires_at` by the delivery repository — the
+  single writer — so list/sync can filter with a plain predicate), `dismissed_at timestamptz`, and
+  `announcement_id text` (FK → `notification_announcements`, `ON DELETE SET NULL`). The episode-row
+  CHECK is untouched. Partial unique `(profile_id, announcement_id)` makes re-fanout idempotent.
+- `notification_announcements`: one row per admin compose (`type`, `body`, `targeting`,
+  `created_by`, `recipient_count`, `created_at`, `withdrawn_at`).
+
+### Delivery types and body
+
+`system.alert` (operational; bypasses the profile master toggle) and `system.announcement`
+(informational; honours `notification_preferences.enabled`). `NormalizeAlertBody` validates at
+write time: title required (≤120 chars), body ≤2000, `severity ∈ {info, warning, critical}`
+(default `info`), `deeplink`/`cta.url` must be an absolute http(s) URL or an app path starting
+with a single `/`, `image_url` http(s) only, `cta` needs both `label` and `url`, `expires_at` must
+be in the future, and **`dismissible` is forced `false` when `severity=critical`**.
+
+### Wire shape (one shape for REST inbox, ws snapshot, `notification.created`)
+
+`DeliveryRowPayload` grows, all `omitempty` and only present on system rows:
+
+```json
+{"title": "…", "body": "…", "severity": "info|warning|critical", "deeplink": "…",
+ "image_url": "…", "dismissible": true, "cta": {"label": "…", "url": "…"},
+ "expires_at": "RFC3339", "dismissed_at": "RFC3339"}
+```
+
+Release rows omit every one of these keys (including `dismissible`). Generic webhooks carry the
+same object under `alert`; Discord embeds and web push/APNs display derive title/body/link from
+it (`BuildNotificationDisplay` categories `system_alert` / `system_announcement`, thread
+`announcement:{id}`).
+
+### Client routes
+
+- `GET /notifications`, `GET /notifications/sync`: expired rows are **always** filtered
+  server-side; dismissed rows are filtered unless `?include_dismissed=1`. The ws snapshot
+  (`RecentUnread`) and `unread-count` apply both filters. Account-channel digests (email, Discord
+  DM) skip expired rows too.
+- `POST /notifications/{id}/dismiss` → 204 (idempotent), 404 unknown/other profile, 409
+  `not_dismissible` when the stored body says `dismissible=false` (every critical alert). Dismiss
+  never touches `read_at`. Emits ws `notification.dismissed` `{id, profile_id}`.
+- `GET /notifications/capability` adds `"announcements": true`,
+  `"supported_types": [episode.available, request.fulfilled, request.approved, request.declined,
+  webhook.auto_disabled, system.alert, system.announcement]`, `"dismiss": true`.
+
+### Admin routes (`/admin/notifications/announcements`, beside the server-channel CRUD)
+
+- `POST` body: `{"type": "system.alert|system.announcement" (default announcement),
+  "body": AlertBody, "targeting": {"audience": "all|role|organization|library|explicit",
+  "role"?, "organization_id"?, "library_id"?, "user_ids"?, "profile_ids"?}}` → 201 with the
+  announcement (`recipient_count` included); 400 on body/targeting validation, 422
+  `no_recipients` when the audience resolves to nobody. Disabled accounts are never targeted;
+  `organization` uses active `organization_memberships`; `library` resolves each profile's access
+  scope (`AllowedLibraryIDs` / unrestricted); `explicit` expands `user_ids` to all their profiles
+  and adds `profile_ids` individually.
+- Fan-out: `System.dispatchOperationalBatch` — the announcement row, every inbox row, and every
+  webhook / web push / APNs-FCM outbox attempt commit in **one transaction**; post-commit each
+  row goes through the shared `MultiDispatcher` (ws `notification.created` per recipient, channel
+  senders). Every enabled webhook of a recipient profile receives system rows.
+- `GET` → `{"announcements": [...]}` newest first (withdrawn included, `withdrawn_at` set).
+- `DELETE /{id}` = **withdraw**: in one transaction, stamps `withdrawn_at`, deletes the
+  announcement's **unread** delivery rows (pending outbox attempts cascade away, so undelivered
+  pushes are cancelled), and sets `expires_at = now()` on **read** rows so every feed stops
+  showing them while the read history survives. Emits ws `notification.withdrawn`
+  `{id, profile_id}` per affected row. Idempotent; 404 for unknown ids.

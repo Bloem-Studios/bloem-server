@@ -77,6 +77,18 @@ func BuildNotificationDisplay(row DeliveryRow) NotificationDisplay {
 			display.Body = "Reason: " + truncateDisplayText(flags.Reason, displayBodyMaxLen)
 		}
 		display.ThreadID = requestThreadID(flags)
+	case DeliveryTypeSystemAlert, DeliveryTypeSystemAnnouncement:
+		display.Category = strings.ReplaceAll(row.Type, ".", "_")
+		if body, ok := ParseAlertBody(row.Body); ok {
+			display.Title = truncateDisplayText(body.Title, displayBodyMaxLen)
+			display.Body = truncateDisplayText(body.Body, displayBodyMaxLen)
+			if body.Deeplink != "" {
+				display.URL = body.Deeplink
+			}
+		}
+		if row.AnnouncementID != nil && *row.AnnouncementID != "" {
+			display.ThreadID = "announcement:" + *row.AnnouncementID
+		}
 	case DeliveryTypeWebhookAutoDisabled:
 		display.Category = "webhook_auto_disabled"
 		display.Title = "A webhook stopped working"

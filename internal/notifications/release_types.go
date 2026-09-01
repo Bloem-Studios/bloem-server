@@ -142,6 +142,18 @@ type Delivery struct {
 	ReadAt         *time.Time
 	DeliveredAt    *time.Time
 	CreatedAt      time.Time
+	// Body is the raw JSONB AlertBody for system.* types; nil otherwise. The
+	// repository derives ExpiresAt from it on insert (single writer).
+	Body []byte
+	// ExpiresAt hides the row from inbox, sync, snapshot, and unread counts
+	// once passed (AMENDMENT 2: clients never see stale alerts).
+	ExpiresAt *time.Time
+	// DismissedAt is distinct from ReadAt: dismiss hides a banner, read
+	// clears the badge.
+	DismissedAt *time.Time
+	// AnnouncementID links admin-composed rows to their announcement so a
+	// withdraw can find them.
+	AnnouncementID *string
 }
 
 // DeliveryRow is a delivery enriched with the display metadata clients need
