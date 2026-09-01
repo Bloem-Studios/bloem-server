@@ -1,21 +1,34 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/Silo-Server/silo-server/internal/ambience"
 	"github.com/Silo-Server/silo-server/internal/branding"
 )
+
+// ambiencePublicSource supplies the active deployment-wide ambience packs for
+// the unauthenticated branding payload (S-3).
+type ambiencePublicSource interface {
+	ActivePublic(ctx context.Context) ([]ambience.Wire, error)
+}
 
 // BrandingHandler exposes the public branding read, the public asset serving
 // endpoint, and the admin asset upload/delete endpoints. All branding logic is
 // delegated to the branding.Service.
 type BrandingHandler struct {
-	svc *branding.Service
+	svc      *branding.Service
+	ambience ambiencePublicSource
 }
+
+// SetAmbience wires the S-3 pack registry so GET /theme/branding carries the
+// active deployment-wide packs. Without it the `ambience` block is empty.
+func (h *BrandingHandler) SetAmbience(src ambiencePublicSource) { h.ambience = src }
 
 // NewBrandingHandler constructs a BrandingHandler around a branding service.
 func NewBrandingHandler(svc *branding.Service) *BrandingHandler {
@@ -38,12 +51,24 @@ type brandingResponse struct {
 	FaviconURL       string `json:"favicon_url,omitempty"`
 	LoginBgURL       string `json:"login_bg_url,omitempty"`
 	StorageAvailable bool   `json:"storage_available"`
+	// Ambience is the S-3 block (docs/specs/client-engagement.md section C):
+	// the deployment-wide seasonal packs active at the server's clock, with
+	// their window bounds so clients also honour them locally. Always present
+	// (empty array when none) — unauthenticated, so org-scoped packs never
+	// appear here.
+	Ambience []ambience.Wire `json:"ambience"`
 }
 
 // HandleGetBranding returns the server branding configuration. Public endpoint —
 // no authentication required so branding applies before login (white-label).
 func (h *BrandingHandler) HandleGetBranding(w http.ResponseWriter, r *http.Request) {
 	snap := h.svc.Load(r.Context())
+	active := []ambience.Wire{}
+	if h.ambience != nil {
+		if packs, err := h.ambience.ActivePublic(r.Context()); err == nil && packs != nil {
+			active = packs
+		}
+	}
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, brandingResponse{
 		ServerName:       snap.ServerName,
@@ -57,6 +82,7 @@ func (h *BrandingHandler) HandleGetBranding(w http.ResponseWriter, r *http.Reque
 		FaviconURL:       snap.AssetURL(branding.KindFavicon),
 		LoginBgURL:       snap.AssetURL(branding.KindLoginBg),
 		StorageAvailable: h.svc.HasStorage(),
+		Ambience:         active,
 	})
 }
 
