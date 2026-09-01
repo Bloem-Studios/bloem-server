@@ -14,6 +14,12 @@ import (
 const (
 	EventNotificationCreated = "notification.created"
 	EventNotificationRead    = "notification.read"
+	// EventNotificationDismissed carries {id, profile_id} when a profile
+	// dismisses a row; EventNotificationWithdrawn carries the same shape when
+	// an admin withdraws the announcement behind it. Both are additive: older
+	// clients ignore unknown event names.
+	EventNotificationDismissed = "notification.dismissed"
+	EventNotificationWithdrawn = "notification.withdrawn"
 )
 
 // Dispatcher fans one committed notification delivery out to a channel.
@@ -45,6 +51,18 @@ type DeliveryRowPayload struct {
 	ReasonFlags     json.RawMessage `json:"reason_flags"`
 	CreatedAt       time.Time       `json:"created_at"`
 	ReadAt          *time.Time      `json:"read_at"`
+	// S-1 alert fields: present only on system.alert / system.announcement
+	// rows (docs/specs/client-engagement.md §A). Dismissible is a pointer so
+	// release rows omit it entirely; a critical alert always carries false.
+	Title       string     `json:"title,omitempty"`
+	Body        string     `json:"body,omitempty"`
+	Severity    string     `json:"severity,omitempty"`
+	Deeplink    string     `json:"deeplink,omitempty"`
+	ImageURL    string     `json:"image_url,omitempty"`
+	Dismissible *bool      `json:"dismissible,omitempty"`
+	CTA         *AlertCTA  `json:"cta,omitempty"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+	DismissedAt *time.Time `json:"dismissed_at,omitempty"`
 }
 
 // PayloadForRow converts a DeliveryRow into its wire shape.
@@ -53,7 +71,7 @@ func PayloadForRow(row DeliveryRow) DeliveryRowPayload {
 	if len(reasonFlags) == 0 {
 		reasonFlags = json.RawMessage("{}")
 	}
-	return DeliveryRowPayload{
+	payload := DeliveryRowPayload{
 		ID:              row.ID,
 		Type:            row.Type,
 		ProfileID:       row.ProfileID,
@@ -69,7 +87,23 @@ func PayloadForRow(row DeliveryRow) DeliveryRowPayload {
 		ReasonFlags:     reasonFlags,
 		CreatedAt:       row.CreatedAt,
 		ReadAt:          row.ReadAt,
+		ExpiresAt:       row.ExpiresAt,
+		DismissedAt:     row.DismissedAt,
 	}
+	if body, ok := ParseAlertBody(row.Body); ok {
+		payload.Title = body.Title
+		payload.Body = body.Body
+		payload.Severity = body.Severity
+		payload.Deeplink = body.Deeplink
+		payload.ImageURL = body.ImageURL
+		dismissible := body.Dismissible
+		payload.Dismissible = &dismissible
+		payload.CTA = body.CTA
+		if payload.ExpiresAt == nil {
+			payload.ExpiresAt = body.ExpiresAt
+		}
+	}
+	return payload
 }
 
 // WebsocketDispatcher publishes notification.created on ChannelNotifications,

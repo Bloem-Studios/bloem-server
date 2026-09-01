@@ -63,6 +63,8 @@ type System struct {
 	// DiscordPrefs holds Discord DM link + mode state; the channel only
 	// delivers once an admin configures bot credentials in settings.
 	DiscordPrefs *DiscordPrefsRepository
+	// Announcements composes admin alerts/announcements (S-1).
+	Announcements *AnnouncementService
 
 	mailSender    mail.Sender
 	emailWorker   *accountChannelWorker[string]
@@ -90,7 +92,9 @@ type System struct {
 
 	pool   *pgxpool.Pool
 	stores userstore.UserStoreProvider
+	scopes ScopeResolver
 	users  UserLister
+	hub    *evt.Hub
 	images ImageURLResolver
 	logger *slog.Logger
 	wg     sync.WaitGroup
@@ -245,10 +249,13 @@ func NewSystem(
 		dispatcher:          multiDispatcher,
 		pool:                pool,
 		stores:              stores,
+		scopes:              scopes,
 		users:               users,
+		hub:                 hub,
 		logger:              slog.Default().With("component", "notifications.system"),
 	}
 	wsDispatcher.payload = system.PayloadForRow
+	system.Announcements = newAnnouncementService(system, NewAnnouncementRepository(pool))
 	if emailChannelInst != nil {
 		emailChannelInst.profileName = system.lookupProfileName
 	}

@@ -57,6 +57,7 @@ func DecodeCursor(encoded string) (Cursor, error) {
 const deliveryRowSelect = `
 	SELECT d.id, d.release_event_id, d.user_id, d.profile_id, d.library_id, d.series_id, d.episode_id,
 	       d.type, d.reason_flags, d.status, d.read_at, d.delivered_at, d.created_at,
+	       d.body, d.expires_at, d.dismissed_at, d.announcement_id,
 	       COALESCE(s.title, '') AS series_title,
 	       COALESCE(e.title, '') AS episode_title,
 	       e.season_number, e.episode_number,
@@ -87,6 +88,7 @@ func scanDeliveryRows(rows pgx.Rows) ([]DeliveryRow, error) {
 			&row.ID, &row.ReleaseEventID, &row.UserID, &row.ProfileID,
 			&row.LibraryID, &row.SeriesID, &row.EpisodeID,
 			&row.Type, &row.ReasonFlags, &row.Status, &row.ReadAt, &row.DeliveredAt, &row.CreatedAt,
+			&row.Body, &row.ExpiresAt, &row.DismissedAt, &row.AnnouncementID,
 			&row.SeriesTitle, &row.EpisodeTitle, &row.SeasonNumber, &row.EpisodeNumber,
 			&row.PosterPath, &row.PosterThumbhash, &row.PosterSourcePath,
 			&row.MediaType, &row.Year, &row.SeriesOverview, &row.EpisodeOverview,
@@ -115,24 +117,36 @@ func (r *DeliveryRepository) BulkInsert(ctx context.Context, tx pgx.Tx, deliveri
 		sb.WriteString(`
 			INSERT INTO notification_deliveries
 				(id, release_event_id, user_id, profile_id, library_id, series_id, episode_id,
-				 type, reason_flags, status, delivered_at)
+				 type, reason_flags, status, delivered_at, body, expires_at, announcement_id)
 			VALUES `)
-		args := make([]any, 0, len(chunk)*11)
+		args := make([]any, 0, len(chunk)*14)
 		for i, delivery := range chunk {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
 			base := len(args)
-			sb.WriteString(fmt.Sprintf("($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d)",
-				base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9, base+10, base+11))
+			fmt.Fprintf(&sb, "($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d)",
+				base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9, base+10, base+11,
+				base+12, base+13, base+14)
 			status := delivery.Status
 			if status == "" {
 				status = "delivered"
 			}
+			reasonFlags := delivery.ReasonFlags
+			if len(reasonFlags) == 0 {
+				reasonFlags = []byte("{}")
+			}
+			// expires_at is derived from the body here and nowhere else, so
+			// the filter column can never disagree with the payload.
+			expiresAt := delivery.ExpiresAt
+			if body, ok := ParseAlertBody(delivery.Body); ok && body.ExpiresAt != nil {
+				expiresAt = body.ExpiresAt
+			}
 			args = append(args,
 				delivery.ID, delivery.ReleaseEventID, delivery.UserID, delivery.ProfileID,
 				delivery.LibraryID, delivery.SeriesID, delivery.EpisodeID,
-				delivery.Type, delivery.ReasonFlags, status, time.Now().UTC(),
+				delivery.Type, reasonFlags, status, time.Now().UTC(),
+				delivery.Body, expiresAt, delivery.AnnouncementID,
 			)
 		}
 		sb.WriteString(" ON CONFLICT DO NOTHING RETURNING id, user_id, profile_id, created_at")
@@ -157,9 +171,26 @@ func (r *DeliveryRepository) BulkInsert(ctx context.Context, tx pgx.Tx, deliveri
 	return inserted, nil
 }
 
-// ListInbox returns inbox rows newest-first for the profile.
-func (r *DeliveryRepository) ListInbox(ctx context.Context, profileID string, unreadOnly bool, limit int, before *Cursor) ([]DeliveryRow, error) {
-	conditions := []string{"d.profile_id = $1"}
+// Visibility predicates shared by every client-facing read. Expired rows
+// are never served (AMENDMENT 2); dismissed rows are hidden unless the
+// caller opts in. Digest and outbox readers apply the expiry rule too so a
+// lapsed alert is not mailed after the fact.
+const (
+	deliveryNotExpired   = "(d.expires_at IS NULL OR d.expires_at > now())"
+	deliveryNotDismissed = "d.dismissed_at IS NULL"
+)
+
+func deliveryVisibility(includeDismissed bool) string {
+	if includeDismissed {
+		return deliveryNotExpired
+	}
+	return deliveryNotExpired + " AND " + deliveryNotDismissed
+}
+
+// ListInbox returns inbox rows newest-first for the profile. Expired rows
+// are always filtered; dismissed rows only when includeDismissed is false.
+func (r *DeliveryRepository) ListInbox(ctx context.Context, profileID string, unreadOnly, includeDismissed bool, limit int, before *Cursor) ([]DeliveryRow, error) {
+	conditions := []string{"d.profile_id = $1", deliveryVisibility(includeDismissed)}
 	args := []any{profileID}
 	if unreadOnly {
 		conditions = append(conditions, "d.read_at IS NULL")
@@ -182,11 +213,12 @@ func (r *DeliveryRepository) ListInbox(ctx context.Context, profileID string, un
 // ListSync returns rows ascending from the cursor for forward sync (the
 // mobile wake-fetch endpoint). A nil cursor returns the most recent page
 // (still ascending) so first-time callers get a cursor to persist.
-func (r *DeliveryRepository) ListSync(ctx context.Context, profileID string, since *Cursor, limit int) ([]DeliveryRow, error) {
+func (r *DeliveryRepository) ListSync(ctx context.Context, profileID string, since *Cursor, includeDismissed bool, limit int) ([]DeliveryRow, error) {
+	visibility := deliveryVisibility(includeDismissed)
 	if since != nil {
 		rows, err := r.pool.Query(ctx,
 			deliveryRowSelect+`
-			WHERE d.profile_id = $1 AND (d.created_at, d.id) > ($2, $3)
+			WHERE d.profile_id = $1 AND (d.created_at, d.id) > ($2, $3) AND `+visibility+`
 			ORDER BY d.created_at ASC, d.id ASC
 			LIMIT $4`,
 			profileID, since.CreatedAt, since.ID, limit)
@@ -198,7 +230,7 @@ func (r *DeliveryRepository) ListSync(ctx context.Context, profileID string, sin
 	// No cursor: most recent page, returned in ascending order.
 	rows, err := r.pool.Query(ctx, `
 		SELECT * FROM (`+deliveryRowSelect+`
-			WHERE d.profile_id = $1
+			WHERE d.profile_id = $1 AND `+visibility+`
 			ORDER BY d.created_at DESC, d.id DESC
 			LIMIT $2
 		) recent ORDER BY recent.created_at ASC, recent.id ASC`,
@@ -209,10 +241,12 @@ func (r *DeliveryRepository) ListSync(ctx context.Context, profileID string, sin
 	return scanDeliveryRows(rows)
 }
 
-// GetByID returns one delivery scoped to the profile; (nil, nil) when absent.
+// GetByID returns one delivery scoped to the profile; (nil, nil) when absent
+// or expired (a withdrawn-then-read row is expired, so a client holding a
+// stale snapshot cannot re-fetch it by id). Dismissed rows stay fetchable.
 func (r *DeliveryRepository) GetByID(ctx context.Context, profileID, id string) (*DeliveryRow, error) {
 	rows, err := r.pool.Query(ctx,
-		deliveryRowSelect+` WHERE d.profile_id = $1 AND d.id = $2`, profileID, id)
+		deliveryRowSelect+` WHERE d.profile_id = $1 AND d.id = $2 AND `+deliveryNotExpired, profileID, id)
 	if err != nil {
 		return nil, fmt.Errorf("get delivery: %w", err)
 	}
@@ -250,7 +284,7 @@ func (r *DeliveryRepository) GetRowByID(ctx context.Context, id string) (*Delive
 // watermark covers.
 func (r *DeliveryRepository) ListForUserSince(ctx context.Context, tx pgx.Tx, userID int, since Cursor, until time.Time, limit int) ([]DeliveryRow, error) {
 	query := deliveryRowSelect + `
-		WHERE d.user_id = $1 AND (d.created_at, d.id) > ($2, $3)`
+		WHERE d.user_id = $1 AND (d.created_at, d.id) > ($2, $3) AND ` + deliveryNotExpired
 	args := []any{userID, since.CreatedAt, since.ID}
 	if !until.IsZero() {
 		args = append(args, until)
@@ -307,7 +341,7 @@ func (r *DeliveryRepository) HasTransactionalForUserSince(ctx context.Context, u
 // transaction so the rows read are the rows the advanced watermark covers.
 func (r *DeliveryRepository) ListForProfileSince(ctx context.Context, tx pgx.Tx, profileID string, since Cursor, until time.Time, limit int) ([]DeliveryRow, error) {
 	query := deliveryRowSelect + `
-		WHERE d.profile_id = $1 AND (d.created_at, d.id) > ($2, $3)`
+		WHERE d.profile_id = $1 AND (d.created_at, d.id) > ($2, $3) AND ` + deliveryNotExpired
 	args := []any{profileID, since.CreatedAt, since.ID}
 	if !until.IsZero() {
 		args = append(args, until)
@@ -362,7 +396,7 @@ func (r *DeliveryRepository) HasTransactionalForProfileSince(ctx context.Context
 func (r *DeliveryRepository) RecentUnread(ctx context.Context, profileID string, limit int) ([]DeliveryRow, error) {
 	rows, err := r.pool.Query(ctx,
 		deliveryRowSelect+`
-		WHERE d.profile_id = $1 AND d.read_at IS NULL
+		WHERE d.profile_id = $1 AND d.read_at IS NULL AND `+deliveryVisibility(false)+`
 		ORDER BY d.created_at DESC, d.id DESC
 		LIMIT $2`,
 		profileID, limit)
@@ -376,7 +410,8 @@ func (r *DeliveryRepository) RecentUnread(ctx context.Context, profileID string,
 func (r *DeliveryRepository) UnreadCount(ctx context.Context, profileID string) (int, error) {
 	var count int
 	err := r.pool.QueryRow(ctx,
-		`SELECT count(*) FROM notification_deliveries WHERE profile_id = $1 AND read_at IS NULL`,
+		`SELECT count(*) FROM notification_deliveries d
+		 WHERE d.profile_id = $1 AND d.read_at IS NULL AND `+deliveryVisibility(false),
 		profileID,
 	).Scan(&count)
 	return count, err
@@ -394,6 +429,102 @@ func (r *DeliveryRepository) MarkRead(ctx context.Context, profileID, id string)
 		return false, err
 	}
 	return tag.RowsAffected() > 0, nil
+}
+
+// ErrDeliveryNotDismissible reports a dismiss attempt on a row whose body
+// carries dismissible=false (every critical alert).
+var ErrDeliveryNotDismissible = errors.New("notification is not dismissible")
+
+// Dismiss hides one delivery from the profile's feeds without marking it
+// read. Idempotent; reports whether the row transitioned. Rows whose body
+// says dismissible=false are refused with ErrDeliveryNotDismissible.
+func (r *DeliveryRepository) Dismiss(ctx context.Context, profileID, id string) (bool, error) {
+	var dismissible *bool
+	var alreadyDismissed, expired bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT (body->>'dismissible')::boolean, dismissed_at IS NOT NULL,
+		       expires_at IS NOT NULL AND expires_at <= now()
+		FROM notification_deliveries WHERE profile_id = $1 AND id = $2`,
+		profileID, id).Scan(&dismissible, &alreadyDismissed, &expired)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("load delivery for dismiss: %w", err)
+	}
+	if dismissible != nil && !*dismissible {
+		return false, ErrDeliveryNotDismissible
+	}
+	if alreadyDismissed || expired {
+		// Expired rows are invisible everywhere else; dismissing one is a
+		// no-op rather than a state change.
+		return false, nil
+	}
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE notification_deliveries
+		SET dismissed_at = now()
+		WHERE profile_id = $1 AND id = $2 AND dismissed_at IS NULL`,
+		profileID, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+// GetRowsByIDs loads deliveries without profile scoping, for post-commit
+// dispatch of a batch. Order is unspecified.
+func (r *DeliveryRepository) GetRowsByIDs(ctx context.Context, ids []string) ([]DeliveryRow, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := r.pool.Query(ctx, deliveryRowSelect+` WHERE d.id = ANY($1)`, ids)
+	if err != nil {
+		return nil, fmt.Errorf("get delivery rows: %w", err)
+	}
+	return scanDeliveryRows(rows)
+}
+
+// WithdrawnDelivery identifies a row removed or expired by an announcement
+// withdrawal so realtime clients can drop it.
+type WithdrawnDelivery struct {
+	ID        string
+	UserID    int
+	ProfileID string
+}
+
+// WithdrawAnnouncement removes the announcement's unread rows (their pending
+// outbox attempts cascade away, so undelivered pushes are cancelled) and
+// expires the already-read ones so every feed stops showing them. Returns
+// both sets for realtime notification.
+func (r *DeliveryRepository) WithdrawAnnouncement(ctx context.Context, tx pgx.Tx, announcementID string) ([]WithdrawnDelivery, error) {
+	rows, err := tx.Query(ctx, `
+		WITH removed AS (
+			DELETE FROM notification_deliveries
+			WHERE announcement_id = $1 AND read_at IS NULL
+			RETURNING id, user_id, profile_id
+		), expired AS (
+			UPDATE notification_deliveries
+			SET expires_at = now()
+			WHERE announcement_id = $1 AND read_at IS NOT NULL
+			  AND (expires_at IS NULL OR expires_at > now())
+			RETURNING id, user_id, profile_id
+		)
+		SELECT id, user_id, profile_id FROM removed
+		UNION ALL
+		SELECT id, user_id, profile_id FROM expired`, announcementID)
+	if err != nil {
+		return nil, fmt.Errorf("withdraw announcement deliveries: %w", err)
+	}
+	defer rows.Close()
+	out := make([]WithdrawnDelivery, 0, 16)
+	for rows.Next() {
+		var row WithdrawnDelivery
+		if err := rows.Scan(&row.ID, &row.UserID, &row.ProfileID); err != nil {
+			return nil, fmt.Errorf("scan withdrawn delivery: %w", err)
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
 }
 
 // Exists reports whether a delivery belongs to the profile (used to make

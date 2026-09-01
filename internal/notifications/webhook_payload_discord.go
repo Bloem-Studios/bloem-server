@@ -20,9 +20,12 @@ const (
 const (
 	discordTitleLimit       = 256
 	discordDescriptionLimit = 4096
-	discordFieldValueLimit  = 1024
-	discordFooterLimit      = 2048
-	discordTotalLimit       = 6000
+	// Severity colors for system alert embeds.
+	discordAlertColorWarning  = 16753920 // orange
+	discordAlertColorCritical = 15158332 // red
+	discordFieldValueLimit    = 1024
+	discordFooterLimit        = 2048
+	discordTotalLimit         = 6000
 )
 
 type discordEmbedField struct {
@@ -133,6 +136,10 @@ func discordEmbedAuthorLine(deliveryType string) string {
 		return "Your request was approved on Silo"
 	case DeliveryTypeRequestDeclined:
 		return "Your request was declined on Silo"
+	case DeliveryTypeSystemAlert:
+		return "Alert from Silo"
+	case DeliveryTypeSystemAnnouncement:
+		return "Announcement from Silo"
 	default:
 		return genericNotificationTitle
 	}
@@ -165,6 +172,14 @@ func buildDiscordEmbed(row DeliveryRow, test bool) discordEmbed {
 	overview := row.SeriesOverview
 	if row.Type == DeliveryTypeEpisodeAvailable && row.EpisodeOverview != "" {
 		overview = row.EpisodeOverview
+	}
+	// System alerts carry their own text and (optional) link; no catalog join.
+	var alertBody *AlertBody
+	if IsSystemDeliveryType(row.Type) {
+		if body, ok := ParseAlertBody(row.Body); ok {
+			alertBody = body
+			overview = body.Body
+		}
 	}
 	isRequestType := row.Type == DeliveryTypeRequestFulfilled || isRequestLifecycleType(row.Type)
 	var requestFlags RequestFlags
@@ -222,6 +237,24 @@ func buildDiscordEmbed(row DeliveryRow, test bool) discordEmbed {
 		Footer:      &discordEmbedFooter{Text: discordEmbedFooterText(row.ContentRating, test)},
 		Fields:      fields,
 	}
+	if alertBody != nil {
+		// No provider links or catalog fields for system rows: the body text,
+		// the author's link, and a severity color are the whole embed.
+		embed.URL = ""
+		if validAlertHTTPURL(alertBody.Deeplink) {
+			embed.URL = alertBody.Deeplink
+		}
+		embed.Description = truncateWithEllipsis(alertBody.Body, discordDescriptionLimit)
+		if alertBody.ImageURL != "" {
+			embed.Thumbnail = &discordEmbedMedia{URL: alertBody.ImageURL}
+		}
+		switch alertBody.Severity {
+		case SeverityCritical:
+			embed.Color = discordAlertColorCritical
+		case SeverityWarning:
+			embed.Color = discordAlertColorWarning
+		}
+	}
 	// The poster decision (provider CDN vs presigned vs none) is the sender
 	// layer's: builders render whatever PosterURL carries.
 	if row.PosterURL != "" {
@@ -236,6 +269,11 @@ func buildDiscordEmbed(row DeliveryRow, test bool) discordEmbed {
 
 func discordEmbedTitle(row DeliveryRow) string {
 	switch row.Type {
+	case DeliveryTypeSystemAlert, DeliveryTypeSystemAnnouncement:
+		if body, ok := ParseAlertBody(row.Body); ok && body.Title != "" {
+			return body.Title
+		}
+		return genericNotificationTitle
 	case DeliveryTypeRequestFulfilled:
 		if row.SeriesTitle != "" {
 			return titleWithYear(row.SeriesTitle, row.Year)

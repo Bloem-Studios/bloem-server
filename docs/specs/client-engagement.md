@@ -115,3 +115,151 @@ section type; `ambience` windows on branding/capability.
    forced wait (no such fields exist).
 4. Authoring note (garden split still pending): whatever authors campaigns must be able to attach
    the artwork assets (banner/sprites/16:9 cards) — asset upload is part of the authoring surface.
+
+---
+
+## Implementation notes (S-1) — shipped on `feat/s1-alerts`
+
+Everything below is additive; the v1 route-contract goldens are unchanged (the new routes mount
+only when the notification system is wired, which the golden fixtures do not do).
+
+### Storage
+
+Migration `20260901120000_system_alert_notifications.sql`:
+
+- `notification_deliveries` gains `body jsonb` (the AlertBody, NULL for release types),
+  `expires_at timestamptz` (denormalised from `body.expires_at` by the delivery repository — the
+  single writer — so list/sync can filter with a plain predicate), `dismissed_at timestamptz`, and
+  `announcement_id text` (FK → `notification_announcements`, `ON DELETE SET NULL`). The episode-row
+  CHECK is untouched. Partial unique `(profile_id, announcement_id)` makes re-fanout idempotent.
+- `notification_announcements`: one row per admin compose (`type`, `body`, `targeting`,
+  `created_by`, `recipient_count`, `created_at`, `withdrawn_at`).
+
+### Delivery types and body
+
+`system.alert` (operational; bypasses the profile master toggle) and `system.announcement`
+(informational; honours `notification_preferences.enabled`). `NormalizeAlertBody` validates at
+write time: title required (≤120 chars), body ≤2000, `severity ∈ {info, warning, critical}`
+(default `info`), `deeplink`/`cta.url` must be an `https://` URL, a `bloem://` app deeplink, or
+an app path starting with a single `/` (`javascript:`, `data:`, protocol-relative `//`, plain
+`http:` and every other scheme are rejected), `image_url` `https://` only, `cta` needs both
+`label` and `url`, `expires_at` must be in the future, and **`dismissible` is forced `false`
+when `severity=critical`**.
+
+Exposure note (accepted): `deeplink` / `cta.url` are admin-authored absolute URLs, so the
+exposure is "an admin can send users anywhere"; the server vets the scheme, not the destination.
+
+### Wire shape (one shape for REST inbox, ws snapshot, `notification.created`)
+
+`DeliveryRowPayload` grows, all `omitempty` and only present on system rows:
+
+```json
+{"title": "…", "body": "…", "severity": "info|warning|critical", "deeplink": "…",
+ "image_url": "…", "dismissible": true, "cta": {"label": "…", "url": "…"},
+ "expires_at": "RFC3339", "dismissed_at": "RFC3339"}
+```
+
+Release rows omit every one of these keys (including `dismissible`). Generic webhooks carry the
+same object under `alert`; Discord embeds and web push/APNs display derive title/body/link from
+it (`BuildNotificationDisplay` categories `system_alert` / `system_announcement`, thread
+`announcement:{id}`).
+
+### Client routes
+
+- `GET /notifications`, `GET /notifications/sync`: expired rows are **always** filtered
+  server-side; dismissed rows are filtered unless `?include_dismissed=1`. The ws snapshot
+  (`RecentUnread`) and `unread-count` apply both filters. Account-channel digests (email, Discord
+  DM) skip expired rows too.
+- `GET /notifications/{id}` applies the not-expired predicate too: a withdrawn-then-read row is
+  expired, so a client holding a stale snapshot gets 404 when it re-fetches it by id.
+- `POST /notifications/{id}/dismiss` → 204 (idempotent), 404 unknown/other profile/expired, 409
+  `not_dismissible` when the stored body says `dismissible=false` (every critical alert). Dismiss
+  never touches `read_at`. Emits ws `notification.dismissed` `{id, profile_id}`.
+- `GET /notifications/capability` adds `"announcements": true`,
+  `"supported_types": [episode.available, request.fulfilled, request.approved, request.declined,
+  webhook.auto_disabled, system.alert, system.announcement]`, `"dismiss": true`.
+
+### Admin routes (`/admin/notifications/announcements`, beside the server-channel CRUD)
+
+- `POST` body: `{"type": "system.alert|system.announcement" (default announcement),
+  "body": AlertBody, "targeting": {"audience": "all|role|organization|library|explicit",
+  "role"?, "organization_id"?, "library_id"?, "user_ids"?, "profile_ids"?}}` → 201 with the
+  announcement (`recipient_count` included); 400 on body/targeting validation, 422
+  `no_recipients` when the audience resolves to nobody. Disabled accounts are never targeted;
+  `organization` uses active `organization_memberships`; `library` resolves each profile's access
+  scope (`AllowedLibraryIDs` / unrestricted); `explicit` expands `user_ids` to all their profiles
+  and adds `profile_ids` individually.
+- Opt-out (accepted design): for `system.announcement` the resolved audience is filtered
+  against `notification_preferences.enabled` **before** the announcement row is stored, so
+  `recipient_count` and the withdraw set exclude opted-out profiles and no per-profile audit
+  trace of the skip exists. `system.alert` skips this filter entirely.
+- Fan-out: `System.dispatchOperationalBatch` — the announcement row, every inbox row, and every
+  webhook / web push / APNs-FCM outbox attempt commit in **one transaction**; post-commit each
+  row goes through the shared `MultiDispatcher` (ws `notification.created` per recipient, channel
+  senders). Every enabled webhook of a recipient profile receives system rows.
+- `GET` → `{"announcements": [...]}` newest first (withdrawn included, `withdrawn_at` set).
+- `DELETE /{id}` = **withdraw**: in one transaction, stamps `withdrawn_at`, deletes the
+  announcement's **unread** delivery rows (pending outbox attempts cascade away, so undelivered
+  pushes are cancelled), and sets `expires_at = now()` on **read** rows so every feed stops
+  showing them while the read history survives. Emits ws `notification.withdrawn`
+  `{id, profile_id}` per affected row. Idempotent; 404 for unknown ids.
+
+### Admin create contract (source of truth for the garden client)
+
+Request, copied from the passing handler test
+`TestAdminAnnouncementsCreateReturnsCreatedWithRecipientCount`
+(`internal/api/handlers/admin_announcements_test.go`). `type` defaults to `system.announcement`;
+`library_id` is an int, `user_ids` is `[]int`, `profile_ids` is `[]string` (profile ids are
+strings everywhere in this server — the code wins over the earlier `[]int` draft); `severity`
+defaults to `info`; `dismissible` is a bool (forced `false` at `critical`).
+
+```json
+POST /api/v1/admin/notifications/announcements
+{
+  "type": "system.alert",
+  "body": {
+    "title": "Maintenance",
+    "body": "Tonight",
+    "severity": "warning",
+    "deeplink": "bloem://settings/status",
+    "image_url": "https://cdn.example/banner.png",
+    "dismissible": true,
+    "cta": {"label": "Status", "url": "https://status.example"},
+    "expires_at": "2030-01-01T00:00:00Z"
+  },
+  "targeting": {
+    "audience": "role",
+    "role": "admin"
+  }
+}
+```
+
+`targeting` variants: `{"audience":"all"}` · `{"audience":"role","role":"admin|user"}` ·
+`{"audience":"organization","organization_id":"<uuid>"}` · `{"audience":"library","library_id":5}` ·
+`{"audience":"explicit","user_ids":[1,2],"profile_ids":["p1","p2"]}`.
+
+Response `201 Created` (the announcement; top-level `id`, body echoed after normalization,
+`created_by` = calling admin's user id, `withdrawn_at` null until withdrawn):
+
+```json
+{
+  "id": "01J...ULID",
+  "type": "system.alert",
+  "body": {"title": "Maintenance", "body": "Tonight", "severity": "warning",
+           "deeplink": "bloem://settings/status", "image_url": "https://cdn.example/banner.png",
+           "dismissible": true, "cta": {"label": "Status", "url": "https://status.example"},
+           "expires_at": "2030-01-01T00:00:00Z"},
+  "targeting": {"audience": "role", "role": "admin"},
+  "created_by": 42,
+  "recipient_count": 3,
+  "created_at": "2026-09-01T12:00:00Z",
+  "withdrawn_at": null
+}
+```
+
+Errors: `400 bad_request` (body/targeting validation, message names the field), `422
+no_recipients`, `503 unavailable` (notification system not wired).
+
+`GET /api/v1/admin/notifications/announcements` → `{"announcements": [<announcement>, ...]}`
+newest first. `DELETE /api/v1/admin/notifications/announcements/{id}` → `204` (withdraw,
+idempotent), `404 not_found`.
