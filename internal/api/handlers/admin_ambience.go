@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -22,6 +25,7 @@ type ambienceRegistry interface {
 	Update(ctx context.Context, id string, in ambience.Input) (*ambience.Pack, error)
 	Delete(ctx context.Context, id string) error
 	AttachAsset(ctx context.Context, packID, slot string, data []byte) (*ambience.Pack, string, error)
+	StoreAsset(ctx context.Context, req ambience.StoreRequest) (*ambience.StoredAsset, error)
 	ServeAsset(ctx context.Context, ref string) ([]byte, string, error)
 	HasStorage() bool
 }
@@ -138,6 +142,77 @@ func (h *AmbienceHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// readArtworkUpload caps the body, parses the multipart form and returns the
+// `file` part bytes. Writes the error response itself on failure.
+func readArtworkUpload(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
+	// ParseMultipartForm's argument is only the in-memory threshold; the
+	// reader caps the body so oversized uploads never spool to disk.
+	r.Body = http.MaxBytesReader(w, r.Body, ambience.MaxAssetBytes+(1<<20))
+	if err := r.ParseMultipartForm(ambience.MaxAssetBytes + (1 << 20)); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "too_large", "Artwork exceeds the maximum upload size")
+			return nil, false
+		}
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid multipart form")
+		return nil, false
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "Missing file field")
+		return nil, false
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, ambience.MaxAssetBytes+1))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to read upload")
+		return nil, false
+	}
+	if int64(len(data)) > ambience.MaxAssetBytes {
+		writeError(w, http.StatusRequestEntityTooLarge, "too_large", "Artwork exceeds the maximum upload size")
+		return nil, false
+	}
+	return data, true
+}
+
+// HandleUploadAsset handles POST /admin/ambience/assets: a standalone
+// multipart upload as sent by the authoring side (`file` part; text fields
+// `asset_id`, `kind`, `checksum` = sha256 hex of the bytes, `content_type` —
+// the bytes are sniffed, the declared type is ignored), stored under the
+// public asset bucket and recorded by asset_id (idempotent on retry), not
+// attached to any pack. Responds with the public URL at the top level and
+// the stored asset under `asset`.
+func (h *AmbienceHandler) HandleUploadAsset(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	if !h.registry.HasStorage() {
+		writeAmbienceError(w, ambience.ErrStorageUnavailable)
+		return
+	}
+	data, ok := readArtworkUpload(w, r)
+	if !ok {
+		return
+	}
+	if want := r.FormValue("checksum"); want != "" {
+		sum := sha256.Sum256(data)
+		if !strings.EqualFold(want, hex.EncodeToString(sum[:])) {
+			writeError(w, http.StatusBadRequest, "bad_request", "checksum does not match the uploaded bytes")
+			return
+		}
+	}
+	stored, err := h.registry.StoreAsset(r.Context(), ambience.StoreRequest{
+		AssetID: strings.TrimSpace(r.FormValue("asset_id")),
+		Kind:    strings.TrimSpace(r.FormValue("kind")),
+		Data:    data,
+	})
+	if err != nil {
+		writeAmbienceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"url": stored.URL, "asset": stored})
+}
+
 // HandleAttachAsset handles POST /admin/ambience/{id}/assets: a multipart
 // upload (`file` field, `slot` field = banner|sprite, default banner) stored
 // under the public asset bucket and attached to the pack. Responds with the
@@ -150,23 +225,8 @@ func (h *AmbienceHandler) HandleAttachAsset(w http.ResponseWriter, r *http.Reque
 		writeAmbienceError(w, ambience.ErrStorageUnavailable)
 		return
 	}
-	if err := r.ParseMultipartForm(ambience.MaxAssetBytes + (1 << 20)); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid multipart form")
-		return
-	}
-	file, _, err := r.FormFile("file")
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Missing file field")
-		return
-	}
-	defer file.Close()
-	data, err := io.ReadAll(io.LimitReader(file, ambience.MaxAssetBytes+1))
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to read upload")
-		return
-	}
-	if int64(len(data)) > ambience.MaxAssetBytes {
-		writeError(w, http.StatusRequestEntityTooLarge, "too_large", "Artwork exceeds the maximum upload size")
+	data, ok := readArtworkUpload(w, r)
+	if !ok {
 		return
 	}
 	slot := r.FormValue("slot")
@@ -203,13 +263,13 @@ func (h *AmbienceHandler) HandleServeAsset(w http.ResponseWriter, r *http.Reques
 	etag := `"` + ref + `"`
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Security-Policy", branding.AssetContentSecurityPolicy)
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	if r.Header.Get("If-None-Match") == etag {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("ETag", etag)
-	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
 }

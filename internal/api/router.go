@@ -3474,6 +3474,10 @@ func NewRouter(deps Dependencies) chi.Router {
 									r.Post("/", ambienceHandler.HandleCreate)
 									r.Put("/{id}", ambienceHandler.HandleUpdate)
 									r.Delete("/{id}", ambienceHandler.HandleDelete)
+									// Standalone upload (the authoring side pushes
+									// artwork before any pack exists); must be
+									// registered before the {id} pattern.
+									r.Post("/assets", ambienceHandler.HandleUploadAsset)
 									r.Post("/{id}/assets", ambienceHandler.HandleAttachAsset)
 								})
 							}

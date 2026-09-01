@@ -140,6 +140,9 @@ func (h *BrandingHandler) HandleUploadAsset(w http.ResponseWriter, r *http.Reque
 	}
 
 	maxBytes := branding.MaxUploadBytes(branding.AssetKind(kind))
+	// ParseMultipartForm's argument is only the in-memory threshold; the
+	// reader is what actually caps the request body.
+	r.Body = http.MaxBytesReader(w, r.Body, maxBytes+(1<<20))
 	if err := r.ParseMultipartForm(maxBytes + (1 << 20)); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid multipart form")
 		return

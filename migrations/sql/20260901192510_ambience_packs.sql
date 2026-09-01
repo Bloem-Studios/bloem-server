@@ -29,7 +29,24 @@ CREATE INDEX ambience_packs_organization_idx
     ON public.ambience_packs (organization_id)
     WHERE organization_id IS NOT NULL;
 
+-- Uploaded artwork registry (standalone uploads from the authoring side).
+-- asset_id is the authoring system's id; re-sending the same asset_id with
+-- the same checksum is idempotent, a different checksum replaces the object
+-- ref. ref is the content-addressed object key suffix under ambience/.
+CREATE TABLE public.ambience_assets (
+    asset_id text PRIMARY KEY,
+    kind text NOT NULL DEFAULT '',
+    checksum text NOT NULL,
+    ref text NOT NULL,
+    content_type text NOT NULL,
+    size_bytes bigint NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- +goose Down
+
+DROP TABLE IF EXISTS public.ambience_assets;
 
 DROP INDEX IF EXISTS public.ambience_packs_organization_idx;
 DROP INDEX IF EXISTS public.ambience_packs_window_idx;

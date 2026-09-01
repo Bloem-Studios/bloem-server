@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oklog/ulid/v2"
 
@@ -97,7 +98,7 @@ func (s *Service) Create(ctx context.Context, createdBy int, in Input) (*Pack, e
 		ulid.Make().String(), n.EffectID, n.Window.StartsAt, n.Window.EndsAt, n.Intensity, n.Surfaces, assets, n.OrganizationID, createdBy)
 	p, err := scanPack(row)
 	if err != nil {
-		return nil, fmt.Errorf("ambience: create: %w", err)
+		return nil, wrapWriteError("create", err)
 	}
 	return p, nil
 }
@@ -120,7 +121,7 @@ func (s *Service) Update(ctx context.Context, id string, in Input) (*Pack, error
 		return nil, ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("ambience: update: %w", err)
+		return nil, wrapWriteError("update", err)
 	}
 	return p, nil
 }
@@ -173,10 +174,23 @@ func (s *Service) ActiveForAccount(ctx context.Context, accountID int) ([]Wire, 
 		SELECT `+packColumns+` FROM ambience_packs
 		WHERE starts_at <= $1 AND $1 < ends_at
 		  AND (organization_id IS NULL OR organization_id IN (
-		        SELECT organization_id FROM organization_memberships
-		        WHERE account_id = $2 AND status = 'active'))
+		        SELECT m.organization_id
+		        FROM organization_memberships m
+		        JOIN organizations o ON o.id = m.organization_id
+		        WHERE m.account_id = $2 AND m.status = 'active' AND o.status = 'active'))
 		ORDER BY starts_at, id`, s.Now(), accountID)
 	return wire(packs), err
+}
+
+// wrapWriteError maps a foreign-key violation on organization_id to a
+// validation error (the admin named an unknown organization), everything
+// else to an internal error.
+func wrapWriteError(op string, err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return invalid("organization_id does not exist")
+	}
+	return fmt.Errorf("ambience: %s: %w", op, err)
 }
 
 func wire(packs []Pack) []Wire {

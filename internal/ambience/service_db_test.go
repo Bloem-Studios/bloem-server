@@ -9,6 +9,8 @@ import (
 	"image"
 	"image/png"
 	"os"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -251,6 +253,21 @@ func TestActiveWindowsScopeOrganizationPacks(t *testing.T) {
 	if len(forMember) != 1 {
 		t.Fatalf("suspended membership must not grant org packs: %v", effects(forMember))
 	}
+	if _, err := pool.Exec(ctx, `UPDATE organization_memberships SET status = 'active' WHERE account_id = $1`, member); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE organizations SET status = 'suspended' WHERE id = $1`, org); err != nil {
+		t.Fatal(err)
+	}
+	forMember, _ = svc.ActiveForAccount(ctx, member)
+	if len(forMember) != 1 {
+		t.Fatalf("suspended organization must not grant org packs: %v", effects(forMember))
+	}
+
+	unknown := uuid.New()
+	if _, err := svc.Create(ctx, 1, winterInput("ghost", &unknown)); !errors.Is(err, ErrInvalid) || err == nil || !strings.Contains(err.Error(), "organization_id does not exist") {
+		t.Fatalf("unknown organization must be a validation error: %v", err)
+	}
 }
 
 type memoryAssetStore struct{ objects map[string][]byte }
@@ -316,4 +333,77 @@ func TestAttachAssetStoresAndServesArtwork(t *testing.T) {
 	if _, _, err := NewService(pool, nil, nil).AttachAsset(ctx, pack.ID, SlotBanner, img); !errors.Is(err, ErrStorageUnavailable) {
 		t.Fatalf("no storage: %v", err)
 	}
+
+	// Standalone store: object written, nothing attached, checksum reported.
+	before := len(store.objects)
+	stored, err := svc.StoreAsset(ctx, StoreRequest{AssetID: "garden-asset-1", Kind: KindSeasonBanner, Data: pngBytesSized(t, 3)})
+	if err != nil || !IsAssetURL(stored.URL) || len(stored.Checksum) != 64 || stored.ContentType != "image/png" || len(store.objects) != before+1 {
+		t.Fatalf("store: %+v %v objects=%d", stored, err, len(store.objects))
+	}
+	if p, _ := svc.Get(ctx, pack.ID); len(p.Assets.Sprites) != 1 || p.Assets.BannerURL != url {
+		t.Fatalf("standalone store must not touch packs: %+v", p.Assets)
+	}
+	// Retry with the same asset_id + checksum: same URL, no second object.
+	retry, err := svc.StoreAsset(ctx, StoreRequest{AssetID: "garden-asset-1", Kind: KindSeasonBanner, Data: pngBytesSized(t, 3)})
+	if err != nil || retry.URL != stored.URL || retry.Checksum != stored.Checksum || len(store.objects) != before+1 {
+		t.Fatalf("retry must be idempotent: %+v %v objects=%d", retry, err, len(store.objects))
+	}
+	var rows int
+	_ = pool.QueryRow(ctx, `SELECT count(*) FROM ambience_assets WHERE asset_id = 'garden-asset-1'`).Scan(&rows)
+	if rows != 1 {
+		t.Fatalf("one registry row per asset_id, got %d", rows)
+	}
+	// Same asset_id, different bytes: replaced.
+	replaced, err := svc.StoreAsset(ctx, StoreRequest{AssetID: "garden-asset-1", Kind: KindSeasonSprite, Data: pngBytesSized(t, 9)})
+	if err != nil || replaced.URL == stored.URL || len(store.objects) != before+2 {
+		t.Fatalf("different checksum must replace: %+v %v objects=%d", replaced, err, len(store.objects))
+	}
+	var ref, kind string
+	_ = pool.QueryRow(ctx, `SELECT ref, kind FROM ambience_assets WHERE asset_id = 'garden-asset-1'`).Scan(&ref, &kind)
+	if ref != replaced.Ref || kind != KindSeasonSprite {
+		t.Fatalf("registry row not replaced: ref=%s kind=%s", ref, kind)
+	}
+	if _, err := svc.StoreAsset(ctx, StoreRequest{AssetID: "x", Kind: "poster", Data: pngBytesSized(t, 2)}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("unknown kind: %v", err)
+	}
+
+	// Sprite cap is enforced before any object is stored.
+	full := Input{EffectID: "full", Window: pack.Window, Assets: Assets{Sprites: make([]string, 32)}}
+	for i := range full.Assets.Sprites {
+		full.Assets.Sprites[i] = "https://cdn.example/s.png"
+	}
+	fullPack, err := svc.Create(ctx, 1, full)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before = len(store.objects)
+	if _, _, err := svc.AttachAsset(ctx, fullPack.ID, SlotSprite, pngBytesSized(t, 4)); !errors.Is(err, ErrInvalid) || len(store.objects) != before {
+		t.Fatalf("sprite cap must reject before storing: err=%v objects=%d", err, len(store.objects))
+	}
+
+	// Concurrent sprite attaches never lose entries (row lock).
+	racePack, _ := svc.Create(ctx, 1, winterInput("race", nil))
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			if _, _, err := svc.AttachAsset(ctx, racePack.ID, SlotSprite, pngBytesSized(t, 5+n)); err != nil {
+				t.Errorf("concurrent attach: %v", err)
+			}
+		}(i)
+	}
+	wg.Wait()
+	if p, _ := svc.Get(ctx, racePack.ID); len(p.Assets.Sprites) != 8 {
+		t.Fatalf("lost sprite attaches: %d/8", len(p.Assets.Sprites))
+	}
+}
+
+func pngBytesSized(t *testing.T, n int) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, n, n))); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
 }

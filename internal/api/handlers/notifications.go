@@ -381,11 +381,11 @@ type capabilityResponse struct {
 	Announcements  bool     `json:"announcements"`
 	SupportedTypes []string `json:"supported_types"`
 	Dismiss        bool     `json:"dismiss"`
-	// S-3 (docs/specs/client-engagement.md section C): Ambience is the
-	// capability flag; AmbienceWindows echoes the active packs for this
-	// account (deployment-wide + the account's organizations).
-	Ambience        bool            `json:"ambience"`
-	AmbienceWindows []ambience.Wire `json:"ambience_windows"`
+	// S-3 (docs/specs/client-engagement.md section C): the same block as
+	// the branding payload. Key present = capability exists, [] = nothing
+	// active, key absent = dormant (registry not wired). Carries the active
+	// packs for this account (deployment-wide + the account's organizations).
+	Ambience *[]ambience.Wire `json:"ambience,omitempty"`
 }
 
 // ambienceAccountSource supplies the active packs visible to an account.
@@ -493,11 +493,13 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 			}
 		}
 	}
-	ambienceWindows := []ambience.Wire{}
+	var ambienceBlock *[]ambience.Wire
 	if h.ambience != nil {
+		active := []ambience.Wire{}
 		if packs, err := h.ambience.ActiveForAccount(r.Context(), apimw.GetUserID(r.Context())); err == nil && packs != nil {
-			ambienceWindows = packs
+			active = packs
 		}
+		ambienceBlock = &active
 	}
 	writeJSON(w, http.StatusOK, capabilityResponse{
 		InApp:       capabilityInApp{Enabled: h.system.Settings.UIEnabled(r.Context())},
@@ -510,10 +512,9 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 		// Announcements are a server feature, not a per-profile setting:
 		// advertise them whenever the system runs (the admin compose route
 		// is mounted under the same condition).
-		Announcements:   true,
-		SupportedTypes:  notifications.SupportedDeliveryTypes(),
-		Dismiss:         true,
-		Ambience:        h.ambience != nil,
-		AmbienceWindows: ambienceWindows,
+		Announcements:  true,
+		SupportedTypes: notifications.SupportedDeliveryTypes(),
+		Dismiss:        true,
+		Ambience:       ambienceBlock,
 	})
 }

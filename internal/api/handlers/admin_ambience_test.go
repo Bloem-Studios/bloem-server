@@ -3,8 +3,11 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	"image/png"
 	"mime/multipart"
@@ -13,6 +16,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/Silo-Server/silo-server/internal/ambience"
 	"github.com/Silo-Server/silo-server/internal/branding"
@@ -78,6 +83,15 @@ func (f *fakeAmbienceRegistry) AttachAsset(_ context.Context, packID, slot strin
 	url := ambience.AssetURL("0123456789abcdef.png")
 	p := f.pack(packID, ambience.Input{EffectID: "pumpkins", Window: ambience.Window{StartsAt: ambienceStart, EndsAt: ambienceEnd}, Assets: ambience.Assets{BannerURL: url}})
 	return p, url, nil
+}
+func (f *fakeAmbienceRegistry) StoreAsset(_ context.Context, req ambience.StoreRequest) (*ambience.StoredAsset, error) {
+	f.attached = append(f.attached, "standalone:"+req.AssetID+":"+req.Kind)
+	if f.err != nil {
+		return nil, f.err
+	}
+	sum := sha256.Sum256(req.Data)
+	checksum := hex.EncodeToString(sum[:])
+	return &ambience.StoredAsset{AssetID: req.AssetID, Kind: req.Kind, Ref: checksum[:16] + ".png", URL: ambience.AssetURL(checksum[:16] + ".png"), Checksum: checksum, ContentType: "image/png", SizeBytes: int64(len(req.Data))}, nil
 }
 func (f *fakeAmbienceRegistry) ServeAsset(_ context.Context, ref string) ([]byte, string, error) {
 	if f.servedData == nil {
@@ -252,15 +266,28 @@ func TestAdminAmbienceAttachAssetReturnsPublicURL(t *testing.T) {
 	}
 }
 
+func withChiRef(r *http.Request, ref string) *http.Request {
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("ref", ref)
+	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+}
+
 func TestAmbienceServeAssetIsImmutable(t *testing.T) {
 	h := &AmbienceHandler{registry: &fakeAmbienceRegistry{servedData: []byte("png")}}
 	rec := httptest.NewRecorder()
-	h.HandleServeAsset(rec, withChiID(httptest.NewRequest(http.MethodGet, "/ambience/assets/0123456789abcdef.png", nil), "0123456789abcdef.png"))
+	h.HandleServeAsset(rec, withChiRef(httptest.NewRequest(http.MethodGet, "/ambience/assets/0123456789abcdef.png", nil), "0123456789abcdef.png"))
 	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "image/png" || !strings.Contains(rec.Header().Get("Cache-Control"), "immutable") || rec.Header().Get("Content-Security-Policy") == "" {
 		t.Fatalf("serve: %d %v", rec.Code, rec.Header())
 	}
+	r := withChiRef(httptest.NewRequest(http.MethodGet, "/ambience/assets/0123456789abcdef.png", nil), "0123456789abcdef.png")
+	r.Header.Set("If-None-Match", `"0123456789abcdef.png"`)
 	rec = httptest.NewRecorder()
-	(&AmbienceHandler{registry: &fakeAmbienceRegistry{}}).HandleServeAsset(rec, withChiID(httptest.NewRequest(http.MethodGet, "/ambience/assets/nope", nil), "nope"))
+	h.HandleServeAsset(rec, r)
+	if rec.Code != http.StatusNotModified || rec.Header().Get("ETag") != `"0123456789abcdef.png"` {
+		t.Fatalf("304 must carry the ETag: %d %v", rec.Code, rec.Header())
+	}
+	rec = httptest.NewRecorder()
+	(&AmbienceHandler{registry: &fakeAmbienceRegistry{}}).HandleServeAsset(rec, withChiRef(httptest.NewRequest(http.MethodGet, "/ambience/assets/nope", nil), "nope"))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("unknown ref: %d", rec.Code)
 	}
@@ -318,19 +345,104 @@ func TestNotificationsCapabilityAdvertisesAmbience(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	h.HandleCapability(rec, downloadTestRequest(http.MethodGet, "/notifications/capability", nil, 7, "p1", ""))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"ambience":false,"ambience_windows":[]`) {
-		t.Fatalf("unwired: %d %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), `"ambience"`) {
+		t.Fatalf("dormant registry must omit the ambience key: %d %s", rec.Code, rec.Body.String())
 	}
 
 	h.SetAmbience(&fakeAmbienceSource{account: map[int][]ambience.Wire{7: {snowWire()}}})
 	rec = httptest.NewRecorder()
 	h.HandleCapability(rec, downloadTestRequest(http.MethodGet, "/notifications/capability", nil, 7, "p1", ""))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"ambience":true,"ambience_windows":[{"id":"pack-1","effect_id":"snow"`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"ambience":[{"id":"pack-1","effect_id":"snow"`) {
 		t.Fatalf("wired: %d %s", rec.Code, rec.Body.String())
 	}
 	rec = httptest.NewRecorder()
 	h.HandleCapability(rec, downloadTestRequest(http.MethodGet, "/notifications/capability", nil, 8, "p2", ""))
-	if !strings.Contains(rec.Body.String(), `"ambience":true,"ambience_windows":[]`) {
-		t.Fatalf("other account sees only its own packs: %s", rec.Body.String())
+	if !strings.Contains(rec.Body.String(), `"ambience":[]`) {
+		t.Fatalf("other account sees only its own packs (empty array, key present): %s", rec.Body.String())
+	}
+}
+
+// gardenUpload mirrors the multipart shape the authoring side sends
+// (bloem-garden internal/engagement/assetsync.go): asset_id, kind, checksum,
+// content_type fields plus a `file` part carrying the image's content type.
+func gardenUpload(t *testing.T, data []byte, checksum string) (*bytes.Buffer, string) {
+	t.Helper()
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	for k, v := range map[string]string{"asset_id": "3f1c2a9e-1d2b-4c3d-8e4f-5a6b7c8d9e0f", "kind": "season_banner", "checksum": checksum, "content_type": "image/png"} {
+		_ = mw.WriteField(k, v)
+	}
+	fw, err := mw.CreateFormFile("file", "banner.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = fw.Write(data)
+	_ = mw.Close()
+	return &buf, mw.FormDataContentType()
+}
+
+func TestAdminAmbienceStandaloneUploadReturnsPublicURL(t *testing.T) {
+	var img bytes.Buffer
+	_ = png.Encode(&img, image.NewRGBA(image.Rect(0, 0, 1, 1)))
+	sum := sha256.Sum256(img.Bytes())
+	checksum := hex.EncodeToString(sum[:])
+	reg := &fakeAmbienceRegistry{storage: true}
+	h := &AmbienceHandler{registry: reg}
+
+	body, ct := gardenUpload(t, img.Bytes(), checksum)
+	r := httptest.NewRequest(http.MethodPost, "/admin/ambience/assets", body)
+	r.Header.Set("Content-Type", ct)
+	rec := httptest.NewRecorder()
+	h.HandleUploadAsset(rec, r)
+	if rec.Code != http.StatusCreated || len(reg.attached) != 1 || reg.attached[0] != "standalone:3f1c2a9e-1d2b-4c3d-8e4f-5a6b7c8d9e0f:season_banner" {
+		t.Fatalf("upload: %d %s %v", rec.Code, rec.Body.String(), reg.attached)
+	}
+	// This response is the standalone upload contract quoted in
+	// docs/specs/client-engagement.md "Admin ambience contract".
+	want := `{"asset":{"asset_id":"3f1c2a9e-1d2b-4c3d-8e4f-5a6b7c8d9e0f","kind":"season_banner","ref":"` + checksum[:16] + `.png","url":"/api/v1/ambience/assets/` + checksum[:16] + `.png","checksum":"` + checksum + `","content_type":"image/png","size_bytes":` + fmt.Sprint(img.Len()) + `},"url":"/api/v1/ambience/assets/` + checksum[:16] + `.png"}`
+	if strings.TrimSpace(rec.Body.String()) != want {
+		t.Fatalf("response drifted from the documented contract:\n got %s\nwant %s", rec.Body.String(), want)
+	}
+
+	// Checksum mismatch is rejected before storage.
+	body, ct = gardenUpload(t, img.Bytes(), "deadbeef")
+	r = httptest.NewRequest(http.MethodPost, "/admin/ambience/assets", body)
+	r.Header.Set("Content-Type", ct)
+	rec = httptest.NewRecorder()
+	h.HandleUploadAsset(rec, r)
+	if rec.Code != http.StatusBadRequest || len(reg.attached) != 1 {
+		t.Fatalf("checksum mismatch: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// Unsupported image type -> 415.
+	body, ct = gardenUpload(t, []byte("<svg/>"), "")
+	r = httptest.NewRequest(http.MethodPost, "/admin/ambience/assets", body)
+	r.Header.Set("Content-Type", ct)
+	rec = httptest.NewRecorder()
+	(&AmbienceHandler{registry: &fakeAmbienceRegistry{storage: true, err: ambience.ErrUnsupportedImage}}).HandleUploadAsset(rec, r)
+	if rec.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("unsupported: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// Oversized body -> 413 from the body cap, before anything is stored.
+	big := bytes.Repeat([]byte{0}, int(ambience.MaxAssetBytes)+(2<<20))
+	body, ct = gardenUpload(t, big, "")
+	r = httptest.NewRequest(http.MethodPost, "/admin/ambience/assets", body)
+	r.Header.Set("Content-Type", ct)
+	rec = httptest.NewRecorder()
+	reg = &fakeAmbienceRegistry{storage: true}
+	(&AmbienceHandler{registry: reg}).HandleUploadAsset(rec, r)
+	if rec.Code != http.StatusRequestEntityTooLarge || len(reg.attached) != 0 {
+		t.Fatalf("oversized: %d %s attached=%v", rec.Code, rec.Body.String(), reg.attached)
+	}
+
+	// No storage -> 503.
+	body, ct = gardenUpload(t, img.Bytes(), checksum)
+	r = httptest.NewRequest(http.MethodPost, "/admin/ambience/assets", body)
+	r.Header.Set("Content-Type", ct)
+	rec = httptest.NewRecorder()
+	(&AmbienceHandler{registry: &fakeAmbienceRegistry{}}).HandleUploadAsset(rec, r)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("no storage: %d", rec.Code)
 	}
 }
