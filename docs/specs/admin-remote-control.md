@@ -144,7 +144,9 @@ reasons). v2 clients are explicitly NOT touched.
 Everything below is additive; the v1 route-contract goldens are unchanged (every new route mounts
 only when the playback session manager is wired, exactly like the control socket itself, which the
 golden fixtures do not do). Device rail (§B.2/B.3), device-scoped commands and the admin UI are
-S-5b/S-5c and not touched.
+S-5b/S-5c and not touched. The durable rules are in
+[docs/architecture/admin-remote-control.md](../architecture/admin-remote-control.md); the notes
+here are the how.
 
 ### Storage
 
@@ -163,10 +165,16 @@ Migration `20260901200034_remote_commands.sql`:
 ### Capability handshake (§A)
 
 Two additive ways in, same row: `PUT /api/v1/devices/{device_id}/remote-control` with
-`{"version":1,"commands":[...]}` (profile-scoped; names must be command names the server knows,
-including the S-5b device names so a v3 client can announce its full list today), and the control
-socket's existing `hello.capabilities.commands`, which the server now persists against the
-session's device when non-empty. A v2 hello (empty list) leaves the device untouched. The
+`{"version":1,"commands":[...]}` (profile-scoped; the device must be registered to the calling
+profile — 404 otherwise, as the device routes answer — and names must be command names the server
+knows, including the S-5b device names so a v3 client can announce its full list today), and the
+control socket's existing `hello.capabilities.commands`, which the server persists against the
+session's device when non-empty. The upstream hello validator only knows the upstream socket
+vocabulary, so the handler strips the remote-control-only names (`replan`, `collect_diagnostics`,
+`refresh_settings`, `sign_out`) before running it and hands the full list to the remote service; a
+hello listing the §A example connects, and a name unknown to both vocabularies still fails the hello
+as upstream does. A v2 hello (empty list) leaves the device untouched. `DELETE /devices/{device_id}`
+(forget) deletes the row. The
 session's device is `X-Silo-Device-Id` at `/playback/start` (falling back to the session claims'
 `device_id`), recorded as `Session.DeviceID`. The server refuses — `state: rejected_unsupported`,
 row written, nothing sent — any command the device did not list.
@@ -181,10 +189,13 @@ rejected; `terminate` needs a non-empty reason; `set_audio_track` cannot be `off
 capability check → `sent` row → deliver. Delivery goes through the playback handler's existing
 `CommandDispatcher`/`RealtimeHub`/`CommandTracker` path via `NewPlaybackRemoteSender`; no second
 socket registry. Missing or closed socket → **409 `session_not_connected`** and the row is left
-`failed`. The socket's `ack` → `accepted`, `result` → `done|rejected` (with the client's error),
-and the 8 s command deadline → `expired` (for `stop`/`terminate` the server also tears the session
-down, as the admin control routes already do). An unanswered command that never hit its deadline
-reads as `expired` once `expires_at` (60 s) has passed.
+`failed`. The socket's `ack` → `accepted` (only from the session the command was sent to),
+`result` → `done|rejected` (with the client's error), and the 8 s command deadline → `expired`
+(for `stop`/`terminate` the server also tears the session down, as the admin control routes
+already do). An unanswered command that never hit its deadline reads as `expired` once
+`expires_at` (60 s) has passed, and every command still open when its session ends is expired
+then. `ttl_seconds` in the request body belongs to the device rail: a non-zero value on a session
+command is `400 invalid_payload`, not ignored.
 
 ### `replan` (§C, new)
 
@@ -197,9 +208,20 @@ The client's next `POST /playback/{session_id}/replan` sees the durable start re
 `ApplyPlanOverridesV3` (bandwidth cap lowered, never raised; `direct` clears cap/estimate/metered
 and asks for original quality; codec/container pins filter the advertised decode capabilities, so
 they decide what counts as directly playable — the transcode recipe stays the server's h264/aac)
-plus `PlannerInputV3.ForceTranscode` for `force`. Household members cannot send `replan`. The
-command is marked **`done`** when the client's replan commits (`OnSessionReplanned`, result
-`{status, plan_id}`), which is observable server-side; the pin is cleared when the session ends.
+plus `PlannerInputV3.ForceTranscode` for `force`. Household members cannot send `replan`.
+
+The pin is not process memory: the replan handler reads the session's newest replan command row in
+`sent | accepted | done` from the remote store (`Service.OpenReplanOverrides`) and derives the
+overrides from its payload, so an instance that never delivered the command applies it when it
+serves the client's `/replan`. What stays single-instance is the socket delivery itself: the
+`RealtimeHub` is per process, so the admin's send must land on the instance holding the session's
+socket (a miss is `409 session_not_connected`). The command is marked **`done`** when the client's
+replan commits (`OnSessionReplanned`, result `{status, plan_id}`). That fires on *any* client replan
+for the session — a seek re-anchor or failure recovery that happens to follow the command counts —
+which is acceptable because every replan after the pin plans with the overrides applied, so the
+observable outcome ("the session now runs the admin's plan") is the same whichever replan came
+first. `done` keeps the pin (later client replans keep the admin's plan); `rejected`, `expired`
+(deadline, TTL, or session end) and `failed` release it; a newer replan replaces it.
 
 ### Endpoints (§D)
 

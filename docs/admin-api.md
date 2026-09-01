@@ -1210,13 +1210,15 @@ Server-side control of client apps (`docs/specs/admin-remote-control.md`). These
 routes mount only when the playback session manager is wired, beside the
 per-session control socket they ride on. A command reaches a client only when
 the device advertised it — through `PUT /api/v1/devices/{device_id}/remote-control`
-or the control socket's `hello.capabilities.commands` — so clients that never
-advertise (every v2 client) receive nothing.
+(a device registered to the calling profile; `404` otherwise) or the control
+socket's `hello.capabilities.commands` — so clients that never advertise (every
+v2 client) receive nothing. Forgetting a device drops its advertisement. Rules:
+`docs/architecture/admin-remote-control.md`.
 
 | Route                                                        | Purpose                                                                              |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | `GET /api/v1/admin/remote/sessions`                          | Live sessions with a `remote_control` block (device, connected, advertised commands) and a `plan_summary`. |
-| `POST /api/v1/admin/remote/sessions/{session_id}/commands`   | Send one command: `{name, payload, reason?}` → `201` with the command row.            |
+| `POST /api/v1/admin/remote/sessions/{session_id}/commands`   | Send one command: `{name, payload, reason?}` → `201` with the command row (`ttl_seconds` is device-rail only: `400` here). |
 | `GET /api/v1/admin/remote/commands/{command_id}`             | Command state: `sent → accepted → done \| rejected`, or `expired`; `rejected_unsupported` / `failed` are terminal at creation. |
 | `GET /api/v1/admin/remote/audit`                             | Every command sent, newest first; `session_id`, `issued_by`, `issuer_kind`, `limit`, `offset`. |
 
