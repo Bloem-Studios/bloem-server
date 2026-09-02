@@ -25,6 +25,7 @@ type fakeRequestService struct {
 	discoverAllFn  func() ([]mediarequests.DiscoverySection, error)
 	listMineFn     func() ([]*mediarequests.Request, error)
 	createErr      error
+	cancelReason   string
 }
 
 func (f *fakeRequestService) ListStudios(context.Context, mediarequests.Viewer) ([]mediarequests.DiscoverBrandCard, error) {
@@ -106,7 +107,8 @@ func (f *fakeRequestService) Decline(context.Context, mediarequests.Viewer, stri
 	return nil, nil
 }
 
-func (f *fakeRequestService) Cancel(context.Context, mediarequests.Viewer, string, string) (*mediarequests.Request, error) {
+func (f *fakeRequestService) Cancel(_ context.Context, _ mediarequests.Viewer, _ string, reason string) (*mediarequests.Request, error) {
+	f.cancelReason = reason
 	return nil, nil
 }
 
@@ -458,5 +460,37 @@ func TestHandleCreateQuotaErrorResponsePinsWire(t *testing.T) {
 	want := `{"error":"quota_exceeded","message":"Request quota exceeded","used":5,"limit":5,"window_days":7}`
 	if got := strings.TrimSuffix(rec.Body.String(), "\n"); got != want {
 		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
+	}
+}
+
+// TestHandleCancelReasonBodyDecodes pins the POST /requests/{id}/cancel
+// request body: the named requestReasonRequest (shared with the admin decline
+// endpoint) replaced an inline struct literal, and this test proves the wire
+// contract did not change — the client still sends {"reason":"…"} and the
+// handler still passes the value through to the service.
+func TestHandleCancelReasonBodyDecodes(t *testing.T) {
+	svc := &fakeRequestService{}
+	h := NewRequestsHandler(svc)
+
+	req := authedRequest("POST", "/api/v1/requests/req-9/cancel")
+	req.Body = io.NopCloser(strings.NewReader(`{"reason":"wrong movie"}`))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "req-9")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rec := httptest.NewRecorder()
+	h.HandleCancel(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	if svc.cancelReason != "wrong movie" {
+		t.Fatalf("reason = %q, want %q", svc.cancelReason, "wrong movie")
+	}
+	var wire struct {
+		Reason string `json:"reason"`
+	}
+	if err := json.Unmarshal([]byte(`{"reason":"wrong movie"}`), &wire); err != nil || wire.Reason != "wrong movie" {
+		t.Fatalf("wire name changed: %v %+v", err, wire)
 	}
 }

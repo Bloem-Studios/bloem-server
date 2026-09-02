@@ -341,14 +341,20 @@ func (h *RequestsHandler) HandleApprove(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, req)
 }
 
+// requestReasonRequest is the body of POST /requests/{id}/cancel and of the
+// admin decline endpoint. Both handlers wrote it as an inline struct literal,
+// which had no nameable type for the client DTO registry
+// (contracts/client/v1/registry.json).
+type requestReasonRequest struct {
+	Reason string `json:"reason"`
+}
+
 func (h *RequestsHandler) HandleDecline(w http.ResponseWriter, r *http.Request) {
 	viewer, ok := requestViewer(w, r, false)
 	if !ok {
 		return
 	}
-	var body struct {
-		Reason string `json:"reason"`
-	}
+	var body requestReasonRequest
 	if r.Body != nil {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
@@ -368,9 +374,7 @@ func (h *RequestsHandler) HandleCancel(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var body struct {
-		Reason string `json:"reason"`
-	}
+	var body requestReasonRequest
 	if r.Body != nil {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
 			writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
