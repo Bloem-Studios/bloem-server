@@ -61,7 +61,7 @@ func TestBloemPolicyExplainReturnsStructuredRedactedOrganizationExplanation(t *t
 	}
 }
 
-func TestV2PolicyExplainForeignDecisionIsNonDisclosing404(t *testing.T) {
+func TestBloemPolicyExplainForeignDecisionIsNonDisclosing404(t *testing.T) {
 	organizationID := uuid.New()
 	store := &organizationDecisionStub{err: policy.ErrDecisionNotFound}
 	h := NewBloemPolicyExplainHandler(store)

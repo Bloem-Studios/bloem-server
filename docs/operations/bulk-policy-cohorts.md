@@ -37,20 +37,20 @@ Organization administrators use:
 - **Admin → Organization → Policy Cohorts** to inspect source revision, policy,
   lineage, member count, creator/time, and archive state; and
 - the organization people policy routes under
-  `/api/v2/admin/organization/people` for preview, enqueue, status, and cancel.
+  `/api/bloem/v1/admin/organization/people` for preview, enqueue, status, and cancel.
 
 Platform administrators use **Admin → Platform → Bulk Account Policies** for an
 explicit list of directly managed Server account IDs. Equivalent organization
 and direct-account APIs are documented in the
-[native `/api/v2` reference](../bloem-v2-api-reference.md#platform-entitlement-cohorts-and-bulk-policy).
+[native `/api/bloem/v1` reference](../bloem-api-reference.md#platform-entitlement-cohorts-and-bulk-policy).
 
 Authoritative platform reads are:
 
 ```text
-GET  /api/v2/admin/platform/accounts/{account_id}/entitlement
-GET  /api/v2/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
-POST /api/v2/admin/platform/accounts/entitlement-snapshots
-POST /api/v2/admin/platform/organizations/{organization_id}/entitlement-snapshots
+GET  /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
+GET  /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
+POST /api/bloem/v1/admin/platform/accounts/entitlement-snapshots
+POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots
 ```
 
 The bulk snapshot body is `{ "account_ids": [41, 42] }`. All results share one

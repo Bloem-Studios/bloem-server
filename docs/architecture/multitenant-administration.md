@@ -9,7 +9,7 @@ Navigation never mixes those scopes.
 ## Session and authority boundary
 
 The Silo-compatible account session remains the authentication root. An
-authenticated caller exchanges it at `POST /api/v2/admin/session` for a signed
+authenticated caller exchanges it at `POST /api/bloem/v1/admin/session` for a signed
 administrative context token lasting no more than 15 minutes. The token contains
 either Platform authority or one exact organization membership plus current
 policy and security revisions. Organization authority never comes from a path,

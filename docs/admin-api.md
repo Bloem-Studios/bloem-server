@@ -1212,7 +1212,7 @@ per-session control socket they ride on. A command reaches a client only when
 the device advertised it — through `PUT /api/v1/devices/{device_id}/remote-control`
 (a device registered to the calling profile; `404` otherwise) or the control
 socket's `hello.capabilities.commands` — so clients that never advertise (every
-v2 client) receive nothing. Forgetting a device drops its advertisement. Rules:
+native client) receive nothing. Forgetting a device drops its advertisement. Rules:
 `docs/architecture/admin-remote-control.md`.
 
 | Route                                                        | Purpose                                                                              |

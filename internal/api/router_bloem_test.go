@@ -27,23 +27,23 @@ type bloemSessionValidator struct{}
 
 func (bloemSessionValidator) IsValid(context.Context, string) (bool, error) { return true, nil }
 
-func TestV2CapabilitiesMountedOutsideV1(t *testing.T) {
+func TestBloemCapabilitiesMountedOutsideV1(t *testing.T) {
 	router := NewRouter(Dependencies{})
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"api":"v2"`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"api":"bloem/v1"`) {
 		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
 	}
 }
 
-func TestV2MountedAndV10Absent(t *testing.T) {
+func TestBloemSurfaceMountedAndV10Absent(t *testing.T) {
 	router := chi.NewRouter()
 	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, nil, nil)
 
-	v2 := httptest.NewRecorder()
-	router.ServeHTTP(v2, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
-	if v2.Code != http.StatusOK || !strings.Contains(v2.Body.String(), `"api":"v2"`) {
-		t.Fatalf("v2 capabilities = %d %s", v2.Code, v2.Body.String())
+	native := httptest.NewRecorder()
+	router.ServeHTTP(native, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
+	if native.Code != http.StatusOK || !strings.Contains(native.Body.String(), `"api":"bloem/v1"`) {
+		t.Fatalf("native capabilities = %d %s", native.Code, native.Body.String())
 	}
 
 	v10 := httptest.NewRecorder()

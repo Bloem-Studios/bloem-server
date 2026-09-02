@@ -6,7 +6,7 @@
 surface. The route contract is pinned against `origin/main`; the reviewed
 Bloem exceptions are direct profile login and lookup, account-administration
 profile/device/session methods, and tenant-member lifecycle/resource methods.
-Native Bloem client features belong under `/api/v2`.
+Native Bloem client features belong under `/api/bloem/v1`.
 
 Propose capabilities with the **v1 capability proposal** issue template; triage happens on the
 [Silo v1 project](https://github.com/orgs/Silo-Server/projects/5).

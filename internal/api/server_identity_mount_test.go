@@ -29,7 +29,7 @@ func TestServerIdentityAndCapabilitiesAreMountedPublicly(t *testing.T) {
 	if err := json.Unmarshal(capabilities.Body.Bytes(), &advertised); err != nil {
 		t.Fatalf("decode capabilities %q: %v", capabilities.Body.String(), err)
 	}
-	if advertised.API != "v2" || len(advertised.MediaTypes) == 0 {
+	if advertised.API != "bloem/v1" || len(advertised.MediaTypes) == 0 {
 		t.Fatalf("capabilities body = %s, want the populated contract shape", capabilities.Body.String())
 	}
 	// The capability document is a property of the build, so a router with no

@@ -8,11 +8,11 @@ OPA. SQL then applies the returned scope to catalog and playback reads.
 
 ## Shipped boundary
 
-`GET /api/v2/capabilities` advertises `legacy_silo_v1`,
+`GET /api/bloem/v1/capabilities` advertises `legacy_silo_v1`,
 `organization_memberships`, and `tenant_bounded_media_scope` as `true`. It
 advertises direct-profile login, shared-device pairing, and delegated
 administrative roles as `false`. Native administration is additive under
-`/api/v2/admin`: an authenticated account exchanges its session for one
+`/api/bloem/v1/admin`: an authenticated account exchanges its session for one
 short-lived Platform or Organization context token. Platform routes operate on
 the organization directory; Organization routes take their organization only
 from that token and expose people, profiles, groups, libraries, entitlements,
@@ -72,7 +72,7 @@ the legacy single-organization schema. Before any non-default organization,
 organization-specific profile group assignment, resource owner, or entitlement
 is relied upon, stop writes, keep a tested backup, and roll the application and
 schema back together using the procedure in
-[Bloem v2 security foundation](v2-security-foundation.md). After that boundary
+[Bloem native API security foundation](bloem-security-foundation.md). After that boundary
 is crossed, use restore/recovery planning; schema rollback would discard tenant
 meaning even if legacy rows survive.
 

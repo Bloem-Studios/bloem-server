@@ -1,6 +1,6 @@
-# Bloem v2 client surface
+# Bloem native client surface
 
-`/api/v1` is the Silo-compatible projection. `/api/v2` is the native Bloem
+`/api/v1` is the Silo-compatible projection. `/api/bloem/v1` is the native Bloem
 API. Anything this project invents for its own clients belongs on v2, because
 a deployment must stay usable by upstream Silo clients that will never learn a
 Bloem-only field, value, or route.
@@ -20,17 +20,17 @@ BLOEM_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
 
 | Route | Auth | Notes |
 | --- | --- | --- |
-| `GET /api/v2/capabilities` | public | Build capabilities. Never fails. |
-| `GET /api/v2/server/identity` | public | `server_id`, `server_name`, `api_versions`, `setup_complete`. `no-store`. |
-| `GET /api/v2/watch/home` | account + profile | `watch_document_v1` home snapshot. |
-| `GET /api/v2/watch/items/{content_id}` | account + profile | `watch_document_v1` item snapshot. |
-| `GET /api/v2/watch/search` | account + profile | Profile-scoped Watch search. |
-| `POST /api/v2/sync/progress` | account + profile | Per-item `updated` / `ignored` / `error`. |
-| `GET /api/v2/persons/{person_id}` | account + profile | Profile-scoped person detail and visible filmography. |
-| `GET /api/v2/music/status` | account + profile | Available music library IDs. |
-| `GET /api/v2/music/artists` | account + profile | Artists page; requires an allowed `library_id`. |
-| `GET /api/v2/music/artists/{id}` | account + profile | Artist and ordered albums; requires `library_id`. |
-| `GET /api/v2/music/albums/{id}` | account + profile | Album and ordered tracks; requires `library_id`. |
+| `GET /api/bloem/v1/capabilities` | public | Build capabilities. Never fails. |
+| `GET /api/bloem/v1/server/identity` | public | `server_id`, `server_name`, `api_versions`, `setup_complete`. `no-store`. |
+| `GET /api/bloem/v1/watch/home` | account + profile | `watch_document_v1` home snapshot. |
+| `GET /api/bloem/v1/watch/items/{content_id}` | account + profile | `watch_document_v1` item snapshot. |
+| `GET /api/bloem/v1/watch/search` | account + profile | Profile-scoped Watch search. |
+| `POST /api/bloem/v1/sync/progress` | account + profile | Per-item `updated` / `ignored` / `error`. |
+| `GET /api/bloem/v1/persons/{person_id}` | account + profile | Profile-scoped person detail and visible filmography. |
+| `GET /api/bloem/v1/music/status` | account + profile | Available music library IDs. |
+| `GET /api/bloem/v1/music/artists` | account + profile | Artists page; requires an allowed `library_id`. |
+| `GET /api/bloem/v1/music/artists/{id}` | account + profile | Artist and ordered albums; requires `library_id`. |
+| `GET /api/bloem/v1/music/albums/{id}` | account + profile | Album and ordered tracks; requires `library_id`. |
 
 The authenticated routes share one group: `RequireAuth`, the default-organization
 tenant projection, the rate limiter, viewer-access resolution, and
@@ -51,7 +51,7 @@ when the lifecycle coordinator is wired, while
 `lifecycle_idempotency_required_v1` additionally reflects the current rollout
 phase. Clients use a stable `Idempotency-Key` only when support is advertised,
 and preserve the same key across bounded retries; the full status contract is
-in the [v2 API reference](../bloem-v2-api-reference.md#shared-lifecycle-mutation-idempotency-v1-and-v2).
+in the [v2 API reference](../bloem-api-reference.md#shared-lifecycle-mutation-idempotency-v1-and-v2).
 A token does not prove that an unrelated dependency-conditional route is
 mounted in a particular deployment; clients still handle the route's response.
 
@@ -80,7 +80,7 @@ is ambiguous — a position under the min-resume floor and an offline event that
 lost last-write-wins come back looking exactly like a stored row — but Silo
 clients parse it, so it stays.
 
-`POST /api/v2/sync/progress` takes the identical request body against the
+`POST /api/bloem/v1/sync/progress` takes the identical request body against the
 identical store and reports `updated` (the row was written), `ignored` (accepted,
 not written) or `error`. Only the reporting differs: both routes run the same
 thresholds, the same last-write-wins merge, the same taste-profile refresh and
@@ -88,7 +88,7 @@ the same event fan-out.
 
 ## Response and dependency behavior
 
-The native v2 surface may add fields and routes without preserving an upstream
+The native surface may add fields and routes without preserving an upstream
 Silo wire shape. Clients must ignore response fields they do not understand.
 The public identity route is always mounted. Other handlers are conditionally
 assembled; a handler absent from the router yields `404`. Watch is mounted

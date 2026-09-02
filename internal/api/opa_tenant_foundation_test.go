@@ -375,7 +375,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 		"legacy_silo_v1": true, "organization_memberships": true, "tenant_bounded_media_scope": true,
 		"direct_profile_login": true, "shared_device_pairing": false, "delegated_admin_roles": false,
 	}
-	featuresMatch := advertised.API == "v2" && advertised.IdentitySchema == 1 && len(advertised.Features) == len(wantFeatures)
+	featuresMatch := advertised.API == "bloem/v1" && advertised.IdentitySchema == 1 && len(advertised.Features) == len(wantFeatures)
 	for name, want := range wantFeatures {
 		if got, present := advertised.Features[name]; !present || got != want {
 			featuresMatch = false

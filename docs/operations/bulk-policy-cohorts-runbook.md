@@ -115,8 +115,8 @@ Before mutation:
 Use the appropriate authoritative read before preview:
 
 ```text
-GET /api/v2/admin/platform/accounts/{account_id}/entitlement
-GET /api/v2/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
+GET /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
+GET /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
 ```
 
 Save the safe response locally for comparison. For an evidence-only digest of

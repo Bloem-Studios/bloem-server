@@ -270,12 +270,12 @@ Admin routes are mounted behind the normal acting-admin authorization:
   selected row.
 
 The admin `PUT` and `DELETE` routes are registered account-lifecycle mutations.
-When `GET /api/v2/capabilities` advertises `lifecycle_idempotency_v1`, send one
+When `GET /api/bloem/v1/capabilities` advertises `lifecycle_idempotency_v1`, send one
 stable `Idempotency-Key` per logical edit and reuse it for an exact retry. The
 header becomes mandatory when `lifecycle_idempotency_required_v1` is also
 advertised. This is separate from the self-service settings API's
 `X-Silo-Mutation-Id`; negotiation, replay, and error behavior are documented in
-the [v2 API reference](bloem-v2-api-reference.md#shared-lifecycle-mutation-idempotency-v1-and-v2).
+the [native API reference](bloem-api-reference.md#shared-lifecycle-mutation-idempotency-compatible-and-native-surfaces).
 
 Admin requests name profile/context identity with query parameters because the
 target user is not the admin's active session. In particular,

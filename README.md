@@ -49,7 +49,7 @@ latency hardening, both upstream Silo features.
 This fork stays close to upstream deliberately (see FORK.md for why), and
 adds a focused set of its own capabilities alongside it:
 
-- A tenant and identity foundation under `/api/v2` — organization lifecycle
+- A tenant and identity foundation under `/api/bloem/v1` — organization lifecycle
   and membership management (with an admin UI for people/security
   administration), organization-scoped profile groups, a separate
   administrative-context session system, and policy-bounded visibility of
@@ -398,7 +398,7 @@ Since this is a tracking fork (see FORK.md), a change that belongs in Silo's
 own scanner, catalog, playback, or plugin runtime is generally better
 contributed upstream to [Silo Server](https://github.com/Silo-Server/silo-server)
 directly, where it benefits every downstream project, not just this one.
-Contributions to Bloem-specific areas — the `/api/v2` tenant foundation, the
+Contributions to Bloem-specific areas — the `/api/bloem/v1` tenant foundation, the
 plugin SDK/catalog, or the client-contract test suites — belong here.
 
 ## License & Trademarks

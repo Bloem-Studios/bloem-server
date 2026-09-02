@@ -54,7 +54,7 @@ public compatibility surface and reapply the smallest Bloem delta.
 
 ## What Bloem adds
 
-- A tenant and identity foundation under `/api/v2`, while `/api/v1` remains
+- A tenant and identity foundation under `/api/bloem/v1`, while `/api/v1` remains
   the Silo-compatible surface. The shipped boundary includes organization
   lifecycle and membership management (with an admin UI for people and
   security administration), organization-scoped profile groups, a separate

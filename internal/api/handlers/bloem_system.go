@@ -112,6 +112,11 @@ func buildBloemCapabilityTokens() []string {
 // this server do". Fields are additive-only: media_types and feature_tokens
 // were added beside the original three without touching them, and the token
 // list is where every later capability lands.
+// nativeAPIIdentifier names the surface this document describes. It matches the
+// segment the surface is mounted at, so it moves with the path rather than
+// standing as a second, independently drifting version number.
+const nativeAPIIdentifier = "bloem/v1"
+
 type bloemCapabilitiesResponse struct {
 	API            string                  `json:"api"`
 	IdentitySchema int                     `json:"identity_schema"`
@@ -148,7 +153,7 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 		}
 	}
 	writeJSON(w, http.StatusOK, bloemCapabilitiesResponse{
-		API:            "v2",
+		API:            nativeAPIIdentifier,
 		IdentitySchema: 1,
 		Features: bloemCapabilityFeatures{
 			LegacySiloV1:            true,

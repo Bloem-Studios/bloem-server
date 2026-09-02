@@ -1,17 +1,17 @@
-# Bloem v2 security foundation
+# Bloem native API security foundation
 
 Bloem retains the Silo-compatible `/api/v1` account login, profile picker,
 PIN unlock, token refresh, and administrative projection. The native
-`/api/v2` namespace is a separate additive boundary. Its discovery and
+`/api/bloem/v1` namespace is a separate additive boundary. Its discovery and
 administration surface exposes:
 
-- public `GET /api/v2/capabilities`; and
-- public `GET /api/v2/server/identity`; and
-- authenticated `GET /api/v2/organizations`; and
+- public `GET /api/bloem/v1/capabilities`; and
+- public `GET /api/bloem/v1/server/identity`; and
+- authenticated `GET /api/bloem/v1/organizations`; and
 - administrative context exchange and management routes under
-  `/api/v2/admin`; and
+  `/api/bloem/v1/admin`; and
 - the native client surface documented in
-  [v2 client surface](v2-client-surface.md).
+  [v2 client surface](bloem-client-surface.md).
 
 The capability response is the source of truth. It advertises legacy v1
 compatibility, organization membership discovery, and tenant-bounded media
@@ -62,7 +62,7 @@ mutations without `Idempotency-Key` fail with `428`. The public probe remains
 available if its rollout-phase read fails: it keeps the support token, omits the
 required token, and still answers `200`. Client key/retry behavior and the
 `409`/`503` contract are documented in the
-[v2 API reference](../bloem-v2-api-reference.md#shared-lifecycle-mutation-idempotency-v1-and-v2).
+[v2 API reference](../bloem-api-reference.md#shared-lifecycle-mutation-idempotency-v1-and-v2).
 
 Direct-profile login, shared-device pairing, and delegated administrative roles
 are not implemented. The initial organization authority is the broad,

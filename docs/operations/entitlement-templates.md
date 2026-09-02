@@ -141,7 +141,7 @@ successful application produce durable audit events. Organization entitlement
 history is available from its detail panel and from:
 
 ```text
-GET /api/v2/admin/platform/organizations/{id}/entitlement/audit
+GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement/audit
 ```
 
 If an apply reports stale confirmation or changed target state, do not resend
@@ -162,5 +162,5 @@ operations record; confirmation and selection tokens are not.
 API automation must use a platform-scoped admin-context token, perform a
 dry-run, and submit the returned `confirmation_token` plus a stable
 `idempotency_key` to apply. See the
-[native `/api/v2` reference](../bloem-v2-api-reference.md#entitlement-template-administration)
+[native `/api/bloem/v1` reference](../bloem-api-reference.md#entitlement-template-administration)
 for exact routes and wire shapes.

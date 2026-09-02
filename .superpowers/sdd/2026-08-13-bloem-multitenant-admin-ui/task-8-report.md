@@ -4,7 +4,7 @@ Implemented organization-scoped security administration and committed it as the 
 
 ## Delivered
 
-- Adapted Access Groups to the active Organization context using only context-qualified `/api/v2/admin/organization` queries and mutations, while preserving the existing Platform/v1 surface.
+- Adapted Access Groups to the active Organization context using only context-qualified `/api/bloem/v1/admin/organization` queries and mutations, while preserving the existing Platform/v1 surface.
 - Added the active organization identity, server-supplied member counts, authorization revision preconditions, organization library ceilings, and a safe deletion confirmation that previews profile reassignment to the same organization's default group.
 - Adapted Invitations to list and create through Organization v2 resources, with organization identity and organization-scoped group/library choices. Unsupported v2 resend/revoke controls are not rendered, so the page cannot fall back to v1.
 - Added Libraries & Entitlements with explicit owned-versus-Platform-entitled presentation and the effective-access intersection explanation.

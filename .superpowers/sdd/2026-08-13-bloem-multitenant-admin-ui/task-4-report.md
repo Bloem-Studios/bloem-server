@@ -10,7 +10,7 @@ accept an organization selector.
 ## Delivered
 
 - Added the organization overview and security projection handlers and mounted
-  the exact `/api/v2/admin/organization/*` route surface.
+  the exact `/api/bloem/v1/admin/organization/*` route surface.
 - Reused the tenancy, access-group, resource-tenancy, invitation, and policy
   repositories directly; no v1 HTTP forwarding was introduced.
 - Added group deletion impact with transactional profile reassignment counts.

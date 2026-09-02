@@ -9,7 +9,7 @@ Implemented the Platform organization directory and lifecycle API behind the Tas
 - Cursor-paginated organization directory ordered by `(lower(name), id)`, with search, status filtering, bounded limits, opaque cursors, and exact membership/profile/owned-library/live-entitlement counts.
 - Organization detail, creation with transactional active owner-admin membership, revision-guarded name/slug updates, reversible suspension/reactivation, and ownership transfer.
 - Organization-bounded membership listing, creation, role/status update, protected current-owner state, security-revision increments, and non-disclosing foreign membership identifiers.
-- Platform-only HTTP routes under `/api/v2/admin/platform/organizations`; handlers re-check the server-validated administrative scope attached by middleware before touching storage.
+- Platform-only HTTP routes under `/api/bloem/v1/admin/platform/organizations`; handlers re-check the server-validated administrative scope attached by middleware before touching storage.
 - Field-addressable `422` validation, `409 authorization_state_changed` with current revision, non-disclosing `404`, and `503 tenant_unavailable` mapping.
 - Typed append-only `admin_audit_events` storage and repository integration. Successful mutations record actor, Platform role/context, action, target organization/subject, before/after revisions and bounded state, outcome, and request ID. Request bodies, credentials, invitation secrets, and tokens are excluded.
 - Existing tenancy types now have explicit snake_case JSON tags for v2 response stability.
