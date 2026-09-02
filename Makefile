@@ -98,7 +98,12 @@ test-web:
 # the bindings: the vendored copy in web/src/lib is what the web runner reads.
 # The Kotlin and Swift copies land together with their runners in the client
 # repos, which will pick their own test-resource paths.
-BLOEM_ANDROID_DIR ?= $(abspath ../bloem-android)
+# The v3 client. Both consumers below write into paths that exist only there:
+# core/src/commonMain/kotlin/.../model/settings/SettingKeys.kt for the settings
+# bindings, and core/src/commonMain/kotlin-generated/ for the client DTOs. The
+# shipping bloem-android has neither, so pointing this at it silently created
+# directories in the wrong repository.
+BLOEM_ANDROID_DIR ?= $(abspath ../bloem-android-v3)
 SILO_APPLE_DIR ?= $(abspath ../silo-apple)
 
 settings-bindings:
