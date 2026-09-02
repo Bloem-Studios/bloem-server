@@ -2933,9 +2933,9 @@ func downloadedSubtitlePath(version catalog.FileVersion, sub subtitles.Downloade
 	return filepath.ToSlash(filepath.Join("/silo/subtitles", filename))
 }
 
-func compatVideoPath(routeItemID string, audioV2 bool) string {
+func compatVideoPath(routeItemID string, audioBloem bool) string {
 	base := "/Videos/" + routeItemID
-	if audioV2 {
+	if audioBloem {
 		base += "/" + compatAudioV2PathSegment
 	}
 	return base

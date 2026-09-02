@@ -694,7 +694,7 @@ func (h *AuthHandler) handleLifecycleSetup(w http.ResponseWriter, r *http.Reques
 		return createdAccountLifecycleTargets(created), response, nil
 	})
 	if err != nil {
-		if writeV2LifecycleError(w, err) {
+		if writeBloemLifecycleError(w, err) {
 			return
 		}
 		if errors.Is(err, auth.ErrSetupAlreadyComplete) {
@@ -704,7 +704,7 @@ func (h *AuthHandler) handleLifecycleSetup(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
 func (h *AuthHandler) handleLifecycleSignup(w http.ResponseWriter, r *http.Request, body []byte, req signupRequest, deviceName, ip string) {
@@ -736,7 +736,7 @@ func (h *AuthHandler) handleLifecycleSignup(w http.ResponseWriter, r *http.Reque
 		return createdAccountLifecycleTargets(created), response, nil
 	})
 	if err != nil {
-		if writeV2LifecycleError(w, err) {
+		if writeBloemLifecycleError(w, err) {
 			return
 		}
 		switch {
@@ -755,7 +755,7 @@ func (h *AuthHandler) handleLifecycleSignup(w http.ResponseWriter, r *http.Reque
 		}
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
 func createdAccountLifecycleTargets(created auth.CreatedAccount) []lifecycleidempotency.TargetBinding {

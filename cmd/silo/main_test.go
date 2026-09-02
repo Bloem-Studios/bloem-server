@@ -478,7 +478,7 @@ func publicListenerCases() []struct {
 		// routes that share a name with a Jellyfin family.
 		{"/api/v1/health", "api"},
 		{"/api/v1/auth/login", "api"},
-		{"/api/v2/admin/session", "api"},
+		{NativeAPIPrefix + "/admin/session", "api"},
 		{"/api/internal/compat/v1/identity", "api"},
 		{"/search", "spa"},
 		{"/library/5", "spa"},

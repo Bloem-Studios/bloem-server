@@ -18,17 +18,17 @@ import (
 	"github.com/google/uuid"
 )
 
-type v2OrganizationStoreStub struct {
+type bloemOrganizationStoreStub struct {
 	memberships   []tenancy.Membership
 	organizations map[uuid.UUID]tenancy.Organization
 	err           error
 }
 
-func (s v2OrganizationStoreStub) ListMemberships(context.Context, int) ([]tenancy.Membership, error) {
+func (s bloemOrganizationStoreStub) ListMemberships(context.Context, int) ([]tenancy.Membership, error) {
 	return s.memberships, s.err
 }
 
-func (s v2OrganizationStoreStub) GetOrganization(_ context.Context, id uuid.UUID) (tenancy.Organization, error) {
+func (s bloemOrganizationStoreStub) GetOrganization(_ context.Context, id uuid.UUID) (tenancy.Organization, error) {
 	organization, ok := s.organizations[id]
 	if !ok {
 		return tenancy.Organization{}, tenancy.ErrOrganizationNotFound
@@ -36,13 +36,13 @@ func (s v2OrganizationStoreStub) GetOrganization(_ context.Context, id uuid.UUID
 	return organization, nil
 }
 
-func TestV2CapabilitiesExactContract(t *testing.T) {
+func TestBloemCapabilitiesExactContract(t *testing.T) {
 	// Capability discovery must track what is actually wired: a server with
 	// direct profile login advertises it, one without does not.
-	handler := NewV2SystemHandler(nil)
+	handler := NewBloemSystemHandler(nil)
 	handler.SetDirectProfileLoginAvailable(true)
 	rec := httptest.NewRecorder()
-	handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, "/api/v2/capabilities", nil))
+	handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
@@ -60,7 +60,7 @@ func TestV2CapabilitiesExactContract(t *testing.T) {
 	}
 }
 
-func TestV2CapabilitiesDistinguishLifecycleSupportFromEnforcement(t *testing.T) {
+func TestBloemCapabilitiesDistinguishLifecycleSupportFromEnforcement(t *testing.T) {
 	for _, test := range []struct {
 		name         string
 		phase        lifecycleidempotency.Phase
@@ -70,12 +70,12 @@ func TestV2CapabilitiesDistinguishLifecycleSupportFromEnforcement(t *testing.T) 
 		{name: "required", phase: lifecycleidempotency.PhaseRequired, wantRequired: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			handler := NewV2SystemHandler(nil)
+			handler := NewBloemSystemHandler(nil)
 			handler.SetLifecycleIdempotencyPhase(func(context.Context) (lifecycleidempotency.Phase, error) {
 				return test.phase, nil
 			})
 			rec := httptest.NewRecorder()
-			handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, "/api/v2/capabilities", nil))
+			handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
 			var body struct {
 				FeatureTokens []string `json:"feature_tokens"`
 			}
@@ -95,10 +95,10 @@ func TestV2CapabilitiesDistinguishLifecycleSupportFromEnforcement(t *testing.T) 
 // The three fields v2 published before the client surface moved here keep their
 // names, their types and their values. Everything the TV clients need arrived
 // beside them, never through them.
-func TestV2CapabilitiesGrewAdditively(t *testing.T) {
-	handler := NewV2SystemHandler(nil)
+func TestBloemCapabilitiesGrewAdditively(t *testing.T) {
+	handler := NewBloemSystemHandler(nil)
 	rec := httptest.NewRecorder()
-	handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, "/api/v2/capabilities", nil))
+	handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
 
 	var body struct {
 		API            string          `json:"api"`
@@ -144,11 +144,11 @@ func TestV2CapabilitiesGrewAdditively(t *testing.T) {
 	}
 }
 
-func TestV2OrganizationsReturnsOnlyActiveMembershipsAndOrganizations(t *testing.T) {
+func TestBloemOrganizationsReturnsOnlyActiveMembershipsAndOrganizations(t *testing.T) {
 	activeID, hiddenID, invitedID, ownerlessID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	activeMembershipID := uuid.New()
 	ownerAccountID := 7
-	handler := NewV2SystemHandler(v2OrganizationStoreStub{
+	handler := NewBloemSystemHandler(bloemOrganizationStoreStub{
 		memberships: []tenancy.Membership{
 			{ID: activeMembershipID, OrganizationID: activeID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 4},
 			{ID: uuid.New(), OrganizationID: hiddenID, AccountID: 7, Status: tenancy.MembershipActive, LegacyRole: "user", SecurityRevision: 2},
@@ -161,7 +161,7 @@ func TestV2OrganizationsReturnsOnlyActiveMembershipsAndOrganizations(t *testing.
 			ownerlessID: {ID: ownerlessID, Slug: "ownerless", Name: "Ownerless", Status: tenancy.OrganizationActive, PolicyRevision: 1},
 		},
 	})
-	req := httptest.NewRequest(http.MethodGet, "/api/v2/organizations", nil)
+	req := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/organizations", nil)
 	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 7}))
 	rec := httptest.NewRecorder()
 	handler.HandleOrganizations(rec, req)
@@ -188,18 +188,18 @@ func TestV2OrganizationsReturnsOnlyActiveMembershipsAndOrganizations(t *testing.
 	}
 }
 
-func TestV2OrganizationsRequiresAuthentication(t *testing.T) {
-	handler := NewV2SystemHandler(v2OrganizationStoreStub{})
+func TestBloemOrganizationsRequiresAuthentication(t *testing.T) {
+	handler := NewBloemSystemHandler(bloemOrganizationStoreStub{})
 	rec := httptest.NewRecorder()
-	handler.HandleOrganizations(rec, httptest.NewRequest(http.MethodGet, "/api/v2/organizations", nil))
+	handler.HandleOrganizations(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/organizations", nil))
 	if rec.Code != http.StatusUnauthorized || strings.TrimSpace(rec.Body.String()) != `{"error":"unauthorized","message":"Authentication required"}` {
 		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
 	}
 }
 
-func TestV2OrganizationsUnavailableWithoutStore(t *testing.T) {
-	handler := NewV2SystemHandler(nil)
-	req := httptest.NewRequest(http.MethodGet, "/api/v2/organizations", nil)
+func TestBloemOrganizationsUnavailableWithoutStore(t *testing.T) {
+	handler := NewBloemSystemHandler(nil)
+	req := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/organizations", nil)
 	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 7}))
 	rec := httptest.NewRecorder()
 	handler.HandleOrganizations(rec, req)
@@ -208,9 +208,9 @@ func TestV2OrganizationsUnavailableWithoutStore(t *testing.T) {
 	}
 }
 
-func TestV2OrganizationsFailsClosedOnStoreError(t *testing.T) {
-	handler := NewV2SystemHandler(v2OrganizationStoreStub{err: errors.New("database failed")})
-	req := httptest.NewRequest(http.MethodGet, "/api/v2/organizations", nil)
+func TestBloemOrganizationsFailsClosedOnStoreError(t *testing.T) {
+	handler := NewBloemSystemHandler(bloemOrganizationStoreStub{err: errors.New("database failed")})
+	req := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/organizations", nil)
 	req = req.WithContext(middleware.SetClaims(req.Context(), &auth.Claims{UserID: 7}))
 	rec := httptest.NewRecorder()
 	handler.HandleOrganizations(rec, req)

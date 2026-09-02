@@ -59,7 +59,7 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 		username        = "opa-foundation-owner"
 		password        = "correct horse battery staple"
 		legacyProfileID = "opa-legacy-profile"
-		v2ProfileID     = "opa-v2-profile"
+		bloemProfileID  = "opa-v2-profile"
 		foreignProfile  = "opa-foreign-profile"
 		sharedGroupName = "OPA Foundation Default"
 	)
@@ -170,7 +170,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 		t.Fatalf("open migrated user store: %v", err)
 	}
 	if err := userStore.CreateProfile(ctx, userstore.Profile{
-		ID:             v2ProfileID,
+		ID:             bloemProfileID,
 		Name:           "OPA V2 Profile",
 		OrganizationID: legacyTenant.OrganizationID.String(),
 		AccessGroupID:  &defaultGroupID,
@@ -191,7 +191,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 	}
 	for profileID, value := range map[string]string{
 		legacyProfileID: `"24h"`,
-		v2ProfileID:     `"12h"`,
+		bloemProfileID:  `"12h"`,
 	} {
 		if _, err := userStore.UpsertSettingValue(ctx, userstore.SettingIdentity{
 			Key:       "ui.time_format",
@@ -307,7 +307,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 	profiles := performJSONRequest(t, router, http.MethodGet, "/api/v1/profiles/", "", loginTokens.AccessToken, nil)
 	assertOPAAcceptanceV1Profiles(t, profiles, map[string]string{
 		legacyProfileID: "OPA Legacy Profile",
-		v2ProfileID:     "OPA V2 Profile",
+		bloemProfileID:  "OPA V2 Profile",
 	}, legacyProfileID, foreignProfile)
 	verifyPIN := performJSONRequest(t, router, http.MethodPost, "/api/v1/profiles/"+legacyProfileID+"/verify-pin", `{"pin":"2468"}`, loginTokens.AccessToken, nil)
 	profileToken := decodePIN(t, verifyPIN).ProfileToken
@@ -316,7 +316,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 		"X-Profile-Token": profileToken,
 	})
 	switchedProfileSettings := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/values/effective?keys=ui.time_format", "", loginTokens.AccessToken, map[string]string{
-		"X-Profile-Id": v2ProfileID,
+		"X-Profile-Id": bloemProfileID,
 	})
 	foreignProfileSettings := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/values/effective?keys=ui.time_format", "", loginTokens.AccessToken, map[string]string{
 		"X-Profile-Id": foreignProfile,
@@ -329,7 +329,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 	}
 	assertV1Responses(t, profiles, verifyPIN, profileSelection, switchedProfileSettings)
 	assertOPAAcceptanceV1ProfileSetting(t, profileSelection, legacyProfileID, "24h")
-	assertOPAAcceptanceV1ProfileSetting(t, switchedProfileSettings, v2ProfileID, "12h")
+	assertOPAAcceptanceV1ProfileSetting(t, switchedProfileSettings, bloemProfileID, "12h")
 	assertNoTenantFields(t, login, profiles, verifyPIN, profileSelection, switchedProfileSettings, foreignProfileSettings)
 
 	visibleLibraries := performJSONRequest(t, router, http.MethodGet, "/api/v1/user/libraries", "", loginTokens.AccessToken, map[string]string{
@@ -357,9 +357,9 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 	// The identity-model half of the capability document, which is what this
 	// test owns: exactly these six booleans, exactly these values. The
 	// byte-exact whole document — media types and feature tokens included — is
-	// asserted in handlers.TestV2CapabilitiesExactContract, so the literal is
+	// asserted in handlers.TestBloemCapabilitiesExactContract, so the literal is
 	// not carried in two places where one copy would rot.
-	capabilities := performJSONRequest(t, router, http.MethodGet, "/api/v2/capabilities", "", "", nil)
+	capabilities := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/capabilities", "", "", nil)
 	if capabilities.Code != http.StatusOK {
 		t.Fatalf("v2 capabilities = %d %s", capabilities.Code, capabilities.Body.String())
 	}
@@ -405,25 +405,25 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 	)
 	tenantMiddleware := apimw.NewTenantMiddleware(tenantResolver)
 	viewerMiddleware := apimw.NewViewerAccessMiddleware(viewerResolver)
-	v2SessionID := "opa-v2-adapter-session"
-	v2Claims := opaAcceptanceTenantClaims(accountID, v2SessionID, nativeTenant)
-	v2Adapter := tenantMiddleware.RequireV2(viewerMiddleware.RequireViewerAccess(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	bloemSessionID := "opa-v2-adapter-session"
+	bloemClaims := opaAcceptanceTenantClaims(accountID, bloemSessionID, nativeTenant)
+	bloemAdapter := tenantMiddleware.RequireBloem(viewerMiddleware.RequireViewerAccess(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := access.GetScope(r.Context())
 		if !ok || !scope.LibrariesRestricted || !slices.Equal(scope.AllowedLibraryIDs, wantVisibleFolderIDs) {
 			t.Errorf("v2 adapter scope = %#v, want exact tenant folders %v", scope, wantVisibleFolderIDs)
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})))
-	v2Request := httptest.NewRequest(http.MethodGet, "/api/v2/acceptance/viewer", nil)
-	v2Request.Header.Set("X-Profile-Id", v2ProfileID)
-	v2Request = v2Request.WithContext(apimw.SetClaims(v2Request.Context(), v2Claims))
-	v2Response := httptest.NewRecorder()
-	v2Adapter.ServeHTTP(v2Response, v2Request)
-	if v2Response.Code != http.StatusNoContent {
-		t.Fatalf("v2 adapter = %d %s", v2Response.Code, v2Response.Body.String())
+	bloemRequest := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/acceptance/viewer", nil)
+	bloemRequest.Header.Set("X-Profile-Id", bloemProfileID)
+	bloemRequest = bloemRequest.WithContext(apimw.SetClaims(bloemRequest.Context(), bloemClaims))
+	bloemResponse := httptest.NewRecorder()
+	bloemAdapter.ServeHTTP(bloemResponse, bloemRequest)
+	if bloemResponse.Code != http.StatusNoContent {
+		t.Fatalf("v2 adapter = %d %s", bloemResponse.Code, bloemResponse.Body.String())
 	}
 
-	staleGate := tenantMiddleware.RequireV2(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	staleGate := tenantMiddleware.RequireBloem(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	if _, err := pool.Exec(ctx, `
@@ -432,7 +432,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 		WHERE id=$1`, nativeTenant.MembershipID); err != nil {
 		t.Fatalf("advance membership revision: %v", err)
 	}
-	assertOPAAcceptanceStaleV2(t, staleGate, v2Claims, "membership revision")
+	assertOPAAcceptanceStaleBloem(t, staleGate, bloemClaims, "membership revision")
 	nativeTenant, err = tenantResolver.Resolve(ctx, accountID, &legacyTenant.OrganizationID, false)
 	if err != nil {
 		t.Fatalf("re-resolve tenant after membership revision: %v", err)
@@ -444,13 +444,13 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 		WHERE id=$1`, nativeTenant.OrganizationID); err != nil {
 		t.Fatalf("advance organization revision: %v", err)
 	}
-	assertOPAAcceptanceStaleV2(t, staleGate, organizationStaleClaims, "organization revision")
+	assertOPAAcceptanceStaleBloem(t, staleGate, organizationStaleClaims, "organization revision")
 
 	legacyClaims, err := auth.NewJWTService(cfg.Auth.JWTSecret, cfg.Auth.AccessTokenExpiry, cfg.Auth.RefreshTokenExpiry).ValidateToken(loginTokens.AccessToken)
 	if err != nil {
 		t.Fatalf("decode v1 adapter session: %v", err)
 	}
-	decisionSessions := []string{legacyClaims.SessionID, v2SessionID}
+	decisionSessions := []string{legacyClaims.SessionID, bloemSessionID}
 	evidenceDeadline := time.Now().Add(10 * time.Second)
 	for {
 		var count int
@@ -498,8 +498,8 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 	if err := rows.Err(); err != nil {
 		t.Fatalf("iterate v1/v2 policy evidence: %v", err)
 	}
-	if !seenSessions[legacyClaims.SessionID] || !seenSessions[v2SessionID] {
-		t.Fatalf("policy decision sessions = %#v, want v1 %q and v2 %q at generation %d", seenSessions, legacyClaims.SessionID, v2SessionID, policyGeneration)
+	if !seenSessions[legacyClaims.SessionID] || !seenSessions[bloemSessionID] {
+		t.Fatalf("policy decision sessions = %#v, want v1 %q and v2 %q at generation %d", seenSessions, legacyClaims.SessionID, bloemSessionID, policyGeneration)
 	}
 }
 
@@ -604,9 +604,9 @@ func opaAcceptanceTenantClaims(accountID int, sessionID string, tenant tenancy.C
 	}
 }
 
-func assertOPAAcceptanceStaleV2(t *testing.T, handler http.Handler, claims *auth.Claims, revision string) {
+func assertOPAAcceptanceStaleBloem(t *testing.T, handler http.Handler, claims *auth.Claims, revision string) {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "/api/v2/acceptance/stale", nil)
+	request := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/acceptance/stale", nil)
 	request = request.WithContext(apimw.SetClaims(request.Context(), claims))
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)

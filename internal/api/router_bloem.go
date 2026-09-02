@@ -19,10 +19,10 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// mountV2 mounts the native Bloem API independently from the Silo-compatible
+// mountBloem mounts the native Bloem API independently from the Silo-compatible
 // /api/v1 projection. Organization listing is account-authenticated but occurs
 // before a tenant is selected; future organization-bound routes must add
-// tenantMW.RequireV2.
+// tenantMW.RequireBloem.
 //
 // Independently is meant literally: everything mounted here is built from
 // Dependencies inside this file rather than handed down from the v1 tree, so a
@@ -35,8 +35,8 @@ import (
 // index event repo), not received from the caller, so there is nothing for
 // Dependencies to carry. May be nil, in which case Watch search answers
 // unavailable rather than searching nothing.
-func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, accountPolicyHandler *handlers.AdminHandler) {
-	var store handlers.V2OrganizationStore
+func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, accountPolicyHandler *handlers.AdminHandler) {
+	var store handlers.BloemOrganizationStore
 	var membershipStore handlers.AdminContextSessionStore
 	var resolver handlers.AdminContextSessionResolver
 	var tenants *tenancy.Store
@@ -58,10 +58,10 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	}
 	var session *handlers.AdminContextSessionHandler
 	var adminMW *apimw.AdminContextMiddleware
-	var platformHandler *handlers.V2AdminPlatformHandler
-	var peopleHandler *handlers.V2AdminPeopleHandler
-	var organizationHandler *handlers.V2AdminOrganizationHandler
-	var explainHandler *handlers.V2PolicyExplainHandler
+	var platformHandler *handlers.BloemAdminPlatformHandler
+	var peopleHandler *handlers.BloemAdminPeopleHandler
+	var organizationHandler *handlers.BloemAdminOrganizationHandler
+	var explainHandler *handlers.BloemPolicyExplainHandler
 	var entitlementHandler *handlers.EntitlementTemplatesHandler
 	if tokens != nil && resolver != nil && membershipStore != nil && platform != nil {
 		session = handlers.NewAdminContextSessionHandler(tokens, resolver, membershipStore, platform)
@@ -69,7 +69,7 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	}
 	if tenants != nil {
 		verifier := auth.NewAccountCredentialVerifier(auth.NewUserRepository(deps.DB))
-		platformHandler = handlers.NewV2AdminPlatformHandler(tenants, verifier)
+		platformHandler = handlers.NewBloemAdminPlatformHandler(tenants, verifier)
 		if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
 			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 			platformHandler.SetLifecycleIdempotency(
@@ -77,13 +77,13 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
 			)
 		}
-		organizationHandler = handlers.NewV2AdminOrganizationHandler(
+		organizationHandler = handlers.NewBloemAdminOrganizationHandler(
 			tenants,
 			access.NewGroupStore(deps.DB),
 			resourcetenancy.NewStore(deps.DB),
 			invitations.NewRepository(deps.DB),
 		)
-		explainHandler = handlers.NewV2PolicyExplainHandler(policy.NewDecisionRepository(deps.DB))
+		explainHandler = handlers.NewBloemPolicyExplainHandler(policy.NewDecisionRepository(deps.DB))
 		var entitlementSecret []byte
 		if deps.Config != nil {
 			entitlementSecret = []byte(deps.Config.Auth.JWTSecret)
@@ -102,7 +102,7 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 		peopleService = adminpeople.NewService(deps.DB, deps.Config.Auth.JWTSecret)
 	}
 	if peopleService != nil {
-		peopleHandler = handlers.NewV2AdminPeopleHandlerWithWake(peopleService, deps.AdminPeopleWorker)
+		peopleHandler = handlers.NewBloemAdminPeopleHandlerWithWake(peopleService, deps.AdminPeopleWorker)
 		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
 			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 			peopleHandler.SetLifecycleIdempotency(
@@ -118,11 +118,11 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	// state and controls for the removable compatibility applications. The
 	// handler consumes the lifecycle service; it never writes application
 	// tables and never touches Docker.
-	var compatibilityHandler *handlers.V2AdminCompatibilityHandler
+	var compatibilityHandler *handlers.BloemAdminCompatibilityHandler
 	if deps.CompatApplications != nil {
-		compatibilityHandler = handlers.NewV2AdminCompatibilityHandler(deps.CompatApplications, deps.PublicURL)
+		compatibilityHandler = handlers.NewBloemAdminCompatibilityHandler(deps.CompatApplications, deps.PublicURL)
 	}
-	system := handlers.NewV2SystemHandler(store)
+	system := handlers.NewBloemSystemHandler(store)
 	if deps.DB != nil {
 		system.SetLifecycleIdempotencyPhase(lifecycleidempotency.NewPostgresStore(deps.DB).CurrentPhase)
 	}
@@ -131,37 +131,41 @@ func mountV2(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	// capability that disagrees with the route table is worse than no
 	// capability at all.
 	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
-	mountV2Routes(r, system, session, authMW, adminMW,
-		newV2ClientSurface(deps, authMW, tenantMW, searchProvider), platformHandler, peopleHandler, organizationHandler, explainHandler, compatibilityHandler, entitlementHandler, accountPolicyHandler)
+	mountBloemRoutes(r, system, session, authMW, adminMW,
+		newBloemClientSurface(deps, authMW, tenantMW, searchProvider), platformHandler, peopleHandler, organizationHandler, explainHandler, compatibilityHandler, entitlementHandler, accountPolicyHandler)
 }
 
-// mountV2Routes registers every /api/v2 route. chi allows one subtree per mount
-// path, so this is the only function that may open /api/v2 and every group
+// mountBloemRoutes registers every /api/bloem/v1 route. chi allows one subtree per mount
+// path, so this is the only function that may open /api/bloem/v1 and every group
 // below is assembled inside it. Surfaces arrive variadically and are
 // type-switched: one that could not be built is simply not passed, and its
 // routes stay unmounted rather than answering emptily.
-func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *handlers.AdminContextSessionHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware, surfaces ...any) {
-	var platformHandler *handlers.V2AdminPlatformHandler
-	var peopleHandler *handlers.V2AdminPeopleHandler
-	var organizationHandler *handlers.V2AdminOrganizationHandler
-	var explainHandler *handlers.V2PolicyExplainHandler
-	var compatibilityHandler *handlers.V2AdminCompatibilityHandler
+// NativeAPIPrefix is re-exported from handlers so the router and the handlers
+// that build self-referential links spell the prefix from one definition.
+const NativeAPIPrefix = handlers.NativeAPIPrefix
+
+func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session *handlers.AdminContextSessionHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware, surfaces ...any) {
+	var platformHandler *handlers.BloemAdminPlatformHandler
+	var peopleHandler *handlers.BloemAdminPeopleHandler
+	var organizationHandler *handlers.BloemAdminOrganizationHandler
+	var explainHandler *handlers.BloemPolicyExplainHandler
+	var compatibilityHandler *handlers.BloemAdminCompatibilityHandler
 	var entitlementHandler *handlers.EntitlementTemplatesHandler
 	var accountPolicyHandler *handlers.AdminHandler
-	var client v2ClientSurface
+	var client bloemClientSurface
 	for _, candidate := range surfaces {
 		switch handler := candidate.(type) {
-		case *handlers.V2AdminPlatformHandler:
+		case *handlers.BloemAdminPlatformHandler:
 			platformHandler = handler
-		case *handlers.V2AdminPeopleHandler:
+		case *handlers.BloemAdminPeopleHandler:
 			peopleHandler = handler
-		case *handlers.V2AdminOrganizationHandler:
+		case *handlers.BloemAdminOrganizationHandler:
 			organizationHandler = handler
-		case *handlers.V2PolicyExplainHandler:
+		case *handlers.BloemPolicyExplainHandler:
 			explainHandler = handler
-		case v2ClientSurface:
+		case bloemClientSurface:
 			client = handler
-		case *handlers.V2AdminCompatibilityHandler:
+		case *handlers.BloemAdminCompatibilityHandler:
 			compatibilityHandler = handler
 		case *handlers.EntitlementTemplatesHandler:
 			entitlementHandler = handler
@@ -169,7 +173,7 @@ func mountV2Routes(r chi.Router, system *handlers.V2SystemHandler, session *hand
 			accountPolicyHandler = handler
 		}
 	}
-	r.Route("/api/v2", func(r chi.Router) {
+	r.Route(NativeAPIPrefix, func(r chi.Router) {
 		r.Get("/capabilities", system.HandleCapabilities)
 		client.mount(r)
 		if authMW == nil {

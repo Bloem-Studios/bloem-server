@@ -11,7 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func TestMusicRoutesMountOnlyOnNativeV2(t *testing.T) {
+func TestMusicRoutesMountOnlyOnNativeBloem(t *testing.T) {
 	pool := newDisposableAPIDatabase(t, "bloem_music_routes_", false)
 	router := NewRouter(Dependencies{
 		DB:                pool,
@@ -24,10 +24,10 @@ func TestMusicRoutesMountOnlyOnNativeV2(t *testing.T) {
 		}},
 	})
 	want := map[string]bool{
-		"GET /api/v2/music/status":       false,
-		"GET /api/v2/music/artists":      false,
-		"GET /api/v2/music/artists/{id}": false,
-		"GET /api/v2/music/albums/{id}":  false,
+		"GET /api/bloem/v1/music/status":       false,
+		"GET /api/bloem/v1/music/artists":      false,
+		"GET /api/bloem/v1/music/artists/{id}": false,
+		"GET /api/bloem/v1/music/albums/{id}":  false,
 	}
 	if err := chi.Walk(router, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
 		key := method + " " + route

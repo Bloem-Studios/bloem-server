@@ -20,11 +20,11 @@ import (
 	"github.com/google/uuid"
 )
 
-type V2OrganizationOverviewStore interface {
+type BloemOrganizationOverviewStore interface {
 	GetOrganizationSummary(context.Context, uuid.UUID) (tenancy.OrganizationSummary, error)
 }
 
-type V2OrganizationGroupStore interface {
+type BloemOrganizationGroupStore interface {
 	List(context.Context, uuid.UUID) ([]access.Group, error)
 	Get(context.Context, uuid.UUID, int64) (*access.Group, error)
 	Create(context.Context, uuid.UUID, access.CreateGroupInput) (*access.Group, error)
@@ -32,30 +32,30 @@ type V2OrganizationGroupStore interface {
 	DeleteWithImpact(context.Context, uuid.UUID, int64) (access.GroupDeletionImpact, error)
 }
 
-type V2OrganizationResourceStore interface {
+type BloemOrganizationResourceStore interface {
 	ListLibraries(context.Context, uuid.UUID) ([]resourcetenancy.LibraryProjection, error)
 	SetLibraryEntitlementStatus(context.Context, uuid.UUID, int64, int64, resourcetenancy.EntitlementStatus) (resourcetenancy.LibraryEntitlement, error)
 	DeleteLibraryEntitlement(context.Context, uuid.UUID, int64, int64) error
 }
 
-type V2OrganizationInvitationStore interface {
+type BloemOrganizationInvitationStore interface {
 	ListForOrganization(context.Context, uuid.UUID) ([]*models.Invitation, error)
 	CreateForOrganization(context.Context, uuid.UUID, models.CreateInvitationInput, string) (*models.Invitation, error)
 }
 
-type V2AdminOrganizationHandler struct {
-	overview    V2OrganizationOverviewStore
-	groups      V2OrganizationGroupStore
-	resources   V2OrganizationResourceStore
-	invitations V2OrganizationInvitationStore
+type BloemAdminOrganizationHandler struct {
+	overview    BloemOrganizationOverviewStore
+	groups      BloemOrganizationGroupStore
+	resources   BloemOrganizationResourceStore
+	invitations BloemOrganizationInvitationStore
 }
 
-func NewV2AdminOrganizationHandler(overview V2OrganizationOverviewStore, groups V2OrganizationGroupStore, resources V2OrganizationResourceStore, invitationStore V2OrganizationInvitationStore) *V2AdminOrganizationHandler {
-	return &V2AdminOrganizationHandler{overview: overview, groups: groups, resources: resources, invitations: invitationStore}
+func NewBloemAdminOrganizationHandler(overview BloemOrganizationOverviewStore, groups BloemOrganizationGroupStore, resources BloemOrganizationResourceStore, invitationStore BloemOrganizationInvitationStore) *BloemAdminOrganizationHandler {
+	return &BloemAdminOrganizationHandler{overview: overview, groups: groups, resources: resources, invitations: invitationStore}
 }
 
-func (h *V2AdminOrganizationHandler) HandleOverview(w http.ResponseWriter, r *http.Request) {
-	tenant, ok := requireV2OrganizationContext(w, r)
+func (h *BloemAdminOrganizationHandler) HandleOverview(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := requireBloemOrganizationContext(w, r)
 	if !ok {
 		return
 	}
@@ -65,7 +65,7 @@ func (h *V2AdminOrganizationHandler) HandleOverview(w http.ResponseWriter, r *ht
 	}
 	item, err := h.overview.GetOrganizationSummary(r.Context(), tenant.OrganizationID)
 	if err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -73,14 +73,14 @@ func (h *V2AdminOrganizationHandler) HandleOverview(w http.ResponseWriter, r *ht
 	}{item})
 }
 
-func (h *V2AdminOrganizationHandler) HandleListGroups(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminOrganizationHandler) HandleListGroups(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireGroups(w, r)
 	if !ok {
 		return
 	}
 	groups, err := h.groups.List(r.Context(), tenant.OrganizationID)
 	if err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	items := make([]accessGroupResponse, 0, len(groups))
@@ -92,18 +92,18 @@ func (h *V2AdminOrganizationHandler) HandleListGroups(w http.ResponseWriter, r *
 	}{items})
 }
 
-func (h *V2AdminOrganizationHandler) HandleGetGroup(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminOrganizationHandler) HandleGetGroup(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireGroups(w, r)
 	if !ok {
 		return
 	}
-	id, ok := v2PositivePathID(w, r, "id")
+	id, ok := bloemPositivePathID(w, r, "id")
 	if !ok {
 		return
 	}
 	group, err := h.groups.Get(r.Context(), tenant.OrganizationID, id)
 	if err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -111,7 +111,7 @@ func (h *V2AdminOrganizationHandler) HandleGetGroup(w http.ResponseWriter, r *ht
 	}{toAccessGroupResponse(*group)})
 }
 
-func (h *V2AdminOrganizationHandler) HandleCreateGroup(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminOrganizationHandler) HandleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireGroups(w, r)
 	if !ok {
 		return
@@ -132,7 +132,7 @@ func (h *V2AdminOrganizationHandler) HandleCreateGroup(w http.ResponseWriter, r 
 	}
 	group, err := h.groups.Create(r.Context(), tenant.OrganizationID, input)
 	if err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, struct {
@@ -141,12 +141,12 @@ func (h *V2AdminOrganizationHandler) HandleCreateGroup(w http.ResponseWriter, r 
 	}{toAccessGroupResponse(*group), tenant.PolicyRevision})
 }
 
-func (h *V2AdminOrganizationHandler) HandleUpdateGroup(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminOrganizationHandler) HandleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireGroups(w, r)
 	if !ok {
 		return
 	}
-	id, ok := v2PositivePathID(w, r, "id")
+	id, ok := bloemPositivePathID(w, r, "id")
 	if !ok {
 		return
 	}
@@ -166,7 +166,7 @@ func (h *V2AdminOrganizationHandler) HandleUpdateGroup(w http.ResponseWriter, r 
 	}
 	group, err := h.groups.Update(r.Context(), tenant.OrganizationID, id, input)
 	if err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -175,12 +175,12 @@ func (h *V2AdminOrganizationHandler) HandleUpdateGroup(w http.ResponseWriter, r 
 	}{toAccessGroupResponse(*group), tenant.PolicyRevision})
 }
 
-func (h *V2AdminOrganizationHandler) HandleDeleteGroup(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminOrganizationHandler) HandleDeleteGroup(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireGroups(w, r)
 	if !ok {
 		return
 	}
-	id, ok := v2PositivePathID(w, r, "id")
+	id, ok := bloemPositivePathID(w, r, "id")
 	if !ok {
 		return
 	}
@@ -195,20 +195,20 @@ func (h *V2AdminOrganizationHandler) HandleDeleteGroup(w http.ResponseWriter, r 
 	}
 	impact, err := h.groups.DeleteWithImpact(r.Context(), tenant.OrganizationID, id)
 	if err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, impact)
 }
 
-func (h *V2AdminOrganizationHandler) HandleListLibraries(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminOrganizationHandler) HandleListLibraries(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireResources(w, r)
 	if !ok {
 		return
 	}
 	items, err := h.resources.ListLibraries(r.Context(), tenant.OrganizationID)
 	if err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -216,12 +216,12 @@ func (h *V2AdminOrganizationHandler) HandleListLibraries(w http.ResponseWriter, 
 	}{items})
 }
 
-func (h *V2AdminOrganizationHandler) HandleUpdateEntitlement(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminOrganizationHandler) HandleUpdateEntitlement(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireResources(w, r)
 	if !ok {
 		return
 	}
-	folderID, ok := v2PositivePathID(w, r, "folder_id")
+	folderID, ok := bloemPositivePathID(w, r, "folder_id")
 	if !ok {
 		return
 	}
@@ -238,7 +238,7 @@ func (h *V2AdminOrganizationHandler) HandleUpdateEntitlement(w http.ResponseWrit
 	}
 	item, err := h.resources.SetLibraryEntitlementStatus(r.Context(), tenant.OrganizationID, folderID, request.ExpectedRevision, request.Status)
 	if err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -246,12 +246,12 @@ func (h *V2AdminOrganizationHandler) HandleUpdateEntitlement(w http.ResponseWrit
 	}{item})
 }
 
-func (h *V2AdminOrganizationHandler) HandleDeleteEntitlement(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminOrganizationHandler) HandleDeleteEntitlement(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireResources(w, r)
 	if !ok {
 		return
 	}
-	folderID, ok := v2PositivePathID(w, r, "folder_id")
+	folderID, ok := bloemPositivePathID(w, r, "folder_id")
 	if !ok {
 		return
 	}
@@ -266,20 +266,20 @@ func (h *V2AdminOrganizationHandler) HandleDeleteEntitlement(w http.ResponseWrit
 		return
 	}
 	if err := h.resources.DeleteLibraryEntitlement(r.Context(), tenant.OrganizationID, folderID, request.ExpectedRevision); err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *V2AdminOrganizationHandler) HandleListInvitations(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminOrganizationHandler) HandleListInvitations(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireInvitations(w, r)
 	if !ok {
 		return
 	}
 	items, err := h.invitations.ListForOrganization(r.Context(), tenant.OrganizationID)
 	if err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	now := time.Now()
@@ -292,7 +292,7 @@ func (h *V2AdminOrganizationHandler) HandleListInvitations(w http.ResponseWriter
 	}{response})
 }
 
-func (h *V2AdminOrganizationHandler) HandleCreateInvitation(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminOrganizationHandler) HandleCreateInvitation(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireInvitations(w, r)
 	if !ok {
 		return
@@ -326,12 +326,12 @@ func (h *V2AdminOrganizationHandler) HandleCreateInvitation(w http.ResponseWrite
 	}
 	token, tokenHash, err := invitations.NewToken()
 	if err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	item, err := h.invitations.CreateForOrganization(r.Context(), tenant.OrganizationID, models.CreateInvitationInput{Email: parsed.Address, Role: "user", AccessGroupID: request.AccessGroupID, LibraryIDs: request.LibraryIDs, CreateProfile: createProfile, ShowTour: showTour, Note: strings.TrimSpace(request.Note), InvitedBy: int64(tenant.AccountID), ExpiresAt: time.Now().Add(invitations.DefaultTTL)}, tokenHash)
 	if err != nil {
-		writeV2OrganizationError(w, r, err)
+		writeBloemOrganizationError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, struct {
@@ -340,8 +340,8 @@ func (h *V2AdminOrganizationHandler) HandleCreateInvitation(w http.ResponseWrite
 	}{toInvitationResponse(item, time.Now()), token})
 }
 
-func (h *V2AdminOrganizationHandler) requireGroups(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
-	tenant, ok := requireV2OrganizationContext(w, r)
+func (h *BloemAdminOrganizationHandler) requireGroups(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
+	tenant, ok := requireBloemOrganizationContext(w, r)
 	if !ok {
 		return tenancy.Context{}, false
 	}
@@ -351,8 +351,8 @@ func (h *V2AdminOrganizationHandler) requireGroups(w http.ResponseWriter, r *htt
 	}
 	return tenant, true
 }
-func (h *V2AdminOrganizationHandler) requireResources(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
-	tenant, ok := requireV2OrganizationContext(w, r)
+func (h *BloemAdminOrganizationHandler) requireResources(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
+	tenant, ok := requireBloemOrganizationContext(w, r)
 	if !ok {
 		return tenancy.Context{}, false
 	}
@@ -362,8 +362,8 @@ func (h *V2AdminOrganizationHandler) requireResources(w http.ResponseWriter, r *
 	}
 	return tenant, true
 }
-func (h *V2AdminOrganizationHandler) requireInvitations(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
-	tenant, ok := requireV2OrganizationContext(w, r)
+func (h *BloemAdminOrganizationHandler) requireInvitations(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
+	tenant, ok := requireBloemOrganizationContext(w, r)
 	if !ok {
 		return tenancy.Context{}, false
 	}
@@ -374,7 +374,7 @@ func (h *V2AdminOrganizationHandler) requireInvitations(w http.ResponseWriter, r
 	return tenant, true
 }
 
-func requireV2OrganizationContext(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
+func requireBloemOrganizationContext(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
 	claims, claimsOK := middleware.GetAdminContextClaims(r.Context())
 	tenant, tenantOK := tenancy.FromContext(r.Context())
 	if !claimsOK || !tenantOK || claims.Scope != auth.AdminScopeOrganization || claims.AccountID <= 0 || claims.OrganizationID == uuid.Nil || claims.AccountID != tenant.AccountID || claims.OrganizationID != tenant.OrganizationID || claims.MembershipID != tenant.MembershipID {
@@ -400,7 +400,7 @@ func requireOrganizationRevision(w http.ResponseWriter, tenant tenancy.Context, 
 	return true
 }
 
-func v2PositivePathID(w http.ResponseWriter, r *http.Request, name string) (int64, bool) {
+func bloemPositivePathID(w http.ResponseWriter, r *http.Request, name string) (int64, bool) {
 	id, err := strconv.ParseInt(chi.URLParam(r, name), 10, 64)
 	if err != nil || id <= 0 {
 		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")
@@ -409,7 +409,7 @@ func v2PositivePathID(w http.ResponseWriter, r *http.Request, name string) (int6
 	return id, true
 }
 
-func writeV2OrganizationError(w http.ResponseWriter, r *http.Request, err error) {
+func writeBloemOrganizationError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, tenancy.ErrOrganizationNotFound), errors.Is(err, access.ErrGroupNotFound), errors.Is(err, invitations.ErrNotFound), errors.Is(err, resourcetenancy.ErrResourceHidden):
 		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")

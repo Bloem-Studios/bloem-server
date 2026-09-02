@@ -239,7 +239,7 @@ func (h *SettingValuesHandler) handleLifecycleAdminSettingMutation(w http.Respon
 			writeError(w, http.StatusNotFound, "not_found", "Profile not found")
 			return
 		}
-		if !writeV2LifecycleError(w, err) {
+		if !writeBloemLifecycleError(w, err) {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mutate setting")
 		}
 		return

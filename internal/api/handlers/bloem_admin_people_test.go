@@ -151,10 +151,10 @@ func (s *adminPeopleServiceStub) UpdateProfileGroup(ctx context.Context, org uui
 	return s.person, s.err
 }
 
-func TestV2AdminPeopleRequiresResolvedOrganizationContextBeforeStoreAccess(t *testing.T) {
+func TestBloemAdminPeopleRequiresResolvedOrganizationContextBeforeStoreAccess(t *testing.T) {
 	store := &adminPeopleServiceStub{}
-	handler := NewV2AdminPeopleHandler(store)
-	req := httptest.NewRequest(http.MethodGet, "/api/v2/admin/organization/people", nil)
+	handler := NewBloemAdminPeopleHandler(store)
+	req := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/admin/organization/people", nil)
 	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopePlatform}))
 	rec := httptest.NewRecorder()
 
@@ -167,11 +167,11 @@ func TestV2AdminPeopleRequiresResolvedOrganizationContextBeforeStoreAccess(t *te
 	}
 }
 
-func TestV2AdminPeopleUsesOnlyMiddlewareOrganizationAndActor(t *testing.T) {
+func TestBloemAdminPeopleUsesOnlyMiddlewareOrganizationAndActor(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	store := &adminPeopleServiceStub{result: adminpeople.BulkResult{JobID: "job-1", Succeeded: 2}}
-	handler := NewV2AdminPeopleHandler(store)
-	req := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/bulk-jobs", `{"selection_token":"signed","kind":"suspend_memberships"}`, organizationID, 7, nil)
+	handler := NewBloemAdminPeopleHandler(store)
+	req := adminPeopleRequest(http.MethodPost, NativeAPIPrefix+"/admin/organization/people/bulk-jobs", `{"selection_token":"signed","kind":"suspend_memberships"}`, organizationID, 7, nil)
 	rec := httptest.NewRecorder()
 
 	handler.HandleCreateBulkJob(rec, req)
@@ -182,7 +182,7 @@ func TestV2AdminPeopleUsesOnlyMiddlewareOrganizationAndActor(t *testing.T) {
 		t.Fatalf("authority = %s/%d", store.organizationID, store.actorID)
 	}
 
-	malicious := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/bulk-jobs", `{"organization_id":"`+uuid.NewString()+`","selection_token":"signed","kind":"suspend_memberships"}`, organizationID, 7, nil)
+	malicious := adminPeopleRequest(http.MethodPost, NativeAPIPrefix+"/admin/organization/people/bulk-jobs", `{"organization_id":"`+uuid.NewString()+`","selection_token":"signed","kind":"suspend_memberships"}`, organizationID, 7, nil)
 	maliciousRec := httptest.NewRecorder()
 	handler.HandleCreateBulkJob(maliciousRec, malicious)
 	if maliciousRec.Code != http.StatusBadRequest {
@@ -190,12 +190,12 @@ func TestV2AdminPeopleUsesOnlyMiddlewareOrganizationAndActor(t *testing.T) {
 	}
 }
 
-func TestV2AdminPeopleSignalsSharedWorkerAfterDurableEnqueue(t *testing.T) {
+func TestBloemAdminPeopleSignalsSharedWorkerAfterDurableEnqueue(t *testing.T) {
 	organizationID := uuid.New()
 	store := &adminPeopleServiceStub{result: adminpeople.BulkResult{JobID: "job-1", Status: "queued"}}
 	wake := &adminPeopleWakeStub{}
-	handler := NewV2AdminPeopleHandlerWithWake(store, wake)
-	req := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/bulk-jobs", `{"selection_token":"signed","kind":"suspend_memberships"}`, organizationID, 7, nil)
+	handler := NewBloemAdminPeopleHandlerWithWake(store, wake)
+	req := adminPeopleRequest(http.MethodPost, NativeAPIPrefix+"/admin/organization/people/bulk-jobs", `{"selection_token":"signed","kind":"suspend_memberships"}`, organizationID, 7, nil)
 	rec := httptest.NewRecorder()
 	handler.HandleCreateBulkJob(rec, req)
 	if rec.Code != http.StatusCreated || wake.calls != 1 {
@@ -203,17 +203,17 @@ func TestV2AdminPeopleSignalsSharedWorkerAfterDurableEnqueue(t *testing.T) {
 	}
 }
 
-func TestV2AdminPeopleMembershipUpdateReplaysBeforeStoreAccess(t *testing.T) {
+func TestBloemAdminPeopleMembershipUpdateReplaysBeforeStoreAccess(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	store := &adminPeopleServiceStub{}
-	handler := NewV2AdminPeopleHandler(store)
+	handler := NewBloemAdminPeopleHandler(store)
 	body := []byte(`{"person":{"organization_id":"10000000-0000-0000-0000-000000000001","account_id":42,"membership_id":"20000000-0000-0000-0000-000000000002","membership_status":"suspended","security_revision":4,"profiles":[]}}`)
 	var digestSelectors map[string]string
 	handler.SetLifecycleIdempotency(replayLifecycleCoordinator{result: lifecycleidempotency.Result{Status: http.StatusOK, Body: body, Replayed: true}}, func(_ string, _ string, selectors map[string]string, _ url.Values, _ []byte) lifecycleidempotency.Digest {
 		digestSelectors = selectors
 		return lifecycleidempotency.Digest{1}
 	})
-	req := adminPeopleRequest(http.MethodPatch, "/api/v2/admin/organization/people/42/memberships/current", `{"expected_revision":3,"status":"suspended"}`, organizationID, 7, map[string]string{"account_id": "42"})
+	req := adminPeopleRequest(http.MethodPatch, NativeAPIPrefix+"/admin/organization/people/42/memberships/current", `{"expected_revision":3,"status":"suspended"}`, organizationID, 7, map[string]string{"account_id": "42"})
 	claims, _ := apimw.GetAdminContextClaims(req.Context())
 	claims.AccountIncarnationID = uuid.MustParse("11111111-2222-4333-8444-555555555555")
 	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), claims))
@@ -232,11 +232,11 @@ func TestV2AdminPeopleMembershipUpdateReplaysBeforeStoreAccess(t *testing.T) {
 	}
 }
 
-func TestV2AdminPeoplePolicyPreviewUsesImmutableSelectionAndMiddlewareActor(t *testing.T) {
+func TestBloemAdminPeoplePolicyPreviewUsesImmutableSelectionAndMiddlewareActor(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	store := &adminPeopleServiceStub{policyPreview: adminpeople.PolicyPreview{Matched: 2, ConfirmationToken: "confirmed"}}
-	handler := NewV2AdminPeopleHandler(store)
-	req := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/policy-previews", `{"selection_token":"signed","command":{"kind":"apply_entitlement_template","template_key":"premium","template_revision":1}}`, organizationID, 7, nil)
+	handler := NewBloemAdminPeopleHandler(store)
+	req := adminPeopleRequest(http.MethodPost, NativeAPIPrefix+"/admin/organization/people/policy-previews", `{"selection_token":"signed","command":{"kind":"apply_entitlement_template","template_key":"premium","template_revision":1}}`, organizationID, 7, nil)
 	rec := httptest.NewRecorder()
 
 	handler.HandleCreatePolicyPreview(rec, req)
@@ -249,7 +249,7 @@ func TestV2AdminPeoplePolicyPreviewUsesImmutableSelectionAndMiddlewareActor(t *t
 	}
 }
 
-func TestV2AdminPeopleCohortDiscoveryUsesOnlyOrganizationContext(t *testing.T) {
+func TestBloemAdminPeopleCohortDiscoveryUsesOnlyOrganizationContext(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	cohortID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
 	cohort := entitlements.CohortRevision{
@@ -259,17 +259,17 @@ func TestV2AdminPeopleCohortDiscoveryUsesOnlyOrganizationContext(t *testing.T) {
 		Policy: entitlements.Policy{LibraryIDs: nil, AllowedPermissions: nil, PlaybackAllowed: true, MaxStreams: 2},
 	}
 	cohorts := &organizationCohortStoreStub{items: []entitlements.CohortRevision{cohort}, item: cohort}
-	handler := NewV2AdminPeopleHandler(&adminPeopleServiceStub{})
+	handler := NewBloemAdminPeopleHandler(&adminPeopleServiceStub{})
 	handler.SetCohortStore(cohorts)
 
-	list := adminPeopleRequest(http.MethodGet, "/api/v2/admin/organization/entitlement-cohorts?include_archived=true", "", organizationID, 7, nil)
+	list := adminPeopleRequest(http.MethodGet, NativeAPIPrefix+"/admin/organization/entitlement-cohorts?include_archived=true", "", organizationID, 7, nil)
 	listRecorder := httptest.NewRecorder()
 	handler.HandleListEntitlementCohorts(listRecorder, list)
 	if listRecorder.Code != http.StatusOK || cohorts.org != organizationID || !strings.Contains(listRecorder.Body.String(), `"member_count":31`) || !strings.Contains(listRecorder.Body.String(), `"policy_digest":"safe-digest"`) || !strings.Contains(listRecorder.Body.String(), `"library_ids":null`) || !strings.Contains(listRecorder.Body.String(), `"allowed_permissions":null`) {
 		t.Fatalf("list response = %d %s, store organization=%s", listRecorder.Code, listRecorder.Body.String(), cohorts.org)
 	}
 
-	detail := adminPeopleRequest(http.MethodGet, "/api/v2/admin/organization/entitlement-cohorts/"+cohortID.String(), "", organizationID, 7, map[string]string{"cohort_id": cohortID.String()})
+	detail := adminPeopleRequest(http.MethodGet, NativeAPIPrefix+"/admin/organization/entitlement-cohorts/"+cohortID.String(), "", organizationID, 7, map[string]string{"cohort_id": cohortID.String()})
 	detailRecorder := httptest.NewRecorder()
 	handler.HandleGetEntitlementCohort(detailRecorder, detail)
 	if detailRecorder.Code != http.StatusOK || !strings.Contains(detailRecorder.Body.String(), `"cohort_id":"`+cohortID.String()+`"`) {
@@ -277,12 +277,12 @@ func TestV2AdminPeopleCohortDiscoveryUsesOnlyOrganizationContext(t *testing.T) {
 	}
 }
 
-func TestV2AdminPeoplePolicyJobEnqueuesConfirmedCommandAndWakesWorker(t *testing.T) {
+func TestBloemAdminPeoplePolicyJobEnqueuesConfirmedCommandAndWakesWorker(t *testing.T) {
 	organizationID := uuid.New()
 	store := &adminPeopleServiceStub{result: adminpeople.BulkResult{JobID: "policy-job-1", Status: "queued"}}
 	wake := &adminPeopleWakeStub{}
-	handler := NewV2AdminPeopleHandlerWithWake(store, wake)
-	req := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/policy-jobs", `{"selection_token":"signed","confirmation_token":"confirmed","idempotency_key":"command-1","command":{"kind":"apply_entitlement_template","template_key":"premium","template_revision":1}}`, organizationID, 7, nil)
+	handler := NewBloemAdminPeopleHandlerWithWake(store, wake)
+	req := adminPeopleRequest(http.MethodPost, NativeAPIPrefix+"/admin/organization/people/policy-jobs", `{"selection_token":"signed","confirmation_token":"confirmed","idempotency_key":"command-1","command":{"kind":"apply_entitlement_template","template_key":"premium","template_revision":1}}`, organizationID, 7, nil)
 	rec := httptest.NewRecorder()
 	handler.HandleCreatePolicyJob(rec, req)
 	if rec.Code != http.StatusCreated || wake.calls != 1 || store.policyAction.ConfirmationToken != "confirmed" || store.policyAction.IdempotencyKey != "command-1" || store.policyAction.Command.TemplateKey != "premium" {
@@ -290,21 +290,21 @@ func TestV2AdminPeoplePolicyJobEnqueuesConfirmedCommandAndWakesWorker(t *testing
 	}
 }
 
-func TestV2AdminPeoplePolicyJobRoutesRejectWrongJobKind(t *testing.T) {
+func TestBloemAdminPeoplePolicyJobRoutesRejectWrongJobKind(t *testing.T) {
 	organizationID := uuid.New()
 	store := &adminPeopleServiceStub{
 		result:          adminpeople.BulkResult{JobID: "generic-job", Status: "queued"},
 		policyJobErr:    adminpeople.ErrNotFound,
 		policyCancelErr: adminpeople.ErrBulkJobNotCancellable,
 	}
-	handler := NewV2AdminPeopleHandler(store)
-	getReq := adminPeopleRequest(http.MethodGet, "/api/v2/admin/organization/people/policy-jobs/generic-job", "", organizationID, 7, map[string]string{"job_id": "generic-job"})
+	handler := NewBloemAdminPeopleHandler(store)
+	getReq := adminPeopleRequest(http.MethodGet, NativeAPIPrefix+"/admin/organization/people/policy-jobs/generic-job", "", organizationID, 7, map[string]string{"job_id": "generic-job"})
 	getRec := httptest.NewRecorder()
 	handler.HandleGetPolicyJob(getRec, getReq)
 	if getRec.Code != http.StatusNotFound || !strings.Contains(getRec.Body.String(), `"error":"not_found"`) {
 		t.Fatalf("wrong-kind policy status=%d %s", getRec.Code, getRec.Body.String())
 	}
-	cancelReq := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/policy-jobs/generic-job/cancel", `{}`, organizationID, 7, map[string]string{"job_id": "generic-job"})
+	cancelReq := adminPeopleRequest(http.MethodPost, NativeAPIPrefix+"/admin/organization/people/policy-jobs/generic-job/cancel", `{}`, organizationID, 7, map[string]string{"job_id": "generic-job"})
 	cancelRec := httptest.NewRecorder()
 	handler.HandleCancelPolicyJob(cancelRec, cancelReq)
 	if cancelRec.Code != http.StatusConflict || !strings.Contains(cancelRec.Body.String(), `"error":"job_not_cancellable"`) {
@@ -312,11 +312,11 @@ func TestV2AdminPeoplePolicyJobRoutesRejectWrongJobKind(t *testing.T) {
 	}
 }
 
-func TestV2AdminPeoplePropagatesEffectivePlatformAuthorityInOrganizationContext(t *testing.T) {
+func TestBloemAdminPeoplePropagatesEffectivePlatformAuthorityInOrganizationContext(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	store := &adminPeopleServiceStub{result: adminpeople.BulkResult{JobID: "job-1"}}
-	handler := NewV2AdminPeopleHandler(store)
-	req := adminPeopleRequest(http.MethodPost, "/api/v2/admin/organization/people/bulk-jobs", `{"selection_token":"signed","kind":"suspend_memberships"}`, organizationID, 7, nil)
+	handler := NewBloemAdminPeopleHandler(store)
+	req := adminPeopleRequest(http.MethodPost, NativeAPIPrefix+"/admin/organization/people/bulk-jobs", `{"selection_token":"signed","kind":"suspend_memberships"}`, organizationID, 7, nil)
 	claims, _ := apimw.GetAdminContextClaims(req.Context())
 	claims.EffectiveAuthority = adminpeople.AuthorityPlatformAdmin
 	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), claims))
@@ -327,11 +327,11 @@ func TestV2AdminPeoplePropagatesEffectivePlatformAuthorityInOrganizationContext(
 	}
 }
 
-func TestV2AdminPeopleForeignPathTargetsAreNonDisclosing(t *testing.T) {
+func TestBloemAdminPeopleForeignPathTargetsAreNonDisclosing(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	store := &adminPeopleServiceStub{err: adminpeople.ErrNotFound}
-	handler := NewV2AdminPeopleHandler(store)
-	req := adminPeopleRequest(http.MethodGet, "/api/v2/admin/organization/people/42", "", organizationID, 7, map[string]string{"account_id": "42"})
+	handler := NewBloemAdminPeopleHandler(store)
+	req := adminPeopleRequest(http.MethodGet, NativeAPIPrefix+"/admin/organization/people/42", "", organizationID, 7, map[string]string{"account_id": "42"})
 	rec := httptest.NewRecorder()
 
 	handler.HandleGetPerson(rec, req)

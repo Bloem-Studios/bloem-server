@@ -34,7 +34,7 @@ func GetAdminContextClaims(ctx context.Context) (auth.AdminContextClaims, bool) 
 }
 
 // AdminContextMiddleware validates an administrative context token and then
-// revalidates the authority it encodes on every /api/v2/admin request.
+// revalidates the authority it encodes on every /api/bloem/v1/admin request.
 type AdminContextMiddleware struct {
 	tokens      auth.AdminContextTokenService
 	resolver    TenantResolver

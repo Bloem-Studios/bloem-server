@@ -271,7 +271,7 @@ func TestStreamTokenDeliverySessionRejectsProgressiveSubResources(t *testing.T) 
 func TestStreamTokenDeliverySessionRejectsNestedStreamSegment(t *testing.T) {
 	for _, path := range []string{
 		"/api/v1/playback/transcode/sess-1/stream/evil",
-		"/api/v2/stream/abc-123",
+		"/api/bloem/v1/stream/abc-123",
 		"/internal/stream/abc-123",
 	} {
 		if sessionID, ok := streamTokenDeliverySession(path); ok {

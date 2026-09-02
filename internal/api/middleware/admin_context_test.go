@@ -61,7 +61,7 @@ func performAdminContextRequest(t *testing.T, claims auth.AdminContextClaims, re
 		Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: claims.SecurityRevision,
 	}
 	middleware := NewAdminContextMiddleware(tokens, resolver, &adminContextMembershipStoreStub{membership: membership}, platform)
-	req := httptest.NewRequest(http.MethodGet, "/api/v2/admin/organization/overview?organization_id="+uuid.NewString(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/bloem/v1/admin/organization/overview?organization_id="+uuid.NewString(), nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("X-Organization-Id", uuid.NewString())
 	rec := httptest.NewRecorder()
@@ -90,7 +90,7 @@ func TestAdminContextMiddlewareInjectsOnlyResolvedOrganizationContext(t *testing
 	membership := &adminContextMembershipStoreStub{membership: tenancy.Membership{ID: membershipID, OrganizationID: organizationID, AccountID: 41, Status: tenancy.MembershipActive, LegacyRole: "admin", SecurityRevision: 11}}
 	resolver := &adminContextResolverStub{tenant: resolved}
 	middleware := NewAdminContextMiddleware(tokens, resolver, membership, adminContextPlatformAuthorizerStub{})
-	request := httptest.NewRequest(http.MethodGet, "/api/v2/admin/organization/overview?organization_id="+uuid.NewString(), nil)
+	request := httptest.NewRequest(http.MethodGet, "/api/bloem/v1/admin/organization/overview?organization_id="+uuid.NewString(), nil)
 	request.Header.Set("Authorization", "Bearer "+token)
 	request.Header.Set("X-Organization-Id", uuid.NewString())
 	rec := httptest.NewRecorder()

@@ -2083,7 +2083,7 @@ func NewRouter(deps Dependencies) chi.Router {
 	if deps.DB != nil {
 		tenantMiddleware = apimw.NewTenantMiddleware(tenancy.NewResolver(tenancy.NewStore(deps.DB)))
 	}
-	mountV2(r, deps, authMiddleware, tenantMiddleware, catalogSearchService.Provider(), adminHandler)
+	mountBloem(r, deps, authMiddleware, tenantMiddleware, catalogSearchService.Provider(), adminHandler)
 
 	// Private Compatibility Service API v1 (internal/compatapi). This is an
 	// internal surface for enrolled compatibility applications only — it is
@@ -2263,7 +2263,7 @@ func NewRouter(deps Dependencies) chi.Router {
 				// deliberate exception to /api/v1's freeze against upstream Silo (see
 				// v1_route_surface_test.go): direct profile credentials, accepted as
 				// least-privilege scope after review, predates that guard and is
-				// pinned in its golden files rather than moved to /api/v2.
+				// pinned in its golden files rather than moved to /api/bloem/v1.
 				if deps.RateLimitMW != nil {
 					r.With(deps.RateLimitMW.AuthEndpointHandler("login")).Post("/login", authHandler.HandleLogin)
 					r.With(deps.RateLimitMW.AuthEndpointHandler("profile_login")).Post("/profile-login", authHandler.HandleProfileLogin)

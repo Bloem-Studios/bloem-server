@@ -118,10 +118,10 @@ func (s *adminReauthVerifierStub) VerifyPassword(_ context.Context, _ int, crede
 	return s.allowed, s.err
 }
 
-func TestV2AdminPlatformRejectsOrganizationContextBeforeStoreAccess(t *testing.T) {
+func TestBloemAdminPlatformRejectsOrganizationContextBeforeStoreAccess(t *testing.T) {
 	store := &adminPlatformStoreStub{}
-	handler := NewV2AdminPlatformHandler(store, nil)
-	req := httptest.NewRequest(http.MethodGet, "/api/v2/admin/platform/organizations", nil)
+	handler := NewBloemAdminPlatformHandler(store, nil)
+	req := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/admin/platform/organizations", nil)
 	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), auth.AdminContextClaims{
 		AccountID: 7, Scope: auth.AdminScopeOrganization, OrganizationID: uuid.New(), MembershipID: uuid.New(), PolicyRevision: 1, SecurityRevision: 1,
 	}))
@@ -136,30 +136,30 @@ func TestV2AdminPlatformRejectsOrganizationContextBeforeStoreAccess(t *testing.T
 	}
 }
 
-func TestV2AdminPlatformCreateValidatesFieldsAndProvidesAtomicAuditContext(t *testing.T) {
+func TestBloemAdminPlatformCreateValidatesFieldsAndProvidesAtomicAuditContext(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	ownerID := 42
 	store := &adminPlatformStoreStub{organization: tenancy.Organization{
 		ID: organizationID, Name: "North Sea Media", Slug: "north-sea-media", Status: tenancy.OrganizationActive,
 		OwnerAccountID: &ownerID, PolicyRevision: 1,
 	}}
-	handler := NewV2AdminPlatformHandler(store, nil)
+	handler := NewBloemAdminPlatformHandler(store, nil)
 
-	invalid := adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations", `{"name":"","slug":"Bad Slug","owner_account_id":0}`, nil)
+	invalid := adminPlatformRequest(http.MethodPost, NativeAPIPrefix+"/admin/platform/organizations", `{"name":"","slug":"Bad Slug","owner_account_id":0}`, nil)
 	invalidRec := httptest.NewRecorder()
 	handler.HandleCreateOrganization(invalidRec, invalid)
 	if invalidRec.Code != http.StatusUnprocessableEntity || !strings.Contains(invalidRec.Body.String(), `"fields"`) || !strings.Contains(invalidRec.Body.String(), `"slug"`) {
 		t.Fatalf("invalid response = %d %s", invalidRec.Code, invalidRec.Body.String())
 	}
 
-	req := adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations", `{"name":"North Sea Media","slug":"north-sea-media","owner_account_id":42,"invite_token":"secret"}`, nil)
+	req := adminPlatformRequest(http.MethodPost, NativeAPIPrefix+"/admin/platform/organizations", `{"name":"North Sea Media","slug":"north-sea-media","owner_account_id":42,"invite_token":"secret"}`, nil)
 	rec := httptest.NewRecorder()
 	handler.HandleCreateOrganization(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("unknown secret field response = %d %s", rec.Code, rec.Body.String())
 	}
 
-	req = adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations", `{"name":"North Sea Media","slug":"north-sea-media","owner_account_id":42}`, nil)
+	req = adminPlatformRequest(http.MethodPost, NativeAPIPrefix+"/admin/platform/organizations", `{"name":"North Sea Media","slug":"north-sea-media","owner_account_id":42}`, nil)
 	rec = httptest.NewRecorder()
 	handler.HandleCreateOrganization(rec, req)
 	if rec.Code != http.StatusCreated {
@@ -173,14 +173,14 @@ func TestV2AdminPlatformCreateValidatesFieldsAndProvidesAtomicAuditContext(t *te
 	}
 }
 
-func TestV2AdminPlatformCreateReplaysReceiptBeforeStoreAccess(t *testing.T) {
+func TestBloemAdminPlatformCreateReplaysReceiptBeforeStoreAccess(t *testing.T) {
 	store := &adminPlatformStoreStub{}
-	handler := NewV2AdminPlatformHandler(store, nil)
+	handler := NewBloemAdminPlatformHandler(store, nil)
 	body := []byte(`{"organization":{"id":"10000000-0000-0000-0000-000000000001","slug":"first","name":"First","status":"active","policy_revision":1}}`)
 	handler.SetLifecycleIdempotency(replayLifecycleCoordinator{result: lifecycleidempotency.Result{Status: http.StatusCreated, Body: body, Replayed: true}}, func(string, string, map[string]string, url.Values, []byte) lifecycleidempotency.Digest {
 		return lifecycleidempotency.Digest{1}
 	})
-	req := adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations/", `{"name":"First","slug":"first","owner_account_id":42}`, nil)
+	req := adminPlatformRequest(http.MethodPost, NativeAPIPrefix+"/admin/platform/organizations/", `{"name":"First","slug":"first","owner_account_id":42}`, nil)
 	req.Header.Set("Idempotency-Key", "organization-create-0001")
 	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform}))
 	rec := httptest.NewRecorder()
@@ -194,15 +194,15 @@ func TestV2AdminPlatformCreateReplaysReceiptBeforeStoreAccess(t *testing.T) {
 	}
 }
 
-func TestV2AdminPlatformUpdateReplaysReceiptBeforeStoreAccess(t *testing.T) {
+func TestBloemAdminPlatformUpdateReplaysReceiptBeforeStoreAccess(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	store := &adminPlatformStoreStub{}
-	handler := NewV2AdminPlatformHandler(store, nil)
+	handler := NewBloemAdminPlatformHandler(store, nil)
 	body := []byte(`{"organization":{"id":"10000000-0000-0000-0000-000000000001","slug":"first","name":"First","status":"active","policy_revision":2}}`)
 	handler.SetLifecycleIdempotency(replayLifecycleCoordinator{result: lifecycleidempotency.Result{Status: http.StatusOK, Body: body, Replayed: true}}, func(string, string, map[string]string, url.Values, []byte) lifecycleidempotency.Digest {
 		return lifecycleidempotency.Digest{1}
 	})
-	req := adminPlatformRequest(http.MethodPatch, "/api/v2/admin/platform/organizations/"+organizationID.String(), `{"expected_revision":1,"name":"First"}`, map[string]string{"id": organizationID.String()})
+	req := adminPlatformRequest(http.MethodPatch, NativeAPIPrefix+"/admin/platform/organizations/"+organizationID.String(), `{"expected_revision":1,"name":"First"}`, map[string]string{"id": organizationID.String()})
 	req.Header.Set("Idempotency-Key", "organization-update-0001")
 	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), auth.AdminContextClaims{AccountID: 7, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Scope: auth.AdminScopePlatform}))
 	rec := httptest.NewRecorder()
@@ -216,14 +216,14 @@ func TestV2AdminPlatformUpdateReplaysReceiptBeforeStoreAccess(t *testing.T) {
 	}
 }
 
-func TestV2AdminPlatformMapsStaleRevisionWithCurrentRevision(t *testing.T) {
+func TestBloemAdminPlatformMapsStaleRevisionWithCurrentRevision(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	store := &adminPlatformStoreStub{
 		organization: tenancy.Organization{ID: organizationID, PolicyRevision: 9},
 		mutationErr:  tenancy.ErrAuthorizationStateChanged,
 	}
-	handler := NewV2AdminPlatformHandler(store, nil)
-	req := adminPlatformRequest(http.MethodPatch, "/api/v2/admin/platform/organizations/"+organizationID.String(), `{"expected_revision":8,"name":"Changed"}`, map[string]string{"id": organizationID.String()})
+	handler := NewBloemAdminPlatformHandler(store, nil)
+	req := adminPlatformRequest(http.MethodPatch, NativeAPIPrefix+"/admin/platform/organizations/"+organizationID.String(), `{"expected_revision":8,"name":"Changed"}`, map[string]string{"id": organizationID.String()})
 	rec := httptest.NewRecorder()
 
 	handler.HandleUpdateOrganization(rec, req)
@@ -232,12 +232,12 @@ func TestV2AdminPlatformMapsStaleRevisionWithCurrentRevision(t *testing.T) {
 	}
 }
 
-func TestV2AdminPlatformMembershipIdentifierIsNonDisclosing(t *testing.T) {
+func TestBloemAdminPlatformMembershipIdentifierIsNonDisclosing(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	membershipID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
 	store := &adminPlatformStoreStub{mutationErr: tenancy.ErrMembershipNotFound}
-	handler := NewV2AdminPlatformHandler(store, nil)
-	req := adminPlatformRequest(http.MethodPatch, "/api/v2/admin/platform/organizations/"+organizationID.String()+"/memberships/"+membershipID.String(), `{"expected_revision":3,"status":"suspended"}`, map[string]string{
+	handler := NewBloemAdminPlatformHandler(store, nil)
+	req := adminPlatformRequest(http.MethodPatch, NativeAPIPrefix+"/admin/platform/organizations/"+organizationID.String()+"/memberships/"+membershipID.String(), `{"expected_revision":3,"status":"suspended"}`, map[string]string{
 		"id": organizationID.String(), "membership_id": membershipID.String(),
 	})
 	rec := httptest.NewRecorder()
@@ -248,9 +248,9 @@ func TestV2AdminPlatformMembershipIdentifierIsNonDisclosing(t *testing.T) {
 	}
 }
 
-func TestV2AdminPlatformMapsUnavailableStore(t *testing.T) {
-	handler := NewV2AdminPlatformHandler(&adminPlatformStoreStub{listErr: errors.New("database offline")}, nil)
-	req := adminPlatformRequest(http.MethodGet, "/api/v2/admin/platform/organizations", "", nil)
+func TestBloemAdminPlatformMapsUnavailableStore(t *testing.T) {
+	handler := NewBloemAdminPlatformHandler(&adminPlatformStoreStub{listErr: errors.New("database offline")}, nil)
+	req := adminPlatformRequest(http.MethodGet, NativeAPIPrefix+"/admin/platform/organizations", "", nil)
 	rec := httptest.NewRecorder()
 
 	handler.HandleListOrganizations(rec, req)
@@ -259,10 +259,10 @@ func TestV2AdminPlatformMapsUnavailableStore(t *testing.T) {
 	}
 }
 
-func TestV2AdminPlatformAtomicAuditFailureReturnsUnavailable(t *testing.T) {
+func TestBloemAdminPlatformAtomicAuditFailureReturnsUnavailable(t *testing.T) {
 	store := &adminPlatformStoreStub{mutationErr: errors.New("record admin audit event: forced failure")}
-	handler := NewV2AdminPlatformHandler(store, nil)
-	req := adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations", `{"name":"Atomic","slug":"atomic","owner_account_id":42}`, nil)
+	handler := NewBloemAdminPlatformHandler(store, nil)
+	req := adminPlatformRequest(http.MethodPost, NativeAPIPrefix+"/admin/platform/organizations", `{"name":"Atomic","slug":"atomic","owner_account_id":42}`, nil)
 	rec := httptest.NewRecorder()
 
 	handler.HandleCreateOrganization(rec, req)
@@ -271,7 +271,7 @@ func TestV2AdminPlatformAtomicAuditFailureReturnsUnavailable(t *testing.T) {
 	}
 }
 
-func TestV2AdminPlatformTransferRequiresValidReauthentication(t *testing.T) {
+func TestBloemAdminPlatformTransferRequiresValidReauthentication(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	ownerID := 42
 	for _, test := range []struct {
@@ -287,9 +287,9 @@ func TestV2AdminPlatformTransferRequiresValidReauthentication(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			store := &adminPlatformStoreStub{organization: tenancy.Organization{ID: organizationID, OwnerAccountID: &ownerID, PolicyRevision: 5}}
-			handler := NewV2AdminPlatformHandler(store, test.verifier)
+			handler := NewBloemAdminPlatformHandler(store, test.verifier)
 			body := `{"expected_revision":4,"owner_account_id":42,"confirmed":true,"password":"` + test.password + `"}`
-			req := adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations/"+organizationID.String()+"/transfer-ownership", body, map[string]string{"id": organizationID.String()})
+			req := adminPlatformRequest(http.MethodPost, NativeAPIPrefix+"/admin/platform/organizations/"+organizationID.String()+"/transfer-ownership", body, map[string]string{"id": organizationID.String()})
 			rec := httptest.NewRecorder()
 
 			handler.HandleTransferOwnership(rec, req)
@@ -306,15 +306,15 @@ func TestV2AdminPlatformTransferRequiresValidReauthentication(t *testing.T) {
 	}
 }
 
-func TestV2AdminPlatformStaleRevisionLookupFailureReturnsUnavailable(t *testing.T) {
+func TestBloemAdminPlatformStaleRevisionLookupFailureReturnsUnavailable(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	store := &adminPlatformStoreStub{
 		organization: tenancy.Organization{ID: organizationID, PolicyRevision: 9},
 		mutationErr:  tenancy.ErrAuthorizationStateChanged,
 		getErrors:    []error{errors.New("revision lookup failed")},
 	}
-	handler := NewV2AdminPlatformHandler(store, nil)
-	req := adminPlatformRequest(http.MethodPatch, "/api/v2/admin/platform/organizations/"+organizationID.String(), `{"expected_revision":8,"name":"Changed"}`, map[string]string{"id": organizationID.String()})
+	handler := NewBloemAdminPlatformHandler(store, nil)
+	req := adminPlatformRequest(http.MethodPatch, NativeAPIPrefix+"/admin/platform/organizations/"+organizationID.String(), `{"expected_revision":8,"name":"Changed"}`, map[string]string{"id": organizationID.String()})
 	rec := httptest.NewRecorder()
 
 	handler.HandleUpdateOrganization(rec, req)
@@ -323,11 +323,11 @@ func TestV2AdminPlatformStaleRevisionLookupFailureReturnsUnavailable(t *testing.
 	}
 }
 
-func TestV2AdminPlatformMissingMembershipAccountIsFieldAddressable(t *testing.T) {
+func TestBloemAdminPlatformMissingMembershipAccountIsFieldAddressable(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	store := &adminPlatformStoreStub{mutationErr: tenancy.ErrAccountNotFound}
-	handler := NewV2AdminPlatformHandler(store, nil)
-	req := adminPlatformRequest(http.MethodPost, "/api/v2/admin/platform/organizations/"+organizationID.String()+"/memberships", `{"expected_revision":3,"account_id":999,"legacy_role":"user"}`, map[string]string{"id": organizationID.String()})
+	handler := NewBloemAdminPlatformHandler(store, nil)
+	req := adminPlatformRequest(http.MethodPost, NativeAPIPrefix+"/admin/platform/organizations/"+organizationID.String()+"/memberships", `{"expected_revision":3,"account_id":999,"legacy_role":"user"}`, map[string]string{"id": organizationID.String()})
 	rec := httptest.NewRecorder()
 
 	handler.HandleCreateMembership(rec, req)

@@ -98,7 +98,7 @@ func performJSONRequest(t *testing.T, handler http.Handler, method, path string)
 }
 
 // routerWith mounts the public identity route the way the real router does:
-// inside /api/v2, with no auth middleware. That the REAL router mounts it that
+// inside /api/bloem/v1, with no auth middleware. That the REAL router mounts it that
 // way is asserted separately, in internal/api.
 func routerWith(t *testing.T, settings *fakeIdentitySettings, setup fakeSetupState) http.Handler {
 	t.Helper()
@@ -108,7 +108,7 @@ func routerWith(t *testing.T, settings *fakeIdentitySettings, setup fakeSetupSta
 	}
 	identity := NewServerIdentityHandler(serverid.NewResolver(store), brandingServiceFor(settings), setup)
 	router := chi.NewRouter()
-	router.Route("/api/v2", func(r chi.Router) {
+	router.Route(NativeAPIPrefix, func(r chi.Router) {
 		r.Get("/server/identity", identity.HandleGetServerIdentity)
 	})
 	return router
@@ -124,8 +124,8 @@ func brandingServiceFor(settings *fakeIdentitySettings) *branding.Service {
 func TestServerIdentityIsStableAndPublic(t *testing.T) {
 	settings := newFakeSettings(t)
 
-	first := performJSONRequest(t, routerWith(t, settings, fakeSetupState{}), http.MethodGet, "/api/v2/server/identity")
-	second := performJSONRequest(t, routerWith(t, settings, fakeSetupState{}), http.MethodGet, "/api/v2/server/identity")
+	first := performJSONRequest(t, routerWith(t, settings, fakeSetupState{}), http.MethodGet, NativeAPIPrefix+"/server/identity")
+	second := performJSONRequest(t, routerWith(t, settings, fakeSetupState{}), http.MethodGet, NativeAPIPrefix+"/server/identity")
 
 	if first.Status != http.StatusOK || second.Status != http.StatusOK {
 		t.Fatalf("status = %d then %d, want %d twice", first.Status, second.Status, http.StatusOK)
@@ -149,7 +149,7 @@ func TestServerIdentityReusesPreExistingInstanceID(t *testing.T) {
 	settings := newFakeSettings(t)
 	settings.values[serverid.SettingKey] = "pre-existing-instance-id"
 
-	response := performJSONRequest(t, routerWith(t, settings, fakeSetupState{}), http.MethodGet, "/api/v2/server/identity")
+	response := performJSONRequest(t, routerWith(t, settings, fakeSetupState{}), http.MethodGet, NativeAPIPrefix+"/server/identity")
 
 	if response.Body["server_id"] != "pre-existing-instance-id" {
 		t.Fatalf("server_id = %v, want the pre-existing row", response.Body["server_id"])
@@ -173,7 +173,7 @@ func TestServerIdentityReportsAPIVersionsAndSetupState(t *testing.T) {
 			settings := newFakeSettings(t)
 			setup := fakeSetupState{needsSetup: tc.needsSetup}
 
-			response := performJSONRequest(t, routerWith(t, settings, setup), http.MethodGet, "/api/v2/server/identity")
+			response := performJSONRequest(t, routerWith(t, settings, setup), http.MethodGet, NativeAPIPrefix+"/server/identity")
 
 			if response.Status != http.StatusOK {
 				t.Fatalf("status = %d, want %d", response.Status, http.StatusOK)
@@ -191,7 +191,7 @@ func TestServerIdentityReportsAPIVersionsAndSetupState(t *testing.T) {
 				served = append(served, number)
 			}
 			// Both majors are mounted unconditionally: /api/v1 is the
-			// Silo-compatible projection and /api/v2 is the native API.
+			// Silo-compatible projection and /api/bloem/v1 is the native API.
 			for _, want := range []float64{1, 2} {
 				if !slices.Contains(served, want) {
 					t.Errorf("api_versions = %v, want it to contain %v", served, want)
@@ -207,13 +207,13 @@ func TestServerIdentityReportsAPIVersionsAndSetupState(t *testing.T) {
 func TestServerIdentityServesTheOperatorFacingServerName(t *testing.T) {
 	settings := newFakeSettings(t)
 
-	defaulted := performJSONRequest(t, routerWith(t, settings, fakeSetupState{}), http.MethodGet, "/api/v2/server/identity")
+	defaulted := performJSONRequest(t, routerWith(t, settings, fakeSetupState{}), http.MethodGet, NativeAPIPrefix+"/server/identity")
 	if defaulted.Body["server_name"] != branding.DefaultServerName {
 		t.Fatalf("server_name = %v, want the branding default %q", defaulted.Body["server_name"], branding.DefaultServerName)
 	}
 
 	settings.values[branding.KeyServerName] = "Upstairs"
-	named := performJSONRequest(t, routerWith(t, settings, fakeSetupState{}), http.MethodGet, "/api/v2/server/identity")
+	named := performJSONRequest(t, routerWith(t, settings, fakeSetupState{}), http.MethodGet, NativeAPIPrefix+"/server/identity")
 	if named.Body["server_name"] != "Upstairs" {
 		t.Fatalf("server_name = %v, want the configured branding name", named.Body["server_name"])
 	}
@@ -235,7 +235,7 @@ func TestServerIdentityRefusesRatherThanGuess(t *testing.T) {
 		{name: "setup state read fails", settings: newFakeSettings(t), setup: fakeSetupState{err: errors.New("transient read failure")}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			response := performJSONRequest(t, routerWith(t, tc.settings, tc.setup), http.MethodGet, "/api/v2/server/identity")
+			response := performJSONRequest(t, routerWith(t, tc.settings, tc.setup), http.MethodGet, NativeAPIPrefix+"/server/identity")
 
 			if response.Status != http.StatusServiceUnavailable {
 				t.Fatalf("status = %d, want %d", response.Status, http.StatusServiceUnavailable)
@@ -254,7 +254,7 @@ func TestServerIdentityIsUnavailableWithoutASetupReporter(t *testing.T) {
 	identity := NewServerIdentityHandler(serverid.NewResolver(newFakeSettings(t)), nil, nil)
 	rec := httptest.NewRecorder()
 
-	identity.HandleGetServerIdentity(rec, httptest.NewRequest(http.MethodGet, "/api/v2/server/identity", nil))
+	identity.HandleGetServerIdentity(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/server/identity", nil))
 
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)

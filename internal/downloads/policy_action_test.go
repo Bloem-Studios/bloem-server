@@ -103,7 +103,7 @@ func TestPolicyActionDeciderUsesGroupDownloadFlags(t *testing.T) {
 	}
 }
 
-func TestDownloadCapabilityResolvesV2ProfileGroup(t *testing.T) {
+func TestDownloadCapabilityResolvesBloemProfileGroup(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
 		OrganizationID: organizationID,

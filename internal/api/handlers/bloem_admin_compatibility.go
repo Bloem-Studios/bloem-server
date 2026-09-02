@@ -116,17 +116,17 @@ var compatibilityKinds = map[string]bool{
 	compatKindAudiobookshelf: true,
 }
 
-// V2AdminCompatibilityHandler serves the platform-scoped Compatibility
+// BloemAdminCompatibilityHandler serves the platform-scoped Compatibility
 // Applications administration endpoints.
-type V2AdminCompatibilityHandler struct {
+type BloemAdminCompatibilityHandler struct {
 	service   CompatibilityApplicationService
 	publicURL string
 }
 
-// NewV2AdminCompatibilityHandler builds the handler. publicURL is the
+// NewBloemAdminCompatibilityHandler builds the handler. publicURL is the
 // canonical externally reachable origin used for client URLs.
-func NewV2AdminCompatibilityHandler(service CompatibilityApplicationService, publicURL string) *V2AdminCompatibilityHandler {
-	return &V2AdminCompatibilityHandler{service: service, publicURL: strings.TrimSuffix(publicURL, "/")}
+func NewBloemAdminCompatibilityHandler(service CompatibilityApplicationService, publicURL string) *BloemAdminCompatibilityHandler {
+	return &BloemAdminCompatibilityHandler{service: service, publicURL: strings.TrimSuffix(publicURL, "/")}
 }
 
 type compatibilityCommands struct {
@@ -142,7 +142,7 @@ type compatibilityApplicationView struct {
 	Commands     compatibilityCommands `json:"commands"`
 }
 
-func (h *V2AdminCompatibilityHandler) HandleListApplications(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminCompatibilityHandler) HandleListApplications(w http.ResponseWriter, r *http.Request) {
 	if !h.requirePlatformScope(w, r) {
 		return
 	}
@@ -164,7 +164,7 @@ func (h *V2AdminCompatibilityHandler) HandleListApplications(w http.ResponseWrit
 	}{views})
 }
 
-func (h *V2AdminCompatibilityHandler) HandleCreateEnrollment(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminCompatibilityHandler) HandleCreateEnrollment(w http.ResponseWriter, r *http.Request) {
 	claims, ok := h.requirePlatformMutation(w, r)
 	if !ok {
 		return
@@ -193,15 +193,15 @@ func (h *V2AdminCompatibilityHandler) HandleCreateEnrollment(w http.ResponseWrit
 	}{enrollment})
 }
 
-func (h *V2AdminCompatibilityHandler) HandleEnableApplication(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminCompatibilityHandler) HandleEnableApplication(w http.ResponseWriter, r *http.Request) {
 	h.handleSetEnabled(w, r, true)
 }
 
-func (h *V2AdminCompatibilityHandler) HandleDisableApplication(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminCompatibilityHandler) HandleDisableApplication(w http.ResponseWriter, r *http.Request) {
 	h.handleSetEnabled(w, r, false)
 }
 
-func (h *V2AdminCompatibilityHandler) handleSetEnabled(w http.ResponseWriter, r *http.Request, enabled bool) {
+func (h *BloemAdminCompatibilityHandler) handleSetEnabled(w http.ResponseWriter, r *http.Request, enabled bool) {
 	claims, ok := h.requirePlatformMutation(w, r)
 	if !ok {
 		return
@@ -227,7 +227,7 @@ func (h *V2AdminCompatibilityHandler) handleSetEnabled(w http.ResponseWriter, r 
 	}{application})
 }
 
-func (h *V2AdminCompatibilityHandler) HandleRotateCredential(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminCompatibilityHandler) HandleRotateCredential(w http.ResponseWriter, r *http.Request) {
 	claims, ok := h.requirePlatformMutation(w, r)
 	if !ok {
 		return
@@ -255,7 +255,7 @@ func (h *V2AdminCompatibilityHandler) HandleRotateCredential(w http.ResponseWrit
 	}{credential, application})
 }
 
-func (h *V2AdminCompatibilityHandler) HandleRevokeApplication(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminCompatibilityHandler) HandleRevokeApplication(w http.ResponseWriter, r *http.Request) {
 	claims, ok := h.requirePlatformMutation(w, r)
 	if !ok {
 		return
@@ -289,7 +289,7 @@ func (h *V2AdminCompatibilityHandler) HandleRevokeApplication(w http.ResponseWri
 	}{application})
 }
 
-func (h *V2AdminCompatibilityHandler) requirePlatformScope(w http.ResponseWriter, r *http.Request) bool {
+func (h *BloemAdminCompatibilityHandler) requirePlatformScope(w http.ResponseWriter, r *http.Request) bool {
 	claims, ok := middleware.GetAdminContextClaims(r.Context())
 	if !ok || claims.Scope != auth.AdminScopePlatform || claims.AccountID <= 0 {
 		writeError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
@@ -302,7 +302,7 @@ func (h *V2AdminCompatibilityHandler) requirePlatformScope(w http.ResponseWriter
 	return true
 }
 
-func (h *V2AdminCompatibilityHandler) requirePlatformMutation(w http.ResponseWriter, r *http.Request) (auth.AdminContextClaims, bool) {
+func (h *BloemAdminCompatibilityHandler) requirePlatformMutation(w http.ResponseWriter, r *http.Request) (auth.AdminContextClaims, bool) {
 	if !h.requirePlatformScope(w, r) {
 		return auth.AdminContextClaims{}, false
 	}
@@ -310,7 +310,7 @@ func (h *V2AdminCompatibilityHandler) requirePlatformMutation(w http.ResponseWri
 	return claims, true
 }
 
-func (h *V2AdminCompatibilityHandler) writeServiceError(w http.ResponseWriter, err error) {
+func (h *BloemAdminCompatibilityHandler) writeServiceError(w http.ResponseWriter, err error) {
 	var revision *CompatibilityRevisionError
 	switch {
 	case errors.Is(err, ErrCompatibilityApplicationNotFound):
@@ -332,7 +332,7 @@ func (h *V2AdminCompatibilityHandler) writeServiceError(w http.ResponseWriter, e
 
 // canonicalURL is the address a client of this application should use. Both
 // applications share Bloem's canonical public origin.
-func (h *V2AdminCompatibilityHandler) canonicalURL(kind string) string {
+func (h *BloemAdminCompatibilityHandler) canonicalURL(kind string) string {
 	base := h.publicURL
 	if base == "" {
 		base = "https://bloem.example"

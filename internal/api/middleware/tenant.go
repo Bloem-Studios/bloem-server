@@ -27,9 +27,9 @@ func NewTenantMiddleware(resolver TenantResolver) *TenantMiddleware {
 	return &TenantMiddleware{resolver: resolver}
 }
 
-// RequireV2 requires a tenant-bound session selection and validates it against
+// RequireBloem requires a tenant-bound session selection and validates it against
 // current organization, membership, and revocation revisions.
-func (m *TenantMiddleware) RequireV2(next http.Handler) http.Handler {
+func (m *TenantMiddleware) RequireBloem(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims := GetClaims(r.Context())
 		if claims == nil || claims.UserID <= 0 || claims.PolicyRevision <= 0 || claims.SecurityRevision <= 0 {

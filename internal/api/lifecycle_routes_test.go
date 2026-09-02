@@ -64,10 +64,10 @@ func TestUnsafeLifecycleRouteRegistryHasStableUniqueContracts(t *testing.T) {
 		{http.MethodDelete, "/api/v1/admin/users/{id}", lifecycleidempotency.TargetPathAccount},
 		{http.MethodDelete, "/api/v1/admin/tenants/{tenant_id}/members/{user_id}", lifecycleidempotency.TargetPathTenantMember},
 		{http.MethodPatch, "/api/v1/admin/tenants/{id}/limits", lifecycleidempotency.TargetExactMembership},
-		{http.MethodPatch, "/api/v2/admin/platform/organizations/{id}", lifecycleidempotency.TargetExactMembership},
-		{http.MethodPatch, "/api/v2/admin/organization/people/{account_id}/memberships/current", lifecycleidempotency.TargetExactMembership},
-		{http.MethodPost, "/api/v2/admin/organization/people/bulk-jobs", lifecycleidempotency.TargetStoredSelection},
-		{http.MethodPost, "/api/v2/admin/platform/accounts/{account_id}/entitlement/apply", lifecycleidempotency.TargetPathAccount},
+		{http.MethodPatch, NativeAPIPrefix + "/admin/platform/organizations/{id}", lifecycleidempotency.TargetExactMembership},
+		{http.MethodPatch, NativeAPIPrefix + "/admin/organization/people/{account_id}/memberships/current", lifecycleidempotency.TargetExactMembership},
+		{http.MethodPost, NativeAPIPrefix + "/admin/organization/people/bulk-jobs", lifecycleidempotency.TargetStoredSelection},
+		{http.MethodPost, NativeAPIPrefix + "/admin/platform/accounts/{account_id}/entitlement/apply", lifecycleidempotency.TargetPathAccount},
 	} {
 		contract, ok := LookupLifecycleRoute(required.method, required.pattern)
 		if !ok {
@@ -128,7 +128,7 @@ func unsafeLifecycleCandidate(method, pattern string) bool {
 	}
 	if strings.HasPrefix(pattern, "/api/v1/admin/users/{id}") ||
 		strings.HasPrefix(pattern, "/api/v1/admin/tenants") ||
-		strings.HasPrefix(pattern, "/api/v2/admin/platform/organizations/{id}") ||
+		strings.HasPrefix(pattern, NativeAPIPrefix+"/admin/platform/organizations/{id}") ||
 		pattern == "/api/v1/auth/setup" || pattern == "/api/v1/auth/signup" ||
 		strings.HasPrefix(pattern, "/api/v1/invitations/{token}") ||
 		strings.HasPrefix(pattern, "/api/v1/profiles") {
@@ -165,8 +165,8 @@ func TestLifecycleRouteMatcherClassifiesConcretePathsWithoutJellyfinFalsePositiv
 		{http.MethodPatch, "/api/v1/admin/tenants/bf64e282-8c30-4bcc-8166-9047e52cb623/limits", true},
 		{http.MethodDelete, "/api/v1/admin/tenants/bf64e282-8c30-4bcc-8166-9047e52cb623/members/42/auth-sessions/session-1", true},
 		{http.MethodPost, "/api/v1/invitations/secret-token/accept", true},
-		{http.MethodPatch, "/api/v2/admin/platform/organizations/bf64e282-8c30-4bcc-8166-9047e52cb623", true},
-		{http.MethodPatch, "/api/v2/admin/organization/people/42/memberships/current", true},
+		{http.MethodPatch, NativeAPIPrefix + "/admin/platform/organizations/bf64e282-8c30-4bcc-8166-9047e52cb623", true},
+		{http.MethodPatch, NativeAPIPrefix + "/admin/organization/people/42/memberships/current", true},
 		{http.MethodPost, "/Users/42/PlayedItems/movie-1", false},
 		{http.MethodPost, "/api/v1/auth/login", false},
 		{http.MethodGet, "/api/v1/admin/users/42", false},

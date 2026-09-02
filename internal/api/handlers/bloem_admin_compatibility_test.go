@@ -107,7 +107,7 @@ func compatTestApplication() CompatibilityApplication {
 }
 
 func newCompatRouter(service CompatibilityApplicationService) chi.Router {
-	handler := NewV2AdminCompatibilityHandler(service, "https://bloem.example")
+	handler := NewBloemAdminCompatibilityHandler(service, "https://bloem.example")
 	r := chi.NewRouter()
 	r.Get("/applications", handler.HandleListApplications)
 	r.Post("/enrollments", handler.HandleCreateEnrollment)

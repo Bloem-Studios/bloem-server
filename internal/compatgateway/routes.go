@@ -3,7 +3,7 @@
 // address. Route ownership is compile-time, reviewed configuration: Jellyfin
 // owns its explicit protocol route families plus /web, Audiobookshelf owns
 // only /audiobookshelf/**, and nothing can add a route at runtime. Native
-// surfaces — the Bloem application at "/", /api/v1/**, /api/v2/**, and
+// surfaces — the Bloem application at "/", /api/v1/**, /api/bloem/v1/**, and
 // /metrics — are never claimed.
 package compatgateway
 

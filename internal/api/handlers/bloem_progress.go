@@ -12,7 +12,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
-// Per-item sync result statuses on POST /api/v2/sync/progress. The client
+// Per-item sync result statuses on POST /api/bloem/v1/sync/progress. The client
 // contract allows exactly these three values, and the reason it does is that a
 // client which cannot tell a landed write from a discarded one stops resending
 // a position the server never stored — the one failure the sync protocol
@@ -22,7 +22,7 @@ import (
 // "ok" for every non-error row. That value is what Silo clients parse, so it
 // cannot change under them; the finer vocabulary is a native-API feature and
 // clients detect it through the progress_sync_v1 token on
-// GET /api/v2/capabilities.
+// GET /api/bloem/v1/capabilities.
 const (
 	// syncStatusUpdated means the row was written.
 	syncStatusUpdated = "updated"
@@ -41,14 +41,14 @@ const (
 	syncErrMissingMediaItemID = "media_item_id is required"
 )
 
-// HandleV2SyncProgress handles POST /api/v2/sync/progress: the same batch of
+// HandleBloemSyncProgress handles POST /api/bloem/v1/sync/progress: the same batch of
 // progress updates the v1 route accepts, reported in the contract vocabulary.
 //
 // Everything that touches storage is shared with the v1 handler — the same
 // store, the same thresholds, the same last-write-wins merge, the same profile
 // refresh and event fan-out. Only the per-item reporting differs, so the two
 // surfaces cannot drift into writing different rows for the same request.
-func (h *ProgressHandler) HandleV2SyncProgress(w http.ResponseWriter, r *http.Request) {
+func (h *ProgressHandler) HandleBloemSyncProgress(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 

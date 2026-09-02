@@ -20,7 +20,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type V2AdminPeopleService interface {
+type BloemAdminPeopleService interface {
 	List(context.Context, uuid.UUID, adminpeople.Filter) (adminpeople.Page, error)
 	Get(context.Context, uuid.UUID, int) (adminpeople.PersonSummary, error)
 	CreateSelection(context.Context, uuid.UUID, adminpeople.Filter) (adminpeople.Selection, error)
@@ -37,52 +37,52 @@ type V2AdminPeopleService interface {
 
 type AdminPeopleWorkerWake interface{ Wake() }
 
-type V2AdminPeopleCohortStore interface {
+type BloemAdminPeopleCohortStore interface {
 	ListCohorts(context.Context, uuid.UUID, bool) ([]entitlements.CohortRevision, error)
 	GetCohort(context.Context, uuid.UUID, uuid.UUID) (entitlements.CohortRevision, error)
 }
 
-type V2AdminPeopleHandler struct {
-	service         V2AdminPeopleService
+type BloemAdminPeopleHandler struct {
+	service         BloemAdminPeopleService
 	worker          AdminPeopleWorkerWake
-	cohortStore     V2AdminPeopleCohortStore
+	cohortStore     BloemAdminPeopleCohortStore
 	lifecycle       lifecycleidempotency.Coordinator
 	lifecycleDigest lifecycleidempotency.RequestDigester
 }
 
-func (h *V2AdminPeopleHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
+func (h *BloemAdminPeopleHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
 	h.lifecycle = coordinator
 	h.lifecycleDigest = digester
 }
 
-type v2AdminPeopleLifecycleService interface {
+type bloemAdminPeopleLifecycleService interface {
 	UpdateMembershipInTransaction(context.Context, pgx.Tx, uuid.UUID, int, int, int64, tenancy.MembershipStatus) (adminpeople.PersonSummary, error)
 	UpdateProfileGroupInTransaction(context.Context, pgx.Tx, uuid.UUID, int, int, string, int64, int) (adminpeople.PersonSummary, error)
 }
 
-type v2AdminPeopleLifecycleJobService interface {
+type bloemAdminPeopleLifecycleJobService interface {
 	EnqueueBulkInTransaction(context.Context, pgx.Tx, uuid.UUID, int, adminpeople.BulkAction) (adminpeople.BulkResult, error)
 	EnqueuePolicyBulkForScopeInTransaction(context.Context, pgx.Tx, uuid.UUID, int, adminpeople.PolicyBulkAction, adminpeople.PolicyOperationScope) (adminpeople.BulkResult, error)
 }
 
-type v2AdminPeopleLifecycleSelectionResolver interface {
+type bloemAdminPeopleLifecycleSelectionResolver interface {
 	ResolveLifecycleSelectionTargets(context.Context, pgx.Tx, uuid.UUID, string) ([]lifecycleidempotency.TargetBinding, error)
 }
 
-func NewV2AdminPeopleHandler(service V2AdminPeopleService) *V2AdminPeopleHandler {
-	return &V2AdminPeopleHandler{service: service}
+func NewBloemAdminPeopleHandler(service BloemAdminPeopleService) *BloemAdminPeopleHandler {
+	return &BloemAdminPeopleHandler{service: service}
 }
-func NewV2AdminPeopleHandlerWithWake(service V2AdminPeopleService, worker AdminPeopleWorkerWake) *V2AdminPeopleHandler {
-	return &V2AdminPeopleHandler{service: service, worker: worker}
+func NewBloemAdminPeopleHandlerWithWake(service BloemAdminPeopleService, worker AdminPeopleWorkerWake) *BloemAdminPeopleHandler {
+	return &BloemAdminPeopleHandler{service: service, worker: worker}
 }
 
-func (h *V2AdminPeopleHandler) SetCohortStore(store V2AdminPeopleCohortStore) {
+func (h *BloemAdminPeopleHandler) SetCohortStore(store BloemAdminPeopleCohortStore) {
 	if h != nil {
 		h.cohortStore = store
 	}
 }
 
-func (h *V2AdminPeopleHandler) HandleListEntitlementCohorts(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleListEntitlementCohorts(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
@@ -124,7 +124,7 @@ func (h *V2AdminPeopleHandler) HandleListEntitlementCohorts(w http.ResponseWrite
 	}{Cohorts: cohorts})
 }
 
-func (h *V2AdminPeopleHandler) HandleGetEntitlementCohort(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleGetEntitlementCohort(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
@@ -151,7 +151,7 @@ func (h *V2AdminPeopleHandler) HandleGetEntitlementCohort(w http.ResponseWriter,
 	}{Cohort: platformEntitlementCohortFromDomain(item)})
 }
 
-func (h *V2AdminPeopleHandler) writeCohortError(w http.ResponseWriter, err error) {
+func (h *BloemAdminPeopleHandler) writeCohortError(w http.ResponseWriter, err error) {
 	if errors.Is(err, entitlements.ErrCohortNotFound) {
 		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")
 		return
@@ -159,7 +159,7 @@ func (h *V2AdminPeopleHandler) writeCohortError(w http.ResponseWriter, err error
 	writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
 }
 
-func (h *V2AdminPeopleHandler) HandleListPeople(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleListPeople(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
@@ -176,7 +176,7 @@ func (h *V2AdminPeopleHandler) HandleListPeople(w http.ResponseWriter, r *http.R
 	writeJSON(w, http.StatusOK, page)
 }
 
-func (h *V2AdminPeopleHandler) HandleGetPerson(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleGetPerson(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
@@ -203,7 +203,7 @@ type adminPeopleFilterRequest struct {
 	Sort        string                     `json:"sort"`
 }
 
-func (h *V2AdminPeopleHandler) HandleCreateSelection(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleCreateSelection(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
@@ -222,7 +222,7 @@ func (h *V2AdminPeopleHandler) HandleCreateSelection(w http.ResponseWriter, r *h
 	}{selection})
 }
 
-func (h *V2AdminPeopleHandler) HandleCreatePolicyPreview(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleCreatePolicyPreview(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
@@ -245,12 +245,12 @@ func (h *V2AdminPeopleHandler) HandleCreatePolicyPreview(w http.ResponseWriter, 
 	}{preview})
 }
 
-func (h *V2AdminPeopleHandler) HandleCreateBulkJob(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleCreateBulkJob(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
 	}
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -280,12 +280,12 @@ func (h *V2AdminPeopleHandler) HandleCreateBulkJob(w http.ResponseWriter, r *htt
 	}{result})
 }
 
-func (h *V2AdminPeopleHandler) HandleCreatePolicyJob(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleCreatePolicyJob(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
 	}
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -322,7 +322,7 @@ func (h *V2AdminPeopleHandler) HandleCreatePolicyJob(w http.ResponseWriter, r *h
 	}{result})
 }
 
-func (h *V2AdminPeopleHandler) HandleCancelPolicyJob(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleCancelPolicyJob(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
@@ -342,7 +342,7 @@ func (h *V2AdminPeopleHandler) HandleCancelPolicyJob(w http.ResponseWriter, r *h
 	}{result})
 }
 
-func (h *V2AdminPeopleHandler) HandleGetPolicyJob(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleGetPolicyJob(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
@@ -362,7 +362,7 @@ func (h *V2AdminPeopleHandler) HandleGetPolicyJob(w http.ResponseWriter, r *http
 	}{result})
 }
 
-func (h *V2AdminPeopleHandler) HandleGetBulkJob(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleGetBulkJob(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
@@ -382,7 +382,7 @@ func (h *V2AdminPeopleHandler) HandleGetBulkJob(w http.ResponseWriter, r *http.R
 	}{result})
 }
 
-func (h *V2AdminPeopleHandler) HandleUpdateMembership(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleUpdateMembership(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
@@ -391,7 +391,7 @@ func (h *V2AdminPeopleHandler) HandleUpdateMembership(w http.ResponseWriter, r *
 	if !ok {
 		return
 	}
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -425,7 +425,7 @@ func (h *V2AdminPeopleHandler) HandleUpdateMembership(w http.ResponseWriter, r *
 	}{person})
 }
 
-func (h *V2AdminPeopleHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPeopleHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.requireOrganization(w, r)
 	if !ok {
 		return
@@ -439,7 +439,7 @@ func (h *V2AdminPeopleHandler) HandleUpdateProfile(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")
 		return
 	}
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -480,23 +480,23 @@ func peopleLifecycleResult(person adminpeople.PersonSummary) (lifecycleidempoten
 	return lifecycleidempotency.Result{Status: http.StatusOK, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}}, err
 }
 
-func (h *V2AdminPeopleHandler) lifecycleService() (v2AdminPeopleLifecycleService, error) {
-	service, ok := h.service.(v2AdminPeopleLifecycleService)
+func (h *BloemAdminPeopleHandler) lifecycleService() (bloemAdminPeopleLifecycleService, error) {
+	service, ok := h.service.(bloemAdminPeopleLifecycleService)
 	if !ok {
 		return nil, errors.New("lifecycle-safe people service unavailable")
 	}
 	return service, nil
 }
 
-func (h *V2AdminPeopleHandler) handleLifecyclePeopleMembership(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, accountID int, expectedRevision int64, status tenancy.MembershipStatus) {
+func (h *BloemAdminPeopleHandler) handleLifecyclePeopleMembership(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, accountID int, expectedRevision int64, status tenancy.MembershipStatus) {
 	claims, _ := middleware.GetAdminContextClaims(r.Context())
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "people.membership.update", lifecycleidempotency.TargetExactMembership, map[string]string{"organization_id": tenant.OrganizationID.String(), "account_id": strconv.Itoa(accountID)}, body)
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, "people.membership.update", lifecycleidempotency.TargetExactMembership, map[string]string{"organization_id": tenant.OrganizationID.String(), "account_id": strconv.Itoa(accountID)}, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
 	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		return resolveV2AccountMembershipTarget(ctx, tx, tenant.OrganizationID, accountID, "")
+		return resolveBloemAccountMembershipTarget(ctx, tx, tenant.OrganizationID, accountID, "")
 	}
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 		service, err := h.lifecycleService()
@@ -510,23 +510,23 @@ func (h *V2AdminPeopleHandler) handleLifecyclePeopleMembership(w http.ResponseWr
 		return peopleLifecycleResult(person)
 	})
 	if err != nil {
-		if !writeV2LifecycleError(w, err) {
+		if !writeBloemLifecycleError(w, err) {
 			h.writeError(w, r, err, accountID)
 		}
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
-func (h *V2AdminPeopleHandler) handleLifecyclePeopleProfile(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, accountID int, profileID string, expectedRevision int64, groupID int) {
+func (h *BloemAdminPeopleHandler) handleLifecyclePeopleProfile(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, accountID int, profileID string, expectedRevision int64, groupID int) {
 	claims, _ := middleware.GetAdminContextClaims(r.Context())
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "people.profile.update", lifecycleidempotency.TargetPathAccount, map[string]string{"organization_id": tenant.OrganizationID.String(), "account_id": strconv.Itoa(accountID), "profile_id": profileID}, body)
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, "people.profile.update", lifecycleidempotency.TargetPathAccount, map[string]string{"organization_id": tenant.OrganizationID.String(), "account_id": strconv.Itoa(accountID), "profile_id": profileID}, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
 	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		return resolveV2AccountMembershipTarget(ctx, tx, tenant.OrganizationID, accountID, profileID)
+		return resolveBloemAccountMembershipTarget(ctx, tx, tenant.OrganizationID, accountID, profileID)
 	}
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 		service, err := h.lifecycleService()
@@ -540,22 +540,22 @@ func (h *V2AdminPeopleHandler) handleLifecyclePeopleProfile(w http.ResponseWrite
 		return peopleLifecycleResult(person)
 	})
 	if err != nil {
-		if !writeV2LifecycleError(w, err) {
+		if !writeBloemLifecycleError(w, err) {
 			h.writeError(w, r, err, accountID)
 		}
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
-func (h *V2AdminPeopleHandler) lifecycleSelectionRequest(r *http.Request, tenant tenancy.Context, body []byte, routeID, selectionToken string) (lifecycleidempotency.Request, bool) {
+func (h *BloemAdminPeopleHandler) lifecycleSelectionRequest(r *http.Request, tenant tenancy.Context, body []byte, routeID, selectionToken string) (lifecycleidempotency.Request, bool) {
 	claims, _ := middleware.GetAdminContextClaims(r.Context())
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetStoredSelection, map[string]string{"organization_id": tenant.OrganizationID.String()}, body)
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetStoredSelection, map[string]string{"organization_id": tenant.OrganizationID.String()}, body)
 	if !ok {
 		return lifecycleidempotency.Request{}, false
 	}
 	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		resolver, ok := h.service.(v2AdminPeopleLifecycleSelectionResolver)
+		resolver, ok := h.service.(bloemAdminPeopleLifecycleSelectionResolver)
 		if !ok {
 			return nil, errors.New("lifecycle selection resolver unavailable")
 		}
@@ -571,14 +571,14 @@ func bulkLifecycleResult(result adminpeople.BulkResult) (lifecycleidempotency.Re
 	return lifecycleidempotency.Result{Status: http.StatusCreated, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}, OperationID: result.JobID}, err
 }
 
-func (h *V2AdminPeopleHandler) handleLifecyclePeopleBulkJob(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, action adminpeople.BulkAction) {
+func (h *BloemAdminPeopleHandler) handleLifecyclePeopleBulkJob(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, action adminpeople.BulkAction) {
 	request, ok := h.lifecycleSelectionRequest(r, tenant, body, "people.bulk_job.create", action.SelectionToken)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		service, ok := h.service.(v2AdminPeopleLifecycleJobService)
+		service, ok := h.service.(bloemAdminPeopleLifecycleJobService)
 		if !ok {
 			return lifecycleidempotency.Result{}, errors.New("lifecycle people service unavailable")
 		}
@@ -589,7 +589,7 @@ func (h *V2AdminPeopleHandler) handleLifecyclePeopleBulkJob(w http.ResponseWrite
 		return bulkLifecycleResult(queued)
 	})
 	if err != nil {
-		if !writeV2LifecycleError(w, err) {
+		if !writeBloemLifecycleError(w, err) {
 			h.writeError(w, r, err, 0)
 		}
 		return
@@ -597,17 +597,17 @@ func (h *V2AdminPeopleHandler) handleLifecyclePeopleBulkJob(w http.ResponseWrite
 	if !result.Replayed && h.worker != nil {
 		h.worker.Wake()
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
-func (h *V2AdminPeopleHandler) handleLifecyclePeoplePolicyJob(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, action adminpeople.PolicyBulkAction) {
+func (h *BloemAdminPeopleHandler) handleLifecyclePeoplePolicyJob(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, action adminpeople.PolicyBulkAction) {
 	request, ok := h.lifecycleSelectionRequest(r, tenant, body, "people.policy_job.create", action.SelectionToken)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		service, ok := h.service.(v2AdminPeopleLifecycleJobService)
+		service, ok := h.service.(bloemAdminPeopleLifecycleJobService)
 		if !ok {
 			return lifecycleidempotency.Result{}, errors.New("lifecycle people service unavailable")
 		}
@@ -618,7 +618,7 @@ func (h *V2AdminPeopleHandler) handleLifecyclePeoplePolicyJob(w http.ResponseWri
 		return bulkLifecycleResult(queued)
 	})
 	if err != nil {
-		if !writeV2LifecycleError(w, err) {
+		if !writeBloemLifecycleError(w, err) {
 			h.writeError(w, r, err, 0)
 		}
 		return
@@ -626,10 +626,10 @@ func (h *V2AdminPeopleHandler) handleLifecyclePeoplePolicyJob(w http.ResponseWri
 	if !result.Replayed && h.worker != nil {
 		h.worker.Wake()
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
-func (h *V2AdminPeopleHandler) requireOrganization(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
+func (h *BloemAdminPeopleHandler) requireOrganization(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
 	claims, claimsOK := middleware.GetAdminContextClaims(r.Context())
 	tenant, tenantOK := tenancy.FromContext(r.Context())
 	if !claimsOK || !tenantOK || claims.Scope != auth.AdminScopeOrganization || claims.AccountID <= 0 || claims.OrganizationID == uuid.Nil || claims.AccountID != tenant.AccountID || claims.OrganizationID != tenant.OrganizationID || claims.MembershipID != tenant.MembershipID {
@@ -643,7 +643,7 @@ func (h *V2AdminPeopleHandler) requireOrganization(w http.ResponseWriter, r *htt
 	return tenant, true
 }
 
-func (h *V2AdminPeopleHandler) writeError(w http.ResponseWriter, r *http.Request, err error, accountID int) {
+func (h *BloemAdminPeopleHandler) writeError(w http.ResponseWriter, r *http.Request, err error, accountID int) {
 	switch {
 	case errors.Is(err, adminpeople.ErrNotFound), errors.Is(err, adminpeople.ErrInvalidSelection):
 		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")

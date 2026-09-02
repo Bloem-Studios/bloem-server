@@ -10,7 +10,7 @@ import (
 // the same batch through the real router.
 //
 // The point is not that either handler works — that is covered per-handler —
-// but that a client hitting /api/v2 gets the finer vocabulary while a Silo
+// but that a client hitting the native surface gets the finer vocabulary while a Silo
 // client hitting /api/v1 keeps getting `ok` from the identical request against
 // the identical store. The two must never be one route with a mode flag.
 func TestProgressSyncSurfacesAreServedByTheRealRouter(t *testing.T) {
@@ -25,7 +25,7 @@ func TestProgressSyncSurfacesAreServedByTheRealRouter(t *testing.T) {
 		{"media_item_id":"` + watchSeriesContentID + `","position":500,"duration":1000}
 	]}`
 
-	native := performJSONRequest(t, fixture.router, http.MethodPost, "/api/v2/sync/progress", batch, fixture.token, headers)
+	native := performJSONRequest(t, fixture.router, http.MethodPost, NativeAPIPrefix+"/sync/progress", batch, fixture.token, headers)
 	if native.Code != http.StatusOK {
 		t.Fatalf("v2 sync = %d %s", native.Code, native.Body.String())
 	}
@@ -42,12 +42,12 @@ func TestProgressSyncSurfacesAreServedByTheRealRouter(t *testing.T) {
 	}
 
 	// The native route is profile-scoped like every other document it serves.
-	withoutProfile := performJSONRequest(t, fixture.router, http.MethodPost, "/api/v2/sync/progress", batch, fixture.token, nil)
+	withoutProfile := performJSONRequest(t, fixture.router, http.MethodPost, NativeAPIPrefix+"/sync/progress", batch, fixture.token, nil)
 	if withoutProfile.Code != http.StatusBadRequest {
 		t.Errorf("v2 sync without a profile = %d %s", withoutProfile.Code, withoutProfile.Body.String())
 	}
 
-	unauthenticated := performJSONRequest(t, fixture.router, http.MethodPost, "/api/v2/sync/progress", batch, "", headers)
+	unauthenticated := performJSONRequest(t, fixture.router, http.MethodPost, NativeAPIPrefix+"/sync/progress", batch, "", headers)
 	if unauthenticated.Code != http.StatusUnauthorized {
 		t.Errorf("v2 sync without a token = %d %s", unauthenticated.Code, unauthenticated.Body.String())
 	}

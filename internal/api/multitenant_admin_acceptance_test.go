@@ -156,7 +156,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organ
 	}
 	fixture.accountToken = decodeLogin(t, login).AccessToken
 	for index, organizationID := range fixture.organizationIDs {
-		response := performJSONRequest(t, fixture.router, http.MethodPost, "/api/v2/admin/session", `{"scope":"organization","organization_id":"`+organizationID.String()+`"}`, fixture.accountToken, nil)
+		response := performJSONRequest(t, fixture.router, http.MethodPost, NativeAPIPrefix+"/admin/session", `{"scope":"organization","organization_id":"`+organizationID.String()+`"}`, fixture.accountToken, nil)
 		if response.Code != http.StatusOK {
 			t.Fatalf("mint organization context %d = %d %s", index, response.Code, response.Body.String())
 		}
@@ -174,11 +174,11 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organ
 func (fixture *multitenantAdminAcceptanceFixture) assertIsolationAndRevocation(t *testing.T) {
 	t.Helper()
 	paths := []string{
-		"/api/v2/admin/organization/overview",
-		"/api/v2/admin/organization/people/",
-		"/api/v2/admin/organization/groups/",
-		"/api/v2/admin/organization/libraries",
-		"/api/v2/admin/organization/policy-decisions",
+		NativeAPIPrefix + "/admin/organization/overview",
+		NativeAPIPrefix + "/admin/organization/people/",
+		NativeAPIPrefix + "/admin/organization/groups/",
+		NativeAPIPrefix + "/admin/organization/libraries",
+		NativeAPIPrefix + "/admin/organization/policy-decisions",
 	}
 	for index, token := range fixture.organizationTokens {
 		for _, path := range paths {
@@ -187,7 +187,7 @@ func (fixture *multitenantAdminAcceptanceFixture) assertIsolationAndRevocation(t
 				t.Fatalf("organization %d GET %s = %d %s", index, path, response.Code, response.Body.String())
 			}
 			body := response.Body.String()
-			if path != "/api/v2/admin/organization/overview" && !strings.Contains(body, fixture.localMarkers[index]) {
+			if path != NativeAPIPrefix+"/admin/organization/overview" && !strings.Contains(body, fixture.localMarkers[index]) {
 				t.Errorf("organization %d GET %s omitted local marker: %s", index, path, body)
 			}
 			if strings.Contains(body, fixture.foreignMarkers[index]) {
@@ -202,11 +202,11 @@ func (fixture *multitenantAdminAcceptanceFixture) assertIsolationAndRevocation(t
 		WHERE id=$1`, fixture.membershipIDs[0]); err != nil {
 		t.Fatalf("suspend first membership: %v", err)
 	}
-	revoked := performJSONRequest(t, fixture.router, http.MethodGet, "/api/v2/admin/organization/overview", "", fixture.organizationTokens[0], nil)
+	revoked := performJSONRequest(t, fixture.router, http.MethodGet, NativeAPIPrefix+"/admin/organization/overview", "", fixture.organizationTokens[0], nil)
 	if revoked.Code != http.StatusForbidden || !strings.Contains(revoked.Body.String(), `"error":"organization_suspended"`) {
 		t.Fatalf("already-minted suspended context = %d %s, want organization_suspended", revoked.Code, revoked.Body.String())
 	}
-	usable := performJSONRequest(t, fixture.router, http.MethodGet, "/api/v2/admin/organization/overview", "", fixture.organizationTokens[1], nil)
+	usable := performJSONRequest(t, fixture.router, http.MethodGet, NativeAPIPrefix+"/admin/organization/overview", "", fixture.organizationTokens[1], nil)
 	if usable.Code != http.StatusOK {
 		t.Fatalf("unrelated organization context after suspension = %d %s", usable.Code, usable.Body.String())
 	}

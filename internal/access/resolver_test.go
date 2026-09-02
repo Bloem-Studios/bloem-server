@@ -789,7 +789,7 @@ func TestResolverLoadsProfileBeforeResolvingTenantGroup(t *testing.T) {
 	}
 }
 
-func TestResolverV2WithoutProfileFailsClosedAtGroupResolution(t *testing.T) {
+func TestResolverBloemWithoutProfileFailsClosedAtGroupResolution(t *testing.T) {
 	organizationID := uuid.New()
 	groups := &stubGroupProvider{err: ErrGroupNotFound}
 	resolver := NewResolver(

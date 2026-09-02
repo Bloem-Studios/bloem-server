@@ -384,7 +384,7 @@ func (h *EntitlementTemplatesHandler) HandleGetOrganizationEntitlement(w http.Re
 			Transcodes int `json:"transcodes"`
 		}{item.Slots, item.Transcodes},
 		LibraryIDs: item.Policy.LibraryIDs, LastReconciledAt: item.LastReconciledAt,
-		AuditHistoryHref: "/api/v2/admin/platform/organizations/" + organizationID.String() + "/entitlement/audit"})
+		AuditHistoryHref: NativeAPIPrefix + "/admin/platform/organizations/" + organizationID.String() + "/entitlement/audit"})
 }
 
 func (h *EntitlementTemplatesHandler) HandleOrganizationAudit(w http.ResponseWriter, r *http.Request) {
@@ -426,9 +426,9 @@ func (r *entitlementApplyRequest) resolveTokenAlias() {
 
 func entitlementAccountPathID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	if chi.URLParam(r, "account_id") != "" {
-		return v2PositivePathID(w, r, "account_id")
+		return bloemPositivePathID(w, r, "account_id")
 	}
-	return v2PositivePathID(w, r, "user_id")
+	return bloemPositivePathID(w, r, "user_id")
 }
 
 func (h *EntitlementTemplatesHandler) HandleOrganizationDryRun(w http.ResponseWriter, r *http.Request) {
@@ -471,7 +471,7 @@ func (h *EntitlementTemplatesHandler) HandleOrganizationApply(w http.ResponseWri
 	if !ok {
 		return
 	}
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -611,7 +611,7 @@ func (h *EntitlementTemplatesHandler) HandleAccountApply(w http.ResponseWriter, 
 		return
 	}
 	accountID := int(accountID64)
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -680,13 +680,13 @@ func entitlementLifecycleResult(result entitlements.ApplyResult) (lifecycleidemp
 }
 
 func (h *EntitlementTemplatesHandler) handleLifecycleOrganizationApply(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, applyRequest entitlementApplyRequest) {
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "entitlement.organization.apply", lifecycleidempotency.TargetExactMembership, map[string]string{"id": organizationID.String()}, body)
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, "entitlement.organization.apply", lifecycleidempotency.TargetExactMembership, map[string]string{"id": organizationID.String()}, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
 	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		return resolveV2OrganizationOwnerTarget(ctx, tx, organizationID)
+		return resolveBloemOrganizationOwnerTarget(ctx, tx, organizationID)
 	}
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 		confirmation, err := h.parseConfirmation(applyRequest.ConfirmationToken)
@@ -704,12 +704,12 @@ func (h *EntitlementTemplatesHandler) handleLifecycleOrganizationApply(w http.Re
 		return entitlementLifecycleResult(applied)
 	})
 	if err != nil {
-		if !writeV2LifecycleError(w, err) {
+		if !writeBloemLifecycleError(w, err) {
 			h.writeError(w, err)
 		}
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
 func (h *EntitlementTemplatesHandler) handleLifecycleAccountApply(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, accountID int, applyRequest entitlementApplyRequest) {
@@ -718,7 +718,7 @@ func (h *EntitlementTemplatesHandler) handleLifecycleAccountApply(w http.Respons
 	if selector == "" {
 		selectorName, routeID, selector = "user_id", "entitlement.account.apply_legacy", chi.URLParam(r, "user_id")
 	}
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetPathAccount, map[string]string{selectorName: selector}, body)
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetPathAccount, map[string]string{selectorName: selector}, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
@@ -745,12 +745,12 @@ func (h *EntitlementTemplatesHandler) handleLifecycleAccountApply(w http.Respons
 		return entitlementLifecycleResult(applied)
 	})
 	if err != nil {
-		if !writeV2LifecycleError(w, err) {
+		if !writeBloemLifecycleError(w, err) {
 			h.writeError(w, err)
 		}
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
 func (h *EntitlementTemplatesHandler) applyOnce(ctx context.Context, actorAccountID int, targetType, targetID, idempotencyKey, receiptKey, templateKey string, templateRevision int64, apply func() (entitlements.ApplyResult, error)) (entitlements.ApplyResult, bool, error) {

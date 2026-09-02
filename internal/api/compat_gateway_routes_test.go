@@ -104,7 +104,7 @@ func TestCompatGatewayDoesNotReplaceNativeAuthRoutes(t *testing.T) {
 		{http.MethodPost, "/api/v1/auth/login"},
 		{http.MethodPost, "/api/v1/auth/refresh"},
 		{http.MethodPost, "/api/v1/auth/logout"},
-		{http.MethodPost, "/api/v2/admin/session"},
+		{http.MethodPost, NativeAPIPrefix + "/admin/session"},
 	}
 	for _, probe := range probes {
 		rctx := chi.NewRouteContext()
@@ -130,12 +130,12 @@ func TestCompatibilityAdminSurfaceMountsWithTheService(t *testing.T) {
 		registered[pair] = true
 	}
 	for _, required := range []string{
-		"GET /api/v2/admin/platform/compatibility/applications",
-		"POST /api/v2/admin/platform/compatibility/enrollments",
-		"POST /api/v2/admin/platform/compatibility/applications/{instance_id}/enable",
-		"POST /api/v2/admin/platform/compatibility/applications/{instance_id}/disable",
-		"POST /api/v2/admin/platform/compatibility/applications/{instance_id}/rotate-credential",
-		"POST /api/v2/admin/platform/compatibility/applications/{instance_id}/revoke",
+		"GET /api/bloem/v1/admin/platform/compatibility/applications",
+		"POST /api/bloem/v1/admin/platform/compatibility/enrollments",
+		"POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/enable",
+		"POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/disable",
+		"POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/rotate-credential",
+		"POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/revoke",
 	} {
 		if !registered[required] {
 			t.Fatalf("admin surface route %q is not registered", required)

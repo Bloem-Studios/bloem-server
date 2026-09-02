@@ -65,7 +65,7 @@ func TestDirectProfileCapabilityMatchesRouteWiring(t *testing.T) {
 				`{"email":"probe@example.test","password":"probe","device_id":"probe"}`, "", nil)
 			routeMounted := login.Code != http.StatusNotFound
 
-			capabilities := performJSONRequest(t, router, http.MethodGet, "/api/v2/capabilities", "", "", nil)
+			capabilities := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/capabilities", "", "", nil)
 			if capabilities.Code == http.StatusNotFound {
 				// No v2 surface at all: nothing is advertised, so nothing can
 				// disagree — but then the login route must be absent too.

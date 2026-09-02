@@ -208,7 +208,7 @@ func (h *AdminHandler) handleCreatePlatformPolicyJob(w http.ResponseWriter, r *h
 	if !ok {
 		return
 	}
-	body, ok := captureV2LifecycleBodyLimit(w, r, platformEntitlementBulkBodyLimit)
+	body, ok := captureBloemLifecycleBodyLimit(w, r, platformEntitlementBulkBodyLimit)
 	if !ok {
 		return
 	}
@@ -267,13 +267,13 @@ func (h *AdminHandler) handleLifecyclePlatformPolicyJob(w http.ResponseWriter, r
 		}
 		selectors["organization_id"] = organizationID.String()
 	}
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetStoredSelection, selectors, body)
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetStoredSelection, selectors, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
 	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		resolver, ok := h.platformEntitlementPeople.(v2AdminPeopleLifecycleSelectionResolver)
+		resolver, ok := h.platformEntitlementPeople.(bloemAdminPeopleLifecycleSelectionResolver)
 		if !ok {
 			return nil, errors.New("lifecycle selection resolver unavailable")
 		}
@@ -295,7 +295,7 @@ func (h *AdminHandler) handleLifecyclePlatformPolicyJob(w http.ResponseWriter, r
 		return bulkLifecycleResult(queued)
 	})
 	if err != nil {
-		if !writeV2LifecycleError(w, err) {
+		if !writeBloemLifecycleError(w, err) {
 			h.writePlatformEntitlementBulkError(w, err)
 		}
 		return
@@ -303,7 +303,7 @@ func (h *AdminHandler) handleLifecyclePlatformPolicyJob(w http.ResponseWriter, r
 	if !result.Replayed && h.platformEntitlementWorker != nil {
 		h.platformEntitlementWorker.Wake()
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
 func lifecycleAdminClaims(r *http.Request, actorID int) (auth.AdminContextClaims, bool) {

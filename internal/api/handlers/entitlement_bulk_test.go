@@ -138,16 +138,16 @@ func platformEntitlementBulkRouter(handler *AdminHandler, claims auth.AdminConte
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	router.Get("/api/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts", handler.HandleListPlatformEntitlementCohorts)
-	router.Get("/api/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}", handler.HandleGetPlatformEntitlementCohort)
-	router.Post("/api/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews", handler.HandleCreatePlatformOrganizationPolicyPreview)
-	router.Post("/api/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs", handler.HandleCreatePlatformOrganizationPolicyJob)
-	router.Get("/api/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}", handler.HandleGetPlatformOrganizationPolicyJob)
-	router.Post("/api/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel", handler.HandleCancelPlatformOrganizationPolicyJob)
-	router.Post("/api/v2/admin/platform/accounts/entitlement-bulk/policy-previews", handler.HandleCreatePlatformDirectPolicyPreview)
-	router.Post("/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs", handler.HandleCreatePlatformDirectPolicyJob)
-	router.Get("/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}", handler.HandleGetPlatformDirectPolicyJob)
-	router.Post("/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel", handler.HandleCancelPlatformDirectPolicyJob)
+	router.Get(NativeAPIPrefix+"/admin/platform/organizations/{organization_id}/entitlement-cohorts", handler.HandleListPlatformEntitlementCohorts)
+	router.Get(NativeAPIPrefix+"/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}", handler.HandleGetPlatformEntitlementCohort)
+	router.Post(NativeAPIPrefix+"/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews", handler.HandleCreatePlatformOrganizationPolicyPreview)
+	router.Post(NativeAPIPrefix+"/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs", handler.HandleCreatePlatformOrganizationPolicyJob)
+	router.Get(NativeAPIPrefix+"/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}", handler.HandleGetPlatformOrganizationPolicyJob)
+	router.Post(NativeAPIPrefix+"/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel", handler.HandleCancelPlatformOrganizationPolicyJob)
+	router.Post(NativeAPIPrefix+"/admin/platform/accounts/entitlement-bulk/policy-previews", handler.HandleCreatePlatformDirectPolicyPreview)
+	router.Post(NativeAPIPrefix+"/admin/platform/accounts/entitlement-bulk/policy-jobs", handler.HandleCreatePlatformDirectPolicyJob)
+	router.Get(NativeAPIPrefix+"/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}", handler.HandleGetPlatformDirectPolicyJob)
+	router.Post(NativeAPIPrefix+"/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel", handler.HandleCancelPlatformDirectPolicyJob)
 	return router
 }
 
@@ -156,7 +156,7 @@ func TestPlatformEntitlementBulkRequiresPlatformAdministratorOrScopedAPIKey(t *t
 	people := &platformEntitlementBulkPeopleStub{selection: adminpeople.Selection{Token: "selection", Matched: 1}, preview: adminpeople.PolicyPreview{ConfirmationToken: "confirmation"}}
 	handler := newPlatformEntitlementBulkTestHandler(&platformEntitlementBulkCohortStub{}, people, platformEntitlementBulkOrganizationsStub{organization: tenancy.Organization{ID: org, Status: tenancy.OrganizationActive}}, platformEntitlementBulkAuthorizerStub{allowed: true}, nil)
 	body := `{"account_ids":[42],"command":{"kind":"restore_default_entitlement"}}`
-	path := "/api/v2/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-previews"
+	path := NativeAPIPrefix + "/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-previews"
 
 	for _, test := range []struct {
 		name   string
@@ -188,7 +188,7 @@ func TestPlatformEntitlementBulkOrganizationPreviewBindsExactAccountScope(t *tes
 	}
 	handler := newPlatformEntitlementBulkTestHandler(&platformEntitlementBulkCohortStub{}, people, platformEntitlementBulkOrganizationsStub{organization: tenancy.Organization{ID: org, Status: tenancy.OrganizationActive}}, platformEntitlementBulkAuthorizerStub{allowed: true}, nil)
 	recorder := httptest.NewRecorder()
-	path := "/api/v2/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-previews"
+	path := NativeAPIPrefix + "/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-previews"
 	platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil).ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"account_ids":[42,41],"command":{"kind":"restore_default_entitlement"}}`)))
 
 	if recorder.Code != http.StatusCreated {
@@ -212,7 +212,7 @@ func TestPlatformEntitlementBulkDirectPreviewUsesDefaultOrganization(t *testing.
 	people := &platformEntitlementBulkPeopleStub{selection: adminpeople.Selection{Token: "selection", Matched: 1}, preview: adminpeople.PolicyPreview{ConfirmationToken: "confirmation"}}
 	handler := newPlatformEntitlementBulkTestHandler(&platformEntitlementBulkCohortStub{}, people, platformEntitlementBulkOrganizationsStub{defaultOrganization: tenancy.Organization{ID: defaultOrg, Default: true, Status: tenancy.OrganizationActive}}, platformEntitlementBulkAuthorizerStub{allowed: true}, nil)
 	recorder := httptest.NewRecorder()
-	platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil).ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/v2/admin/platform/accounts/entitlement-bulk/policy-previews", strings.NewReader(`{"account_ids":[42],"command":{"kind":"restore_default_entitlement"}}`)))
+	platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil).ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/admin/platform/accounts/entitlement-bulk/policy-previews", strings.NewReader(`{"account_ids":[42],"command":{"kind":"restore_default_entitlement"}}`)))
 	if recorder.Code != http.StatusCreated || people.org != defaultOrg || people.operationScope != adminpeople.PolicyOperationScopeDirectAccounts {
 		t.Fatalf("status/scope = %d/%s/%s, want 201/%s/%s: %s", recorder.Code, people.org, people.operationScope, defaultOrg, adminpeople.PolicyOperationScopeDirectAccounts, recorder.Body.String())
 	}
@@ -224,7 +224,7 @@ func TestPlatformEntitlementBulkRejectsInactiveOrganization(t *testing.T) {
 		people := &platformEntitlementBulkPeopleStub{}
 		handler := newPlatformEntitlementBulkTestHandler(&platformEntitlementBulkCohortStub{}, people, platformEntitlementBulkOrganizationsStub{organization: tenancy.Organization{ID: org, Status: status}}, platformEntitlementBulkAuthorizerStub{allowed: true}, nil)
 		recorder := httptest.NewRecorder()
-		path := "/api/v2/admin/platform/organizations/" + org.String() + "/entitlement-cohorts"
+		path := NativeAPIPrefix + "/admin/platform/organizations/" + org.String() + "/entitlement-cohorts"
 		platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
 		if recorder.Code != http.StatusNotFound || people.getCalls != 0 {
 			t.Fatalf("status %q response = %d %s", status, recorder.Code, recorder.Body.String())
@@ -237,7 +237,7 @@ func TestPlatformEntitlementBulkRejectsForeignAccountWithoutDisclosure(t *testin
 	people := &platformEntitlementBulkPeopleStub{err: adminpeople.ErrNotFound}
 	handler := newPlatformEntitlementBulkTestHandler(&platformEntitlementBulkCohortStub{}, people, platformEntitlementBulkOrganizationsStub{organization: tenancy.Organization{ID: org, Status: tenancy.OrganizationActive}}, platformEntitlementBulkAuthorizerStub{allowed: true}, nil)
 	recorder := httptest.NewRecorder()
-	path := "/api/v2/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-previews"
+	path := NativeAPIPrefix + "/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-previews"
 	platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil).ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"account_ids":[999],"command":{"kind":"restore_default_entitlement"}}`)))
 	if recorder.Code != http.StatusNotFound || !strings.Contains(recorder.Body.String(), `"error":"not_found"`) || strings.Contains(recorder.Body.String(), "999") {
 		t.Fatalf("foreign target response = %d %s", recorder.Code, recorder.Body.String())
@@ -249,7 +249,7 @@ func TestPlatformEntitlementBulkRejectsOversizedAndUnknownJSON(t *testing.T) {
 	people := &platformEntitlementBulkPeopleStub{}
 	handler := newPlatformEntitlementBulkTestHandler(&platformEntitlementBulkCohortStub{}, people, platformEntitlementBulkOrganizationsStub{organization: tenancy.Organization{ID: org, Status: tenancy.OrganizationActive}}, platformEntitlementBulkAuthorizerStub{allowed: true}, nil)
 	router := platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil)
-	path := "/api/v2/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-previews"
+	path := NativeAPIPrefix + "/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-previews"
 	ids := make([]string, 10001)
 	for i := range ids {
 		ids[i] = strconv.Itoa(i + 1)
@@ -279,7 +279,7 @@ func TestPlatformEntitlementBulkPolicyJobUsesPolicyMethodsAndWakes(t *testing.T)
 	people := &platformEntitlementBulkPeopleStub{job: adminpeople.BulkResult{JobID: "job-1", Status: "queued"}}
 	handler := newPlatformEntitlementBulkTestHandler(&platformEntitlementBulkCohortStub{}, people, platformEntitlementBulkOrganizationsStub{organization: tenancy.Organization{ID: org, Status: tenancy.OrganizationActive}}, platformEntitlementBulkAuthorizerStub{allowed: true}, wake)
 	router := platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil)
-	path := "/api/v2/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-jobs"
+	path := NativeAPIPrefix + "/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-jobs"
 	body := `{"selection_token":"selection","confirmation_token":"confirmation","idempotency_key":"command-1","command":{"kind":"restore_default_entitlement"}}`
 	for attempt := 0; attempt < 2; attempt++ {
 		recorder := httptest.NewRecorder()
@@ -302,7 +302,7 @@ func TestPlatformEntitlementBulkDirectPolicyJobPassesDirectOperationScope(t *tes
 	handler := newPlatformEntitlementBulkTestHandler(&platformEntitlementBulkCohortStub{}, people, platformEntitlementBulkOrganizationsStub{defaultOrganization: tenancy.Organization{ID: defaultOrg, Default: true, Status: tenancy.OrganizationActive}}, platformEntitlementBulkAuthorizerStub{allowed: true}, nil)
 	recorder := httptest.NewRecorder()
 	body := `{"selection_token":"selection","confirmation_token":"confirmation","idempotency_key":"direct-command","command":{"kind":"restore_default_entitlement"}}`
-	platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil).ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/v2/admin/platform/accounts/entitlement-bulk/policy-jobs", strings.NewReader(body)))
+	platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil).ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/admin/platform/accounts/entitlement-bulk/policy-jobs", strings.NewReader(body)))
 	if recorder.Code != http.StatusCreated || people.operationScope != adminpeople.PolicyOperationScopeDirectAccounts {
 		t.Fatalf("response/scope = %d/%s, want 201/%s: %s", recorder.Code, people.operationScope, adminpeople.PolicyOperationScopeDirectAccounts, recorder.Body.String())
 	}
@@ -313,7 +313,7 @@ func TestPlatformEntitlementBulkPolicyStatusAndCancelUsePolicySpecificMethods(t 
 	people := &platformEntitlementBulkPeopleStub{job: adminpeople.BulkResult{JobID: "job-1", Status: "queued"}}
 	handler := newPlatformEntitlementBulkTestHandler(&platformEntitlementBulkCohortStub{}, people, platformEntitlementBulkOrganizationsStub{organization: tenancy.Organization{ID: org, Status: tenancy.OrganizationActive}}, platformEntitlementBulkAuthorizerStub{allowed: true}, nil)
 	router := platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil)
-	base := "/api/v2/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-jobs/job-1"
+	base := NativeAPIPrefix + "/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-jobs/job-1"
 
 	for _, request := range []*http.Request{
 		httptest.NewRequest(http.MethodGet, base, nil),
@@ -332,7 +332,7 @@ func TestPlatformEntitlementBulkPolicyStatusAndCancelUsePolicySpecificMethods(t 
 
 func TestPlatformEntitlementBulkMapsStablePolicyErrors(t *testing.T) {
 	org := uuid.New()
-	path := "/api/v2/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-jobs"
+	path := NativeAPIPrefix + "/admin/platform/organizations/" + org.String() + "/entitlement-bulk/policy-jobs"
 	body := `{"selection_token":"selection","confirmation_token":"confirmation","idempotency_key":"command-1","command":{"kind":"restore_default_entitlement"}}`
 	for _, test := range []struct {
 		name string
@@ -366,7 +366,7 @@ func TestPlatformEntitlementBulkCohortScopeAndRedirectRejection(t *testing.T) {
 	cohorts := &platformEntitlementBulkCohortStub{item: entitlements.CohortRevision{ID: cohortID, OrganizationID: org, Name: "Premium", Revision: 2}}
 	handler := newPlatformEntitlementBulkTestHandler(cohorts, &platformEntitlementBulkPeopleStub{}, platformEntitlementBulkOrganizationsStub{organization: tenancy.Organization{ID: org, Status: tenancy.OrganizationActive}}, platformEntitlementBulkAuthorizerStub{allowed: true}, nil)
 	router := platformEntitlementBulkRouter(handler, auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, nil)
-	path := "/api/v2/admin/platform/organizations/" + org.String() + "/entitlement-cohorts/" + cohortID.String()
+	path := NativeAPIPrefix + "/admin/platform/organizations/" + org.String() + "/entitlement-cohorts/" + cohortID.String()
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
 	if recorder.Code != http.StatusOK || cohorts.org != org || !strings.Contains(recorder.Body.String(), `"cohort_id":"`+cohortID.String()+`"`) {

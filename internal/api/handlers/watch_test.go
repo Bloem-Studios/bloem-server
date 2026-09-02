@@ -239,7 +239,7 @@ func newWatchRequestWithScope(t *testing.T, target, contentID, profileID string,
 func TestWatchHomeEndpointServesAContractDocument(t *testing.T) {
 	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
-	handler.HandleWatchHome(rr, newWatchRequest(t, "/api/v2/watch/home", "", "profile-invented"))
+	handler.HandleWatchHome(rr, newWatchRequest(t, NativeAPIPrefix+"/watch/home", "", "profile-invented"))
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, body %s", rr.Code, rr.Body.String())
@@ -263,7 +263,7 @@ func TestWatchHomeEndpointPassesTheViewerScopeToTheReader(t *testing.T) {
 	reader := newWatchTestReader(t)
 	handler := NewWatchHandler(reader, nil)
 	rr := httptest.NewRecorder()
-	handler.HandleWatchHome(rr, newWatchRequest(t, "/api/v2/watch/home", "", "profile-restricted"))
+	handler.HandleWatchHome(rr, newWatchRequest(t, NativeAPIPrefix+"/watch/home", "", "profile-restricted"))
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, body %s", rr.Code, rr.Body.String())
@@ -285,7 +285,7 @@ func TestWatchHomeEndpointPassesTheViewerScopeToTheReader(t *testing.T) {
 func TestWatchHomeEndpointRequiresAProfile(t *testing.T) {
 	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
-	handler.HandleWatchHome(rr, newWatchRequest(t, "/api/v2/watch/home", "", ""))
+	handler.HandleWatchHome(rr, newWatchRequest(t, NativeAPIPrefix+"/watch/home", "", ""))
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body %s", rr.Code, rr.Body.String())
@@ -305,7 +305,7 @@ func TestWatchHomeEndpointRequiresAProfile(t *testing.T) {
 func TestWatchItemEndpointServesASeriesDetailDocument(t *testing.T) {
 	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
-	handler.HandleWatchItem(rr, newWatchRequest(t, "/api/v2/watch/items/8080", "8080", "profile-invented"))
+	handler.HandleWatchItem(rr, newWatchRequest(t, NativeAPIPrefix+"/watch/items/8080", "8080", "profile-invented"))
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, body %s", rr.Code, rr.Body.String())
@@ -324,7 +324,7 @@ func TestWatchItemEndpointServesASeriesDetailDocument(t *testing.T) {
 func TestWatchItemEndpointRequiresAProfile(t *testing.T) {
 	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
-	handler.HandleWatchItem(rr, newWatchRequest(t, "/api/v2/watch/items/8080", "8080", ""))
+	handler.HandleWatchItem(rr, newWatchRequest(t, NativeAPIPrefix+"/watch/items/8080", "8080", ""))
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body %s", rr.Code, rr.Body.String())
@@ -344,7 +344,7 @@ func TestWatchItemEndpointRequiresAProfile(t *testing.T) {
 func TestWatchItemEndpointAnswersNotFoundForAnUnknownContentID(t *testing.T) {
 	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
-	handler.HandleWatchItem(rr, newWatchRequest(t, "/api/v2/watch/items/3030", "3030", "profile-invented"))
+	handler.HandleWatchItem(rr, newWatchRequest(t, NativeAPIPrefix+"/watch/items/3030", "3030", "profile-invented"))
 
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404; body %s", rr.Code, rr.Body.String())
@@ -361,7 +361,7 @@ func TestWatchItemEndpointAnswersNotFoundForAnUnknownContentID(t *testing.T) {
 func TestWatchItemEndpointRejectsAnEmptyContentID(t *testing.T) {
 	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
-	handler.HandleWatchItem(rr, newWatchRequest(t, "/api/v2/watch/items/", "", "profile-invented"))
+	handler.HandleWatchItem(rr, newWatchRequest(t, NativeAPIPrefix+"/watch/items/", "", "profile-invented"))
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body %s", rr.Code, rr.Body.String())
@@ -374,13 +374,13 @@ func TestWatchEndpointsReportAFailingReader(t *testing.T) {
 	handler := NewWatchHandler(reader, nil)
 
 	home := httptest.NewRecorder()
-	handler.HandleWatchHome(home, newWatchRequest(t, "/api/v2/watch/home", "", "profile-invented"))
+	handler.HandleWatchHome(home, newWatchRequest(t, NativeAPIPrefix+"/watch/home", "", "profile-invented"))
 	if home.Code != http.StatusInternalServerError {
 		t.Errorf("home status = %d, want 500; body %s", home.Code, home.Body.String())
 	}
 
 	detail := httptest.NewRecorder()
-	handler.HandleWatchItem(detail, newWatchRequest(t, "/api/v2/watch/items/4242", "4242", "profile-invented"))
+	handler.HandleWatchItem(detail, newWatchRequest(t, NativeAPIPrefix+"/watch/items/4242", "4242", "profile-invented"))
 	if detail.Code != http.StatusInternalServerError {
 		t.Errorf("detail status = %d, want 500; body %s", detail.Code, detail.Body.String())
 	}
@@ -389,7 +389,7 @@ func TestWatchEndpointsReportAFailingReader(t *testing.T) {
 func TestWatchEndpointsWithoutAReaderAreUnavailable(t *testing.T) {
 	handler := NewWatchHandler(nil, nil)
 	rr := httptest.NewRecorder()
-	handler.HandleWatchHome(rr, newWatchRequest(t, "/api/v2/watch/home", "", "profile-invented"))
+	handler.HandleWatchHome(rr, newWatchRequest(t, NativeAPIPrefix+"/watch/home", "", "profile-invented"))
 	if rr.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503; body %s", rr.Code, rr.Body.String())
 	}
@@ -785,7 +785,7 @@ func TestCatalogWatchReaderItemEndpointNavigationUsesExactPlayableProfileScope(t
 	}
 	rr := httptest.NewRecorder()
 	handler.HandleWatchItem(rr, newWatchRequestWithScope(t,
-		"/api/v2/watch/items/8080", "8080", scope.ProfileID, requestScope))
+		NativeAPIPrefix+"/watch/items/8080", "8080", scope.ProfileID, requestScope))
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, body %s", rr.Code, rr.Body.String())
 	}
@@ -1154,7 +1154,7 @@ func TestWatchSearchEndpointServesAContractDocumentInProviderOrder(t *testing.T)
 	handler := NewWatchHandler(reader, reader)
 
 	rr := httptest.NewRecorder()
-	handler.HandleWatchSearch(rr, newWatchRequest(t, "/api/v2/watch/search?q=sealed", "", "profile-invented"))
+	handler.HandleWatchSearch(rr, newWatchRequest(t, NativeAPIPrefix+"/watch/search?q=sealed", "", "profile-invented"))
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, body %s", rr.Code, rr.Body.String())
@@ -1186,7 +1186,7 @@ func (stubWatchSearcher) Search(context.Context, watchdoc.ProfileScope, string) 
 func TestWatchSearchEndpointRequiresANonEmptyQuery(t *testing.T) {
 	handler := NewWatchHandler(newWatchTestReader(t), stubWatchSearcher{})
 	rr := httptest.NewRecorder()
-	handler.HandleWatchSearch(rr, newWatchRequest(t, "/api/v2/watch/search", "", "profile-invented"))
+	handler.HandleWatchSearch(rr, newWatchRequest(t, NativeAPIPrefix+"/watch/search", "", "profile-invented"))
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rr.Code)
 	}
@@ -1195,7 +1195,7 @@ func TestWatchSearchEndpointRequiresANonEmptyQuery(t *testing.T) {
 func TestWatchSearchEndpointWithNoSearcherAnswersUnavailable(t *testing.T) {
 	handler := NewWatchHandler(newWatchTestReader(t), nil)
 	rr := httptest.NewRecorder()
-	handler.HandleWatchSearch(rr, newWatchRequest(t, "/api/v2/watch/search?q=x", "", "profile-invented"))
+	handler.HandleWatchSearch(rr, newWatchRequest(t, NativeAPIPrefix+"/watch/search?q=x", "", "profile-invented"))
 	if rr.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", rr.Code)
 	}

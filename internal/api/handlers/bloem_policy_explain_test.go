@@ -30,7 +30,7 @@ func (s *organizationDecisionStub) GetForOrganization(_ context.Context, id uuid
 	return s.entry, s.err
 }
 
-func TestV2PolicyExplainReturnsStructuredRedactedOrganizationExplanation(t *testing.T) {
+func TestBloemPolicyExplainReturnsStructuredRedactedOrganizationExplanation(t *testing.T) {
 	organizationID := uuid.New()
 	membershipID := uuid.New()
 	allowed := false
@@ -44,7 +44,7 @@ func TestV2PolicyExplainReturnsStructuredRedactedOrganizationExplanation(t *test
 	inputJSON, _ := json.Marshal(input)
 	resultJSON := json.RawMessage(`{"allowed":false,"reason_code":"downloads_disabled"}`)
 	store := &organizationDecisionStub{entry: policy.Entry{ID: 41, OrganizationID: organizationID, MembershipID: membershipID, DecisionName: policy.DecisionAction, UserID: intPointer(17), ProfileID: "profile-7", Allowed: &allowed, PolicyGeneration: 13, InputSample: inputJSON, ResultSample: resultJSON}}
-	h := NewV2PolicyExplainHandler(store)
+	h := NewBloemPolicyExplainHandler(store)
 	rec := httptest.NewRecorder()
 	h.HandleGetDecision(rec, organizationRequest(http.MethodGet, "/policy-decisions/41", "", organizationID, 7, map[string]string{"id": "41"}))
 
@@ -64,7 +64,7 @@ func TestV2PolicyExplainReturnsStructuredRedactedOrganizationExplanation(t *test
 func TestV2PolicyExplainForeignDecisionIsNonDisclosing404(t *testing.T) {
 	organizationID := uuid.New()
 	store := &organizationDecisionStub{err: policy.ErrDecisionNotFound}
-	h := NewV2PolicyExplainHandler(store)
+	h := NewBloemPolicyExplainHandler(store)
 	rec := httptest.NewRecorder()
 	h.HandleGetDecision(rec, organizationRequest(http.MethodGet, "/policy-decisions/99", "", organizationID, 7, map[string]string{"id": "99"}))
 	if rec.Code != http.StatusNotFound || strings.Contains(rec.Body.String(), "99") || store.gotOrganization != organizationID {
@@ -72,10 +72,10 @@ func TestV2PolicyExplainForeignDecisionIsNonDisclosing404(t *testing.T) {
 	}
 }
 
-func TestV2PolicyExplainDoesNotExposePolicyDocumentMutations(t *testing.T) {
+func TestBloemPolicyExplainDoesNotExposePolicyDocumentMutations(t *testing.T) {
 	organizationID := uuid.New()
 	store := &organizationDecisionStub{result: policy.ListResult{Entries: []policy.Entry{}}}
-	h := NewV2PolicyExplainHandler(store)
+	h := NewBloemPolicyExplainHandler(store)
 	rec := httptest.NewRecorder()
 	h.HandleListDecisions(rec, organizationRequest(http.MethodGet, "/policy-decisions", "", organizationID, 7, nil))
 	if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), "rego_source") {

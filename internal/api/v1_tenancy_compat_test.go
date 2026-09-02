@@ -193,19 +193,19 @@ func TestV1TenancyCompatibility(t *testing.T) {
 		t.Fatalf("legacy profile list during ambiguity = %d %s", legacyDuringAmbiguity.Code, legacyDuringAmbiguity.Body.String())
 	}
 
-	capabilities := performJSONRequest(t, router, http.MethodGet, "/api/v2/capabilities", "", "", nil)
+	capabilities := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/capabilities", "", "", nil)
 	if capabilities.Code != http.StatusOK || !strings.Contains(capabilities.Body.String(), `"direct_profile_login":true`) {
 		t.Fatalf("v2 capabilities = %d %s, want direct profile login advertised", capabilities.Code, capabilities.Body.String())
 	}
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
-		response := performJSONRequest(t, router, method, "/api/v2/organizations", `{}`, afterTokens.AccessToken, nil)
+		response := performJSONRequest(t, router, method, NativeAPIPrefix+"/organizations", `{}`, afterTokens.AccessToken, nil)
 		if response.Code != http.StatusMethodNotAllowed {
-			t.Errorf("%s /api/v2/organizations = %d, want 405", method, response.Code)
+			t.Errorf("%s /api/bloem/v1/organizations = %d, want 405", method, response.Code)
 		}
 	}
 }
 
-func TestV2FoundationCIRequiresDisposablePostgres(t *testing.T) {
+func TestBloemFoundationCIRequiresDisposablePostgres(t *testing.T) {
 	type workflowStep struct {
 		Name string         `yaml:"name"`
 		Uses string         `yaml:"uses"`

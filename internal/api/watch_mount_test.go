@@ -102,7 +102,7 @@ func (f clientSurfaceFixture) profileHeaders() map[string]string {
 
 // TestWatchDocumentsAreServedByTheRealRouter drives the real router end to end:
 // the routes are mounted inside the authenticated, viewer-scoped,
-// profile-scoped group on /api/v2, the database-backed reader runs its real
+// profile-scoped group on /api/bloem/v1, the database-backed reader runs its real
 // queries, and both documents conform to the contracts schema. The
 // handler-level tests use a fake reader, so this is the only place the
 // adapter's SQL is exercised.
@@ -118,14 +118,14 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	profileHeaders := fixture.profileHeaders()
 
 	t.Run("unauthenticated", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/home", "", "", profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/watch/home", "", "", profileHeaders)
 		if response.Code != http.StatusUnauthorized {
 			t.Fatalf("home without a token = %d %s", response.Code, response.Body.String())
 		}
 	})
 
 	t.Run("without a profile", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/home", "", token, nil)
+		response := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/watch/home", "", token, nil)
 		if response.Code != http.StatusBadRequest {
 			t.Fatalf("home without a profile = %d %s", response.Code, response.Body.String())
 		}
@@ -141,7 +141,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	})
 
 	t.Run("home", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/home", "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/watch/home", "", token, profileHeaders)
 		if response.Code != http.StatusOK {
 			t.Fatalf("home = %d %s", response.Code, response.Body.String())
 		}
@@ -181,7 +181,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	})
 
 	t.Run("series detail", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/items/"+watchSeriesContentID, "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/watch/items/"+watchSeriesContentID, "", token, profileHeaders)
 		if response.Code != http.StatusOK {
 			t.Fatalf("series detail = %d %s", response.Code, response.Body.String())
 		}
@@ -205,7 +205,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	})
 
 	t.Run("movie detail", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/items/"+watchMovieContentID, "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/watch/items/"+watchMovieContentID, "", token, profileHeaders)
 		if response.Code != http.StatusOK {
 			t.Fatalf("movie detail = %d %s", response.Code, response.Body.String())
 		}
@@ -217,7 +217,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	})
 
 	t.Run("unknown item", func(t *testing.T) {
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/items/6003", "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/watch/items/6003", "", token, profileHeaders)
 		if response.Code != http.StatusNotFound {
 			t.Fatalf("unknown item = %d %s", response.Code, response.Body.String())
 		}
@@ -240,7 +240,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 		}
 		items := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/items/"+watchMovieContentID, "", token, profileHeaders)
 		if items.Code != http.StatusNotFound {
-			t.Errorf("GET /api/v1/watch/items/{id} = %d, want 404: the Watch documents live on /api/v2", items.Code)
+			t.Errorf("GET /api/v1/watch/items/{id} = %d, want 404: the Watch documents live on the native surface", items.Code)
 		}
 	})
 
@@ -252,7 +252,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 	t.Run("continue watching outside the window", func(t *testing.T) {
 		seedWatchFillerLibrary(t, pool)
 
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/home", "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/watch/home", "", token, profileHeaders)
 		if response.Code != http.StatusOK {
 			t.Fatalf("home = %d %s", response.Code, response.Body.String())
 		}
@@ -307,7 +307,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 			t.Fatalf("restrict profile libraries: %v", err)
 		}
 
-		response := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/home", "", token, profileHeaders)
+		response := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/watch/home", "", token, profileHeaders)
 		if response.Code != http.StatusOK {
 			t.Fatalf("restricted home = %d %s", response.Code, response.Body.String())
 		}
@@ -334,7 +334,7 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 			}
 		}
 
-		detail := performJSONRequest(t, router, http.MethodGet, "/api/v2/watch/items/"+watchSeriesContentID, "", token, profileHeaders)
+		detail := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/watch/items/"+watchSeriesContentID, "", token, profileHeaders)
 		if detail.Code != http.StatusNotFound {
 			t.Fatalf("restricted series detail = %d %s", detail.Code, detail.Body.String())
 		}

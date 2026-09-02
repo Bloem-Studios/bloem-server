@@ -10,14 +10,14 @@ import (
 
 // TestServerIdentityAndCapabilitiesAreMountedPublicly exercises the REAL router,
 // not a replica of it. Both endpoints are what a client reaches before it holds
-// any credentials, so a middleware later wrapping the /api/v2 group — or the
+// any credentials, so a middleware later wrapping the native group — or the
 // routes drifting behind an auth group — would break every client while a
 // handler-level suite stayed green.
 func TestServerIdentityAndCapabilitiesAreMountedPublicly(t *testing.T) {
 	router := NewRouter(Dependencies{})
 
 	capabilities := httptest.NewRecorder()
-	router.ServeHTTP(capabilities, httptest.NewRequest(http.MethodGet, "/api/v2/capabilities", nil))
+	router.ServeHTTP(capabilities, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
 	if capabilities.Code != http.StatusOK {
 		t.Fatalf("capabilities status = %d, want %d (no Authorization header was sent)", capabilities.Code, http.StatusOK)
 	}
@@ -46,7 +46,7 @@ func TestServerIdentityAndCapabilitiesAreMountedPublicly(t *testing.T) {
 	// rather than invent one — or 404, which a client reads as "this server is
 	// too old to have an identity" instead of "ask again later".
 	identity := httptest.NewRecorder()
-	router.ServeHTTP(identity, httptest.NewRequest(http.MethodGet, "/api/v2/server/identity", nil))
+	router.ServeHTTP(identity, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/server/identity", nil))
 	if identity.Code != http.StatusServiceUnavailable {
 		t.Fatalf("identity status = %d, want %d", identity.Code, http.StatusServiceUnavailable)
 	}
@@ -71,7 +71,7 @@ func TestTheNativeProbesAreNotServedOnV1(t *testing.T) {
 		rec := httptest.NewRecorder()
 		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 		if rec.Code != http.StatusNotFound {
-			t.Errorf("GET %s = %d, want %d: the native surface lives on /api/v2", path, rec.Code, http.StatusNotFound)
+			t.Errorf("GET %s = %d, want %d: the native surface lives on /api/bloem/v1", path, rec.Code, http.StatusNotFound)
 		}
 	}
 }

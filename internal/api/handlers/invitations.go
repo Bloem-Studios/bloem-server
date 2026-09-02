@@ -173,7 +173,7 @@ func (h *InvitationHandler) handleLifecycleAcceptInvitation(w http.ResponseWrite
 		}, nil
 	})
 	if err != nil {
-		if writeV2LifecycleError(w, err) {
+		if writeBloemLifecycleError(w, err) {
 			return
 		}
 		switch {
@@ -186,7 +186,7 @@ func (h *InvitationHandler) handleLifecycleAcceptInvitation(w http.ResponseWrite
 		}
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
 func invitationAcceptSubjectDigest(secret []byte, serverID, tokenHash string) lifecycleidempotency.Digest {

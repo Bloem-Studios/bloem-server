@@ -40,7 +40,7 @@ func (h *AdminHandler) handleGetAccountPolicy(w http.ResponseWriter, r *http.Req
 	if !h.requirePlatformAccountPolicies(w, r) {
 		return
 	}
-	accountID64, ok := v2PositivePathID(w, r, "account_id")
+	accountID64, ok := bloemPositivePathID(w, r, "account_id")
 	if !ok || accountID64 > int64(^uint(0)>>1) {
 		return
 	}

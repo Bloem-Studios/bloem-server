@@ -65,7 +65,7 @@ func (f *fakePersonRoles) RolesForItems(_ context.Context, _ int64, contentIDs [
 // --- request helper ------------------------------------------------------
 
 func personDetailRequest(personID string) *http.Request {
-	req := httptest.NewRequest(http.MethodGet, "/api/v2/persons/"+personID, nil)
+	req := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/persons/"+personID, nil)
 	routeCtx := chi.NewRouteContext()
 	routeCtx.URLParams.Add("person_id", personID)
 	return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))

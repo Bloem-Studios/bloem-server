@@ -101,7 +101,7 @@ func TestResolverDoesNotMarkNonDefaultOrganizationAsDefault(t *testing.T) {
 	}
 }
 
-func TestResolverRejectsUnavailableV2TenantSelection(t *testing.T) {
+func TestResolverRejectsUnavailableBloemTenantSelection(t *testing.T) {
 	resolver := NewResolver(resolverTestStore{defaultOrganization: activeOrganization()})
 
 	_, err := resolver.Resolve(context.Background(), 17, nil, false)

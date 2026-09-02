@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// syncProgressStatuses decodes a POST /api/v2/sync/progress response and returns the
+// syncProgressStatuses decodes a POST /api/bloem/v1/sync/progress response and returns the
 // per-item status values in request order.
 func syncProgressStatuses(t *testing.T, body []byte) []string {
 	t.Helper()
@@ -33,15 +33,15 @@ func syncProgressStatuses(t *testing.T, body []byte) []string {
 	return statuses
 }
 
-// postSyncProgress runs one POST /api/v2/sync/progress request against the handler and
+// postSyncProgress runs one POST /api/bloem/v1/sync/progress request against the handler and
 // returns the recorded response.
 func postSyncProgress(t *testing.T, handler *ProgressHandler, body string) *httptest.ResponseRecorder {
 	t.Helper()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v2/sync/progress", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, NativeAPIPrefix+"/sync/progress", strings.NewReader(body))
 	req = req.WithContext(newAuthorizedPlaybackContext())
 	rec := httptest.NewRecorder()
-	handler.HandleV2SyncProgress(rec, req)
+	handler.HandleBloemSyncProgress(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
@@ -53,7 +53,7 @@ func postSyncProgress(t *testing.T, handler *ProgressHandler, body string) *http
 // wrote and a row the min-resume floor discarded: the discarded row looks like a
 // landed write, so the client stops resending it and the position is lost. The
 // wire vocabulary is `updated` / `ignored` / `error`.
-func TestV2SyncProgressUsesContractStatusVocabulary(t *testing.T) {
+func TestBloemSyncProgressUsesContractStatusVocabulary(t *testing.T) {
 	store := newPlaybackTestStore(t)
 	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}}
 
@@ -113,7 +113,7 @@ func TestV2SyncProgressUsesContractStatusVocabulary(t *testing.T) {
 // The offline-queued path (items carrying `updated_at`) reports the same
 // vocabulary: it is the path that queues events while disconnected, so a client
 // that mistakes a discard for a write there loses positions silently.
-func TestV2SyncProgressOfflineItemsReportContractStatuses(t *testing.T) {
+func TestBloemSyncProgressOfflineItemsReportContractStatuses(t *testing.T) {
 	store := newPlaybackTestStore(t)
 	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}}
 
@@ -140,7 +140,7 @@ func TestV2SyncProgressOfflineItemsReportContractStatuses(t *testing.T) {
 // An offline event that loses last-write-wins against a newer stored event is
 // not a write either. Reporting it as `updated` is the same lie as reporting a
 // floor discard as a success.
-func TestV2SyncProgressReportsLastWriteWinsLossAsIgnored(t *testing.T) {
+func TestBloemSyncProgressReportsLastWriteWinsLossAsIgnored(t *testing.T) {
 	store := newPlaybackTestStore(t)
 	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}}
 

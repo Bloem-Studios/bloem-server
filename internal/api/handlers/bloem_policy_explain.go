@@ -50,18 +50,20 @@ type PolicyDecisionExplanation struct {
 	PolicyVersions []PolicyVersionRef   `json:"policy_versions"`
 }
 
-type V2OrganizationDecisionStore interface {
+type BloemOrganizationDecisionStore interface {
 	ListForOrganization(context.Context, uuid.UUID, policy.ListOptions) (policy.ListResult, error)
 	GetForOrganization(context.Context, uuid.UUID, int64, *time.Time) (policy.Entry, error)
 }
 
-type V2PolicyExplainHandler struct{ decisions V2OrganizationDecisionStore }
-
-func NewV2PolicyExplainHandler(decisions V2OrganizationDecisionStore) *V2PolicyExplainHandler {
-	return &V2PolicyExplainHandler{decisions: decisions}
+type BloemPolicyExplainHandler struct {
+	decisions BloemOrganizationDecisionStore
 }
 
-func (h *V2PolicyExplainHandler) HandleListDecisions(w http.ResponseWriter, r *http.Request) {
+func NewBloemPolicyExplainHandler(decisions BloemOrganizationDecisionStore) *BloemPolicyExplainHandler {
+	return &BloemPolicyExplainHandler{decisions: decisions}
+}
+
+func (h *BloemPolicyExplainHandler) HandleListDecisions(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.require(w, r)
 	if !ok {
 		return
@@ -77,7 +79,7 @@ func (h *V2PolicyExplainHandler) HandleListDecisions(w http.ResponseWriter, r *h
 	}
 	result, err := h.decisions.ListForOrganization(r.Context(), tenant.OrganizationID, options)
 	if err != nil {
-		writeV2PolicyDecisionError(w, err)
+		writeBloemPolicyDecisionError(w, err)
 		return
 	}
 	items := make([]PolicyDecisionExplanation, 0, len(result.Entries))
@@ -90,7 +92,7 @@ func (h *V2PolicyExplainHandler) HandleListDecisions(w http.ResponseWriter, r *h
 	}{items, result.NextCursor})
 }
 
-func (h *V2PolicyExplainHandler) HandleGetDecision(w http.ResponseWriter, r *http.Request) {
+func (h *BloemPolicyExplainHandler) HandleGetDecision(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := h.require(w, r)
 	if !ok {
 		return
@@ -102,7 +104,7 @@ func (h *V2PolicyExplainHandler) HandleGetDecision(w http.ResponseWriter, r *htt
 	}
 	entry, err := h.decisions.GetForOrganization(r.Context(), tenant.OrganizationID, id, nil)
 	if err != nil {
-		writeV2PolicyDecisionError(w, err)
+		writeBloemPolicyDecisionError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -110,8 +112,8 @@ func (h *V2PolicyExplainHandler) HandleGetDecision(w http.ResponseWriter, r *htt
 	}{explainPolicyDecision(entry)})
 }
 
-func (h *V2PolicyExplainHandler) require(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
-	tenant, ok := requireV2OrganizationContext(w, r)
+func (h *BloemPolicyExplainHandler) require(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
+	tenant, ok := requireBloemOrganizationContext(w, r)
 	if !ok {
 		return tenancy.Context{}, false
 	}
@@ -266,7 +268,7 @@ func integerSlice(value any) []int {
 	return result
 }
 
-func writeV2PolicyDecisionError(w http.ResponseWriter, err error) {
+func writeBloemPolicyDecisionError(w http.ResponseWriter, err error) {
 	if errors.Is(err, policy.ErrDecisionNotFound) {
 		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")
 		return

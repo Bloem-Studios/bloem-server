@@ -13,13 +13,13 @@ import (
 	"github.com/google/uuid"
 )
 
-type V2OrganizationStore interface {
+type BloemOrganizationStore interface {
 	ListMemberships(context.Context, int) ([]tenancy.Membership, error)
 	GetOrganization(context.Context, uuid.UUID) (tenancy.Organization, error)
 }
 
-type V2SystemHandler struct {
-	organizations V2OrganizationStore
+type BloemSystemHandler struct {
+	organizations BloemOrganizationStore
 	// directProfileLogin reports whether /auth/profile-login is wired. Clients
 	// follow capability discovery rather than version sniffing, so this must
 	// track the actual route.
@@ -27,19 +27,19 @@ type V2SystemHandler struct {
 	lifecyclePhase     func(context.Context) (lifecycleidempotency.Phase, error)
 }
 
-func NewV2SystemHandler(organizations V2OrganizationStore) *V2SystemHandler {
-	return &V2SystemHandler{organizations: organizations}
+func NewBloemSystemHandler(organizations BloemOrganizationStore) *BloemSystemHandler {
+	return &BloemSystemHandler{organizations: organizations}
 }
 
 // SetDirectProfileLoginAvailable records that direct profile login is served.
-func (h *V2SystemHandler) SetDirectProfileLoginAvailable(available bool) {
+func (h *BloemSystemHandler) SetDirectProfileLoginAvailable(available bool) {
 	h.directProfileLogin = available
 }
 
 // SetLifecycleIdempotencyPhase records that the durable lifecycle coordinator
 // is wired and supplies its current enforcement phase. Support and enforcement
 // are separate tokens so clients can safely adopt keys during rollout.
-func (h *V2SystemHandler) SetLifecycleIdempotencyPhase(reader func(context.Context) (lifecycleidempotency.Phase, error)) {
+func (h *BloemSystemHandler) SetLifecycleIdempotencyPhase(reader func(context.Context) (lifecycleidempotency.Phase, error)) {
 	h.lifecyclePhase = reader
 }
 
@@ -50,14 +50,14 @@ func (h *V2SystemHandler) SetLifecycleIdempotencyPhase(reader func(context.Conte
 // ignore the rest, so adding one here is additive by construction.
 const (
 	// featureWatchDocumentV1 covers the versioned Watch documents served at
-	// GET /api/v2/watch/home and GET /api/v2/watch/items/{content_id}.
+	// GET /api/bloem/v1/watch/home and GET /api/bloem/v1/watch/items/{content_id}.
 	featureWatchDocumentV1 = "watch_document_v1"
 	// featureDevicePairingV1 covers pairing a television against an account
 	// without typing a password on it. Protocol details live on
 	// /auth/device/capability.
 	featureDevicePairingV1 = "device_pairing_v1"
 	// featureProgressSyncV1 covers reading and writing playback progress,
-	// including POST /api/v2/sync/progress and its updated/ignored/error
+	// including POST /api/bloem/v1/sync/progress and its updated/ignored/error
 	// per-item results.
 	featureProgressSyncV1 = "progress_sync_v1"
 	// featureDeclaredEventChannels is the aggregate name for the events
@@ -86,13 +86,13 @@ var mediaTypesServed = []string{
 	"music_album",
 }
 
-// v2CapabilityTokens is assembled once: the document describes the build, not
+// bloemCapabilityTokens is assembled once: the document describes the build, not
 // the request or the caller. Playback contributes the same tokens it publishes
 // on /playback/capability, taken from the function that owns them so the
 // aggregate cannot drift away from the endpoint it summarizes.
-var v2CapabilityTokens = buildV2CapabilityTokens()
+var bloemCapabilityTokens = buildBloemCapabilityTokens()
 
-func buildV2CapabilityTokens() []string {
+func buildBloemCapabilityTokens() []string {
 	playbackFeatures := playback.ServerFeaturesV3()
 	tokens := make([]string, 0, len(playbackFeatures)+4)
 	add := func(candidates ...string) {
@@ -108,14 +108,14 @@ func buildV2CapabilityTokens() []string {
 	return tokens
 }
 
-// v2CapabilitiesResponse is the public, unauthenticated answer to "what does
+// bloemCapabilitiesResponse is the public, unauthenticated answer to "what does
 // this server do". Fields are additive-only: media_types and feature_tokens
 // were added beside the original three without touching them, and the token
 // list is where every later capability lands.
-type v2CapabilitiesResponse struct {
-	API            string               `json:"api"`
-	IdentitySchema int                  `json:"identity_schema"`
-	Features       v2CapabilityFeatures `json:"features"`
+type bloemCapabilitiesResponse struct {
+	API            string                  `json:"api"`
+	IdentitySchema int                     `json:"identity_schema"`
+	Features       bloemCapabilityFeatures `json:"features"`
 	// MediaTypes are the item types this build can serve.
 	MediaTypes []string `json:"media_types"`
 	// FeatureTokens is the token allowlist clients match against. It is a
@@ -125,7 +125,7 @@ type v2CapabilitiesResponse struct {
 	FeatureTokens []string `json:"feature_tokens"`
 }
 
-type v2CapabilityFeatures struct {
+type bloemCapabilityFeatures struct {
 	LegacySiloV1            bool `json:"legacy_silo_v1"`
 	OrganizationMemberships bool `json:"organization_memberships"`
 	TenantBoundedMediaScope bool `json:"tenant_bounded_media_scope"`
@@ -139,18 +139,18 @@ type v2CapabilityFeatures struct {
 // leaves a client interpreting the same ambiguous status the probe exists to
 // replace. The slices are cloned so no caller can mutate the shared
 // advertisement.
-func (h *V2SystemHandler) HandleCapabilities(w http.ResponseWriter, request *http.Request) {
-	featureTokens := slices.Clone(v2CapabilityTokens)
+func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *http.Request) {
+	featureTokens := slices.Clone(bloemCapabilityTokens)
 	if h.lifecyclePhase != nil {
 		featureTokens = append(featureTokens, "lifecycle_idempotency_v1")
 		if phase, err := h.lifecyclePhase(request.Context()); err == nil && phase == lifecycleidempotency.PhaseRequired {
 			featureTokens = append(featureTokens, "lifecycle_idempotency_required_v1")
 		}
 	}
-	writeJSON(w, http.StatusOK, v2CapabilitiesResponse{
+	writeJSON(w, http.StatusOK, bloemCapabilitiesResponse{
 		API:            "v2",
 		IdentitySchema: 1,
-		Features: v2CapabilityFeatures{
+		Features: bloemCapabilityFeatures{
 			LegacySiloV1:            true,
 			OrganizationMemberships: true,
 			TenantBoundedMediaScope: true,
@@ -161,11 +161,11 @@ func (h *V2SystemHandler) HandleCapabilities(w http.ResponseWriter, request *htt
 	})
 }
 
-type v2OrganizationListResponse struct {
-	Organizations []v2Organization `json:"organizations"`
+type bloemOrganizationListResponse struct {
+	Organizations []bloemOrganization `json:"organizations"`
 }
 
-type v2Organization struct {
+type bloemOrganization struct {
 	ID               string `json:"id"`
 	Slug             string `json:"slug"`
 	Name             string `json:"name"`
@@ -176,7 +176,7 @@ type v2Organization struct {
 	SecurityRevision int64  `json:"security_revision"`
 }
 
-func (h *V2SystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.Request) {
+func (h *BloemSystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	if claims == nil || claims.UserID <= 0 {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
@@ -193,7 +193,7 @@ func (h *V2SystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	result := make([]v2Organization, 0, len(memberships))
+	result := make([]bloemOrganization, 0, len(memberships))
 	for _, membership := range memberships {
 		if membership.AccountID != claims.UserID || membership.Status != tenancy.MembershipActive {
 			continue
@@ -209,7 +209,7 @@ func (h *V2SystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.Req
 		if organization.Status != tenancy.OrganizationActive || organization.OwnerAccountID == nil || organization.ID != membership.OrganizationID {
 			continue
 		}
-		result = append(result, v2Organization{
+		result = append(result, bloemOrganization{
 			ID:               organization.ID.String(),
 			Slug:             organization.Slug,
 			Name:             organization.Name,
@@ -221,5 +221,5 @@ func (h *V2SystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.Req
 		})
 	}
 
-	writeJSON(w, http.StatusOK, v2OrganizationListResponse{Organizations: result})
+	writeJSON(w, http.StatusOK, bloemOrganizationListResponse{Organizations: result})
 }

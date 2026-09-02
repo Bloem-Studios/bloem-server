@@ -110,7 +110,7 @@ func newTestGateway(t *testing.T, states StateProvider, transport http.RoundTrip
 // --- Static route table -----------------------------------------------------
 
 // The gateway owns a compile-time route table. Native surfaces — the Bloem
-// application at "/", /api/v1/**, /api/v2/**, and /metrics — must never appear
+// application at "/", /api/v1/**, /api/bloem/v1/**, and /metrics — must never appear
 // in it, and no gateway prefix may shadow them.
 func TestRouteTableNeverClaimsNativeSurfaces(t *testing.T) {
 	reserved := []string{"/", "/api", "/metrics"}
@@ -135,7 +135,7 @@ func TestRouteTableNeverClaimsNativeSurfaces(t *testing.T) {
 // Native authentication is never replaced: no gateway route may sit on or
 // under the native auth route families.
 func TestRouteTableNeverReplacesNativeAuthRoutes(t *testing.T) {
-	nativeAuth := []string{"/api/v1/auth", "/api/v2/admin/session", "/api/v1/profiles"}
+	nativeAuth := []string{"/api/v1/auth", "/api/bloem/v1/admin/session", "/api/v1/profiles"}
 	for _, route := range RouteTable() {
 		for _, native := range nativeAuth {
 			if route.Prefix == native || strings.HasPrefix(native, route.Prefix+"/") {
@@ -979,7 +979,7 @@ func TestMatchPath(t *testing.T) {
 		{"/livetv", "", false},
 		{"/", "", false},
 		{"/api/v1/items", "", false},
-		{"/api/v2/admin/session", "", false},
+		{"/api/bloem/v1/admin/session", "", false},
 		{"/metrics", "", false},
 		{"/SystemX", "", false},             // prefix match is per segment, not per string
 		{"/audiobookshelfx/api", "", false}, // no partial-segment ownership
@@ -1004,7 +1004,7 @@ func TestUnownedPathsNeverProxy(t *testing.T) {
 	states.set(KindAudiobookshelf, availableStatus(mustParseURL(t, "http://bloem-audiobookshelf:13378")))
 	gateway := newTestGateway(t, states, transport)
 
-	for _, path := range []string{"/", "/api/v1/auth/login", "/api/v1/items", "/api/v2/organizations", "/metrics", "/unknown"} {
+	for _, path := range []string{"/", "/api/v1/auth/login", "/api/v1/items", "/api/bloem/v1/organizations", "/metrics", "/unknown"} {
 		rec := httptest.NewRecorder()
 		gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 		if rec.Code != http.StatusNotFound {

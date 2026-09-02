@@ -1,0 +1,4 @@
+GET /api/bloem/v1/capabilities
+GET /api/bloem/v1/organizations
+GET /api/bloem/v1/server/identity
+POST /api/bloem/v1/admin/session

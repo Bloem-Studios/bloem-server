@@ -24,7 +24,7 @@ const adminPlatformBodyLimit = 32 << 10
 
 var organizationSlugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
-type V2AdminPlatformStore interface {
+type BloemAdminPlatformStore interface {
 	ListOrganizations(context.Context, tenancy.OrganizationFilter) (tenancy.OrganizationPage, error)
 	GetOrganization(context.Context, uuid.UUID) (tenancy.Organization, error)
 	GetOrganizationSummary(context.Context, uuid.UUID) (tenancy.OrganizationSummary, error)
@@ -42,19 +42,19 @@ type AdminReauthenticationVerifier interface {
 	VerifyPassword(context.Context, int, string) (bool, error)
 }
 
-type V2AdminPlatformHandler struct {
-	store           V2AdminPlatformStore
+type BloemAdminPlatformHandler struct {
+	store           BloemAdminPlatformStore
 	reauth          AdminReauthenticationVerifier
 	lifecycle       lifecycleidempotency.Coordinator
 	lifecycleDigest lifecycleidempotency.RequestDigester
 }
 
-func (h *V2AdminPlatformHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
+func (h *BloemAdminPlatformHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
 	h.lifecycle = coordinator
 	h.lifecycleDigest = digester
 }
 
-type v2AdminPlatformLifecycleStore interface {
+type bloemAdminPlatformLifecycleStore interface {
 	CreateOrganizationInTransaction(context.Context, pgx.Tx, tenancy.CreateOrganizationInput) (tenancy.Organization, error)
 	UpdateOrganizationInTransaction(context.Context, pgx.Tx, uuid.UUID, int64, tenancy.UpdateOrganizationInput) (tenancy.Organization, error)
 	SetOrganizationStatusInTransaction(context.Context, pgx.Tx, uuid.UUID, int64, tenancy.OrganizationStatus) (tenancy.Organization, error)
@@ -63,11 +63,11 @@ type v2AdminPlatformLifecycleStore interface {
 	UpdateMembershipInTransaction(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, int64, tenancy.UpdateMembershipInput) (tenancy.Membership, tenancy.Organization, error)
 }
 
-func NewV2AdminPlatformHandler(store V2AdminPlatformStore, reauth AdminReauthenticationVerifier) *V2AdminPlatformHandler {
-	return &V2AdminPlatformHandler{store: store, reauth: reauth}
+func NewBloemAdminPlatformHandler(store BloemAdminPlatformStore, reauth AdminReauthenticationVerifier) *BloemAdminPlatformHandler {
+	return &BloemAdminPlatformHandler{store: store, reauth: reauth}
 }
 
-func (h *V2AdminPlatformHandler) HandleListOrganizations(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPlatformHandler) HandleListOrganizations(w http.ResponseWriter, r *http.Request) {
 	if !h.requirePlatform(w, r) {
 		return
 	}
@@ -99,12 +99,12 @@ func (h *V2AdminPlatformHandler) HandleListOrganizations(w http.ResponseWriter, 
 	}{page.Items, page.NextCursor})
 }
 
-func (h *V2AdminPlatformHandler) HandleCreateOrganization(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPlatformHandler) HandleCreateOrganization(w http.ResponseWriter, r *http.Request) {
 	claims, ok := h.requirePlatformMutation(w, r)
 	if !ok {
 		return
 	}
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -144,14 +144,14 @@ func (h *V2AdminPlatformHandler) HandleCreateOrganization(w http.ResponseWriter,
 	}{created})
 }
 
-func (h *V2AdminPlatformHandler) handleLifecycleCreateOrganization(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, name, slug string, ownerAccountID int) {
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "organization.create", lifecycleidempotency.TargetBodyAccount, nil, body)
+func (h *BloemAdminPlatformHandler) handleLifecycleCreateOrganization(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, name, slug string, ownerAccountID int) {
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, "organization.create", lifecycleidempotency.TargetBodyAccount, nil, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
 	result, err := h.lifecycle.ExecuteCreate(r.Context(), request, func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
-		transactional, ok := h.store.(v2AdminPlatformLifecycleStore)
+		transactional, ok := h.store.(bloemAdminPlatformLifecycleStore)
 		if !ok {
 			return nil, lifecycleidempotency.Result{}, errors.New("lifecycle-safe organization store unavailable")
 		}
@@ -159,7 +159,7 @@ func (h *V2AdminPlatformHandler) handleLifecycleCreateOrganization(w http.Respon
 		if err != nil {
 			return nil, lifecycleidempotency.Result{}, err
 		}
-		targets, err := resolveV2OrganizationOwnerTarget(ctx, tx, created.ID)
+		targets, err := resolveBloemOrganizationOwnerTarget(ctx, tx, created.ID)
 		if err != nil {
 			return nil, lifecycleidempotency.Result{}, err
 		}
@@ -175,31 +175,31 @@ func (h *V2AdminPlatformHandler) handleLifecycleCreateOrganization(w http.Respon
 		h.writeLifecycleStoreError(w, r, err, uuid.Nil, uuid.Nil)
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
-func (h *V2AdminPlatformHandler) writeLifecycleStoreError(w http.ResponseWriter, r *http.Request, err error, organizationID, membershipID uuid.UUID) {
-	if errors.Is(err, errV2LifecycleReauthenticationRequired) {
+func (h *BloemAdminPlatformHandler) writeLifecycleStoreError(w http.ResponseWriter, r *http.Request, err error, organizationID, membershipID uuid.UUID) {
+	if errors.Is(err, errBloemLifecycleReauthenticationRequired) {
 		writeError(w, http.StatusUnauthorized, "reauthentication_required", "Account re-authentication is required")
 		return
 	}
-	if errors.Is(err, errV2LifecycleReauthenticationUnavailable) {
+	if errors.Is(err, errBloemLifecycleReauthenticationUnavailable) {
 		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Account re-authentication is unavailable")
 		return
 	}
-	if writeV2LifecycleError(w, err) {
+	if writeBloemLifecycleError(w, err) {
 		return
 	}
 	h.writeStoreError(w, r, err, organizationID, membershipID)
 }
 
 var (
-	errV2LifecycleReauthenticationRequired    = errors.New("lifecycle reauthentication required")
-	errV2LifecycleReauthenticationUnavailable = errors.New("lifecycle reauthentication unavailable")
+	errBloemLifecycleReauthenticationRequired    = errors.New("lifecycle reauthentication required")
+	errBloemLifecycleReauthenticationUnavailable = errors.New("lifecycle reauthentication unavailable")
 )
 
-func (h *V2AdminPlatformHandler) lifecycleStore() (v2AdminPlatformLifecycleStore, error) {
-	store, ok := h.store.(v2AdminPlatformLifecycleStore)
+func (h *BloemAdminPlatformHandler) lifecycleStore() (bloemAdminPlatformLifecycleStore, error) {
+	store, ok := h.store.(bloemAdminPlatformLifecycleStore)
 	if !ok {
 		return nil, errors.New("lifecycle-safe organization store unavailable")
 	}
@@ -221,14 +221,14 @@ func membershipLifecycleResult(status int, membership tenancy.Membership, organi
 	return lifecycleidempotency.Result{Status: status, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}}, err
 }
 
-func (h *V2AdminPlatformHandler) handleLifecycleOrganizationStatus(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, expectedRevision int64, status tenancy.OrganizationStatus, routeID string) {
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetExactMembership, map[string]string{"id": organizationID.String()}, body)
+func (h *BloemAdminPlatformHandler) handleLifecycleOrganizationStatus(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, expectedRevision int64, status tenancy.OrganizationStatus, routeID string) {
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetExactMembership, map[string]string{"id": organizationID.String()}, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
 	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		return resolveV2OrganizationOwnerTarget(ctx, tx, organizationID)
+		return resolveBloemOrganizationOwnerTarget(ctx, tx, organizationID)
 	}
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 		store, err := h.lifecycleStore()
@@ -245,11 +245,11 @@ func (h *V2AdminPlatformHandler) handleLifecycleOrganizationStatus(w http.Respon
 		h.writeLifecycleStoreError(w, r, err, organizationID, uuid.Nil)
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
-func (h *V2AdminPlatformHandler) handleLifecycleTransferOwnership(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, expectedRevision int64, ownerAccountID int, password string) {
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "organization.transfer", lifecycleidempotency.TargetBodyAccount, map[string]string{"id": organizationID.String()}, body)
+func (h *BloemAdminPlatformHandler) handleLifecycleTransferOwnership(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, expectedRevision int64, ownerAccountID int, password string) {
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, "organization.transfer", lifecycleidempotency.TargetBodyAccount, map[string]string{"id": organizationID.String()}, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
@@ -259,14 +259,14 @@ func (h *V2AdminPlatformHandler) handleLifecycleTransferOwnership(w http.Respons
 	}
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 		if strings.TrimSpace(password) == "" || h.reauth == nil {
-			return lifecycleidempotency.Result{}, errV2LifecycleReauthenticationRequired
+			return lifecycleidempotency.Result{}, errBloemLifecycleReauthenticationRequired
 		}
 		verified, err := h.reauth.VerifyPassword(ctx, claims.AccountID, password)
 		if err != nil {
-			return lifecycleidempotency.Result{}, errV2LifecycleReauthenticationUnavailable
+			return lifecycleidempotency.Result{}, errBloemLifecycleReauthenticationUnavailable
 		}
 		if !verified {
-			return lifecycleidempotency.Result{}, errV2LifecycleReauthenticationRequired
+			return lifecycleidempotency.Result{}, errBloemLifecycleReauthenticationRequired
 		}
 		store, err := h.lifecycleStore()
 		if err != nil {
@@ -282,11 +282,11 @@ func (h *V2AdminPlatformHandler) handleLifecycleTransferOwnership(w http.Respons
 		h.writeLifecycleStoreError(w, r, err, organizationID, uuid.Nil)
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
-func (h *V2AdminPlatformHandler) handleLifecycleCreateMembership(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, expectedRevision int64, input tenancy.CreateMembershipInput) {
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "organization.membership.create", lifecycleidempotency.TargetBodyAccount, map[string]string{"id": organizationID.String()}, body)
+func (h *BloemAdminPlatformHandler) handleLifecycleCreateMembership(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, expectedRevision int64, input tenancy.CreateMembershipInput) {
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, "organization.membership.create", lifecycleidempotency.TargetBodyAccount, map[string]string{"id": organizationID.String()}, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
@@ -309,17 +309,17 @@ func (h *V2AdminPlatformHandler) handleLifecycleCreateMembership(w http.Response
 		h.writeLifecycleStoreError(w, r, err, organizationID, uuid.Nil)
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
-func (h *V2AdminPlatformHandler) handleLifecycleUpdateMembership(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID, membershipID uuid.UUID, expectedRevision int64, input tenancy.UpdateMembershipInput) {
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "organization.membership.update", lifecycleidempotency.TargetExactMembership, map[string]string{"id": organizationID.String(), "membership_id": membershipID.String()}, body)
+func (h *BloemAdminPlatformHandler) handleLifecycleUpdateMembership(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID, membershipID uuid.UUID, expectedRevision int64, input tenancy.UpdateMembershipInput) {
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, "organization.membership.update", lifecycleidempotency.TargetExactMembership, map[string]string{"id": organizationID.String(), "membership_id": membershipID.String()}, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
 	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		return resolveV2ExactMembershipTarget(ctx, tx, organizationID, membershipID)
+		return resolveBloemExactMembershipTarget(ctx, tx, organizationID, membershipID)
 	}
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 		store, err := h.lifecycleStore()
@@ -336,10 +336,10 @@ func (h *V2AdminPlatformHandler) handleLifecycleUpdateMembership(w http.Response
 		h.writeLifecycleStoreError(w, r, err, organizationID, membershipID)
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
-func (h *V2AdminPlatformHandler) HandleGetOrganization(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPlatformHandler) HandleGetOrganization(w http.ResponseWriter, r *http.Request) {
 	if !h.requirePlatform(w, r) {
 		return
 	}
@@ -357,7 +357,7 @@ func (h *V2AdminPlatformHandler) HandleGetOrganization(w http.ResponseWriter, r 
 	}{organization})
 }
 
-func (h *V2AdminPlatformHandler) HandleUpdateOrganization(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPlatformHandler) HandleUpdateOrganization(w http.ResponseWriter, r *http.Request) {
 	claims, ok := h.requirePlatformMutation(w, r)
 	if !ok {
 		return
@@ -366,7 +366,7 @@ func (h *V2AdminPlatformHandler) HandleUpdateOrganization(w http.ResponseWriter,
 	if !ok {
 		return
 	}
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -413,14 +413,14 @@ func (h *V2AdminPlatformHandler) HandleUpdateOrganization(w http.ResponseWriter,
 	}{after})
 }
 
-func (h *V2AdminPlatformHandler) handleLifecycleUpdateOrganization(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, expectedRevision int64, input tenancy.UpdateOrganizationInput) {
-	request, ok := v2LifecycleRequest(r, claims, h.lifecycleDigest, "organization.update", lifecycleidempotency.TargetExactMembership, map[string]string{"id": organizationID.String()}, body)
+func (h *BloemAdminPlatformHandler) handleLifecycleUpdateOrganization(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, expectedRevision int64, input tenancy.UpdateOrganizationInput) {
+	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, "organization.update", lifecycleidempotency.TargetExactMembership, map[string]string{"id": organizationID.String()}, body)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
 		return
 	}
 	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		return resolveV2OrganizationOwnerTarget(ctx, tx, organizationID)
+		return resolveBloemOrganizationOwnerTarget(ctx, tx, organizationID)
 	}
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
 		store, err := h.lifecycleStore()
@@ -437,18 +437,18 @@ func (h *V2AdminPlatformHandler) handleLifecycleUpdateOrganization(w http.Respon
 		h.writeLifecycleStoreError(w, r, err, organizationID, uuid.Nil)
 		return
 	}
-	writeV2LifecycleResult(w, result)
+	writeBloemLifecycleResult(w, result)
 }
 
-func (h *V2AdminPlatformHandler) HandleSuspendOrganization(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPlatformHandler) HandleSuspendOrganization(w http.ResponseWriter, r *http.Request) {
 	h.handleOrganizationStatus(w, r, tenancy.OrganizationSuspended)
 }
 
-func (h *V2AdminPlatformHandler) HandleReactivateOrganization(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPlatformHandler) HandleReactivateOrganization(w http.ResponseWriter, r *http.Request) {
 	h.handleOrganizationStatus(w, r, tenancy.OrganizationActive)
 }
 
-func (h *V2AdminPlatformHandler) handleOrganizationStatus(w http.ResponseWriter, r *http.Request, status tenancy.OrganizationStatus) {
+func (h *BloemAdminPlatformHandler) handleOrganizationStatus(w http.ResponseWriter, r *http.Request, status tenancy.OrganizationStatus) {
 	claims, ok := h.requirePlatformMutation(w, r)
 	if !ok {
 		return
@@ -457,7 +457,7 @@ func (h *V2AdminPlatformHandler) handleOrganizationStatus(w http.ResponseWriter,
 	if !ok {
 		return
 	}
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -493,7 +493,7 @@ func (h *V2AdminPlatformHandler) handleOrganizationStatus(w http.ResponseWriter,
 	}{after})
 }
 
-func (h *V2AdminPlatformHandler) HandleTransferOwnership(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPlatformHandler) HandleTransferOwnership(w http.ResponseWriter, r *http.Request) {
 	claims, ok := h.requirePlatformMutation(w, r)
 	if !ok {
 		return
@@ -502,7 +502,7 @@ func (h *V2AdminPlatformHandler) HandleTransferOwnership(w http.ResponseWriter, 
 	if !ok {
 		return
 	}
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -560,7 +560,7 @@ func (h *V2AdminPlatformHandler) HandleTransferOwnership(w http.ResponseWriter, 
 	}{after})
 }
 
-func (h *V2AdminPlatformHandler) HandleListMemberships(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPlatformHandler) HandleListMemberships(w http.ResponseWriter, r *http.Request) {
 	if !h.requirePlatform(w, r) {
 		return
 	}
@@ -588,7 +588,7 @@ func (h *V2AdminPlatformHandler) HandleListMemberships(w http.ResponseWriter, r 
 	}{page.Items, page.NextCursor})
 }
 
-func (h *V2AdminPlatformHandler) HandleCreateMembership(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPlatformHandler) HandleCreateMembership(w http.ResponseWriter, r *http.Request) {
 	claims, ok := h.requirePlatformMutation(w, r)
 	if !ok {
 		return
@@ -597,7 +597,7 @@ func (h *V2AdminPlatformHandler) HandleCreateMembership(w http.ResponseWriter, r
 	if !ok {
 		return
 	}
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -646,7 +646,7 @@ func (h *V2AdminPlatformHandler) HandleCreateMembership(w http.ResponseWriter, r
 	}{membership, organization})
 }
 
-func (h *V2AdminPlatformHandler) HandleUpdateMembership(w http.ResponseWriter, r *http.Request) {
+func (h *BloemAdminPlatformHandler) HandleUpdateMembership(w http.ResponseWriter, r *http.Request) {
 	claims, ok := h.requirePlatformMutation(w, r)
 	if !ok {
 		return
@@ -659,7 +659,7 @@ func (h *V2AdminPlatformHandler) HandleUpdateMembership(w http.ResponseWriter, r
 	if !ok {
 		return
 	}
-	body, ok := captureV2LifecycleBody(w, r)
+	body, ok := captureBloemLifecycleBody(w, r)
 	if !ok {
 		return
 	}
@@ -707,7 +707,7 @@ func (h *V2AdminPlatformHandler) HandleUpdateMembership(w http.ResponseWriter, r
 	}{after, organization})
 }
 
-func (h *V2AdminPlatformHandler) requirePlatform(w http.ResponseWriter, r *http.Request) bool {
+func (h *BloemAdminPlatformHandler) requirePlatform(w http.ResponseWriter, r *http.Request) bool {
 	claims, ok := middleware.GetAdminContextClaims(r.Context())
 	if !ok || claims.Scope != auth.AdminScopePlatform || claims.AccountID <= 0 {
 		writeError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
@@ -720,7 +720,7 @@ func (h *V2AdminPlatformHandler) requirePlatform(w http.ResponseWriter, r *http.
 	return true
 }
 
-func (h *V2AdminPlatformHandler) requirePlatformMutation(w http.ResponseWriter, r *http.Request) (auth.AdminContextClaims, bool) {
+func (h *BloemAdminPlatformHandler) requirePlatformMutation(w http.ResponseWriter, r *http.Request) (auth.AdminContextClaims, bool) {
 	if !h.requirePlatform(w, r) {
 		return auth.AdminContextClaims{}, false
 	}
@@ -728,7 +728,7 @@ func (h *V2AdminPlatformHandler) requirePlatformMutation(w http.ResponseWriter, 
 	return claims, true
 }
 
-func (h *V2AdminPlatformHandler) writeStoreError(w http.ResponseWriter, r *http.Request, err error, organizationID, membershipID uuid.UUID) {
+func (h *BloemAdminPlatformHandler) writeStoreError(w http.ResponseWriter, r *http.Request, err error, organizationID, membershipID uuid.UUID) {
 	switch {
 	case errors.Is(err, tenancy.ErrOrganizationNotFound), errors.Is(err, tenancy.ErrMembershipNotFound), errors.Is(err, tenancy.ErrTenantNotFoundOrHidden):
 		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")

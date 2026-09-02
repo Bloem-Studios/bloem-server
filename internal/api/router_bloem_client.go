@@ -15,18 +15,18 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// v2ClientSurface is the native client surface: what a television or a phone
+// bloemClientSurface is the native client surface: what a television or a phone
 // talks to, as opposed to the administrative and tenancy routes the rest of
-// /api/v2 serves.
+// /api/bloem/v1 serves.
 //
 // It exists as its own type because these routes answer to a different
 // authority than the admin routes do. The admin tree requires a tenant-selected
-// session (apimw.AdminContextMiddleware, and tenantMW.RequireV2 for
+// session (apimw.AdminContextMiddleware, and tenantMW.RequireBloem for
 // organization-bound routes). A viewer's session is not tenant-selected — no
 // login endpoint mints organization, membership or revision claims — so these
 // routes take the same legacy tenant projection the v1 tree uses, and derive
 // their media scope from the viewer's own profile instead.
-type v2ClientSurface struct {
+type bloemClientSurface struct {
 	// identity answers the public probe. It is separate from the capability
 	// document because it can legitimately be unavailable; see
 	// handlers.ServerIdentityHandler.
@@ -42,11 +42,11 @@ type v2ClientSurface struct {
 	rateLimit *ratelimit.Middleware
 }
 
-// newV2ClientSurface assembles the client surface from Dependencies. Every
+// newBloemClientSurface assembles the client surface from Dependencies. Every
 // member is optional: a missing dependency leaves its routes unmounted rather
 // than mounting a route that answers with an empty library.
-func newV2ClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider) v2ClientSurface {
-	surface := v2ClientSurface{auth: authMW, tenant: tenantMW, rateLimit: deps.RateLimitMW}
+func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider) bloemClientSurface {
+	surface := bloemClientSurface{auth: authMW, tenant: tenantMW, rateLimit: deps.RateLimitMW}
 
 	// The same encrypting decorator the rest of the server reads settings
 	// through: server.instance_id is a plain row, but reading it through a
@@ -154,14 +154,14 @@ func newV2ClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantM
 	return surface
 }
 
-// mount registers the client routes inside an /api/v2 subrouter.
+// mount registers the client routes inside an /api/bloem/v1 subrouter.
 //
 // The identity probe is public: a client has to answer "which server is this,
 // and can I log into it yet" before it holds any credentials. Everything else
 // sits in one authenticated, viewer-scoped, profile-scoped group, because every
 // document it serves is one profile's view of the library — the items that
 // profile may watch and that profile's own progress.
-func (s v2ClientSurface) mount(r chi.Router) {
+func (s bloemClientSurface) mount(r chi.Router) {
 	if s.identity != nil {
 		r.Get("/server/identity", s.identity.HandleGetServerIdentity)
 	}
@@ -172,7 +172,7 @@ func (s v2ClientSurface) mount(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(s.auth.RequireAuth)
 		// The same default-organization projection the v1 tree applies. These
-		// routes deliberately do NOT use tenantMW.RequireV2: it demands a
+		// routes deliberately do NOT use tenantMW.RequireBloem: it demands a
 		// tenant-selected session carrying organization, membership and
 		// revision claims, and no login endpoint mints those, so requiring it
 		// would 401 every viewer. Organization-bound routes still must.
@@ -199,7 +199,7 @@ func (s v2ClientSurface) mount(r chi.Router) {
 			})
 		}
 		if s.progress != nil {
-			r.Post("/sync/progress", s.progress.HandleV2SyncProgress)
+			r.Post("/sync/progress", s.progress.HandleBloemSyncProgress)
 		}
 		if s.persons != nil {
 			r.Get("/persons/{person_id}", s.persons.HandleGetPersonDetail)

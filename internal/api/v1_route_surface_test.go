@@ -19,7 +19,7 @@ import (
 )
 
 // The Silo-compatible projection at /api/v1 is frozen against upstream Silo:
-// this repository's native surface is /api/v2, and a route added, removed or
+// this repository's native surface is /api/bloem/v1, and a route added, removed or
 // renamed under /api/v1 breaks clients this project does not ship. The golden
 // files below were generated from origin/main, so any drift — in either
 // direction — fails here with the exact route named.
@@ -101,7 +101,7 @@ func assertV1RouteSurface(t *testing.T, golden string, router chi.Router) {
 		t.Errorf("this branch REMOVES an /api/v1 route: %s", route)
 	}
 	if len(added) > 0 || len(removed) > 0 {
-		t.Fatalf("the /api/v1 surface changed against %s; native routes belong on /api/v2", golden)
+		t.Fatalf("the /api/v1 surface changed against %s; native routes belong on /api/bloem/v1", golden)
 	}
 }
 

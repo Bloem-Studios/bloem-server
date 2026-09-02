@@ -108,7 +108,7 @@ type personFilmographyEntry struct {
 	PosterURL string `json:"poster_url,omitempty"`
 }
 
-// HandleGetPersonDetail handles GET /api/v2/persons/{person_id}.
+// HandleGetPersonDetail handles GET /api/bloem/v1/persons/{person_id}.
 func (h *PersonDetailHandler) HandleGetPersonDetail(w http.ResponseWriter, r *http.Request) {
 	if h.persons == nil {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Person detail is not available")

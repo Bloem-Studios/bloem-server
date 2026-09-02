@@ -100,12 +100,12 @@ func (s *organizationInvitationStub) CreateForOrganization(_ context.Context, id
 	return s.created, s.err
 }
 
-func TestV2OrganizationOverviewUsesOnlyResolvedContext(t *testing.T) {
+func TestBloemOrganizationOverviewUsesOnlyResolvedContext(t *testing.T) {
 	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
 	foreignID := uuid.MustParse("10000000-0000-0000-0000-000000000099")
 	store := &organizationOverviewStub{item: tenancy.OrganizationSummary{Organization: tenancy.Organization{ID: organizationID, Name: "Local"}, MembershipCount: 3}}
-	h := NewV2AdminOrganizationHandler(store, nil, nil, nil)
-	req := organizationRequest(http.MethodGet, "/api/v2/admin/organization/overview?organization_id="+foreignID.String(), "", organizationID, 7, nil)
+	h := NewBloemAdminOrganizationHandler(store, nil, nil, nil)
+	req := organizationRequest(http.MethodGet, NativeAPIPrefix+"/admin/organization/overview?organization_id="+foreignID.String(), "", organizationID, 7, nil)
 	rec := httptest.NewRecorder()
 
 	h.HandleOverview(rec, req)
@@ -114,11 +114,11 @@ func TestV2OrganizationOverviewUsesOnlyResolvedContext(t *testing.T) {
 	}
 }
 
-func TestV2OrganizationGroupsCRUDIsScopedRevisionGuardedAndReturnsReassignmentImpact(t *testing.T) {
+func TestBloemOrganizationGroupsCRUDIsScopedRevisionGuardedAndReturnsReassignmentImpact(t *testing.T) {
 	organizationID := uuid.New()
 	group := &access.Group{ID: 21, OrganizationID: organizationID, Name: "Kids"}
 	store := &organizationGroupStub{groups: []access.Group{*group}, group: group, impact: access.GroupDeletionImpact{ProfilesReassigned: 4, DefaultGroupID: 3}}
-	h := NewV2AdminOrganizationHandler(nil, store, nil, nil)
+	h := NewBloemAdminOrganizationHandler(nil, store, nil, nil)
 
 	list := httptest.NewRecorder()
 	h.HandleListGroups(list, organizationRequest(http.MethodGet, "/groups", "", organizationID, 7, nil))
@@ -146,14 +146,14 @@ func TestV2OrganizationGroupsCRUDIsScopedRevisionGuardedAndReturnsReassignmentIm
 	}
 }
 
-func TestV2OrganizationLibrariesDistinguishOwnedAndEntitledAndHideForeign(t *testing.T) {
+func TestBloemOrganizationLibrariesDistinguishOwnedAndEntitledAndHideForeign(t *testing.T) {
 	organizationID := uuid.New()
 	foreignID := uuid.New()
 	store := &organizationResourceStub{libraries: []resourcetenancy.LibraryProjection{
 		{FolderID: 4, Name: "Owned", Type: "movies", AccessKind: resourcetenancy.LibraryOwned},
 		{FolderID: 8, Name: "Granted", Type: "series", AccessKind: resourcetenancy.LibraryEntitled, Entitlement: &resourcetenancy.LibraryEntitlement{SecurityRevision: 2, Status: resourcetenancy.EntitlementActive}},
 	}}
-	h := NewV2AdminOrganizationHandler(nil, nil, store, nil)
+	h := NewBloemAdminOrganizationHandler(nil, nil, store, nil)
 	rec := httptest.NewRecorder()
 	h.HandleListLibraries(rec, organizationRequest(http.MethodGet, "/libraries?organization_id="+foreignID.String(), "", organizationID, 7, nil))
 	if rec.Code != http.StatusOK || store.got != organizationID || !strings.Contains(rec.Body.String(), `"access_kind":"owned"`) || !strings.Contains(rec.Body.String(), `"access_kind":"entitled"`) || strings.Contains(rec.Body.String(), foreignID.String()) {
@@ -168,11 +168,11 @@ func TestV2OrganizationLibrariesDistinguishOwnedAndEntitledAndHideForeign(t *tes
 	}
 }
 
-func TestV2OrganizationInvitationsUseResolvedOrganizationAndNeverReturnTokenHashes(t *testing.T) {
+func TestBloemOrganizationInvitationsUseResolvedOrganizationAndNeverReturnTokenHashes(t *testing.T) {
 	organizationID := uuid.New()
 	foreignID := uuid.New()
 	store := &organizationInvitationStub{items: []*models.Invitation{{ID: 2, OrganizationID: organizationID, Email: "local@example.test", TokenHash: "must-not-leak", ExpiresAt: time.Now().Add(time.Hour)}}}
-	h := NewV2AdminOrganizationHandler(nil, nil, nil, store)
+	h := NewBloemAdminOrganizationHandler(nil, nil, nil, store)
 	rec := httptest.NewRecorder()
 	h.HandleListInvitations(rec, organizationRequest(http.MethodGet, "/invitations?organization_id="+foreignID.String(), "", organizationID, 7, nil))
 	if rec.Code != http.StatusOK || store.got != organizationID || !strings.Contains(rec.Body.String(), "local@example.test") || strings.Contains(rec.Body.String(), "must-not-leak") || strings.Contains(rec.Body.String(), foreignID.String()) {
@@ -187,10 +187,10 @@ func TestV2OrganizationInvitationsUseResolvedOrganizationAndNeverReturnTokenHash
 	}
 }
 
-func TestV2OrganizationRoutesRejectPlatformContextBeforeStoreAccess(t *testing.T) {
+func TestBloemOrganizationRoutesRejectPlatformContextBeforeStoreAccess(t *testing.T) {
 	store := &organizationOverviewStub{}
-	h := NewV2AdminOrganizationHandler(store, nil, nil, nil)
-	req := httptest.NewRequest(http.MethodGet, "/api/v2/admin/organization/overview", nil)
+	h := NewBloemAdminOrganizationHandler(store, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/admin/organization/overview", nil)
 	req = req.WithContext(apimw.SetAdminContextClaims(req.Context(), auth.AdminContextClaims{AccountID: 7, Scope: auth.AdminScopePlatform}))
 	rec := httptest.NewRecorder()
 	h.HandleOverview(rec, req)
