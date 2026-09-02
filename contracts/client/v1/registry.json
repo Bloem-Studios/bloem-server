@@ -16,7 +16,87 @@
         {"type": "HelloEnvelope", "direction": "request", "gate": "realtime"},
         {"type": "AckEnvelope", "direction": "request", "gate": "realtime"},
         {"type": "ResultEnvelope", "direction": "request", "gate": "realtime"},
-        {"type": "ChapterThumbnailReadyPayload", "direction": "response", "gate": "realtime"}
+        {"type": "ChapterThumbnailReadyPayload", "direction": "response", "gate": "realtime"},
+        {"type": "MarkersUpdatedPayload", "direction": "response", "gate": "realtime"},
+        {"type": "SubtitleReadyPayload", "direction": "response", "gate": "realtime"},
+        {"type": "SubtitleTranslationStartedPayload", "direction": "response", "gate": "realtime"},
+        {"type": "SubtitleTranslationCuesPayload", "direction": "response", "gate": "realtime"},
+        {"type": "SubtitleTranslationCompletedPayload", "direction": "response", "gate": "realtime"},
+        {"type": "SubtitleTranslationFailedPayload", "direction": "response", "gate": "realtime"},
+        {"type": "PlanInvalidatedPayload", "direction": "response", "gate": "realtime"}
+      ]
+    },
+    {
+      "path": "internal/api/handlers",
+      "dialect": "upstream-compat",
+      "roots": [
+        {"type": "capabilityResponse", "direction": "response",
+         "bloem_fields": ["announcements", "supported_types", "dismiss", "ambience", "promotions", "remote_control"]},
+        {"type": "notificationListResponse", "direction": "response", "dialect": "bloem"},
+        {"type": "notificationSyncResponse", "direction": "response", "dialect": "bloem"},
+        {"type": "unreadCountResponse", "direction": "response", "dialect": "bloem"},
+        {"type": "wsTicketResponse", "direction": "response", "dialect": "bloem"},
+        {"type": "updatePreferencesRequest", "direction": "request", "dialect": "bloem"},
+        {"type": "applePushRegisterRequest", "direction": "request", "dialect": "bloem"},
+        {"type": "pushDeviceRegisterRequest", "direction": "request", "dialect": "bloem"},
+        {"type": "applePushRegisterResponse", "direction": "response", "dialect": "bloem"},
+        {"type": "eventsCapabilityResponse", "direction": "response", "dialect": "bloem"},
+        {"type": "promotionsResponse", "direction": "response", "dialect": "bloem", "gate": "notifications.promotions"},
+        {"type": "remoteCapabilityRequest", "direction": "request", "dialect": "bloem", "gate": "notifications.remote_control"},
+        {"type": "remoteCapabilityResponse", "direction": "response", "dialect": "bloem", "gate": "notifications.remote_control"},
+        {"type": "remoteCommandRequest", "direction": "request", "dialect": "bloem", "gate": "notifications.remote_control"},
+        {"type": "remoteSessionsResponse", "direction": "response", "dialect": "bloem", "gate": "notifications.remote_control"},
+        {"type": "remoteAuditResponse", "direction": "response", "dialect": "bloem", "gate": "notifications.remote_control"}
+      ]
+    },
+    {
+      "path": "internal/notifications",
+      "dialect": "bloem",
+      "roots": [
+        {"type": "DeliveryRowPayload", "direction": "response"},
+        {"type": "NotificationDisplay", "direction": "response"},
+        {"type": "Preferences", "direction": "response"}
+      ]
+    },
+    {
+      "path": "internal/events",
+      "dialect": "bloem",
+      "roots": [
+        {"type": "EventsHelloMessage", "direction": "response"},
+        {"type": "EventsSubscribeMessage", "direction": "request"},
+        {"type": "EventsSubscribedMessage", "direction": "response"},
+        {"type": "EventsSnapshotMessage", "direction": "response"},
+        {"type": "EventsEventMessage", "direction": "response"},
+        {"type": "EventsErrorMessage", "direction": "response"}
+      ]
+    },
+    {
+      "path": "internal/promotions",
+      "dialect": "bloem",
+      "gate": "notifications.promotions",
+      "roots": [
+        {"type": "Card", "direction": "response"}
+      ]
+    },
+    {
+      "path": "internal/ambience",
+      "dialect": "bloem",
+      "gate": "notifications.ambience",
+      "roots": [
+        {"type": "Wire", "direction": "response"}
+      ]
+    },
+    {
+      "path": "internal/remote",
+      "dialect": "bloem",
+      "gate": "notifications.remote_control",
+      "roots": [
+        {"type": "SeekPayload", "direction": "both"},
+        {"type": "VolumePayload", "direction": "both"},
+        {"type": "ReasonPayload", "direction": "both"},
+        {"type": "TrackPayload", "direction": "both"},
+        {"type": "MessagePayload", "direction": "both"},
+        {"type": "ReplanPayload", "direction": "both"}
       ]
     }
   ]
