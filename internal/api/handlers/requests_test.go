@@ -308,3 +308,29 @@ func TestHandleListStudiosPinsWire(t *testing.T) {
 		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
 	}
 }
+
+// TestHandleListNetworksPinsWire pins the GET /requests/discover/networks
+// body: the named discoverNetworksResponse replaced an inline struct literal,
+// and this test proves the marshalled bytes did not change — same field
+// names, same tags, same omitempty, same order of population.
+func TestHandleListNetworksPinsWire(t *testing.T) {
+	svc := &fakeRequestService{
+		listNetworksFn: func() ([]mediarequests.DiscoverBrandCard, error) {
+			return []mediarequests.DiscoverBrandCard{
+				{TMDBID: 2134, Slug: "netflix", DisplayName: "Netflix"},
+			}, nil
+		},
+	}
+	h := NewRequestsHandler(svc)
+
+	rec := httptest.NewRecorder()
+	h.HandleListNetworks(rec, authedRequest("GET", "/api/v1/requests/discover/networks"))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	want := `{"networks":[{"tmdb_id":2134,"slug":"netflix","display_name":"Netflix"}]}`
+	if got := strings.TrimSuffix(rec.Body.String(), "\n"); got != want {
+		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
+	}
+}
