@@ -72,6 +72,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/imagecache"
 	"github.com/Silo-Server/silo-server/internal/intromarkers"
 	"github.com/Silo-Server/silo-server/internal/jellycompat"
+	"github.com/Silo-Server/silo-server/internal/lanadvert"
 	"github.com/Silo-Server/silo-server/internal/libraryingest"
 	"github.com/Silo-Server/silo-server/internal/literaryworks"
 	"github.com/Silo-Server/silo-server/internal/livetv"
@@ -115,6 +116,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/server"
+	"github.com/Silo-Server/silo-server/internal/serverid"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
 	"github.com/Silo-Server/silo-server/internal/subtitles"
@@ -3544,6 +3546,31 @@ func main() {
 		serveAux("abs compat", absSrv, errCh)
 	}
 
+	// LAN advertisement (opt-in: lan.advertisement_enabled). Publishes
+	// _bloem._tcp on the public port so clients on the same broadcast
+	// domain can discover this server. The id comes from the same resolver
+	// surface the identity endpoint answers from; if it cannot be resolved
+	// — or the host has no multicast-capable interface — the advertiser
+	// stays quiet rather than announcing something wrong.
+	var lanAdvertiser *lanadvert.Advertiser
+	if cfg.LAN.AdvertisementEnabled && public != nil {
+		lanAdvertiser = lanadvert.Start(appCtx, lanadvert.Config{
+			Listen: cfg.Server.Listen,
+			// The public listener is plain HTTP: TLS terminates at an
+			// operator's reverse proxy, whose origin clients reach by
+			// manual entry. If this process ever serves TLS itself,
+			// this must follow it.
+			Scheme:   lanadvert.SchemeHTTP,
+			Identity: serverid.NewResolver(settingsRepo),
+			ServerName: func(ctx context.Context) string {
+				if brandingSvc == nil {
+					return branding.DefaultServerName
+				}
+				return brandingSvc.Load(ctx).ServerName
+			},
+		})
+	}
+
 	// Step 11: Wait for termination signal.
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
@@ -3565,6 +3592,12 @@ func main() {
 	slog.Info("beginning graceful shutdown")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
+
+	// Deregister the LAN advertisement first, while its responder loop is
+	// still running to deliver the goodbye packets.
+	if lanAdvertiser != nil {
+		lanAdvertiser.Stop()
+	}
 
 	// 1. Stop accepting new requests.
 	if public != nil {
