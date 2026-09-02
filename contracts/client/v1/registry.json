@@ -755,6 +755,119 @@
           "direction": "both"
         }
       ]
+    },
+    {
+      "path": "internal/requests",
+      "dialect": "upstream-compat",
+      "roots": [
+        {
+          "type": "MediaPage",
+          "direction": "response"
+        },
+        {
+          "type": "MediaDetail",
+          "direction": "response"
+        },
+        {
+          "type": "Request",
+          "direction": "response"
+        },
+        {
+          "type": "FeatureStatus",
+          "direction": "response"
+        },
+        {
+          "type": "DiscoverBrandCard",
+          "direction": "response"
+        },
+        {
+          "type": "DiscoverBrowseResponse",
+          "direction": "response"
+        },
+        {
+          "type": "DiscoverySection",
+          "direction": "response"
+        },
+        {
+          "type": "CreateRequestInput",
+          "direction": "request"
+        }
+      ]
+    },
+    {
+      "path": "internal/onboarding",
+      "dialect": "bloem",
+      "roots": [
+        {
+          "type": "Flow",
+          "direction": "response"
+        }
+      ]
+    },
+    {
+      "path": "internal/watchdoc",
+      "dialect": "bloem",
+      "roots": [
+        {
+          "type": "Document",
+          "direction": "response"
+        }
+      ]
+    },
+    {
+      "path": "internal/subtitles",
+      "dialect": "upstream-compat",
+      "roots": [
+        {
+          "type": "SearchResponse",
+          "direction": "response"
+        },
+        {
+          "type": "DownloadedSubtitle",
+          "direction": "response"
+        },
+        {
+          "type": "LanguageDetection",
+          "direction": "response"
+        }
+      ]
+    },
+    {
+      "path": "internal/models",
+      "dialect": "upstream-compat",
+      "roots": [
+        {
+          "type": "VideoTrack",
+          "direction": "response"
+        },
+        {
+          "type": "AudioTrack",
+          "direction": "response"
+        },
+        {
+          "type": "SubtitleTrack",
+          "direction": "response"
+        }
+      ]
+    },
+    {
+      "path": "internal/diagnostics",
+      "dialect": "upstream-compat",
+      "roots": [
+        {
+          "type": "Status",
+          "direction": "response"
+        },
+        {
+          "type": "IngestResult",
+          "direction": "response"
+        }
+      ]
     }
-  ]
+  ],
+  "serializers": {
+    "internal/models.VideoTrack.frame_rate": {
+      "kotlin": "org.bloemserver.bloem.model.wire.FrameRateWire"
+    }
+  }
 }
