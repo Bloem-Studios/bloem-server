@@ -158,18 +158,55 @@ func (c *watchTogetherRoomConn) TakePingSentAt() time.Time {
 	return time.Unix(0, nano)
 }
 
+// The room websocket frames below were written as inline map literals, which
+// had no nameable type for the client DTO registry
+// (contracts/client/v1/registry.json). encoding/json marshals map keys in
+// sorted order, so each struct declares its fields in that same order and the
+// bytes on the wire are unchanged.
+
+// watchTogetherErrorFrame reports a room-websocket protocol error.
+type watchTogetherErrorFrame struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Type    string `json:"type"`
+}
+
+// watchTogetherRoomClosedFrame tells the client the room was closed.
+type watchTogetherRoomClosedFrame struct {
+	Reason string `json:"reason"`
+	Type   string `json:"type"`
+}
+
+// watchTogetherSnapshotFrame is the first frame on a room websocket: the full
+// room snapshot plus the owner generation it was produced under.
+type watchTogetherSnapshotFrame struct {
+	OwnerGeneration int64                  `json:"owner_generation"`
+	Room            watchtogether.Snapshot `json:"room"`
+	Type            string                 `json:"type"`
+}
+
+// watchTogetherPongFrame answers a client ping with the timestamps its clock
+// offset estimate needs.
+type watchTogetherPongFrame struct {
+	ClientSentAt     string `json:"client_sent_at"`
+	OwnerGeneration  int64  `json:"owner_generation"`
+	ServerReceivedAt string `json:"server_received_at"`
+	ServerSentAt     string `json:"server_sent_at"`
+	Type             string `json:"type"`
+}
+
 func (c *watchTogetherRoomConn) WriteError(code, message string) {
-	_ = c.WriteJSON(map[string]string{
-		"type":    "error",
-		"code":    code,
-		"message": message,
+	_ = c.WriteJSON(watchTogetherErrorFrame{
+		Type:    "error",
+		Code:    code,
+		Message: message,
 	})
 }
 
 func (c *watchTogetherRoomConn) writeRoomClosed(reason string) {
-	_ = c.WriteJSON(map[string]string{
-		"type":   "room_closed",
-		"reason": reason,
+	_ = c.WriteJSON(watchTogetherRoomClosedFrame{
+		Type:   "room_closed",
+		Reason: reason,
 	})
 }
 
@@ -763,10 +800,10 @@ func (h *WatchTogetherHandler) HandleRoomWebSocket(w http.ResponseWriter, r *htt
 	// Prime an RTT sample right away instead of waiting for the first tick.
 	_ = realtimeConn.WritePing()
 
-	if err := realtimeConn.WriteJSON(map[string]any{
-		"type":             "snapshot",
-		"owner_generation": snapshot.OwnerGeneration,
-		"room":             snapshot,
+	if err := realtimeConn.WriteJSON(watchTogetherSnapshotFrame{
+		Type:            "snapshot",
+		OwnerGeneration: snapshot.OwnerGeneration,
+		Room:            snapshot,
 	}); err != nil {
 		return
 	}
@@ -872,12 +909,12 @@ func (h *WatchTogetherHandler) handleRoomClientMessage(
 		// latency for command scheduling is measured server-side from
 		// protocol-level ping/pong.
 		now := time.Now().UTC()
-		return rc.WriteJSON(map[string]any{
-			"type":               "pong",
-			"owner_generation":   base.OwnerGeneration,
-			"client_sent_at":     msg.ClientSentAt,
-			"server_received_at": now.Format(time.RFC3339Nano),
-			"server_sent_at":     time.Now().UTC().Format(time.RFC3339Nano),
+		return rc.WriteJSON(watchTogetherPongFrame{
+			Type:             "pong",
+			OwnerGeneration:  base.OwnerGeneration,
+			ClientSentAt:     msg.ClientSentAt,
+			ServerReceivedAt: now.Format(time.RFC3339Nano),
+			ServerSentAt:     time.Now().UTC().Format(time.RFC3339Nano),
 		})
 	default:
 		return errors.New("unsupported room websocket message")
