@@ -166,6 +166,13 @@ func (h *RequestsHandler) HandleListNetworks(w http.ResponseWriter, r *http.Requ
 	writeJSON(w, http.StatusOK, discoverNetworksResponse{Networks: networks})
 }
 
+// discoverGenresResponse is the GET /requests/discover/genres envelope. It
+// was an inline struct literal, which had no nameable type for the client DTO
+// registry (contracts/client/v1/registry.json).
+type discoverGenresResponse struct {
+	Genres []mediarequests.DiscoverBrandCard `json:"genres"`
+}
+
 func (h *RequestsHandler) HandleListGenres(w http.ResponseWriter, r *http.Request) {
 	viewer, ok := requestViewer(w, r, true)
 	if !ok {
@@ -176,9 +183,7 @@ func (h *RequestsHandler) HandleListGenres(w http.ResponseWriter, r *http.Reques
 		writeRequestServiceError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Genres []mediarequests.DiscoverBrandCard `json:"genres"`
-	}{Genres: genres})
+	writeJSON(w, http.StatusOK, discoverGenresResponse{Genres: genres})
 }
 
 func (h *RequestsHandler) HandleBrowseStudio(w http.ResponseWriter, r *http.Request) {
