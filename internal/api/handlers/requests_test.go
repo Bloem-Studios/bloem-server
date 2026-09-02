@@ -277,3 +277,34 @@ func TestHandleDiscoverPinsWire(t *testing.T) {
 		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
 	}
 }
+
+// TestHandleListStudiosPinsWire pins the GET /requests/discover/studios body:
+// the named discoverStudiosResponse replaced an inline struct literal, and
+// this test proves the marshalled bytes did not change — same field names,
+// same tags, same omitempty, same order of population.
+func TestHandleListStudiosPinsWire(t *testing.T) {
+	logo := "https://image.tmdb.org/t/p/w300/x.png"
+	svc := &fakeRequestService{
+		listStudiosFn: func() ([]mediarequests.DiscoverBrandCard, error) {
+			return []mediarequests.DiscoverBrandCard{
+				{TMDBID: 420, Slug: "marvel-studios", DisplayName: "Marvel Studios", LogoURL: &logo},
+				{Slug: "a24", DisplayName: "A24", SeriesSupported: true},
+			}, nil
+		},
+	}
+	h := NewRequestsHandler(svc)
+
+	rec := httptest.NewRecorder()
+	h.HandleListStudios(rec, authedRequest("GET", "/api/v1/requests/discover/studios"))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	want := `{"studios":[` +
+		`{"tmdb_id":420,"slug":"marvel-studios","display_name":"Marvel Studios","logo_url":"https://image.tmdb.org/t/p/w300/x.png"},` +
+		`{"slug":"a24","display_name":"A24","series_supported":true}` +
+		`]}`
+	if got := strings.TrimSuffix(rec.Body.String(), "\n"); got != want {
+		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
+	}
+}
