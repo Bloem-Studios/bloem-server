@@ -20,7 +20,7 @@ const valid = `{
        {"type": "remoteCapabilityRequest", "direction": "both", "dialect": "bloem", "gate": "notifications.remote_control"}
      ]}
   ],
-  "serializers": {"internal/api/handlers.itemListResponse.frame_rate": "org.example.FrameRateWire"}
+  "serializers": {"internal/api/handlers.itemListResponse.frame_rate": {"kotlin": "org.example.FrameRateWire", "swift": "FrameRateWire"}}
 }`
 
 func TestParseValid(t *testing.T) {
@@ -48,8 +48,9 @@ func TestParseValid(t *testing.T) {
 	if handlers.EffectiveGate(remote) != "notifications.remote_control" || handlers.EffectiveDialect(remote) != DialectBloem {
 		t.Errorf("overrides not applied: %+v", remote)
 	}
-	if got := reg.Serializers[SerializerKey("internal/api/handlers", "itemListResponse", "frame_rate")]; got != "org.example.FrameRateWire" {
-		t.Errorf("serializer = %q", got)
+	got := reg.Serializers[SerializerKey("internal/api/handlers", "itemListResponse", "frame_rate")]
+	if !reflect.DeepEqual(got, Serializer{"kotlin": "org.example.FrameRateWire", "swift": "FrameRateWire"}) {
+		t.Errorf("serializer = %v", got)
 	}
 }
 
@@ -74,6 +75,9 @@ func TestParseRejects(t *testing.T) {
 		{"bloem_fields on bloem root", `{"schema":1,"packages":[{"path":"internal/x","dialect":"bloem","roots":[
 			{"type":"A","direction":"both","bloem_fields":["f"]}]}]}`, "bloem_fields only applies to upstream-compat roots"},
 		{"serializer for unregistered package", strings.Replace(valid, `internal/api/handlers.itemListResponse`, `internal/other.itemListResponse`, 1), "does not name a registered package"},
+		{"serializer as string", strings.Replace(valid, `{"kotlin": "org.example.FrameRateWire", "swift": "FrameRateWire"}`, `"org.example.FrameRateWire"`, 1), "registry.schema.json"},
+		{"serializer unknown language", strings.Replace(valid, `"swift": "FrameRateWire"`, `"rust": "FrameRateWire"`, 1), "registry.schema.json"},
+		{"serializer empty", strings.Replace(valid, `{"kotlin": "org.example.FrameRateWire", "swift": "FrameRateWire"}`, `{}`, 1), "registry.schema.json"},
 		{"not json", `{`, "parsing registry"},
 	}
 	for _, tc := range cases {
@@ -108,6 +112,9 @@ func TestDirectionRoundTrip(t *testing.T) {
 	}
 	if Direction(0).String() != "none" {
 		t.Error("zero direction must render as none")
+	}
+	if _, err := Direction(0).MarshalJSON(); err == nil {
+		t.Error("zero direction must not marshal")
 	}
 }
 

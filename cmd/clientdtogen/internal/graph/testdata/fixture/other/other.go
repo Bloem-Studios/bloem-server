@@ -15,6 +15,11 @@ type Target struct {
 	Value string `json:"value"`
 }
 
+// Standalone is only reached through a cross-package alias root in fixture.
+type Standalone struct {
+	Only string `json:"only"`
+}
+
 // FrameRate has a polymorphic wire shape and a custom marshaler; only a
 // registry serializer lets a field of this type into the graph.
 type FrameRate struct {

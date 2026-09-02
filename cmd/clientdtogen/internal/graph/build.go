@@ -6,6 +6,7 @@ import (
 	"go/constant"
 	"go/token"
 	"go/types"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
@@ -26,18 +27,26 @@ type Config struct {
 
 // RefusalError is a type-level fact the generator will not guess about
 // (§3.2). Type is the graph key of the offending type; Field is the Go field
-// name when the refusal is field-specific.
+// name when the refusal is field-specific; Pos is the declaration site
+// (repository-relative file) when go/types knows it.
 type RefusalError struct {
 	Type   string
 	Field  string
 	Reason string
+	Pos    token.Position
 }
 
 func (e *RefusalError) Error() string {
-	if e.Field == "" {
-		return fmt.Sprintf("refused %s: %s", e.Type, e.Reason)
+	var b strings.Builder
+	if e.Pos.IsValid() {
+		fmt.Fprintf(&b, "%s: ", e.Pos)
 	}
-	return fmt.Sprintf("refused %s field %s: %s", e.Type, e.Field, e.Reason)
+	fmt.Fprintf(&b, "refused %s", e.Type)
+	if e.Field != "" {
+		fmt.Fprintf(&b, " field %s", e.Field)
+	}
+	fmt.Fprintf(&b, ": %s", e.Reason)
+	return b.String()
 }
 
 // Well-known types outside the module that map to a scalar kind rather than
@@ -99,8 +108,14 @@ type rootRef struct {
 	root registry.Root
 }
 
-func (b *builder) refuse(typeKey, field, reason string) {
-	b.refusals = append(b.refusals, &RefusalError{Type: typeKey, Field: field, Reason: reason})
+func (b *builder) refuse(typeKey, field, reason string, pos token.Pos) {
+	position := b.fset.Position(pos)
+	if position.IsValid() {
+		if rel, err := filepath.Rel(b.cfg.Dir, position.Filename); err == nil {
+			position.Filename = filepath.ToSlash(rel)
+		}
+	}
+	b.refusals = append(b.refusals, &RefusalError{Type: typeKey, Field: field, Reason: reason, Pos: position})
 }
 
 func (b *builder) load() error {
@@ -189,14 +204,14 @@ func (b *builder) resolveRoots() {
 			key := typeKey(rp.Path, root.Type)
 			obj, ok := scope.Lookup(root.Type).(*types.TypeName)
 			if !ok {
-				b.refuse(key, "", "root not found in package "+rp.Path)
+				b.refuse(key, "", "root not found in package "+rp.Path, token.NoPos)
 				continue
 			}
-			ref := b.resolveRef(obj.Type(), key, "")
+			ref := b.resolveRef(obj.Type(), key, "", obj.Pos())
 			t, ok := b.types[ref.Named]
 			if !ok || (ref.Kind != KindStruct && ref.Kind != KindEnum) {
 				if ref.Kind != KindInvalid {
-					b.refuse(key, "", fmt.Sprintf("root must be a struct or a string type with constants, not %s", ref))
+					b.refuse(key, "", fmt.Sprintf("root must be a struct or a string type with constants, not %s", ref), obj.Pos())
 				}
 				continue
 			}
@@ -204,7 +219,7 @@ func (b *builder) resolveRoots() {
 			t.BloemFields = append([]string(nil), root.BloemFields...)
 			for _, wire := range root.BloemFields {
 				if !hasWire(t.Fields, wire) {
-					b.refuse(key, "", fmt.Sprintf("bloem_fields names %q, which is not a wire field", wire))
+					b.refuse(key, "", fmt.Sprintf("bloem_fields names %q, which is not a wire field", wire), obj.Pos())
 				}
 			}
 			b.roots = append(b.roots, rootRef{typ: t, pkg: rp, root: root})
@@ -235,47 +250,47 @@ func (b *builder) checkSerializers() {
 }
 
 // resolveRef maps a Go type to a TypeRef, registering named struct and enum
-// types as a side effect. ownerKey/field name the location for refusals.
-func (b *builder) resolveRef(t types.Type, ownerKey, field string) TypeRef {
+// types as a side effect. ownerKey/field/pos name the location for refusals.
+func (b *builder) resolveRef(t types.Type, ownerKey, field string, pos token.Pos) TypeRef {
 	t = types.Unalias(t)
 	switch tt := t.(type) {
 	case *types.Pointer:
-		inner := b.resolveRef(tt.Elem(), ownerKey, field)
+		inner := b.resolveRef(tt.Elem(), ownerKey, field, pos)
 		if _, isPtr := types.Unalias(tt.Elem()).(*types.Pointer); isPtr {
-			b.refuse(ownerKey, field, "pointer to pointer has no wire meaning")
+			b.refuse(ownerKey, field, "pointer to pointer has no wire meaning", pos)
 			return TypeRef{}
 		}
 		inner.Nullable = true
 		return inner
 	case *types.Named:
-		return b.resolveNamed(tt, ownerKey, field)
+		return b.resolveNamed(tt, ownerKey, field, pos)
 	case *types.Basic:
-		return b.resolveBasic(tt, ownerKey, field)
+		return b.resolveBasic(tt, ownerKey, field, pos)
 	case *types.Slice:
 		if isByte(tt.Elem()) {
 			return TypeRef{Kind: KindBytes}
 		}
-		elem := b.resolveRef(tt.Elem(), ownerKey, field)
+		elem := b.resolveRef(tt.Elem(), ownerKey, field, pos)
 		return TypeRef{Kind: KindList, Elem: &elem}
 	case *types.Array:
-		elem := b.resolveRef(tt.Elem(), ownerKey, field)
+		elem := b.resolveRef(tt.Elem(), ownerKey, field, pos)
 		return TypeRef{Kind: KindList, Elem: &elem}
 	case *types.Map:
 		if basic, ok := types.Unalias(tt.Key()).Underlying().(*types.Basic); !ok || basic.Kind() != types.String {
-			b.refuse(ownerKey, field, fmt.Sprintf("map key %s is not a string", tt.Key()))
+			b.refuse(ownerKey, field, fmt.Sprintf("map key %s is not a string", tt.Key()), pos)
 			return TypeRef{}
 		}
-		elem := b.resolveRef(tt.Elem(), ownerKey, field)
+		elem := b.resolveRef(tt.Elem(), ownerKey, field, pos)
 		return TypeRef{Kind: KindMap, Elem: &elem}
 	case *types.Interface:
 		if tt.Empty() {
 			return TypeRef{Kind: KindRaw, Nullable: true}
 		}
-		b.refuse(ownerKey, field, "non-empty interface type has no wire shape")
+		b.refuse(ownerKey, field, "non-empty interface type has no wire shape", pos)
 	case *types.Struct:
-		b.refuse(ownerKey, field, "anonymous struct: name the type so it can be generated")
+		b.refuse(ownerKey, field, "anonymous struct: name the type so it can be generated", pos)
 	default:
-		b.refuse(ownerKey, field, fmt.Sprintf("unsupported Go type %s", t))
+		b.refuse(ownerKey, field, fmt.Sprintf("unsupported Go type %s", t), pos)
 	}
 	return TypeRef{}
 }
@@ -285,7 +300,7 @@ func isByte(t types.Type) bool {
 	return ok && basic.Kind() == types.Uint8
 }
 
-func (b *builder) resolveBasic(t *types.Basic, ownerKey, field string) TypeRef {
+func (b *builder) resolveBasic(t *types.Basic, ownerKey, field string, pos token.Pos) TypeRef {
 	switch t.Kind() {
 	case types.Bool:
 		return TypeRef{Kind: KindBool}
@@ -298,14 +313,14 @@ func (b *builder) resolveBasic(t *types.Basic, ownerKey, field string) TypeRef {
 	case types.Float32, types.Float64:
 		return TypeRef{Kind: KindDouble}
 	}
-	b.refuse(ownerKey, field, fmt.Sprintf("unsupported basic type %s", t))
+	b.refuse(ownerKey, field, fmt.Sprintf("unsupported basic type %s", t), pos)
 	return TypeRef{}
 }
 
-func (b *builder) resolveNamed(t *types.Named, ownerKey, field string) TypeRef {
+func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token.Pos) TypeRef {
 	obj := t.Obj()
 	if t.TypeParams().Len() > 0 || t.TypeArgs().Len() > 0 {
-		b.refuse(ownerKey, field, fmt.Sprintf("generic type %s", types.TypeString(t, nil)))
+		b.refuse(ownerKey, field, fmt.Sprintf("generic type %s", types.TypeString(t, nil)), pos)
 		return TypeRef{}
 	}
 	qualified := obj.Name()
@@ -315,15 +330,19 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string) TypeRef {
 	if ref, ok := knownNamed[qualified]; ok {
 		return ref
 	}
+	if qualified == "encoding/json.Number" {
+		b.refuse(ownerKey, field, "json.Number is a string in Go but a bare number on the wire; state the numeric type instead", pos)
+		return TypeRef{}
+	}
 	if m := customMarshaler(t); m != "" {
-		b.refuse(ownerKey, field, fmt.Sprintf("%s has a custom %s; add a registry serializer for the field", qualified, m))
+		b.refuse(ownerKey, field, fmt.Sprintf("%s has a custom %s; add a registry serializer for the field", qualified, m), pos)
 		return TypeRef{}
 	}
 	switch under := t.Underlying().(type) {
 	case *types.Struct:
 		path, inModule := b.repoPath(obj.Pkg())
 		if !inModule {
-			b.refuse(ownerKey, field, fmt.Sprintf("struct type %s is outside module %s", qualified, b.module))
+			b.refuse(ownerKey, field, fmt.Sprintf("struct type %s is outside module %s", qualified, b.module), pos)
 			return TypeRef{}
 		}
 		key := typeKey(path, obj.Name())
@@ -337,7 +356,7 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string) TypeRef {
 			if len(consts) > 0 {
 				path, inModule := b.repoPath(obj.Pkg())
 				if !inModule {
-					b.refuse(ownerKey, field, fmt.Sprintf("string type %s with constants is outside module %s", qualified, b.module))
+					b.refuse(ownerKey, field, fmt.Sprintf("string type %s with constants is outside module %s", qualified, b.module), pos)
 					return TypeRef{}
 				}
 				key := typeKey(path, obj.Name())
@@ -352,9 +371,9 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string) TypeRef {
 				return TypeRef{Kind: KindEnum, Named: key}
 			}
 		}
-		return b.resolveBasic(under, ownerKey, field)
+		return b.resolveBasic(under, ownerKey, field, pos)
 	default:
-		return b.resolveRef(under, ownerKey, field)
+		return b.resolveRef(under, ownerKey, field, pos)
 	}
 }
 
@@ -416,6 +435,7 @@ func (b *builder) constantsOf(t *types.Named) []Constant {
 type rawField struct {
 	Field
 	depth int
+	pos   token.Pos
 }
 
 func (b *builder) buildStruct(key string, obj *types.TypeName, st *types.Struct) {
@@ -445,7 +465,7 @@ func (b *builder) collectFields(ownerKey, pkgPath, typeName string, st *types.St
 			continue
 		}
 		if !hasTag {
-			b.refuse(ownerKey, f.Name(), "exported field has no json tag; the contract must state the wire name")
+			b.refuse(ownerKey, f.Name(), "exported field has no json tag; the contract must state the wire name", f.Pos())
 			continue
 		}
 		if tag == "-" {
@@ -453,59 +473,75 @@ func (b *builder) collectFields(ownerKey, pkgPath, typeName string, st *types.St
 		}
 		name, opts, _ := strings.Cut(tag, ",")
 		if name == "" {
-			b.refuse(ownerKey, f.Name(), "json tag has no name; the contract must state the wire name")
+			b.refuse(ownerKey, f.Name(), "json tag has no name; the contract must state the wire name", f.Pos())
 			continue
 		}
 		field := Field{GoName: f.Name(), WireName: name, PromotedFrom: promotedFrom}
 		for _, opt := range strings.Split(opts, ",") {
 			switch opt {
-			case "omitempty", "omitzero":
+			case "omitempty":
+				// encoding/json never omits a struct or array value on omitempty.
+				field.OmitEmpty = canBeEmpty(f.Type())
+			case "omitzero":
 				field.OmitEmpty = true
 			case "string":
-				b.refuse(ownerKey, f.Name(), "json \",string\" option is not representable")
+				b.refuse(ownerKey, f.Name(), "json \",string\" option is not representable", f.Pos())
 			}
 		}
 		serializerKey := registry.SerializerKey(pkgPath, typeName, name)
 		if s, ok := b.cfg.Registry.Serializers[serializerKey]; ok {
 			b.serializersUsed[serializerKey] = true
-			field.Serializer = s
+			field.Serializers = map[string]string{}
+			for lang, name := range s {
+				field.Serializers[lang] = name
+			}
 			_, isPtr := types.Unalias(f.Type()).(*types.Pointer)
 			field.Type = TypeRef{Kind: KindCustom, Nullable: isPtr}
 		} else {
-			field.Type = b.resolveRef(f.Type(), ownerKey, f.Name())
+			field.Type = b.resolveRef(f.Type(), ownerKey, f.Name(), f.Pos())
 		}
-		out = append(out, rawField{Field: field, depth: depth})
+		out = append(out, rawField{Field: field, depth: depth, pos: f.Pos()})
 	}
 	return out
 }
 
+// canBeEmpty reports whether encoding/json's omitempty can ever omit a value
+// of this type: false for structs and arrays, which have no empty value.
+func canBeEmpty(t types.Type) bool {
+	switch types.Unalias(t).Underlying().(type) {
+	case *types.Struct, *types.Array:
+		return false
+	}
+	return true
+}
+
 func (b *builder) collectEmbedded(ownerKey, pkgPath, typeName string, f *types.Var, hasTag bool, depth int) []rawField {
 	if hasTag {
-		b.refuse(ownerKey, f.Name(), "embedded field with a json tag is not supported")
+		b.refuse(ownerKey, f.Name(), "embedded field with a json tag is not supported", f.Pos())
 		return nil
 	}
 	ft := types.Unalias(f.Type())
 	if _, isPtr := ft.(*types.Pointer); isPtr {
-		b.refuse(ownerKey, f.Name(), "embedded pointer is not supported")
+		b.refuse(ownerKey, f.Name(), "embedded pointer is not supported", f.Pos())
 		return nil
 	}
 	named, ok := ft.(*types.Named)
 	if !ok {
-		b.refuse(ownerKey, f.Name(), "embedded field must be a named struct type")
+		b.refuse(ownerKey, f.Name(), "embedded field must be a named struct type", f.Pos())
 		return nil
 	}
 	st, ok := named.Underlying().(*types.Struct)
 	if !ok {
-		b.refuse(ownerKey, f.Name(), fmt.Sprintf("embedded non-struct type %s is not supported", types.TypeString(named, nil)))
+		b.refuse(ownerKey, f.Name(), fmt.Sprintf("embedded non-struct type %s is not supported", types.TypeString(named, nil)), f.Pos())
 		return nil
 	}
 	if named.TypeParams().Len() > 0 || named.TypeArgs().Len() > 0 {
-		b.refuse(ownerKey, f.Name(), fmt.Sprintf("embedded generic type %s", types.TypeString(named, nil)))
+		b.refuse(ownerKey, f.Name(), fmt.Sprintf("embedded generic type %s", types.TypeString(named, nil)), f.Pos())
 		return nil
 	}
 	embPath, inModule := b.repoPath(named.Obj().Pkg())
 	if !inModule {
-		b.refuse(ownerKey, f.Name(), fmt.Sprintf("embedded type %s is outside module %s", types.TypeString(named, nil), b.module))
+		b.refuse(ownerKey, f.Name(), fmt.Sprintf("embedded type %s is outside module %s", types.TypeString(named, nil), b.module), f.Pos())
 		return nil
 	}
 	embKey := typeKey(embPath, named.Obj().Name())
@@ -539,7 +575,7 @@ func resolvePromotion(b *builder, ownerKey string, raw []rawField) []Field {
 		}
 		if winners[f.WireName] > 1 {
 			if !reported[f.WireName] {
-				b.refuse(ownerKey, f.GoName, fmt.Sprintf("wire name %q is declared more than once at the same depth", f.WireName))
+				b.refuse(ownerKey, f.GoName, fmt.Sprintf("wire name %q is declared more than once at the same depth", f.WireName), f.pos)
 				reported[f.WireName] = true
 			}
 			continue

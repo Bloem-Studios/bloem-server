@@ -135,6 +135,11 @@ type Channel struct {
 	C chan int `json:"c"`
 }
 
+// NumberField uses json.Number, a string in Go but a number on the wire.
+type NumberField struct {
+	N json.Number `json:"n"`
+}
+
 // Plain is a named string without constants: not a valid root.
 type Plain string
 

@@ -69,6 +69,11 @@ type Scalars struct {
 	ProtoPtr *Protocol       `json:"proto_ptr,omitempty"`
 	IntPtr   *int            `json:"int_ptr,omitempty"`
 	Omit     int             `json:"omit,omitempty"`
+	TOmit    time.Time       `json:"t_omit,omitempty"`
+	UOmit    uuid.UUID       `json:"u_omit,omitempty"`
+	ROmit    json.RawMessage `json:"raw_omit,omitempty"`
+	BOmit    []byte          `json:"bytes_omit,omitempty"`
+	POmit    Protocol        `json:"proto_omit,omitempty"`
 }
 
 // Child is referenced from several places and from itself (cycle).
@@ -88,6 +93,9 @@ type Collections struct {
 	Fixed        [3]int            `json:"fixed"`
 	Nested       [][]string        `json:"nested"`
 	PtrList      []*Child          `json:"ptr_list"`
+	FixedOmit    [2]int            `json:"fixed_omit,omitempty"`
+	StructOmit   Child             `json:"struct_omit,omitempty"`
+	MapOmit      map[string]int    `json:"map_omit,omitempty"`
 }
 
 // Base is embedded into Embedded.
@@ -157,6 +165,14 @@ type Gated struct {
 	Only  GatedOnly  `json:"only"`
 	Promo *PromoCard `json:"promo,omitempty"`
 }
+
+// Gated2 is a second gated root reaching GatedOnly under another gate.
+type Gated2 struct {
+	Only GatedOnly `json:"only"`
+}
+
+// StandaloneAlias is a cross-package alias registered as a root.
+type StandaloneAlias = other.Standalone
 
 // GatedChild is also reached from the ungated Response root.
 type GatedChild struct {

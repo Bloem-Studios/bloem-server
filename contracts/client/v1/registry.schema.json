@@ -17,13 +17,23 @@
       "items": { "$ref": "#/$defs/package" }
     },
     "serializers": {
-      "description": "Fields whose Go side has a custom marshaler or polymorphic wire shape. Key: '<package path>.<Go type name>.<wire name>'. Value: the fully qualified client-side serializer class the emitter points @Serializable(with = …) at. The generator never emits serializer bodies.",
+      "description": "Fields whose Go side has a custom marshaler or polymorphic wire shape. Key: '<package path>.<Go type name>.<wire name>'. Value: one client-side serializer per target language (kotlin: the fully qualified class the emitter points @Serializable(with = …) at; swift: the wrapper type). Every entry must be consumed by a reached field. The generator never emits serializer bodies.",
       "type": "object",
       "propertyNames": { "pattern": "^[A-Za-z0-9_./-]+\\.[A-Za-z_][A-Za-z0-9_]*\\.[^.\\s]+$" },
-      "additionalProperties": { "type": "string", "minLength": 1 }
+      "additionalProperties": { "$ref": "#/$defs/serializer" }
     }
   },
   "$defs": {
+    "serializer": {
+      "description": "Per-language serializer names. Each language is optional; at least one is required.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "kotlin": { "type": "string", "minLength": 1 },
+        "swift": { "type": "string", "minLength": 1 }
+      }
+    },
     "dialect": {
       "description": "upstream-compat: the shape exists on Silo too. bloem: Bloem-only. Never changes the generated type; carried into the dialect table.",
       "enum": ["upstream-compat", "bloem"]
@@ -76,7 +86,7 @@
           "$ref": "#/$defs/gate"
         },
         "bloem_fields": {
-          "description": "Wire names of Bloem-only fields inside an upstream-compat root. Documentation and dialect table only; decoding never depends on it.",
+          "description": "Wire names of Bloem-only fields inside an upstream-compat root. Root-only: fields of transitively reached types cannot be marked here (register the type as a root, or raise a schema bump). Documentation and dialect table only; decoding never depends on it.",
           "type": "array",
           "uniqueItems": true,
           "items": { "type": "string", "minLength": 1 }

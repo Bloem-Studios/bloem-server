@@ -3,6 +3,7 @@ package graph
 import (
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 )
 
@@ -54,8 +55,17 @@ func dumpType(b *strings.Builder, t *Type) {
 		if f.Dialect != t.Dialect {
 			fmt.Fprintf(b, " dialect=%s", f.Dialect)
 		}
-		if f.Serializer != "" {
-			fmt.Fprintf(b, " serializer=%s", f.Serializer)
+		if len(f.Serializers) > 0 {
+			langs := make([]string, 0, len(f.Serializers))
+			for lang := range f.Serializers {
+				langs = append(langs, lang)
+			}
+			sort.Strings(langs)
+			parts := make([]string, 0, len(langs))
+			for _, lang := range langs {
+				parts = append(parts, lang+":"+f.Serializers[lang])
+			}
+			fmt.Fprintf(b, " serializers=%s", strings.Join(parts, ","))
 		}
 		if f.PromotedFrom != "" {
 			fmt.Fprintf(b, " from=%s", f.PromotedFrom)

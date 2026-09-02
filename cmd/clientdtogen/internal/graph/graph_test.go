@@ -50,14 +50,16 @@ func fixtureRegistry() *registry.Registry {
 				{Type: "AliasRoot", Direction: registry.DirectionResponse},
 				{Type: "Request", Direction: registry.DirectionRequest},
 				{Type: "Gated", Direction: registry.DirectionResponse, Gate: "cap.gated"},
+				{Type: "Gated2", Direction: registry.DirectionResponse, Gate: "cap.other"},
+				{Type: "StandaloneAlias", Direction: registry.DirectionRequest, Dialect: registry.DialectBloem, Gate: "cap.alias"},
 				{Type: "Compat", Direction: registry.DirectionResponse, BloemFields: []string{"promo"}},
 				{Type: "BloemOnly", Direction: registry.DirectionBoth, Dialect: registry.DialectBloem, Gate: "cap.bloem"},
 				{Type: "Protocol", Direction: registry.DirectionRequest},
 			},
 		}},
-		Serializers: map[string]string{
-			fixturePath + ".Response.frame_rate":     "org.example.FrameRateWire",
-			fixturePath + ".Response.frame_rate_ptr": "org.example.FrameRateWire",
+		Serializers: map[string]registry.Serializer{
+			fixturePath + ".Response.frame_rate":     {"kotlin": "org.example.FrameRateWire", "swift": "FrameRateWire"},
+			fixturePath + ".Response.frame_rate_ptr": {"kotlin": "org.example.FrameRateWire"},
 		},
 	}
 }
@@ -148,6 +150,11 @@ func TestScalarRows(t *testing.T) {
 		{"proto_ptr", nullable(enumRef(fixtureKey("Protocol"))), true},
 		{"int_ptr", nullable(ref(KindInt)), true},
 		{"omit", ref(KindInt), true},
+		{"t_omit", ref(KindTime), false}, // struct: encoding/json never omits it
+		{"u_omit", ref(KindUUID), false}, // array: never omitted
+		{"raw_omit", nullable(ref(KindRaw)), true},
+		{"bytes_omit", ref(KindBytes), true},
+		{"proto_omit", enumRef(fixtureKey("Protocol")), true},
 	}
 	if len(typ.Fields) != len(want) {
 		t.Fatalf("Scalars has %d fields, want %d: %v", len(typ.Fields), len(want), wireNames(typ))
@@ -212,14 +219,22 @@ func TestCollectionRows(t *testing.T) {
 		"fixed":         list(ref(KindInt)),
 		"nested":        list(list(ref(KindString))),
 		"ptr_list":      list(nullable(child)),
+		"fixed_omit":    list(ref(KindInt)),
+		"struct_omit":   child,
+		"map_omit":      mapOf(ref(KindInt)),
 	}
 	for wire, w := range want {
 		if got := fieldByWire(t, typ, wire).Type; !reflect.DeepEqual(got, w) {
 			t.Errorf("%s: %s, want %s", wire, got, w)
 		}
 	}
-	if !fieldByWire(t, typ, "structs").OmitEmpty || !fieldByWire(t, typ, "optional_list").OmitEmpty {
-		t.Error("omitempty lost on collection fields")
+	for wire, want := range map[string]bool{
+		"structs": true, "optional_list": true, "map_omit": true,
+		"fixed_omit": false, "struct_omit": false,
+	} {
+		if got := fieldByWire(t, typ, wire).OmitEmpty; got != want {
+			t.Errorf("%s: OmitEmpty %v, want %v (omitempty only applies to values encoding/json can omit)", wire, got, want)
+		}
 	}
 	if next := fieldByWire(t, mustType(t, g, fixtureKey("Child")), "next").Type; !reflect.DeepEqual(next, nullable(child)) {
 		t.Errorf("self-referential Child.next = %s", next)
@@ -285,12 +300,16 @@ func TestAliasAndSerializers(t *testing.T) {
 		t.Error("alias must not be a graph type")
 	}
 	f := fieldByWire(t, resp, "frame_rate")
-	if f.Type.Kind != KindCustom || f.Type.Nullable || f.Serializer != "org.example.FrameRateWire" {
-		t.Errorf("frame_rate = %s serializer=%q", f.Type, f.Serializer)
+	wantSer := map[string]string{"kotlin": "org.example.FrameRateWire", "swift": "FrameRateWire"}
+	if f.Type.Kind != KindCustom || f.Type.Nullable || !reflect.DeepEqual(f.Serializers, wantSer) {
+		t.Errorf("frame_rate = %s serializers=%v", f.Type, f.Serializers)
 	}
 	fp := fieldByWire(t, resp, "frame_rate_ptr")
-	if fp.Type.Kind != KindCustom || !fp.Type.Nullable {
-		t.Errorf("frame_rate_ptr = %s, want Custom?", fp.Type)
+	if fp.Type.Kind != KindCustom || !fp.Type.Nullable || !reflect.DeepEqual(fp.Serializers, map[string]string{"kotlin": "org.example.FrameRateWire"}) {
+		t.Errorf("frame_rate_ptr = %s serializers=%v, want Custom? kotlin only", fp.Type, fp.Serializers)
+	}
+	if fieldByWire(t, resp, "target").Serializers != nil {
+		t.Error("a plain field must carry no serializers")
 	}
 	if _, ok := g.Type(otherKey("FrameRate")); ok {
 		t.Error("a serializer field's Go type must not be walked")
@@ -305,8 +324,8 @@ func TestAliasAndSerializers(t *testing.T) {
 	if other == nil || other.Registered {
 		t.Fatalf("package other must appear as reached (unregistered): %+v", other)
 	}
-	if len(other.Types) != 1 || other.Types[0].Name != "Target" {
-		t.Errorf("other package types = %v", other.Types)
+	if len(other.Types) != 2 || other.Types[0].Name != "Standalone" || other.Types[1].Name != "Target" {
+		t.Errorf("other package types = %v", typeNames(other))
 	}
 	if other.ImportPath != g.ModulePath+"/"+otherPath {
 		t.Errorf("import path %q", other.ImportPath)
@@ -341,8 +360,8 @@ func TestGateAndDialectPropagation(t *testing.T) {
 	if got := mustType(t, g, fixtureKey("Gated")).Gates; !reflect.DeepEqual(got, []string{"cap.gated"}) {
 		t.Errorf("Gated gates = %v", got)
 	}
-	if got := mustType(t, g, fixtureKey("GatedOnly")).Gates; !reflect.DeepEqual(got, []string{"cap.gated"}) {
-		t.Errorf("GatedOnly gates = %v, want inherited cap.gated", got)
+	if got := mustType(t, g, fixtureKey("GatedOnly")).Gates; !containsString(got, "cap.gated") {
+		t.Errorf("GatedOnly gates = %v, want inherited cap.gated (full set pinned in TestMultipleGates)", got)
 	}
 	if got := mustType(t, g, fixtureKey("GatedChild")).Gates; len(got) != 0 {
 		t.Errorf("GatedChild gates = %v, want none: it is also reached from the ungated Response root", got)
@@ -411,6 +430,44 @@ func TestUnreachedAndPackageOrder(t *testing.T) {
 	}
 }
 
+func typeNames(p *Package) []string {
+	out := make([]string, 0, len(p.Types))
+	for _, t := range p.Types {
+		out = append(out, t.Name)
+	}
+	return out
+}
+
+// TestCrossPackageAliasRoot: a root registered under an alias lands in the
+// alias target's (reached) package and carries the registering root's
+// metadata.
+func TestCrossPackageAliasRoot(t *testing.T) {
+	g := buildFixture(t)
+	if _, ok := g.Type(fixtureKey("StandaloneAlias")); ok {
+		t.Error("alias name must not be a graph type")
+	}
+	typ := mustType(t, g, otherKey("Standalone"))
+	if typ.Package.Path != otherPath || typ.Package.Registered {
+		t.Errorf("Standalone lives in %q registered=%v", typ.Package.Path, typ.Package.Registered)
+	}
+	if !typ.Root || typ.Direction != registry.DirectionRequest || typ.Dialect != registry.DialectBloem ||
+		!reflect.DeepEqual(typ.Gates, []string{"cap.alias"}) {
+		t.Errorf("Standalone root=%v direction=%s dialect=%s gates=%v", typ.Root, typ.Direction, typ.Dialect, typ.Gates)
+	}
+}
+
+// TestMultipleGates pins the ruling: a type reached under two distinct gates
+// carries the sorted set, and any one advertised gate suffices to decode it.
+func TestMultipleGates(t *testing.T) {
+	g := buildFixture(t)
+	if got := mustType(t, g, fixtureKey("GatedOnly")).Gates; !reflect.DeepEqual(got, []string{"cap.gated", "cap.other"}) {
+		t.Errorf("GatedOnly gates = %v, want [cap.gated cap.other]", got)
+	}
+	if got := mustType(t, g, fixtureKey("Gated2")).Gates; !reflect.DeepEqual(got, []string{"cap.other"}) {
+		t.Errorf("Gated2 gates = %v", got)
+	}
+}
+
 func packagePaths(g *Graph) []string {
 	out := make([]string, 0, len(g.Packages))
 	for _, p := range g.Packages {
@@ -441,9 +498,11 @@ func TestDumpIsDeterministic(t *testing.T) {
 		"package " + otherPath + " reached\n",
 		"  struct Compat direction=response dialect=upstream-compat root bloem_fields=promo\n",
 		"    promo Promo Struct " + fixturePath + ".PromoCard? omitempty dialect=bloem\n",
-		"  struct GatedOnly direction=response dialect=upstream-compat gate=cap.gated\n",
 		"  enum Protocol direction=both dialect=upstream-compat root\n    ProtocolHLS = \"hls\"\n",
-		"    frame_rate Rate Custom serializer=org.example.FrameRateWire\n",
+		"    frame_rate Rate Custom serializers=kotlin:org.example.FrameRateWire,swift:FrameRateWire\n",
+		"    frame_rate_ptr RatePtr Custom? omitempty serializers=kotlin:org.example.FrameRateWire\n",
+		"  struct GatedOnly direction=response dialect=upstream-compat gate=cap.gated,cap.other\n",
+		"package " + otherPath + " reached\n  struct Standalone direction=request dialect=bloem gate=cap.alias root\n",
 		"    id ID Long from=" + fixturePath + ".Base\n",
 		"  unreached Orphan\n",
 	} {
@@ -479,6 +538,7 @@ func TestRefusals(t *testing.T) {
 		{"uint", "Unsigned", refuseKey("Unsigned"), "U", "unsupported basic type uint"},
 		{"outside module", "Outside", refuseKey("Outside"), "L", "outside module"},
 		{"channel", "Channel", refuseKey("Channel"), "C", "unsupported Go type"},
+		{"json.Number", "NumberField", refuseKey("NumberField"), "N", "json.Number"},
 		{"unknown root", "Missing", refuseKey("Missing"), "", "root not found"},
 		{"root not a wire type", "Plain", refuseKey("Plain"), "", "root must be a struct"},
 	}
@@ -506,6 +566,14 @@ func TestRefusals(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), tc.root) {
 				t.Errorf("error %q does not name the Go type %s", err, tc.root)
+			}
+			if tc.wantField != "" {
+				if refusal.Pos.Filename != refusePath+"/refuse.go" || refusal.Pos.Line == 0 {
+					t.Errorf("refusal position = %s, want %s/refuse.go:<line>", refusal.Pos, refusePath)
+				}
+				if !strings.HasPrefix(err.Error(), refusePath+"/refuse.go:") {
+					t.Errorf("error %q does not start with the repository-relative position", err)
+				}
 			}
 		})
 	}
@@ -549,7 +617,7 @@ func TestRegistryLevelRefusals(t *testing.T) {
 			Path:    refusePath,
 			Dialect: registry.DialectUpstreamCompat,
 			Roots:   []registry.Root{{Type: "Fine", Direction: registry.DirectionResponse}},
-		}}, Serializers: map[string]string{refusePath + ".Fine.missing": "x.Y"}}
+		}}, Serializers: map[string]registry.Serializer{refusePath + ".Fine.missing": {"kotlin": "x.Y"}}}
 		_, err := Build(Config{Dir: root, Registry: reg})
 		if err == nil || !strings.Contains(err.Error(), "matches no reached field") {
 			t.Fatalf("err = %v", err)

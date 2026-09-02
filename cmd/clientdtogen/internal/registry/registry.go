@@ -95,19 +95,28 @@ func (d *Direction) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// MarshalJSON writes the registry spelling.
+// MarshalJSON writes the registry spelling; the zero Direction has none.
 func (d Direction) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.String())
+	switch d {
+	case DirectionRequest, DirectionResponse, DirectionBoth:
+		return json.Marshal(d.String())
+	}
+	return nil, fmt.Errorf("direction %d has no registry spelling", d)
 }
 
 // Registry is the parsed registry.json.
 type Registry struct {
 	Schema   int       `json:"schema"`
 	Packages []Package `json:"packages"`
-	// Serializers maps "<package path>.<Go type>.<wire name>" to a client-side
-	// serializer class. See the schema description.
-	Serializers map[string]string `json:"serializers,omitempty"`
+	// Serializers maps "<package path>.<Go type>.<wire name>" to the
+	// client-side serializer per target language ("kotlin", "swift"). See
+	// the schema description.
+	Serializers map[string]Serializer `json:"serializers,omitempty"`
 }
+
+// Serializer names the client-side serializer for one field, per target
+// language. Languages absent here are the emitter's error to raise.
+type Serializer map[string]string
 
 // Package is one registered Go package. Gate and Dialect are the defaults for
 // its roots.

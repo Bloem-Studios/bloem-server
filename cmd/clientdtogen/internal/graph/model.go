@@ -36,7 +36,7 @@ const (
 	KindDouble       // float32, float64
 	KindTime         // time.Time (RFC 3339 string on the wire)
 	KindUUID         // github.com/google/uuid.UUID (string on the wire)
-	KindBytes        // []byte (base64 string on the wire)
+	KindBytes        // []byte: base64 string on the wire, but a nil slice marshals as null, so emitters treat it like List (coerce/default)
 	KindRaw          // json.RawMessage, any: an arbitrary JSON value, always nullable
 	KindList         // []T, [N]T
 	KindMap          // map[string]T
@@ -130,9 +130,10 @@ type Field struct {
 	// Dialect is bloem when the registry lists the field in bloem_fields of an
 	// upstream-compat root; otherwise it is the owning type's dialect.
 	Dialect registry.Dialect
-	// Serializer is the client-side serializer class from the registry, set
-	// only when Type.Kind == KindCustom.
-	Serializer string
+	// Serializers maps target language ("kotlin", "swift") to the
+	// client-side serializer from the registry; set only when Type.Kind ==
+	// KindCustom. An emitter whose language is missing must fail.
+	Serializers map[string]string
 	// PromotedFrom is the graph key of the embedded struct this field was
 	// inlined from, or "" for a field declared directly on the type.
 	PromotedFrom string
@@ -165,8 +166,11 @@ type Type struct {
 	// Dialect is upstream-compat when any path from a root reaches the type
 	// without crossing a bloem root or a bloem_fields field; otherwise bloem.
 	Dialect registry.Dialect
-	// Gates lists the capability gates guarding the type, sorted. Empty when
-	// any reaching root is ungated (or reaches it through an ungated path).
+	// Gates lists the capability gates guarding the type, sorted and
+	// de-duplicated. Semantics: the client may decode the type once ANY ONE of
+	// them is advertised (each gate is a sufficient path from a root), so the
+	// emitter joins them rather than requiring all. Empty when any reaching
+	// root is ungated or reaches it through an ungated path.
 	Gates []string
 	// Root is set when the registry lists the type directly.
 	Root bool
