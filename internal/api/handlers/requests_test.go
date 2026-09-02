@@ -435,3 +435,28 @@ func TestHandleCreateValidationErrorResponsePinsWire(t *testing.T) {
 		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
 	}
 }
+
+// TestHandleCreateQuotaErrorResponsePinsWire pins the 429 body
+// writeRequestServiceError writes when the quota is exhausted: the named
+// requestQuotaErrorResponse replaced an inline struct literal, and this test
+// proves the marshalled bytes did not change — same field names, same tags,
+// same order of population.
+func TestHandleCreateQuotaErrorResponsePinsWire(t *testing.T) {
+	svc := &fakeRequestService{}
+	svc.createErr = mediarequests.QuotaError{Used: 5, Limit: 5, WindowDays: 7}
+	h := NewRequestsHandler(svc)
+
+	req := authedRequest("POST", "/api/v1/requests")
+	req.Body = io.NopCloser(strings.NewReader(`{"tmdb_id":42}`))
+
+	rec := httptest.NewRecorder()
+	h.HandleCreate(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, want 429; body=%s", rec.Code, rec.Body.String())
+	}
+	want := `{"error":"quota_exceeded","message":"Request quota exceeded","used":5,"limit":5,"window_days":7}`
+	if got := strings.TrimSuffix(rec.Body.String(), "\n"); got != want {
+		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
+	}
+}

@@ -773,6 +773,18 @@ type requestValidationErrorResponse struct {
 	FormError   string            `json:"form_error"`
 }
 
+// requestQuotaErrorResponse is the 429 body writeRequestServiceError writes
+// when the viewer has exhausted their request quota. It was an inline struct
+// literal, which had no nameable type for the client DTO registry
+// (contracts/client/v1/registry.json).
+type requestQuotaErrorResponse struct {
+	Error      string `json:"error"`
+	Message    string `json:"message"`
+	Used       int    `json:"used"`
+	Limit      int    `json:"limit"`
+	WindowDays int    `json:"window_days"`
+}
+
 func writeRequestServiceError(w http.ResponseWriter, err error) {
 	// Plugin/instance validation failures carry inline field/form errors; surface
 	// them as a structured 400 so any handler routing through here renders them
@@ -789,13 +801,7 @@ func writeRequestServiceError(w http.ResponseWriter, err error) {
 	var quota mediarequests.QuotaError
 	switch {
 	case errors.As(err, &quota):
-		writeJSON(w, http.StatusTooManyRequests, struct {
-			Error      string `json:"error"`
-			Message    string `json:"message"`
-			Used       int    `json:"used"`
-			Limit      int    `json:"limit"`
-			WindowDays int    `json:"window_days"`
-		}{
+		writeJSON(w, http.StatusTooManyRequests, requestQuotaErrorResponse{
 			Error:      "quota_exceeded",
 			Message:    "Request quota exceeded",
 			Used:       quota.Used,
