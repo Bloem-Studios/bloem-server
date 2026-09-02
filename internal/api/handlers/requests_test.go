@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -23,6 +24,7 @@ type fakeRequestService struct {
 	browseFn       func(kind, slug string, mediaType mediarequests.MediaType, sort string, page int) (*mediarequests.DiscoverBrowseResponse, error)
 	discoverAllFn  func() ([]mediarequests.DiscoverySection, error)
 	listMineFn     func() ([]*mediarequests.Request, error)
+	createErr      error
 }
 
 func (f *fakeRequestService) ListStudios(context.Context, mediarequests.Viewer) ([]mediarequests.DiscoverBrandCard, error) {
@@ -78,7 +80,7 @@ func (f *fakeRequestService) GetDetail(context.Context, mediarequests.Viewer, me
 }
 
 func (f *fakeRequestService) CreateRequest(context.Context, mediarequests.Viewer, mediarequests.CreateRequestInput) (*mediarequests.Request, error) {
-	return nil, nil
+	return nil, f.createErr
 }
 
 func (f *fakeRequestService) ListMine(context.Context, mediarequests.Viewer, mediarequests.ListFilter) ([]*mediarequests.Request, error) {
@@ -401,6 +403,34 @@ func TestHandleListMinePinsWire(t *testing.T) {
 		t.Fatalf("status = %d, want 200; body=%s", rec.Code, rec.Body.String())
 	}
 	want := `{"requests":[{"id":"req-1","provider":"tmdb","media_type":"movie","tmdb_id":42,"title":"Arrival","status":"","outcome":"","is_anime":false,"created_at":"2026-01-02T03:04:05Z","updated_at":"2026-01-02T03:04:05Z"}]}`
+	if got := strings.TrimSuffix(rec.Body.String(), "\n"); got != want {
+		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
+	}
+}
+
+// TestHandleCreateValidationErrorResponsePinsWire pins the 400 body
+// writeRequestServiceError writes for a validation failure: the named
+// requestValidationErrorResponse replaced an inline map[string]any literal,
+// and this test proves the marshalled bytes did not change — same keys, same
+// values, and the map's sorted key order reproduced by the field order.
+func TestHandleCreateValidationErrorResponsePinsWire(t *testing.T) {
+	svc := &fakeRequestService{}
+	svc.createErr = &mediarequests.ValidationError{
+		FieldErrors: map[string]string{"tmdb_id": "must be positive"},
+		FormError:   "",
+	}
+	h := NewRequestsHandler(svc)
+
+	req := authedRequest("POST", "/api/v1/requests")
+	req.Body = io.NopCloser(strings.NewReader(`{"tmdb_id":0}`))
+
+	rec := httptest.NewRecorder()
+	h.HandleCreate(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+	want := `{"error":"validation_failed","field_errors":{"tmdb_id":"must be positive"},"form_error":""}`
 	if got := strings.TrimSuffix(rec.Body.String(), "\n"); got != want {
 		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
 	}

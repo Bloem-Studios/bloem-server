@@ -761,16 +761,28 @@ func toIntegrationResponses(integrations []mediarequests.Integration) []requestI
 	return out
 }
 
+// requestValidationErrorResponse is the 400 body writeRequestServiceError
+// writes when request creation fails field validation. It was an inline
+// map[string]any literal, which had no nameable type for the client DTO
+// registry (contracts/client/v1/registry.json). The map marshalled its keys
+// in sorted order; the struct declares the fields in that same order so the
+// bytes are unchanged, including the empty form_error the map always wrote.
+type requestValidationErrorResponse struct {
+	Error       string            `json:"error"`
+	FieldErrors map[string]string `json:"field_errors"`
+	FormError   string            `json:"form_error"`
+}
+
 func writeRequestServiceError(w http.ResponseWriter, err error) {
 	// Plugin/instance validation failures carry inline field/form errors; surface
 	// them as a structured 400 so any handler routing through here renders them
 	// inline. Checked first because *ValidationError does not wrap a sentinel.
 	var verr *mediarequests.ValidationError
 	if errors.As(err, &verr) {
-		writeJSON(w, http.StatusBadRequest, map[string]any{
-			"error":        "validation_failed",
-			"field_errors": verr.FieldErrors,
-			"form_error":   verr.FormError,
+		writeJSON(w, http.StatusBadRequest, requestValidationErrorResponse{
+			Error:       "validation_failed",
+			FieldErrors: verr.FieldErrors,
+			FormError:   verr.FormError,
 		})
 		return
 	}
