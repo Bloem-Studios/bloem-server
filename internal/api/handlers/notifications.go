@@ -52,6 +52,20 @@ type notificationSyncResponse struct {
 	UnreadCount   int                                `json:"unread_count"`
 }
 
+// notificationReadPayload is the payload published on the notifications
+// events channel when notifications are marked read. It was an inline
+// map[string]any literal built conditionally, which had no nameable type for
+// the client DTO registry (contracts/client/v1/registry.json). The map
+// marshalled its keys in sorted order and omitted absent ones; the struct
+// declares the fields in that same order with the same omitempty behaviour so
+// the bytes are unchanged: "id" set means one notification, "all" means every
+// notification, never both.
+type notificationReadPayload struct {
+	All       bool   `json:"all,omitempty"`
+	ID        string `json:"id,omitempty"`
+	ProfileID string `json:"profile_id"`
+}
+
 // notificationDismissedPayload is the payload published on the notifications
 // events channel when a notification is dismissed. It was an inline
 // map[string]any literal, which had no nameable type for the client DTO
@@ -315,11 +329,11 @@ func (h *NotificationsHandler) publishReadEvent(r *http.Request, userID int, pro
 	if h.hub == nil {
 		return
 	}
-	payload := map[string]any{"profile_id": profileID}
+	payload := notificationReadPayload{ProfileID: profileID}
 	if id != "" {
-		payload["id"] = id
+		payload.ID = id
 	} else {
-		payload["all"] = true
+		payload.All = true
 	}
 	_ = h.hub.PublishJSON(r.Context(), evt.ChannelNotifications, notifications.EventNotificationRead,
 		payload, evt.PublishOptions{UserID: userID, ProfileID: profileID})
