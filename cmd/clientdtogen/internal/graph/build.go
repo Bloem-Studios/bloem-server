@@ -57,9 +57,13 @@ var knownNamed = map[string]TypeRef{
 	"encoding/json.RawMessage":    {Kind: KindRaw, Nullable: true},
 }
 
-// marshalerMethods are the method names encoding/json dispatches on. A type
-// carrying any of them has a wire shape the graph cannot see.
-var marshalerMethods = []string{"MarshalJSON", "UnmarshalJSON", "MarshalText", "UnmarshalText"}
+// marshalerMethods are the method names encoding/json dispatches on, split by
+// the side of the wire they change: marshal-side methods hide the response
+// shape, unmarshal-side methods hide the request shape.
+var (
+	marshalMethods   = []string{"MarshalJSON", "MarshalText"}
+	unmarshalMethods = []string{"UnmarshalJSON", "UnmarshalText"}
+)
 
 // Build loads the registered packages and returns the type graph, or an error
 // joining every refusal found so a registry author sees them all at once.
@@ -74,6 +78,7 @@ func Build(cfg Config) (*Graph, error) {
 		packages:        map[string]*Package{},
 		serializersUsed: map[string]bool{},
 		embedded:        map[string]bool{},
+		unmarshalOnly:   map[string]string{},
 	}
 	if err := b.load(); err != nil {
 		return nil, err
@@ -84,6 +89,10 @@ func Build(cfg Config) (*Graph, error) {
 		return nil, errors.Join(b.refusals...)
 	}
 	b.propagate()
+	b.checkUnmarshalOnly()
+	if len(b.refusals) > 0 {
+		return nil, errors.Join(b.refusals...)
+	}
 	b.recordUnreached()
 	return b.finish(), nil
 }
@@ -100,6 +109,10 @@ type builder struct {
 	refusals        []error
 	serializersUsed map[string]bool
 	embedded        map[string]bool // graph keys of structs inlined somewhere
+	// unmarshalOnly maps the graph key of every reached type carrying a
+	// custom unmarshaler (and no custom marshaler) to the method name. Such
+	// types are response-only: their request shape is invisible.
+	unmarshalOnly map[string]string
 }
 
 type rootRef struct {
@@ -249,6 +262,27 @@ func (b *builder) checkSerializers() {
 	}
 }
 
+// checkUnmarshalOnly refuses reached types that carry a custom unmarshaler
+// and ended up request-reachable: their request wire shape is invisible, so
+// generating them would let a client encode bytes the server cannot read.
+// Runs after propagation, when directions are final.
+func (b *builder) checkUnmarshalOnly() {
+	keys := make([]string, 0, len(b.unmarshalOnly))
+	for key := range b.unmarshalOnly {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		t := b.types[key]
+		if t == nil {
+			continue
+		}
+		if t.Direction.Request() {
+			b.refuse(key, "", fmt.Sprintf("%s has a custom %s; its request shape is invisible, so it may only be registered response-reachable", key, b.unmarshalOnly[key]), token.NoPos)
+		}
+	}
+}
+
 // resolveRef maps a Go type to a TypeRef, registering named struct and enum
 // types as a side effect. ownerKey/field/pos name the location for refusals.
 func (b *builder) resolveRef(t types.Type, ownerKey, field string, pos token.Pos) TypeRef {
@@ -334,9 +368,20 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token
 		b.refuse(ownerKey, field, "json.Number is a string in Go but a bare number on the wire; state the numeric type instead", pos)
 		return TypeRef{}
 	}
-	if m := customMarshaler(t); m != "" {
-		b.refuse(ownerKey, field, fmt.Sprintf("%s has a custom %s; add a registry serializer for the field", qualified, m), pos)
+	if m := hasCustomMarshal(t); m != "" {
+		b.refuse(ownerKey, field, fmt.Sprintf("%s has a custom %s; its response shape is invisible — add a registry serializer for the field or project it into a named type", qualified, m), pos)
 		return TypeRef{}
+	}
+	if u := hasCustomUnmarshal(t); u != "" {
+		// A custom unmarshaler changes only how the server reads the value;
+		// the bytes it writes are still the plain struct. The type may join
+		// the graph, but only as response-reachable — checked after
+		// propagation, when directions are known.
+		key := ""
+		if path, inModule := b.repoPath(obj.Pkg()); inModule {
+			key = typeKey(path, obj.Name())
+		}
+		b.unmarshalOnly[key] = u
 	}
 	switch under := t.Underlying().(type) {
 	case *types.Struct:
@@ -377,11 +422,21 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token
 	}
 }
 
-// customMarshaler returns the first encoding/json-relevant method the type or
-// its pointer carries, or "".
-func customMarshaler(t types.Type) string {
+// hasCustomMarshal reports the first marshal-side method (which hides the
+// response shape) the type or its pointer carries, or "".
+func hasCustomMarshal(t types.Type) string {
+	return firstMethod(t, marshalMethods)
+}
+
+// hasCustomUnmarshal reports the first unmarshal-side method (which hides the
+// request shape) the type or its pointer carries, or "".
+func hasCustomUnmarshal(t types.Type) string {
+	return firstMethod(t, unmarshalMethods)
+}
+
+func firstMethod(t types.Type, names []string) string {
 	for _, set := range []*types.MethodSet{types.NewMethodSet(t), types.NewMethodSet(types.NewPointer(t))} {
-		for _, name := range marshalerMethods {
+		for _, name := range names {
 			if set.Lookup(nil, name) != nil {
 				return name
 			}
