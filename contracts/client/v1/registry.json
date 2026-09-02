@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "path": "internal/playback",
+      "dialect": "upstream-compat",
+      "roots": [
+        {"type": "StartRequestV3", "direction": "request"},
+        {"type": "ReplanRequestV3", "direction": "request"},
+        {"type": "RouteEventV3", "direction": "request"},
+        {"type": "DecisionResponseV3", "direction": "response"},
+        {"type": "CapabilityResponseV3", "direction": "response"},
+        {"type": "ErrorResponseV3", "direction": "response"},
+        {"type": "EventEnvelope", "direction": "response", "gate": "realtime"},
+        {"type": "CommandEnvelope", "direction": "response", "gate": "realtime"},
+        {"type": "HelloEnvelope", "direction": "request", "gate": "realtime"},
+        {"type": "AckEnvelope", "direction": "request", "gate": "realtime"},
+        {"type": "ResultEnvelope", "direction": "request", "gate": "realtime"},
+        {"type": "ChapterThumbnailReadyPayload", "direction": "response", "gate": "realtime"}
+      ]
+    }
+  ]
+}
