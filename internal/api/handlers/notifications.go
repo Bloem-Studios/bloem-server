@@ -52,6 +52,17 @@ type notificationSyncResponse struct {
 	UnreadCount   int                                `json:"unread_count"`
 }
 
+// notificationDismissedPayload is the payload published on the notifications
+// events channel when a notification is dismissed. It was an inline
+// map[string]any literal, which had no nameable type for the client DTO
+// registry (contracts/client/v1/registry.json). The map marshalled its keys
+// in sorted order; the struct declares the fields in that same order so the
+// bytes are unchanged.
+type notificationDismissedPayload struct {
+	ID        string `json:"id"`
+	ProfileID string `json:"profile_id"`
+}
+
 type unreadCountResponse struct {
 	Count int `json:"count"`
 }
@@ -279,7 +290,7 @@ func (h *NotificationsHandler) HandleDismiss(w http.ResponseWriter, r *http.Requ
 	}
 	if transitioned && h.hub != nil {
 		_ = h.hub.PublishJSON(r.Context(), evt.ChannelNotifications, notifications.EventNotificationDismissed,
-			map[string]any{"profile_id": profileID, "id": id},
+			notificationDismissedPayload{ID: id, ProfileID: profileID},
 			evt.PublishOptions{UserID: userID, ProfileID: profileID})
 	}
 	w.WriteHeader(http.StatusNoContent)
