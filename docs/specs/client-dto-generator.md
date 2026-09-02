@@ -630,3 +630,12 @@ Each with the default the implementation takes if unanswered.
 9. **Bloem-only field marking in upstream-compat types.** Default: registry `bloem_fields`
    lists (documentation + dialect table only; decoding does not depend on them). Alternative:
    struct tags on the Go side — rejected because it edits upstream-identical files.
+
+### Owner answers (2026-09-02)
+
+- Q1 property identifier rule: **camelCase from the Go field name** (default). Declaration lines
+  are what the provenance gate measures; identifier coincidence with v2 is acceptable.
+- Q8 Swift emission: **YES — bloem-apple is in scope for the same generator.** C2 designs the
+  emitter interface for two targets from the start (`-lang kotlin|swift`); the Swift emitter itself
+  is a later chunk (C7) after C3, with the same provenance rule vs the v2 apple client.
+- All other questions: the stated defaults.
