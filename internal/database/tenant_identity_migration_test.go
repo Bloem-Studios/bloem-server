@@ -58,7 +58,7 @@ func TestTenantIdentityMigrationPreviousVersionIsImmediatePredecessor(t *testing
 }
 
 func TestTenantIdentityMigrationRunbookUsesImmediateRollbackTarget(t *testing.T) {
-	runbook, err := os.ReadFile("../../docs/architecture/v2-security-foundation.md")
+	runbook, err := os.ReadFile("../../docs/architecture/bloem-security-foundation.md")
 	if err != nil {
 		t.Fatalf("read tenant security runbook: %v", err)
 	}
