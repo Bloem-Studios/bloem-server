@@ -9,13 +9,17 @@ import (
 	"github.com/Silo-Server/silo-server/internal/serverid"
 )
 
-// serverAPIMajorVersions are the API major versions this build serves. Both are
-// mounted unconditionally: /api/v1 is the Silo-compatible projection, /api/bloem/v1 is
-// the native Bloem API. Clients use the list to decide whether a discovered
-// server is worth connecting to at all; everything finer-grained is
-// feature-detected through GET /api/bloem/v1/capabilities, never inferred from a
-// version.
-var serverAPIMajorVersions = []int{1, 2}
+// serverAPIMajorVersions are the Silo-compatible API major versions this build
+// serves. It says nothing about the native surface: upstream Silo will serve
+// its own major 2, so a number cannot tell a client whether the server it
+// reached speaks this project's API. That is what nativeAPISurfaces is for.
+var serverAPIMajorVersions = []int{1}
+
+// nativeAPISurfaces are the native surface versions mounted under /api/bloem/.
+// Clients use the list to decide whether a discovered server speaks this API at
+// all; everything finer-grained is feature-detected through
+// GET /api/bloem/v1/capabilities, never inferred from a version.
+var nativeAPISurfaces = []string{"v1"}
 
 // SetupStateReporter reports whether the deployment still needs its first
 // account. *auth.Service satisfies it.
@@ -67,11 +71,12 @@ func NewServerIdentityHandler(
 // ServerIdentity schema, which requires it; the rest is what scope keying
 // needs. Fields are additive-only from here.
 type serverIdentityResponse struct {
-	Status        string `json:"status"`
-	ServerID      string `json:"server_id"`
-	ServerName    string `json:"server_name"`
-	APIVersions   []int  `json:"api_versions"`
-	SetupComplete bool   `json:"setup_complete"`
+	Status        string   `json:"status"`
+	ServerID      string   `json:"server_id"`
+	ServerName    string   `json:"server_name"`
+	APIVersions   []int    `json:"api_versions"`
+	BloemAPI      []string `json:"bloem_api"`
+	SetupComplete bool     `json:"setup_complete"`
 }
 
 // HandleGetServerIdentity answers the public identity probe.
@@ -110,6 +115,7 @@ func (h *ServerIdentityHandler) HandleGetServerIdentity(w http.ResponseWriter, r
 		ServerID:      serverID,
 		ServerName:    h.serverName(ctx),
 		APIVersions:   append([]int(nil), serverAPIMajorVersions...),
+		BloemAPI:      append([]string(nil), nativeAPISurfaces...),
 		SetupComplete: !needsSetup,
 	})
 }

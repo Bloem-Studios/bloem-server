@@ -190,12 +190,27 @@ func TestServerIdentityReportsAPIVersionsAndSetupState(t *testing.T) {
 				}
 				served = append(served, number)
 			}
-			// Both majors are mounted unconditionally: /api/v1 is the
-			// Silo-compatible projection and /api/bloem/v1 is the native API.
-			for _, want := range []float64{1, 2} {
-				if !slices.Contains(served, want) {
-					t.Errorf("api_versions = %v, want it to contain %v", served, want)
+			// api_versions means Silo-compatible majors and nothing else.
+			// The native surface is named separately, because a number cannot
+			// distinguish this server from an upstream Silo one serving its
+			// own API at the same major.
+			if !slices.Equal(served, []float64{1}) {
+				t.Errorf("api_versions = %v, want exactly [1]", served)
+			}
+			surfaces, ok := response.Body["bloem_api"].([]any)
+			if !ok {
+				t.Fatalf("bloem_api = %v, want a list", response.Body["bloem_api"])
+			}
+			named := make([]string, 0, len(surfaces))
+			for _, surface := range surfaces {
+				text, isText := surface.(string)
+				if !isText {
+					t.Fatalf("bloem_api contains a non-string: %v", surfaces)
 				}
+				named = append(named, text)
+			}
+			if !slices.Equal(named, []string{"v1"}) {
+				t.Errorf("bloem_api = %v, want [v1]", named)
 			}
 			if response.Body["setup_complete"] != tc.setupComplete {
 				t.Fatalf("setup_complete = %v, want %v", response.Body["setup_complete"], tc.setupComplete)
