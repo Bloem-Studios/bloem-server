@@ -1,4 +1,4 @@
-.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize
+.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures client-digest verify-client-digest lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -181,6 +181,19 @@ verify-playback-fixtures:
 			|| { echo "::error::$(PLAYBACK_SCHEMA_FIXTURE_DIR)/$$fixture is stale; run make playback-fixtures"; exit 1; }; \
 	done
 	@echo "playback fixtures are current"
+
+# Re-pin contracts/client/v1/digest.txt: the digest of the normalised type
+# graph next to the digest of the pre-lock removals table in
+# docs/architecture/v1-scope.md (docs/specs/client-dto-generator.md §7.2).
+# The clientdtogen test fails while the pins lag the tree and names the step
+# that is missing, so run this only after a wire-shape change is recorded.
+client-digest:
+	go run ./cmd/clientdtogen -digest-file contracts/client/v1/digest.txt
+
+# Fail when the pinned contract digest disagrees with the committed registry's
+# type graph, or when the removals-table pin disagrees with the table.
+verify-client-digest:
+	go test ./cmd/clientdtogen/internal/digestfile/ -run TestDigestPinMatchesTree -count=1 -v
 
 # Verify the workflow helper cannot merge any head other than the one CI tested.
 verify-upstream-sync-merge:

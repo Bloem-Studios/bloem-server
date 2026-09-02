@@ -8,6 +8,7 @@
 // Usage:
 //
 //	clientdtogen -dump                       # dump the graph for the default registry
+//	clientdtogen -digest-file contracts/client/v1/digest.txt
 //	clientdtogen -registry path/to/registry.json -root path/to/repo -dump
 package main
 
@@ -17,16 +18,20 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/digestfile"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/graph"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/registry"
 )
 
 const defaultRegistry = "contracts/client/v1/registry.json"
 
+const defaultDigestFile = "contracts/client/v1/digest.txt"
+
 func main() {
 	root := flag.String("root", "", "repository root (default: the module root above the working directory)")
 	registryPath := flag.String("registry", "", "registry file (default: "+defaultRegistry+" under -root)")
 	dump := flag.Bool("dump", false, "print the type graph")
+	digestFile := flag.String("digest-file", "", "pin the type-graph digest and the v1-scope removals-table digest to this file, e.g. "+defaultDigestFile)
 	flag.Parse()
 
 	if *root == "" {
@@ -49,12 +54,34 @@ func main() {
 		fail("building type graph:\n%v", err)
 	}
 
-	if !*dump {
-		fail("nothing to do: no emitter is wired yet; pass -dump to inspect the graph")
+	switch {
+	case *digestFile != "":
+		pinDigest(*root, *digestFile, g)
+	case *dump:
+		if err := g.Dump(os.Stdout); err != nil {
+			fail("%v", err)
+		}
+	default:
+		fail("nothing to do: no emitter is wired yet; pass -dump to inspect the graph or -digest-file to pin the contract digest")
 	}
-	if err := g.Dump(os.Stdout); err != nil {
+}
+
+// pinDigest writes digest.txt: the graph digest next to the current digest of
+// the pre-lock removals table (§7.2).
+func pinDigest(root, path string, g *graph.Graph) {
+	scope, err := os.ReadFile(filepath.Join(root, digestfile.ScopeFile))
+	if err != nil {
+		fail("reading %s: %v", digestfile.ScopeFile, err)
+	}
+	table, err := digestfile.TableDigest(scope)
+	if err != nil {
 		fail("%v", err)
 	}
+	pins := digestfile.Pins{Contract: g.Digest(), RemovalsTable: table}
+	if err := digestfile.Write(path, pins); err != nil {
+		fail("writing %s: %v", path, err)
+	}
+	fmt.Printf("pinned %s\n  contract:       %s\n  removals-table: %s\n", path, pins.Contract, pins.RemovalsTable)
 }
 
 // findModuleRoot walks up from the working directory to the nearest go.mod.
