@@ -337,6 +337,321 @@
         {
           "type": "userLibraryResponse",
           "direction": "response"
+        },
+        {
+          "type": "profileResponse",
+          "direction": "response"
+        },
+        {
+          "type": "profileListResponse",
+          "direction": "response"
+        },
+        {
+          "type": "createProfileRequest",
+          "direction": "request"
+        },
+        {
+          "type": "updateProfileRequest",
+          "direction": "request"
+        },
+        {
+          "type": "verifyPINRequest",
+          "direction": "request"
+        },
+        {
+          "type": "verifyPINResponse",
+          "direction": "response"
+        },
+        {
+          "type": "loginRequest",
+          "direction": "request"
+        },
+        {
+          "type": "loginResponse",
+          "direction": "response"
+        },
+        {
+          "type": "profileLoginRequest",
+          "direction": "request"
+        },
+        {
+          "type": "profileLoginResponse",
+          "direction": "response"
+        },
+        {
+          "type": "setupRequest",
+          "direction": "request"
+        },
+        {
+          "type": "setupStatusResponse",
+          "direction": "response"
+        },
+        {
+          "type": "signupRequest",
+          "direction": "request"
+        },
+        {
+          "type": "signupStatusResponse",
+          "direction": "response"
+        },
+        {
+          "type": "refreshRequest",
+          "direction": "request"
+        },
+        {
+          "type": "refreshResponse",
+          "direction": "response"
+        },
+        {
+          "type": "userResponse",
+          "direction": "response"
+        },
+        {
+          "type": "sessionResponse",
+          "direction": "response"
+        },
+        {
+          "type": "sessionsListResponse",
+          "direction": "response"
+        },
+        {
+          "type": "errorResponse",
+          "direction": "response"
+        },
+        {
+          "type": "authProviderResponse",
+          "direction": "response"
+        },
+        {
+          "type": "deviceStartRequest",
+          "direction": "request"
+        },
+        {
+          "type": "deviceStartResponse",
+          "direction": "response"
+        },
+        {
+          "type": "deviceLookupResponse",
+          "direction": "response"
+        },
+        {
+          "type": "devicePollRequest",
+          "direction": "request"
+        },
+        {
+          "type": "devicePollResponse",
+          "direction": "response"
+        },
+        {
+          "type": "deviceDecisionRequest",
+          "direction": "request"
+        },
+        {
+          "type": "deviceLoginCapabilityResponse",
+          "direction": "response"
+        },
+        {
+          "type": "calendarResponse",
+          "direction": "response"
+        },
+        {
+          "type": "downloadRequest",
+          "direction": "request"
+        },
+        {
+          "type": "patchDownloadRequest",
+          "direction": "request"
+        },
+        {
+          "type": "downloadResponse",
+          "direction": "response"
+        },
+        {
+          "type": "downloadsListResponse",
+          "direction": "response"
+        },
+        {
+          "type": "downloadCapabilityResponse",
+          "direction": "response"
+        },
+        {
+          "type": "subscriptionRequest",
+          "direction": "request"
+        },
+        {
+          "type": "patchSubscriptionRequest",
+          "direction": "request"
+        },
+        {
+          "type": "subscriptionResponse",
+          "direction": "response"
+        },
+        {
+          "type": "subscriptionsListResponse",
+          "direction": "response"
+        },
+        {
+          "type": "subscriptionResultResponse",
+          "direction": "response"
+        },
+        {
+          "type": "subscriptionSyncResponse",
+          "direction": "response"
+        },
+        {
+          "type": "setSubtitlePrefRequest",
+          "direction": "request"
+        },
+        {
+          "type": "subtitlePrefResponse",
+          "direction": "response"
+        },
+        {
+          "type": "searchSubtitlesRequest",
+          "direction": "request"
+        },
+        {
+          "type": "downloadSubtitleRequest",
+          "direction": "request"
+        },
+        {
+          "type": "subtitleProviderStatusResponse",
+          "direction": "response"
+        },
+        {
+          "type": "createWatchTogetherRoomRequest",
+          "direction": "request"
+        },
+        {
+          "type": "joinWatchTogetherRoomRequest",
+          "direction": "request"
+        },
+        {
+          "type": "watchTogetherWSTicketRequest",
+          "direction": "request"
+        },
+        {
+          "type": "updateWatchTogetherPolicyRequest",
+          "direction": "request"
+        },
+        {
+          "type": "selectWatchTogetherRoomItemRequest",
+          "direction": "request"
+        },
+        {
+          "type": "createWatchTogetherSuggestionRequest",
+          "direction": "request"
+        },
+        {
+          "type": "promoteSuggestionRequest",
+          "direction": "request"
+        },
+        {
+          "type": "watchTogetherRoomResponse",
+          "direction": "response"
+        },
+        {
+          "type": "watchTogetherSuggestionsResponse",
+          "direction": "response"
+        },
+        {
+          "type": "watchTogetherClientMessage",
+          "direction": "request"
+        },
+        {
+          "type": "scoredItemsResponse",
+          "direction": "response"
+        },
+        {
+          "type": "forYouMainResponse",
+          "direction": "response"
+        },
+        {
+          "type": "resolvedSimilarItemsResponse",
+          "direction": "response"
+        },
+        {
+          "type": "discoverResponse",
+          "direction": "response"
+        },
+        {
+          "type": "sectionDetailResponse",
+          "direction": "response"
+        },
+        {
+          "type": "watchTonightResponse",
+          "direction": "response"
+        },
+        {
+          "type": "onboardingStateResponse",
+          "direction": "response"
+        },
+        {
+          "type": "onboardingProgressRequest",
+          "direction": "request"
+        },
+        {
+          "type": "serverIdentityResponse",
+          "direction": "response",
+          "dialect": "bloem"
+        },
+        {
+          "type": "discoverSectionsResponse",
+          "direction": "response"
+        },
+        {
+          "type": "discoverStudiosResponse",
+          "direction": "response"
+        },
+        {
+          "type": "discoverNetworksResponse",
+          "direction": "response"
+        },
+        {
+          "type": "discoverGenresResponse",
+          "direction": "response"
+        },
+        {
+          "type": "requestListResponse",
+          "direction": "response"
+        },
+        {
+          "type": "requestValidationErrorResponse",
+          "direction": "response"
+        },
+        {
+          "type": "requestQuotaErrorResponse",
+          "direction": "response"
+        },
+        {
+          "type": "requestReasonRequest",
+          "direction": "request"
+        },
+        {
+          "type": "notificationDismissedPayload",
+          "direction": "response",
+          "dialect": "bloem"
+        },
+        {
+          "type": "notificationReadPayload",
+          "direction": "response",
+          "dialect": "bloem"
+        },
+        {
+          "type": "watchTogetherErrorFrame",
+          "direction": "response"
+        },
+        {
+          "type": "watchTogetherRoomClosedFrame",
+          "direction": "response"
+        },
+        {
+          "type": "watchTogetherSnapshotFrame",
+          "direction": "response"
+        },
+        {
+          "type": "watchTogetherPongFrame",
+          "direction": "response"
         }
       ]
     },
