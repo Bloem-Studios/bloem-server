@@ -20,6 +20,7 @@ type fakeRequestService struct {
 	listNetworksFn func() ([]mediarequests.DiscoverBrandCard, error)
 	listGenresFn   func() ([]mediarequests.DiscoverBrandCard, error)
 	browseFn       func(kind, slug string, mediaType mediarequests.MediaType, sort string, page int) (*mediarequests.DiscoverBrowseResponse, error)
+	discoverAllFn  func() ([]mediarequests.DiscoverySection, error)
 }
 
 func (f *fakeRequestService) ListStudios(context.Context, mediarequests.Viewer) ([]mediarequests.DiscoverBrandCard, error) {
@@ -64,6 +65,9 @@ func (f *fakeRequestService) Discover(context.Context, mediarequests.Viewer, str
 }
 
 func (f *fakeRequestService) DiscoverAll(context.Context, mediarequests.Viewer) ([]mediarequests.DiscoverySection, error) {
+	if f.discoverAllFn != nil {
+		return f.discoverAllFn()
+	}
 	return nil, nil
 }
 
@@ -245,5 +249,31 @@ func TestHandleBrowseGenreRequiresMediaType(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestHandleDiscoverPinsWire pins the GET /requests/discover body: the named
+// discoverSectionsResponse replaced an inline struct literal, and this test
+// proves the marshalled bytes did not change — same field names, same tags,
+// same omitempty, same order of population.
+func TestHandleDiscoverPinsWire(t *testing.T) {
+	svc := &fakeRequestService{
+		discoverAllFn: func() ([]mediarequests.DiscoverySection, error) {
+			return []mediarequests.DiscoverySection{
+				{Key: "popular", Title: "Popular", Page: 1, Results: []mediarequests.MediaResult(nil)},
+			}, nil
+		},
+	}
+	h := NewRequestsHandler(svc)
+
+	rec := httptest.NewRecorder()
+	h.HandleDiscover(rec, authedRequest("GET", "/api/v1/requests/discover"))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	want := `{"sections":[{"key":"popular","title":"Popular","page":1,"total_pages":0,"total_results":0,"results":null}]}`
+	if got := strings.TrimSuffix(rec.Body.String(), "\n"); got != want {
+		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
 	}
 }

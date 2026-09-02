@@ -89,6 +89,13 @@ func (h *RequestsHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+// discoverSectionsResponse is the GET /requests/discover envelope. It was an
+// inline struct literal, which had no nameable type for the client DTO
+// registry (contracts/client/v1/registry.json).
+type discoverSectionsResponse struct {
+	Sections []mediarequests.DiscoverySection `json:"sections"`
+}
+
 func (h *RequestsHandler) HandleDiscover(w http.ResponseWriter, r *http.Request) {
 	viewer, ok := requestViewer(w, r, true)
 	if !ok {
@@ -99,9 +106,7 @@ func (h *RequestsHandler) HandleDiscover(w http.ResponseWriter, r *http.Request)
 		writeRequestServiceError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Sections []mediarequests.DiscoverySection `json:"sections"`
-	}{Sections: sections})
+	writeJSON(w, http.StatusOK, discoverSectionsResponse{Sections: sections})
 }
 
 func (h *RequestsHandler) HandleDiscoverSection(w http.ResponseWriter, r *http.Request) {
