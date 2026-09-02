@@ -212,6 +212,14 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 	// config snapshot so the nodeconfig watcher hot-reloads the resolver.
 	cfg.ClientIP.TrustedProxies = stringOr(m, "clientip.trusted_proxies", "")
 
+	// LAN service advertisement. Read at startup only: the mDNS service is
+	// registered when the process starts and deregistered when it stops.
+	lanAdvertise, err := boolOr(m, "lan.advertisement_enabled", false)
+	if err != nil {
+		return nil, err
+	}
+	cfg.LAN.AdvertisementEnabled = lanAdvertise
+
 	// TMDB collection presets (independent of metadata providers)
 	cfg.TMDBAPIKey = stringOr(m, "tmdb.api_key", "")
 
