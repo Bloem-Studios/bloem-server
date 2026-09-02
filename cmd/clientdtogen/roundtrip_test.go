@@ -53,6 +53,13 @@ var rootCases = []struct {
 	{"AckEnvelope", "", func() any { return &playback.AckEnvelope{} }, sampleAckEnvelope()},
 	{"ResultEnvelope", "", func() any { return &playback.ResultEnvelope{} }, sampleResultEnvelope()},
 	{"ChapterThumbnailReadyPayload", "", func() any { return &playback.ChapterThumbnailReadyPayload{} }, sampleChapterThumbnailReady()},
+	{"MarkersUpdatedPayload", "", func() any { return &playback.MarkersUpdatedPayload{} }, sampleMarkersUpdated()},
+	{"SubtitleReadyPayload", "", func() any { return &playback.SubtitleReadyPayload{} }, sampleSubtitleReady()},
+	{"SubtitleTranslationStartedPayload", "", func() any { return &playback.SubtitleTranslationStartedPayload{} }, sampleSubtitleTranslationStarted()},
+	{"SubtitleTranslationCuesPayload", "", func() any { return &playback.SubtitleTranslationCuesPayload{} }, sampleSubtitleTranslationCues()},
+	{"SubtitleTranslationCompletedPayload", "", func() any { return &playback.SubtitleTranslationCompletedPayload{} }, sampleSubtitleTranslationCompleted()},
+	{"SubtitleTranslationFailedPayload", "", func() any { return &playback.SubtitleTranslationFailedPayload{} }, sampleSubtitleTranslationFailed()},
+	{"PlanInvalidatedPayload", "", func() any { return &playback.PlanInvalidatedPayload{} }, samplePlanInvalidated()},
 }
 
 // The realtime samples set every field, omitempty included, so the walk below
@@ -114,6 +121,107 @@ func sampleChapterThumbnailReady() playback.ChapterThumbnailReadyPayload {
 		ChapterIndex:       1,
 		ThumbnailURL:       "/thumb",
 		ThumbnailThumbhash: "0AwR1UYUHIA",
+	}
+}
+
+func sampleMarkersUpdated() playback.MarkersUpdatedPayload {
+	return playback.MarkersUpdatedPayload{
+		SessionID: "session-roundtrip",
+		FileID:    42,
+		Intro:     &playback.TimeRangePayload{Start: 10.5, End: 75.25},
+		Credits:   &playback.TimeRangePayload{Start: 1200, End: 1320.75},
+		Recap:     &playback.TimeRangePayload{Start: 0, End: 42.5},
+		Preview:   &playback.TimeRangePayload{Start: 1380, End: 1420},
+	}
+}
+
+// sampleSubtitleInventoryItem sets every field of the track reference the
+// subtitle payloads carry, omitempty included, so the walk sees its whole key
+// set.
+func sampleSubtitleInventoryItem() playback.SubtitleInventoryItemV3 {
+	return playback.SubtitleInventoryItemV3{
+		TrackID:         "file:42:subtitle:3",
+		CombinedIndex:   3,
+		Source:          playback.SubtitleSourceDownloadedV3,
+		Codec:           "subrip",
+		Language:        "de",
+		Label:           "Deutsch (translated)",
+		Forced:          false,
+		Default:         true,
+		HearingImpaired: true,
+		Delivery:        playback.SubtitleDeliverySidecarV3,
+		URL:             "/stream/session-roundtrip/subtitles/3.vtt?file_id=42",
+		FontBundleURL:   "/stream/session-roundtrip/subtitles/3/fonts?file_id=42",
+	}
+}
+
+func sampleSubtitleReady() playback.SubtitleReadyPayload {
+	track := sampleSubtitleInventoryItem()
+	return playback.SubtitleReadyPayload{
+		SessionID:  "session-roundtrip",
+		FileID:     42,
+		SubtitleID: 7,
+		Language:   "de",
+		Label:      "Deutsch (translated)",
+		Track:      &track,
+	}
+}
+
+func sampleSubtitleTranslationStarted() playback.SubtitleTranslationStartedPayload {
+	return playback.SubtitleTranslationStartedPayload{
+		SessionID: "session-roundtrip",
+		FileID:    42,
+		JobID:     9001,
+		TrackKey:  "file:42:subtitle:live:9001",
+		Language:  "de",
+		Label:     "Deutsch (live)",
+		TotalCues: 812,
+	}
+}
+
+func sampleSubtitleTranslationCues() playback.SubtitleTranslationCuesPayload {
+	return playback.SubtitleTranslationCuesPayload{
+		SessionID: "session-roundtrip",
+		FileID:    42,
+		JobID:     9001,
+		TrackKey:  "file:42:subtitle:live:9001",
+		Cues: []playback.StreamCue{
+			{Start: 61.25, End: 64.5, Text: "Erste Zeile\nzweite Zeile"},
+			{Start: 65, End: 68.75, Text: "Dritte Zeile"},
+		},
+		Done:  120,
+		Total: 812,
+	}
+}
+
+func sampleSubtitleTranslationCompleted() playback.SubtitleTranslationCompletedPayload {
+	track := sampleSubtitleInventoryItem()
+	return playback.SubtitleTranslationCompletedPayload{
+		SessionID:  "session-roundtrip",
+		FileID:     42,
+		JobID:      9001,
+		TrackKey:   "file:42:subtitle:live:9001",
+		SubtitleID: 7,
+		Language:   "de",
+		Label:      "Deutsch (translated)",
+		Track:      &track,
+	}
+}
+
+func sampleSubtitleTranslationFailed() playback.SubtitleTranslationFailedPayload {
+	return playback.SubtitleTranslationFailedPayload{
+		SessionID: "session-roundtrip",
+		FileID:    42,
+		JobID:     9001,
+		TrackKey:  "file:42:subtitle:live:9001",
+		Message:   "translation provider unavailable",
+	}
+}
+
+func samplePlanInvalidated() playback.PlanInvalidatedPayload {
+	return playback.PlanInvalidatedPayload{
+		Reason: playback.PlanInvalidatedVideoCopyUnsafe,
+		PlanID: "plan-roundtrip",
 	}
 }
 
