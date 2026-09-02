@@ -304,7 +304,7 @@ func (e *emitter) property(fb *fileBody, owner *graph.Type, f graph.Field) (typ,
 		}
 		if f.OmitEmpty {
 			// A request-only class need not have an all-defaults
-			// constructor; omitted is modelled as null (explicitNulls = false
+			// constructor; omitted is modeled as null (explicitNulls = false
 			// drops the key).
 			return typ + "?", "null", nil
 		}

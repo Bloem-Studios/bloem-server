@@ -10,10 +10,12 @@ import (
 
 // Words splits a Go identifier per docs/specs/client-dto-generator.md §4.3
 // step 1: on lower→upper boundaries and on letter↔digit boundaries, with a
-// run of capitals followed by capital+lowercase read as an initialism ending
-// before the last capital. Examples: HDRDetails → [HDR Details];
-// BLCompatibilityIDs → [BL Compatibility IDs]; HDR10MaxWidth → [HDR 10 Max
-// Width]; DVProfile → [DV Profile]; MIMEType → [MIME Type]; ID → [ID].
+// run of capitals followed by a capital starting a 2+-letter lowercase word
+// read as an initialism ending before the last capital. A single lowercase
+// after a capital run is a plural marker and keeps the run whole, so
+// BLCompatibilityIDs → [BL Compatibility IDs], not [… I Ds]. Examples:
+// HDRDetails → [HDR Details]; HDR10MaxWidth → [HDR 10 Max Width]; DVProfile
+// → [DV Profile]; MIMEType → [MIME Type]; ID → [ID].
 //
 // Inside a run of capitals, a V immediately followed by digits is a version
 // marker and starts its own word (StreamHLSV3 → [Stream HLS V 3]), which is
@@ -42,8 +44,9 @@ func Words(ident string) []string {
 			flush(i)
 		case unicode.IsUpper(cur) && unicode.IsLower(prev):
 			flush(i)
-		case unicode.IsUpper(prev) && unicode.IsUpper(cur) && i+1 < len(runes) && unicode.IsLower(runes[i+1]):
-			// Initialism ends before the capital that starts the next word.
+		case unicode.IsUpper(prev) && unicode.IsUpper(cur) && lowerRunLen(runes[i+1:]) >= 2:
+			// Initialism ends before the capital that starts the next word;
+			// one lowercase alone pluralises the initialism instead (IDs).
 			flush(i)
 		case unicode.IsUpper(prev) && cur == 'V' && i+1 < len(runes) && unicode.IsDigit(runes[i+1]):
 			flush(i)
@@ -51,6 +54,18 @@ func Words(ident string) []string {
 	}
 	flush(len(runes))
 	return words
+}
+
+// lowerRunLen counts the leading lowercase letters of runes.
+func lowerRunLen(runes []rune) int {
+	n := 0
+	for _, r := range runes {
+		if !unicode.IsLower(r) {
+			break
+		}
+		n++
+	}
+	return n
 }
 
 // CamelCase applies §4.3 steps 2–3: lowercase every word, capitalise every
@@ -79,7 +94,7 @@ func CamelCase(ident string, keywords map[string]bool) string {
 func ScreamingCase(words []string) string {
 	var b strings.Builder
 	for i, w := range words {
-		if i > 0 && !(len(w) > 0 && unicode.IsDigit([]rune(w)[0])) {
+		if i > 0 && (len(w) == 0 || !unicode.IsDigit([]rune(w)[0])) {
 			b.WriteByte('_')
 		}
 		b.WriteString(strings.ToUpper(w))
@@ -113,7 +128,7 @@ func ConstantNames(t *graph.Type) ([]string, error) {
 	budget := minLen - 1
 
 	typeWords := Words(t.Name)
-	prefix := 0
+	var prefix int
 	if len(typeWords) <= budget && allHavePrefix(words, typeWords) {
 		prefix = len(typeWords)
 	} else {
