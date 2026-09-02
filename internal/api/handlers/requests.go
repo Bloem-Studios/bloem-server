@@ -89,6 +89,13 @@ func (h *RequestsHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+// discoverSectionsResponse is the GET /requests/discover envelope. It was an
+// inline struct literal, which had no nameable type for the client DTO
+// registry (contracts/client/v1/registry.json).
+type discoverSectionsResponse struct {
+	Sections []mediarequests.DiscoverySection `json:"sections"`
+}
+
 func (h *RequestsHandler) HandleDiscover(w http.ResponseWriter, r *http.Request) {
 	viewer, ok := requestViewer(w, r, true)
 	if !ok {
@@ -99,9 +106,7 @@ func (h *RequestsHandler) HandleDiscover(w http.ResponseWriter, r *http.Request)
 		writeRequestServiceError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Sections []mediarequests.DiscoverySection `json:"sections"`
-	}{Sections: sections})
+	writeJSON(w, http.StatusOK, discoverSectionsResponse{Sections: sections})
 }
 
 func (h *RequestsHandler) HandleDiscoverSection(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +126,13 @@ func (h *RequestsHandler) HandleDiscoverSection(w http.ResponseWriter, r *http.R
 	writeJSON(w, http.StatusOK, section)
 }
 
+// discoverStudiosResponse is the GET /requests/discover/studios envelope. It
+// was an inline struct literal, which had no nameable type for the client DTO
+// registry (contracts/client/v1/registry.json).
+type discoverStudiosResponse struct {
+	Studios []mediarequests.DiscoverBrandCard `json:"studios"`
+}
+
 func (h *RequestsHandler) HandleListStudios(w http.ResponseWriter, r *http.Request) {
 	viewer, ok := requestViewer(w, r, true)
 	if !ok {
@@ -131,9 +143,14 @@ func (h *RequestsHandler) HandleListStudios(w http.ResponseWriter, r *http.Reque
 		writeRequestServiceError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Studios []mediarequests.DiscoverBrandCard `json:"studios"`
-	}{Studios: studios})
+	writeJSON(w, http.StatusOK, discoverStudiosResponse{Studios: studios})
+}
+
+// discoverNetworksResponse is the GET /requests/discover/networks envelope.
+// It was an inline struct literal, which had no nameable type for the client
+// DTO registry (contracts/client/v1/registry.json).
+type discoverNetworksResponse struct {
+	Networks []mediarequests.DiscoverBrandCard `json:"networks"`
 }
 
 func (h *RequestsHandler) HandleListNetworks(w http.ResponseWriter, r *http.Request) {
@@ -146,9 +163,14 @@ func (h *RequestsHandler) HandleListNetworks(w http.ResponseWriter, r *http.Requ
 		writeRequestServiceError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Networks []mediarequests.DiscoverBrandCard `json:"networks"`
-	}{Networks: networks})
+	writeJSON(w, http.StatusOK, discoverNetworksResponse{Networks: networks})
+}
+
+// discoverGenresResponse is the GET /requests/discover/genres envelope. It
+// was an inline struct literal, which had no nameable type for the client DTO
+// registry (contracts/client/v1/registry.json).
+type discoverGenresResponse struct {
+	Genres []mediarequests.DiscoverBrandCard `json:"genres"`
 }
 
 func (h *RequestsHandler) HandleListGenres(w http.ResponseWriter, r *http.Request) {
@@ -161,9 +183,7 @@ func (h *RequestsHandler) HandleListGenres(w http.ResponseWriter, r *http.Reques
 		writeRequestServiceError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Genres []mediarequests.DiscoverBrandCard `json:"genres"`
-	}{Genres: genres})
+	writeJSON(w, http.StatusOK, discoverGenresResponse{Genres: genres})
 }
 
 func (h *RequestsHandler) HandleBrowseStudio(w http.ResponseWriter, r *http.Request) {
@@ -261,6 +281,14 @@ func (h *RequestsHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, req)
 }
 
+// requestListResponse is the GET /requests/mine envelope (the admin list
+// endpoint writes the same shape). It was an inline struct literal, which had
+// no nameable type for the client DTO registry
+// (contracts/client/v1/registry.json).
+type requestListResponse struct {
+	Requests []*mediarequests.Request `json:"requests"`
+}
+
 func (h *RequestsHandler) HandleListMine(w http.ResponseWriter, r *http.Request) {
 	viewer, ok := requestViewer(w, r, true)
 	if !ok {
@@ -271,9 +299,7 @@ func (h *RequestsHandler) HandleListMine(w http.ResponseWriter, r *http.Request)
 		writeRequestServiceError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Requests []*mediarequests.Request `json:"requests"`
-	}{Requests: requests})
+	writeJSON(w, http.StatusOK, requestListResponse{Requests: requests})
 }
 
 func (h *RequestsHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
@@ -299,9 +325,7 @@ func (h *RequestsHandler) HandleAdminList(w http.ResponseWriter, r *http.Request
 		writeRequestServiceError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Requests []*mediarequests.Request `json:"requests"`
-	}{Requests: requests})
+	writeJSON(w, http.StatusOK, requestListResponse{Requests: requests})
 }
 
 func (h *RequestsHandler) HandleApprove(w http.ResponseWriter, r *http.Request) {
@@ -317,14 +341,20 @@ func (h *RequestsHandler) HandleApprove(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, req)
 }
 
+// requestReasonRequest is the body of POST /requests/{id}/cancel and of the
+// admin decline endpoint. Both handlers wrote it as an inline struct literal,
+// which had no nameable type for the client DTO registry
+// (contracts/client/v1/registry.json).
+type requestReasonRequest struct {
+	Reason string `json:"reason"`
+}
+
 func (h *RequestsHandler) HandleDecline(w http.ResponseWriter, r *http.Request) {
 	viewer, ok := requestViewer(w, r, false)
 	if !ok {
 		return
 	}
-	var body struct {
-		Reason string `json:"reason"`
-	}
+	var body requestReasonRequest
 	if r.Body != nil {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
@@ -344,9 +374,7 @@ func (h *RequestsHandler) HandleCancel(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var body struct {
-		Reason string `json:"reason"`
-	}
+	var body requestReasonRequest
 	if r.Body != nil {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
 			writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
@@ -737,29 +765,47 @@ func toIntegrationResponses(integrations []mediarequests.Integration) []requestI
 	return out
 }
 
+// requestValidationErrorResponse is the 400 body writeRequestServiceError
+// writes when request creation fails field validation. It was an inline
+// map[string]any literal, which had no nameable type for the client DTO
+// registry (contracts/client/v1/registry.json). The map marshalled its keys
+// in sorted order; the struct declares the fields in that same order so the
+// bytes are unchanged, including the empty form_error the map always wrote.
+type requestValidationErrorResponse struct {
+	Error       string            `json:"error"`
+	FieldErrors map[string]string `json:"field_errors"`
+	FormError   string            `json:"form_error"`
+}
+
+// requestQuotaErrorResponse is the 429 body writeRequestServiceError writes
+// when the viewer has exhausted their request quota. It was an inline struct
+// literal, which had no nameable type for the client DTO registry
+// (contracts/client/v1/registry.json).
+type requestQuotaErrorResponse struct {
+	Error      string `json:"error"`
+	Message    string `json:"message"`
+	Used       int    `json:"used"`
+	Limit      int    `json:"limit"`
+	WindowDays int    `json:"window_days"`
+}
+
 func writeRequestServiceError(w http.ResponseWriter, err error) {
 	// Plugin/instance validation failures carry inline field/form errors; surface
 	// them as a structured 400 so any handler routing through here renders them
 	// inline. Checked first because *ValidationError does not wrap a sentinel.
 	var verr *mediarequests.ValidationError
 	if errors.As(err, &verr) {
-		writeJSON(w, http.StatusBadRequest, map[string]any{
-			"error":        "validation_failed",
-			"field_errors": verr.FieldErrors,
-			"form_error":   verr.FormError,
+		writeJSON(w, http.StatusBadRequest, requestValidationErrorResponse{
+			Error:       "validation_failed",
+			FieldErrors: verr.FieldErrors,
+			FormError:   verr.FormError,
 		})
 		return
 	}
 	var quota mediarequests.QuotaError
 	switch {
 	case errors.As(err, &quota):
-		writeJSON(w, http.StatusTooManyRequests, struct {
-			Error      string `json:"error"`
-			Message    string `json:"message"`
-			Used       int    `json:"used"`
-			Limit      int    `json:"limit"`
-			WindowDays int    `json:"window_days"`
-		}{
+		writeJSON(w, http.StatusTooManyRequests, requestQuotaErrorResponse{
 			Error:      "quota_exceeded",
 			Message:    "Request quota exceeded",
 			Used:       quota.Used,

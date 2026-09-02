@@ -8,6 +8,9 @@
 //
 //	clientdtogen -dump                                   # dump the graph for the default registry
 //	clientdtogen -lang kotlin -out contracts/client/v1/kotlin -server-revision $(git rev-parse HEAD)
+//	clientdtogen -dump                       # dump the graph for the default registry
+//	clientdtogen -digest-file contracts/client/v1/digest.txt
+//	clientdtogen -check-coverage contracts/client/v1/coverage.json
 //	clientdtogen -registry path/to/registry.json -root path/to/repo -dump
 package main
 
@@ -18,6 +21,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/coverage"
+	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/digestfile"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/emit"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/emit/kotlin"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/graph"
@@ -46,6 +51,10 @@ func languages() []string {
 	return out
 }
 
+const defaultDigestFile = "contracts/client/v1/digest.txt"
+
+const defaultCoverage = "contracts/client/v1/coverage.json"
+
 func main() {
 	root := flag.String("root", "", "repository root (default: the module root above the working directory)")
 	registryPath := flag.String("registry", "", "registry file (default: "+defaultRegistry+" under -root)")
@@ -53,6 +62,8 @@ func main() {
 	lang := flag.String("lang", "", "target language to emit ("+strings.Join(languages(), ", ")+")")
 	out := flag.String("out", "", "output directory for -lang (required with -lang)")
 	serverRevision := flag.String("server-revision", "", "server git SHA stamped into the generated header")
+	digestFile := flag.String("digest-file", "", "pin the type-graph digest and the v1-scope removals-table digest to this file, e.g. "+defaultDigestFile)
+	checkCoverage := flag.String("check-coverage", "", "check the coverage allowlist at this path against the graph's coverage drift, e.g. "+defaultCoverage)
 	flag.Parse()
 
 	var emitter emit.Emitter
@@ -92,27 +103,65 @@ func main() {
 			fail("%v", err)
 		}
 	}
-	if emitter == nil {
-		if !*dump {
-			fail("nothing to do: pass -lang <language> -out <dir>, or -dump to inspect the graph")
+	switch {
+	case *digestFile != "":
+		pinDigest(*root, *digestFile, g)
+		if *checkCoverage != "" {
+			checkCoverageAgainstGraph(*checkCoverage, g, reg)
 		}
-		return
+	case *checkCoverage != "":
+		checkCoverageAgainstGraph(*checkCoverage, g, reg)
+	case emitter != nil:
+		registryRel, err := filepath.Rel(*root, *registryPath)
+		if err != nil || strings.HasPrefix(registryRel, "..") {
+			registryRel = *registryPath
+		}
+		files, err := emitter.Emit(g, emit.Options{
+			ServerRevision: *serverRevision,
+			RegistryPath:   filepath.ToSlash(registryRel),
+			OutputRoot:     *out,
+		})
+		if err != nil {
+			fail("%v", err)
+		}
+		if err := files.Write(*out); err != nil {
+			fail("%v", err)
+		}
+	case !*dump:
+		fail("nothing to do: pass -lang <language> -out <dir>, -dump to inspect the graph, -digest-file to pin the contract digest, or -check-coverage to verify the coverage allowlist")
 	}
-	registryRel, err := filepath.Rel(*root, *registryPath)
-	if err != nil || strings.HasPrefix(registryRel, "..") {
-		registryRel = *registryPath
+}
+
+// pinDigest writes digest.txt: the graph digest next to the current digest of
+// the pre-lock removals table (§7.2).
+func pinDigest(root, path string, g *graph.Graph) {
+	scope, err := os.ReadFile(filepath.Join(root, digestfile.ScopeFile))
+	if err != nil {
+		fail("reading %s: %v", digestfile.ScopeFile, err)
 	}
-	files, err := emitter.Emit(g, emit.Options{
-		ServerRevision: *serverRevision,
-		RegistryPath:   filepath.ToSlash(registryRel),
-		OutputRoot:     *out,
-	})
+	table, err := digestfile.TableDigest(scope)
 	if err != nil {
 		fail("%v", err)
 	}
-	if err := files.Write(*out); err != nil {
+	pins := digestfile.Pins{Contract: g.Digest(), RemovalsTable: table}
+	if err := digestfile.Write(path, pins); err != nil {
+		fail("writing %s: %v", path, err)
+	}
+	fmt.Printf("pinned %s\n  contract:       %s\n  removals-table: %s\n", path, pins.Contract, pins.RemovalsTable)
+}
+
+// checkCoverageAgainstGraph enforces that every coverage-drift warning is
+// either gone (registered) or carried by a written reason in the allowlist.
+func checkCoverageAgainstGraph(path string, g *graph.Graph, reg *registry.Registry) {
+	allow, err := coverage.LoadFile(path, reg)
+	if err != nil {
 		fail("%v", err)
 	}
+	if err := coverage.Check(g, allow); err != nil {
+		fail("coverage drift: %v", err)
+	}
+	fmt.Printf("%s: coverage allowlist matches the graph (%d file entries, %d type entries)\n",
+		path, len(allow.Files), len(allow.Types))
 }
 
 // findModuleRoot walks up from the working directory to the nearest go.mod.

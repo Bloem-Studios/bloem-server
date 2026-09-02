@@ -200,6 +200,16 @@ type BloemOnly struct {
 	Card PromoCard `json:"card"`
 }
 
+// UnmarshalOnly carries a custom unmarshaler (and no marshaler): its
+// response shape is the plain struct, so it may be registered
+// response-reachable — but never request-reachable.
+type UnmarshalOnly struct {
+	V int `json:"v"`
+}
+
+// UnmarshalJSON hides the request shape only.
+func (u *UnmarshalOnly) UnmarshalJSON(b []byte) error { return nil }
+
 // Orphan is a tagged exported struct nobody registers or reaches.
 type Orphan struct {
 	X int `json:"x"`

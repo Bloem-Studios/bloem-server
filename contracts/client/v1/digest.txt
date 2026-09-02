@@ -1,0 +1,11 @@
+# Pinned by `make client-digest` (cmd/clientdtogen); do not edit by hand.
+#
+# contract: digest of the normalised type graph built from
+# contracts/client/v1/registry.json (docs/specs/client-dto-generator.md §7.2).
+# removals-table: digest of the pre-lock removals table in docs/architecture/v1-scope.md
+# at the time the contract digest was written. A wire-shape change moves
+# the contract digest; before re-pinning, record removals/retypes in that
+# table so the client migration can track them. The test in
+# cmd/clientdtogen/internal/digestfile fails while these pins lag the tree.
+contract: sha256:ded819de994b2c6a25a5c436e3744bbc5ea6acc6e4f3d44569775f1dc2c1ab0e
+removals-table: sha256:208a2b00b39bcbdcdd469f66e87be2c3085d48b2fe01169db29fdab81ed145e8

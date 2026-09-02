@@ -1084,6 +1084,29 @@ func (h *SectionHandler) HandleResetProfileOverrides(w http.ResponseWriter, r *h
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// sectionSettingsEntry is one row of the profile section-settings listing:
+// the resolved section plus the profile-override flags the settings screen
+// renders. Named (not an inline literal) so the client DTO registry can
+// generate it; field names, tags and population order are the wire contract.
+type sectionSettingsEntry struct {
+	ID          string          `json:"id"`
+	SectionType string          `json:"section_type"`
+	Title       string          `json:"title"`
+	Featured    bool            `json:"featured"`
+	ItemLimit   int             `json:"item_limit"`
+	Hidden      bool            `json:"hidden"`
+	IsCustom    bool            `json:"is_custom"`
+	Customized  bool            `json:"customized"`
+	Position    int             `json:"position"`
+	Config      json.RawMessage `json:"config,omitempty"`
+}
+
+// sectionSettingsResponse wraps the settings listing. It replaces an inline
+// map[string][]settingsEntry literal; the marshalled bytes are identical.
+type sectionSettingsResponse struct {
+	Sections []sectionSettingsEntry `json:"sections"`
+}
+
 // HandleSectionSettings handles GET /profile/sections/settings?scope=home&library_id=123
 func (h *SectionHandler) HandleSectionSettings(w http.ResponseWriter, r *http.Request) {
 	profileID := apimw.GetProfileID(r.Context())
@@ -1126,22 +1149,9 @@ func (h *SectionHandler) HandleSectionSettings(w http.ResponseWriter, r *http.Re
 	resolved := sections.ResolveForSettings(adminSections, overrides)
 	resolved = filterResolvedSectionsByAccess(resolved, requestAccessFilter(r))
 
-	type settingsEntry struct {
-		ID          string          `json:"id"`
-		SectionType string          `json:"section_type"`
-		Title       string          `json:"title"`
-		Featured    bool            `json:"featured"`
-		ItemLimit   int             `json:"item_limit"`
-		Hidden      bool            `json:"hidden"`
-		IsCustom    bool            `json:"is_custom"`
-		Customized  bool            `json:"customized"`
-		Position    int             `json:"position"`
-		Config      json.RawMessage `json:"config,omitempty"`
-	}
-
-	entries := make([]settingsEntry, 0, len(resolved))
+	entries := make([]sectionSettingsEntry, 0, len(resolved))
 	for _, s := range resolved {
-		entries = append(entries, settingsEntry{
+		entries = append(entries, sectionSettingsEntry{
 			ID:          s.ID,
 			SectionType: string(s.SectionType),
 			Title:       s.Title,
@@ -1155,7 +1165,7 @@ func (h *SectionHandler) HandleSectionSettings(w http.ResponseWriter, r *http.Re
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string][]settingsEntry{"sections": entries})
+	writeJSON(w, http.StatusOK, sectionSettingsResponse{Sections: entries})
 }
 
 func filterResolvedSectionsByAccess(resolved []sections.ResolvedSection, filter catalog.AccessFilter) []sections.ResolvedSection {

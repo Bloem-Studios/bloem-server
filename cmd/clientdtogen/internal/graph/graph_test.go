@@ -55,6 +55,7 @@ func fixtureRegistry() *registry.Registry {
 				{Type: "Compat", Direction: registry.DirectionResponse, BloemFields: []string{"promo"}},
 				{Type: "BloemOnly", Direction: registry.DirectionBoth, Dialect: registry.DialectBloem, Gate: "cap.bloem"},
 				{Type: "Protocol", Direction: registry.DirectionRequest},
+				{Type: "UnmarshalOnly", Direction: registry.DirectionResponse},
 			},
 		}},
 		Serializers: map[string]registry.Serializer{
@@ -502,6 +503,7 @@ func TestDumpIsDeterministic(t *testing.T) {
 		"    frame_rate Rate Custom serializers=kotlin:org.example.FrameRateWire,swift:FrameRateWire\n",
 		"    frame_rate_ptr RatePtr Custom? omitempty serializers=kotlin:org.example.FrameRateWire\n",
 		"  struct GatedOnly direction=response dialect=upstream-compat gate=cap.gated,cap.other\n",
+		"  struct UnmarshalOnly direction=response dialect=upstream-compat root\n",
 		"package " + otherPath + " reached\n  struct Standalone direction=request dialect=bloem gate=cap.alias root\n",
 		"    id ID Long from=" + fixturePath + ".Base\n",
 		"  unreached Orphan\n",
@@ -517,38 +519,43 @@ func TestRefusals(t *testing.T) {
 	cases := []struct {
 		name      string
 		root      string
+		dir       registry.Direction
 		wantType  string
 		wantField string
 		wantMsg   string
 	}{
-		{"generic", "GenericField", refuseKey("GenericField"), "B", "generic type"},
-		{"string option", "StringOption", refuseKey("StringOption"), "N", `",string"`},
-		{"untagged exported field", "Untagged", refuseKey("Untagged"), "Name", "no json tag"},
-		{"tag without name", "Unnamed", refuseKey("Unnamed"), "Name", "no name"},
-		{"custom marshaler", "MarshalerField", refuseKey("MarshalerField"), "M", "MarshalJSON"},
-		{"text unmarshaler on pointer", "TextMarshalerField", refuseKey("TextMarshalerField"), "M", "UnmarshalText"},
-		{"embedded pointer", "EmbeddedPointer", refuseKey("EmbeddedPointer"), "Base", "embedded pointer"},
-		{"embedded with tag", "EmbeddedTagged", refuseKey("EmbeddedTagged"), "Base", "json tag"},
-		{"embedded non-struct", "EmbeddedNonStruct", refuseKey("EmbeddedNonStruct"), "Named", "non-struct"},
-		{"ambiguous promotion", "Ambiguous", refuseKey("Ambiguous"), "ID", `wire name "id"`},
-		{"anonymous struct", "Anonymous", refuseKey("Anonymous"), "Inner", "anonymous struct"},
-		{"map key", "MapKey", refuseKey("MapKey"), "M", "map key"},
-		{"pointer to pointer", "PointerPointer", refuseKey("PointerPointer"), "P", "pointer to pointer"},
-		{"interface", "Interface", refuseKey("Interface"), "R", "interface"},
-		{"uint", "Unsigned", refuseKey("Unsigned"), "U", "unsupported basic type uint"},
-		{"outside module", "Outside", refuseKey("Outside"), "L", "outside module"},
-		{"channel", "Channel", refuseKey("Channel"), "C", "unsupported Go type"},
-		{"json.Number", "NumberField", refuseKey("NumberField"), "N", "json.Number"},
-		{"unknown root", "Missing", refuseKey("Missing"), "", "root not found"},
-		{"root not a wire type", "Plain", refuseKey("Plain"), "", "root must be a struct"},
+		{"generic", "GenericField", registry.DirectionResponse, refuseKey("GenericField"), "B", "generic type"},
+		{"string option", "StringOption", registry.DirectionResponse, refuseKey("StringOption"), "N", `",string"`},
+		{"untagged exported field", "Untagged", registry.DirectionResponse, refuseKey("Untagged"), "Name", "no json tag"},
+		{"tag without name", "Unnamed", registry.DirectionResponse, refuseKey("Unnamed"), "Name", "no name"},
+		{"custom marshaler", "MarshalerField", registry.DirectionResponse, refuseKey("MarshalerField"), "M", "MarshalJSON"},
+		{"custom text unmarshaler", "TextMarshaler", registry.DirectionRequest, refuseKey("TextMarshaler"), "", "UnmarshalText"},
+		{"embedded pointer", "EmbeddedPointer", registry.DirectionResponse, refuseKey("EmbeddedPointer"), "Base", "embedded pointer"},
+		{"embedded with tag", "EmbeddedTagged", registry.DirectionResponse, refuseKey("EmbeddedTagged"), "Base", "json tag"},
+		{"embedded non-struct", "EmbeddedNonStruct", registry.DirectionResponse, refuseKey("EmbeddedNonStruct"), "Named", "non-struct"},
+		{"ambiguous promotion", "Ambiguous", registry.DirectionResponse, refuseKey("Ambiguous"), "ID", `wire name "id"`},
+		{"anonymous struct", "Anonymous", registry.DirectionResponse, refuseKey("Anonymous"), "Inner", "anonymous struct"},
+		{"map key", "MapKey", registry.DirectionResponse, refuseKey("MapKey"), "M", "map key"},
+		{"pointer to pointer", "PointerPointer", registry.DirectionResponse, refuseKey("PointerPointer"), "P", "pointer to pointer"},
+		{"interface", "Interface", registry.DirectionResponse, refuseKey("Interface"), "R", "interface"},
+		{"uint", "Unsigned", registry.DirectionResponse, refuseKey("Unsigned"), "U", "unsupported basic type uint"},
+		{"outside module", "Outside", registry.DirectionResponse, refuseKey("Outside"), "L", "outside module"},
+		{"channel", "Channel", 0, refuseKey("Channel"), "C", "unsupported Go type"},
+		{"json.Number", "NumberField", 0, refuseKey("NumberField"), "N", "json.Number"},
+		{"unknown root", "Missing", registry.DirectionResponse, refuseKey("Missing"), "", "root not found"},
+		{"root not a wire type", "Plain", registry.DirectionResponse, refuseKey("Plain"), "", "root must be a struct"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			dir := tc.dir
+			if dir == 0 {
+				dir = registry.DirectionResponse
+			}
 			reg := &registry.Registry{Schema: 1, Packages: []registry.Package{{
 				Path:    refusePath,
 				Dialect: registry.DialectUpstreamCompat,
-				Roots:   []registry.Root{{Type: tc.root, Direction: registry.DirectionResponse}},
+				Roots:   []registry.Root{{Type: tc.root, Direction: dir}},
 			}}}
 			g, err := Build(Config{Dir: root, Registry: reg})
 			if err == nil {
