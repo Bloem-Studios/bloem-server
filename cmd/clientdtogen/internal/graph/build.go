@@ -125,7 +125,7 @@ func (b *builder) load() error {
 	}
 	pkgs, err := packages.Load(&packages.Config{
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedTypes |
-			packages.NeedImports | packages.NeedModule,
+			packages.NeedImports | packages.NeedModule | packages.NeedDeps,
 		Dir:  b.cfg.Dir,
 		Fset: b.fset,
 	}, patterns...)
