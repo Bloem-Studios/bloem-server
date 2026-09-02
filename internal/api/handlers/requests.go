@@ -281,6 +281,14 @@ func (h *RequestsHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, req)
 }
 
+// requestListResponse is the GET /requests/mine envelope (the admin list
+// endpoint writes the same shape). It was an inline struct literal, which had
+// no nameable type for the client DTO registry
+// (contracts/client/v1/registry.json).
+type requestListResponse struct {
+	Requests []*mediarequests.Request `json:"requests"`
+}
+
 func (h *RequestsHandler) HandleListMine(w http.ResponseWriter, r *http.Request) {
 	viewer, ok := requestViewer(w, r, true)
 	if !ok {
@@ -291,9 +299,7 @@ func (h *RequestsHandler) HandleListMine(w http.ResponseWriter, r *http.Request)
 		writeRequestServiceError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Requests []*mediarequests.Request `json:"requests"`
-	}{Requests: requests})
+	writeJSON(w, http.StatusOK, requestListResponse{Requests: requests})
 }
 
 func (h *RequestsHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
@@ -319,9 +325,7 @@ func (h *RequestsHandler) HandleAdminList(w http.ResponseWriter, r *http.Request
 		writeRequestServiceError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Requests []*mediarequests.Request `json:"requests"`
-	}{Requests: requests})
+	writeJSON(w, http.StatusOK, requestListResponse{Requests: requests})
 }
 
 func (h *RequestsHandler) HandleApprove(w http.ResponseWriter, r *http.Request) {

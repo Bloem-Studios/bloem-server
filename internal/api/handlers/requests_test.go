@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -21,6 +22,7 @@ type fakeRequestService struct {
 	listGenresFn   func() ([]mediarequests.DiscoverBrandCard, error)
 	browseFn       func(kind, slug string, mediaType mediarequests.MediaType, sort string, page int) (*mediarequests.DiscoverBrowseResponse, error)
 	discoverAllFn  func() ([]mediarequests.DiscoverySection, error)
+	listMineFn     func() ([]*mediarequests.Request, error)
 }
 
 func (f *fakeRequestService) ListStudios(context.Context, mediarequests.Viewer) ([]mediarequests.DiscoverBrandCard, error) {
@@ -80,6 +82,9 @@ func (f *fakeRequestService) CreateRequest(context.Context, mediarequests.Viewer
 }
 
 func (f *fakeRequestService) ListMine(context.Context, mediarequests.Viewer, mediarequests.ListFilter) ([]*mediarequests.Request, error) {
+	if f.listMineFn != nil {
+		return f.listMineFn()
+	}
 	return nil, nil
 }
 
@@ -360,6 +365,42 @@ func TestHandleListGenresPinsWire(t *testing.T) {
 		`{"tmdb_id":28,"slug":"action","display_name":"Action"},` +
 		`{"slug":"documentary","display_name":"Documentary"}` +
 		`]}`
+	if got := strings.TrimSuffix(rec.Body.String(), "\n"); got != want {
+		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
+	}
+}
+
+// TestHandleListMinePinsWire pins the GET /requests/mine body: the named
+// requestListResponse (shared with the admin list endpoint, which writes the
+// same shape) replaced an inline struct literal, and this test proves the
+// marshalled bytes did not change — same field names, same tags, same
+// omitempty, same order of population.
+func TestHandleListMinePinsWire(t *testing.T) {
+	created := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	svc := &fakeRequestService{
+		listMineFn: func() ([]*mediarequests.Request, error) {
+			return []*mediarequests.Request{
+				{
+					ID:        "req-1",
+					Provider:  "tmdb",
+					MediaType: mediarequests.MediaTypeMovie,
+					TMDBID:    42,
+					Title:     "Arrival",
+					CreatedAt: created,
+					UpdatedAt: created,
+				},
+			}, nil
+		},
+	}
+	h := NewRequestsHandler(svc)
+
+	rec := httptest.NewRecorder()
+	h.HandleListMine(rec, authedRequest("GET", "/api/v1/requests/mine"))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	want := `{"requests":[{"id":"req-1","provider":"tmdb","media_type":"movie","tmdb_id":42,"title":"Arrival","status":"","outcome":"","is_anime":false,"created_at":"2026-01-02T03:04:05Z","updated_at":"2026-01-02T03:04:05Z"}]}`
 	if got := strings.TrimSuffix(rec.Body.String(), "\n"); got != want {
 		t.Fatalf("wire changed:\n got %s\nwant %s", got, want)
 	}
