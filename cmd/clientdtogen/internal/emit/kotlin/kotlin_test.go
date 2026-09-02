@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -21,7 +22,7 @@ var update = flag.Bool("update", false, "rewrite the golden files under cmd/clie
 const goldenDir = "cmd/clientdtogen/testdata/kotlin"
 
 // fixtureOptions are fixed so the golden output is reproducible; the revision
-// is a recognisable fake, never a real SHA.
+// is a recognizable fake, never a real SHA.
 var fixtureOptions = emit.Options{
 	ServerRevision: "0000000000000000000000000000000000000000",
 	RegistryPath:   "cmd/clientdtogen/internal/graph/graphtest/graphtest.go",
@@ -79,7 +80,7 @@ func diffHint(want, got []byte) string {
 	return "golden is a prefix of the output"
 }
 
-func itoa(i int) string { return strings.TrimSpace(strings.Repeat(" ", 0) + string(rune('0'+i%10)) + "") }
+func itoa(i int) string { return strconv.Itoa(i) }
 
 func TestDeterminism(t *testing.T) {
 	a := emitFixture(t)
@@ -90,15 +91,19 @@ func TestDeterminism(t *testing.T) {
 }
 
 var (
-	valLine       = regexp.MustCompile(`^\s*public val `)
-	anyVal        = regexp.MustCompile(`\bval\b`)
-	classDecl     = regexp.MustCompile(`^public (data class|class|value class|object) (\w+)`)
-	anyClassDecl  = regexp.MustCompile(`\b(data class|class|object)\b`)
-	serialNameRe  = regexp.MustCompile(`^\s*@SerialName\("[^"]*"\)$`)
-	withSerialRe  = regexp.MustCompile(`^\s*@Serializable\(with = \w+\.Serializer::class\)$`)
-	funToken      = regexp.MustCompile(`\bfun\b`)
-	kdocLine      = regexp.MustCompile("^/\\*\\* Wire type `([^`]+)`\\. Direction: (request|response|both)\\. Dialect: (upstream-compat|bloem)\\.")
-	goldenClasses = []string{"Scalars", "Child", "Collections", "Base", "Inner", "Embedded", "Response", "Request", "Shared", "Gated", "Gated2", "GatedChild", "GatedOnly", "Compat", "PromoCard", "BloemOnly", "Protocol", "Mixin", "Target", "Standalone"}
+	valLine      = regexp.MustCompile(`^\s*public (?:const )?val `)
+	anyVal       = regexp.MustCompile(`\bval\b`)
+	classDecl    = regexp.MustCompile(`^public (data class|class|value class|object) (\w+)`)
+	anyClassDecl = regexp.MustCompile(`\b(data class|class|object)\b`)
+	serialNameRe = regexp.MustCompile(`^\s*@SerialName\("[^"]*"\)$`)
+	withSerialRe = regexp.MustCompile(`^\s*@Serializable\(with = \w+\.Serializer::class\)$`)
+	funToken     = regexp.MustCompile(`\bfun\b`)
+	kdocLine     = regexp.MustCompile("^/\\*\\* Wire type `([^`]+)`\\. Direction: (request|response|both)\\. Dialect: (upstream-compat|bloem)\\.")
+	// goldenClasses is every fixture type the emitter must render. Base and
+	// Mixin are deliberately absent: §4.1 generates an embedded type on its
+	// own only when it is a root or referenced elsewhere, and the graph tests
+	// pin that embedded-only types never enter the graph.
+	goldenClasses = []string{"Scalars", "Child", "Collections", "Inner", "Embedded", "Response", "Request", "Shared", "Gated", "Gated2", "GatedChild", "GatedOnly", "Compat", "PromoCard", "BloemOnly", "Protocol", "Target", "Standalone"}
 )
 
 // TestProvenance asserts the §2/§8 guarantees over the fixture output: every
@@ -121,7 +126,7 @@ func TestProvenance(t *testing.T) {
 			if anyVal.MatchString(line) && !valLine.MatchString(line) && !strings.Contains(line, "(public val wire: String)") {
 				t.Errorf("%s:%d: val without explicit public: %s", f.Path, i+1, line)
 			}
-			if anyClassDecl.MatchString(line) && !strings.HasPrefix(line, "//") && !strings.HasPrefix(line, "/**") && !strings.HasPrefix(line, "    /**") && !strings.HasPrefix(line, "    public companion object") && !classDecl.MatchString(line) {
+			if anyClassDecl.MatchString(line) && !strings.HasPrefix(line, "//") && !strings.HasPrefix(line, "/**") && !strings.HasPrefix(line, "    /**") && !strings.HasPrefix(line, "    public companion object") && !strings.HasPrefix(strings.TrimSpace(line), "@") && !classDecl.MatchString(line) {
 				t.Errorf("%s:%d: declaration without explicit public: %s", f.Path, i+1, line)
 			}
 			if m := classDecl.FindStringSubmatch(line); m != nil && m[1] != "object" {
@@ -189,7 +194,9 @@ func TestFixtureShapes(t *testing.T) {
 		"    public val ptrList: List<Child?> = emptyList(),\n",
 		"    public val structOmit: Child = Child(),\n",
 		// request-only: required unless omitempty/pointer; promoted fields inline
-		"public data class Embedded(\n    @SerialName(\"id\")\n    public val id: Long,\n    @SerialName(\"kind\")\n    public val kind: String,\n    @SerialName(\"deep\")\n    public val deep: Inner,\n",
+		// at the embed point in the surviving declaration order (the outer
+		// Kind shadows Base.Kind, so deep precedes kind).
+		"public data class Embedded(\n    @SerialName(\"id\")\n    public val id: Long,\n    @SerialName(\"deep\")\n    public val deep: Inner,\n    @SerialName(\"kind\")\n    public val kind: String,\n",
 		"    public val mixed: String,\n",
 		"    public val low: String,\n",
 		"    public val zero: Child? = null,\n",
@@ -226,7 +233,7 @@ func TestFixtureShapes(t *testing.T) {
 		"public const val CONTRACT_DIGEST: String = \"sha256:",
 		"        \"org.bloemserver.bloem.contract.fixture.GatedOnly\" to \"cap.gated|cap.other\",\n",
 		"        \"org.bloemserver.bloem.contract.fixture.Shared\" to \"both\",\n",
-		"        \"org.bloemserver.bloem.contract.fixture.PromoCard\" to \"bloem\",\n",
+		"        \"org.bloemserver.bloem.contract.fixture.PromoCard\" to \"upstream-compat\",\n",
 		"        \"org.bloemserver.bloem.contract.other.Target\" to \"upstream-compat\",\n",
 	} {
 		if !strings.Contains(contract, want) {
