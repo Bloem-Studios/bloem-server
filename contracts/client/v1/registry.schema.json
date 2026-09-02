@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "registry.schema.json",
+  "title": "Client DTO registry",
+  "description": "Root wire types the client DTO generator (cmd/clientdtogen) walks transitively. One entry per Go package; the generator emits one output file per entry. See docs/specs/client-dto-generator.md §3.2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "packages"],
+  "properties": {
+    "schema": {
+      "description": "Registry format version. Only 1 is defined.",
+      "const": 1
+    },
+    "packages": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/package" }
+    },
+    "serializers": {
+      "description": "Fields whose Go side has a custom marshaler or polymorphic wire shape. Key: '<package path>.<Go type name>.<wire name>'. Value: one client-side serializer per target language (kotlin: the fully qualified class the emitter points @Serializable(with = …) at; swift: the wrapper type). Every entry must be consumed by a reached field. The generator never emits serializer bodies.",
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z0-9_./-]+\\.[A-Za-z_][A-Za-z0-9_]*\\.[^.\\s]+$" },
+      "additionalProperties": { "$ref": "#/$defs/serializer" }
+    }
+  },
+  "$defs": {
+    "serializer": {
+      "description": "Per-language serializer names. Each language is optional; at least one is required.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "kotlin": { "type": "string", "minLength": 1 },
+        "swift": { "type": "string", "minLength": 1 }
+      }
+    },
+    "dialect": {
+      "description": "upstream-compat: the shape exists on Silo too. bloem: Bloem-only. Never changes the generated type; carried into the dialect table.",
+      "enum": ["upstream-compat", "bloem"]
+    },
+    "direction": {
+      "description": "Which way the type crosses the wire. Drives the nullability/default rule (§4.4) and is inherited transitively by every type reached from the root.",
+      "enum": ["request", "response", "both"]
+    },
+    "gate": {
+      "description": "Capability key a client must see advertised before it decodes the type (§7.3). Absent means ungated.",
+      "type": "string",
+      "minLength": 1
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "dialect", "roots"],
+      "properties": {
+        "path": {
+          "description": "Repository-relative Go package path, e.g. internal/playback.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*$"
+        },
+        "dialect": { "$ref": "#/$defs/dialect" },
+        "gate": { "$ref": "#/$defs/gate" },
+        "roots": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/root" }
+        }
+      }
+    },
+    "root": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "direction"],
+      "properties": {
+        "type": {
+          "description": "Go type name inside the package. Unexported names are allowed: go/types sees them.",
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "direction": { "$ref": "#/$defs/direction" },
+        "dialect": {
+          "description": "Overrides the package dialect for this root and the types it reaches.",
+          "$ref": "#/$defs/dialect"
+        },
+        "gate": {
+          "description": "Overrides the package gate for this root and the types it reaches.",
+          "$ref": "#/$defs/gate"
+        },
+        "bloem_fields": {
+          "description": "Wire names of Bloem-only fields inside an upstream-compat root. Root-only: fields of transitively reached types cannot be marked here (register the type as a root, or raise a schema bump). Documentation and dialect table only; decoding never depends on it.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}
