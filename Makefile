@@ -1,4 +1,4 @@
-.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize
+.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -98,7 +98,7 @@ test-web:
 # the bindings: the vendored copy in web/src/lib is what the web runner reads.
 # The Kotlin and Swift copies land together with their runners in the client
 # repos, which will pick their own test-resource paths.
-SILO_ANDROID_DIR ?= $(abspath ../silo-android)
+BLOEM_ANDROID_DIR ?= $(abspath ../bloem-android)
 SILO_APPLE_DIR ?= $(abspath ../silo-apple)
 
 settings-bindings:
@@ -108,12 +108,12 @@ settings-bindings:
 	go run ./cmd/settingsgen -lang ts -out web/src/lib/settingsContract.ts
 	@cd web && pnpm exec prettier --write src/lib/settingsContract.ts >/dev/null
 	cp contracts/settings/v1/conformance.json web/src/lib/settingsConformance.json
-	@if [ -d "$(SILO_ANDROID_DIR)" ]; then \
-		go run ./cmd/settingsgen -lang kotlin \
-			-out "$(SILO_ANDROID_DIR)/shared/src/commonMain/kotlin/org/siloserver/silo/model/settings/SettingKeys.kt"; \
-		echo "wrote Kotlin bindings to $(SILO_ANDROID_DIR)"; \
+	@if [ -d "$(BLOEM_ANDROID_DIR)" ]; then \
+		go run ./cmd/settingsgen -lang kotlin -package org.bloemserver.bloem.model.settings \
+			-out "$(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin/org/bloemserver/bloem/model/settings/SettingKeys.kt"; \
+		echo "wrote Kotlin bindings to $(BLOEM_ANDROID_DIR)"; \
 	else \
-		echo "skipping Kotlin: $(SILO_ANDROID_DIR) not checked out"; \
+		echo "skipping Kotlin: $(BLOEM_ANDROID_DIR) not checked out"; \
 	fi
 	@if [ -d "$(SILO_APPLE_DIR)" ]; then \
 		go run ./cmd/settingsgen -lang swift \
@@ -151,6 +151,39 @@ verify-settings-bindings-web:
 	@echo "web settings binding is current"
 
 verify-settings-bindings-all: verify-settings-bindings verify-settings-bindings-web
+
+# Regenerate the client DTO set (Kotlin today) from the registry and the Go
+# wire types it roots at. Like the settings bindings, the server commits its
+# own copy of the output so the drift check below needs no client checkout;
+# when the v3 Android client is checked out as a sibling, the same run also
+# copies into its kotlin-generated source directory, the same convenience
+# settings-bindings offers.
+CLIENT_DTO_OUT := contracts/client/v1/kotlin
+BLOEM_ANDROID_DTO_DIR := $(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin-generated/org/bloemserver/bloem/contract
+
+client-dtos:
+	go run ./cmd/clientdtogen -lang kotlin -out $(CLIENT_DTO_OUT) -server-revision $(BUILD_REVISION)
+	@if [ -d "$(BLOEM_ANDROID_DIR)" ]; then \
+		go run ./cmd/clientdtogen -lang kotlin -out "$(BLOEM_ANDROID_DTO_DIR)" -server-revision $(BUILD_REVISION); \
+		echo "wrote generated DTOs to $(BLOEM_ANDROID_DTO_DIR)"; \
+	else \
+		echo "skipping Android copy: $(BLOEM_ANDROID_DIR) not checked out"; \
+	fi
+
+# Fail when the committed client DTOs disagree with the registry or the Go
+# types, so a wire-shape change cannot merge without regenerating what every
+# client compiles against. The regenerated tree is stamped with the revision
+# already recorded in the committed copy rather than HEAD — after any commit
+# those two can never match, and the stamp is the only line allowed to differ —
+# so a plain diff catches every other byte of drift.
+verify-client-dtos:
+	@CHECK_DIR=$$(mktemp -d) && trap 'rm -rf "$$CHECK_DIR"' EXIT && \
+	STAMPED=$$(sed -n 's/^\/\/ Server revision: \([0-9a-f]\{40\}\) .*/\1/p' "$(CLIENT_DTO_OUT)/GeneratedContract.kt" 2>/dev/null || true) && \
+	if [ -z "$$STAMPED" ]; then echo "::error::$(CLIENT_DTO_OUT)/GeneratedContract.kt has no server revision stamp; run make client-dtos"; exit 1; fi && \
+	go run ./cmd/clientdtogen -lang kotlin -out "$$CHECK_DIR" -server-revision "$$STAMPED" && \
+	diff -ur "$(CLIENT_DTO_OUT)" "$$CHECK_DIR" \
+		|| { echo "::error::$(CLIENT_DTO_OUT) is stale; run make client-dtos"; exit 1; }
+	@echo "client DTOs are current"
 
 # Regenerate the protocol-v3 golden contract fixtures from the live types and planner.
 #
