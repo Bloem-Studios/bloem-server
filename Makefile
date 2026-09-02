@@ -1,4 +1,4 @@
-.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures client-digest verify-client-digest lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize
+.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures client-digest verify-client-digest verify-client-coverage lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -194,6 +194,12 @@ client-digest:
 # type graph, or when the removals-table pin disagrees with the table.
 verify-client-digest:
 	go test ./cmd/clientdtogen/internal/digestfile/ -run TestDigestPinMatchesTree -count=1 -v
+
+# Fail when a registered package carries an exported, tagged wire type that is
+# neither reached from a registry root nor explained in the coverage allowlist
+# (contracts/client/v1/coverage.json), or when an allowlist entry has gone stale.
+verify-client-coverage:
+	go run ./cmd/clientdtogen -check-coverage contracts/client/v1/coverage.json
 
 # Verify the workflow helper cannot merge any head other than the one CI tested.
 verify-upstream-sync-merge:

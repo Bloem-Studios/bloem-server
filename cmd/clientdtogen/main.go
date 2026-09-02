@@ -9,6 +9,7 @@
 //
 //	clientdtogen -dump                       # dump the graph for the default registry
 //	clientdtogen -digest-file contracts/client/v1/digest.txt
+//	clientdtogen -check-coverage contracts/client/v1/coverage.json
 //	clientdtogen -registry path/to/registry.json -root path/to/repo -dump
 package main
 
@@ -18,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/coverage"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/digestfile"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/graph"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/registry"
@@ -27,11 +29,14 @@ const defaultRegistry = "contracts/client/v1/registry.json"
 
 const defaultDigestFile = "contracts/client/v1/digest.txt"
 
+const defaultCoverage = "contracts/client/v1/coverage.json"
+
 func main() {
 	root := flag.String("root", "", "repository root (default: the module root above the working directory)")
 	registryPath := flag.String("registry", "", "registry file (default: "+defaultRegistry+" under -root)")
 	dump := flag.Bool("dump", false, "print the type graph")
 	digestFile := flag.String("digest-file", "", "pin the type-graph digest and the v1-scope removals-table digest to this file, e.g. "+defaultDigestFile)
+	checkCoverage := flag.String("check-coverage", "", "check the coverage allowlist at this path against the graph's coverage drift, e.g. "+defaultCoverage)
 	flag.Parse()
 
 	if *root == "" {
@@ -57,12 +62,17 @@ func main() {
 	switch {
 	case *digestFile != "":
 		pinDigest(*root, *digestFile, g)
+		if *checkCoverage != "" {
+			checkCoverageAgainstGraph(*checkCoverage, g, reg)
+		}
+	case *checkCoverage != "":
+		checkCoverageAgainstGraph(*checkCoverage, g, reg)
 	case *dump:
 		if err := g.Dump(os.Stdout); err != nil {
 			fail("%v", err)
 		}
 	default:
-		fail("nothing to do: no emitter is wired yet; pass -dump to inspect the graph or -digest-file to pin the contract digest")
+		fail("nothing to do: no emitter is wired yet; pass -dump to inspect the graph, -digest-file to pin the contract digest, or -check-coverage to verify the coverage allowlist")
 	}
 }
 
@@ -82,6 +92,20 @@ func pinDigest(root, path string, g *graph.Graph) {
 		fail("writing %s: %v", path, err)
 	}
 	fmt.Printf("pinned %s\n  contract:       %s\n  removals-table: %s\n", path, pins.Contract, pins.RemovalsTable)
+}
+
+// checkCoverageAgainstGraph enforces that every coverage-drift warning is
+// either gone (registered) or carried by a written reason in the allowlist.
+func checkCoverageAgainstGraph(path string, g *graph.Graph, reg *registry.Registry) {
+	allow, err := coverage.LoadFile(path, reg)
+	if err != nil {
+		fail("%v", err)
+	}
+	if err := coverage.Check(g, allow); err != nil {
+		fail("coverage drift: %v", err)
+	}
+	fmt.Printf("%s: coverage allowlist matches the graph (%d file entries, %d type entries)\n",
+		path, len(allow.Files), len(allow.Types))
 }
 
 // findModuleRoot walks up from the working directory to the nearest go.mod.

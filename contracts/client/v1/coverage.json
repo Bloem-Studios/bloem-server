@@ -1,0 +1,509 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "file": "model/playback/PlaybackProtocolV3.kt",
+      "generated_from": [
+        "internal/playback"
+      ]
+    },
+    {
+      "file": "model/playback/PlaybackModels.kt",
+      "generated_from": [
+        "internal/models"
+      ]
+    },
+    {
+      "file": "model/playback realtime envelope files",
+      "generated_from": [
+        "internal/playback"
+      ]
+    },
+    {
+      "file": "notifications (S-1) model files",
+      "generated_from": [
+        "internal/notifications",
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "promotions (S-2) model files",
+      "generated_from": [
+        "internal/promotions",
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "ambience (S-3) model files",
+      "generated_from": [
+        "internal/ambience",
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "remote control (S-5a) model files",
+      "generated_from": [
+        "internal/remote",
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "events websocket model files",
+      "generated_from": [
+        "internal/events"
+      ]
+    },
+    {
+      "file": "watchdoc model files",
+      "generated_from": [
+        "internal/watchdoc"
+      ]
+    },
+    {
+      "file": "model/catalog DTO files",
+      "generated_from": [
+        "internal/api/handlers",
+        "internal/models"
+      ]
+    },
+    {
+      "file": "model/section DTO files",
+      "generated_from": [
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/personal DTO files",
+      "generated_from": [
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/request DTO files",
+      "generated_from": [
+        "internal/requests",
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/profile DTO files",
+      "generated_from": [
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/auth and device-login DTO files",
+      "generated_from": [
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/calendar DTO files",
+      "generated_from": [
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/diagnostics DTO files",
+      "generated_from": [
+        "internal/diagnostics"
+      ]
+    },
+    {
+      "file": "model/download DTO files",
+      "generated_from": [
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/subtitles DTO files",
+      "generated_from": [
+        "internal/subtitles",
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/watch_together DTO files",
+      "generated_from": [
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/recommendation DTO files",
+      "generated_from": [
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/onboarding DTO files",
+      "generated_from": [
+        "internal/onboarding",
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/server DTO files",
+      "generated_from": [
+        "internal/api/handlers"
+      ]
+    },
+    {
+      "file": "model/catalog/FrameRateSerializer.kt",
+      "reason": "A two-shape wire value owned by the client: the registry's serializers entry points the generated frame_rate field at the client-authored FrameRateWire, and the generator never emits serializer bodies."
+    },
+    {
+      "file": "CatalogModels.kt presentation helpers",
+      "reason": "Presentation and policy helpers, not wire shapes; they are re-authored client-side as extensions over the generated DTOs, so no server counterpart exists."
+    },
+    {
+      "file": "SubtitleTransition",
+      "reason": "Presentation helper re-authored client-side over the generated subtitle types; it carries no wire shape of its own."
+    },
+    {
+      "file": "AutoSubtitleResolver",
+      "reason": "Client-side selection policy over the generated subtitle and track shapes; the server exposes only the data it chooses from."
+    },
+    {
+      "file": "settings resolution files",
+      "reason": "Settings keys have their own codegen path (cmd/settingsgen), so they stay outside this generator's registry."
+    },
+    {
+      "file": "PlaybackV3Validation sealed hierarchy",
+      "reason": "Client-side validation policy over the generated plan types; the server never emits an invalid plan, so the contract carries no validation vocabulary."
+    }
+  ],
+  "types": [
+    {
+      "type": "internal/ambience.Input",
+      "reason": "Admin pack create/update body; clients receive the registered Wire projection in the ambience capability block."
+    },
+    {
+      "type": "internal/ambience.Pack",
+      "reason": "Stored effect-pack row (admin view with audit columns); clients receive the registered Wire projection."
+    },
+    {
+      "type": "internal/ambience.StoredAsset",
+      "reason": "Admin artwork-upload result from the asset store; the client-facing pack carries only the resolved asset URLs."
+    },
+    {
+      "type": "internal/api/handlers.AdminDownloadedSubtitle",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.AdminDownloadsStats",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.AdminDownloadsUser",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.AdminPlaybackActivity",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.AdminPlaybackActivityBucket",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.AdminPlaybackReliability",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.AdminStats",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.AdminTimeseries",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.AdminTimeseriesPoint",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.AdminTopActivity",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.AdminTopProfile",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.AdminTopTitle",
+      "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
+    },
+    {
+      "type": "internal/api/handlers.Candidate",
+      "reason": "Generic picker row for admin recipe parameter candidates in the bundled web UI."
+    },
+    {
+      "type": "internal/api/handlers.CompatibilityAPIRange",
+      "reason": "Compatibility-sidecar admin console payload; compatibility clients speak the Jellyfin and Audiobookshelf protocols, not the Silo-compatible v1 DTO set."
+    },
+    {
+      "type": "internal/api/handlers.CompatibilityApplication",
+      "reason": "Compatibility-sidecar admin console payload; compatibility clients speak the Jellyfin and Audiobookshelf protocols, not the Silo-compatible v1 DTO set."
+    },
+    {
+      "type": "internal/api/handlers.CompatibilityCredential",
+      "reason": "Compatibility-sidecar admin console payload; compatibility clients speak the Jellyfin and Audiobookshelf protocols, not the Silo-compatible v1 DTO set."
+    },
+    {
+      "type": "internal/api/handlers.CompatibilityEnrollment",
+      "reason": "Compatibility-sidecar admin console payload; compatibility clients speak the Jellyfin and Audiobookshelf protocols, not the Silo-compatible v1 DTO set."
+    },
+    {
+      "type": "internal/api/handlers.EbookReaderAnnotation",
+      "reason": "Stored ebook annotation row served to the in-app reader; the ebook surface postdates the v2 client, so the migration inventory has no ebook model file and there is no hand-written counterpart to replace."
+    },
+    {
+      "type": "internal/api/handlers.EbookReaderConfig",
+      "reason": "Stored reader configuration for one profile and ebook; its config field is a client-owned opaque payload the server stores verbatim, and the migration inventory has no ebook model file."
+    },
+    {
+      "type": "internal/api/handlers.EbookReaderProgress",
+      "reason": "Stored reader position for one profile and ebook; the ebook surface postdates the v2 client, so the migration inventory has no ebook model file and there is no hand-written counterpart to replace."
+    },
+    {
+      "type": "internal/api/handlers.ForceReloadResult",
+      "reason": "Result of the admin force-reload node operation, consumed by the operator UI."
+    },
+    {
+      "type": "internal/api/handlers.HWAccelInventory",
+      "reason": "Body of GET /admin/system/hw-accel for the operator UI; it embeds playback.HWAccelInfo, which the client contract deliberately does not carry."
+    },
+    {
+      "type": "internal/api/handlers.NodeHWAccel",
+      "reason": "One transcode node's GPU inventory inside the admin hw-accel response for the operator UI."
+    },
+    {
+      "type": "internal/api/handlers.PolicyDecisionExplanation",
+      "reason": "Admin policy-decision debug explanation for the bundled web UI; authorization explanations are an operator surface, not a client contract."
+    },
+    {
+      "type": "internal/api/handlers.PolicyVersionRef",
+      "reason": "Version reference inside the admin policy-decision explanation for the bundled web UI."
+    },
+    {
+      "type": "internal/api/handlers.ReprobeNodeResult",
+      "reason": "Result of the admin node reprobe operation, consumed by the operator UI."
+    },
+    {
+      "type": "internal/api/handlers.SystemResources",
+      "reason": "Body of GET /admin/system/resources: the API host's own resource sample for the operator UI."
+    },
+    {
+      "type": "internal/api/handlers.UpdateItemMetadataRequest",
+      "reason": "Body of PATCH /admin/items/{id}/metadata for librarian edits in the bundled web UI."
+    },
+    {
+      "type": "internal/api/handlers.UpdatePersonRequest",
+      "reason": "Body of PATCH /api/v1/admin/people/{id} for librarian edits in the bundled web UI."
+    },
+    {
+      "type": "internal/api/handlers.WatchProviderStats",
+      "reason": "Row of the per-provider watch_providers array on the admin stats response; its predecessor watch_provider_activity object was removed before lock (see the removals table), and the array remains an admin-only shape."
+    },
+    {
+      "type": "internal/diagnostics.CleanupResult",
+      "reason": "Return value of the retention sweep job, logged by its scheduler; no endpoint serves it."
+    },
+    {
+      "type": "internal/diagnostics.ListResult",
+      "reason": "Page of stored diagnostic reports for the admin console; clients only submit reports, and the registered IngestResult is their ingest response."
+    },
+    {
+      "type": "internal/diagnostics.Report",
+      "reason": "Stored diagnostics report (admin console view); clients submit reports as an opaque manifest and receive the registered IngestResult."
+    },
+    {
+      "type": "internal/events.Envelope",
+      "reason": "Server-side event-bus envelope; websocket clients receive the registered Events*Message frames, whose data field is an opaque JSON value."
+    },
+    {
+      "type": "internal/events.ScanRun",
+      "reason": "Scan-progress payload published to the events bus and carried opaquely inside Events*Message.data."
+    },
+    {
+      "type": "internal/events.ScanRunResult",
+      "reason": "Scan outcome payload published to the events bus and carried opaquely inside Events*Message.data."
+    },
+    {
+      "type": "internal/models.AdminJob",
+      "reason": "Reusable background-job row for admin workflows; it reaches non-admin surfaces only as an opaque payload inside events-bus data."
+    },
+    {
+      "type": "internal/models.ExternalSubtitle",
+      "reason": "Catalog storage model for an external subtitle file; clients receive handler projections such as the registered playback subtitle inventory, never the storage row."
+    },
+    {
+      "type": "internal/models.MediaChapter",
+      "reason": "Catalog storage model for a chapter; clients receive the chapter list projected by the registered playback and item responses."
+    },
+    {
+      "type": "internal/models.MediaFile",
+      "reason": "Catalog storage model for a file on disk; clients receive handler projections (streams, versions, tracks), never the storage row."
+    },
+    {
+      "type": "internal/models.MediaItem",
+      "reason": "Catalog storage model keyed by content_id; clients receive the registered item, browse and season projections of it."
+    },
+    {
+      "type": "internal/models.MetadataRefreshAttemptBucket",
+      "reason": "Admin metadata-refresh metrics bucket for the bundled web UI."
+    },
+    {
+      "type": "internal/models.MetadataRefreshDebtSample",
+      "reason": "Admin metadata-refresh metrics bucket for the bundled web UI."
+    },
+    {
+      "type": "internal/models.MetadataRefreshMetrics",
+      "reason": "Admin metadata-refresh metrics bucket for the bundled web UI."
+    },
+    {
+      "type": "internal/models.MetadataRefreshReasonCount",
+      "reason": "Admin metadata-refresh metrics bucket for the bundled web UI."
+    },
+    {
+      "type": "internal/notifications.AlertBody",
+      "reason": "Stored notification_deliveries.body for alert and announcement rows, projected field-for-field onto the registered DeliveryRowPayload; it is never delivered as a standalone object."
+    },
+    {
+      "type": "internal/notifications.Announcement",
+      "reason": "Admin announcement compose and audit view from /admin/announcements; clients receive announcements through the capability payload and their own delivery rows."
+    },
+    {
+      "type": "internal/notifications.AnnouncementInput",
+      "reason": "Admin announcement compose request; clients never author announcements."
+    },
+    {
+      "type": "internal/notifications.AnnouncementTargeting",
+      "reason": "Audience selector of the admin announcement compose flow; clients only ever see the fanned-out delivery rows."
+    },
+    {
+      "type": "internal/notifications.Envelope",
+      "reason": "In-process hub projection for server-internal subscribers; clients receive deliveries through the registered inbox, sync and events payloads."
+    },
+    {
+      "type": "internal/notifications.ReasonFlags",
+      "reason": "Decode type for the reason_flags blob an episode.available delivery carries; DeliveryRowPayload exposes it as an opaque JSON value, so no typed client contract exists."
+    },
+    {
+      "type": "internal/notifications.RequestFlags",
+      "reason": "Decode type for the reason_flags blob of request.* deliveries; DeliveryRowPayload exposes it as an opaque JSON value, so no typed client contract exists."
+    },
+    {
+      "type": "internal/notifications.WebhookTestResult",
+      "reason": "Result of an admin webhook test run in the bundled web UI."
+    },
+    {
+      "type": "internal/playback.ConformanceMatrixV3",
+      "reason": "Authoring shape for the cross-client protocol conformance corpus: it is marshalled into the versioned test fixtures the clients decode, never by a handler, so the generated DTO set does not carry it."
+    },
+    {
+      "type": "internal/playback.DetectedBackend",
+      "reason": "Server- and node-side hardware detection: it surfaces in the admin hardware inventory, the node pool RPC and the Jellyfin compatibility view, and the v1 client contract deliberately carries no hardware vocabulary (the draft platform fields were removed before lock, per the removals table)."
+    },
+    {
+      "type": "internal/playback.DraftClientCapabilitiesV3",
+      "reason": "Pre-finalization draft of the client capability vocabulary kept only for conformance scenarios; the live contract is the registered CapabilityResponseV3."
+    },
+    {
+      "type": "internal/playback.ExecutableRecipeV3",
+      "reason": "Server-side execution half of a protocol-v3 plan, reconstructed from stream-token claims and node handoff; PlanV3 is the only client-visible projection of a plan."
+    },
+    {
+      "type": "internal/playback.HWAccelInfo",
+      "reason": "Server- and node-side hardware detection: it surfaces in the admin hardware inventory, the node pool RPC and the Jellyfin compatibility view, and the v1 client contract deliberately carries no hardware vocabulary (the draft platform fields were removed before lock, per the removals table)."
+    },
+    {
+      "type": "internal/playback.LegacyStartBodyV3",
+      "reason": "The legacy playback/start body was removed from the wire by protocol v3 (pre-lock removals table); the typed shape survives only inside conformance scenarios that pin the 426 client_upgrade_required behaviour."
+    },
+    {
+      "type": "internal/playback.PlannerExpectationV3",
+      "reason": "Authoring shape for the cross-client protocol conformance corpus: it is marshalled into the versioned test fixtures the clients decode, never by a handler, so the generated DTO set does not carry it."
+    },
+    {
+      "type": "internal/playback.PlannerScenarioV3",
+      "reason": "Authoring shape for the cross-client protocol conformance corpus: it is marshalled into the versioned test fixtures the clients decode, never by a handler, so the generated DTO set does not carry it."
+    },
+    {
+      "type": "internal/playback.ProtocolExpectationV3",
+      "reason": "Authoring shape for the cross-client protocol conformance corpus: it is marshalled into the versioned test fixtures the clients decode, never by a handler, so the generated DTO set does not carry it."
+    },
+    {
+      "type": "internal/playback.ProtocolScenarioInputV3",
+      "reason": "Authoring shape for the cross-client protocol conformance corpus: it is marshalled into the versioned test fixtures the clients decode, never by a handler, so the generated DTO set does not carry it."
+    },
+    {
+      "type": "internal/playback.ProtocolScenarioV3",
+      "reason": "Authoring shape for the cross-client protocol conformance corpus: it is marshalled into the versioned test fixtures the clients decode, never by a handler, so the generated DTO set does not carry it."
+    },
+    {
+      "type": "internal/playback.RecipeCard",
+      "reason": "Durable transcode recipe stored server-side and carried in stream-token claims to reconstruct sessions; it is never serialised to a client."
+    },
+    {
+      "type": "internal/playback.RenderDeviceInfo",
+      "reason": "Server- and node-side hardware detection: it surfaces in the admin hardware inventory, the node pool RPC and the Jellyfin compatibility view, and the v1 client contract deliberately carries no hardware vocabulary (the draft platform fields were removed before lock, per the removals table)."
+    },
+    {
+      "type": "internal/playback.ReplanExpectationV3",
+      "reason": "Authoring shape for the cross-client protocol conformance corpus: it is marshalled into the versioned test fixtures the clients decode, never by a handler, so the generated DTO set does not carry it."
+    },
+    {
+      "type": "internal/playback.ReplanScenarioV3",
+      "reason": "Authoring shape for the cross-client protocol conformance corpus: it is marshalled into the versioned test fixtures the clients decode, never by a handler, so the generated DTO set does not carry it."
+    },
+    {
+      "type": "internal/playback.SubtitleFontBundleItem",
+      "reason": "JSON-safe font-bundle entry sent only to the bundled web player; the v1 mobile contract has no font-bundle surface."
+    },
+    {
+      "type": "internal/playback.SubtitleInventoryEntryV3",
+      "reason": "Planner-internal subtitle selection input; the plan carries the projected SubtitleInventoryItemV3 list instead."
+    },
+    {
+      "type": "internal/promotions.Input",
+      "reason": "Admin campaign create/update body for /admin/promotions; clients receive the registered Card projection."
+    },
+    {
+      "type": "internal/promotions.Placement",
+      "reason": "Admin and stored placement view; the registered Card projection flattens placement onto the client shape."
+    },
+    {
+      "type": "internal/promotions.Promotion",
+      "reason": "Stored campaign row (admin view with audit columns); clients receive the registered Card projection."
+    },
+    {
+      "type": "internal/requests.Integration",
+      "reason": "Admin view of a Radarr/Sonarr or plugin fulfillment integration in the bundled web UI; clients receive the registered FeatureStatus projection."
+    },
+    {
+      "type": "internal/requests.ReconcileResult",
+      "reason": "Output of the admin fulfillment reconciliation run in the bundled web UI."
+    },
+    {
+      "type": "internal/requests.RequestEvent",
+      "reason": "Admin audit-trail entry of the request subsystem; the client-facing request list is the registered requestListResponse."
+    },
+    {
+      "type": "internal/requests.RouterOption",
+      "reason": "Admin router option row for the bundled web UI's integration editor."
+    },
+    {
+      "type": "internal/requests.Settings",
+      "reason": "Admin settings of the request subsystem (quotas and auto-approval) in the bundled web UI; clients receive the registered FeatureStatus projection."
+    },
+    {
+      "type": "internal/requests.UserLimit",
+      "reason": "Admin per-user request quota view in the bundled web UI."
+    },
+    {
+      "type": "internal/subtitles.ProviderConfig",
+      "reason": "Admin subtitle-provider configuration; the credential fields never serialise and the client surface is the registered subtitleProviderStatusResponse."
+    }
+  ]
+}
