@@ -98,7 +98,7 @@ test-web:
 # the bindings: the vendored copy in web/src/lib is what the web runner reads.
 # The Kotlin and Swift copies land together with their runners in the client
 # repos, which will pick their own test-resource paths.
-SILO_ANDROID_DIR ?= $(abspath ../silo-android)
+BLOEM_ANDROID_DIR ?= $(abspath ../bloem-android)
 SILO_APPLE_DIR ?= $(abspath ../silo-apple)
 
 settings-bindings:
@@ -108,12 +108,12 @@ settings-bindings:
 	go run ./cmd/settingsgen -lang ts -out web/src/lib/settingsContract.ts
 	@cd web && pnpm exec prettier --write src/lib/settingsContract.ts >/dev/null
 	cp contracts/settings/v1/conformance.json web/src/lib/settingsConformance.json
-	@if [ -d "$(SILO_ANDROID_DIR)" ]; then \
-		go run ./cmd/settingsgen -lang kotlin \
-			-out "$(SILO_ANDROID_DIR)/shared/src/commonMain/kotlin/org/siloserver/silo/model/settings/SettingKeys.kt"; \
-		echo "wrote Kotlin bindings to $(SILO_ANDROID_DIR)"; \
+	@if [ -d "$(BLOEM_ANDROID_DIR)" ]; then \
+		go run ./cmd/settingsgen -lang kotlin -package org.bloemserver.bloem.model.settings \
+			-out "$(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin/org/bloemserver/bloem/model/settings/SettingKeys.kt"; \
+		echo "wrote Kotlin bindings to $(BLOEM_ANDROID_DIR)"; \
 	else \
-		echo "skipping Kotlin: $(SILO_ANDROID_DIR) not checked out"; \
+		echo "skipping Kotlin: $(BLOEM_ANDROID_DIR) not checked out"; \
 	fi
 	@if [ -d "$(SILO_APPLE_DIR)" ]; then \
 		go run ./cmd/settingsgen -lang swift \
@@ -159,7 +159,6 @@ verify-settings-bindings-all: verify-settings-bindings verify-settings-bindings-
 # copies into its kotlin-generated source directory, the same convenience
 # settings-bindings offers.
 CLIENT_DTO_OUT := contracts/client/v1/kotlin
-BLOEM_ANDROID_DIR ?= $(abspath ../bloem-android)
 BLOEM_ANDROID_DTO_DIR := $(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin-generated/org/bloemserver/bloem/contract
 
 client-dtos:
