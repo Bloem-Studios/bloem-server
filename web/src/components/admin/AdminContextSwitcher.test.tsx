@@ -25,7 +25,7 @@ describe("AdminContextSwitcher", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-        if (String(input) === "/api/v2/organizations") {
+        if (String(input) === "/api/bloem/v1/organizations") {
           return Promise.resolve(
             new Response(
               JSON.stringify({

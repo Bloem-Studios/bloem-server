@@ -417,7 +417,7 @@ describe("OrganizationEntitlementPanel", () => {
           tenant_limits: { slots: 25, transcodes: 4 },
           library_ids: null,
           last_reconciled_at: "2026-08-21T14:15:00Z",
-          audit_history_href: "/api/v2/admin/platform/organizations/org-1/entitlement/audit",
+          audit_history_href: "/api/bloem/v1/admin/platform/organizations/org-1/entitlement/audit",
         } as never;
       }
       if (init?.method === "GET" || !init) return { templates: [premium, standard] } as never;

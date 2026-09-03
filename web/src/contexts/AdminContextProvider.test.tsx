@@ -141,7 +141,7 @@ describe("AdminContextProvider", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
-        if (url === "/api/v2/organizations") return Promise.resolve(organizationsResponse());
+        if (url === "/api/bloem/v1/organizations") return Promise.resolve(organizationsResponse());
         const body = JSON.parse(String(init?.body ?? "{}")) as { organization_id?: string };
         if (body.organization_id === "org-b") return orgBSession;
         return Promise.resolve(sessionResponse("organization:org-a"));
@@ -178,7 +178,7 @@ describe("AdminContextProvider", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL) =>
         Promise.resolve(
-          String(input) === "/api/v2/organizations"
+          String(input) === "/api/bloem/v1/organizations"
             ? organizationsResponse()
             : sessionResponse("organization:org-a"),
         ),
@@ -197,7 +197,7 @@ describe("AdminContextProvider", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL) =>
         Promise.resolve(
-          String(input) === "/api/v2/organizations"
+          String(input) === "/api/bloem/v1/organizations"
             ? organizationsResponse()
             : sessionResponse("platform"),
         ),
@@ -217,8 +217,8 @@ describe("AdminContextProvider", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL) => {
         const url = String(input);
-        if (url === "/api/v2/organizations") return Promise.resolve(organizationsResponse());
-        if (url === "/api/v2/admin/session") {
+        if (url === "/api/bloem/v1/organizations") return Promise.resolve(organizationsResponse());
+        if (url === "/api/bloem/v1/admin/session") {
           return Promise.resolve(sessionResponse("organization:org-a"));
         }
         protectedCalls += 1;
@@ -255,8 +255,8 @@ describe("AdminContextProvider", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL) => {
         const url = String(input);
-        if (url === "/api/v2/organizations") return Promise.resolve(organizationsResponse());
-        if (url === "/api/v2/admin/session") {
+        if (url === "/api/bloem/v1/organizations") return Promise.resolve(organizationsResponse());
+        if (url === "/api/bloem/v1/admin/session") {
           sessionCalls += 1;
           return Promise.resolve(sessionResponse("organization:org-a"));
         }
@@ -291,8 +291,8 @@ describe("AdminContextProvider", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
-        if (url === "/api/v2/organizations") return Promise.resolve(organizationsResponse());
-        if (url === "/api/v2/admin/session") {
+        if (url === "/api/bloem/v1/organizations") return Promise.resolve(organizationsResponse());
+        if (url === "/api/bloem/v1/admin/session") {
           const body = JSON.parse(String(init?.body ?? "{}")) as { scope?: string };
           return Promise.resolve(
             sessionResponse(body.scope === "platform" ? "platform" : "organization:org-a"),
@@ -329,8 +329,8 @@ describe("AdminContextProvider", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
-        if (url === "/api/v2/organizations") return Promise.resolve(organizationsResponse());
-        if (url === "/api/v2/admin/session") {
+        if (url === "/api/bloem/v1/organizations") return Promise.resolve(organizationsResponse());
+        if (url === "/api/bloem/v1/admin/session") {
           const body = JSON.parse(String(init?.body ?? "{}")) as { scope?: string };
           return Promise.resolve(
             sessionResponse(body.scope === "platform" ? "platform" : "organization:org-a"),

@@ -8,6 +8,13 @@ import type {
   ApiError,
 } from "./types";
 
+// The native API surface. It was /api/v2 until upstream Silo claimed that
+// namespace for its own major 2; this fork's native surface is /api/bloem/v1,
+// and the server mounts every route below under it. Declared once here so a
+// future move cannot leave one fetch behind on a dead prefix, which is exactly
+// how /api/v2/organizations survived the rename and 404'd.
+const NATIVE_API_PREFIX = "/api/bloem/v1";
+
 interface AdminRequestAuthority {
   token: string;
   key: AdminContextKey;
@@ -162,7 +169,7 @@ export async function adminV2Api<T>(
   let retryableFailures = 0;
   for (;;) {
     try {
-      response = await fetch(`/api/v2/admin${path.startsWith("/") ? path : `/${path}`}`, {
+      response = await fetch(`${NATIVE_API_PREFIX}/admin${path.startsWith("/") ? path : `/${path}`}`, {
         ...init,
         headers,
         signal,
@@ -246,7 +253,7 @@ function assertCurrentAuthority(authority: AdminRequestAuthority): void {
 }
 
 async function accountV2Api<T>(path: string, accountToken: string, init: RequestInit = {}) {
-  const response = await fetch(`/api/v2${path}`, {
+  const response = await fetch(`${NATIVE_API_PREFIX}${path}`, {
     ...init,
     headers: requestHeaders(init, accountToken),
   });
