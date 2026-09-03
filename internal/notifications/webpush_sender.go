@@ -57,13 +57,12 @@ func buildWebPushPayload(row DeliveryRow, posterURL string) ([]byte, error) {
 		URL:        display.URL,
 		Tag:        row.ID,
 		DeliveryID: row.ID,
+		Icon:       posterURL,
 	}
-	switch row.Type {
-	case DeliveryTypeEpisodeAvailable:
-		payload.Icon = posterURL
-	case DeliveryTypeRequestFulfilled:
-		payload.Icon = posterURL
-	case DeliveryTypeSystemAlert, DeliveryTypeSystemAnnouncement:
+	// System alerts carry their own image instead of a poster; every other
+	// type keeps the poster URL the payload builder resolved.
+	if row.Type == DeliveryTypeSystemAlert || row.Type == DeliveryTypeSystemAnnouncement {
+		payload.Icon = ""
 		if body, ok := ParseAlertBody(row.Body); ok {
 			payload.Icon = body.ImageURL
 		}

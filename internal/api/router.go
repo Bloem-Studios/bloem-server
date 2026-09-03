@@ -518,6 +518,7 @@ func NewRouter(deps Dependencies) chi.Router {
 		// an "sa_" key must authenticate identically whether a request goes
 		// through the middleware or straight to /auth/me and friends.
 		authHandler.SetAPIKeyAuth(apiKeyRepo, userRepo)
+		authHandler.SetPrimaryProfileChecker(checkPrimaryProfile)
 		if accessGroupStore != nil {
 			authHandler.SetAccessGroupProvider(accessGroupStore)
 		}
@@ -2318,6 +2319,24 @@ func NewRouter(deps Dependencies) chi.Router {
 						r.With(apimw.RejectDirectProfileSession).Get("/sessions", authHandler.HandleListSessions)
 						r.With(apimw.RejectDirectProfileSession).
 							Delete("/sessions/{id}", authHandler.HandleDeleteSession)
+						// Reading and changing the account password are
+						// account administration, so they carry the same
+						// rejection. A profileless admin is not a
+						// direct-profile session and still reaches both.
+						r.With(apimw.RejectDirectProfileSession, optionalProfileViewerAccess(viewerAccessMiddleware)).
+							Get("/account/capability", authHandler.HandleAccountPasswordCapability)
+						passwordChangeMiddlewares := []func(http.Handler) http.Handler{
+							apimw.RejectDirectProfileSession,
+							optionalProfileViewerAccess(viewerAccessMiddleware),
+						}
+						if deps.RateLimitMW != nil {
+							passwordChangeMiddlewares = append(
+								passwordChangeMiddlewares,
+								deps.RateLimitMW.AuthEndpointHandler("password_change"),
+							)
+						}
+						r.With(passwordChangeMiddlewares...).
+							Post("/account/password", authHandler.HandleChangePassword)
 						// Approving a pairing hands the paired device a full
 						// account session, so it is account administration
 						// even though it reads like a device action.
@@ -3409,6 +3428,7 @@ func NewRouter(deps Dependencies) chi.Router {
 								Redis:     deps.RedisClient,
 							}).HandleGetStreamTelemetryParity)
 							r.Get("/sessions/capabilities", adminHandler.HandleGetSessionsCapabilities)
+							r.Get("/playback-routing/capabilities", adminHandler.HandleGetPlaybackRoutingCapabilities)
 							r.Get("/playback-history", adminHandler.HandleListPlaybackHistory)
 							r.Get("/unmatched", adminHandler.HandleListUnmatched)
 							r.Get("/stats", adminHandler.HandleGetStats)

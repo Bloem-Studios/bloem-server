@@ -26,6 +26,7 @@ import (
 type AuthHandler struct {
 	service              *auth.Service
 	profileLogin         profileLoginService
+	passwords            accountPasswordService
 	jwt                  *auth.JWTService
 	device               *auth.DeviceLoginService
 	oauthRoutesAvailable bool
@@ -38,6 +39,7 @@ type AuthHandler struct {
 	serverIdentity       interface {
 		Resolve(context.Context) (string, error)
 	}
+	checkPrimaryProfile apimw.PrimaryProfileChecker
 }
 
 func (h *AuthHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, requestDigest lifecycleidempotency.RequestDigester, preauthDigest lifecycleidempotency.PreauthActorDigester, identity interface {
@@ -47,6 +49,11 @@ func (h *AuthHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.C
 	h.lifecycleDigest = requestDigest
 	h.preauthDigest = preauthDigest
 	h.serverIdentity = identity
+}
+
+type accountPasswordService interface {
+	PasswordChangeAvailable(ctx context.Context, userID int) (bool, error)
+	ChangePassword(ctx context.Context, userID int, currentPassword, newPassword string) error
 }
 
 type profileLoginService interface {
@@ -63,6 +70,7 @@ func NewAuthHandler(service *auth.Service, jwt *auth.JWTService, device *auth.De
 	}
 	if service != nil {
 		handler.profileLogin = service
+		handler.passwords = service
 	}
 	return handler
 }
@@ -84,6 +92,13 @@ func (h *AuthHandler) SetAPIKeyAuth(validator apimw.APIKeyValidator, loader apim
 // the effective (inherit/override) policy reported on login and /auth/me.
 func (h *AuthHandler) SetAccessGroupProvider(provider access.GroupPolicyProvider) {
 	h.accessGroups = provider
+}
+
+// SetPrimaryProfileChecker wires the account/profile ownership lookup used by
+// account credential endpoints. A declared secondary profile must never be
+// able to replace the shared account password, including on an admin account.
+func (h *AuthHandler) SetPrimaryProfileChecker(check apimw.PrimaryProfileChecker) {
+	h.checkPrimaryProfile = check
 }
 
 // SetOAuthRoutesAvailable controls whether OAuth login providers are

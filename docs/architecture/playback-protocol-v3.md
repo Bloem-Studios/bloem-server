@@ -102,7 +102,7 @@ present only while the administrator setting
   "enabled": true,
   "protocol_versions": [3],
   "features": ["playback_plan_v3", "neutral_playback_v3_contract_v1", "layout_aware_passthrough", "playback_route_diagnostics",
-               "device_quirks_v1", "seek_reanchor_v1", "output_change_v1", "direct_stream_resume_v1",
+               "device_quirks_v1", "seek_reanchor_v1", "output_change_v1", "output_display_evidence_v1", "direct_stream_resume_v1",
                "header_authenticated_media_v1", "authorized_media_origins_v1", "software_video_decode_v1",
                "header_authenticated_media_ready_v1",
                "plan_invalidated_v1", "plan_source_duration_v1"],
@@ -111,9 +111,9 @@ present only while the administrator setting
 }
 ```
 
-The thirteen feature strings above are the full set this server version advertises:
-The document contains thirteen stable binary-support tokens plus the dynamic
-readiness token:
+The fifteen feature strings above are everything this server version can
+advertise: fourteen stable binary-support tokens plus the dynamic readiness
+token.
 
 | Feature | What it promises |
 | --- | --- |
@@ -124,6 +124,7 @@ readiness token:
 | `device_quirks_v1` | Plans may carry `applied_quirks` and `runtime_corrections` (§9) |
 | `seek_reanchor_v1` | The `seek_reanchor` replan operation is available (§6) |
 | `output_change_v1` | The `output_change` intent replan is available; clients must keep the active route when this feature is absent |
+| `output_display_evidence_v1` | The server honors `output.display` and its `hdr_evidence` tier; without it a client must still send `output.hdr_details` so the legacy fallback stays correct |
 | `direct_stream_resume_v1` | A direct route may resume mid-file rather than restarting |
 | `header_authenticated_media_v1` | An opted-in client receives media URLs without signed credentials in their query or path, and authenticates every media request with its normal Authorization header (§4.1) |
 | `authorized_media_origins_v1` | Meaningful only with the token above: the client also honors credential-free absolute media URLs on server-designated proxy origins, which restores distributed egress for a header-authenticated attempt (§4.1) |
@@ -429,16 +430,66 @@ output supports HDR10, and the plan carries the `hdr_range_assumed_hdr10`
 degradation warning. Refusing to play those outright would be worse than an
 assumption the client is told about.
 
-There is one delivery-scoped exception. An `original_http` capability carrying
-the validated claim `client_managed_dynamic_range_v1` asserts that its executor
-accepts the declared source range and resolves presentation against the live
-output after receiving the original bytes. The planner may therefore deliver
-HDR or Dolby Vision through that class even when the active sink does not
-natively advertise the source range. The exception does not apply to
-`progressive` or `hls`: those server-packaged streams remain output-gated. The
-output snapshot is still retained for plan identity, diagnostics, output-change
-replans, explicit Dolby Vision transformation selection, and future server
-tone-map targeting.
+A client may additionally report the raw display probe in `output.display`
+with an evidence tier:
+
+```json
+"output": {
+  "hdr_details": { "hdr10": true, "dolby_vision_profiles": [] },
+  "display": { "hdr_evidence": "exact", "hdr_types": { "hdr10": true }, "display_id": "0" }
+}
+```
+
+`hdr_details` stays the native-output authority (decoder ∩ display) and keeps
+its meaning on older servers. `display.hdr_evidence` is `exact` when the
+platform answered (an empty `hdr_types` is then a confirmed SDR panel) or
+`unknown` when it could not (no display, unsupported API, null capabilities,
+probe failure). When `display` is present at all, the server never falls back
+from a missing `output.hdr_details` to `client_capabilities.hdr_details`, and
+`unknown` disables every native HDR and Dolby Vision output claim, and an exact
+record narrows `hdr_details` to the ranges, HDR10 ceilings, and Dolby Vision
+levels the panel actually carries (a contradiction is rejected at validation). Clients that have separated decoder
+facts from output facts must send `display` so a decoder capability can never
+be promoted to a native-output promise. A client that sends `display` must
+always send `output.hdr_details` too, because a server without
+`output_display_evidence_v1` ignores `display` and would otherwise fall back to
+`client_capabilities.hdr_details`; the feature token tells the client whether
+the evidence tier is being honored.
+
+There are two delivery-scoped exceptions. An `original_http` capability
+carrying the validated claim `client_managed_dynamic_range_v1` asserts that its
+executor accepts the declared source range and resolves presentation against
+the live output after receiving the original bytes. The planner may therefore
+deliver HDR or Dolby Vision through that class even when the active sink does
+not natively advertise the source range.
+
+The narrower claim `client_dv8_base_layer_fallback_v1`, also `original_http`
+only, asserts that the executor decodes a single-layer Dolby Vision Profile 8
+stream through an ordinary HEVC decoder and presents its standards-compatible
+base layer when the output lacks native Dolby Vision. The server keeps every
+other gate: the source must be Profile 8 with no enhancement layer and a
+compatibility id in the standard Profile 8 set (`1` is HDR10, `4` is HLG,
+`2` is BT.709 SDR; `0`, `3`, `5`, `6`, and unknown ids fail closed), scan-proven
+base-layer metadata (a DV configuration record, an explicit compatibility id,
+and a present base layer, matching the tone-map path), the active
+output must carry that base range, and the HEVC stream must fit the client's
+decode bounds. The plan is then `validated_original_playback` bytes with
+`decision_reason: client_dv8_base_layer`, `effective_recipe.dynamic_range` set
+to the base range, `claims.video.dolby_vision: false` with
+`dolby_vision_reason: base_layer_compatible_hevc`, and the
+`dolby_vision_base_layer_only` degradation warning. A native Dolby Vision route
+wins over the claim whenever the `original_http` capability can carry it;
+when that delivery refuses the native plan (an HDR10-only executor on a
+DV-capable output) the base-layer route is used instead. The executor reports
+`dv8_base_layer_decoder_unavailable`, `dv8_base_layer_output_mismatch`, or
+`dv8_base_layer_metadata_mismatch` as a typed failure when it cannot honor the
+promise, and the plan's attempt key (which includes the effective range) keeps
+the native and base-layer plans distinct in the replan ladder.
+
+Neither exception applies to `progressive` or `hls`: those server-packaged
+streams remain output-gated. The output snapshot is still retained for plan
+identity, diagnostics, output-change replans, explicit Dolby Vision
+transformation selection, and future server tone-map targeting.
 
 The web client does not promote the generic high-dynamic-range media query to a
 format claim, and it does not gate format claims on it either. Decoder capability
@@ -512,9 +563,10 @@ because "the user turned HLS off" and "this device has no HLS player" call for
 different degradation warnings and different diagnostics. A class the client
 omits entirely is unavailable — the server will not guess.
 
-`client_managed_dynamic_range_v1` is valid only as a `validated_claims` entry
-on `original_http`. It is not a selectable transformation: the server supplies
-the source and the client executor probes and routes it internally. If that
+`client_managed_dynamic_range_v1` and `client_dv8_base_layer_fallback_v1` are
+valid only as `validated_claims` entries on `original_http`. Neither is a
+selectable transformation: the server supplies the source and the client
+executor probes and routes it internally. If that
 executor later reports a typed load failure, normal attempted-plan-key
 exclusion applies. Until a server tone-map recipe exists, an exhausted HDR
 original route terminates honestly rather than pretending an ordinary video
@@ -550,14 +602,39 @@ a token-bearing proxy path, and no proxy or transcode-node origin is returned.
 A pooled transcode node may still execute HLS behind the API server; the API
 relays its manifest and segments over the same authenticated client route.
 Direct-play and progressive-remux proxy routes are bypassed because those
-nodes accept a signed URL token rather than the user's API credential, so the
-normal local-remux fallback policy still applies. On a server that disables
-`playback.local_transcode_fallback`, a progressive remux needing a server
-transformation therefore has no executor at all: the server plans the same
-recipe as `server_remux_hls` instead, which a pooled transcode node can run
-behind the API. A client that advertises no HLS delivery gets the non-retryable
-terminal `local_transcode_disabled` rather than a retryable capacity error it
-could only retry forever.
+nodes accept a signed URL token rather than the user's API credential. The
+shared node-routing resolver then applies the workload's execution and egress
+policy. For example, `remux_execution=worker_only` makes an API-executed
+progressive remux illegal, so the server plans the same recipe as
+`server_remux_hls` when the client supports HLS; a pooled transcode node can
+execute that recipe while the API remains the media origin. A progressive-only
+client receives a non-retryable `local_transcode_disabled` terminal because
+retrying cannot create a legal route.
+
+In routing policy, **worker** means either a proxy node or a transcode node.
+Progressive remux has proxy-worker, API, and transcode-node-to-proxy execution
+shapes; HLS remux has transcode-worker and API execution shapes. Consequently,
+`remux_execution=prefer_transcode` ranks the transcode-node shape first without
+changing the delivery selected for the client. A progressive remux can run
+FFmpeg on the transcode node and relay its single chunked response through the
+selected proxy. The execution choice remains independent of egress—a proxy
+origin can serve bytes produced by a transcode node without becoming the
+executor itself.
+
+Both halves of the transcode-node-to-proxy transport advertise their contract
+through `/hw-capabilities`: transcode nodes publish
+`progressive_remux_execution_v1`, and proxies publish
+`progressive_remux_relay_v1`. That route requires both markers. A
+proxy-executed progressive remux requires only the proxy's execution capability
+and remains eligible when relay capability is absent. During a rolling upgrade,
+an older node is therefore excluded from only the shapes it cannot serve before
+a client receives a URL rather than failing the stream on its first request.
+The transcode-executed shape also requires the shared node-recipe store. The API
+writes the plan-scoped transport record before publishing the proxy URL; the
+transcode node validates it before starting each progressive response, and stop
+or force reload deletes it. This durable authority prevents a signed URL whose
+token remains valid after a node replacement from resurrecting stopped FFmpeg
+work. When the store is unavailable, route selection excludes only this shape.
 
 **Authorized media origins.** A client that also sends
 `authorized_media_origins_v1` promises something further: it will fetch media
@@ -578,11 +655,15 @@ playback immediately, exactly as it stops API playback. A server with no proxy
 pool, or one that cannot record the handoff, simply keeps the attempt on the API
 origin — the URLs above are an addition a plan may make, never one a client may
 assume. The escalation described just above therefore applies only when no proxy
-origin is available to run the remux.
+origin is available to serve the remux.
 
-Only media moves. Start, replan, route events, progress and every other
-control-plane call stay on the API origin, and the attempt's plan remains the
-sole authority for which URL to fetch.
+Only the primary audio/video transport moves. Start, replan, route events,
+progress and every other control-plane call stay on the API origin, and the
+attempt's plan remains the sole authority for which URL to fetch. Subtitle
+artifacts and font bundles are authenticated auxiliary resources: their
+inventory URLs remain API-relative even when node routing assigns the primary
+file, manifest, and segments to a proxy origin. Jellyfin-compatible subtitle
+`DeliveryUrl` values follow the same API-origin rule.
 
 The client must attach its current `Authorization: Bearer ...` header to the
 manifest/file request and every derived request, including HLS segments,
@@ -945,7 +1026,8 @@ must not branch on an unrecognized value.
 
 `validated_original_playback`, `container_normalization`, `audio_adaptation`,
 `hls_audio_adaptation`, `hls_packaging_required`, `subtitle_burn_in_required`,
-`client_dv7_to_dv81`, `client_dv7_to_hdr10`, `evidence_insufficient_for_direct`,
+`client_dv7_to_dv81`, `client_dv7_to_hdr10`, `client_managed_dynamic_range`,
+`client_dv8_base_layer`, `evidence_insufficient_for_direct`,
 and the quality reasons `quality_original`, `quality_auto_source`,
 `quality_fixed_rung`, `quality_device_limit`, `quality_bandwidth_limit`,
 `quality_metered_limit`, `quality_bandwidth_cap`.
@@ -960,6 +1042,7 @@ The plan will play, but something the user might notice was given up.
 | `dolby_vision_removed` | DV metadata stripped |
 | `dolby_vision_strip_unsupported_by_source` | DV could not be stripped |
 | `dolby_vision_enhancement_layer_discarded` | FEL/MEL dropped, base layer kept |
+| `dolby_vision_base_layer_only` | Profile 8 played unchanged through an HEVC decoder as its HDR10/HLG/SDR base layer; DV metadata not presented |
 | `hdr_tone_mapped` | HDR video converted to limited-range BT.709 SDR |
 | `audio_converted` | Audio re-encoded rather than copied |
 | `subtitle_burn_in` | Subtitles rendered into the video |
@@ -997,7 +1080,12 @@ HDR, 4K, or transcode-policy reason — deselecting the subtitle restores playba
 `invalid_seek_position`, `invalid_replan`, `seek_reanchor_route_changed`,
 `seek_reanchor_recipe_unavailable`,
 `seek_reanchor_intent_mismatch`, `seek_failure_recovery_intent_mismatch`,
-`policy_denied`.
+`policy_denied`, `routing_policy_unsatisfied`, `route_capacity_unavailable`.
+The last two come from the node-routing resolver:
+`routing_policy_unsatisfied` means no route shape is legal under the configured
+execution and egress policy and is never retryable, while
+`route_capacity_unavailable` means a legal shape exists but no node could serve
+it right now and is always retryable.
 
 ### 7.4 Route event names
 

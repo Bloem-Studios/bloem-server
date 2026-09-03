@@ -428,13 +428,14 @@ func TestBuildFFmpegArgsCopyVideoAppliesSampleEntry(t *testing.T) {
 		want  string
 		not   string
 	}{
-		{name: "Dolby Vision", entry: VideoSampleEntryDVH1, want: "-c:v copy -tag:v dvh1 -strict unofficial"},
-		{name: "HDR10", entry: VideoSampleEntryHVC1, want: "-c:v copy -tag:v hvc1", not: "-strict unofficial"},
+		{name: "Dolby Vision", entry: VideoSampleEntryDVH1, want: "-c:v copy -bsf:v hevc_mp4toannexb -tag:v dvh1 -strict unofficial"},
+		{name: "HDR10", entry: VideoSampleEntryHVC1, want: "-c:v copy -bsf:v hevc_mp4toannexb -tag:v hvc1", not: "-strict unofficial"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			args := strings.Join(buildFFmpegArgs(TranscodeOpts{
 				InputPath: "/media/movie.mkv", OutputDir: t.TempDir(),
+				SourceVideoCodec: "hevc",
 				TargetCodecVideo: "copy", TargetCodecAudio: "copy",
 				VideoSampleEntry: tc.entry, SegmentDuration: 2,
 			}), " ")
@@ -442,6 +443,21 @@ func TestBuildFFmpegArgsCopyVideoAppliesSampleEntry(t *testing.T) {
 				t.Fatalf("args = %s", args)
 			}
 		})
+	}
+}
+
+func TestBuildFFmpegArgsCopyVideoCanUseMPEGTS(t *testing.T) {
+	args := strings.Join(buildFFmpegArgs(TranscodeOpts{
+		InputPath: "/media/dovi.mkv", OutputDir: t.TempDir(),
+		SourceVideoCodec: "hevc", TargetCodecVideo: "copy", TargetCodecAudio: "copy",
+		VideoSampleEntry: VideoSampleEntryDVH1, CopyVideoMPEGTS: true, SegmentDuration: 2,
+	}), " ")
+
+	if !strings.Contains(args, "-hls_segment_type mpegts") || !strings.Contains(args, "seg_%05d.ts") {
+		t.Fatalf("copy-video MPEG-TS recipe was not honored: %s", args)
+	}
+	if strings.Contains(args, "seg_%05d.m4s") {
+		t.Fatalf("copy-video MPEG-TS recipe leaked fMP4 output: %s", args)
 	}
 }
 
@@ -546,7 +562,7 @@ func TestBuildFFmpegArgsBoundsHLSManifestSize(t *testing.T) {
 	}
 }
 
-func TestBuildFFmpegArgs_CopyVideoFromStartUsesZeroBasedTimestamps(t *testing.T) {
+func TestBuildFFmpegArgs_CopyVideoFromStartUsesJellyfinTimestamps(t *testing.T) {
 	args := buildFFmpegArgs(TranscodeOpts{
 		InputPath:        "/media/movie.mkv",
 		OutputDir:        "/tmp/out",
@@ -557,11 +573,38 @@ func TestBuildFFmpegArgs_CopyVideoFromStartUsesZeroBasedTimestamps(t *testing.T)
 	})
 
 	joined := strings.Join(args, " ")
-	if strings.Contains(joined, "-copyts") {
-		t.Fatalf("copy-video from-start should not preserve source timestamps: %s", joined)
+	if !strings.Contains(joined, "-copyts") {
+		t.Fatalf("copy-video from-start should preserve source timestamps: %s", joined)
 	}
-	if !strings.Contains(joined, "-avoid_negative_ts make_zero") {
-		t.Fatalf("copy-video from-start should zero-base timestamps: %s", joined)
+	if !strings.Contains(joined, "-avoid_negative_ts make_non_negative") {
+		t.Fatalf("copy-video from-start must lift the AAC priming delay out of the first tfdt: %s", joined)
+	}
+	if strings.Contains(joined, "-avoid_negative_ts disabled") {
+		t.Fatalf("copy-video from-start must not write negative tfdt values: %s", joined)
+	}
+	if !strings.Contains(joined, "-start_at_zero") {
+		t.Fatalf("copy-video from-start should start its output timeline at zero: %s", joined)
+	}
+	if strings.Contains(joined, "-avoid_negative_ts make_zero") {
+		t.Fatalf("copy-video from-start must not rewrite negative timestamps: %s", joined)
+	}
+}
+
+func TestBuildFFmpegArgs_DolbyVisionHEVCCopyUsesAnnexBFilter(t *testing.T) {
+	args := buildFFmpegArgs(TranscodeOpts{
+		InputPath:        "/media/movie.mkv",
+		OutputDir:        "/tmp/out",
+		SessionID:        "session-dovi-copy",
+		SourceVideoCodec: "hevc",
+		TargetCodecVideo: "copy",
+		TargetCodecAudio: "copy",
+		VideoSampleEntry: VideoSampleEntryDVH1,
+		SegmentDuration:  2,
+	})
+
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "-c:v copy -bsf:v hevc_mp4toannexb -tag:v dvh1 -strict unofficial") {
+		t.Fatalf("Dolby Vision HEVC copy should match Jellyfin's fMP4 bitstream recipe: %s", joined)
 	}
 }
 
@@ -595,18 +638,20 @@ func TestBuildFFmpegArgs_CopyVideoResumePreservesSourceTimestamps(t *testing.T) 
 	})
 
 	joined := strings.Join(args, " ")
-	// Resume must preserve source timestamps so TFDT in seg_K matches
-	// playlist time K*segDur (the EXT-X-START anchor). Without -copyts,
-	// strict players (ATV / ExoPlayer) treat the TFDT/playlist mismatch
-	// as a discontinuity and abort.
+	// Resume keeps source packet timing while start_at_zero subtracts the
+	// input's intrinsic start offset. That is distinct from make_zero, which
+	// rewrites negative timestamps and can distort fragment timing.
 	if !strings.Contains(joined, "-copyts") {
 		t.Fatalf("copy-video resume should preserve source timestamps: %s", joined)
 	}
-	if !strings.Contains(joined, "-avoid_negative_ts disabled") {
-		t.Fatalf("copy-video resume should disable negative-ts adjustment: %s", joined)
+	if !strings.Contains(joined, "-avoid_negative_ts make_non_negative") {
+		t.Fatalf("copy-video resume should only lift genuinely negative timestamps: %s", joined)
+	}
+	if !strings.Contains(joined, "-start_at_zero") {
+		t.Fatalf("copy-video resume should start its output timeline at zero: %s", joined)
 	}
 	if strings.Contains(joined, "-avoid_negative_ts make_zero") {
-		t.Fatalf("copy-video resume must not zero-base timestamps (ATV resume regression): %s", joined)
+		t.Fatalf("copy-video resume must not rewrite negative timestamps: %s", joined)
 	}
 }
 
@@ -655,6 +700,28 @@ func TestBuildFFmpegArgs_CopyVideoSeekPreservesCodecCopy(t *testing.T) {
 	// Should have start_number for seek alignment.
 	if !strings.Contains(joined, "-start_number 120") {
 		t.Fatalf("copy-mode seek should set start_number: %s", joined)
+	}
+}
+
+func TestBuildFFmpegArgs_MPEGTSCopyVideoKeepsSourceTimestamps(t *testing.T) {
+	args := buildFFmpegArgs(TranscodeOpts{
+		InputPath:        "/media/movie.mkv",
+		OutputDir:        "/tmp/out",
+		SessionID:        "session-copy-ts",
+		SourceVideoCodec: "hevc",
+		TargetCodecVideo: "copy",
+		TargetCodecAudio: "aac",
+		CopyVideoMPEGTS:  true,
+		SegmentDuration:  2,
+	})
+
+	joined := strings.Join(args, " ")
+	// MPEG-TS has no tfdt, so the fMP4 negative-timestamp lift does not apply.
+	if !strings.Contains(joined, "-copyts -avoid_negative_ts disabled -start_at_zero") {
+		t.Fatalf("MPEG-TS copy-video should keep source timestamps untouched: %s", joined)
+	}
+	if strings.Contains(joined, "make_non_negative") {
+		t.Fatalf("MPEG-TS copy-video must not apply the fMP4 timestamp lift: %s", joined)
 	}
 }
 

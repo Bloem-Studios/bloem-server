@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
@@ -69,7 +70,7 @@ func TestPrepareIdentityTransportV3EmitsASignedStreamURL(t *testing.T) {
 
 	r := httptest.NewRequest("GET", "/", nil)
 	file := &models.MediaFile{ID: 42}
-	transport, transportErr := handler.prepareIdentityTransportV3(r, session, file, result, preparedTimelineV3{}, mediaAuthModeV3{})
+	transport, transportErr := handler.prepareIdentityTransportV3(r, session, file, result, preparedTimelineV3{}, mediaAuthModeV3{}, config.DefaultPlaybackRoutingPolicy(), nil)
 	if transportErr != nil {
 		t.Fatalf("prepareIdentityTransportV3: %v", transportErr)
 	}

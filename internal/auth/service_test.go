@@ -43,6 +43,13 @@ type setupUserRepository struct {
 	deletedID int
 }
 
+// CompareAndSwapPassword satisfies serviceUserRepository. Setup-flow tests
+// never change a password, so an unexpected call is a test bug, not a path
+// worth faking.
+func (r *setupUserRepository) CompareAndSwapPassword(_ context.Context, _ int, _, _ string) error {
+	return errors.New("setupUserRepository does not support password changes")
+}
+
 func (r *setupUserRepository) Create(_ context.Context, input models.CreateUserInput) (*models.User, error) {
 	r.user = &models.User{
 		ID:                   47,

@@ -5,6 +5,7 @@ import { useRestartKeys } from "@/hooks/useRestartKeys";
 import { useHWAccelDetection, type HWAccelInfo } from "@/hooks/queries/admin/system";
 import { useAdminNodes } from "@/hooks/queries/admin/nodes";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { AdvancedSection } from "@/components/settings/AdvancedSection";
 import { PathSettingField } from "@/components/settings/PathSettingField";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
@@ -36,8 +37,6 @@ const TRANSCODING_ADVANCED_KEYS = [
   "playback.transcode_dir",
   "playback.segment_retention_seconds",
   "playback.hw_device",
-  "playback.local_transcode_fallback",
-  "playback.proxy_policy",
   "playback.strict_reconstruct_admission",
   "playback.header_authenticated_media_mode",
   "playback.transcode_hardware_tone_map_enabled",
@@ -50,6 +49,146 @@ const TRANSCODING_ADVANCED_KEYS = [
   "playback.chapter_thumbnail_software_tone_map_enabled",
 ];
 
+const executionOptions = [
+  { value: "prefer_worker", label: "Prefer any worker" },
+  { value: "prefer_transcode", label: "Prefer transcode node" },
+  { value: "worker_only", label: "Any worker only" },
+  { value: "prefer_api", label: "Prefer API server" },
+  { value: "api_only", label: "API server only" },
+];
+
+const egressOptions = [
+  { value: "prefer_proxy", label: "Prefer proxy" },
+  { value: "proxy_only", label: "Proxy only" },
+  { value: "prefer_api", label: "Prefer API server" },
+  { value: "api_only", label: "API server only" },
+];
+
+type ExecutionWorkload = "remux" | "video_transcode";
+
+function executionPreview(value: string, workload: ExecutionWorkload) {
+  const worker = workload === "remux" ? "Any worker" : "Transcode node";
+  switch (value) {
+    case "prefer_transcode":
+      return workload === "remux" ? "Transcode node → any worker → API" : "Transcode node → API";
+    case "worker_only":
+      return `${worker} only`;
+    case "prefer_api":
+      return `API → ${worker.toLowerCase()}`;
+    case "api_only":
+      return "API only";
+    default:
+      return `${worker} → API`;
+  }
+}
+
+function egressPreview(value: string) {
+  switch (value) {
+    case "proxy_only":
+      return "Proxy only";
+    case "prefer_api":
+      return "API → proxy";
+    case "api_only":
+      return "API only";
+    default:
+      return "Proxy → API";
+  }
+}
+
+/** The whole path for a workload that needs an executor, e.g. "Worker → API · Proxy → API". */
+function routePreview(execution: string, egress: string, workload: ExecutionWorkload) {
+  return `${executionPreview(execution, workload)} · ${egressPreview(egress)}`;
+}
+
+// A routing policy either picks who runs the work (execution) or who serves the
+// bytes (egress). The kind decides the choices offered and the value the server
+// applies while the row has never been set.
+const ROUTING_KINDS = {
+  execution: { options: executionOptions, serverDefault: "prefer_worker" },
+  egress: { options: egressOptions, serverDefault: "prefer_proxy" },
+};
+
+type RoutingKind = keyof typeof ROUTING_KINDS;
+
+const ROUTING_KEYS = [
+  "playback.routing.direct_play_egress",
+  "playback.routing.remux_execution",
+  "playback.routing.remux_egress",
+  "playback.routing.video_transcode_execution",
+  "playback.routing.video_transcode_egress",
+] as const;
+
+type RoutingKey = (typeof ROUTING_KEYS)[number];
+
+interface RoutingField {
+  key: RoutingKey;
+  label: string;
+  kind: RoutingKind;
+  description?: string;
+}
+
+// One row per key in ROUTING_KEYS, in the order they render.
+const ROUTING_FIELDS: readonly RoutingField[] = [
+  {
+    key: "playback.routing.direct_play_egress",
+    label: "Direct play egress",
+    kind: "egress",
+    description: "Original bytes need no executor.",
+  },
+  {
+    key: "playback.routing.remux_execution",
+    label: "Remux execution",
+    kind: "execution",
+    description:
+      "A worker can be a proxy or transcode node. Prefer transcode node runs HLS or progressive remux there when supported; progressive output is relayed through the selected proxy.",
+  },
+  { key: "playback.routing.remux_egress", label: "Remux egress", kind: "egress" },
+  {
+    key: "playback.routing.video_transcode_execution",
+    label: "Video transcode execution",
+    kind: "execution",
+    description: "Video transcode workers are transcode nodes; proxy nodes only provide egress.",
+  },
+  {
+    key: "playback.routing.video_transcode_egress",
+    label: "Video transcode egress",
+    kind: "egress",
+  },
+];
+
+const ROUTING_PRESETS = {
+  standard: {
+    label: "Silo Defaults",
+    values: {
+      "playback.routing.direct_play_egress": "prefer_proxy",
+      "playback.routing.remux_execution": "prefer_transcode",
+      "playback.routing.remux_egress": "prefer_proxy",
+      "playback.routing.video_transcode_execution": "prefer_transcode",
+      "playback.routing.video_transcode_egress": "prefer_proxy",
+    },
+  },
+  gpu: {
+    label: "GPU offload",
+    values: {
+      "playback.routing.direct_play_egress": "prefer_api",
+      "playback.routing.remux_execution": "prefer_api",
+      "playback.routing.remux_egress": "prefer_api",
+      "playback.routing.video_transcode_execution": "prefer_worker",
+      "playback.routing.video_transcode_egress": "prefer_proxy",
+    },
+  },
+  central: {
+    label: "Central egress",
+    values: {
+      "playback.routing.direct_play_egress": "api_only",
+      "playback.routing.remux_execution": "prefer_worker",
+      "playback.routing.remux_egress": "api_only",
+      "playback.routing.video_transcode_execution": "prefer_worker",
+      "playback.routing.video_transcode_egress": "api_only",
+    },
+  },
+} as const;
+
 const WATCH_KEYS = ["playback.watched_threshold", "playback.min_resume_threshold"];
 
 // `playback.chapter_thumbnail_node_capacity` is deliberately absent from the
@@ -58,7 +197,22 @@ const WATCH_KEYS = ["playback.watched_threshold", "playback.min_resume_threshold
 //
 // The `download.*` family is its own page (DownloadsSettings), so it is not
 // loaded or saved here.
-const KEYS = [...TRANSCODING_ESSENTIAL_KEYS, ...TRANSCODING_ADVANCED_KEYS, ...WATCH_KEYS];
+const KEYS = [
+  ...TRANSCODING_ESSENTIAL_KEYS,
+  ...TRANSCODING_ADVANCED_KEYS,
+  ...ROUTING_KEYS,
+  ...WATCH_KEYS,
+];
+
+/** One line of the preferred-path summary: workload on the left, route on the right. */
+function PreferredPathRow({ label, route }: { label: string; route: string }) {
+  return (
+    <div className="flex justify-between gap-5">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium">{route}</span>
+    </div>
+  );
+}
 
 export default function PlaybackSettings() {
   const form = useSettingsForm({ keys: useMemo(() => KEYS, []) });
@@ -84,10 +238,36 @@ export default function PlaybackSettings() {
   // have: while the query is in flight or after it failed, leave every option
   // reachable rather than blocking a valid choice on a transient error.
   const transcodeNodeAvailable = !nodes.isSuccess || hasUsableTranscodeNode(nodes.data);
+  const proxyNodeAvailable =
+    !nodes.isSuccess ||
+    (nodes.data ?? []).some((node) => node.type === "proxy" && node.enabled && node.healthy);
+
+  const routingValues = Object.fromEntries(
+    ROUTING_KEYS.map((key) => [key, form.getValue(key)]),
+  ) as Record<RoutingKey, string>;
+  const activeRoutingPreset = Object.values(ROUTING_PRESETS).find((preset) =>
+    ROUTING_KEYS.every((key) => routingValues[key] === preset.values[key]),
+  );
+  const applyRoutingPreset = (values: Record<RoutingKey, string>) => {
+    for (const key of ROUTING_KEYS) form.setValue(key, values[key]);
+  };
+
+  const usesProxyOnlyEgress = ROUTING_KEYS.some((key) => routingValues[key] === "proxy_only");
+  // A remux can run on a proxy node (progressive) or a transcode node (HLS), so
+  // worker-only remuxing is only stranded when neither kind is available. Both
+  // availability flags read as available until the node list has loaded, which
+  // keeps the warning quiet on a transient error.
+  const strandedRoute =
+    (usesProxyOnlyEgress && !proxyNodeAvailable) ||
+    (routingValues["playback.routing.remux_execution"] === "worker_only" &&
+      !proxyNodeAvailable &&
+      !transcodeNodeAvailable) ||
+    (routingValues["playback.routing.video_transcode_execution"] === "worker_only" &&
+      !transcodeNodeAvailable);
 
   const isDirty = form.isDirty;
-  const anyDirty = (keys: string[]) => keys.some((key) => isDirty(key));
-  const allRestart = (keys: string[]) => keys.every((key) => restartKeys.has(key));
+  const anyDirty = (keys: readonly string[]) => keys.some((key) => isDirty(key));
+  const allRestart = (keys: readonly string[]) => keys.every((key) => restartKeys.has(key));
 
   const detection = hwAccel === "none" ? undefined : hwDetection.data;
   const detectedLabel = describeDetection(detection);
@@ -255,27 +435,6 @@ export default function PlaybackSettings() {
               </div>
             )}
             <SettingField
-              label="Local transcode fallback"
-              type="toggle"
-              description="Encode here when no transcode node is free."
-              value={form.getValue("playback.local_transcode_fallback") || "true"}
-              onChange={(v) => form.setValue("playback.local_transcode_fallback", v)}
-              restartRequired={restartKeys.has("playback.local_transcode_fallback")}
-            />
-            <SettingField
-              label="Proxy streaming policy"
-              type="select"
-              options={[
-                { value: "always", label: "Always" },
-                { value: "transcode_only", label: "Transcode only" },
-                { value: "never", label: "Never" },
-              ]}
-              description="Controls when pooled proxy nodes serve media streams. Always: every delivery routes through a proxy when one is available. Transcode only: direct play and audio remux stay on this server; only transcoded (HLS) output uses a proxy. Never: proxy nodes are never used for streaming — this server relays transcode-node output itself. Use Transcode only or Never for a remote transcode node that does not share this server's media storage."
-              value={form.getValue("playback.proxy_policy") || "always"}
-              onChange={(v) => form.setValue("playback.proxy_policy", v)}
-              restartRequired={restartKeys.has("playback.proxy_policy")}
-            />
-            <SettingField
               label="Strict reconstruct admission"
               type="toggle"
               description="When a playback session is rebuilt after a restart and the per-user stream limits cannot be read at all (for example a brief database outage), refuse the session instead of admitting it ungated. Off — the default — admits it, so a transient outage does not stop playback for users who are within their limits; the cap re-applies on their next new session. On is the stricter posture: no session is ever admitted without its limits actually checked, at the cost of refusing within-limit users during exactly the outage that triggers a reconstruct wave."
@@ -389,6 +548,84 @@ export default function PlaybackSettings() {
               )}
             />
           </AdvancedSection>
+        </FieldGroup>
+
+        <FieldGroup label="Node routing" restartAll={allRestart(ROUTING_KEYS)}>
+          <SettingFieldRow
+            label="Routing preset"
+            description="Presets update the five primitive policies below; Custom is not stored."
+          >
+            <div className="flex flex-wrap justify-end gap-2">
+              {Object.entries(ROUTING_PRESETS).map(([id, preset]) => (
+                <Button
+                  key={id}
+                  type="button"
+                  size="sm"
+                  variant={activeRoutingPreset === preset ? "default" : "outline"}
+                  onClick={() => applyRoutingPreset(preset.values)}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+              {!activeRoutingPreset && (
+                <span className="text-muted-foreground self-center text-xs">Custom</span>
+              )}
+            </div>
+          </SettingFieldRow>
+
+          {ROUTING_FIELDS.map((field) => (
+            <SettingField
+              key={field.key}
+              label={field.label}
+              type="select"
+              options={ROUTING_KINDS[field.kind].options}
+              description={field.description}
+              value={routingValues[field.key] || ROUTING_KINDS[field.kind].serverDefault}
+              onChange={(v) => form.setValue(field.key, v)}
+              restartRequired={restartKeys.has(field.key)}
+            />
+          ))}
+
+          <SettingFieldRow
+            label="Preferred paths"
+            description="Arrows show soft fallback order; only modes never cross that boundary."
+          >
+            <div className="grid min-w-64 gap-1 text-xs">
+              <PreferredPathRow
+                label="Direct play"
+                route={egressPreview(routingValues["playback.routing.direct_play_egress"])}
+              />
+              <PreferredPathRow
+                label="Remux"
+                route={routePreview(
+                  routingValues["playback.routing.remux_execution"],
+                  routingValues["playback.routing.remux_egress"],
+                  "remux",
+                )}
+              />
+              <PreferredPathRow
+                label="Video transcode"
+                route={routePreview(
+                  routingValues["playback.routing.video_transcode_execution"],
+                  routingValues["playback.routing.video_transcode_egress"],
+                  "video_transcode",
+                )}
+              />
+            </div>
+          </SettingFieldRow>
+
+          {strandedRoute && (
+            <SettingFieldStatus tone="warn">
+              An “only” route currently has no healthy supporting node. Saving is allowed so nodes
+              can join later.
+            </SettingFieldStatus>
+          )}
+          {usesProxyOnlyEgress && (
+            <SettingFieldStatus tone="warn">
+              Proxy-only egress requires every native client to support authorized media origins;
+              older clients may be unable to start that workload.
+            </SettingFieldStatus>
+          )}
         </FieldGroup>
 
         <FieldGroup label="Watch behavior" restartAll={allRestart(WATCH_KEYS)}>

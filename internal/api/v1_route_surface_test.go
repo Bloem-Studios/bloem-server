@@ -29,7 +29,15 @@ import (
 // profile/device/session methods in adminUserResourceRouteContract, and the
 // 17 tenant-member lifecycle/resource methods in
 // adminTenantMemberRouteContract. Regenerate deliberately, never merely to
-// make a failure go away:
+// make a failure go away.
+//
+// The 2026-09-03 upstream sync added three routes that upstream Silo itself
+// serves under /api/v1 — GET /admin/playback-routing/capabilities (silo#858)
+// and GET /auth/account/capability with POST /auth/account/password
+// (silo#877). Adopting them is what keeps the projection faithful: a Silo
+// client calls them, so omitting them would be the drift this guard exists to
+// catch, in the direction the guard cannot see. Regenerating for a route this
+// fork invented is still forbidden — that route belongs on /api/bloem/v1:
 //
 //	BLOEM_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
 const (

@@ -1,7 +1,6 @@
 package nodepool
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -772,6 +771,86 @@ func TestPlanSessionWithReturnsNoProxyWhenNoneAreCapable(t *testing.T) {
 	}
 }
 
+func TestPlanRouteReservesExactlyRequestedTopology(t *testing.T) {
+	group := "rack-a"
+	proxies := NewProxyPool()
+	proxies.SetNodes([]*Node{{ID: 1, URL: "http://proxy", Group: &group, Enabled: true, Healthy: true}})
+	transcodes := NewTranscodePool()
+	transcodes.SetNodes([]*Node{{ID: 2, URL: "http://transcode", Group: &group, Enabled: true, Healthy: true}})
+	planner := NewPlanner(proxies, transcodes)
+
+	tests := []struct {
+		name          string
+		request       RouteRequest
+		wantTranscode bool
+		wantProxy     bool
+	}{
+		{"neither", RouteRequest{SessionID: "none"}, false, false},
+		{"proxy", RouteRequest{SessionID: "proxy", NeedsProxy: true}, false, true},
+		{"transcode", RouteRequest{SessionID: "transcode", NeedsTranscode: true}, true, false},
+		{"both", RouteRequest{SessionID: "both", NeedsTranscode: true, NeedsProxy: true}, true, true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			plan := planner.PlanRoute(test.request)
+			if (plan.TranscodeNode != nil) != test.wantTranscode || (plan.ProxyNode != nil) != test.wantProxy {
+				t.Fatalf("plan = %#v, want transcode=%t proxy=%t", plan, test.wantTranscode, test.wantProxy)
+			}
+			reservation, reserved := planner.reserved[test.request.SessionID]
+			if !test.wantTranscode && !test.wantProxy {
+				if reserved {
+					t.Fatalf("neither route left reservation %#v", reservation)
+				}
+				return
+			}
+			if !reserved || (reservation.transcodeURL != "") != test.wantTranscode || (reservation.proxyURL != "") != test.wantProxy {
+				t.Fatalf("reservation = %#v, want exact route halves", reservation)
+			}
+		})
+	}
+}
+
+func TestPlanRouteTranscodeAPIIgnoresUnhealthyProxyGroupMember(t *testing.T) {
+	group := "rack-a"
+	proxies := NewProxyPool()
+	proxies.SetNodes([]*Node{{ID: 1, URL: "http://proxy", Group: &group, Enabled: true, Healthy: false}})
+	transcodes := NewTranscodePool()
+	transcodes.SetNodes([]*Node{{ID: 2, URL: "http://transcode", Group: &group, Enabled: true, Healthy: true}})
+	planner := NewPlanner(proxies, transcodes)
+
+	localEgress := planner.PlanRoute(RouteRequest{SessionID: "api-egress", NeedsTranscode: true})
+	if localEgress.TranscodeNode == nil || localEgress.ProxyNode != nil {
+		t.Fatalf("transcode+API plan = %#v, want healthy worker without proxy", localEgress)
+	}
+	proxyEgress := planner.PlanRoute(RouteRequest{SessionID: "proxy-egress", NeedsTranscode: true, NeedsProxy: true})
+	if proxyEgress.TranscodeNode != nil || proxyEgress.ProxyNode != nil {
+		t.Fatalf("transcode+proxy plan = %#v, want unavailable grouped route", proxyEgress)
+	}
+}
+
+func TestPlanRouteUsesIndependentCapabilityPredicates(t *testing.T) {
+	proxies := NewProxyPool()
+	proxies.SetNodes([]*Node{
+		{ID: 1, URL: "http://proxy-old", Enabled: true, Healthy: true},
+		{ID: 2, URL: "http://proxy-new", Enabled: true, Healthy: true},
+	})
+	transcodes := NewTranscodePool()
+	transcodes.SetNodes([]*Node{
+		{ID: 3, URL: "http://transcode-old", Enabled: true, Healthy: true},
+		{ID: 4, URL: "http://transcode-new", Enabled: true, Healthy: true},
+	})
+	planner := NewPlanner(proxies, transcodes)
+	plan := planner.PlanRoute(RouteRequest{
+		SessionID: "capable", NeedsTranscode: true, NeedsProxy: true,
+		TranscodeEligible: func(node *Node) bool { return node.URL == "http://transcode-new" },
+		ProxyEligible:     func(node *Node) bool { return node.URL == "http://proxy-new" },
+	})
+	if plan.TranscodeNode == nil || plan.TranscodeNode.URL != "http://transcode-new" ||
+		plan.ProxyNode == nil || plan.ProxyNode.URL != "http://proxy-new" {
+		t.Fatalf("plan = %#v, want independently capable nodes", plan)
+	}
+}
+
 func TestProxyNodeURLsListsEnabledProxies(t *testing.T) {
 	proxies := NewProxyPool()
 	proxies.SetNodes([]*Node{
@@ -786,50 +865,6 @@ func TestProxyNodeURLsListsEnabledProxies(t *testing.T) {
 	urls := planner.ProxyNodeURLs()
 	if len(urls) != 2 {
 		t.Fatalf("proxy urls = %v, want both pooled proxies", urls)
-	}
-}
-
-type fakeProxyPolicySettings struct{ value string }
-
-func (f fakeProxyPolicySettings) Get(context.Context, string) (string, error) {
-	return f.value, nil
-}
-
-func TestProxyStreamingPolicy(t *testing.T) {
-	cases := []struct {
-		name  string
-		value string
-		want  ProxyPolicy
-	}{
-		{name: "nil settings default to always", value: "", want: ProxyPolicyAlways},
-		{name: "unset key defaults to always", value: "", want: ProxyPolicyAlways},
-		{name: "always", value: "always", want: ProxyPolicyAlways},
-		{name: "transcode_only", value: "transcode_only", want: ProxyPolicyTranscodeOnly},
-		{name: "never", value: "never", want: ProxyPolicyNever},
-		{name: "unrecognized value falls back to always", value: "bogus", want: ProxyPolicyAlways},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := ProxyStreamingPolicy(context.Background(), fakeProxyPolicySettings{value: tc.value})
-			if got != tc.want {
-				t.Fatalf("ProxyStreamingPolicy(%q) = %q, want %q", tc.value, got, tc.want)
-			}
-		})
-	}
-	if got := ProxyStreamingPolicy(context.Background(), nil); got != ProxyPolicyAlways {
-		t.Fatalf("ProxyStreamingPolicy(nil settings) = %q, want %q", got, ProxyPolicyAlways)
-	}
-}
-
-func TestProxyPolicyAllowsHelpers(t *testing.T) {
-	if !ProxyPolicyAlways.AllowsIdentityProxy() || !ProxyPolicyAlways.AllowsTranscodeProxy() {
-		t.Fatal("always must allow both identity and transcode proxy routing")
-	}
-	if ProxyPolicyTranscodeOnly.AllowsIdentityProxy() || !ProxyPolicyTranscodeOnly.AllowsTranscodeProxy() {
-		t.Fatal("transcode_only must forbid identity proxy but allow transcode proxy")
-	}
-	if ProxyPolicyNever.AllowsIdentityProxy() || ProxyPolicyNever.AllowsTranscodeProxy() {
-		t.Fatal("never must forbid both identity and transcode proxy routing")
 	}
 }
 

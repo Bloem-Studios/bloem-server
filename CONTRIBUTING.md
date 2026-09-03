@@ -28,6 +28,13 @@ Bloem is in heavy active development. Features get rewritten, APIs shift, whole 
 
 Small stuff (typo fixes, minor bugs) — just open a merge request. No ceremony.
 
+Choose the repository that owns the behavior before implementation begins.
+This repository owns the backend, web app, native API, Jellyfin compatibility,
+and plugin host. Client-only work belongs in `bloem-apple` or `bloem-android`;
+plugin contracts belong in `silo-plugin-sdk`; provider behavior belongs in the
+individual plugin repository. Cross-repository changes should identify all
+affected repositories in the issue and pull request.
+
 For anything bigger, start with an issue first. New features, API changes, schema migrations, large refactors, behavior changes — talk about it before writing code. Tracked records under `docs/superpowers/` are historical examples, not current implementation instructions; new working plans remain untracked.
 
 ## Don't Submit AI Slop
