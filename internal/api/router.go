@@ -4041,6 +4041,12 @@ func playbackSessionLimitProvider(
 func useBaseMiddleware(r chi.Router, deps Dependencies) {
 	// Standard middleware.
 	r.Use(middleware.RequestID)
+
+	// Fold the X-Bloem-* device/client identity headers onto the canonical
+	// X-Silo-* names before anything reads them — request logging, activity
+	// logging and, critically, RequireAuth's device-binding guard all see one
+	// spelling. See NormalizeClientHeaders for why this must precede auth.
+	r.Use(apimw.NormalizeClientHeaders)
 	if deps.DB != nil {
 		phase := lifecycleidempotency.NewPostgresStore(deps.DB).CurrentPhase
 		preflight := apimw.NewLifecycleIdempotencyPreflight(phase, func(method, path string) bool {
