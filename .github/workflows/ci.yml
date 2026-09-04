@@ -245,7 +245,9 @@ jobs:
           golangci-lint run --new-from-merge-base="$base_sha" ./...
 
       # A manifest change that does not regenerate leaves every client reading
-      # stale keys, which the contract exists to prevent.
+      # stale keys, which the contract exists to prevent. This covers the Go,
+      # Kotlin and Swift bindings; the web half needs pnpm and runs in the Web
+      # job below as verify-settings-bindings-web.
       - name: Verify settings bindings are current
         run: make verify-settings-bindings
 

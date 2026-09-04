@@ -1,4 +1,4 @@
-.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage
+.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint test test-go test-web embed-stub clean jellyfin-web migrate-continuum-check verify-local-paths verify-upstream-sync-merge install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings settings-bindings-native verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all client-dtos verify-client-dtos playback-fixtures verify-playback-fixtures lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -104,29 +104,59 @@ test-web:
 # shipping bloem-android has neither, so pointing this at it silently created
 # directories in the wrong repository.
 BLOEM_ANDROID_DIR ?= $(abspath ../bloem-android-v3)
-SILO_APPLE_DIR ?= $(abspath ../silo-apple)
+# The Apple client that actually carries generated settings bindings today.
+# The path this pointed at before did not exist under any checkout name, so the
+# Swift arm had been a no-op since the repositories were renamed — which is why
+# nobody noticed the shipping bindings falling three revisions behind.
+BLOEM_APPLE_DIR ?= $(abspath ../bloem-apple-v2)
 
-settings-bindings:
+# The server's own copy of the native bindings, committed so the drift check
+# below needs no client checkout — the same arrangement the client DTOs use.
+# Before this existed, the Kotlin and Swift halves of the contract were only
+# ever written into a sibling repository, so CI had nothing to compare and a
+# manifest revision could ship with both native clients a revision behind. That
+# is not hypothetical: it happened across revision 8.
+#
+# The package here is the package the Android client compiles, so the committed
+# file is a byte-for-byte mirror of what that repo receives rather than a
+# near-copy that has to be re-read to be trusted.
+SETTINGS_KOTLIN_PACKAGE := org.bloemserver.bloem.model.settings
+SETTINGS_KOTLIN_OUT := contracts/settings/v1/kotlin/SettingKeys.kt
+SETTINGS_SWIFT_OUT := contracts/settings/v1/swift/SettingKeys.generated.swift
+BLOEM_ANDROID_SETTINGS_OUT := $(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin/org/bloemserver/bloem/model/settings/SettingKeys.kt
+BLOEM_APPLE_SETTINGS_OUT := $(BLOEM_APPLE_DIR)/iosApp/iosApp/Networking/SettingKeys.generated.swift
+
+# The native half, split out for the same reason the verify targets are split:
+# the web half needs pnpm, and a server-only developer who cannot run prettier
+# still has to be able to regenerate the bindings the Go CI job now checks.
+settings-bindings-native:
+	@mkdir -p $(dir $(SETTINGS_KOTLIN_OUT)) $(dir $(SETTINGS_SWIFT_OUT))
+	go run ./cmd/settingsgen -lang kotlin -package $(SETTINGS_KOTLIN_PACKAGE) -out $(SETTINGS_KOTLIN_OUT)
+	go run ./cmd/settingsgen -lang swift -out $(SETTINGS_SWIFT_OUT)
+	@# The client copies are copies of the committed output, not a second
+	@# generator run: a copy cannot disagree with what CI verified.
+	@if [ -d "$(BLOEM_ANDROID_DIR)" ]; then \
+		mkdir -p "$(dir $(BLOEM_ANDROID_SETTINGS_OUT))"; \
+		cp $(SETTINGS_KOTLIN_OUT) "$(BLOEM_ANDROID_SETTINGS_OUT)"; \
+		echo "wrote Kotlin bindings to $(BLOEM_ANDROID_DIR)"; \
+	else \
+		echo "skipping Kotlin client copy: $(BLOEM_ANDROID_DIR) not checked out"; \
+	fi
+	@if [ -d "$(BLOEM_APPLE_DIR)" ]; then \
+		mkdir -p "$(dir $(BLOEM_APPLE_SETTINGS_OUT))"; \
+		cp $(SETTINGS_SWIFT_OUT) "$(BLOEM_APPLE_SETTINGS_OUT)"; \
+		echo "wrote Swift bindings to $(BLOEM_APPLE_DIR)"; \
+	else \
+		echo "skipping Swift client copy: $(BLOEM_APPLE_DIR) not checked out"; \
+	fi
+
+settings-bindings: settings-bindings-native
 	@mkdir -p internal/settingskeys
 	go run ./cmd/settingsgen -lang go -out internal/settingskeys/keys.go
 	gofmt -w internal/settingskeys/keys.go
 	go run ./cmd/settingsgen -lang ts -out web/src/lib/settingsContract.ts
 	@cd web && pnpm exec prettier --write src/lib/settingsContract.ts >/dev/null
 	cp contracts/settings/v1/conformance.json web/src/lib/settingsConformance.json
-	@if [ -d "$(BLOEM_ANDROID_DIR)" ]; then \
-		go run ./cmd/settingsgen -lang kotlin -package org.bloemserver.bloem.model.settings \
-			-out "$(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin/org/bloemserver/bloem/model/settings/SettingKeys.kt"; \
-		echo "wrote Kotlin bindings to $(BLOEM_ANDROID_DIR)"; \
-	else \
-		echo "skipping Kotlin: $(BLOEM_ANDROID_DIR) not checked out"; \
-	fi
-	@if [ -d "$(SILO_APPLE_DIR)" ]; then \
-		go run ./cmd/settingsgen -lang swift \
-			-out "$(SILO_APPLE_DIR)/iosApp/iosApp/Networking/SettingKeys.generated.swift"; \
-		echo "wrote Swift bindings to $(SILO_APPLE_DIR)"; \
-	else \
-		echo "skipping Swift: $(SILO_APPLE_DIR) not checked out"; \
-	fi
 
 # Fail when the committed bindings disagree with the manifest, so a manifest
 # change cannot merge without regenerating what every client reads.
@@ -141,6 +171,21 @@ verify-settings-bindings:
 		|| { echo "::error::internal/settingskeys/keys.go is stale; run make settings-bindings"; exit 1; }
 	@diff -u web/src/lib/settingsConformance.json contracts/settings/v1/conformance.json \
 		|| { echo "::error::web/src/lib/settingsConformance.json is stale; run make settings-bindings"; exit 1; }
+	@# The native halves. Every input to these two runs is the embedded
+	@# manifest and the generator source — nothing is read back out of the
+	@# committed file — so a committed copy can never make itself look current,
+	@# which is the property verify-client-dtos has to work for by feeding the
+	@# recorded revision stamp back in. These bindings carry no such stamp
+	@# (their REVISION comes from the manifest), so a plain diff is total.
+	@CHECK_DIR=$$(mktemp -d) && trap 'rm -rf "$$CHECK_DIR"' EXIT && \
+	go run ./cmd/settingsgen -lang kotlin -package $(SETTINGS_KOTLIN_PACKAGE) \
+		-out "$$CHECK_DIR/SettingKeys.kt" && \
+	diff -u $(SETTINGS_KOTLIN_OUT) "$$CHECK_DIR/SettingKeys.kt" \
+		|| { echo "::error::$(SETTINGS_KOTLIN_OUT) is stale; run make settings-bindings-native"; exit 1; }
+	@CHECK_DIR=$$(mktemp -d) && trap 'rm -rf "$$CHECK_DIR"' EXIT && \
+	go run ./cmd/settingsgen -lang swift -out "$$CHECK_DIR/SettingKeys.generated.swift" && \
+	diff -u $(SETTINGS_SWIFT_OUT) "$$CHECK_DIR/SettingKeys.generated.swift" \
+		|| { echo "::error::$(SETTINGS_SWIFT_OUT) is stale; run make settings-bindings-native"; exit 1; }
 	@echo "settings bindings are current"
 
 # The half that needs pnpm: regenerate the web binding, format it the way the
