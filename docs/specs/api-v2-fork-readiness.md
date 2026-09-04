@@ -157,3 +157,76 @@ will drift — which is exactly the bug the helper exists to prevent.
 4. Do not touch `contracts/client/v1/**` — generated, and the owner has uncommitted work there.
 5. Do not push to `upstream`; its push URL is disabled and must stay that way.
 6. Commit locally on a branch; the coordinator integrates.
+
+---
+
+## The rest of the review, recorded so it is not lost
+
+An adversarial review of #880 and #902 confirmed 20 findings. The three tasks above are the ones
+that are actionable now; these are the ones that change planning, and they were otherwise living
+only in a transcript.
+
+### The v1 tombstone kills our upstream-compat dialect
+
+#880 makes `/api/v1` a frozen alpha contract, carried through exactly ONE published bridge release
+and then retired behind a `410 Gone`. Our clients deliberately speak two dialects — our fork's own
+`/api/bloem/v1`, and an "upstream-compat" dialect for talking to stock upstream servers. That second
+dialect **is** `/api/v1`. When a stock server reaches 1.0, every upstream-compat call gets a 410.
+
+Two things follow. First, this is a client planning item, not a server one, and it is recorded on
+the Android side too (`bloem-android-v3/docs/plan/10-open-follow-ups.md`). Second, phase 1's route
+inventory and scenario catalogs are, incidentally, exactly the map we would need to port that
+dialect to v2 — 762 rows of method+path with per-route expected behaviour. If we ever do that port,
+start from their artifact rather than rediscovering the surface.
+
+Not urgent: it is gated on upstream shipping 1.0 and on a user upgrading a stock server. It is also
+not optional, and it has a long lead time, which is the argument for writing it down now.
+
+### The schema reset is the one to think hardest about
+
+#880 and `docs/update-to-1.0.md` state that the schema **resets at 1.0**, with a bridge release as a
+mandatory upgrade waypoint, and that 1.0's migration guard accepts **only empty or bridge-tip
+databases**.
+
+We run a production database carrying 509 commits of our own migrations, including ones upstream
+has never seen. A guard written to accept only two known shapes will not recognise ours. Establish
+before any 1.0 merge — not during it — whether that guard is something we adopt, adapt, or exclude,
+and what it would do to CT148 if it ran. This is a data question, not a merge-conflict question.
+
+### Where we are already well placed
+
+Worth stating because it is as decision-relevant as the risks:
+- **We vacated `/api/v2` shortly before upstream claimed it.** Our native surface moved to
+  `/api/bloem/v1`, so there is no namespace collision.
+- **The dual-dialect abstraction now looks prescient rather than paranoid.** The clients already
+  have a place to put "which server am I talking to"; a client that had hardcoded one surface would
+  have nowhere to stand.
+
+### The generated-client question, still open
+
+Upstream's stated goal includes generated Kotlin and Swift clients from a Huma-derived OpenAPI
+spec. We built `cmd/clientdtogen`, which generates the same kinds of types directly from the
+server's Go wire types, pinned by commit, with a Swift emitter added recently.
+
+They overlap. Ours generates from the types the server actually serializes; theirs would generate
+from a spec describing them — and a spec can drift from the code it documents, which is precisely
+the failure our pin exists to prevent. Against that, theirs is upstream's, will be maintained, and
+covers routes we do not have.
+
+**Do not invest further in `clientdtogen` until phase 2 shows the shape of theirs.** What is
+committed works and is pinned. The remaining chunks (C4 registry coverage, C6 migration groups) can
+wait. The question worth asking upstream — before either side wastes effort — is whether their
+generated clients will cover Kotlin and Swift, and whether they would want ours upstreamed or
+retired.
+
+### Feedback worth giving upstream, if we give any
+
+The route-inventory completeness argument is unusually strong: sealed handlers whose dynamic type
+is never a router, unexported constructors, a sealing audit, leak-checked closures, a ruleguard rule
+for type assertions and reflection, and runtime reconcile tests as backstop. The one gap we found is
+not in the argument but in its reach: **it refuses rather than degrades**, and a downstream fork
+with a `Mount`, a twice-called registration helper or a variadic registrar gets no artifact at all
+rather than a partial one with the gaps named. For upstream that is correct. For anyone downstream
+it means the gate cannot be adopted incrementally.
+
+That is worth raising as a question about intended scope, not as a defect.
