@@ -22,14 +22,25 @@ import (
 // wire type must accept the server's own golden body and re-emit it, and every
 // key in that body — and in the marshaled form of the realtime roots, which
 // have no fixture file — must appear as an @SerialName in the committed
-// generated Kotlin. This proves key coverage from the server side, against
-// what clients actually vendor, without a Kotlin compiler in Go CI.
+// generated Kotlin and as a CodingKeys case in the committed generated Swift.
+// This proves key coverage from the server side, against what both clients
+// actually vendor, without a Kotlin or Swift compiler in Go CI.
 
 const (
 	playbackPkgPath  = "internal/playback"
 	playbackFixtures = "internal/playback/testdata/protocol_v3"
 	committedKotlin  = "contracts/client/v1/kotlin/playback/Playback.kt"
+	committedSwift   = "contracts/client/v1/swift/playback/Playback.swift"
 )
+
+// target is one client's committed generated file: its language, its path and
+// the class → wire-name-set map parsed out of it. Both are checked over the
+// same wire bodies so neither client can silently lose a key.
+type target struct {
+	lang   string
+	path   string
+	serial map[string]map[string]bool
+}
 
 // rootCases maps every registered playback root to its wire body source: the
 // golden fixture file when one exists, otherwise a fully populated sample
@@ -244,11 +255,10 @@ func TestPlaybackRootRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("building type graph: %v", err)
 	}
-	content, err := os.ReadFile(filepath.Join(root, committedKotlin))
-	if err != nil {
-		t.Fatalf("reading committed Kotlin (%s): %v; run make client-dtos", committedKotlin, err)
+	targets := []target{
+		{lang: "Kotlin", path: committedKotlin, serial: readCommitted(t, root, committedKotlin, parseSerialNames)},
+		{lang: "Swift", path: committedSwift, serial: readCommitted(t, root, committedSwift, parseCodingKeys)},
 	}
-	serials := parseSerialNames(string(content))
 
 	for _, tc := range rootCases {
 		t.Run(tc.goType, func(t *testing.T) {
@@ -260,8 +270,10 @@ func TestPlaybackRootRoundTrip(t *testing.T) {
 			if !typ.Root {
 				t.Errorf("%s is not a graph root; registry and graph disagree", key)
 			}
-			if _, ok := serials[tc.goType]; !ok {
-				t.Fatalf("%s has no class in %s; run make client-dtos", tc.goType, committedKotlin)
+			for _, tgt := range targets {
+				if _, ok := tgt.serial[tc.goType]; !ok {
+					t.Fatalf("%s has no %s type in %s; run make client-dtos", tc.goType, tgt.lang, tgt.path)
+				}
 			}
 
 			var bodies [][2]string // label, wire JSON
@@ -298,7 +310,7 @@ func TestPlaybackRootRoundTrip(t *testing.T) {
 				if err := json.Unmarshal([]byte(body[1]), &value); err != nil {
 					t.Fatalf("parsing %s: %v", body[0], err)
 				}
-				walkWire(t, g, serials, body[0], value, graph.TypeRef{Kind: graph.KindStruct, Named: key})
+				walkWire(t, g, targets, body[0], value, graph.TypeRef{Kind: graph.KindStruct, Named: key})
 			}
 		})
 	}
@@ -391,12 +403,52 @@ func parseSerialNames(content string) map[string]map[string]bool {
 	return classes
 }
 
+// swiftStructDecl and swiftCodingKey anchor on indentation the same way: a
+// wire struct is nested one level inside its namespace enum, and only a
+// CodingKeys case sits three levels in.
+var (
+	swiftStructDecl = regexp.MustCompile("^    public struct `?(\\w+)`?:")
+	swiftCodingKey  = regexp.MustCompile(`^            case \w+ = "([^"]*)"$`)
+)
+
+// parseCodingKeys reads the committed Swift into type → wire-name set.
+func parseCodingKeys(content string) map[string]map[string]bool {
+	types := map[string]map[string]bool{}
+	current := ""
+	for _, line := range strings.Split(content, "\n") {
+		if m := swiftStructDecl.FindStringSubmatch(line); m != nil {
+			current = m[1]
+			if types[current] == nil {
+				types[current] = map[string]bool{}
+			}
+			continue
+		}
+		if current == "" {
+			continue
+		}
+		if m := swiftCodingKey.FindStringSubmatch(line); m != nil {
+			types[current][m[1]] = true
+		}
+	}
+	return types
+}
+
+// readCommitted loads one committed generated file and parses it.
+func readCommitted(t *testing.T, root, rel string, parse func(string) map[string]map[string]bool) map[string]map[string]bool {
+	t.Helper()
+	content, err := os.ReadFile(filepath.Join(root, rel))
+	if err != nil {
+		t.Fatalf("reading committed %s: %v; run make client-dtos", rel, err)
+	}
+	return parse(string(content))
+}
+
 // walkWire descends a decoded wire body alongside the type graph. At every
 // struct-shaped object it requires each key to be a field of the graph type
-// and an @SerialName of the committed Kotlin class, then recurses into the
+// and a wire name of every committed client type, then recurses into the
 // field's type. Map keys are data, not contract names; raw payloads, enums
 // and scalars are leaves.
-func walkWire(t *testing.T, g *graph.Graph, serials map[string]map[string]bool, path string, v any, ref graph.TypeRef) {
+func walkWire(t *testing.T, g *graph.Graph, targets []target, path string, v any, ref graph.TypeRef) {
 	t.Helper()
 	if v == nil {
 		return
@@ -425,10 +477,12 @@ func walkWire(t *testing.T, g *graph.Graph, serials map[string]map[string]bool, 
 				t.Errorf("%s: wire key is not a field of %s", keyPath, ref.Named)
 				continue
 			}
-			if !serials[typ.Name][key] {
-				t.Errorf("%s: no @SerialName in committed Kotlin class %s", keyPath, typ.Name)
+			for _, tgt := range targets {
+				if !tgt.serial[typ.Name][key] {
+					t.Errorf("%s: wire name is missing from %s type %s in %s; run make client-dtos", keyPath, tgt.lang, typ.Name, tgt.path)
+				}
 			}
-			walkWire(t, g, serials, keyPath, obj[key], field.Type)
+			walkWire(t, g, targets, keyPath, obj[key], field.Type)
 		}
 	case graph.KindMap:
 		obj, ok := v.(map[string]any)
@@ -437,7 +491,7 @@ func walkWire(t *testing.T, g *graph.Graph, serials map[string]map[string]bool, 
 			return
 		}
 		for _, key := range sortedKeys(obj) {
-			walkWire(t, g, serials, path+"."+key, obj[key], *ref.Elem)
+			walkWire(t, g, targets, path+"."+key, obj[key], *ref.Elem)
 		}
 	case graph.KindList:
 		arr, ok := v.([]any)
@@ -446,7 +500,7 @@ func walkWire(t *testing.T, g *graph.Graph, serials map[string]map[string]bool, 
 			return
 		}
 		for i, elem := range arr {
-			walkWire(t, g, serials, fmt.Sprintf("%s[%d]", path, i), elem, *ref.Elem)
+			walkWire(t, g, targets, fmt.Sprintf("%s[%d]", path, i), elem, *ref.Elem)
 		}
 	}
 }

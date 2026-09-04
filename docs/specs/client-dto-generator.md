@@ -256,7 +256,11 @@ the client's hand-written dispatcher decodes `payload` into them by `name`. The
 generated wire-constant holders (§4.2), which is what lets the client's `hello` advertise
 exactly the server's vocabulary without a hand-kept list.
 
-## 4. Go → Kotlin mapping
+## 4. Go → client mapping
+
+Kotlin is the reference rendering: §4.1–§4.4 are written in it because it landed first. §4.5
+records the places Swift is forced to answer differently; a row not listed there is the same
+rule in both.
 
 ### 4.1 Types
 
@@ -371,6 +375,25 @@ request bytes stay byte-compatible with what v2 sent.
 `@SerialName` values are the `json` tag name copied byte-for-byte; the generator never
 transforms them.
 
+### 4.5 Where Swift diverges (chunk C7)
+
+The Swift emitter takes §4.1–§4.4 decision for decision. These are the places the language
+forces a different answer; everything not listed here is the same rule, spelled in Swift.
+
+| Row | Kotlin | Swift | Why |
+|---|---|---|---|
+| package | `package org.bloemserver.bloem.contract.playback` | `public enum Playback { … }` in `playback/Playback.swift` | Swift has no per-directory namespace and the registry already holds two types called `Status`; a caseless enum is the language's namespace. |
+| annotation | `@SerialName("source_start_seconds")` | `case sourceStartSeconds = "source_start_seconds"` in a `public enum CodingKeys` | Swift carries wire names in `CodingKeys`, which is also the one construct the Apple identity gate exempts. |
+| defaults | constructor default + `coerceInputValues` | a generated `public init(from:)` reading `decodeIfPresent(…) ?? default` | Swift's synthesized `Decodable` **ignores** property defaults and throws on a missing key. Without an explicit initializer, an upstream-compat server omitting a Bloem key would fail to decode. `decodeIfPresent` returns nil for an absent key *and* for an explicit `null`, which is exactly `coerceInputValues`. |
+| encoding | `explicitNulls = false`, `encodeDefaults = true` | a generated `public func encode(to:)` using `encodeIfPresent` for optionals and `encode` otherwise | Same bytes on the wire; written out because a boxed field (below) defeats synthesis. Property references are `self.`-qualified: a wire field may be called `container`. |
+| `int`, `uint32` | `Int` (32-bit) | `Int` (64-bit on every Apple platform) | Strictly wider; `uint32` values above 2^31 decode on Apple and would fail on Android. `int64`/`uint64` are `Int64` in both. |
+| enumerations | `@JvmInline value class X(val wire: String)` | `public struct X: RawRepresentable, Codable` with `wire`/`rawValue` | The standard library's `RawRepresentable` conformance decodes and encodes it as a bare string, so an unknown server value survives, which is the whole point of §4.2. Constant identifiers stay SCREAMING_CASE, against Swift convention, so both clients name one vocabulary identically. |
+| `json.RawMessage`, `any` | `kotlinx.serialization.json.JsonElement` | the client-owned `BloemJSONValue` | Swift's standard library has no JSON value type. The client owns it like it owns the registry serializers (§9.2); it must be `Codable`, `Hashable`, `Sendable`. |
+| self-referential field (`Next *Child`) | `Child? = null` | `public var next: Child? { _next.value }` over `private let _next: Indirect<Child?>` | A Swift struct stores its fields inline, so `struct Child { let next: Child? }` is rejected outright. The generator boxes exactly the fields on a containment cycle; a cycle with no pointer in it is refused. |
+| registry `serializers` | the `kotlin` target, fully qualified, in `@Serializable(with = …)` | the `swift` target, else the last component of the `kotlin` target | No entry in `contracts/client/v1/registry.json` names a `swift` target yet, and adding one would move `CONTRACT_DIGEST` and force an Android re-vendor for a change that alters no wire shape. The fallback is deterministic and is the name a human would write; an entry naming neither target is refused. |
+| type named `Protocol`, `Self` or `Any` | emitted verbatim | declared with backticks; **refused** when referenced across namespaces | `Namespace.Protocol` is metatype syntax and backticks do not rescue the qualified form. No such type exists in the registry today; renaming the Go type is the fix. |
+| `time.Time`, `uuid.UUID` | `String` | `String` | Not a divergence — recorded because the tempting Swift answers (`Date`, `UUID`) are wrong for the same reason §4.1 gives: the server hand-formats some dates, and a strict `UUID` would refuse a string the server may legitimately send. |
+
 ## 5. Outputs
 
 ### 5.1 Layout in the client
@@ -392,7 +415,12 @@ core/src/commonMain/kotlin-generated/org/bloemserver/bloem/contract/
 One file per Go package (ruled); Kotlin package = `org.bloemserver.bloem.contract.` +
 last Go path element; file name = capitalised last path element. `kotlin-generated` is added to
 the `commonMain` source set in `core/build.gradle.kts` and excluded from ktlint/detekt, so the
-explicit-`public` style and long files do not need lint suppressions. Existing hand-written
+explicit-`public` style and long files do not need lint suppressions.
+
+The Swift tree mirrors it directory for directory — `swift/playback/Playback.swift`,
+`swift/GeneratedContract.swift` — with the Kotlin package replaced by a caseless-enum namespace
+(§4.5), so `contracts/client/v1/kotlin/` and `contracts/client/v1/swift/` can be read side by
+side. Existing hand-written
 files under `model/…` shrink to the survivors in §9.2 and import `contract.…`.
 
 ### 5.2 File header and determinism
@@ -588,8 +616,54 @@ Each chunk is one agent, one worktree, commit locally; acceptance is the gate fo
 | C4 | Registry coverage | Roots for handlers (capability, items/browse/sections/personal/request/profile/auth/…), notifications, promotions, ambience, remote; named types introduced server-side where a response is an anonymous literal today, each in its own commit with the handler test updated; `serializers` entries for the frame-rate case. Coverage-drift warnings reduced to an explicit allowlist. | Every v2 model file in §9.1 has a generated counterpart or a written reason in the allowlist; digest test wired to the v1-scope removals table. |
 | C5 | Client vendoring (WP-05 in bloem-android-v3) | `kotlin-generated` source set, pin file + `verifyContractPin`, conformance round-trip through generated classes, migration of domain group 1 (playback) with hand-written survivors re-authored. | `./gradlew :core:build` green; conformance tests decode every vendored fixture through generated types; identity audit reports zero non-wire shared lines in the touched files; the replaced hand-written files are deleted in the same commits. |
 | C6 | Client migration groups 2–3 | Per §9.1, one domain per commit. | Same bar as C5 per domain; WP-05 acceptance "≥ 60 % of v2's mechanical DTO mass generated" (`WP-05-core-dto-codegen.md:38`) measured and reported. |
+| C7 | Swift emitter | `-lang swift` beside `-lang kotlin`, over the same registry, graph and naming rules (§4.5): `internal/emit/swift`, one file per Go package under a caseless-enum namespace, `Codable` structs with explicit `CodingKeys`, `RawRepresentable` vocabulary types, the §4.4 defaults applied in a generated `init(from:)`/`encode(to:)`, `GeneratedContract.swift`, the same `// Server revision:` stamp; committed output under `contracts/client/v1/swift/`; `make client-dtos` and `make verify-client-dtos` cover both languages, and the CI drift step gains Swift for free. | Nine criteria, below. |
 
-C1→C2→C3 are sequential; C4 can start after C1; C5 needs C3; C6 needs C4 and C5.
+C1→C2→C3 are sequential; C4 can start after C1; C5 needs C3; C6 needs C4 and C5. C7 needs
+C3 and gates the Apple client's WP-05/A; it is independent of C4 and C6.
+
+### 10.1 C7 acceptance criteria
+
+The answer to §11 Q8 created this chunk without one. It is met when all nine hold:
+
+1. **Kotlin output is byte-identical.** Regenerate and diff `contracts/client/v1/kotlin/` and the
+   Android vendored copy before and after; both unchanged, `CONTRACT_DIGEST` included. Android's
+   pinned contract does not move for a Swift change.
+2. **Golden files** under `cmd/clientdtogen/testdata/swift/` are committed, and two emits over the
+   fixture graph are byte-identical.
+3. **Provenance assertions** over the golden output, the Swift reading of §2: every declaration is
+   explicitly `public` bar the private indirection box, the only `func` is the mechanical
+   `encode(to:)`, every type name is a Go type name, and every property has its own `CodingKeys`
+   case carrying the wire name unchanged.
+4. **The generated Swift compiles.** `swiftc -swift-version 6` type-checks both the fixture goldens
+   and the whole committed `contracts/client/v1/swift/` tree against the client-owned support types.
+   The committed-tree check is not optional: the real registry reaches shapes the synthetic fixture
+   does not.
+5. **A runtime conformance driver** decodes bodies the Go types can produce and asserts §4.4 holds:
+   an empty object takes every documented default, a `null` list coerces to empty, an unknown key
+   and an unknown enum value both survive, a self-referential type round-trips to an equal value
+   with no `null` written for its absent tail, and a request-only type refuses a body missing a
+   required key.
+6. **The round-trip gate covers both clients.** Every wire key of every registered playback root —
+   from the golden fixtures and from the marshaled realtime roots — is a `CodingKeys` case in the
+   committed Swift as well as an `@SerialName` in the committed Kotlin. Mutation-tested: deleting
+   one case fails the test and names the field, the type and the file.
+7. **`make verify-client-dtos` regenerates each language against the revision stamped in its own
+   committed contract file**, never `HEAD`, so committed output can never make itself stale.
+8. **Refusals name the offender**: a serializer entry with no usable target, a constant colliding
+   with `KNOWN`, a type whose name is a namespace, a `Protocol`/`Self`/`Any` type referenced across
+   namespaces, and a containment cycle with no pointer in it.
+9. **The divergences are written down** in §4.5 rather than discovered by the client.
+
+Two follow-ups are deliberately **not** gating:
+
+- Explicit `swift` targets in the registry's `serializers` map. Adding one changes the graph dump
+  and therefore `CONTRACT_DIGEST`, which is an Android re-vendor for a change that alters no wire
+  shape; do it the next time the digest is allowed to move.
+- The `make client-dtos` copy hook into a sibling `bloem-apple-v3` checkout, the twin of
+  `BLOEM_ANDROID_DTO_DIR`. It lands with WP-05/A, which is what decides where the client's
+  generated source directory lives; guessing the path here would be a doc that disagrees with the
+  code.
+
 
 ## 11. Open questions for the owner
 
@@ -638,4 +712,6 @@ Each with the default the implementation takes if unanswered.
 - Q8 Swift emission: **YES — bloem-apple is in scope for the same generator.** C2 designs the
   emitter interface for two targets from the start (`-lang kotlin|swift`); the Swift emitter itself
   is a later chunk (C7) after C3, with the same provenance rule vs the v2 apple client.
+  C7 is written up in §10 with acceptance criteria in §10.1, and the mapping decisions Swift
+  forces are in §4.5.
 - All other questions: the stated defaults.

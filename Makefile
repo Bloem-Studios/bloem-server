@@ -157,17 +157,19 @@ verify-settings-bindings-web:
 
 verify-settings-bindings-all: verify-settings-bindings verify-settings-bindings-web
 
-# Regenerate the client DTO set (Kotlin today) from the registry and the Go
-# wire types it roots at. Like the settings bindings, the server commits its
-# own copy of the output so the drift check below needs no client checkout;
-# when the v3 Android client is checked out as a sibling, the same run also
-# copies into its kotlin-generated source directory, the same convenience
-# settings-bindings offers.
+# Regenerate the client DTO set — Kotlin for bloem-android, Swift for
+# bloem-apple — from the registry and the Go wire types it roots at. Like the
+# settings bindings, the server commits its own copy of the output so the
+# drift check below needs no client checkout; when the v3 Android client is
+# checked out as a sibling, the same run also copies into its kotlin-generated
+# source directory, the same convenience settings-bindings offers.
 CLIENT_DTO_OUT := contracts/client/v1/kotlin
+CLIENT_DTO_OUT_SWIFT := contracts/client/v1/swift
 BLOEM_ANDROID_DTO_DIR := $(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin-generated/org/bloemserver/bloem/contract
 
 client-dtos:
 	go run ./cmd/clientdtogen -lang kotlin -out $(CLIENT_DTO_OUT) -server-revision $(BUILD_REVISION)
+	go run ./cmd/clientdtogen -lang swift -out $(CLIENT_DTO_OUT_SWIFT) -server-revision $(BUILD_REVISION)
 	@if [ -d "$(BLOEM_ANDROID_DIR)" ]; then \
 		go run ./cmd/clientdtogen -lang kotlin -out "$(BLOEM_ANDROID_DTO_DIR)" -server-revision $(BUILD_REVISION); \
 		echo "wrote generated DTOs to $(BLOEM_ANDROID_DTO_DIR)"; \
@@ -182,12 +184,15 @@ client-dtos:
 # those two can never match, and the stamp is the only line allowed to differ —
 # so a plain diff catches every other byte of drift.
 verify-client-dtos:
-	@CHECK_DIR=$$(mktemp -d) && trap 'rm -rf "$$CHECK_DIR"' EXIT && \
-	STAMPED=$$(sed -n 's/^\/\/ Server revision: \([0-9a-f]\{40\}\) .*/\1/p' "$(CLIENT_DTO_OUT)/GeneratedContract.kt" 2>/dev/null || true) && \
-	if [ -z "$$STAMPED" ]; then echo "::error::$(CLIENT_DTO_OUT)/GeneratedContract.kt has no server revision stamp; run make client-dtos"; exit 1; fi && \
-	go run ./cmd/clientdtogen -lang kotlin -out "$$CHECK_DIR" -server-revision "$$STAMPED" && \
-	diff -ur "$(CLIENT_DTO_OUT)" "$$CHECK_DIR" \
-		|| { echo "::error::$(CLIENT_DTO_OUT) is stale; run make client-dtos"; exit 1; }
+	@set -e; for target in "kotlin $(CLIENT_DTO_OUT) GeneratedContract.kt" "swift $(CLIENT_DTO_OUT_SWIFT) GeneratedContract.swift"; do \
+		set -- $$target; LANG_NAME=$$1; OUT_DIR=$$2; CONTRACT=$$3; \
+		CHECK_DIR=$$(mktemp -d); \
+		STAMPED=$$(sed -n 's/^\/\/ Server revision: \([0-9a-f]\{7,40\}\) .*/\1/p' "$$OUT_DIR/$$CONTRACT" 2>/dev/null || true); \
+		if [ -z "$$STAMPED" ]; then rm -rf "$$CHECK_DIR"; echo "::error::$$OUT_DIR/$$CONTRACT has no server revision stamp; run make client-dtos"; exit 1; fi; \
+		go run ./cmd/clientdtogen -lang "$$LANG_NAME" -out "$$CHECK_DIR" -server-revision "$$STAMPED"; \
+		if ! diff -ur "$$OUT_DIR" "$$CHECK_DIR"; then rm -rf "$$CHECK_DIR"; echo "::error::$$OUT_DIR is stale; run make client-dtos"; exit 1; fi; \
+		rm -rf "$$CHECK_DIR"; \
+	done
 	@echo "client DTOs are current"
 
 # Regenerate the protocol-v3 golden contract fixtures from the live types and planner.
