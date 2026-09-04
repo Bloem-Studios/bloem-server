@@ -8,6 +8,7 @@
 //
 //	clientdtogen -dump                                   # dump the graph for the default registry
 //	clientdtogen -lang kotlin -out contracts/client/v1/kotlin -server-revision $(git rev-parse HEAD)
+//	clientdtogen -lang swift -out contracts/client/v1/swift -server-revision $(git rev-parse HEAD)
 //	clientdtogen -dump                       # dump the graph for the default registry
 //	clientdtogen -digest-file contracts/client/v1/digest.txt
 //	clientdtogen -check-coverage contracts/client/v1/coverage.json
@@ -25,14 +26,15 @@ import (
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/digestfile"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/emit"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/emit/kotlin"
+	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/emit/swift"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/graph"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/registry"
 )
 
 const defaultRegistry = "contracts/client/v1/registry.json"
 
-// emitters lists the languages -lang accepts. Swift attaches here (§11 Q8).
-var emitters = []emit.Emitter{kotlin.Emitter{}}
+// emitters lists the languages -lang accepts (§11 Q8, §10 C7).
+var emitters = []emit.Emitter{kotlin.Emitter{}, swift.Emitter{}}
 
 func lookupEmitter(lang string) (emit.Emitter, bool) {
 	for _, e := range emitters {
