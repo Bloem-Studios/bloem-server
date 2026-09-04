@@ -219,7 +219,10 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			// canonical here: a conflicting value is refused rather than
 			// letting the session act as a device it never authenticated, and
 			// an absent one is filled in from the binding so every consumer
-			// sees the same identity.
+			// sees the same identity. NormalizeClientHeaders has already
+			// folded the X-Bloem-Device-Id spelling onto this name upstream,
+			// so a device declared under either spelling meets this guard;
+			// keep that middleware ahead of RequireAuth.
 			if declared := strings.TrimSpace(r.Header.Get("X-Silo-Device-Id")); declared != "" && declared != claims.DeviceID {
 				writeForbidden(w, "Device does not match this session's binding")
 				return
