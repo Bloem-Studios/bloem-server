@@ -112,3 +112,27 @@ result counts describe transports rather than individual HTTP requests.
 
 This checkpoint requires the guarded PostgreSQL scenario database. It does not
 claim SQLite coverage, cursor traversal or conditional device mutation support.
+
+## Profile mutation effects and PIN checks
+
+`make test-scenario-profile-mutations` requires eight existing cases: name and
+partial preference updates, rejected self-service access changes, deletion and
+repeated deletion, protected primary-profile deletion, and correct/incorrect PIN
+checks. These produce 16 transport results and 26 physical requests, including
+repeated deletion and eight explicit v2 household reads. The reads verify target
+changes, sibling preservation and the absence of PINs, hashes and credentials in
+profile lists. PIN checks assert credential presence only on success; this slice
+does not consume that credential or claim an unlock/expiry lifecycle test.
+
+The v2 update uses PATCH; v1 uses PUT. V2 returns Problems and canonical profile
+fields, and PIN checks include `expires_at` (null in this fixture configuration).
+Neither update nor deletion supports conditional requests. No ETag preconditions
+or dynamic resource-path captures are assumed.
+
+The required target assigns distinct creation timestamps to its fixed synthetic
+profiles after each independent transport reseed. This makes positional effect
+assertions deterministic without assuming ordering among equal timestamps.
+Teardown restores the ordinary fixture. Default fixtures, production behavior
+and all original v1 records remain unchanged. Missing pairings/read-after steps,
+skipped results and failed assertions fail this gate. SQLite execution, profile
+creation, avatars and additional profile authorization cases remain separate work.
