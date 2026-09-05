@@ -165,6 +165,9 @@ func attachCollectionProfiles(db *sql.DB, profileID string, collections []Collec
 
 // UpdateCollection renames a collection and updates its updated_at timestamp.
 func UpdateCollection(db *sql.DB, input userstore.UpdateCollectionInput) error {
+	if input.SourceConfigPatch != nil {
+		return fmt.Errorf("user collection imports are not supported on the SQLite user store")
+	}
 	var creatorProfileID string
 	if err := db.QueryRow(`SELECT creator_profile_id FROM personal_collections WHERE id = ?`, input.ID).Scan(&creatorProfileID); err != nil {
 		return err

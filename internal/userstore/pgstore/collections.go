@@ -259,7 +259,13 @@ func (s *PostgresUserStore) UpdateCollection(ctx context.Context, input userstor
 	if input.SourceURL != nil {
 		add("source_url", *input.SourceURL)
 	}
-	if input.SourceConfig != nil {
+	if input.SourceConfigPatch != nil {
+		if input.SourceConfig != nil {
+			return fmt.Errorf("source config replacement and patch are mutually exclusive")
+		}
+		args = append(args, *input.SourceConfigPatch)
+		sets = append(sets, fmt.Sprintf("source_config = source_config || $%d::jsonb", len(args)))
+	} else if input.SourceConfig != nil {
 		add("source_config", *input.SourceConfig)
 	}
 	if input.ClearSyncSchedule {
@@ -381,7 +387,7 @@ func (s *PostgresUserStore) AddCollectionItem(ctx context.Context, collectionID,
 	_, err := s.pool.Exec(ctx,
 		`INSERT INTO user_personal_collection_items (user_id, collection_id, media_item_id, position, added_at)
 		 VALUES ($1, $2, $3, $4, $5)
-		 ON CONFLICT (user_id, collection_id, media_item_id)
+		 ON CONFLICT (user_id, collection_id, media_item_id, sub_item_id)
 		   DO UPDATE SET position = EXCLUDED.position`,
 		s.userID, collectionID, mediaItemID, position, nowUTC(),
 	)
@@ -411,12 +417,12 @@ func (s *PostgresUserStore) ReorderCollectionItems(ctx context.Context, collecti
 		  UPDATE user_personal_collection_items t
 		  SET position = supplied.pos - 1
 		  FROM supplied
-		  WHERE t.user_id = $2 AND t.collection_id = $3 AND t.media_item_id = supplied.id
+		  WHERE t.user_id = $2 AND t.collection_id = $3 AND t.media_item_id = supplied.id AND t.sub_item_id = ''
 		  RETURNING 1
 		)
 		SELECT (SELECT count(*) FROM upd),
 		       (SELECT count(*) FROM user_personal_collection_items
-		         WHERE user_id = $2 AND collection_id = $3)
+		         WHERE user_id = $2 AND collection_id = $3 AND sub_item_id = '')
 	`, orderedMediaItemIDs, s.userID, collectionID).Scan(&updated, &total); err != nil {
 		return fmt.Errorf("reordering collection items: %w", err)
 	}
@@ -690,7 +696,7 @@ func (s *PostgresUserStore) ReorderCollectionGroups(ctx context.Context, ordered
 
 func (s *PostgresUserStore) RemoveCollectionItem(ctx context.Context, collectionID, mediaItemID string) error {
 	_, err := s.pool.Exec(ctx,
-		`DELETE FROM user_personal_collection_items WHERE user_id = $1 AND collection_id = $2 AND media_item_id = $3`,
+		`DELETE FROM user_personal_collection_items WHERE user_id = $1 AND collection_id = $2 AND media_item_id = $3 AND sub_item_id = ''`,
 		s.userID, collectionID, mediaItemID,
 	)
 	return err
@@ -700,7 +706,7 @@ func (s *PostgresUserStore) ListCollectionItems(ctx context.Context, collectionI
 	rows, err := s.pool.Query(ctx,
 		`SELECT collection_id, media_item_id, position, added_at
 		 FROM user_personal_collection_items
-		 WHERE user_id = $1 AND collection_id = $2 ORDER BY position ASC`,
+		 WHERE user_id = $1 AND collection_id = $2 AND sub_item_id = '' ORDER BY position ASC, media_item_id ASC`,
 		s.userID, collectionID,
 	)
 	if err != nil {
@@ -729,7 +735,7 @@ func (s *PostgresUserStore) ReplaceCollectionItems(ctx context.Context, collecti
 	defer tx.Rollback(ctx) //nolint:errcheck
 
 	if _, err := tx.Exec(ctx,
-		`DELETE FROM user_personal_collection_items WHERE user_id = $1 AND collection_id = $2`,
+		`DELETE FROM user_personal_collection_items WHERE user_id = $1 AND collection_id = $2 AND sub_item_id = ''`,
 		s.userID, collectionID,
 	); err != nil {
 		return fmt.Errorf("clearing collection items: %w", err)

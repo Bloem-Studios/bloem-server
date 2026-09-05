@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion = 21
+const schemaVersion = 22
 
 func runMigrations(db *sql.DB) error {
 	version, err := userVersion(db)
@@ -201,6 +201,17 @@ func runMigrations(db *sql.DB) error {
 			return fmt.Errorf("migration v21 failed: %w", err)
 		}
 		if _, err := tx.Exec("PRAGMA user_version = 21"); err != nil {
+			return err
+		}
+	}
+
+	if version < 22 {
+		// Normalize legacy NULLs once; all future direct writes are normalized by
+		// the schema triggers, preserving indexed tuple continuation.
+		if _, err := tx.Exec(`UPDATE personal_collection_items SET position = 0 WHERE position IS NULL`); err != nil {
+			return fmt.Errorf("migration v22 failed: %w", err)
+		}
+		if _, err := tx.Exec("PRAGMA user_version = 22"); err != nil {
 			return err
 		}
 	}
