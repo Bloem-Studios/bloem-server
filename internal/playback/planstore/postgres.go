@@ -16,7 +16,8 @@ import (
 )
 
 type Postgres struct {
-	db *pgxpool.Pool
+	db               *pgxpool.Pool
+	grantMaxDuration time.Duration
 }
 
 func NewPostgres(db *pgxpool.Pool) *Postgres { return &Postgres{db: db} }

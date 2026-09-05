@@ -15,6 +15,7 @@ const (
 	AttemptActiveV3    AttemptAuthorityStateV3 = "active"
 	AttemptTerminalV3  AttemptAuthorityStateV3 = "terminal"
 	AttemptStoppedV3   AttemptAuthorityStateV3 = "stopped"
+	AttemptDrainingV3  AttemptAuthorityStateV3 = "draining"
 )
 
 // AttemptAuthorityV3 fences one reservation generation. OwnerID identifies a
