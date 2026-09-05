@@ -147,14 +147,23 @@ func TestV2FollowupSchemaAndOperation(t *testing.T) {
 }
 
 func TestRequiredDeviceMutationPairingCannotShrink(t *testing.T) {
-	for _, id := range RequiredDeviceMutationScenarios {
+	testMutationPairingCannotShrink(t, RequiredDeviceMutationScenarios, DeviceMutationAcceptance)
+}
+
+func TestRequiredProfileMutationPairingCannotShrink(t *testing.T) {
+	testMutationPairingCannotShrink(t, RequiredProfileMutationScenarios, ProfileMutationAcceptance)
+}
+
+func testMutationPairingCannotShrink(t *testing.T, required []string, selectCases func([]*Catalog) ([]*Catalog, error)) {
+	t.Helper()
+	for _, id := range required {
 		for _, failure := range []string{"missing case", "missing pair", "missing read-after"} {
 			t.Run(id+"/"+failure, func(t *testing.T) {
 				catalogs, err := Load()
 				if err != nil {
 					t.Fatal(err)
 				}
-				pilot, err := DeviceMutationAcceptance(catalogs)
+				pilot, err := selectCases(catalogs)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -178,7 +187,7 @@ func TestRequiredDeviceMutationPairingCannotShrink(t *testing.T) {
 						}
 					}
 				}
-				if _, err := DeviceMutationAcceptance(pilot); err == nil || !strings.Contains(err.Error(), id) {
+				if _, err := selectCases(pilot); err == nil || !strings.Contains(err.Error(), id) {
 					t.Fatalf("accepted %s: %v", failure, err)
 				}
 			})

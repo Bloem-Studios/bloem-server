@@ -155,3 +155,47 @@ func requiredAcceptance(catalogs []*Catalog, method string, paths []string, requ
 	}
 	return selected, nil
 }
+
+// RequiredProfileMutationScenarios fixes the update, deletion and PIN-check slice.
+var RequiredProfileMutationScenarios = []string{
+	"profiles_update.ok", "profiles_update.partial", "profiles_update.self_service_access_field",
+	"profiles_delete.ok", "profiles_delete.meaning", "profiles_delete.primary_protected",
+	"verify_pin.ok", "verify_pin.wrong",
+}
+
+func ProfileMutationAcceptance(catalogs []*Catalog) ([]*Catalog, error) {
+	var selected []*Catalog
+	for _, group := range []struct {
+		method, path string
+		ids          []string
+	}{
+		{http.MethodPut, "/api/v1/profiles/{id}", RequiredProfileMutationScenarios[:3]},
+		{http.MethodDelete, "/api/v1/profiles/{id}", RequiredProfileMutationScenarios[3:6]},
+		{http.MethodPost, "/api/v1/profiles/{id}/verify-pin", RequiredProfileMutationScenarios[6:]},
+	} {
+		picked, err := requiredAcceptance(catalogs, group.method, []string{group.path}, group.ids)
+		if err != nil {
+			return nil, err
+		}
+		selected = append(selected, picked...)
+	}
+	for _, catalog := range selected {
+		for _, row := range catalog.Rows {
+			for _, scenario := range row.Scenarios {
+				then := scenario.V2Expectation.Then
+				if len(then) != 1 {
+					return nil, fmt.Errorf("%s: required profile read-after is missing", scenario.ID)
+				}
+				step := then[0]
+				principal := "primary_profile"
+				if scenario.ID == "profiles_delete.primary_protected" {
+					principal = "acting_admin"
+				}
+				if step.OperationID != "listProfiles" || step.Method != http.MethodGet || step.Request.Path != "/api/v2/profiles" || step.Principal == nil || step.Principal.Class != principal || len(step.Expect.Body) == 0 {
+					return nil, fmt.Errorf("%s: required profile read-after is invalid", scenario.ID)
+				}
+			}
+		}
+	}
+	return selected, nil
+}
