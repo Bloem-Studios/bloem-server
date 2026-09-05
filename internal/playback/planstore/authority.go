@@ -84,7 +84,7 @@ func (s *Postgres) ReserveAttempt(ctx context.Context, request playback.AttemptR
 		err = tx.QueryRow(ctx, `UPDATE playback_v3_attempts SET
 		 control_owner = $2::uuid, control_epoch = control_epoch + 1,
 		 session_id = NULL, effective_media_file_id = requested_media_file_id, current_plan_id = '',
-		 current_plan = '{}', frozen_recipe = '{}', control_route = NULL,
+		 current_plan = '{}', frozen_recipe = '{}', control_route = NULL, control_recipe_locator = NULL,
 		 control_lease_expires_at = LEAST(expires_at, clock_timestamp() + $3 * interval '1 microsecond'), updated_at = clock_timestamp()
 		 WHERE playback_attempt_id = $1
 		 RETURNING control_owner::text, control_epoch, control_lease_expires_at`, request.PlaybackAttemptID, request.OwnerID, request.LeaseDuration.Microseconds()).Scan(

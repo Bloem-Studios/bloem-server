@@ -34,9 +34,10 @@ func newGrantFixture(t *testing.T) *grantFixture {
 		t.Fatal(err)
 	}
 	record := f.attemptRecord(uuid.NewString(), req.PlaybackAttemptID, req.RequestDigest)
-	route := playback.AttemptGrantRouteV3{TransportID: uuid.NewString(), ExecutionNodeID: 1, EgressNodeID: 2}
+	executor := playback.ExecutorNamespaceV3{Incarnation: reserved.Authority.Incarnation, Epoch: reserved.Authority.Epoch, ExecutorID: uuid.NewString()}
+	route := playback.AttemptGrantRouteV3{Executor: executor, TransportID: uuid.NewString(), ExecutionNodeID: 1, EgressNodeID: 2}
 	return &grantFixture{planstoreFixture: f, store: store, authority: reserved.Authority, record: record, route: route, reservation: req,
-		request: playback.AttemptGrantRequestV3{SessionID: record.SessionID, PlanID: record.CurrentPlanID, TransportID: route.TransportID, NodeID: 1, Purpose: playback.AttemptGrantExecuteV3, Duration: 3 * time.Second}}
+		request: playback.AttemptGrantRequestV3{Executor: executor, SessionID: record.SessionID, PlanID: record.CurrentPlanID, TransportID: route.TransportID, NodeID: 1, Purpose: playback.AttemptGrantExecuteV3, Duration: 3 * time.Second}}
 }
 
 func (f *grantFixture) stage(t *testing.T) {
@@ -72,6 +73,8 @@ func TestAttemptGrantStagingAndBinding(t *testing.T) {
 	changed.FrozenRecipe.SubtitleTrackIndex = 0
 	requireStaleGrant(t, f.store.PublishAttempt(t.Context(), f.authority, changed))
 	for name, change := range map[string]func(*playback.AttemptGrantRequestV3){
+		"missing executor":    func(r *playback.AttemptGrantRequestV3) { r.Executor = playback.ExecutorNamespaceV3{} },
+		"stale executor":      func(r *playback.AttemptGrantRequestV3) { r.Executor.ExecutorID = uuid.NewString() },
 		"session":             func(r *playback.AttemptGrantRequestV3) { r.SessionID = uuid.NewString() },
 		"plan":                func(r *playback.AttemptGrantRequestV3) { r.PlanID = "another-plan" },
 		"transport nonce":     func(r *playback.AttemptGrantRequestV3) { r.TransportID = uuid.NewString() },

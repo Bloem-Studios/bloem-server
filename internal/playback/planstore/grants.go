@@ -30,6 +30,12 @@ func (s *Postgres) StageAttemptRoute(ctx context.Context, authority playback.Att
 	if record.PlaybackAttemptID != authority.PlaybackAttemptID || record.SessionID == "" || record.CurrentPlan.SessionID != record.SessionID || record.CurrentPlanID == "" || record.CurrentPlanID != record.CurrentPlan.PlanID || !record.FrozenRecipe.ValidFor(record.CurrentPlan) || record.CurrentReplanRequestID != "" || route.TransportID == "" || route.ExecutionNodeID < 0 || route.EgressNodeID < 0 {
 		return fmt.Errorf("invalid prepared playback route")
 	}
+	if err := route.Executor.Validate(); err != nil {
+		return err
+	}
+	if route.Executor.Incarnation != authority.Incarnation || route.Executor.Epoch != authority.Epoch {
+		return playback.ErrStaleAttemptAuthorityV3
+	}
 	plan, err := json.Marshal(record.CurrentPlan)
 	if err != nil {
 		return err
@@ -74,20 +80,28 @@ func (s *Postgres) IssueAttemptGrant(ctx context.Context, authority playback.Att
 	if request.Purpose != playback.AttemptGrantExecuteV3 && request.Purpose != playback.AttemptGrantServeV3 {
 		return grant, fmt.Errorf("invalid playback grant purpose")
 	}
+	if err := request.Executor.Validate(); err != nil {
+		return grant, playback.ErrStaleAttemptAuthorityV3
+	}
+	executor, err := json.Marshal(request.Executor)
+	if err != nil {
+		return grant, err
+	}
 	grant.Authority, grant.Request = authority, request
-	err := s.withAuthorityLock(ctx, authority.PlaybackAttemptID, func(tx pgx.Tx) error {
+	err = s.withAuthorityLock(ctx, authority.PlaybackAttemptID, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx, `WITH timing AS MATERIALIZED (SELECT clock_timestamp() AS now)
 		 UPDATE playback_v3_attempts SET control_grant_not_after = GREATEST(control_grant_not_after,
 		 LEAST(timing.now + $5 * interval '1 microsecond', control_lease_expires_at, expires_at)), updated_at = timing.now
 		 FROM timing
 		 WHERE playback_attempt_id = $1 AND control_incarnation = NULLIF($2, '')::uuid AND control_owner = $3::uuid AND control_epoch = $4
 		 AND control_lease_expires_at > timing.now AND expires_at > timing.now
+		 AND control_route->'executor' = $11::jsonb
 		 AND session_id = NULLIF($6, '')::uuid AND current_plan_id = $7 AND control_route->>'transport_id' = $8
 		 AND (($9 = 'execute' AND control_state IN ('preparing', 'active') AND (control_route->>'execution_node_id')::bigint = $10)
 		 OR ($9 = 'serve' AND control_state = 'active' AND (control_route->>'egress_node_id')::bigint = $10))
 		 RETURNING control_state, control_lease_expires_at, timing.now, LEAST(timing.now + $5 * interval '1 microsecond', control_lease_expires_at, expires_at)`,
 			authority.PlaybackAttemptID, authority.Incarnation, authority.OwnerID, authority.Epoch,
-			min(request.Duration, s.grantMaxDuration).Microseconds(), request.SessionID, request.PlanID, request.TransportID, request.Purpose, request.NodeID).Scan(
+			min(request.Duration, s.grantMaxDuration).Microseconds(), request.SessionID, request.PlanID, request.TransportID, request.Purpose, request.NodeID, executor).Scan(
 			&grant.Authority.State, &grant.Authority.LeaseExpiresAt, &grant.IssuedAt, &grant.NotAfter)
 	})
 	if err != nil {

@@ -33,6 +33,7 @@ func init() {
 
 // TranscodeOpts holds configuration for an HLS transcode session.
 type TranscodeOpts struct {
+	Executor  *ExecutorNamespaceV3 // OutputDir must be the exact namespace path.
 	InputPath string
 	OutputDir string // e.g., /tmp/silo-transcode/{session_id}/
 	// subtitleFilterInputPath is a parser-safe local alias used only by the
@@ -309,6 +310,12 @@ const (
 
 // StartTranscode launches an ffmpeg process that produces HLS segments.
 func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession, error) {
+	opts.Executor = cloneExecutorNamespace(opts.Executor)
+	if opts.Executor != nil {
+		if _, err := executorOutputRoot(opts.OutputDir, *opts.Executor); err != nil {
+			return nil, err
+		}
+	}
 	if !validVideoSampleEntry(opts.VideoSampleEntry) ||
 		opts.VideoSampleEntry != "" && !strings.EqualFold(opts.TargetCodecVideo, "copy") {
 		return nil, fmt.Errorf("unsupported video sample-entry recipe")
@@ -340,7 +347,13 @@ func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession,
 	}
 
 	// Ensure output directory exists.
-	if err := os.MkdirAll(opts.OutputDir, 0o755); err != nil {
+	var outputErr error
+	if opts.Executor != nil {
+		outputErr = claimExecutorOutput(opts.OutputDir, *opts.Executor)
+	} else {
+		outputErr = os.MkdirAll(opts.OutputDir, 0o755)
+	}
+	if err := outputErr; err != nil {
 		releaseHWDevice()
 		return nil, fmt.Errorf("create output dir: %w", err)
 	}
@@ -2675,7 +2688,13 @@ func (s *TranscodeSession) shutdown(removeOutput bool) error {
 
 	// Clean up temporary directory.
 	if removeOutput && s.outputDir != "" {
-		if err := os.RemoveAll(s.outputDir); err != nil {
+		var cleanupErr error
+		if s.opts.Executor != nil {
+			cleanupErr = removeExecutorOutput(s.outputDir, *s.opts.Executor)
+		} else {
+			cleanupErr = os.RemoveAll(s.outputDir)
+		}
+		if err := cleanupErr; err != nil {
 			return fmt.Errorf("remove output dir: %w", err)
 		}
 	}
@@ -2709,7 +2728,9 @@ func (s *TranscodeSession) WaitError() error {
 func (s *TranscodeSession) Opts() TranscodeOpts {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.opts
+	opts := s.opts
+	opts.Executor = cloneExecutorNamespace(opts.Executor)
+	return opts
 }
 
 // SetAudioTrackIndex updates the audio track index in the session's opts.
@@ -2869,6 +2890,10 @@ func (s *TranscodeSession) restart(
 	copySeekAnchorResolved bool,
 ) error {
 	s.mu.Lock()
+	if s.opts.Executor != nil {
+		s.mu.Unlock()
+		return ErrExecutorReplacementRequired
+	}
 	// Single-flight: a second caller arriving while a restart is in
 	// progress must not kill the process the first restart just started.
 	// It waits for the in-flight restart's outcome and returns it, so a

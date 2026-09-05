@@ -408,6 +408,23 @@ func (m *TranscodeManager) LoadOrReconstructSession(ctx context.Context, getSess
 // whatever withdrew it, while a reconstruction replays the recipe verbatim and
 // has to re-check it. See the copy-safety refusal on the stream serve path.
 func (m *TranscodeManager) LoadOrReconstructSessionDetail(ctx context.Context, getSession func(string) (*Session, error), sessionID string, requestUserID int, card *RecipeCard) (*Session, SessionLoadStatus, bool) {
+	if card != nil && card.Executor != nil {
+		if err := card.Executor.Validate(); err != nil {
+			return nil, SessionLoadFailed, false
+		}
+	}
+	if m != nil {
+		if runtime := m.GetTranscodeSession(sessionID); runtime != nil {
+			var expected *ExecutorNamespaceV3
+			if card != nil {
+				expected = card.Executor
+			}
+			if err := runtime.CheckExecutorNamespace(expected); err != nil {
+				return nil, SessionLoadFailed, false
+			}
+		}
+	}
+
 	session, err := getSession(sessionID)
 	if err != nil {
 		if !errors.Is(err, ErrSessionNotFound) {
@@ -484,6 +501,11 @@ func (m *TranscodeManager) LoadOrReconstructTranscodeWithError(
 		return nil, nil, SessionMissing, nil
 	}
 	if card != nil {
+		if card.Executor != nil {
+			if err := card.Executor.Validate(); err != nil {
+				return nil, nil, SessionLoadFailed, err
+			}
+		}
 		if card.SessionID == "" || card.SessionID != sessionID {
 			return nil, nil, SessionMissing, nil
 		}
@@ -537,6 +559,13 @@ func (m *TranscodeManager) doLoadOrReconstructTranscode(
 		return transcodeLoadResult{status: SessionForbidden}
 	}
 	if runtime := m.GetTranscodeSession(sessionID); runtime != nil {
+		var expected *ExecutorNamespaceV3
+		if card != nil {
+			expected = card.Executor
+		}
+		if err := runtime.CheckExecutorNamespace(expected); err != nil {
+			return transcodeLoadResult{status: SessionLoadFailed, err: err}
+		}
 		return m.completeTranscodeLoad(atomicSessions, getSession, session, inserted, runtime)
 	}
 	// Remote transcodes keep running on their owning node; only the playback
@@ -767,6 +796,11 @@ func (m *TranscodeManager) ReconstructTranscodeWithError(ctx context.Context, se
 	if m == nil {
 		return nil, nil
 	}
+	if card.Executor != nil {
+		if err := card.Executor.Validate(); err != nil {
+			return nil, err
+		}
+	}
 	if card.SessionID == "" || card.SessionID != sessionID {
 		return nil, nil
 	}
@@ -774,6 +808,9 @@ func (m *TranscodeManager) ReconstructTranscodeWithError(ctx context.Context, se
 	// A concurrent reconstruct may already have registered the session; serve it
 	// directly so we never enter single-flight only to discard a duplicate.
 	if existing := m.GetTranscodeSession(sessionID); existing != nil {
+		if err := existing.CheckExecutorNamespace(card.Executor); err != nil {
+			return nil, err
+		}
 		return existing, nil
 	}
 
@@ -784,6 +821,11 @@ func (m *TranscodeManager) ReconstructTranscodeWithError(ctx context.Context, se
 		return nil, err
 	}
 	session, _ := v.(*TranscodeSession)
+	if session != nil {
+		if err := session.CheckExecutorNamespace(card.Executor); err != nil {
+			return nil, err
+		}
+	}
 	return session, nil
 }
 
@@ -834,6 +876,13 @@ func (m *TranscodeManager) doReconstructTranscode(ctx context.Context, sessionID
 
 	cfg := m.runtimeConfig()
 	outputDir := reconstructionOutputDir(cfg.TranscodeDir, sessionID, card.OutputSubdir)
+	if card.Executor != nil {
+		var err error
+		outputDir, err = card.Executor.OutputDir(cfg.TranscodeDir)
+		if err != nil {
+			return nil, err
+		}
+	}
 	opts := card.TranscodeOpts(outputDir, cfg.FFmpegPath, m.logSink())
 	// Recipe cards preserve the original launch tuning, but a reconstruction is
 	// not a fresh generation: restore the conservative manifest lead so recovery
@@ -851,6 +900,9 @@ func (m *TranscodeManager) doReconstructTranscode(ctx context.Context, sessionID
 	unlock := m.LockSessionLifecycle(sessionID)
 	defer unlock()
 	if existing := m.GetTranscodeSession(sessionID); existing != nil {
+		if err := existing.CheckExecutorNamespace(card.Executor); err != nil {
+			return nil, err
+		}
 		return existing, nil
 	}
 
@@ -903,6 +955,9 @@ func (m *TranscodeManager) doReconstructTranscode(ctx context.Context, sessionID
 	if existing := m.transcodes[sessionID]; existing != nil {
 		m.transcodeMu.Unlock()
 		_ = transcodeSession.CloseProcess()
+		if err := existing.CheckExecutorNamespace(card.Executor); err != nil {
+			return nil, err
+		}
 		return existing, nil
 	}
 	m.transcodes[sessionID] = transcodeSession
