@@ -13890,13 +13890,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/request-integrations",
         "operation_id": "listRequestIntegrations"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change."
     },
     {
       "listener": "api",
@@ -13952,13 +13952,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/request-integrations",
         "operation_id": "createRequestIntegration"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
@@ -14016,13 +14016,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "DELETE",
         "path": "/api/v2/admin/request-integrations/{id}",
         "operation_id": "deleteRequestIntegration"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity.",
       "concurrency": "if_match"
@@ -14081,13 +14081,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/admin/request-integrations/{id}",
         "operation_id": "updateRequestIntegration"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity.",
       "concurrency": "if_match"
@@ -14146,13 +14146,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/request-integrations/{id}/options",
         "operation_id": "loadRequestIntegrationOptions"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
@@ -14210,13 +14210,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/request-settings",
         "operation_id": "getAdminRequestSettings"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change."
     },
     {
       "listener": "api",
@@ -14272,13 +14272,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/admin/request-settings",
         "operation_id": "updateAdminRequestSettings"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity.",
       "concurrency": "if_match"
@@ -14337,13 +14337,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/request-users/{user_id}/limit",
         "operation_id": "getAdminRequestUserLimit"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change."
     },
     {
       "listener": "api",
@@ -14399,13 +14399,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/admin/request-users/{user_id}/limit",
         "operation_id": "updateAdminRequestUserLimit"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity.",
       "concurrency": "if_match"
@@ -14464,13 +14464,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/requests",
         "operation_id": "listAdminRequests"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change."
     },
     {
       "listener": "api",
@@ -14526,13 +14526,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/requests/{id}/approve",
         "operation_id": "adminApproveRequest"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
@@ -14580,13 +14580,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/requests/{id}/cancel",
         "operation_id": "adminCancelRequest"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
@@ -14644,13 +14644,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/requests/{id}/decline",
         "operation_id": "adminDeclineRequest"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
@@ -14708,13 +14708,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/requests/{id}/retry",
         "operation_id": "adminRetryRequest"
       },
-      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Ordinary ports ratified after independent backend and web source review; no disposition or priority-tier change.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
