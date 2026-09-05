@@ -31,27 +31,10 @@ vi.mock("@/hooks/queries/sidebarPins", () => ({
 
 vi.mock("@/hooks/queries/libraryCollections", () => ({
   useLibraryCollectionItems: (...args: unknown[]) => mockUseLibraryCollectionItems(...args),
-  flattenLibraryCollectionItems: (data?: { pages: { items: unknown[] }[] }) =>
-    data?.pages.flatMap((page) => page.items) ?? [],
 }));
 
-function collectionItemsResult(
-  pages: Array<{ items: Array<{ content_id: string; title: string }> }>,
-  overrides: {
-    isLoading?: boolean;
-    hasNextPage?: boolean;
-    isFetchingNextPage?: boolean;
-    fetchNextPage?: () => Promise<unknown>;
-  } = {},
-) {
-  return {
-    data: pages.length > 0 ? { pages, pageParams: pages.map(() => undefined) } : undefined,
-    isLoading: false,
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(() => Promise.resolve()),
-    ...overrides,
-  };
+function collectionItemsResult(items: Array<{ content_id: string; title: string }>) {
+  return { data: { items, total: items.length, has_more: false }, isLoading: false };
 }
 
 vi.mock("@/components/MediaCarousel", () => ({
@@ -338,7 +321,7 @@ describe("LibraryRecommended", () => {
     });
     mockUseLibraryCollectionItems.mockImplementation((libraryId: number, collectionId: string) => {
       if (libraryId === 42 && collectionId === "col-1") {
-        return collectionItemsResult([{ items: [{ content_id: "item-1", title: "Scream" }] }]);
+        return collectionItemsResult([{ content_id: "item-1", title: "Scream" }]);
       }
 
       return collectionItemsResult([]);
@@ -353,71 +336,11 @@ describe("LibraryRecommended", () => {
     expect(mockUseLibraryCollectionItems).toHaveBeenCalledWith(42, "col-1");
   });
 
-  it("offers to load the next page of a pinned collection that has more positions", async () => {
+  it("renders nothing for a pinned collection with no visible items", async () => {
     mockUseSidebarPins.mockReturnValue({
       pins: { "42": [{ type: "collection", id: "col-1", label: "Pinned Horror" }] },
     });
-    const fetchNextPage = vi.fn(() => Promise.resolve());
-    mockUseLibraryCollectionItems.mockReturnValue(
-      collectionItemsResult([{ items: [{ content_id: "item-1", title: "Scream" }] }], {
-        hasNextPage: true,
-        fetchNextPage,
-      }),
-    );
-
-    await render(<LibraryRecommended libraryId={42} />);
-
-    const loadMore = container.querySelector<HTMLButtonElement>(
-      '[data-testid="pinned-collection-load-more"] button',
-    );
-    expect(loadMore?.textContent).toBe("Show more");
-    // Items are on screen, so nothing loads until the user asks.
-    expect(fetchNextPage).not.toHaveBeenCalled();
-    await act(async () => {
-      loadMore?.click();
-    });
-    expect(fetchNextPage).toHaveBeenCalledTimes(1);
-  });
-
-  it("keeps paging a pinned collection whose first window access filtering emptied", async () => {
-    mockUseSidebarPins.mockReturnValue({
-      pins: { "42": [{ type: "collection", id: "col-1", label: "Pinned Horror" }] },
-    });
-    const fetchNextPage = vi.fn(() => Promise.resolve());
-    // First page: no visible items, but the server says more positions follow.
-    mockUseLibraryCollectionItems.mockReturnValue(
-      collectionItemsResult([{ items: [] }], { hasNextPage: true, fetchNextPage }),
-    );
-
-    await render(<LibraryRecommended libraryId={42} />);
-
-    expect(fetchNextPage).toHaveBeenCalledTimes(1);
-    const carousel = container.querySelector('[data-kind="carousel"]');
-    expect(carousel?.getAttribute("data-loading")).toBe("true");
-    expect(container.textContent).toContain("Pinned Horror");
-
-    // Second page returns items: the carousel renders them.
-    mockUseLibraryCollectionItems.mockReturnValue(
-      collectionItemsResult(
-        [{ items: [] }, { items: [{ content_id: "item-2", title: "Alien" }] }],
-        {
-          fetchNextPage,
-        },
-      ),
-    );
-    await render(<LibraryRecommended libraryId={42} />);
-
-    expect(container.textContent).toContain("Alien");
-    expect(container.querySelector('[data-kind="carousel"]')?.getAttribute("data-loading")).toBe(
-      "false",
-    );
-  });
-
-  it("renders nothing for a pinned collection with no visible items and no more pages", async () => {
-    mockUseSidebarPins.mockReturnValue({
-      pins: { "42": [{ type: "collection", id: "col-1", label: "Pinned Horror" }] },
-    });
-    mockUseLibraryCollectionItems.mockReturnValue(collectionItemsResult([{ items: [] }]));
+    mockUseLibraryCollectionItems.mockReturnValue(collectionItemsResult([]));
 
     await render(<LibraryRecommended libraryId={42} />);
 

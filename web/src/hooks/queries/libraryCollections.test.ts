@@ -6,7 +6,6 @@ import { createElement } from "react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import getLibraryCollectionItemsOk from "../../../../contracts/api/v2/fixtures/get_library_collection_items_ok.json";
 import getLibraryCollectionsOk from "../../../../contracts/api/v2/fixtures/get_library_collections_ok.json";
 import getLibraryLayoutOk from "../../../../contracts/api/v2/fixtures/get_library_layout_ok.json";
 import listLibrarySectionsOk from "../../../../contracts/api/v2/fixtures/list_library_sections_ok.json";
@@ -16,10 +15,8 @@ import { setProfileId } from "@/api/client";
 import { installPolicyStorageMocks, jsonResponse } from "@/pages/admin-policy/policyTestUtils";
 
 import {
-  flattenLibraryCollectionItems,
   flattenLibraryCollections,
   getLibraryCollectionList,
-  LIBRARY_COLLECTION_ITEMS_PAGE_LIMIT,
   useLibraryCollectionItems,
   useLibraryCollections,
   useLibraryUserCollections,
@@ -47,7 +44,7 @@ function headersOf(fetchMock: FetchMock, index = 0): Record<string, string> {
   return (fetchMock.mock.calls[index]?.[1]?.headers ?? {}) as Record<string, string>;
 }
 
-describe("library viewer reads on the v2 contract", () => {
+describe("library viewer reads", () => {
   beforeEach(() => {
     installPolicyStorageMocks();
     setProfileId("p-owner");
@@ -94,78 +91,20 @@ describe("library viewer reads on the v2 contract", () => {
     );
   });
 
-  it("maps collection items to browse cards with the empty-string defaults the cards read", async () => {
-    const fetchMock = stubFetch(() => jsonResponse(getLibraryCollectionItemsOk));
-
+  it("reads collection items through v1 with the active profile", async () => {
+    const response = {
+      items: [{ content_id: "movie:heat-1995", title: "Heat" }],
+      total: 1,
+      has_more: false,
+    };
+    const fetchMock = stubFetch(() => jsonResponse(response));
     const { result } = renderHook(() => useLibraryCollectionItems(1, "c1"), {
       wrapper: createWrapper(),
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    const url = new URL(String(fetchMock.mock.calls[0]?.[0]), "http://localhost");
-    expect(url.pathname).toBe("/api/v2/library/1/collections/c1/items");
-    expect(url.searchParams.get("limit")).toBe(String(LIBRARY_COLLECTION_ITEMS_PAGE_LIMIT));
-    expect(url.searchParams.get("cursor")).toBeNull();
-    expect(result.current.hasNextPage).toBe(false);
-    const [item] = flattenLibraryCollectionItems(result.current.data);
-    expect(item?.content_id).toBe("movie:heat-1995");
-    expect(item?.poster_url).toBe("");
-    expect(item?.overview).toBe("");
-    expect(item?.rating_imdb).toBeNull();
-    expect(item?.added_at).toBe("2026-01-02T03:04:05.678Z");
-  });
-
-  it("follows page.next_cursor for a collection with more positions than one page", async () => {
-    const fetchMock = stubFetch((url) => {
-      if (url.searchParams.get("cursor") === null) {
-        return jsonResponse({
-          ...getLibraryCollectionItemsOk,
-          page: { has_more: true, next_cursor: "c2" },
-        });
-      }
-      expect(url.searchParams.get("cursor")).toBe("c2");
-      return jsonResponse({
-        items: [{ ...getLibraryCollectionItemsOk.items[0], content_id: "movie:alien-1979" }],
-        page: { has_more: false },
-      });
-    });
-
-    const { result } = renderHook(() => useLibraryCollectionItems(1, "c1"), {
-      wrapper: createWrapper(),
-    });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(result.current.hasNextPage).toBe(true);
-
-    await result.current.fetchNextPage();
-    await waitFor(() => expect(result.current.hasNextPage).toBe(false));
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(flattenLibraryCollectionItems(result.current.data).map((i) => i.content_id)).toEqual([
-      "movie:heat-1995",
-      "movie:alien-1979",
-    ]);
-  });
-
-  it("reports more pages when access filtering empties the first window", async () => {
-    stubFetch((url) =>
-      url.searchParams.get("cursor") === null
-        ? jsonResponse({ items: [], page: { has_more: true, next_cursor: "c2" } })
-        : jsonResponse(getLibraryCollectionItemsOk),
-    );
-
-    const { result } = renderHook(() => useLibraryCollectionItems(1, "c1"), {
-      wrapper: createWrapper(),
-    });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(flattenLibraryCollectionItems(result.current.data)).toEqual([]);
-    expect(result.current.hasNextPage).toBe(true);
-
-    await result.current.fetchNextPage();
-    await waitFor(() => expect(result.current.hasNextPage).toBe(false));
-    expect(flattenLibraryCollectionItems(result.current.data).map((i) => i.content_id)).toEqual([
-      "movie:heat-1995",
-    ]);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/v1/library/1/collections/c1/items");
+    expect(headersOf(fetchMock)["X-Profile-Id"]).toBe("p-owner");
+    expect(result.current.data).toEqual(response);
   });
 
   it("loads the library layout and sections", async () => {

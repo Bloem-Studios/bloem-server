@@ -1,16 +1,13 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { api } from "@/api/client";
+import { useQuery } from "@tanstack/react-query";
 import type {
-  BrowseItem,
+  BrowseResponse,
   LibraryCollection,
   LibraryTabCollection,
   LibraryTabResponse,
   ServerVisibleUserCollection,
 } from "@/api/types";
-import {
-  catalogItemFromV2,
-  libraryCollectionTabFromV2,
-  userCollectionFromV2,
-} from "@/api/v2/catalog";
+import { libraryCollectionTabFromV2, userCollectionFromV2 } from "@/api/v2/catalog";
 import { v2 } from "@/api/v2/request";
 import { libraryCollectionKeys } from "./keys";
 
@@ -59,59 +56,19 @@ export function getLibraryCollectionList(
   return resp?.collections ?? [];
 }
 
-/** Page size of a collection's items: the endpoint's default. */
-export const LIBRARY_COLLECTION_ITEMS_PAGE_LIMIT = 50;
-
-export interface LibraryCollectionItemsPage {
-  items: BrowseItem[];
-  /** Cursor of the next page, or undefined on the last page. */
-  nextCursor: string | undefined;
-}
-
-export async function fetchLibraryCollectionItemsPage(
-  libraryId: number,
-  collectionId: string,
-  cursor?: string,
-  signal?: AbortSignal,
-): Promise<LibraryCollectionItemsPage> {
-  const page = await v2("GET /api/v2/library/{id}/collections/{collection_id}/items", {
-    path: { id: String(libraryId), collection_id: collectionId },
-    query: {
-      limit: LIBRARY_COLLECTION_ITEMS_PAGE_LIMIT,
-      ...(cursor === undefined ? {} : { cursor }),
-    },
-    signal,
-  });
-  return {
-    items: page.items.map(catalogItemFromV2),
-    nextCursor: page.page?.has_more && page.page.next_cursor ? page.page.next_cursor : undefined,
-  };
-}
-
-/**
- * Pages a collection's items by cursor. A page can come back with no items
- * while `has_more` is still set (access filtering emptied that window), so a
- * caller that needs the first visible item keeps fetching while
- * `hasNextPage` holds.
- */
+// Collection item reads stay on v1 until v2 provides stable continuation.
 export function useLibraryCollectionItems(libraryId: number, collectionId: string | null) {
-  return useInfiniteQuery({
+  return useQuery({
     queryKey: libraryCollectionKeys.items(libraryId, collectionId ?? ""),
-    queryFn: ({ pageParam, signal }) =>
-      fetchLibraryCollectionItemsPage(libraryId, collectionId ?? "", pageParam, signal),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    queryFn: ({ signal }) =>
+      api<BrowseResponse>(
+        `/library/${libraryId}/collections/${encodeURIComponent(collectionId ?? "")}/items`,
+        { signal },
+      ),
     enabled:
       Number.isFinite(libraryId) &&
       libraryId > 0 &&
       collectionId !== null &&
       collectionId.length > 0,
   });
-}
-
-/** Flattens the loaded pages of useLibraryCollectionItems into one list. */
-export function flattenLibraryCollectionItems(
-  data: { pages: LibraryCollectionItemsPage[] } | undefined,
-): BrowseItem[] {
-  return data?.pages.flatMap((page) => page.items) ?? [];
 }
