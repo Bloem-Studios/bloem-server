@@ -101,6 +101,29 @@
       "body_file": "authentication_required.json"
     },
     {
+      "name": "cancel_library_job_accepted",
+      "operation_id": "cancelLibraryJob",
+      "scenario": "Cancellation returns the canonical canceling job; completed metadata changes are retained.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/library-jobs/job-2/cancel",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"854d8ddb80ef104fe6a43fdadc5d117dbe4555cc64d81072d321463ec8ec18e0\"",
+        "Location": "/api/v2/library-jobs/job-2",
+        "Retry-After": "5"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminJob",
+      "body_file": "cancel_library_job_accepted.json"
+    },
+    {
       "name": "cancel_metadata_match_queue_ok",
       "operation_id": "cancelMetadataMatchQueue",
       "scenario": "Every queued entry dropped; what was canceled and the counts afterwards.",
@@ -429,7 +452,8 @@
       "response_headers": {
         "Cache-Control": "no-store",
         "Content-Type": "application/json",
-        "Location": "/api/v2/admin/jobs/job-1"
+        "Location": "/api/v2/library-jobs/job-1",
+        "Retry-After": "5"
       },
       "response_media_type": "application/json",
       "schema": "#/components/schemas/AdminJob",
@@ -1350,6 +1374,48 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/LibraryCollectionTab",
       "body_file": "get_library_collections_ok.json"
+    },
+    {
+      "name": "get_library_job_hidden",
+      "operation_id": "getLibraryJob",
+      "scenario": "A nonadministrator cannot discover a library job.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/library-jobs/job-2",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 404,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_library_job_hidden.json"
+    },
+    {
+      "name": "get_library_job_ok",
+      "operation_id": "getLibraryJob",
+      "scenario": "An administrator polls a queued refresh with a deterministic whole-body validator.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/library-jobs/job-2",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"e0e1786d34df4c7a2a23a8ebbe812c26318d3796e81455860f7c9735c33375d8\"",
+        "Retry-After": "5"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminJob",
+      "body_file": "get_library_job_ok.json"
     },
     {
       "name": "get_library_layout_ok",
@@ -4072,7 +4138,8 @@
       "response_headers": {
         "Cache-Control": "no-store",
         "Content-Type": "application/json",
-        "Location": "/api/v2/admin/jobs/job-2"
+        "Location": "/api/v2/library-jobs/job-2",
+        "Retry-After": "5"
       },
       "response_media_type": "application/json",
       "schema": "#/components/schemas/AdminJob",
