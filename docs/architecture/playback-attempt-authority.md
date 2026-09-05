@@ -262,8 +262,9 @@ acknowledgement cannot be an indefinite prerequisite for replacement.
 
 The inactive [selected-store sink](playback-progress-sink.md) now supplies atomic
 authority installation, sequenced progress and terminal receipts in PostgreSQL
-and SQLite. Its local transaction does not activate the cross-store coordinator
-or solve selected-source identity and restore handling.
+and SQLite. Exact source handles bind the account, source UUID and selection
+generation. Their local transactions do not activate the cross-store
+coordinator or establish freshness after restore.
 
 Legacy progress, stop, and finalization paths must refuse bound sessions before
 calling personal-state writers. This includes HTTP and shared control helpers,
@@ -271,3 +272,75 @@ compatibility playback reports, and expiry/crash callbacks. Resource cleanup may
 act on its exact executor object, but it cannot imply a durable stop receipt or
 use a legacy progress/history writer. This restriction keeps delivery-only
 integration from implicitly activating an unfenced lifecycle.
+
+## Initial activation storage
+
+`InitialActivationStoreV3` persists the initial control protocol without a
+production reconciliation runner or start caller. Source registration is a
+separate account row. Its default admission state is blocked, and migrations
+create no registrations. This checkpoint exposes no provisioning or cutover
+operation.
+
+Before calling a selected source, the caller commits an immutable binding with
+`BeginInitialActivation`: exact source reference, profile, logical session,
+resolved progress target, attempt/incarnation/boot owner/epoch, `AdmissionID`
+and `IntentID`. `AdmissionID` captures the registration's admission decision;
+`IntentID` identifies this attempt's initial activation. Changing either token
+does not refresh an existing binding. The caller resolves the progress target
+before binding it; this storage layer does not infer a catalog target from a
+file ID.
+
+Every operation that reads registration and attempt authority locks registration
+first, then the attempt, and samples database time after both locks. Source
+calls and worker calls execute outside those transactions. Existing helpers
+that need only the attempt lock never acquire registration afterward.
+
+The forward phases are pending, installed and activated. Installation
+acknowledgment requires a receipt with the exact initial fence and no progress
+or terminal state. Acknowledgment and publication require the captured source
+and admission token to be currently admitting, the exact activation intent and
+owner to remain current, and both lease and retention to remain live. An
+unchanged source reference alone is insufficient after admission is withdrawn.
+Publication freezes the response and transitions the same attempt to active.
+An exact retry compares the persisted decision; it does not allocate work.
+
+`InitialActivationReceiptV3` is an opaque, immutable observation read from a
+trusted exact source handle. Its factory verifies source/account, scope and
+the complete fence, then freezes the returned state. The read happens before
+control storage is called. A bare state or zero receipt cannot acknowledge
+installation or abort. A receipt establishes a past observation; control
+storage still checks current admission, phase and authority when accepting it.
+
+`ReadInitialActivation` can inspect an exact retained binding after lease or
+retention expiry. Reading an activated phase resolves a previously committed
+outcome only: it neither renews rights nor authorizes publication, execution or
+automatic allocation. Publication retries after expiry fail even if a prior
+publication committed.
+
+Initial abort covers pending and installed bindings. It is eligible when the
+initial owner's lease expired or registration no longer admits the captured
+decision. It records one immutable abort ID and moves control state to
+draining, closing grant issuance. Its persisted drain deadline is at least the
+maximum issued grant deadline, evaluated using database time. Retries preserve
+that deadline rather than extending it.
+
+The future reconciler must resolve an uncertain install against the exact
+source, stop that fence and read its committed terminal receipt. A matching
+already-stopped fence is valid evidence even when its stop ID differs from the
+abort ID. Completion requires that exact receipt and the elapsed grant drain;
+it persists the first terminal receipt and transitions to aborted/stopped.
+Missing source files and failed source reads preserve the unresolved intent.
+An activated binding cannot enter this initial abort protocol.
+
+Bound attempts cannot use legacy publication, stop or drain completion to skip
+the source receipt. They cannot use expired preparing reclamation or the
+legacy save path's expired-row deletion to erase the binding. Cleanup retains
+pending, installed, aborting and activated bindings regardless of retention
+expiry. Only a completed initial abort with its terminal receipt and elapsed
+drain can become eligible for ordinary retention cleanup. Source receipts
+remain in the selected database, so a delayed original install replays stopped
+state after reconciliation.
+
+Operational provisioning, retirement/cutover, restore, active-session stop,
+takeover, replacement and public caller wiring remain inactive. The initial
+storage protocol does not supply the later retirement-before-seal workflow.

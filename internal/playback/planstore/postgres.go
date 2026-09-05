@@ -100,7 +100,7 @@ func (s *Postgres) SaveAttempt(ctx context.Context, record playback.AttemptRecor
 	// never resolve.
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM playback_v3_attempts
-		WHERE (playback_attempt_id = $1 OR session_id = NULLIF($2, '')::uuid) AND expires_at <= NOW()`,
+		WHERE (playback_attempt_id = $1 OR session_id = NULLIF($2, '')::uuid) AND expires_at <= NOW() AND control_activation IS NULL`,
 		record.PlaybackAttemptID, record.SessionID); err != nil {
 		return err
 	}
@@ -392,7 +392,7 @@ func (s *Postgres) CleanupExpired(ctx context.Context, now time.Time) (int64, er
 	if _, err := s.db.Exec(ctx, `DELETE FROM playback_route_events WHERE received_at < $1`, now.Add(-30*24*time.Hour)); err != nil {
 		return 0, err
 	}
-	result, err := s.db.Exec(ctx, `DELETE FROM playback_v3_attempts WHERE (control_state = 'legacy' AND expires_at <= $1) OR (control_state <> 'legacy' AND expires_at <= clock_timestamp())`, now)
+	result, err := s.db.Exec(ctx, `DELETE FROM playback_v3_attempts WHERE ((control_state = 'legacy' AND expires_at <= $1) OR (control_state <> 'legacy' AND expires_at <= clock_timestamp())) AND (control_activation IS NULL OR (control_activation->>'phase' = 'aborted' AND control_activation->'terminal' IS NOT NULL AND control_activation->'terminal' <> 'null'::jsonb AND control_drain_not_before <= clock_timestamp()))`, now)
 	if err != nil {
 		return 0, err
 	}
