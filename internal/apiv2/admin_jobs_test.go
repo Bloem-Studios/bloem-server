@@ -87,6 +87,7 @@ func TestLibraryJobCancellationContract(t *testing.T) {
 	deps.LibraryJobs = &fakeLibraryJobs{job: job}
 	h := newTestHandler(t, deps)
 	path := "/api/v2/library-jobs/refresh/cancel"
+	requireProblem(t, do(t, h, http.MethodPost, "/api/v2/library-jobs/missing/cancel", "", with(bearer(adminToken), "X-Profile-Id", "p-primary")), TypeNotFound)
 	requireProblem(t, do(t, h, http.MethodPost, path, "", bearer(memberToken)), TypePermissionDenied)
 	requireProblem(t, do(t, h, http.MethodPost, path, "", with(bearer(adminToken), "X-Profile-Id", "p-owner")), TypePermissionDenied)
 	for range 2 {

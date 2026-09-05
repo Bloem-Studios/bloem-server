@@ -891,7 +891,10 @@ returns `202` with the canonical `canceling` job; repeated pending cancellation 
 same job; an already canceled job returns `200`; and an already succeeded or failed job returns the
 `409 job_not_cancelable` problem. Cancellation is best-effort and does not imply rollback. The
 owning operation documents whether partial effects remain, are compensated, or are transactional.
-Hidden jobs return `404`.
+Operation-level authentication and authorization gates run first and retain their documented
+`401`/`403` responses. For an authorized caller, a missing or hidden job returns `404` before
+conditional evaluation. In particular, library cancellation retains its acting-admin and
+primary-profile requirement even though the monitor is readable by administrator accounts.
 
 Jobs remain retrievable for at least 24 hours after reaching a terminal state; a domain may retain
 them longer for history or audit. After documented cleanup they may return `404`, so durable result
