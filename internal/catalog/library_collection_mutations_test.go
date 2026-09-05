@@ -213,6 +213,9 @@ func TestLibraryCollectionAddIfAbsentDB(t *testing.T) {
 	ctx := t.Context()
 	id := fmt.Sprintf("add-absent-%d", f.libraryID)
 	seedSortableItem(t, f.pool, id, id, 2020)
+	if _, err := f.pool.Exec(ctx, `INSERT INTO media_item_libraries(content_id,media_folder_id) VALUES($1,$2)`, id, f.libraryID); err != nil {
+		t.Fatal(err)
+	}
 	if err := f.repo.AddItemIfAbsent(ctx, f.collectionID, id, 204); err != nil {
 		t.Fatal(err)
 	}

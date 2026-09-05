@@ -11,7 +11,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+const libraryCollectionTypeManual = "manual"
+
 var (
+	ErrLibraryCollectionNotManual        = errors.New("library collection is not manual")
+	ErrLibraryCollectionItemNotFound     = errors.New("item not found in collection libraries")
 	ErrLibraryCollectionRevisionMismatch = errors.New("library collection revision mismatch")
 	ErrLibraryCollectionInUse            = errors.New("library collection is used by a page section")
 )
@@ -169,11 +173,36 @@ func (r *LibraryCollectionRepository) DeleteIfRevision(ctx context.Context, id s
 // position and timestamp; the legacy AddItem method keeps its upsert behavior.
 func (r *LibraryCollectionRepository) AddItemIfAbsent(ctx context.Context, collectionID, mediaItemID string, position int) error {
 	return (libraryCollectionMutation{pool: r.pool, collectionID: collectionID}).run(ctx, nil, func(tx pgx.Tx) error {
-		if err := lockLibraryCollectionParent(ctx, tx, collectionID); err != nil {
+		legacyLibraryID, err := lockManualLibraryCollection(ctx, tx, collectionID)
+		if err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO library_collection_items(collection_id,media_item_id,position,source_rank) VALUES($1,$2,$3,0) ON CONFLICT(collection_id,media_item_id) DO NOTHING`, collectionID, mediaItemID, position)
-		return err
+		// Resolve eligibility and insert in one statement. The parent lock protects
+		// collection type and scopes from definition changes until this commits.
+		// Admin edits deliberately include hidden libraries and collections.
+		var eligible bool
+		err = tx.QueryRow(ctx, `WITH eligible AS MATERIALIZED (
+   SELECT $2::text AS media_item_id
+   WHERE EXISTS (
+    SELECT 1 FROM media_item_libraries mil JOIN media_items mi ON mi.content_id=mil.content_id
+    WHERE mil.content_id=$2 AND (
+     EXISTS(SELECT 1 FROM library_collection_libraries l WHERE l.collection_id=$1 AND l.library_id=mil.media_folder_id)
+     OR (NOT EXISTS(SELECT 1 FROM library_collection_libraries l WHERE l.collection_id=$1) AND mil.media_folder_id=$4)
+    )
+   )
+  ), inserted AS (
+   INSERT INTO library_collection_items(collection_id,media_item_id,position,source_rank)
+   SELECT $1,media_item_id,$3,0 FROM eligible
+   ON CONFLICT(collection_id,media_item_id) DO NOTHING
+   RETURNING 1
+  ) SELECT EXISTS(SELECT 1 FROM eligible)`, collectionID, mediaItemID, position, legacyLibraryID).Scan(&eligible)
+		if err != nil {
+			return err
+		}
+		if !eligible {
+			return ErrLibraryCollectionItemNotFound
+		}
+		return nil
 	})
 }
 
@@ -248,4 +277,32 @@ func lockLibraryCollectionOrderRevisions(ctx context.Context, tx pgx.Tx, library
 	for rows.Next() {
 	}
 	return rows.Err()
+}
+
+// RemoveManualItem is the native removal operation. The legacy RemoveItem
+// entry point retains its caller-validated behavior.
+func (r *LibraryCollectionRepository) RemoveManualItem(ctx context.Context, collectionID, mediaItemID string) error {
+	return (libraryCollectionMutation{pool: r.pool, collectionID: collectionID}).run(ctx, nil, func(tx pgx.Tx) error {
+		if _, err := lockManualLibraryCollection(ctx, tx, collectionID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM library_collection_items WHERE collection_id=$1 AND media_item_id=$2`, collectionID, mediaItemID)
+		return err
+	})
+}
+
+func lockManualLibraryCollection(ctx context.Context, tx pgx.Tx, id string) (int, error) {
+	var kind string
+	var libraryID int
+	err := tx.QueryRow(ctx, `SELECT collection_type,library_id FROM library_collections WHERE id=$1 FOR NO KEY UPDATE`, id).Scan(&kind, &libraryID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrLibraryCollectionNotFound
+	}
+	if err != nil {
+		return 0, err
+	}
+	if kind != libraryCollectionTypeManual {
+		return 0, ErrLibraryCollectionNotManual
+	}
+	return libraryID, nil
 }

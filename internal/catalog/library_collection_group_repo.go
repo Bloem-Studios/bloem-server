@@ -17,6 +17,8 @@ import (
 
 var ErrLibraryCollectionGroupNotFound = errors.New("library collection group not found")
 
+const libraryCollectionUngrouped = "ungrouped"
+
 type LibraryCollectionGroupRepository struct {
 	pool *pgxpool.Pool
 }
@@ -236,7 +238,7 @@ func (r *LibraryCollectionGroupRepository) reorder(ctx context.Context, libraryI
 		realPositions := make([]int, 0, len(orderedIDs))
 		ungroupedIdx := -1
 		for idx, id := range orderedIDs {
-			if id == "ungrouped" {
+			if id == libraryCollectionUngrouped {
 				if ungroupedIdx >= 0 {
 					return fmt.Errorf("ordered_ids contains duplicate ungrouped sentinel")
 				}

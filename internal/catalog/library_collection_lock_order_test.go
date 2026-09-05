@@ -163,6 +163,9 @@ func TestLibraryCollectionMixedTargetLockOrderDB(t *testing.T) {
 			legacyRepo, guardRepo := NewLibraryCollectionRepository(named(legacyName)), NewLibraryCollectionRepository(named(guardName))
 			itemID := fmt.Sprintf("target-item-%d", f.libraryID)
 			seedSortableItem(t, f.pool, itemID, itemID, 2020)
+			if _, err := f.pool.Exec(ctx, `INSERT INTO media_item_libraries(content_id,media_folder_id) VALUES($1,$2)`, itemID, f.libraryID); err != nil {
+				t.Fatal(err)
+			}
 			if err := f.repo.AddItemIfAbsent(ctx, f.collectionID, itemID, 0); err != nil {
 				t.Fatal(err)
 			}

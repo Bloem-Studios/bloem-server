@@ -205,7 +205,7 @@ func (r *LibraryCollectionRepository) Create(ctx context.Context, input CreateLi
 		input.Visibility = LibraryCollectionVisibilityVisible
 	}
 	if input.CollectionType == "" {
-		input.CollectionType = "manual"
+		input.CollectionType = libraryCollectionTypeManual
 	}
 	if input.ManagementMode == "" {
 		input.ManagementMode = "manual"
@@ -917,7 +917,11 @@ func (r *LibraryCollectionRepository) reorderItems(ctx context.Context, collecti
 	}
 
 	return (libraryCollectionMutation{pool: r.pool, collectionID: collectionID}).run(ctx, expected, func(tx pgx.Tx) error {
-		if err := lockLibraryCollectionParent(ctx, tx, collectionID); err != nil {
+		if expected != nil {
+			if _, err := lockManualLibraryCollection(ctx, tx, collectionID); err != nil {
+				return err
+			}
+		} else if err := lockLibraryCollectionParent(ctx, tx, collectionID); err != nil {
 			return err
 		}
 
