@@ -78,6 +78,60 @@ func TestCatalogManualCollectionCursorDB(t *testing.T) {
 		t.Fatalf("second window: %+v", second)
 	}
 
+	t.Run("seek past changed visibility retains collection scope", func(t *testing.T) {
+		initial := req
+		initial.After = nil
+		snapshot := time.Now().UTC()
+		initial.SnapshotAt = &snapshot
+		observed, err := resolver.Resolve(ctx, initial, access)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if observed.Total != 4 || observed.CursorScope == nil {
+			t.Fatalf("observed page: %+v", observed)
+		}
+		revision := observed.CursorScope.Collection.Revision
+		if _, err := pool.Exec(ctx, `UPDATE media_items SET content_rating='R' WHERE content_id=ANY($1)`, []string{inputs[202].MediaItemID, inputs[203].MediaItemID}); err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			_, _ = pool.Exec(context.Background(), `UPDATE media_items SET content_rating='PG' WHERE content_id=ANY($1)`, []string{inputs[202].MediaItemID, inputs[203].MediaItemID})
+		}()
+		current, err := repo.CollectionRevision(ctx, c.ID)
+		if err != nil || current != revision {
+			t.Fatalf("visibility must not mutate collection revision: %d %d %v", revision, current, err)
+		}
+		initial.After = observed.CursorScope
+		initial.Seek = new(observed.Total - 1)
+		empty, err := resolver.Resolve(ctx, initial, access)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if empty.Items == nil || len(empty.Items) != 0 || empty.HasMore || empty.Next != nil || empty.CursorScope == nil || empty.CursorScope.Collection.Revision != revision || !empty.SnapshotAt.Equal(snapshot) {
+			t.Fatalf("stale visible seek must return scoped empty page: %+v", empty)
+		}
+	})
+	t.Run("seek at and beyond query cap is empty", func(t *testing.T) {
+		capped := req
+		capped.After = nil
+		capped.Query = QueryDefinition{Sort: QuerySort{Field: "title", Order: querySortAsc}, Limit: new(2)}
+		for _, position := range []int{2, 3} {
+			capped.Seek = new(position)
+			page, err := resolver.Resolve(ctx, capped, access)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if page.Items == nil || len(page.Items) != 0 || page.HasMore || page.Next != nil || page.CursorScope == nil {
+				t.Fatalf("capped seek %d: %+v", position, page)
+			}
+		}
+		for _, position := range []int{-1, 10000001} {
+			capped.Seek = new(position)
+			if _, err := resolver.Resolve(ctx, capped, access); err == nil {
+				t.Fatalf("invalid seek %d accepted", position)
+			}
+		}
+	})
 	t.Run("revision brackets source reads", func(t *testing.T) {
 		initial := req
 		initial.After = nil

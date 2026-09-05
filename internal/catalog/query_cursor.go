@@ -281,8 +281,8 @@ func (e *QueryExecutor) SeekCursor(ctx context.Context, def QueryDefinition, acc
 	if e == nil || e.Pool == nil {
 		return nil, fmt.Errorf("query executor requires a database pool")
 	}
-	if def.Limit != nil && index >= *def.Limit {
-		return nil, fmt.Errorf("jump index exceeds query limit")
+	if def.Limit != nil && *def.Limit > 0 && index >= *def.Limit {
+		return nil, pgx.ErrNoRows
 	}
 	plan, err := e.buildPreviewPagePlan(def, access, 1, 0)
 	if err != nil {

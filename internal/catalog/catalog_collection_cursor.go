@@ -9,6 +9,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/jackc/pgx/v5"
 )
 
 var ErrCatalogCursorChanged = errors.New("catalog source changed during pagination")
@@ -337,6 +338,15 @@ func resolveCollectionExecutorCursor(ctx context.Context, executor *QueryExecuto
 	if req.Seek != nil {
 		var err error
 		after, err = executor.SeekCursor(ctx, def, access, *req.Seek)
+		if errors.Is(err, pgx.ErrNoRows) {
+			empty := &CatalogResult{Items: []*models.MediaItem{}}
+			if executor.SnapshotAt != nil {
+				empty.SnapshotAt = *executor.SnapshotAt
+			} else if req.SnapshotAt != nil {
+				empty.SnapshotAt = *req.SnapshotAt
+			}
+			return empty, nil
+		}
 		if err != nil {
 			return nil, err
 		}
