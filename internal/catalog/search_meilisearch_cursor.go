@@ -235,7 +235,7 @@ func (p *MeilisearchSearchProvider) filterRankingWindow(ctx context.Context, req
 	def := req.Definition
 	relevance := def.Sort.Field == "" || def.Sort.Field == searchSortRelevance
 	if relevance {
-		def.Sort = QuerySort{Field: "title", Order: querySortAsc}
+		def.Sort = QuerySort{Field: querySortTitle, Order: querySortAsc}
 	}
 	executor, outer, access, err := p.itemRepo.searchCandidatesExecutor(def, req.Access, "SELECT unnest($1::text[])", []any{ids})
 	if err != nil {

@@ -744,7 +744,7 @@ func subtractInts(values, denied []int) []int {
 // target deduplication. Scan-run NULL is normalized to the empty event ID.
 func recentTVCursorTerms() []queryCursorTerm {
 	return []queryCursorTerm{
-		{expression: "added_at", kind: cursorKindTimestamp, descending: true},
+		{expression: defaultSortField, kind: cursorKindTimestamp, descending: true},
 		{expression: "target_type", kind: cursorKindText, nullsLast: true},
 		{expression: "target_id", kind: cursorKindText, nullsLast: true},
 		{expression: "event_id", kind: cursorKindText, nullsLast: true},
@@ -754,8 +754,8 @@ func recentTVCursorTerms() []queryCursorTerm {
 func recentTVCursor(target RecentTVTarget, consumed int) *QueryCursor {
 	return &QueryCursor{Consumed: consumed, Keys: []QueryCursorValue{
 		{Kind: "timestamp", Value: new(target.AddedAt.UTC().Format(time.RFC3339Nano))},
-		{Kind: "text", Value: new(target.Type)},
-		{Kind: "text", Value: new(target.ContentID)},
-		{Kind: "text", Value: new(target.EventID)},
+		{Kind: cursorKindText, Value: new(target.Type)},
+		{Kind: cursorKindText, Value: new(target.ContentID)},
+		{Kind: cursorKindText, Value: new(target.EventID)},
 	}}
 }

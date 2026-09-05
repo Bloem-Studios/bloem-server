@@ -19,6 +19,7 @@ const (
 	searchSortRelevance        = "relevance"
 	searchLowerTitleExpression = "LOWER(title)"
 	searchTypeAudiobook        = "audiobook"
+	searchTypeEbook            = "ebook"
 )
 
 // SearchCursor holds a complete relevance tuple, not an offset. The API binds
@@ -59,7 +60,7 @@ func searchFTSTerms() []queryCursorTerm {
 	for _, expression := range []string{"exact_title_match", "contiguous_title_match", "year_match", "phrase_rank", "title_prefix_rank", "overview_rank"} {
 		terms = append(terms, queryCursorTerm{expression: expression, kind: cursorKindNumber, descending: true, nullsLast: false})
 	}
-	return append(terms, queryCursorTerm{expression: searchLowerTitleExpression, kind: cursorKindText, nullsLast: true}, queryCursorTerm{expression: "content_id", kind: cursorKindText, nullsLast: true})
+	return append(terms, queryCursorTerm{expression: searchLowerTitleExpression, kind: cursorKindText, nullsLast: true}, queryCursorTerm{expression: cursorContentIDColumn, kind: cursorKindText, nullsLast: true})
 }
 
 func (r *ItemRepository) searchCursorPage(ctx context.Context, query string, itemTypes []string, limit int, after *SearchCursor, filter AccessFilter, includeTotal bool, request ...SearchCursorOptions) (SearchCursorPage, error) {
@@ -212,7 +213,7 @@ type searchCandidate struct {
 }
 
 func fuzzySQLTerms() []queryCursorTerm {
-	return []queryCursorTerm{{expression: "fuzzy_rank", kind: cursorKindNumber, descending: true}, {expression: "fuzzy_full_rank", kind: cursorKindNumber, descending: true}, {expression: searchLowerTitleExpression, kind: cursorKindText, nullsLast: true}, {expression: "content_id", kind: cursorKindText, nullsLast: true}}
+	return []queryCursorTerm{{expression: "fuzzy_rank", kind: cursorKindNumber, descending: true}, {expression: "fuzzy_full_rank", kind: cursorKindNumber, descending: true}, {expression: searchLowerTitleExpression, kind: cursorKindText, nullsLast: true}, {expression: cursorContentIDColumn, kind: cursorKindText, nullsLast: true}}
 }
 func fuzzyCompleteTerms() []queryCursorTerm {
 	terms := []queryCursorTerm{}
@@ -487,7 +488,7 @@ func (r *ItemRepository) groupSearchCandidates(ctx context.Context, candidates [
 	}
 	ids := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {
-		if candidate.item.Type == "ebook" || candidate.item.Type == searchTypeAudiobook {
+		if candidate.item.Type == searchTypeEbook || candidate.item.Type == searchTypeAudiobook {
 			ids = append(ids, candidate.item.ContentID)
 		}
 	}
@@ -554,7 +555,7 @@ func (r *ItemRepository) searchCandidatesExecutor(def QueryDefinition, access Ac
 	// mixed relation; repeating a media_items library join would drop episodes.
 	executor.SourceWhere = cursorTruePredicate
 	executor.SourceArgs = args
-	if def.Sort.Field == "added_at" {
+	if def.Sort.Field == defaultSortField {
 		libraryIDs := append([]int(nil), def.LibraryIDs...)
 		if access.AllowedLibraryIDs != nil {
 			if len(libraryIDs) == 0 {

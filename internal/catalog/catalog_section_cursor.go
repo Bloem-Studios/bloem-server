@@ -11,7 +11,7 @@ import (
 // added_at mapping to created_at and content-ID tie breakers. It deliberately
 // does not replace section ordering with the generic query sort definitions.
 func (r *CatalogResolver) resolveSectionOrderCursor(ctx context.Context, req CatalogRequest, access AccessFilter, snapshot time.Time, sort, order string) (*CatalogResult, error) {
-	req.Query.Sort = QuerySort{Field: "title", Order: querySortAsc}
+	req.Query.Sort = QuerySort{Field: querySortTitle, Order: querySortAsc}
 	executor := r.queryExecutorForScope(req.Query.MediaScope, &snapshot)
 	executor.SourceWhere = cursorTruePredicate
 	descending := !strings.EqualFold(order, querySortAsc)

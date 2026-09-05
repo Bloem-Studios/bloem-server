@@ -11,6 +11,10 @@ import (
 )
 
 const (
+	querySortTitle            = "title"
+	querySortDateViewed       = "date_viewed"
+	querySortContentRating    = "content_rating"
+	cursorContentIDColumn     = "content_id"
 	cursorKindText            = "text"
 	cursorKindNumber          = "number"
 	cursorKindTimestamp       = "timestamp"
@@ -68,9 +72,9 @@ func setCursorTermKinds(terms []queryCursorTerm, field string) {
 		if strings.HasSuffix(terms[0].expression, ".episode_air_date") {
 			terms[0].kind = cursorKindDate
 		}
-	case defaultSortField, "date_viewed", "latest_episode_added":
+	case defaultSortField, querySortDateViewed, "latest_episode_added":
 		terms[0].kind = cursorKindTimestamp
-	case "year", "runtime", "rating_imdb", "rating_tmdb", "rating_rt_critic", "rating_rt_audience", "resolution", querySortBitrate, "progress", "plays", "content_rating":
+	case "year", "runtime", "rating_imdb", "rating_tmdb", "rating_rt_critic", "rating_rt_audience", "resolution", querySortBitrate, "progress", "plays", querySortContentRating:
 		terms[0].kind = cursorKindNumber
 	case playableTypeSeries:
 		terms[1].kind = cursorKindNumber
