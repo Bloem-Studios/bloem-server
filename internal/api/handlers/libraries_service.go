@@ -88,6 +88,11 @@ func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateReq
 	if len(req.Paths) == 0 || req.Type == "" || req.Name == "" {
 		return LibraryView{}, apiError(http.StatusBadRequest, "bad_request", "Paths, type, and name are required")
 	}
+	paths, err := normalizeLibraryPaths(req.Paths)
+	if err != nil {
+		return LibraryView{}, err
+	}
+	req.Paths = paths
 	if req.MetadataLanguage != "" && !validMetadataLanguages[req.MetadataLanguage] {
 		return LibraryView{}, fieldError("metadata_language", "Invalid metadata_language; must be a valid ISO 639-1 code")
 	}
@@ -159,6 +164,13 @@ func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateReq
 // changed name, language or path set implies. userID attributes the
 // language-change refresh job.
 func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req LibraryUpdateRequest) (LibraryView, error) {
+	if req.Paths != nil {
+		paths, err := normalizeLibraryPaths(*req.Paths)
+		if err != nil {
+			return LibraryView{}, err
+		}
+		req.Paths = &paths
+	}
 	if req.MetadataLanguage != nil && *req.MetadataLanguage != "" && !validMetadataLanguages[*req.MetadataLanguage] {
 		return LibraryView{}, fieldError("metadata_language", "Invalid metadata_language; must be a valid ISO 639-1 code")
 	}
@@ -1275,3 +1287,19 @@ const (
 	metadataQueueStatusCancelled   = "cancelled" //nolint:misspell // v1 wire value
 	metadataProviderCapabilityType = "metadata_provider.v1"
 )
+
+// normalizeLibraryPaths rejects unusable roots before any catalog write.
+func normalizeLibraryPaths(paths []string) ([]string, error) {
+	if len(paths) == 0 {
+		return nil, fieldError("paths", "At least one library path is required")
+	}
+	normalized := make([]string, len(paths))
+	for i, path := range paths {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			return nil, fieldError("paths", "Library paths must not be blank")
+		}
+		normalized[i] = filepath.Clean(path)
+	}
+	return normalized, nil
+}
