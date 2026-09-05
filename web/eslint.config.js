@@ -71,6 +71,12 @@ export default tseslint.config(
       "src/pages/ProfileCustomizeHome.tsx",
       "src/pages/setup-wizard/steps/ProfileStep.tsx",
       "src/player/utils/subtitleChoicePersistence.ts",
+      "src/hooks/queries/catalogRead.ts",
+      "src/hooks/queries/audiobookGroups.ts",
+      "src/hooks/queries/people.ts",
+      "src/hooks/queries/metadataAI.ts",
+      "src/hooks/useOnViewTranslation.ts",
+      "src/pages/PersonDetail.tsx",
     ],
     rules: {
       "no-restricted-syntax": [

@@ -1,14 +1,28 @@
 import type {
   BrowseItem,
+  CastMember,
+  CatalogFiltersResponse,
+  CrewMember,
+  EpisodeFile,
+  EpisodeListItem,
+  FileVersion,
+  ItemDetail,
+  LeafItemUserData,
   LibraryCollection,
   LibraryTabCollection,
   LibraryTabGroup,
   LibraryTabResponse,
   LibraryTabUngrouped,
+  MangaSeriesFiles,
+  Person,
+  PlaybackVariant,
   ResolvedSection,
+  Season,
+  SeasonUserData,
   SectionItem,
   SectionItemUpcomingEvent,
   ServerVisibleUserCollection,
+  SubtitleInfo,
 } from "@/api/types";
 import type { components } from "@/api/v2/schema";
 
@@ -180,5 +194,203 @@ export function userCollectionFromV2(collection: UserCollectionV2): ServerVisibl
   return {
     ...collection,
     collection_type: collection.collection_type as ServerVisibleUserCollection["collection_type"],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Section catalog-items: item detail, children, files, people, and facets.
+// The detail and list pages take the v1 shapes below; the adapters spell v2's
+// absent members the way v1 did ("" / null) and turn string ids back into the
+// numbers the components still compare against.
+// ---------------------------------------------------------------------------
+
+type CatalogItemDetailV2 = components["schemas"]["CatalogItemDetail"];
+type CastCreditV2 = components["schemas"]["CastCredit"];
+type CrewCreditV2 = components["schemas"]["CrewCredit"];
+type EpisodeV2 = components["schemas"]["Episode"];
+type EpisodeFileV2 = components["schemas"]["EpisodeFile"];
+type SeasonV2 = components["schemas"]["Season"];
+type FileVersionV2 = components["schemas"]["FileVersion"];
+type PlaybackVariantV2 = components["schemas"]["PlaybackVariant"];
+type SubtitleInfoV2 = components["schemas"]["SubtitleInfo"];
+type WatchRollupV2 = components["schemas"]["WatchRollup"];
+type MangaFilesV2 = components["schemas"]["MangaFiles"];
+type PersonV2 = components["schemas"]["Person"];
+type CatalogFiltersV2 = components["schemas"]["CatalogFilters"];
+
+function watchRollupFromV2(rollup: WatchRollupV2): LeafItemUserData & SeasonUserData {
+  return { ...rollup, last_file_id: optionalNumber(rollup.last_file_id) };
+}
+
+export function fileVersionFromV2(version: FileVersionV2): FileVersion {
+  return { ...version, file_id: Number(version.file_id) };
+}
+
+function optionalNumber(value: string | undefined): number | undefined {
+  return value === undefined ? undefined : Number(value);
+}
+
+function playbackVariantFromV2(variant: PlaybackVariantV2): PlaybackVariant {
+  return {
+    ...variant,
+    default_file_id: optionalNumber(variant.default_file_id),
+    parts: variant.parts.map((part) => ({
+      ...part,
+      default_file_id: optionalNumber(part.default_file_id),
+      versions: part.versions.map(fileVersionFromV2),
+    })),
+  };
+}
+
+function subtitleInfoFromV2(subtitle: SubtitleInfoV2): SubtitleInfo {
+  return { ...subtitle, codec: subtitle.codec ?? "", title: subtitle.title ?? "" };
+}
+
+function castMemberFromV2(credit: CastCreditV2): CastMember {
+  return { ...credit, person_id: credit.person_id ?? "" };
+}
+
+function crewMemberFromV2(credit: CrewCreditV2): CrewMember {
+  return { ...credit, person_id: credit.person_id ?? "" };
+}
+
+export function catalogItemDetailFromV2(item: CatalogItemDetailV2): ItemDetail {
+  return {
+    content_id: item.content_id,
+    play_content_id: item.play_content_id,
+    type: item.type as ItemDetail["type"],
+    status: item.status ? (item.status as ItemDetail["status"]) : undefined,
+    title: item.title,
+    sort_title: item.sort_title,
+    original_title: item.original_title,
+    year: item.year ?? 0,
+    overview: item.overview ?? "",
+    tagline: item.tagline,
+    pending_translation_language: item.pending_translation_language,
+    runtime: item.runtime ?? 0,
+    content_rating: item.content_rating ?? "",
+    genres: item.genres,
+    rating_imdb: item.rating_imdb ?? null,
+    rating_tmdb: item.rating_tmdb ?? null,
+    rating_rt_critic: item.rating_rt_critic ?? null,
+    rating_rt_audience: item.rating_rt_audience ?? null,
+    imdb_id: item.imdb_id ?? "",
+    tmdb_id: item.tmdb_id ?? "",
+    tvdb_id: item.tvdb_id ?? "",
+    cast: item.cast.map(castMemberFromV2),
+    crew: item.crew.map(crewMemberFromV2),
+    studios: item.studios ?? [],
+    networks: item.networks ?? [],
+    countries: item.countries ?? [],
+    locked_fields: item.locked_fields,
+    release_date: item.release_date ?? null,
+    first_air_date: item.first_air_date ?? null,
+    show_status: item.show_status,
+    last_air_date: item.last_air_date ?? null,
+    air_time: item.air_time ?? null,
+    air_timezone: item.air_timezone ?? null,
+    poster_url: item.poster_url ?? "",
+    poster_thumbhash: item.poster_thumbhash ?? "",
+    backdrop_url: item.backdrop_url ?? "",
+    backdrop_thumbhash: item.backdrop_thumbhash ?? "",
+    logo_url: item.logo_url ?? "",
+    season_count: item.season_count ?? null,
+    series_id: item.series_id,
+    series_title: item.series_title,
+    season_number: item.season_number ?? null,
+    episode_number: item.episode_number ?? null,
+    episode_count: item.episode_count ?? null,
+    air_date: item.air_date ?? null,
+    is_specials: item.is_specials,
+    user_data: item.user_data ? watchRollupFromV2(item.user_data) : undefined,
+    user_state: item.user_state,
+    user_rating: item.user_rating ?? null,
+    folder_paths: item.folder_paths,
+    videos: item.videos,
+    extras: item.extras,
+    versions: item.versions.map(fileVersionFromV2),
+    playback_variants: item.playback_variants?.map(playbackVariantFromV2),
+    subtitles: item.subtitles.map(subtitleInfoFromV2),
+    intro: item.intro ?? null,
+    credits: item.credits ?? null,
+    recap: item.recap ?? null,
+    preview: item.preview ?? null,
+    effective_subtitle_language: item.effective_subtitle_language,
+    effective_subtitle_mode: item.effective_subtitle_mode,
+    effective_show_forced_subtitles: item.effective_show_forced_subtitles,
+    effective_subtitle_track_signature: item.effective_subtitle_track_signature,
+    effective_version_resolution: item.effective_version_resolution,
+    effective_version_hdr: item.effective_version_hdr,
+    effective_version_codec_video: item.effective_version_codec_video,
+    effective_version_edition_key: item.effective_version_edition_key,
+    audiobook: item.audiobook,
+    ebook: item.ebook,
+    manga: item.manga,
+  };
+}
+
+function episodeFileFromV2(file: EpisodeFileV2): EpisodeFile {
+  return {
+    file_id: Number(file.file_id),
+    resolution: file.resolution ?? "",
+    codec_video: file.codec_video ?? "",
+    hdr: file.hdr,
+    audio_channels: file.audio_channels ?? 0,
+    container: file.container ?? "",
+    file_size: file.file_size,
+  };
+}
+
+export function episodeFromV2(episode: EpisodeV2): EpisodeListItem {
+  return {
+    content_id: episode.content_id,
+    season_number: episode.season_number,
+    episode_number: episode.episode_number,
+    title: episode.title,
+    overview: episode.overview ?? "",
+    air_date: episode.air_date ?? null,
+    runtime: episode.runtime,
+    imdb_id: episode.imdb_id,
+    tmdb_id: episode.tmdb_id,
+    tvdb_id: episode.tvdb_id,
+    still_url: episode.still_url ?? "",
+    still_thumbhash: episode.still_thumbhash ?? "",
+    user_data: episode.user_data ? watchRollupFromV2(episode.user_data) : undefined,
+    files: (episode.files ?? []).map(episodeFileFromV2),
+    overlay_summary: episode.overlay_summary,
+  };
+}
+
+export function seasonFromV2(season: SeasonV2): Season {
+  return {
+    content_id: season.content_id,
+    play_content_id: season.play_content_id,
+    season_number: season.season_number,
+    is_specials: season.is_specials ?? false,
+    title: season.title,
+    overview: season.overview ?? "",
+    air_date: season.air_date ?? null,
+    episode_count: season.episode_count,
+    poster_url: season.poster_url ?? "",
+    poster_thumbhash: season.poster_thumbhash ?? "",
+    user_data: season.user_data ? watchRollupFromV2(season.user_data) : undefined,
+  };
+}
+
+export function mangaFilesFromV2(files: MangaFilesV2): MangaSeriesFiles {
+  return { folder_paths: files.folder_paths, files: files.items };
+}
+
+export function personFromV2(person: PersonV2): Person {
+  return { ...person, id: Number(person.id) };
+}
+
+export function catalogFiltersFromV2(filters: CatalogFiltersV2): CatalogFiltersResponse {
+  const { technical, ...facets } = filters;
+  return {
+    ...facets,
+    resolutions: technical?.resolutions,
+    audio_languages: technical?.audio_languages,
+    subtitle_languages: technical?.subtitle_languages,
   };
 }

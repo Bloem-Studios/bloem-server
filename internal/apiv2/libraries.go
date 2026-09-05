@@ -723,7 +723,7 @@ func (reg *Registry) getMetadataMatchQueue(ctx context.Context, cursors *Cursors
 	if p != nil {
 		return nil, p
 	}
-	scope := CursorScope{OperationID: opGetMetadataMatchQueue, Security: strconv.Itoa(userID), Filter: string(in.ID), Sort: "queue", Tiebreaker: "offset"}
+	scope := CursorScope{OperationID: opGetMetadataMatchQueue, Security: strconv.Itoa(userID), Filter: string(in.ID), Sort: "queue", Tiebreaker: tiebreakerOffset}
 	offset, p := decodeOffset(cursors, scope, in.Cursor)
 	if p != nil {
 		return nil, p

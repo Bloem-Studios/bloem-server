@@ -7,7 +7,6 @@ import {
   captureProfileRequestContext,
   getAccessToken,
   getProfileToken,
-  getPersonCatalogItems,
   onProfileUnverified,
   setAccessToken,
   setProfileId,
@@ -77,45 +76,6 @@ describe("bootstrapAccessToken", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(getAccessToken()).toBe("sample");
-  });
-});
-
-describe("getPersonCatalogItems", () => {
-  it("requests person filmography through the catalog API", async () => {
-    Object.defineProperty(globalThis, "sessionStorage", {
-      value: {
-        getItem: () => null,
-        setItem: () => {},
-        removeItem: () => {},
-        clear: () => {},
-      },
-      configurable: true,
-    });
-
-    const fetchMock = vi.fn<typeof fetch>(async (input) => {
-      expect(String(input)).toBe("/api/v1/catalog?source=person&person_id=123&limit=24&offset=0");
-      return new Response(
-        JSON.stringify({
-          total: 0,
-          has_more: false,
-          items: [],
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-    });
-
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(getPersonCatalogItems("123", undefined, 24, 0)).resolves.toEqual({
-      total: 0,
-      has_more: false,
-      items: [],
-    });
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

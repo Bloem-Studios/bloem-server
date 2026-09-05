@@ -3,6 +3,8 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
 import type { CatalogFiltersResponse, CatalogResponse } from "@/api/types";
+import { catalogFiltersFromV2 } from "@/api/v2/catalog";
+import { v2, type V2Query } from "@/api/v2/request";
 import type { CatalogParams } from "@/hooks/queries/keys";
 import { catalogKeys } from "@/hooks/queries/keys";
 import { createEmptyQueryDefinition, type CatalogSource } from "@/api/types";
@@ -59,15 +61,27 @@ function buildCatalogUrl(
   return `/catalog?${params.toString()}`;
 }
 
-function buildCatalogFiltersUrlWithOptions(
-  state: CatalogSearchState,
-  options: { includeTechnical?: boolean } = {},
-): string {
+type CatalogScopeQuery = V2Query<"GET /api/v2/catalog/filters">;
+
+/**
+ * The scope a facet document is computed over: the same source and ids the
+ * browse sends, minus the overlay (search text, sort, rule groups) that the
+ * facet endpoints ignore. Derived from the browse parameters so the two stay
+ * in step.
+ */
+function catalogScopeQuery(state: CatalogSearchState): CatalogScopeQuery {
   const params = buildCatalogApiSearchParams(state);
-  if (options.includeTechnical === false) {
-    params.set("include_technical", "false");
-  }
-  return `/catalog/filters?${params.toString()}`;
+  const source = params.get("source") as CatalogScopeQuery["source"];
+  const scope = params.get("scope") as CatalogScopeQuery["scope"];
+  return {
+    source: source ?? undefined,
+    scope: scope ?? undefined,
+    section_id: params.get("section_id") ?? undefined,
+    library_id: params.get("library_id") ?? undefined,
+    collection_id: params.get("collection_id") ?? undefined,
+    person_id: params.get("person_id") ?? undefined,
+    type: params.get("type") ?? undefined,
+  };
 }
 
 export async function fetchCatalogPage(
@@ -86,13 +100,17 @@ export async function fetchCatalogPage(
 
 export async function fetchCatalogFilters(
   state: CatalogSearchState,
-  options?: RequestInit,
+  options?: Pick<RequestInit, "signal">,
   requestOptions: { includeTechnical?: boolean } = {},
 ): Promise<CatalogFiltersResponse> {
-  return api<CatalogFiltersResponse>(
-    buildCatalogFiltersUrlWithOptions(state, requestOptions),
-    options,
-  );
+  const filters = await v2("GET /api/v2/catalog/filters", {
+    query: {
+      ...catalogScopeQuery(state),
+      skip_technical: requestOptions.includeTechnical === false ? true : undefined,
+    },
+    signal: options?.signal ?? undefined,
+  });
+  return catalogFiltersFromV2(filters);
 }
 
 export type CatalogFacetName =
@@ -116,13 +134,12 @@ export async function fetchCatalogFacetSearch(
   facet: CatalogFacetName,
   prefix: string,
   limit: number,
-  options?: RequestInit,
+  options?: Pick<RequestInit, "signal">,
 ): Promise<CatalogFacetSearchResponse> {
-  const params = buildCatalogApiSearchParams(state);
-  params.set("facet", facet);
-  params.set("q", prefix);
-  params.set("limit", String(limit));
-  return api<CatalogFacetSearchResponse>(`/catalog/filters/search?${params.toString()}`, options);
+  return v2("GET /api/v2/catalog/filters/search", {
+    query: { ...catalogScopeQuery(state), facet, q: prefix, limit },
+    signal: options?.signal ?? undefined,
+  });
 }
 
 export function createCatalogSearchState(

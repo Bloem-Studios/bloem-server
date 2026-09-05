@@ -18895,7 +18895,7 @@
         "path": "/api/v2/audio-prefs/{series_id}",
         "operation_id": "getAudioPreference"
       },
-      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; default is emitted as a bool; instants are UTC ms. The read goes through its own seam entry point, GetAudioPreferenceCanonical: the legacy user_audio_preferences row is the resource (a profile without one is 404 even when a canonical language row exists) and supplies the track identity, and audio_language is overlaid from the canonical profile_series row playback resolves — a present row replaces the legacy member, an absent row means no language (empty) — since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newer of the two rows."
+      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; default is emitted as a bool; instants are UTC ms. The read goes through its own seam entry point, GetAudioPreferenceCanonical: the legacy user_audio_preferences row is the resource (a profile without one is 404 even when a canonical language row exists) and supplies the track identity, and audio_language is overlaid from the canonical profile_series row playback resolves \u2014 a present row replaces the legacy member, an absent row means no language (empty) \u2014 since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newer of the two rows."
     },
     {
       "listener": "api",
@@ -21682,13 +21682,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog",
+        "operation_id": "listCatalogItems"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Cards are the shared CatalogItem; offset paging became limit+cursor (the cursor pins the first page's snapshot); include_total=false became skip_total=true; sort/order became sort=field or -field with one term; content_rating repeats the key; total/total_exact/search_diagnostics/effective_sort kept beside page; a parser or resolver refusal is 422 at the query parameter it names; a search deadline is 503 dependency_unavailable with Retry-After."
     },
     {
       "listener": "api",
@@ -21752,13 +21752,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/audiobook-groups",
+        "operation_id": "listAudiobookGroups"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Offset paging became limit+cursor; include_total=false became skip_total=true; group_by and sort are enums; groups sit in items with total/total_exact beside page; poster_urls is empty, never null."
     },
     {
       "listener": "api",
@@ -21832,13 +21832,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/filters",
+        "operation_id": "getCatalogFilters"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Facet document; include_technical=false became skip_technical=true and the three file-derived facets moved under a single technical member that is absent, not three nullable arrays; every list is empty, never null."
     },
     {
       "listener": "api",
@@ -21892,13 +21892,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/filters/search",
+        "operation_id": "searchCatalogFacet"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). facet is a required enum; limit maximum 100 is a 422 rather than a silent clamp; matches is empty, never null."
     },
     {
       "listener": "api",
@@ -21982,13 +21982,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/items/{id}",
+        "operation_id": "getCatalogItem"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). CatalogItemDetail composes the shared CatalogItem card; fileId became file_id; file ids and last_file_id are string IDs; version added_at is a UTC ms instant; keywords/original_language/status are empty on the detail because the detail service does not load them (as in v1)."
     },
     {
       "listener": "api",
@@ -22053,13 +22053,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/items/{id}/episodes",
+        "operation_id": "listCatalogItemEpisodes"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). {episodes:[...]} became {items:[...]}; file ids are string IDs; air_date is absent, not empty, when unknown."
     },
     {
       "listener": "api",
@@ -22114,13 +22114,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/items/{id}/manga-files",
+        "operation_id": "listCatalogItemMangaFiles"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). {files:[...],folder_paths} became {items:[...],folder_paths}; file descriptors only, never binary; paths absent for viewers without file-path visibility."
     },
     {
       "listener": "api",
@@ -22185,13 +22185,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/items/{id}/versions",
+        "operation_id": "listCatalogItemVersions"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Bare array became {items:[...]} (bounded, no page); file_id is a string ID; added_at is a UTC ms instant; a synthetic season answers an empty list as in v1."
     },
     {
       "listener": "api",
@@ -22237,13 +22237,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/catalog/query",
+        "operation_id": "queryCatalogItems"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Body form of the browse, no web consumer; unknown body members are rejected; limit above 100 is 422 rather than clamped; library_id is a string ID; the answer is the browse collection with page.has_more and no cursor since the body names its own offset; an invalid filter is 422 at body.groups."
     },
     {
       "listener": "api",
@@ -22327,13 +22327,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/series/{id}/seasons",
+        "operation_id": "listSeriesSeasons"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). {seasons:[...]} became {items:[...]}; air_date is absent, not empty, when unknown; last_file_id in user_data is a string ID."
     },
     {
       "listener": "api",
@@ -22388,13 +22388,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/series/{id}/seasons/{num}",
+        "operation_id": "getSeriesSeason"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). {season:{...}} became the season document itself; a non-integer or negative num is 422."
     },
     {
       "listener": "api",
@@ -22469,13 +22469,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/series/{id}/seasons/{num}/episodes",
+        "operation_id": "listSeasonEpisodes"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). {episodes:[...]} became an {items} collection; a non-integer or negative num is 422."
     },
     {
       "listener": "api",
@@ -29125,13 +29125,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/capabilities/trailers",
+        "operation_id": "getTrailersCapability"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; itemsHandler != nil && itemRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Now a typed capability document (revision, state available|not_configured, cooldown_seconds, statuses, supported_types) under /capabilities; schema_version and the refresh boolean are gone, state carries them. Cache-Control: private, no-cache."
     },
     {
       "listener": "api",
@@ -29182,19 +29182,19 @@
       "section": "catalog-items",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "coalescing",
-      "retry_safety_note": "DEFECT: the in-flight claim is process-local (claimOnDemandMetadataRefresh); two API nodes can start two refreshes. Reports queued either way. The v2 port needs a shared claim.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "DEFECT: Trailer refresh uses a process-local in-flight claim; retries across API nodes can enqueue duplicate pipelines. A durable item-scoped database claim must replace it before retry safety can be advertised.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/catalog/items/{id}/trailers/refresh",
+        "operation_id": "refreshCatalogItemTrailers"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; itemsHandler != nil && itemRepo != nil; ok. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Keeps 202 {status:queued} and 200 for cooldown/disabled (coalescing action, not the 202 job-monitor contract); next_allowed_at is an Instant; 400 unsupported_type is 422 at path.id; 503 unconfigured is 409 capability_not_configured; the per-user 429 carries Retry-After."
     },
     {
       "listener": "api",
@@ -29267,13 +29267,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/catalog/items/{id}/translate-description",
+        "operation_id": "translateCatalogItemDescription"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; metadataAIHandler != nil; itemRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Answers 202 with the job itself rather than {job:{...}} (coalescing action, not the 202 job-monitor contract); a missing target_language is 422 at body.target_language; 503 not_configured is 409 capability_not_configured; unknown body members are rejected."
     },
     {
       "listener": "api",
@@ -31753,13 +31753,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/capabilities/metadata-ai",
+        "operation_id": "getMetadataAICapability"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; !(metadataAIHandler != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Section catalog-items (profile_scoped). One operation registered once for both v1 registrations: a typed capability document (revision, state available|not_configured, on_view) under /capabilities; the disabled fallback is the same operation answering not_configured. Cache-Control: private, no-cache."
     },
     {
       "listener": "api",
@@ -31833,13 +31833,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/capabilities/metadata-ai",
+        "operation_id": "getMetadataAICapability"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; metadataAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Section catalog-items (profile_scoped). One operation registered once for both v1 registrations: a typed capability document (revision, state available|not_configured, on_view) under /capabilities; the disabled fallback is the same operation answering not_configured. Cache-Control: private, no-cache."
     },
     {
       "listener": "api",
@@ -34292,13 +34292,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/people",
+        "operation_id": "listPeople"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; peopleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Moved under /catalog; the bare array became an {items} collection; limit is validated 1..100 (default 20) rather than silently defaulted; ids are strings."
     },
     {
       "listener": "api",
@@ -34372,13 +34372,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/people/{id}",
+        "operation_id": "getPerson"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; peopleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Moved under /catalog; a non-positive or non-integer id is 422 at path.id rather than 400 invalid_id; id is a string."
     },
     {
       "listener": "api",
@@ -34448,19 +34448,19 @@
       "section": "catalog-items",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "coalescing",
-      "retry_safety_note": "DEFECT: the refresh queue dedups by content id but lives in process memory; two API nodes can each refresh. The v2 port needs a shared queue.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "DEFECT: Person refresh queue deduplication is process-local; retries across API nodes can enqueue duplicate refreshes. A durable person-scoped queue claim is required before retry safety can be advertised.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/catalog/people/{id}/refresh",
+        "operation_id": "refreshPerson"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; peopleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Keeps 202 {status:queued, person_id} (coalescing action, not the 202 job-monitor contract) with person_id as a string; the per-user 429 carries Retry-After; an unconfigured queue is 503 dependency_unavailable."
     },
     {
       "listener": "api",
@@ -39814,7 +39814,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40170,7 +40170,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40241,7 +40241,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40310,7 +40310,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40381,7 +40381,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41320,7 +41320,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41390,7 +41390,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41458,7 +41458,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -42053,7 +42053,7 @@
         "path": "/api/v2/subtitle-prefs/{series_id}",
         "operation_id": "getSubtitlePreference"
       },
-      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; forced and hearing_impaired are emitted as bools; show_forced_subtitles is absent when the profile has no override; instants are UTC ms. The read goes through its own seam entry point, GetSubtitlePreferenceCanonical: the legacy user_subtitle_preferences row is the resource (a profile without one is 404 even when canonical rows exist) and supplies the track identity (index, external path, signature), and subtitle_language, subtitle_mode and show_forced_subtitles are overlaid from the canonical profile_series rows playback resolves — a present row replaces the legacy member, an absent row means the member is unset (empty language or mode, show_forced_subtitles absent) — since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newest of the legacy row and the canonical rows."
+      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; forced and hearing_impaired are emitted as bools; show_forced_subtitles is absent when the profile has no override; instants are UTC ms. The read goes through its own seam entry point, GetSubtitlePreferenceCanonical: the legacy user_subtitle_preferences row is the resource (a profile without one is 404 even when canonical rows exist) and supplies the track identity (index, external path, signature), and subtitle_language, subtitle_mode and show_forced_subtitles are overlaid from the canonical profile_series rows playback resolves \u2014 a present row replaces the legacy member, an absent row means the member is unset (empty language or mode, show_forced_subtitles absent) \u2014 since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newest of the legacy row and the canonical rows."
     },
     {
       "listener": "api",
@@ -46367,13 +46367,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/works/{work_id}",
+        "operation_id": "getLiteraryWork"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; itemsHandler != nil; literaryWorkHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Moved under /catalog; library_id, file_id, and person_id are strings; progress.updated_at is an Instant; authors, formats, available_files, and genres are empty arrays rather than null; a blank work_id is 422 at path.work_id."
     },
     {
       "listener": "api",

@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "name": "Frank Herbert",
+      "item_count": 3,
+      "total_duration_seconds": 7200,
+      "in_progress_count": 0,
+      "finished_count": 0,
+      "poster_urls": []
+    }
+  ],
+  "page": {
+    "next_cursor": "eyJ2IjoxLCJwIjp7Im8iOjF9fQ.pZ5E9qEnar3AcnhQdcUIdD0FizpnRKEXPBORCtSjQQ4",
+    "has_more": true
+  },
+  "total": 2,
+  "total_exact": true
+}
+

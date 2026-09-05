@@ -1959,6 +1959,27 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if libraryCollectionHandler != nil {
 		v2deps.LibraryCollections = libraryCollectionHandler
 	}
+	if itemsHandler != nil {
+		v2deps.CatalogAccess = itemsHandler
+	}
+	if catalogHandler != nil {
+		v2deps.CatalogBrowse = catalogHandler
+	}
+	if catalogResourceHandler != nil {
+		v2deps.CatalogItems = catalogResourceHandler
+	}
+	if itemsHandler != nil {
+		v2deps.CatalogTrailers = itemsHandler
+	}
+	if metadataAIHandler != nil {
+		v2deps.MetadataAI = metadataAIHandler
+	}
+	if peopleHandler != nil {
+		v2deps.People = peopleHandler
+	}
+	if literaryWorkHandler != nil {
+		v2deps.LiteraryWorks = literaryWorkHandler
+	}
 	if calendarRepo != nil {
 		calendarPopular := recommendations.NewRepo(deps.DB)
 		calendarTrending := sections.NewTrendingSnapshotRepository(deps.DB)

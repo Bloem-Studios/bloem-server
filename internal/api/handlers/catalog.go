@@ -116,74 +116,25 @@ func (h *CatalogHandler) HandleGetCatalog(w http.ResponseWriter, r *http.Request
 		return
 	}
 	groupedByWork := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("group")), "work")
-	if groupedByWork {
-		result, entries, err := h.resolveGroupedCatalogByWork(r, req, accessFilter)
-		if err != nil {
-			handleCatalogResolveError(w, r, err, true)
-			return
-		}
-
-		resultItems := groupedCatalogItems(entries)
-		items := h.catalogItemResponses(r, resultItems, catalogSortMetricField(req, result), playableTargetLibraryIDs(req), accessFilter)
-		for i := range items {
-			if i < len(entries) && entries[i].summary != nil {
-				applyWorkSummaryToCatalogItem(&items[i], entries[i].summary)
-			}
-		}
-		h.writeCatalogResponse(w, result, items, groupedByWork)
-		return
-	}
-
-	result, err := h.resolver.Resolve(r.Context(), req, accessFilter)
+	view, err := h.Browse(r.Context(), viewerFromRequest(r, accessFilter), req, groupedByWork)
 	if err != nil {
-		handleCatalogResolveError(w, r, err, false)
+		writeCatalogError(w, err)
 		return
 	}
-	items := h.catalogItemResponses(r, result.Items, catalogSortMetricField(req, result), playableTargetLibraryIDs(req), accessFilter)
-	h.writeCatalogResponse(w, result, items, groupedByWork)
+	writeJSON(w, http.StatusOK, view)
 }
 
-// handleCatalogResolveError keeps grouped and ordinary catalog resolution on
-// the same error contract. In particular, a grouped search still runs through
-// the bounded PostgreSQL path and must return search_timeout rather than hiding
-// a deadline behind the generic 500 response.
-func handleCatalogResolveError(w http.ResponseWriter, r *http.Request, err error, groupedByWork bool) {
-	if errors.Is(err, catalog.ErrInvalidCatalogRequest) {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		return
-	}
-	if errors.Is(err, catalog.ErrCatalogSourceNotFound) {
-		writeError(w, http.StatusNotFound, "not_found", "Catalog source not found")
-		return
-	}
-	if handleCatalogSearchContextError(w, r, err) {
-		return
-	}
-	slog.ErrorContext(
-		r.Context(),
-		"catalog: resolve failed",
-		"component", "api",
-		"grouped_by_work", groupedByWork,
-		"err_msg", err.Error(),
-	)
-	writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve catalog")
-}
-
-// handleCatalogSearchContextError translates bounded-search termination without
-// treating it as an ordinary server fault. Superseded live queries cancel their
-// request context, so there is no client left to receive a response. A server
-// deadline is different: the client is still present and gets a retryable 504
-// instead of a misleading 500 while the database work is already stopped.
-func handleCatalogSearchContextError(w http.ResponseWriter, r *http.Request, err error) bool {
+// writeCatalogError writes a seam failure; a canceled request has no client
+// left, so nothing is written.
+func writeCatalogError(w http.ResponseWriter, err error) {
 	if errors.Is(err, context.Canceled) {
-		return true
+		return
 	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		slog.WarnContext(r.Context(), "catalog: search deadline exceeded", "component", "api")
-		writeError(w, http.StatusGatewayTimeout, "search_timeout", "Search took too long and was stopped")
-		return true
-	}
-	return false
+	writeAPIError(w, err)
+}
+
+func handleCatalogResolveError(w http.ResponseWriter, r *http.Request, err error, groupedByWork bool) {
+	writeCatalogError(w, catalogResolveError(r.Context(), err, groupedByWork))
 }
 
 // catalogSortMetricField is the field the returned items are actually ordered
@@ -204,7 +155,7 @@ func playableTargetLibraryIDs(req catalog.CatalogRequest) []int {
 	return req.Query.LibraryIDs
 }
 
-func (h *CatalogHandler) catalogItemResponses(r *http.Request, resultItems []*models.MediaItem, sortField string, libraryIDs []int, accessFilter catalog.AccessFilter) []itemListResponse {
+func (h *CatalogHandler) catalogItemResponses(ctx context.Context, v ItemViewer, resultItems []*models.MediaItem, sortField string, libraryIDs []int, accessFilter catalog.AccessFilter) []itemListResponse {
 	var (
 		localizedItems   []*models.MediaItem
 		overlaySummaries map[string]*models.OverlaySummary
@@ -216,23 +167,23 @@ func (h *CatalogHandler) catalogItemResponses(r *http.Request, resultItems []*mo
 	enrichWG.Add(5)
 	go func() {
 		defer enrichWG.Done()
-		localizedItems = h.itemsH.localizeItemListModels(r.Context(), resultItems, accessFilter)
+		localizedItems = h.itemsH.localizeItemListModels(ctx, resultItems, accessFilter)
 	}()
 	go func() {
 		defer enrichWG.Done()
-		overlaySummaries = h.itemsH.listOverlaySummaries(r.Context(), resultItems, accessFilter)
+		overlaySummaries = h.itemsH.listOverlaySummaries(ctx, resultItems, accessFilter)
 	}()
 	go func() {
 		defer enrichWG.Done()
-		userStates = h.itemsH.listItemUserStates(r, resultItems)
+		userStates = h.itemsH.listItemUserStates(ctx, v, resultItems)
 	}()
 	go func() {
 		defer enrichWG.Done()
-		episodeMetadata = h.itemsH.listEpisodeBrowseMetadata(r.Context(), resultItems)
+		episodeMetadata = h.itemsH.listEpisodeBrowseMetadata(ctx, resultItems)
 	}()
 	go func() {
 		defer enrichWG.Done()
-		playTargets = h.itemsH.listPlayableTargets(r, resultItems, libraryIDs, accessFilter)
+		playTargets = h.itemsH.listPlayableTargets(ctx, v, resultItems, libraryIDs, accessFilter)
 	}()
 	enrichWG.Wait()
 
@@ -240,23 +191,23 @@ func (h *CatalogHandler) catalogItemResponses(r *http.Request, resultItems []*mo
 		imageURLs   map[string]itemListImageURLs
 		sortMetrics map[string]*sortMetricsResponse
 	)
-	store, profileID, _ := h.itemsH.userStoreForRequest(r)
+	store, profileID, _ := h.itemsH.viewerUserStore(ctx, v.ProfileID)
 	var responseWG sync.WaitGroup
 	responseWG.Add(2)
 	go func() {
 		defer responseWG.Done()
-		imageURLs = h.itemsH.itemListCardImageURLs(r.Context(), localizedItems, accessFilter.ImageSize)
+		imageURLs = h.itemsH.itemListCardImageURLs(ctx, localizedItems, accessFilter.ImageSize)
 	}()
 	go func() {
 		defer responseWG.Done()
 		sortMetrics = h.itemsH.listSortMetrics(
-			r.Context(),
+			ctx,
 			resultItems,
 			sortField,
 			accessFilter,
 			overlaySummaries,
 			store,
-			apimw.GetUserID(r.Context()),
+			apimw.GetUserID(ctx),
 			profileID,
 		)
 	}()
@@ -293,39 +244,7 @@ func applyEpisodeBrowseMetadata(resp *itemListResponse, meta episodeBrowseMetada
 }
 
 func (h *CatalogHandler) writeCatalogResponse(w http.ResponseWriter, result *catalog.CatalogResult, items []itemListResponse, groupedByWork bool) {
-	var snapshot string
-	if !result.SnapshotAt.IsZero() {
-		snapshot = result.SnapshotAt.Format(time.RFC3339Nano)
-	}
-
-	// A non-empty Provider is the single gate: only the direct-search path sets
-	// it. Browse / preview / non-relevance-sort q= (which never run a provider)
-	// and group=work (fresh CatalogResult with empty Provider) all omit it.
-	var diag *searchDiagnostics
-	if result.Provider != "" {
-		diag = &searchDiagnostics{
-			Provider:            result.Provider,
-			Mode:                result.Mode,
-			SemanticUsed:        result.SemanticUsed,
-			FallbackReason:      result.FallbackReason,
-			IndexPendingUpdates: result.IndexPendingEvents,
-		}
-	}
-
-	var effectiveSort *effectiveSortResponse
-	if field := strings.TrimSpace(result.EffectiveSort.Field); field != "" {
-		effectiveSort = &effectiveSortResponse{Field: field, Order: result.EffectiveSort.Order}
-	}
-
-	writeJSON(w, http.StatusOK, catalogResponse{
-		Total:             result.Total,
-		TotalExact:        result.TotalExact && !groupedByWork,
-		HasMore:           result.HasMore,
-		Items:             items,
-		Snapshot:          snapshot,
-		SearchDiagnostics: diag,
-		EffectiveSort:     effectiveSort,
-	})
+	writeJSON(w, http.StatusOK, catalogBrowseView(result, items, groupedByWork))
 }
 
 type groupedCatalogEntry struct {
@@ -333,7 +252,7 @@ type groupedCatalogEntry struct {
 	summary *catalog.WorkSummary
 }
 
-func (h *CatalogHandler) resolveGroupedCatalogByWork(r *http.Request, req catalog.CatalogRequest, accessFilter catalog.AccessFilter) (*catalog.CatalogResult, []groupedCatalogEntry, error) {
+func (h *CatalogHandler) resolveGroupedCatalogByWork(ctx context.Context, req catalog.CatalogRequest, accessFilter catalog.AccessFilter) (*catalog.CatalogResult, []groupedCatalogEntry, error) {
 	fetchReq := req
 	fetchReq.Offset = 0
 	fetchReq.Limit = groupedCatalogFetchLimit(req.Limit)
@@ -352,7 +271,7 @@ func (h *CatalogHandler) resolveGroupedCatalogByWork(r *http.Request, req catalo
 	firstPage := true
 
 	for {
-		result, err := h.resolver.Resolve(r.Context(), fetchReq, accessFilter)
+		result, err := h.resolver.Resolve(ctx, fetchReq, accessFilter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -368,7 +287,7 @@ func (h *CatalogHandler) resolveGroupedCatalogByWork(r *http.Request, req catalo
 				fetchReq.SnapshotAt = &snapshot
 			}
 		}
-		summaries, err := h.workSummariesForItems(r, result.Items, accessFilter)
+		summaries, err := h.workSummariesForItems(ctx, result.Items, accessFilter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -423,7 +342,7 @@ func groupedCatalogFetchLimit(limit int) int {
 	}
 }
 
-func (h *CatalogHandler) workSummariesForItems(r *http.Request, items []*models.MediaItem, filter catalog.AccessFilter) (map[string]*catalog.WorkSummary, error) {
+func (h *CatalogHandler) workSummariesForItems(ctx context.Context, items []*models.MediaItem, filter catalog.AccessFilter) (map[string]*catalog.WorkSummary, error) {
 	summaries := map[string]*catalog.WorkSummary{}
 	if h == nil || h.workSummary == nil || len(items) == 0 {
 		return summaries, nil
@@ -444,10 +363,10 @@ func (h *CatalogHandler) workSummariesForItems(r *http.Request, items []*models.
 		return summaries, nil
 	}
 	if batch, ok := h.workSummary.(catalog.WorkSummaryBatchProvider); ok {
-		return batch.ListSummariesForContentIDs(r.Context(), contentIDs, filter)
+		return batch.ListSummariesForContentIDs(ctx, contentIDs, filter)
 	}
 	for _, contentID := range contentIDs {
-		summary, err := h.workSummary.GetSummaryForContentID(r.Context(), contentID, filter)
+		summary, err := h.workSummary.GetSummaryForContentID(ctx, contentID, filter)
 		if err != nil {
 			return nil, err
 		}
@@ -510,45 +429,12 @@ func (h *CatalogHandler) HandleGetCatalogFilters(w http.ResponseWriter, r *http.
 		return
 	}
 
-	includeTechnical := parseIncludeTechnical(r.URL.Query().Get("include_technical"))
-	filters, err := h.resolver.ListFiltersWithOptions(
-		r.Context(),
-		req,
-		accessFilter,
-		catalog.CatalogFilterOptions{IncludeTechnical: includeTechnical},
-	)
+	view, err := h.Filters(r.Context(), viewerFromRequest(r, accessFilter), req, parseIncludeTechnical(r.URL.Query().Get("include_technical")))
 	if err != nil {
-		if errors.Is(err, catalog.ErrInvalidCatalogRequest) {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list catalog filters")
+		writeAPIError(w, err)
 		return
 	}
-
-	var resolutions *[]string
-	var audioLanguages *[]string
-	var subtitleLanguages *[]string
-	if includeTechnical {
-		resolutions = &filters.Resolutions
-		audioLanguages = &filters.AudioLanguages
-		subtitleLanguages = &filters.SubtitleLanguages
-	}
-
-	writeJSON(w, http.StatusOK, catalogFiltersResponse{
-		Genres:            filters.Genres,
-		Studios:           filters.Studios,
-		Networks:          filters.Networks,
-		Countries:         filters.Countries,
-		OriginalLanguages: filters.OriginalLanguages,
-		ContentRatings:    filters.ContentRatings,
-		Authors:           filters.Authors,
-		Narrators:         filters.Narrators,
-		Series:            filters.Series,
-		Resolutions:       resolutions,
-		AudioLanguages:    audioLanguages,
-		SubtitleLanguages: subtitleLanguages,
-	})
+	writeJSON(w, http.StatusOK, view)
 }
 
 // catalogFacetSearchResponse mirrors catalog.CatalogFacetSearchResult on
@@ -567,10 +453,6 @@ type catalogFacetSearchResponse struct {
 // original_language / content_rating for consistency). Query
 // parameters: same as /api/v1/catalog/filters for scope (source,
 // library_id, etc.), plus facet=<name>, q=<prefix>, limit=<N>.
-//
-// The bulk /api/v1/catalog/filters endpoint stays as the source for
-// the initial dropdown render (top 1000 alphabetical); this endpoint
-// takes over once the user starts typing.
 func (h *CatalogHandler) HandleGetCatalogFacetSearch(w http.ResponseWriter, r *http.Request) {
 	if h == nil || h.resolver == nil || h.itemsH == nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Catalog is not configured")
@@ -608,31 +490,12 @@ func (h *CatalogHandler) HandleGetCatalogFacetSearch(w http.ResponseWriter, r *h
 		return
 	}
 
-	result, err := h.resolver.SearchFacet(
-		r.Context(),
-		req,
-		accessFilter,
-		facet,
-		prefix,
-		limit,
-	)
+	view, err := h.SearchFacet(r.Context(), viewerFromRequest(r, accessFilter), req, facet, prefix, limit)
 	if err != nil {
-		if errors.Is(err, catalog.ErrInvalidCatalogRequest) {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to search catalog facet")
+		writeAPIError(w, err)
 		return
 	}
-
-	matches := result.Matches
-	if matches == nil {
-		matches = []string{}
-	}
-	writeJSON(w, http.StatusOK, catalogFacetSearchResponse{
-		Matches: matches,
-		HasMore: result.HasMore,
-	})
+	writeJSON(w, http.StatusOK, view)
 }
 
 func parseIncludeTechnical(raw string) bool {
@@ -665,9 +528,9 @@ func (h *CatalogHandler) HandlePostCatalogQuery(w http.ResponseWriter, r *http.R
 		req.Limit = 100
 	}
 
-	fb := sections.NewFilterBuilder("mi")
-	filterWhere, filterArgs, err := fb.Build(req.FilterConfig)
-	if err != nil {
+	// The filter body is validated before the access filter so an invalid
+	// filter and an unresolvable policy answer in the v1 order.
+	if _, _, err := sections.NewFilterBuilder("mi").Build(req.FilterConfig); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid filter: "+err.Error())
 		return
 	}
@@ -676,121 +539,12 @@ func (h *CatalogHandler) HandlePostCatalogQuery(w http.ResponseWriter, r *http.R
 	if !ok {
 		return
 	}
-	if req.LibraryID > 0 {
-		accessFilter.PresentationLibraryID = &req.LibraryID
-	}
-	libraryIDs := accessFilter.AllowedLibraryIDs
-
-	var conditions []string
-	args := filterArgs
-	argIdx := fb.ArgIdx()
-
-	if filterWhere != "" {
-		conditions = append(conditions, filterWhere)
-	}
-
-	disabledLibraryIDs := accessFilter.DisabledLibraryIDs
-	fromClause := "media_items mi"
-	libraryConditions, libraryArgs, nextArgIdx, earlyEmpty := buildPostCatalogLibraryScope(
-		req.LibraryID,
-		libraryIDs,
-		disabledLibraryIDs,
-		argIdx,
-	)
-	if earlyEmpty {
-		writeJSON(w, http.StatusOK, browseResponse{Items: []itemListResponse{}, Total: 0})
-		return
-	}
-	conditions = append(conditions, libraryConditions...)
-	args = append(args, libraryArgs...)
-	argIdx = nextArgIdx
-	catalog.ApplySectionAccessFilter("mi", catalog.AccessFilter{MaxContentRating: accessFilter.MaxContentRating}, &conditions, &args, &argIdx)
-
-	whereClause := ""
-	if len(conditions) > 0 {
-		whereClause = "WHERE " + strings.Join(conditions, " AND ")
-	}
-
-	sortClause := "ORDER BY mi.created_at DESC"
-	if req.Sort != "" {
-		sortClause = filterSortClause(req.Sort, req.Order)
-	}
-
-	// Single-pass query: COUNT(*) OVER () returns the same total on every
-	// row of the filtered set, so we read it once from the first scanned row
-	// instead of firing a separate SELECT COUNT(*).
-	query := fmt.Sprintf(
-		`SELECT %s, COUNT(*) OVER () AS total_count FROM %s %s %s LIMIT $%d OFFSET $%d`,
-		filterItemColumns("mi"), fromClause, whereClause, sortClause, argIdx, argIdx+1,
-	)
-	args = append(args, req.Limit, req.Offset)
-
-	rows, err := h.itemsH.browseRepo.Pool().Query(r.Context(), query, args...)
+	view, err := h.QueryItems(r.Context(), viewerFromRequest(r, accessFilter), req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to query items")
+		writeAPIError(w, err)
 		return
 	}
-	defer rows.Close()
-
-	var total int
-	modelItems := make([]*models.MediaItem, 0)
-	for rows.Next() {
-		var item models.MediaItem
-		var rowTotal int
-		scanErr := rows.Scan(
-			&item.ContentID, &item.Type, &item.Title, &item.SortTitle, &item.OriginalTitle,
-			&item.Year, &item.Genres, &item.ContentRating, &item.Runtime, &item.Overview, &item.Tagline,
-			&item.RatingIMDB, &item.RatingTMDB, &item.RatingRTCritic, &item.RatingRTAudience,
-			&item.ImdbID, &item.TmdbID, &item.TvdbID,
-			&item.PosterPath, &item.PosterThumbhash, &item.BackdropPath, &item.BackdropThumbhash, &item.LogoPath,
-			&item.MetadataS3Path, &item.MetadataEtag, &item.SeasonCount,
-			&item.Studios, &item.Networks, &item.Countries, &item.FirstAirDate, &item.LastAirDate,
-			&item.MatchedAt, &item.Status, &item.CreatedAt, &item.UpdatedAt,
-			&rowTotal,
-		)
-		if scanErr != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to scan item")
-			return
-		}
-		modelItems = append(modelItems, &item)
-		total = rowTotal
-	}
-
-	// COUNT(*) OVER () emits no rows when the data SELECT is empty, so total
-	// stays 0 even when the broader result set has matching rows (e.g. OFFSET
-	// past the last page). Re-query the count to give callers the real total.
-	// Skip when offset == 0 because in that case an empty page genuinely means
-	// total = 0. Mirrors the fallback in browse.go / query_executor.go /
-	// favorites_browse.go / item_repo.go Search.
-	if len(modelItems) == 0 && req.Offset > 0 {
-		countQuery := fmt.Sprintf(
-			"SELECT COUNT(*) FROM (SELECT 1 FROM %s %s) sub",
-			fromClause, whereClause,
-		)
-		// Drop the trailing limit, offset args from the data query.
-		countArgs := args[:len(args)-2]
-		if err := h.itemsH.browseRepo.Pool().QueryRow(r.Context(), countQuery, countArgs...).Scan(&total); err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to count items")
-			return
-		}
-	}
-
-	userStates := h.itemsH.listItemUserStates(r, modelItems)
-	items := make([]itemListResponse, 0, len(modelItems))
-	for _, item := range modelItems {
-		if h.itemsH.detailSvc != nil {
-			if localized, locErr := h.itemsH.detailSvc.LocalizeItemModel(r.Context(), item, accessFilter); locErr == nil && localized != nil {
-				item = localized
-			}
-		}
-		items = append(items, h.itemsH.toItemListResponseWithOverlay(r, item, nil, userStates[item.ContentID], accessFilter.ImageSize))
-	}
-
-	writeJSON(w, http.StatusOK, browseResponse{
-		Total:   total,
-		HasMore: req.Offset+req.Limit < total,
-		Items:   items,
-	})
+	writeJSON(w, http.StatusOK, view)
 }
 
 func buildPostCatalogLibraryScope(
@@ -879,10 +633,10 @@ func (h *CatalogHandler) HandleLegacySearch(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	userStates := h.itemsH.listItemUserStates(r, items)
+	userStates := h.itemsH.listItemUserStates(r.Context(), viewerFromRequest(r, accessFilter), items)
 	resp := make([]itemListResponse, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, h.itemsH.toItemListResponseWithOverlay(r, item, nil, userStates[item.ContentID], accessFilter.ImageSize))
+		resp = append(resp, h.itemsH.toItemListResponseWithOverlay(r.Context(), viewerFromRequest(r, accessFilter), item, nil, userStates[item.ContentID], accessFilter.ImageSize))
 	}
 
 	writeJSON(w, http.StatusOK, browseResponse{

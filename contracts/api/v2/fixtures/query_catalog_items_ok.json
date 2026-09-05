@@ -1,0 +1,21 @@
+{
+  "items": [
+    {
+      "content_id": "movie:heat-1995",
+      "type": "movie",
+      "title": "Heat",
+      "year": 1995,
+      "genres": [
+        "Crime"
+      ],
+      "keywords": [],
+      "status": "matched"
+    }
+  ],
+  "page": {
+    "has_more": false
+  },
+  "total": 1,
+  "total_exact": false
+}
+

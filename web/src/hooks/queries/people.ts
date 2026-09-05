@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { adminRefreshPerson, adminUpdatePerson, refreshPerson, searchPeople } from "@/api/client";
-import type { Person, PersonRefreshQueuedResponse, UpdatePersonRequest } from "@/api/types";
+import { adminRefreshPerson, adminUpdatePerson } from "@/api/client";
+import type { Person, UpdatePersonRequest } from "@/api/types";
+import { refreshPerson, searchPeople, type PersonRefreshResult } from "@/api/v2/people";
 
 import { personKeys } from "./keys";
 
@@ -24,7 +25,7 @@ type RefreshPersonResult =
     }
   | {
       mode: "queued";
-      response: PersonRefreshQueuedResponse;
+      response: PersonRefreshResult;
     };
 
 export function useRefreshPerson(id: string | undefined, isAdmin: boolean) {

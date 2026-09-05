@@ -627,24 +627,7 @@ export async function apiBlob(path: string, options: RequestInit = {}): Promise<
   return res.blob();
 }
 
-// People API
-export async function searchPeople(query: string, limit = 20): Promise<import("./types").Person[]> {
-  const params = new URLSearchParams({ q: query, limit: String(limit) });
-  return api<import("./types").Person[]>(`/people?${params}`);
-}
-
-export async function getPerson(id: string): Promise<import("./types").Person> {
-  return api<import("./types").Person>(`/people/${id}`);
-}
-
-export async function refreshPerson(
-  id: string,
-): Promise<import("./types").PersonRefreshQueuedResponse> {
-  return api<import("./types").PersonRefreshQueuedResponse>(`/people/${id}/refresh`, {
-    method: "POST",
-  });
-}
-
+// People API (viewer reads live in ./v2/people.ts)
 export async function adminRefreshPerson(id: string): Promise<import("./types").Person> {
   return api<import("./types").Person>(`/admin/people/${id}/refresh`, {
     method: "POST",
@@ -659,20 +642,4 @@ export async function adminUpdatePerson(
     method: "PATCH",
     body: JSON.stringify(data),
   });
-}
-
-export async function getPersonCatalogItems(
-  id: string,
-  type?: string,
-  limit = 24,
-  offset = 0,
-): Promise<import("./types").BrowseResponse> {
-  const params = new URLSearchParams({
-    source: "person",
-    person_id: id,
-    limit: String(limit),
-    offset: String(offset),
-  });
-  if (type) params.set("type", type);
-  return api<import("./types").BrowseResponse>(`/catalog?${params}`);
 }

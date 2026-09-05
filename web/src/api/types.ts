@@ -551,11 +551,6 @@ export interface Person {
   plex_guid?: string;
 }
 
-export interface PersonRefreshQueuedResponse {
-  status: string;
-  person_id: number;
-}
-
 export interface UpdatePersonRequest {
   name?: string;
   bio?: string;
@@ -868,13 +863,6 @@ export interface AudiobookGroup {
   in_progress_count: number;
   finished_count: number;
   poster_urls: string[];
-}
-
-export interface AudiobookGroupsResponse {
-  total: number;
-  total_exact: boolean;
-  has_more: boolean;
-  groups: AudiobookGroup[];
 }
 
 // Item Detail

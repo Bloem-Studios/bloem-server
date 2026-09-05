@@ -500,6 +500,7 @@ func registerAll(reg *Registry) {
 	registerLibraries(reg)
 	registerLibraryViews(reg)
 	registerProfileSections(reg)
+	registerCatalogItems(reg)
 	registerProfiles(reg)
 	registerProgress(reg)
 	registerSettings(reg)

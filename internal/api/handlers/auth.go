@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -654,6 +655,9 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 func writeAPIError(w http.ResponseWriter, err error) {
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {
+		if apiErr.RetryAfter > 0 {
+			w.Header().Set("Retry-After", strconv.Itoa(apiErr.RetryAfter))
+		}
 		writeError(w, apiErr.Status, apiErr.Code, apiErr.Message)
 		return
 	}
