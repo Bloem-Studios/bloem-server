@@ -220,6 +220,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range append(requestOperationIDs, requestLifecycleOperationIDs...) {
 		profileToken[id] = true
 	}
+	for _, id := range adminRequestOperationIDs {
+		profileToken[id] = true
+	}
 	expect[opCreateRequest] = map[int]bool{http.StatusCreated: true, http.StatusConflict: true, http.StatusTooManyRequests: true, http.StatusNotFound: true}
 	expect[opListMyRequests] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}
 	expect[opGetRequestMediaDetail] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: true}

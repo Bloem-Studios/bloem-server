@@ -83,6 +83,138 @@
       "body_file": "add_to_watchlist_profile_header_required.json"
     },
     {
+      "name": "admin_request_integration_created",
+      "operation_id": "createRequestIntegration",
+      "scenario": "Acting administrator reads or configures requests with synthetic integration state.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/request-integrations",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        },
+        "body": "{\"name\":\"Router\",\"capability_id\":\"arr\",\"installation_id\":\"7\",\"supported_media_types\":[\"movie\"],\"plugin_config\":{},\"enabled\":true,\"base_url\":\"https://router.example.test\",\"api_key_ref\":\"private-key\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"4621897e4bcb2f35a2683f97.1704vd3atxdla\"",
+        "Location": "/api/v2/admin/request-integrations/created-1"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminRequestIntegration",
+      "body_file": "admin_request_integration_created.json"
+    },
+    {
+      "name": "admin_request_integration_ok",
+      "operation_id": "getRequestIntegration",
+      "scenario": "Acting administrator reads or configures requests with synthetic integration state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/request-integrations/integration-1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"020c277a063c8179cec2afcc.2eiyly5arof7b\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminRequestIntegration",
+      "body_file": "admin_request_integration_ok.json"
+    },
+    {
+      "name": "admin_request_integrations_ok",
+      "operation_id": "listRequestIntegrations",
+      "scenario": "Acting administrator reads or configures requests with synthetic integration state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/request-integrations",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminRequestIntegration",
+      "body_file": "admin_request_integrations_ok.json"
+    },
+    {
+      "name": "admin_request_limit_ok",
+      "operation_id": "getAdminRequestUserLimit",
+      "scenario": "Acting administrator reads or configures requests with synthetic integration state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/request-users/2/limit",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"ec0f1517b6588f0658ad6b72.hrf7u9426x09\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminRequestUserLimit",
+      "body_file": "admin_request_limit_ok.json"
+    },
+    {
+      "name": "admin_request_settings_ok",
+      "operation_id": "getAdminRequestSettings",
+      "scenario": "Acting administrator reads or configures requests with synthetic integration state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/request-settings",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"3379d6094d725b6ea1f1906d.8m8d5fcsajbv\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminRequestSettings",
+      "body_file": "admin_request_settings_ok.json"
+    },
+    {
+      "name": "admin_requests_ok",
+      "operation_id": "listAdminRequests",
+      "scenario": "Acting administrator reads or configures requests with synthetic integration state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/requests",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/MediaRequestCollection",
+      "body_file": "admin_requests_ok.json"
+    },
+    {
       "name": "authentication_required",
       "operation_id": null,
       "scenario": "An authenticated operation called without a credential.",

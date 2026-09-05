@@ -1997,6 +1997,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if requestHandler != nil {
 		v2deps.Requests = requestHandler.Service()
 		v2deps.RequestLifecycle = requestHandler.Service()
+		v2deps.AdminRequests = requestHandler.Service()
 	}
 	if deps.v2Wiring != nil {
 		deps.v2Wiring(v2deps)
