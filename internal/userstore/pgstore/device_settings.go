@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -19,7 +20,7 @@ func (s *PostgresUserStore) ListDeviceSettingsPage(ctx context.Context, opts use
 		return nil, err
 	}
 	args := []any{s.userID, opts.ProfileID}
-	sqlText := `SELECT d.profile_id,d.device_id,d.device_name,d.device_platform,d.last_seen_at::text,COALESCE(p.name,''),COALESCE((SELECT json_agg(k.key) FROM user_setting_values k WHERE k.user_id=d.user_id AND k.scope='profile_device' AND k.profile_id=d.profile_id AND k.device_id=d.device_id), '[]')
+	sqlText := `SELECT d.profile_id,d.device_id,d.device_name,d.device_platform,d.last_seen_at,COALESCE(p.name,''),COALESCE((SELECT json_agg(k.key) FROM user_setting_values k WHERE k.user_id=d.user_id AND k.scope='profile_device' AND k.profile_id=d.profile_id AND k.device_id=d.device_id), '[]')
  FROM user_devices d LEFT JOIN user_profiles p ON p.user_id=d.user_id AND p.id=d.profile_id
  WHERE d.user_id = $1 AND ($2='' OR d.profile_id=$2)`
 	if opts.After != nil {
@@ -37,9 +38,11 @@ func (s *PostgresUserStore) ListDeviceSettingsPage(ctx context.Context, opts use
 	for rows.Next() {
 		var entry userstore.DeviceSettingsEntry
 		var raw []byte
-		if err := rows.Scan(&entry.ProfileID, &entry.DeviceID, &entry.DeviceName, &entry.DevicePlatform, &entry.LastSeenAt, &entry.ProfileName, &raw); err != nil {
+		var lastSeen time.Time
+		if err := rows.Scan(&entry.ProfileID, &entry.DeviceID, &entry.DeviceName, &entry.DevicePlatform, &lastSeen, &entry.ProfileName, &raw); err != nil {
 			return nil, err
 		}
+		entry.LastSeenAt = lastSeen.UTC().Format(time.RFC3339Nano)
 		var keys []string
 		if err := json.Unmarshal(raw, &keys); err != nil {
 			return nil, err

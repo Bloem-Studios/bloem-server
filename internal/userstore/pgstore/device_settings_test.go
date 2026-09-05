@@ -78,6 +78,9 @@ func TestDeviceSettingsRollback(t *testing.T) {
 			t.Fatalf("tie continuation: %+v %v", page, err)
 		}
 		item := page[0]
+		if item.LastSeenAt != "2026-01-02T03:04:05.123456Z" {
+			t.Fatalf("device timestamp lost RFC3339 precision: %q", item.LastSeenAt)
+		}
 		opts.After = &userstore.DevicePosition{LastSeenAt: item.LastSeenAt, ProfileID: item.ProfileID, DeviceID: item.DeviceID}
 	}
 	lock, err := pool.Begin(ctx)
