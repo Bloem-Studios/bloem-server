@@ -280,7 +280,7 @@
         },
         "retry_safety": {
           "enum": ["natural_idempotent", "unique_constraint", "domain_identity", "coalescing", "durable_dispatch", "idempotency_key", "non_retryable"],
-          "description": "Curated. The mutation retry-safety strategy (docs/architecture/api-contract.md, \"Mutation retry safety\"), one value per contract bullet: natural_idempotent (PUT/DELETE converging on one state), unique_constraint (natural key or client-supplied id enforced by a DB uniqueness constraint), domain_identity (durable domain operation id: playback attempt, upload, job, webhook delivery), coalescing (returns the already-active job), durable_dispatch (state-gated or outbox dispatch for external side effects), idempotency_key (generic key; only with a note naming the residual group), non_retryable (documented; clients never auto-retry after an uncertain response). Required on every tier-1 ported row with a mutating method (POST, PUT, PATCH, DELETE) and forbidden elsewhere; internal/contractledger enforces both and reconciles the set against the v2 registry's x-silo-retry-safety."
+          "description": "Curated. The mutation retry-safety strategy (docs/architecture/api-contract.md, \"Mutation retry safety\"), one value per contract bullet: natural_idempotent (repeating a request converges without duplicate durable state or side effects, independent of HTTP method), unique_constraint (natural key or client-supplied id enforced by a DB uniqueness constraint), domain_identity (durable domain operation id: playback attempt, upload, job, webhook delivery), coalescing (returns the already-active job), durable_dispatch (state-gated or outbox dispatch for external side effects), idempotency_key (generic key; only with a note naming the residual group), non_retryable (documented; clients never auto-retry after an uncertain response). Allowed on ported mutations at either tier; required on every tier-1 ported mutation and any ported mutation mapped to v2.operation_id; forbidden on reads and non-ported rows; internal/contractledger enforces both and reconciles the set against the v2 registry's x-silo-retry-safety."
         },
         "retry_safety_note": {
           "type": "string",
@@ -291,11 +291,10 @@
       },
       "allOf": [
         {
-          "$comment": "retry_safety is a mutation-only classification of a ported tier-1 row. The required direction (every such row carries one) is enforced by internal/contractledger.",
+          "$comment": "retry_safety is a mutation-only classification of a ported row at either tier. internal/contractledger requires it for tier-1 inventory rows and mapped v2 mutations.",
           "if": {
             "not": {
               "properties": {
-                "tier": { "const": 1 },
                 "disposition": { "const": "ported" },
                 "method": { "enum": ["POST", "PUT", "PATCH", "DELETE"] }
               }
