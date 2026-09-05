@@ -28,6 +28,8 @@ type OperationOf<K extends string> =
 
 type PathParamsOf<Op> = Op extends { parameters: { path: infer P extends object } } ? P : never;
 
+type QueryOf<Op> = Op extends { parameters: { query?: infer Q extends object } } ? Q : never;
+
 type BodyOf<Op> = Op extends { requestBody: { content: { "application/json": infer B } } }
   ? B
   : never;
@@ -48,9 +50,10 @@ export type PlayerV2Key = `${string} ${keyof paths & string}`;
 /** The JSON request body of a v2 operation (`never` when it has none). */
 export type PlayerV2Body<K extends PlayerV2Key> = BodyOf<OperationOf<K>>;
 
-export type PlayerV2Options<K extends PlayerV2Key> = { signal?: AbortSignal } & ([
-  PathParamsOf<OperationOf<K>>,
-] extends [never]
+export type PlayerV2Options<K extends PlayerV2Key> = {
+  signal?: AbortSignal;
+  query?: QueryOf<OperationOf<K>>;
+} & ([PathParamsOf<OperationOf<K>>] extends [never]
   ? unknown
   : { path: PathParamsOf<OperationOf<K>> }) &
   ([PlayerV2Body<K>] extends [never] ? unknown : { body: PlayerV2Body<K> });
@@ -91,14 +94,22 @@ export async function playerV2<K extends PlayerV2Key>(
   options: PlayerV2Options<K>,
 ): Promise<SuccessOf<OperationOf<K>>> {
   const [method, route] = key.split(" ", 2) as [string, string];
-  const { signal, path, body } = options as {
+  const { signal, path, query, body } = options as {
     signal?: AbortSignal;
     path?: Record<string, string | number>;
+    query?: Record<string, unknown>;
     body?: unknown;
   };
 
   const headers = playerRequestHeaders(config, { Accept: "application/json" }, body !== undefined);
-  const res = await fetch(`${playerV2Origin(config)}${buildV2Url(route, path)}`, {
+  const params = new URLSearchParams();
+  for (const [name, value] of Object.entries(query ?? {})) {
+    for (const entry of Array.isArray(value) ? value : [value]) {
+      if (entry !== undefined && entry !== null) params.append(name, String(entry));
+    }
+  }
+  const search = params.size > 0 ? `?${params}` : "";
+  const res = await fetch(`${playerV2Origin(config)}${buildV2Url(route, path)}${search}`, {
     method,
     headers,
     signal,

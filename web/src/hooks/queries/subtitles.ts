@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { api, ApiClientError } from "@/api/client";
+import { api } from "@/api/client";
 import { v2 } from "@/api/v2/request";
 import {
   SERIES_SUBTITLE_SETTING_KEYS,
-  seriesSubtitleSettingPath,
+  seriesSubtitleSettingIdentity,
 } from "@/lib/seriesSubtitleSettings";
 import type { PrePlaySubtitleSelection } from "@/player/types";
 import { derivePersistedSubtitleMode } from "@/player/utils/subtitleMode";
@@ -19,6 +19,7 @@ import type {
 } from "@/api/types";
 
 import { itemKeys, settingsKeys, subtitleKeys } from "./keys";
+import { isSettingValueMissing } from "./settingValues";
 
 interface DownloadSubtitleResponse {
   subtitle: DownloadedSubtitle;
@@ -145,9 +146,12 @@ export function useDeleteSubtitlePreference() {
       await v2("DELETE /api/v2/subtitle-prefs/{series_id}", { path: { series_id: prefId } });
       await Promise.all(
         SERIES_SUBTITLE_SETTING_KEYS.map((key) =>
-          api<void>(seriesSubtitleSettingPath(key, prefId), { method: "DELETE" }).catch((error) => {
+          v2("DELETE /api/v2/settings/values/{key}", {
+            path: { key },
+            query: seriesSubtitleSettingIdentity(prefId),
+          }).catch((error: unknown) => {
             // Nothing stored at this scope is the state a reset asks for.
-            if (error instanceof ApiClientError && error.status === 404) return;
+            if (isSettingValueMissing(error)) return;
             throw error;
           }),
         ),

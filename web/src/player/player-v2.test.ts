@@ -53,6 +53,50 @@ describe("playerV2", () => {
     );
   });
 
+  it("encodes typed setting queries and keeps the configured player identity", async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await playerV2(
+      { ...config, apiBaseUrl: "https://silo.example/api/v1" },
+      "PUT /api/v2/settings/values/{key}",
+      {
+        path: { key: "playback.subtitle_mode" },
+        query: { scope: "profile_series", series_id: "series /1" },
+        body: { value: "off" },
+      },
+    );
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(
+      "https://silo.example/api/v2/settings/values/playback.subtitle_mode?scope=profile_series&series_id=series+%2F1",
+    );
+    expect(init.headers).toMatchObject({
+      Authorization: "Bearer token-1",
+      "X-Profile-Id": "profile-1",
+      "X-Silo-Device-Id": "web-player-device",
+    });
+    expect(init).not.toHaveProperty("query");
+    expect(init).not.toHaveProperty("path");
+  });
+
+  it("serializes array queries as repeated keys", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ values: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await playerV2(config, "GET /api/v2/settings/values", {
+      query: { keys: ["playback.subtitle_mode", "playback.subtitle_language"], scope: "profile" },
+    });
+    const [url] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(new URL(url, "https://silo.example").searchParams.getAll("keys")).toEqual([
+      "playback.subtitle_mode",
+      "playback.subtitle_language",
+    ]);
+  });
+
   it("surfaces a Problem Details answer as a PlayerFetchError", async () => {
     vi.stubGlobal(
       "fetch",

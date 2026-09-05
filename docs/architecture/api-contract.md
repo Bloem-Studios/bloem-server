@@ -1133,6 +1133,30 @@ server without an upload store answers `503`; section overrides drop the `/reset
 method, and read back in `snake_case` like the write (the Phase 1 catalogs flagged v1's GET/PUT
 casing mismatch). Every profile mutation in the section is demo-restricted on v2 (v1's demo guard lists none of them), and `createProfile`'s `Location` names the `PATCH`/`DELETE` resource; the created profile is read back through `listProfiles`.
 
+**Settings section (Phase 4).** Operations: `getSettingsContract` (serves both v1
+`/settings/contract` and `/settings/manifest`), `getSettingsContractCapabilities` (also v1
+`/settings/capability`), `getOverlayConfig`, `getEffectiveSubtitleAppearance`,
+`updateSubtitleAppearanceDeviceOverride`, `deleteSubtitleAppearanceDeviceOverride`,
+`listPluginSettings`, `getPluginSettings`, `updatePluginSettings`, `listSettingValues`,
+`getSettingValue`, `updateSettingValue`, `deleteSettingValue`, `listEffectiveSettings`,
+`resolveEffectiveSettings`, and `updateNavigationShortcut`. Every operation calls the
+request-free core of the v1 handlers; the manifest is the same canonical bytes and ETag v1
+serves, and the effective resolver keeps `internal/settingsresolve` semantics. Deliberate v1
+differences: a key the settings contract does not define is a `422` `validation_failed` at the
+key's declared location (v1: `404` `unknown_setting`), as are every other rejected request
+member and the nav.shortcuts whole-document refusal (v1: `400`); `keys`, `library_ids` and
+`series_ids` are repeated query parameters rather than comma-separated; the v1 `{values}`,
+`{settings}`, `{contexts}` and `{installations}` envelopes become the collection envelope
+`{items}` (unpaginated, bounded by the request); the device-override and plugin-settings
+writes answer `200` with the resolved document rather than `204`; plugin `values` and the
+shortcut `item` are declared extension bags because the plugin and the contract's object
+schema own their keys; `X-Silo-Device-Id` is a required declared header on device-override
+mutations; ids are string `ID`s and `updated_at` is an instant. `updateNavigationShortcut` declares
+the `409` `conflict` its seam answers when concurrent shortcut updates exhaust the bounded
+compare-and-set loop; nothing is stored and the same request may be retried. Not carried here: the
+`If-None-Match` conditional manifest GET, the `X-Silo-Mutation-Id` idempotent replay, and the
+admin-only `admin_form` descriptor; the first two land with the foundation caching and
+mutation-retry work.
 The first Phase 4 section, **settings-prefs** (`internal/apiv2/preferences.go`, tag
 `preferences`), ports the nine `profile_scoped` preference rows: `getAudioPreference`,
 `updateAudioPreference`, `deleteAudioPreference`, `getSubtitlePreference`,

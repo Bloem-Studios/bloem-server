@@ -1,10 +1,9 @@
 import {
   SERIES_SUBTITLE_SETTING_KEYS,
-  seriesSubtitleSettingPath,
+  seriesSubtitleSettingIdentity,
   seriesSubtitleSettingValues,
 } from "@/lib/seriesSubtitleSettings";
 import type { PlayerConfig } from "../context/PlayerConfigContext";
-import { playerFetch } from "../player-fetch";
 import { playerV2, type PlayerV2Body } from "../player-v2";
 import type { SubtitleInventoryItemV3 } from "../protocol-v3";
 import type { PlayerSubtitleInfo, PlayerSubtitleTrackSignature } from "../types";
@@ -13,10 +12,11 @@ import { derivePersistedSubtitleMode } from "./subtitleMode";
 /** One PUT the player issues to persist a subtitle choice. */
 export type SubtitleChoiceRequest =
   | {
-      /** A canonical settings row, written on the v1 settings-values route. */
+      /** A canonical settings row, written on the v2 settings-values route. */
       kind: "setting";
-      path: string;
-      body: { value: unknown };
+      key: string;
+      identity: { scope: "profile_series"; series_id: string };
+      body: PlayerV2Body<"PUT /api/v2/settings/values/{key}">;
     }
   | {
       /** The per-series track preference, written on the v2 route. */
@@ -32,9 +32,10 @@ export function sendSubtitleChoiceRequest(
 ): Promise<unknown> {
   switch (request.kind) {
     case "setting":
-      return playerFetch<void>(config, request.path, {
-        method: "PUT",
-        body: JSON.stringify(request.body),
+      return playerV2(config, "PUT /api/v2/settings/values/{key}", {
+        path: { key: request.key },
+        query: request.identity,
+        body: request.body,
       });
     case "subtitle_preference":
       return playerV2(config, "PUT /api/v2/subtitle-prefs/{series_id}", {
@@ -129,7 +130,8 @@ export function buildSubtitleChoiceRequests({
 
   const requests: SubtitleChoiceRequest[] = SERIES_SUBTITLE_SETTING_KEYS.map((key) => ({
     kind: "setting",
-    path: seriesSubtitleSettingPath(key, seriesId),
+    key,
+    identity: seriesSubtitleSettingIdentity(seriesId),
     body: { value: chosen[key] },
   }));
 

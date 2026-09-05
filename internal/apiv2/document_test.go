@@ -105,6 +105,21 @@ func TestDocumentDeclarationKeepsDeclaredErrors(t *testing.T) {
 	}
 }
 
+// TestDeclaredResponseDescriptionSurvivesRegistration: a description a
+// registration declares on a status it also lists in Errors is what the
+// document carries, not the bare status text Huma's defineErrors writes.
+func TestDeclaredResponseDescriptionSurvivesRegistration(t *testing.T) {
+	doc := generatedDocument(t)
+	op := doc["paths"].(map[string]any)["/api/v2/settings/values/nav.shortcuts/item"].(map[string]any)["put"].(map[string]any)
+	resp := op["responses"].(map[string]any)[strconv.Itoa(http.StatusConflict)].(map[string]any)
+	if got := resp["description"]; got != navigationShortcutConflictDescription {
+		t.Fatalf("409 description = %q", got)
+	}
+	if _, ok := resp["content"].(map[string]any)[problemContentType]; !ok {
+		t.Fatalf("409 lost its problem content: %v", resp)
+	}
+}
+
 // generatedDocument decodes the generator's output for the tests that walk it.
 func generatedDocument(t *testing.T) map[string]any {
 	t.Helper()
@@ -152,6 +167,16 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"deleteLibrary":                  {http.StatusNotFound: true, http.StatusConflict: true, http.StatusAccepted: true},
 		"setRootOverride":                {http.StatusNotFound: true, http.StatusConflict: true, http.StatusNoContent: true},
 		"listLibraries":                  {http.StatusNotFound: true, http.StatusConflict: false},
+		// The settings section: every operation resolves a profile (404 for
+		// an unknown one); the contract itself is served from the build and
+		// so is not service-backed.
+		"getSettingsContract":                    {http.StatusNotFound: true, http.StatusServiceUnavailable: true},
+		"getPluginSettings":                      {http.StatusNotFound: true},
+		"updateSubtitleAppearanceDeviceOverride": {http.StatusNotFound: true, http.StatusRequestTimeout: true},
+		// The shortcut mutation documents the 409 the seam answers when its
+		// compare-and-set retries are exhausted; the single-key writes do not.
+		"updateNavigationShortcut": {http.StatusConflict: true, http.StatusNotFound: true},
+		"updateSettingValue":       {http.StatusConflict: false},
 	}
 	// Every operation the viewer-access gate fronts documents the header;
 	// the acting-admin class resolves the declared profile the same way.
@@ -160,6 +185,11 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"listProfileSectionOverrides": true, "replaceProfileSectionOverrides": true, "resetProfileSectionOverrides": true,
 		"getProfileSectionSettings": true, "getProfileSectionFlags": true,
 		"deleteProfile": true, "deleteProfileAvatar": true, "uploadProfileAvatar": true, "verifyProfilePIN": true, "listHouseholdSessions": true,
+		"getSettingsContract": true, "getSettingsContractCapabilities": true, "getOverlayConfig": true,
+		"getEffectiveSubtitleAppearance": true, "updateSubtitleAppearanceDeviceOverride": true, "deleteSubtitleAppearanceDeviceOverride": true,
+		"listPluginSettings": true, "getPluginSettings": true, "updatePluginSettings": true,
+		"listSettingValues": true, "listEffectiveSettings": true, "resolveEffectiveSettings": true, "updateNavigationShortcut": true,
+		"getSettingValue": true, "updateSettingValue": true, "deleteSettingValue": true,
 		"getAudioPreference": true, "updateAudioPreference": true, "deleteAudioPreference": true,
 		"listLibraryPlaybackPreferences": true, "deleteLibraryPlaybackPreference": true, "updateLibraryPlaybackPreference": true,
 		"getSubtitlePreference": true, "updateSubtitlePreference": true, "deleteSubtitlePreference": true,

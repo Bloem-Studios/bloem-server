@@ -692,6 +692,198 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/settings/contract": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get the public settings manifest this server was built with. */
+    get: operations["getSettingsContract"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/settings/contract/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get what this server's settings API supports. */
+    get: operations["getSettingsContractCapabilities"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/settings/device/subtitle-appearance": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Replace this device's subtitle appearance override for the acting profile. */
+    put: operations["updateSubtitleAppearanceDeviceOverride"];
+    post?: never;
+    /** Remove this device's subtitle appearance override for the acting profile. */
+    delete: operations["deleteSubtitleAppearanceDeviceOverride"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/settings/overlay-config": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get the server-wide card overlay defaults. */
+    get: operations["getOverlayConfig"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/settings/plugins": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List the enabled plugins that expose user settings or navigable routes. */
+    get: operations["listPluginSettings"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/settings/plugins/{installation_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get a plugin installation's user settings and the account's values for them. */
+    get: operations["getPluginSettings"];
+    /** Replace the account's values for a plugin installation's user settings. */
+    put: operations["updatePluginSettings"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/settings/subtitle-appearance/effective": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get the subtitle appearance that applies to the acting profile on this device. */
+    get: operations["getEffectiveSubtitleAppearance"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/settings/values": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get the explicit values of several settings at one scope. */
+    get: operations["listSettingValues"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/settings/values/{key}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get the explicit value of a setting at one scope. */
+    get: operations["getSettingValue"];
+    /** Replace the explicit value of a setting at one scope. */
+    put: operations["updateSettingValue"];
+    post?: never;
+    /** Remove the explicit value of a setting at one scope so it inherits again. */
+    delete: operations["deleteSettingValue"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/settings/values/effective": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Resolve the effective values of settings for the acting profile. */
+    get: operations["listEffectiveSettings"];
+    put?: never;
+    /** Resolve the effective values of settings under several content contexts at once. */
+    post: operations["resolveEffectiveSettings"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/settings/values/nav.shortcuts/item": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Add or remove one navigation shortcut of the acting profile. */
+    put: operations["updateNavigationShortcut"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/subtitle-prefs/{series_id}": {
     parameters: {
       query?: never;
@@ -1387,11 +1579,248 @@ export interface components {
       /** @example true */
       transcode_allowed: boolean;
     };
+    EffectiveSettingCollection: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["EffectiveSettingValue"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+      /**
+       * Format: int64
+       * @description The settings contract revision this server serves
+       * @example 8
+       */
+      revision: number;
+    };
+    EffectiveSettingContext: {
+      /**
+       * @description The context_id of the request entry this answers
+       * @example row-1
+       */
+      context_id: string;
+      /** @description The requested keys resolved under this context, in request order */
+      settings: components["schemas"]["EffectiveSettingValue"][];
+    };
+    EffectiveSettingContextCollection: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["EffectiveSettingContext"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+      /**
+       * Format: int64
+       * @description The settings contract revision this server serves
+       * @example 8
+       */
+      revision: number;
+    };
+    EffectiveSettingsBatch: {
+      /** @description The content contexts to resolve under; each context may name a library and a series */
+      contexts: components["schemas"]["SettingContextRequest"][];
+      /**
+       * @description The setting keys to resolve under every context
+       * @example [
+       *       "playback.preferred_quality"
+       *     ]
+       */
+      keys: string[];
+    };
+    EffectiveSettingValue: {
+      /**
+       * @description The client family of the winning row
+       * @example tv
+       */
+      client_family?: string;
+      /**
+       * @description Whether policy narrowed the authored value
+       * @example false
+       */
+      constrained?: boolean;
+      /** @description The policy input that narrowed it; absent when unconstrained */
+      constrained_by?: components["schemas"]["SettingConstraint"];
+      /**
+       * @description How policy narrowed it; absent when unconstrained
+       * @example ceiling
+       */
+      constraint_kind?: string;
+      /**
+       * Format: int64
+       * @description The contract revision that last changed this key's definition
+       * @example 3
+       */
+      definition_revision: number;
+      /**
+       * @description The device of the winning row
+       * @example iphone-1
+       */
+      device_id?: string;
+      /**
+       * @description The setting key
+       * @example ui.theme
+       */
+      key: string;
+      /**
+       * @description The library of the winning row
+       * @example 3
+       */
+      library_id?: string;
+      /** @description The values policy still allows; absent when unconstrained */
+      permitted_values?: unknown[];
+      /**
+       * @description The profile of the winning row
+       * @example 1
+       */
+      profile_id?: string;
+      /** @description The value the profile asked for before the constraint; absent when unconstrained */
+      requested_value?: unknown;
+      /**
+       * @description The scope of the winning row, so a client can reset exactly that scope; absent for a default
+       * @example profile
+       */
+      scope?: string;
+      /**
+       * @description The series of the winning row
+       * @example tv:12345
+       */
+      series_id?: string;
+      /**
+       * @description The scope the value came from, or default for the contract default
+       * @example profile
+       */
+      source: string;
+      /** @description The identity of the winning stored row (the members scope through series_id, nested); absent for a default. Not the content context a batched resolve was asked for */
+      source_context?: components["schemas"]["SettingSourceContext"];
+      /** @description The authored value when policy narrowed it; absent otherwise */
+      stored_value?: unknown;
+      /**
+       * @description Advisory suggestions for an open setting; never a write allowlist
+       * @example [
+       *       "en",
+       *       "fr"
+       *     ]
+       */
+      suggested_values?: string[];
+      /**
+       * Format: date-time
+       * @description When the winning stored row was last written; absent for a default
+       * @example 2026-01-02T03:04:05.000Z
+       */
+      updated_at?: string;
+      /** @description The value that applies after resolution and policy */
+      value: unknown;
+    };
+    EffectiveSubtitleAppearance: {
+      /**
+       * @description The device the override belongs to; absent when there is none
+       * @example iphone-1
+       */
+      device_id?: string;
+      /**
+       * @description The name the device registered with; absent when unknown
+       * @example Living room
+       */
+      device_name?: string;
+      /**
+       * @description The platform the device registered with; absent when unknown
+       * @example iOS
+       */
+      device_platform?: string;
+      /**
+       * @description The device override as a JSON document; absent when the device has none
+       * @example {"fontSize":"xxlarge"}
+       */
+      device_value?: string;
+      /**
+       * @description The value that applies on this device; empty when nothing is set
+       * @example {"fontSize":"xxlarge"}
+       */
+      effective_value: string;
+      /**
+       * @description The profile-wide value as a JSON document; empty when unset
+       * @example {"fontSize":"large"}
+       */
+      global_value: string;
+      /**
+       * @description Whether device_value is what applies
+       * @example true
+       */
+      has_device_override: boolean;
+      /**
+       * @description Always subtitle_appearance
+       * @example subtitle_appearance
+       */
+      key: string;
+      /**
+       * @description The acting profile
+       * @example 1
+       */
+      profile_id: string;
+      /**
+       * Format: date-time
+       * @description When the device override was last written; absent when there is none
+       * @example 2026-01-02T03:04:05.000Z
+       */
+      updated_at?: string;
+    };
     EmptyRootCleanup: {
       /** @example Empty-root cleanup confirmed for next scan */
       message: string;
       /** @example ok */
       status: string;
+    };
+    ExplicitSettingValue: {
+      /**
+       * @description The client family of a profile_client scope
+       * @example tv
+       */
+      client_family?: string;
+      /**
+       * @description The device of a profile_device scope
+       * @example iphone-1
+       */
+      device_id?: string;
+      /**
+       * @description Whether a value is stored at this scope
+       * @example true
+       */
+      is_set: boolean;
+      /**
+       * @description The setting key
+       * @example ui.theme
+       */
+      key: string;
+      /**
+       * @description The library of a profile_library scope
+       * @example 3
+       */
+      library_id?: string;
+      /**
+       * @description The profile the scope belongs to; absent at account scope
+       * @example 1
+       */
+      profile_id?: string;
+      /**
+       * Format: int64
+       * @description The row's revision; absent when is_set is false
+       * @example 4
+       */
+      revision?: number;
+      /**
+       * @description The scope that was read
+       * @example profile
+       */
+      scope: string;
+      /**
+       * @description The series of a profile_series scope
+       * @example tv:12345
+       */
+      series_id?: string;
+      /**
+       * Format: date-time
+       * @description When the value was last written; absent when unset or unrecorded
+       * @example 2026-01-02T03:04:05.000Z
+       */
+      updated_at?: string;
+      /** @description The stored value; absent when is_set is false */
+      value?: unknown;
     };
     FormFile: {
       ContentType: string;
@@ -2022,6 +2451,39 @@ export interface components {
        */
       updated_at: string;
     };
+    NavigationShortcutMutation: {
+      /** @description The shortcut to add or remove; its destination identity, not its label, decides which entry it is */
+      item: {
+        [key: string]: unknown;
+      };
+      /**
+       * @description true adds or relabels the shortcut, false removes it
+       * @example true
+       */
+      present: boolean;
+    };
+    OverlayConfig: {
+      /**
+       * @description Administrator-chosen overlay defaults document; absent when none is set
+       * @example {"badges":true}
+       */
+      defaults?: string;
+      /**
+       * @description Whether card overlays are enabled server-wide
+       * @example true
+       */
+      enabled: boolean;
+      /**
+       * @description Default quick-action mode; one of the ui.card_quick_actions values in the settings contract
+       * @example both
+       */
+      quick_actions_default: string;
+      /**
+       * @description Default for profiles that have not chosen whether cards show quick actions
+       * @example false
+       */
+      quick_actions_enabled: boolean;
+    };
     PageInfo: {
       /**
        * @description Whether a next page exists
@@ -2356,6 +2818,140 @@ export interface components {
       items: components["schemas"]["PlaybackSession"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
+    };
+    PluginAsset: {
+      /**
+       * @description Media type
+       * @example text/javascript
+       */
+      content_type: string;
+      /**
+       * @description Subresource integrity digest
+       * @example sha256-...
+       */
+      integrity: string;
+      /**
+       * @description Asset path under the plugin's proxy prefix
+       * @example /app.js
+       */
+      path: string;
+    };
+    PluginRoute: {
+      /**
+       * @description Who may call it, as the plugin declared
+       * @example user
+       */
+      access: string;
+      /**
+       * @description Route identifier within the plugin
+       * @example dashboard
+       */
+      id: string;
+      /**
+       * @description HTTP method
+       * @example GET
+       */
+      method: string;
+      /**
+       * @description Whether clients list it in navigation
+       * @example true
+       */
+      navigable: boolean;
+      /**
+       * @description Navigation surface: user or admin
+       * @example user
+       */
+      navigation_kind: string;
+      /**
+       * @description Label for navigation; empty when not navigable
+       * @example Dashboard
+       */
+      navigation_label: string;
+      /**
+       * @description Path under the plugin's proxy prefix
+       * @example /dashboard
+       */
+      path: string;
+      /**
+       * @description Whether the route serves a packaged asset
+       * @example false
+       */
+      static_asset: boolean;
+    };
+    PluginSettings: {
+      /** @description The installation and what it asks for */
+      installation: components["schemas"]["PluginSettingsInstallation"];
+      /** @description The account's stored values; empty, never null */
+      values: {
+        [key: string]: string;
+      };
+    };
+    PluginSettingSchema: {
+      /**
+       * @description Help text; empty when the plugin gives none
+       * @example Two-letter country code
+       */
+      description: string;
+      /**
+       * @description JSON Schema for the value, as the plugin wrote it; empty when unconstrained
+       * @example {"type":"string"}
+       */
+      json_schema: string;
+      /**
+       * @description The value's key in the installation's settings map
+       * @example region
+       */
+      key: string;
+      /**
+       * @description Whether the plugin needs a value
+       * @example false
+       */
+      required: boolean;
+      /**
+       * @description Display title; empty when the plugin gives none
+       * @example Region
+       */
+      title: string;
+    };
+    PluginSettingsInstallation: {
+      /** @description Packaged assets; empty, never null */
+      assets: components["schemas"]["PluginAsset"][];
+      /**
+       * @description Slash-delimited grouping for the Apps navigation; absent when the manifest declares none
+       * @example Tools/Utilities
+       */
+      category?: string;
+      /**
+       * @description Installation identifier
+       * @example 3
+       */
+      id: string;
+      /**
+       * @description The plugin's stable identifier
+       * @example org.example.subtitles
+       */
+      plugin_id: string;
+      /** @description Routes the plugin exposes; empty, never null */
+      routes: components["schemas"]["PluginRoute"][];
+      /** @description Settings the plugin asks each account for; empty when it only exposes navigable routes */
+      user_config_schema: components["schemas"]["PluginSettingSchema"][];
+      /**
+       * @description Installed version
+       * @example 1.2.0
+       */
+      version: string;
+    };
+    PluginSettingsInstallationCollection: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["PluginSettingsInstallation"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    PluginSettingsWrite: {
+      /** @description The account's values, replacing the stored set; keys are the plugin's user_config_schema keys */
+      values: {
+        [key: string]: string;
+      };
     };
     Problem: {
       /**
@@ -3192,6 +3788,185 @@ export interface components {
        */
       updated_at: string;
     };
+    SettingConstraint: {
+      /**
+       * @description How the policy narrows the value; one of the settings contract's constraint kinds
+       * @example ceiling
+       */
+      constraint: string;
+      /**
+       * @description The access-policy input the constraint reads
+       * @example max_playback_quality
+       */
+      policy_input: string;
+    };
+    SettingContextRequest: {
+      /**
+       * @description Caller-chosen identifier echoed on the matching result; unique within the request
+       * @example row-1
+       */
+      context_id: string;
+      /**
+       * @description The library the context is in; this or series_id is required
+       * @example 3
+       */
+      library_id?: string;
+      /**
+       * @description The series the context is in; this or library_id is required
+       * @example tv:12345
+       */
+      series_id?: string;
+    };
+    SettingsContractCapabilities: {
+      /**
+       * Format: int64
+       * @description Settings protocol version; changes only for a change no revision rule can express
+       * @example 1
+       */
+      api_version: number;
+      /**
+       * @description Client families a profile_client scope may name
+       * @example [
+       *       "tv",
+       *       "mobile"
+       *     ]
+       */
+      client_families: string[];
+      /**
+       * @description Entity tag of the public manifest getSettingsContract serves
+       * @example "a1b2c3"
+       */
+      contract_etag: string;
+      /**
+       * Format: int64
+       * @description Number of setting definitions in the manifest
+       * @example 40
+       */
+      definition_count: number;
+      /**
+       * Format: int64
+       * @description Manifest revision clients filter definitions against
+       * @example 12
+       */
+      revision: number;
+      /**
+       * @description Setting scopes this server resolves
+       * @example [
+       *       "account",
+       *       "profile"
+       *     ]
+       */
+      scopes: string[];
+      /**
+       * @description Whether navigation shortcut list mutations are atomic
+       * @example true
+       */
+      supports_atomic_shortcuts: boolean;
+      /**
+       * @description Whether the effective resolver accepts a batch of keys
+       * @example true
+       */
+      supports_batched_effective: boolean;
+      /**
+       * @description Whether repeating a value write converges on the same state
+       * @example true
+       */
+      supports_idempotent_writes: boolean;
+    };
+    SettingSourceContext: {
+      /**
+       * @description The client family of the winning row
+       * @example tv
+       */
+      client_family?: string;
+      /**
+       * @description The device of the winning row
+       * @example iphone-1
+       */
+      device_id?: string;
+      /**
+       * @description The library of the winning row
+       * @example 3
+       */
+      library_id?: string;
+      /**
+       * @description The profile of the winning row
+       * @example 1
+       */
+      profile_id?: string;
+      /**
+       * @description The series of the winning row
+       * @example tv:12345
+       */
+      series_id?: string;
+    };
+    SettingValue: {
+      /**
+       * @description The client family of a profile_client value
+       * @example tv
+       */
+      client_family?: string;
+      /**
+       * @description The device of a profile_device value
+       * @example iphone-1
+       */
+      device_id?: string;
+      /**
+       * @description The setting key
+       * @example ui.theme
+       */
+      key: string;
+      /**
+       * @description The library of a profile_library value
+       * @example 3
+       */
+      library_id?: string;
+      /**
+       * @description The profile the value belongs to; absent at account scope
+       * @example 1
+       */
+      profile_id?: string;
+      /**
+       * Format: int64
+       * @description The row's revision, incremented on every write
+       * @example 4
+       */
+      revision: number;
+      /**
+       * @description The scope the value is stored at: account, profile, profile_client, profile_device, profile_library or profile_series
+       * @example profile
+       */
+      scope: string;
+      /**
+       * @description The series of a profile_series value
+       * @example tv:12345
+       */
+      series_id?: string;
+      /**
+       * Format: date-time
+       * @description When the value was last written; absent when the store did not record it
+       * @example 2026-01-02T03:04:05.000Z
+       */
+      updated_at?: string;
+      /** @description The stored value, normalized to the key's value_schema */
+      value: unknown;
+    };
+    SettingValueCollection: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["ExplicitSettingValue"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+      /**
+       * Format: int64
+       * @description The settings contract revision this server serves
+       * @example 8
+       */
+      revision: number;
+    };
+    SettingValueWrite: {
+      /** @description The value to store; validated and normalized against the key's value_schema */
+      value: unknown;
+    };
     SetupStatus: {
       /**
        * @description True until the first administrator account exists
@@ -3278,6 +4053,13 @@ export interface components {
       items: components["schemas"]["StaleMediaID"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
+    };
+    SubtitleAppearanceDeviceOverride: {
+      /**
+       * @description The subtitle appearance as a JSON document; the server validates only that it is JSON
+       * @example {"fontSize":"xxlarge"}
+       */
+      value: string;
     };
     SubtitlePreference: {
       /**
@@ -9676,6 +10458,2030 @@ export interface operations {
       };
       /** @description Not Acceptable */
       406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getSettingsContract: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name a profile of the authenticated account. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The public settings manifest, exactly the canonical bytes of contracts/settings/v1 with maintainer-only fields removed; the same document v1 /settings/manifest serves. */
+      200: {
+        headers: {
+          "Cache-Control"?: string;
+          "Content-Type"?: string;
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getSettingsContractCapabilities: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name a profile of the authenticated account. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SettingsContractCapabilities"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  updateSubtitleAppearanceDeviceOverride: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        /** @description The client's stable device identifier */
+        "X-Silo-Device-Id": string;
+        /** @description Optional display name recorded on the device registry */
+        "X-Silo-Device-Name"?: string;
+        /** @description Optional platform recorded on the device registry */
+        "X-Silo-Device-Platform"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SubtitleAppearanceDeviceOverride"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EffectiveSubtitleAppearance"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  deleteSubtitleAppearanceDeviceOverride: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        /** @description The client's stable device identifier */
+        "X-Silo-Device-Id": string;
+        /** @description Optional display name recorded on the device registry */
+        "X-Silo-Device-Name"?: string;
+        /** @description Optional platform recorded on the device registry */
+        "X-Silo-Device-Platform"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getOverlayConfig: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name a profile of the authenticated account. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OverlayConfig"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listPluginSettings: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name a profile of the authenticated account. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PluginSettingsInstallationCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getPluginSettings: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name a profile of the authenticated account. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description The plugin installation */
+        installation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PluginSettings"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  updatePluginSettings: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name a profile of the authenticated account. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description The plugin installation */
+        installation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PluginSettingsWrite"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PluginSettings"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getEffectiveSubtitleAppearance: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        /** @description The client's stable device identifier; absent resolves the profile-wide value */
+        "X-Silo-Device-Id"?: string;
+        /** @description Optional display name recorded on the device registry */
+        "X-Silo-Device-Name"?: string;
+        /** @description Optional platform recorded on the device registry */
+        "X-Silo-Device-Platform"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EffectiveSubtitleAppearance"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listSettingValues: {
+    parameters: {
+      query: {
+        /** @description Another registered device of the profile whose profile_device value to address; absent means the declared device */
+        device_id?: string;
+        /** @description The setting keys to read, one keys parameter per key */
+        keys: string[];
+        /** @description The library a profile_library value belongs to */
+        library_id?: string;
+        /** @description Another profile on the account to act for; only the household parent may name one */
+        profile_id?: string;
+        /** @description The scope the value is stored at */
+        scope:
+          | "account"
+          | "profile"
+          | "profile_client"
+          | "profile_device"
+          | "profile_library"
+          | "profile_series";
+        /** @description The series a profile_series value belongs to */
+        series_id?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        /** @description The client family a profile_client value belongs to */
+        "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
+        /** @description The client's stable device identifier; the profile_device scope stores against it when device_id is absent */
+        "X-Silo-Device-Id"?: string;
+        /** @description Optional display name recorded on the device registry */
+        "X-Silo-Device-Name"?: string;
+        /** @description Optional platform recorded on the device registry */
+        "X-Silo-Device-Platform"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SettingValueCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getSettingValue: {
+    parameters: {
+      query: {
+        /** @description Another registered device of the profile whose profile_device value to address; absent means the declared device */
+        device_id?: string;
+        /** @description The library a profile_library value belongs to */
+        library_id?: string;
+        /** @description Another profile on the account to act for; only the household parent may name one */
+        profile_id?: string;
+        /** @description The scope the value is stored at */
+        scope:
+          | "account"
+          | "profile"
+          | "profile_client"
+          | "profile_device"
+          | "profile_library"
+          | "profile_series";
+        /** @description The series a profile_series value belongs to */
+        series_id?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        /** @description The client family a profile_client value belongs to */
+        "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
+        /** @description The client's stable device identifier; the profile_device scope stores against it when device_id is absent */
+        "X-Silo-Device-Id"?: string;
+        /** @description Optional display name recorded on the device registry */
+        "X-Silo-Device-Name"?: string;
+        /** @description Optional platform recorded on the device registry */
+        "X-Silo-Device-Platform"?: string;
+      };
+      path: {
+        /** @description The setting key, as defined in the settings contract */
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SettingValue"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  updateSettingValue: {
+    parameters: {
+      query: {
+        /** @description Another registered device of the profile whose profile_device value to address; absent means the declared device */
+        device_id?: string;
+        /** @description The library a profile_library value belongs to */
+        library_id?: string;
+        /** @description Another profile on the account to act for; only the household parent may name one */
+        profile_id?: string;
+        /** @description The scope the value is stored at */
+        scope:
+          | "account"
+          | "profile"
+          | "profile_client"
+          | "profile_device"
+          | "profile_library"
+          | "profile_series";
+        /** @description The series a profile_series value belongs to */
+        series_id?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        /** @description The client family a profile_client value belongs to */
+        "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
+        /** @description The client's stable device identifier; the profile_device scope stores against it when device_id is absent */
+        "X-Silo-Device-Id"?: string;
+        /** @description Optional display name recorded on the device registry */
+        "X-Silo-Device-Name"?: string;
+        /** @description Optional platform recorded on the device registry */
+        "X-Silo-Device-Platform"?: string;
+      };
+      path: {
+        /** @description The setting key, as defined in the settings contract */
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SettingValueWrite"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SettingValue"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  deleteSettingValue: {
+    parameters: {
+      query: {
+        /** @description Another registered device of the profile whose profile_device value to address; absent means the declared device */
+        device_id?: string;
+        /** @description The library a profile_library value belongs to */
+        library_id?: string;
+        /** @description Another profile on the account to act for; only the household parent may name one */
+        profile_id?: string;
+        /** @description The scope the value is stored at */
+        scope:
+          | "account"
+          | "profile"
+          | "profile_client"
+          | "profile_device"
+          | "profile_library"
+          | "profile_series";
+        /** @description The series a profile_series value belongs to */
+        series_id?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        /** @description The client family a profile_client value belongs to */
+        "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
+        /** @description The client's stable device identifier; the profile_device scope stores against it when device_id is absent */
+        "X-Silo-Device-Id"?: string;
+        /** @description Optional display name recorded on the device registry */
+        "X-Silo-Device-Name"?: string;
+        /** @description Optional platform recorded on the device registry */
+        "X-Silo-Device-Platform"?: string;
+      };
+      path: {
+        /** @description The setting key, as defined in the settings contract */
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listEffectiveSettings: {
+    parameters: {
+      query?: {
+        /** @description Another registered device of the profile to resolve for; absent means the declared device */
+        device_id?: string;
+        /** @description The setting keys to resolve, one keys parameter per key; absent resolves every server-stored setting */
+        keys?: string[];
+        /** @description Libraries whose profile_library values take part, one library_ids parameter per id */
+        library_ids?: string[];
+        /** @description Another profile on the account to resolve for; only the household parent may name one */
+        profile_id?: string;
+        /** @description Series whose profile_series values take part, one series_ids parameter per id */
+        series_ids?: string[];
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        /** @description The client family whose profile_client values take part; required when a requested key has that scope */
+        "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
+        /** @description The client's stable device identifier; its profile_device values take part */
+        "X-Silo-Device-Id"?: string;
+        /** @description Optional display name recorded on the device registry */
+        "X-Silo-Device-Name"?: string;
+        /** @description Optional platform recorded on the device registry */
+        "X-Silo-Device-Platform"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EffectiveSettingCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  resolveEffectiveSettings: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        /** @description The client family whose profile_client values take part; required when a requested key has that scope */
+        "X-Silo-Client-Family"?: "tv" | "mobile" | "tablet" | "desktop" | "web";
+        /** @description The client's stable device identifier; its profile_device values take part */
+        "X-Silo-Device-Id"?: string;
+        /** @description Optional display name recorded on the device registry */
+        "X-Silo-Device-Name"?: string;
+        /** @description Optional platform recorded on the device registry */
+        "X-Silo-Device-Platform"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EffectiveSettingsBatch"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EffectiveSettingContextCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  updateNavigationShortcut: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NavigationShortcutMutation"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SettingValue"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description retryable conflict: concurrent shortcut updates exhausted the compare-and-set retries; retry the request */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
         headers: {
           [name: string]: unknown;
         };

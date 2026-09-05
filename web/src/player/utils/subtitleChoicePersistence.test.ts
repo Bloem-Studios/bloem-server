@@ -31,11 +31,6 @@ function canonicalWrites(requests: SubtitleChoiceRequest[]) {
   );
 }
 
-/** The key one canonical write addresses, parsed back out of its path. */
-function keyOf(path: string): string {
-  return decodeURIComponent(path.slice("/settings/values/".length).split("?")[0]!);
-}
-
 describe("buildSubtitleChoiceRequests", () => {
   it("writes the chosen language and mode at profile_series", () => {
     const requests = buildSubtitleChoiceRequests({
@@ -46,12 +41,12 @@ describe("buildSubtitleChoiceRequests", () => {
     });
 
     const canonical = canonicalWrites(requests);
-    expect(canonical.map((request) => keyOf(request.path))).toEqual([
+    expect(canonical.map((request) => request.key)).toEqual([
       SETTING_KEYS.PLAYBACK_SUBTITLE_LANGUAGE,
       SETTING_KEYS.PLAYBACK_SUBTITLE_MODE,
     ]);
     for (const request of canonical) {
-      expect(request.path).toContain("scope=profile_series&series_id=series-1");
+      expect(request.identity).toEqual({ scope: "profile_series", series_id: "series-1" });
     }
     expect(canonical[0]?.body).toEqual({ value: "ja" });
     expect(canonical[1]?.body).toEqual({ value: "always" });
@@ -70,7 +65,7 @@ describe("buildSubtitleChoiceRequests", () => {
         tracks: TRACKS,
         showForcedSubtitles,
       });
-      expect(canonicalWrites(requests).map((request) => keyOf(request.path))).not.toContain(
+      expect(canonicalWrites(requests).map((request) => request.key)).not.toContain(
         SETTING_KEYS.PLAYBACK_SHOW_FORCED_SUBTITLES,
       );
     }
@@ -158,7 +153,7 @@ describe("buildSubtitleChoiceRequests", () => {
       }),
     );
     const stored: StoredSettingRow[] = requests.map((request) => ({
-      key: keyOf(request.path),
+      key: request.key,
       scope: "profile_series",
       profileId: "profile-1",
       seriesId: "series-1",
@@ -193,7 +188,7 @@ describe("sendSubtitleChoiceRequest", () => {
     vi.unstubAllGlobals();
   });
 
-  it("sends the canonical rows on v1 and the track preference on v2 from one PlayerConfig", async () => {
+  it("sends canonical settings and track preferences through v2 from one PlayerConfig", async () => {
     const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -209,8 +204,8 @@ describe("sendSubtitleChoiceRequest", () => {
 
     const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
     expect(calls.map(([url, init]) => `${init.method} ${url}`)).toEqual([
-      `PUT https://silo.example/api/v1/settings/values/${SETTING_KEYS.PLAYBACK_SUBTITLE_LANGUAGE}?scope=profile_series&series_id=series%2F1`,
-      `PUT https://silo.example/api/v1/settings/values/${SETTING_KEYS.PLAYBACK_SUBTITLE_MODE}?scope=profile_series&series_id=series%2F1`,
+      `PUT https://silo.example/api/v2/settings/values/${SETTING_KEYS.PLAYBACK_SUBTITLE_LANGUAGE}?scope=profile_series&series_id=series%2F1`,
+      `PUT https://silo.example/api/v2/settings/values/${SETTING_KEYS.PLAYBACK_SUBTITLE_MODE}?scope=profile_series&series_id=series%2F1`,
       "PUT https://silo.example/api/v2/subtitle-prefs/series%2F1",
     ]);
     const [, v2Init] = calls[2]!;
