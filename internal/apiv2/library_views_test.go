@@ -508,57 +508,10 @@ func TestLibraryCollections(t *testing.T) {
 	requireProblem(t, do(t, newTestHandler(t, deps), http.MethodGet, "/api/v2/library/1/collections", "", viewerHeaders()), TypeNotFound)
 }
 
-// TestLibraryCollectionItemsPage: the items are paged behind an opaque
-// offset cursor. The first page carries a next cursor, the second continues
-// exactly where it stopped, the last page has no cursor, and a cursor is
-// bound to its collection and library.
-func TestLibraryCollectionItemsPage(t *testing.T) {
-	h := newTestHandler(t, libraryViewDeps(t))
-	type page struct {
-		Items []struct {
-			ContentID string `json:"content_id"`
-		} `json:"items"`
-		Page struct {
-			NextCursor string `json:"next_cursor"`
-			HasMore    bool   `json:"has_more"`
-		} `json:"page"`
+// Collection item paging is deferred until manual and smart orders have stable continuation.
+func TestLibraryCollectionItemsDeferred(t *testing.T) {
+	rec := do(t, newTestHandler(t, libraryViewDeps(t)), http.MethodGet, "/api/v2/library/1/collections/c1/items", "", viewerHeaders())
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("deferred route status = %d, want 404", rec.Code)
 	}
-	get := func(t *testing.T, path string) page {
-		t.Helper()
-		rec := do(t, h, http.MethodGet, path, "", viewerHeaders())
-		if rec.Code != 200 {
-			t.Fatalf("%s: %d %s", path, rec.Code, rec.Body.String())
-		}
-		var out page
-		decodeJSON(t, rec.Body, &out)
-		return out
-	}
-	ids := func(p page) string {
-		out := make([]string, 0, len(p.Items))
-		for _, it := range p.Items {
-			out = append(out, it.ContentID)
-		}
-		return strings.Join(out, ",")
-	}
-	first := get(t, "/api/v2/library/1/collections/many/items?limit=2")
-	if ids(first) != "movie:m1,movie:m2" || !first.Page.HasMore || first.Page.NextCursor == "" {
-		t.Fatalf("first page = %s has_more=%v cursor=%q", ids(first), first.Page.HasMore, first.Page.NextCursor)
-	}
-	second := get(t, "/api/v2/library/1/collections/many/items?limit=2&cursor="+first.Page.NextCursor)
-	if ids(second) != "movie:m3,movie:m4" || !second.Page.HasMore {
-		t.Fatalf("second page = %s has_more=%v", ids(second), second.Page.HasMore)
-	}
-	last := get(t, "/api/v2/library/1/collections/many/items?limit=2&cursor="+second.Page.NextCursor)
-	if ids(last) != "movie:m5" || last.Page.HasMore || last.Page.NextCursor != "" {
-		t.Fatalf("last page = %s has_more=%v cursor=%q", ids(last), last.Page.HasMore, last.Page.NextCursor)
-	}
-	// The default limit answers the whole small collection in one page.
-	whole := get(t, "/api/v2/library/1/collections/many/items")
-	if len(whole.Items) != 5 || whole.Page.HasMore {
-		t.Fatalf("default page = %d items has_more=%v", len(whole.Items), whole.Page.HasMore)
-	}
-	// A cursor is bound to its collection and library.
-	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/library/1/collections/c1/items?limit=2&cursor="+first.Page.NextCursor, "", viewerHeaders()), TypeInvalidCursor)
-	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/library/2/collections/many/items?limit=2&cursor="+first.Page.NextCursor, "", viewerHeaders()), TypeInvalidCursor)
-	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/library/1/collections/many/items?limit=201", "", viewerHeaders()), TypeValidationFailed)
 }

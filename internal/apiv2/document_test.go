@@ -314,7 +314,7 @@ var libraryOperationIDs = []string{
 // libraryViewOperationIDs is every profile-scoped library read the
 // catalog-libraries section registers.
 var libraryViewOperationIDs = []string{
-	"getLibraryLayout", "listLibrarySections", "getLibrarySectionItems", "getLibraryCollections", "getLibraryCollectionItems", "listLibraryUserCollections",
+	"getLibraryLayout", "listLibrarySections", "getLibrarySectionItems", "getLibraryCollections", "listLibraryUserCollections",
 }
 
 // recommendationOperationIDs is every profile-scoped recommendation read the

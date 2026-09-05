@@ -1244,7 +1244,7 @@ per-profile playback preference is in the plan's "progress, playback" carve-out 
 domain behavior rather than a row version, so the `PUT`s and `PATCH` are unconditional
 last-write-wins replacements, the reads carry no `ETag`, and the ledger rows say `Not if_match`.
 
-**Section catalog-libraries (Phase 4).** Thirty operations under the `libraries` tag: the
+**Section catalog-libraries (Phase 4).** Twenty-nine operations under the `libraries` tag: the
 acting-admin, demo-guarded management surface `listLibraries`, `createLibrary`, `updateLibrary`,
 `deleteLibrary`, `checkLibraryMount`, `confirmEmptyRootCleanup`, `listMetadataMatchQueues`,
 `getMetadataMatchQueue`, `retryMetadataMatchQueue`, `cancelMetadataMatchQueue`,
@@ -1253,7 +1253,7 @@ acting-admin, demo-guarded management surface `listLibraries`, `createLibrary`, 
 `listLibraryRoots`, `setRootOverride`, `deleteRootOverride`, `listSkippedRoots`, `listStaleIds`,
 `rematchStaleId`, `listUnmatchedItems`; and the profile-scoped viewer reads `getLibraryLayout`,
 `listLibrarySections`, `getLibrarySectionItems`, `getLibraryCollections`,
-`getLibraryCollectionItems`, `listLibraryUserCollections`. Every card these reads answer is the
+`listLibraryUserCollections`. Every card these reads answer is the
 one `CatalogItem` schema (`internal/apiv2/catalog_types.go`), which the catalog-items and
 catalog-home sections reuse. Deliberate differences from v1, all recorded on the ledger rows:
 `PUT` full updates are `PATCH`; offset paging (roots, unmatched items, the per-library match
@@ -1265,8 +1265,12 @@ the refresh `mode` and `image_size` are strict enums answered `422`; the queued-
 the long-running-work foundation rule; `uploadLibraryPoster` is the first multipart operation
 (`multipart/form-data` only, else `415`; a wrong part media type is `422` at `body.poster`; over
 10 MiB is `413`); `getLibrarySectionItems` answers the section itself rather than a `{section}`
-wrapper, `getLibraryCollectionItems` drops v1's `total`/`has_more` on a bounded list, and
+wrapper, and
 `getLibraryCollections` has one shape whether or not collection groups are configured.
+
+The collection-item read remains on v1. Its v2 port is deferred until curated and smart
+collection orders support stable continuation under edits, synchronization, and query-result
+changes; an opaque offset alone does not satisfy that requirement.
 
 **Section catalog-home (Phase 4).** Eight profile-scoped operations under the `home` tag:
 `getCalendar`, `dismissHomeItem`, `undismissHomeItem`, `getHomeLayout`, `listHomeSections`,

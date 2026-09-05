@@ -3,6 +3,6 @@
   "title": "Conflict",
   "status": 409,
   "detail": "Navigation shortcuts changed too quickly; retry this mutation",
-  "instance": "urn:silo:request:0000000000000000000000d2"
+  "instance": "urn:silo:request:0000000000000000000000d0"
 }
 

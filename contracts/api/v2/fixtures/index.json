@@ -1310,48 +1310,6 @@
       "body_file": "get_home_section_items_profile_header_required.json"
     },
     {
-      "name": "get_library_collection_items_ok",
-      "operation_id": "getLibraryCollectionItems",
-      "scenario": "The first page of one collection's cards in its curated order; a small collection fits in one page.",
-      "request": {
-        "method": "GET",
-        "path": "/api/v2/library/1/collections/c1/items",
-        "headers": {
-          "Authorization": "Bearer tok-member",
-          "X-Profile-Id": "p-owner"
-        }
-      },
-      "expected_status": 200,
-      "response_headers": {
-        "Cache-Control": "no-store",
-        "Content-Type": "application/json"
-      },
-      "response_media_type": "application/json",
-      "schema": "#/components/schemas/CatalogItemCollection",
-      "body_file": "get_library_collection_items_ok.json"
-    },
-    {
-      "name": "get_library_collection_items_query_invalid",
-      "operation_id": "getLibraryCollectionItems",
-      "scenario": "A smart collection whose stored query the executor refuses: a validation failure naming the collection.",
-      "request": {
-        "method": "GET",
-        "path": "/api/v2/library/1/collections/broken/items",
-        "headers": {
-          "Authorization": "Bearer tok-member",
-          "X-Profile-Id": "p-owner"
-        }
-      },
-      "expected_status": 422,
-      "response_headers": {
-        "Cache-Control": "no-store",
-        "Content-Type": "application/problem+json"
-      },
-      "response_media_type": "application/problem+json",
-      "schema": "#/components/schemas/Problem",
-      "body_file": "get_library_collection_items_query_invalid.json"
-    },
-    {
       "name": "get_library_collections_locked_profile",
       "operation_id": "getLibraryCollections",
       "scenario": "A PIN-locked profile without X-Profile-Token.",

@@ -251,7 +251,6 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"GET " + Prefix + "/library/{id}/sections",
 		"GET " + Prefix + "/library/{id}/sections/{section_id}/items",
 		"GET " + Prefix + "/library/{id}/collections",
-		"GET " + Prefix + "/library/{id}/collections/{collection_id}/items",
 		"GET " + Prefix + "/library/{id}/user-collections",
 		"GET " + Prefix + "/settings/contract",
 		"GET " + Prefix + "/settings/contract/capabilities",

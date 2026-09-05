@@ -42,7 +42,6 @@ export const v2Operations = {
   "GET /api/v2/libraries/{id}/providers": "getLibraryProviders",
   "GET /api/v2/library-playback-prefs": "listLibraryPlaybackPreferences",
   "GET /api/v2/library/{id}/collections": "getLibraryCollections",
-  "GET /api/v2/library/{id}/collections/{collection_id}/items": "getLibraryCollectionItems",
   "GET /api/v2/library/{id}/layout": "getLibraryLayout",
   "GET /api/v2/library/{id}/sections": "listLibrarySections",
   "GET /api/v2/library/{id}/sections/{section_id}/items": "getLibrarySectionItems",
