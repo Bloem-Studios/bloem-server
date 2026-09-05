@@ -730,36 +730,42 @@ func AddVisibleHistory(db *sql.DB, entry WatchHistoryEntry) (WatchHistoryEntry, 
 }
 
 func AddHistoryIfMissing(db *sql.DB, entry WatchHistoryEntry) (bool, error) {
+	if entry.ID == "" {
+		entry.ID = generateUUID()
+	}
 	if entry.WatchedAt == "" {
 		entry.WatchedAt = nowUTC()
 	}
-	suppressed, err := historyIsHidden(db, entry.ProfileID, entry.MediaItemID, entry.WatchedAt)
+	if entry.Source == "" {
+		entry.Source = userstore.WatchHistorySourceLegacy
+	}
+	identityJSON, err := json.Marshal(entry.Identity)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("marshaling watch identity: %w", err)
 	}
-	if suppressed {
-		return false, nil
+	// One SQLite write statement holds the writer lock for the visibility
+	// check, duplicate check, and insert, including across pooled connections.
+	result, err := db.Exec(`
+
+        INSERT INTO watch_history (id, profile_id, media_item_id, watched_at, duration_seconds, completed, source, watch_identity)
+        SELECT ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+            SELECT 1 FROM hidden_history_items
+            WHERE profile_id = ? AND media_item_id = ? AND hidden_before >= ?
+        ) AND NOT EXISTS (
+            SELECT 1 FROM watch_history
+            WHERE profile_id = ? AND media_item_id = ? AND watched_at = ?
+        )`,
+		entry.ID, entry.ProfileID, entry.MediaItemID, entry.WatchedAt, entry.DurationSeconds, entry.Completed, entry.Source, string(identityJSON),
+		entry.ProfileID, entry.MediaItemID, entry.WatchedAt, entry.ProfileID, entry.MediaItemID, entry.WatchedAt)
+	if err != nil {
+		return false, fmt.Errorf("adding missing history: %w", err)
 	}
-	var exists bool
-	if err := db.QueryRow(
-		`SELECT EXISTS(
-			SELECT 1
-			FROM watch_history
-			WHERE profile_id = ? AND media_item_id = ? AND watched_at = ?
-		)`,
-		entry.ProfileID,
-		entry.MediaItemID,
-		entry.WatchedAt,
-	).Scan(&exists); err != nil {
-		return false, fmt.Errorf("checking history row existence: %w", err)
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("count imported history: %w", err)
 	}
-	if exists {
-		return false, nil
-	}
-	if err := AddHistory(db, entry); err != nil {
-		return false, err
-	}
-	return true, nil
+	return rows > 0, nil
 }
 
 const historyListSelect = `

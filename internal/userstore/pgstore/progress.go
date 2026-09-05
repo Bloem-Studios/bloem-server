@@ -1102,34 +1102,60 @@ func (s *PostgresUserStore) AddVisibleHistory(ctx context.Context, entry usersto
 }
 
 func (s *PostgresUserStore) AddHistoryIfMissing(ctx context.Context, entry userstore.WatchHistoryEntry) (bool, error) {
+	if entry.ID == "" {
+		entry.ID = generateUUID()
+	}
 	if entry.WatchedAt == "" {
 		entry.WatchedAt = nowUTC()
 	}
-	suppressed, err := s.historyIsHidden(ctx, entry.ProfileID, entry.MediaItemID, entry.WatchedAt)
+	if entry.Source == "" {
+		entry.Source = userstore.WatchHistorySourceLegacy
+	}
+	identityJSON, err := json.Marshal(entry.Identity)
 	if err != nil {
+		return false, fmt.Errorf("marshaling watch identity: %w", err)
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return false, fmt.Errorf("begin imported history: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	// Shared with RemoveHistoryItems. The next statement gets a fresh READ
+	// COMMITTED snapshot after any concurrent import or hide has committed.
+	if err := lockImportedHistory(ctx, tx, s.userID, entry.ProfileID); err != nil {
 		return false, err
 	}
-	if suppressed {
-		return false, nil
+	tag, err := tx.Exec(ctx, `
+
+        INSERT INTO user_watch_history (id, user_id, profile_id, media_item_id, watched_at, duration_seconds, completed, source, watch_identity)
+        SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
+        WHERE NOT EXISTS (
+            SELECT 1 FROM user_history_hidden_items
+            WHERE user_id = $2 AND profile_id = $3 AND media_item_id = $4
+              AND hidden_before >= $5::timestamptz
+        ) AND NOT EXISTS (
+            SELECT 1 FROM user_watch_history
+            WHERE user_id = $2 AND profile_id = $3 AND media_item_id = $4
+              AND watched_at = $5::timestamptz
+        )`,
+		entry.ID, s.userID, entry.ProfileID, entry.MediaItemID, entry.WatchedAt, entry.DurationSeconds, entry.Completed, entry.Source, string(identityJSON))
+	if err != nil {
+		return false, fmt.Errorf("adding missing history: %w", err)
 	}
-	var exists bool
-	if err := s.pool.QueryRow(ctx, `
-		SELECT EXISTS(
-			SELECT 1
-			FROM user_watch_history
-			WHERE user_id = $1 AND profile_id = $2 AND media_item_id = $3 AND watched_at = $4
-		)`,
-		s.userID, entry.ProfileID, entry.MediaItemID, entry.WatchedAt,
-	).Scan(&exists); err != nil {
-		return false, fmt.Errorf("checking history row existence: %w", err)
+	if err := tx.Commit(ctx); err != nil {
+		return false, fmt.Errorf("commit imported history: %w", err)
 	}
-	if exists {
-		return false, nil
+	return tag.RowsAffected() > 0, nil
+}
+
+// A profile-scoped database lock serializes imported-history deduplication and
+// hiding across API nodes. Hash collisions only serialize unrelated profiles.
+func lockImportedHistory(ctx context.Context, tx pgx.Tx, userID int, profileID string) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1::integer, hashtext('imported-history:' || $2))`, userID, profileID)
+	if err != nil {
+		return fmt.Errorf("lock imported history: %w", err)
 	}
-	if err := s.AddHistory(ctx, entry); err != nil {
-		return false, err
-	}
-	return true, nil
+	return nil
 }
 
 const historyListSelect = `
@@ -1352,11 +1378,14 @@ func (s *PostgresUserStore) RemoveHistoryItems(
 		removedAt = time.Now().UTC()
 	}
 
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
 		return fmt.Errorf("begin remove history items: %w", err)
 	}
 	defer tx.Rollback(ctx)
+	if err := lockImportedHistory(ctx, tx, s.userID, profileID); err != nil {
+		return err
+	}
 
 	if _, err := tx.Exec(ctx, `
 		WITH target(media_item_id) AS (
