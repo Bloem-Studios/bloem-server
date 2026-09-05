@@ -11,6 +11,7 @@ var (
 // Version 2 is reserved for personal intent. Older admin workers only claim
 // version 1 and therefore cannot mistake a personal run for an admin mapping.
 const personalDispatchVersion = 2
+const dispatchKindPersonal = "personal"
 const personalCredentialVersion = 1
 
 // These types are private execution inputs. They must never be embedded in a

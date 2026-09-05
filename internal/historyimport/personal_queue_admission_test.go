@@ -3,7 +3,6 @@ package historyimport
 import (
 	"context"
 	"errors"
-	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -15,7 +14,7 @@ import (
 
 func personalQueueRepository(t *testing.T) *Repository {
 	t.Helper()
-	repo := queueRunnerRepository(t)
+	repo := queueRunnerRepositoryFromPool(t, queueTestPoolBeforePersonalMigration(t, false))
 	_, err := repo.pool.Exec(t.Context(), `CREATE TABLE users(id integer PRIMARY KEY); INSERT INTO users VALUES(1),(2);
  CREATE TABLE user_profiles(user_id integer REFERENCES users(id),id text,PRIMARY KEY(user_id,id)); INSERT INTO user_profiles VALUES(1,'p'),(2,'other');
  ALTER TABLE history_import_runs ADD FOREIGN KEY(user_id,profile_id) REFERENCES user_profiles(user_id,id) ON DELETE CASCADE;
@@ -25,14 +24,7 @@ func personalQueueRepository(t *testing.T) *Repository {
 	if err != nil {
 		t.Fatal(err)
 	}
-	migration, err := os.ReadFile("../../migrations/sql/20260905204703_add_personal_history_import_durability.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	up, _, _ := strings.Cut(string(migration), "-- +goose Down")
-	if _, err = repo.pool.Exec(t.Context(), up); err != nil {
-		t.Fatal(err)
-	}
+	applyPersonalQueueMigration(t, repo.pool)
 	return repo
 }
 func directPersonalAdmission() personalRunAdmission {
@@ -96,7 +88,7 @@ func TestPersonalAdmissionSessionRace(t *testing.T) {
 					run, err := repo.enqueuePersonalRun(t.Context(), in)
 					if err == nil {
 						won.Add(1)
-						credential, readErr := repo.readPersonalRunCredentials(t.Context(), run.ID)
+						credential, readErr := repo.readPersonalRunCredentials(t.Context(), claimPersonalForTest(t, repo, run.ID))
 						if readErr != nil || credential != in.Credentials {
 							t.Errorf("reconstruction mismatch: %v", readErr)
 						}
@@ -263,7 +255,7 @@ func TestPersonalCredentialDatabaseInvariants(t *testing.T) {
 	if err = tx.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = repo.readPersonalRunCredentials(ctx, "transplanted"); !errors.Is(err, ErrPersonalCredentialsUnavailable) {
+	if _, err = repo.readPersonalRunCredentials(ctx, claimPersonalForTest(t, repo, "transplanted")); !errors.Is(err, ErrPersonalCredentialsUnavailable) {
 		t.Fatal("transplanted ciphertext was accepted")
 	}
 	for _, terminal := range []string{RunStatusCompleted, RunStatusFailed, RunStatusCancelled} {
@@ -353,7 +345,7 @@ func TestPersonalOldMaintenanceRechecksHeartbeatAndErasesCredentials(t *testing.
 	if err = <-done; err != nil {
 		t.Fatal(err)
 	}
-	if _, err = repo.readPersonalRunCredentials(ctx, run.ID); err != nil {
+	if _, err = repo.readPersonalRunCredentials(ctx, RunClaim{RunID: run.ID, DispatchKind: "personal", Generation: 1}); err != nil {
 		t.Fatalf("fresh heartbeat lost credentials: %v", err)
 	}
 	if _, err = repo.pool.Exec(ctx, `UPDATE history_import_runs SET last_heartbeat_at=now()-interval '2 minutes' WHERE id=$1`, run.ID); err != nil {
@@ -362,7 +354,17 @@ func TestPersonalOldMaintenanceRechecksHeartbeatAndErasesCredentials(t *testing.
 	if n, err := repo.FailStaleRuns(ctx, time.Now().Add(-time.Minute), "Worker lease expired"); err != nil || n != 1 {
 		t.Fatalf("stale sweep n=%d err=%v", n, err)
 	}
-	if _, err = repo.readPersonalRunCredentials(ctx, run.ID); !errors.Is(err, ErrPersonalCredentialsUnavailable) {
+	if _, err = repo.readPersonalRunCredentials(ctx, RunClaim{RunID: run.ID, DispatchKind: "personal", Generation: 1}); !errors.Is(err, ErrRunClaimLost) {
 		t.Fatal("stale terminal retained credentials")
 	}
+}
+
+func claimPersonalForTest(t *testing.T, repo *Repository, runID string) RunClaim {
+	t.Helper()
+	claim := RunClaim{RunID: runID, DispatchKind: "personal"}
+	err := repo.pool.QueryRow(t.Context(), `UPDATE history_import_runs SET status='running',claim_generation=claim_generation+1,started_at=now(),last_heartbeat_at=now() WHERE id=$1 AND status='queued' RETURNING claim_generation`, runID).Scan(&claim.Generation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return claim
 }

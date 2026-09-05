@@ -356,7 +356,7 @@ func newPlexWatchlistImportTestPool(t *testing.T) *pgxpool.Pool {
 			started_at timestamptz,
 			completed_at timestamptz,
 			last_heartbeat_at timestamptz,
- claim_generation bigint NOT NULL DEFAULT 0, dispatch_version integer, cancel_requested_at timestamptz,
+ claim_generation bigint NOT NULL DEFAULT 0, dispatch_version integer, dispatch_kind text NOT NULL DEFAULT 'admin', cancel_requested_at timestamptz,
  dispatch_source_id integer,dispatch_source_revision bigint,dispatch_mapping_id integer,dispatch_mapping_revision bigint,dispatch_external_user_id text
 		) ON COMMIT PRESERVE ROWS`,
 		`CREATE TEMP TABLE user_favorites (

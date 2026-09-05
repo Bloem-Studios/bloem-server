@@ -197,18 +197,24 @@ func personalSessionUnexpired(ctx context.Context, tx pgx.Tx, expiresAt time.Tim
 
 // readPersonalRunCredentials is private; execution must hold and validate a run
 // claim before using its result. Strict decoding never accepts legacy plaintext.
-func (r *Repository) readPersonalRunCredentials(ctx context.Context, runID string) (personalRunCredentials, error) {
+func (r *Repository) readPersonalRunCredentials(ctx context.Context, claim RunClaim) (personalRunCredentials, error) {
 	var credential personalRunCredentials
+	if claim.DispatchKind != dispatchKindPersonal || claim.Generation < 1 {
+		return credential, ErrRunClaimLost
+	}
+	if err := r.validateRunClaim(ctx, claim); err != nil {
+		return credential, err
+	}
 	if r.cipher == nil {
 		return credential, ErrPersonalCredentialsUnavailable
 	}
 	var version int
 	var ciphertext, sourceType string
-	err := r.pool.QueryRow(ctx, `SELECT c.envelope_version,c.payload,r.source_type FROM history_import_run_credentials c JOIN history_import_runs r ON r.id=c.run_id WHERE c.run_id=$1 AND r.dispatch_kind='personal' AND r.dispatch_version=2 AND r.status IN ('queued','running')`, runID).Scan(&version, &ciphertext, &sourceType)
+	err := r.pool.QueryRow(ctx, `SELECT c.envelope_version,c.payload,r.source_type FROM history_import_run_credentials c JOIN history_import_runs r ON r.id=c.run_id WHERE c.run_id=$1 AND r.dispatch_kind='personal' AND r.dispatch_version=2 AND r.status='running' AND r.claim_generation=$2 AND r.cancel_requested_at IS NULL`, claim.RunID, claim.Generation).Scan(&version, &ciphertext, &sourceType)
 	if err != nil || version != personalCredentialVersion {
 		return credential, ErrPersonalCredentialsUnavailable
 	}
-	plaintext, err := r.cipher.Decrypt(ciphertext, personalCredentialAAD(runID))
+	plaintext, err := r.cipher.Decrypt(ciphertext, personalCredentialAAD(claim.RunID))
 	if err != nil {
 		return credential, ErrPersonalCredentialsUnavailable
 	}
@@ -222,6 +228,9 @@ func (r *Repository) readPersonalRunCredentials(ctx context.Context, runID strin
 		return personalRunCredentials{}, ErrPersonalCredentialsUnavailable
 	}
 	if err = validatePersonalCredentials(sourceType, credential); err != nil {
+		return personalRunCredentials{}, err
+	}
+	if err := r.validateRunClaim(ctx, claim); err != nil {
 		return personalRunCredentials{}, err
 	}
 	return credential, nil
