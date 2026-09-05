@@ -5840,7 +5840,8 @@
         "operation_id": "createAdminHistoryImportSource"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "retry_safety": "non_retryable"
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -5902,7 +5903,8 @@
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
       "retry_safety": "non_retryable",
-      "concurrency": "if_match"
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -5966,7 +5968,8 @@
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
       "retry_safety": "non_retryable",
-      "concurrency": "if_match"
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6091,7 +6094,8 @@
         "operation_id": "createAdminHistoryImportMapping"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "retry_safety": "non_retryable"
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6153,7 +6157,8 @@
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
       "retry_safety": "non_retryable",
-      "concurrency": "if_match"
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6217,7 +6222,8 @@
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
       "retry_safety": "non_retryable",
-      "concurrency": "if_match"
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6280,7 +6286,8 @@
         "operation_id": "createAdminHistoryImportRun"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "retry_safety": "non_retryable"
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6343,7 +6350,8 @@
         "operation_id": "loginAdminHistoryImportPlex"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "retry_safety": "non_retryable"
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6528,7 +6536,8 @@
         "operation_id": "cancelAdminHistoryImportRun"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "retry_safety": "non_retryable"
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6591,7 +6600,8 @@
         "operation_id": "bulkCreateAdminHistoryImportRuns"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "retry_safety": "non_retryable"
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6653,7 +6663,8 @@
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
       "retry_safety": "non_retryable",
-      "concurrency": "if_match"
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6715,7 +6726,8 @@
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
       "retry_safety": "non_retryable",
-      "concurrency": "if_match"
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",

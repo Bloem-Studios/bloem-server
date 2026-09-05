@@ -247,6 +247,8 @@ export interface Profile {
 
 // History Import
 export interface HistoryImportSource {
+  needs_reconfiguration?: boolean;
+  etag?: string;
   id: number;
   name: string;
   source_type: string;
@@ -485,6 +487,7 @@ export interface CreateHistoryImportSourceRequest {
 }
 
 export interface UpdateHistoryImportSourceRequest {
+  admin_token?: string;
   name?: string;
   base_url?: string;
   system_id?: string;
@@ -502,6 +505,7 @@ export interface HistoryImportExternalUser {
 }
 
 export interface HistoryImportUserMapping {
+  etag?: string;
   id: number;
   source_id: number;
   external_user_id: string;
