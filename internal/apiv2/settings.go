@@ -1010,8 +1010,8 @@ var settingFieldLocations = map[string]string{
 	fieldDeviceID:    "query.device_id",
 	"device_header":  "header." + deviceIDHeader,
 	"client_family":  "header." + clientFamilyHeader,
-	"library_id":     locationQueryLibraryID,
-	"series_id":      "query.series_id",
+	fieldLibraryID:   locationQueryLibraryID,
+	fieldSeriesID:    "query.series_id",
 	"value":          locationBodyValue,
 	"item":           locationBodyItem,
 	"present":        "body.present",
@@ -1124,7 +1124,7 @@ func (reg *Registry) listEffectiveSettings(ctx context.Context, in *EffectiveSet
 		// The seam names the combined library_ids/series_ids bound after
 		// its single-id field; this operation declares the lists.
 		return nil, settingValueProblem(err, map[string]string{
-			"library_id": locationQueryLibraryIDs, "series_id": locationQuerySeriesIDs,
+			fieldLibraryID: locationQueryLibraryIDs, fieldSeriesID: locationQuerySeriesIDs,
 		})
 	}
 	return &EffectiveSettingCollectionOutput{Body: EffectiveSettingCollection{
@@ -1248,3 +1248,8 @@ func optionalIntID(n int) ID {
 	}
 	return IDFromInt(int64(n))
 }
+
+const (
+	fieldLibraryID = "library_id"
+	fieldSeriesID  = "series_id"
+)

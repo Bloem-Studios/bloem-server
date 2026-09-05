@@ -27,7 +27,7 @@ func TestRatingsPageIndexDB(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	if _, err := tx.Exec(ctx, "SET LOCAL enable_seqscan = off"); err != nil {
 		t.Fatal(err)
 	}

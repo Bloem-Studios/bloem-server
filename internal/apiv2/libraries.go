@@ -1244,7 +1244,7 @@ func (reg *Registry) listLibraryRoots(ctx context.Context, cursors *Cursors, in 
 	scope := CursorScope{
 		OperationID: opListLibraryRoots,
 		Security:    strconv.Itoa(userID),
-		Filter:      url.Values{"library_id": {strconv.Itoa(libID)}, "state": {state}, "q": {search}}.Encode(),
+		Filter:      url.Values{fieldLibraryID: {strconv.Itoa(libID)}, "state": {state}, "q": {search}}.Encode(),
 		Sort:        sortStore,
 		Tiebreaker:  sortStore,
 	}
