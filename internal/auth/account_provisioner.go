@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -105,9 +106,7 @@ func (p *AccountProvisioner) CreateInvitedAccount(ctx context.Context, input Cre
 		if !input.DefaultProfile.Enabled {
 			return nil
 		}
-		if provider, ok := p.storeProvider.(interface {
-			CreateProfileInTransaction(context.Context, pgx.Tx, int, userstore.Profile) error
-		}); ok {
+		if provider, ok := p.storeProvider.(transactionalProfileCreator); ok {
 			profile, err := defaultAccountProfile(input)
 			if err != nil {
 				return err
@@ -119,6 +118,44 @@ func (p *AccountProvisioner) CreateInvitedAccount(ctx context.Context, input Cre
 		// if that writer fails.
 		return p.createDefaultProfile(ctx, user.ID, input)
 	})
+}
+
+// ErrTransactionalProfileUnavailable means the selected profile store cannot
+// participate in account creation's transaction. No account has been inserted.
+var ErrTransactionalProfileUnavailable = errors.New("transactional profile creation unavailable")
+
+type transactionalProfileCreator interface {
+	CreateProfileInTransaction(context.Context, pgx.Tx, int, userstore.Profile) error
+}
+
+// CreateAccountInTransaction creates an account and its requested profile in
+// the caller's transaction. The caller owns commit and rollback. Unlike the
+// legacy signup bridge, this operation never writes a separate SQLite store.
+func (p *AccountProvisioner) CreateAccountInTransaction(ctx context.Context, tx pgx.Tx, input CreateAccountInput) (*models.User, error) {
+	var profile userstore.Profile
+	var provider transactionalProfileCreator
+	if input.DefaultProfile.Enabled {
+		var ok bool
+		provider, ok = p.storeProvider.(transactionalProfileCreator)
+		if !ok {
+			return nil, ErrTransactionalProfileUnavailable
+		}
+		var err error
+		profile, err = defaultAccountProfile(input)
+		if err != nil {
+			return nil, err
+		}
+	}
+	user, err := createUser(ctx, tx, input.User)
+	if err != nil {
+		return nil, err
+	}
+	if provider != nil {
+		if err := provider.CreateProfileInTransaction(ctx, tx, user.ID, profile); err != nil {
+			return nil, fmt.Errorf("store profile: %w", err)
+		}
+	}
+	return user, nil
 }
 
 func defaultAccountProfile(input CreateAccountInput) (userstore.Profile, error) {
