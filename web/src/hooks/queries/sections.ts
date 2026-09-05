@@ -1,15 +1,24 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ApiClientError, api } from "@/api/client";
+import { V2ProblemError } from "@/api/v2/request";
+import {
+  fetchAdminSections,
+  fetchAdminSectionCapabilities,
+  createAdminSection,
+  bulkCreateAdminSections,
+  updateAdminSection,
+  deleteAdminSection,
+  reorderAdminSections,
+  restoreAdminSections,
+  type AdminSectionDeleteTarget,
+} from "@/api/adminSections";
 import { sectionFromV2 } from "@/api/v2/catalog";
 import type {
   SectionsResponse,
   HomeLayoutResponse,
   LibraryLayoutResponse,
   HomeSectionItemsResponse,
-  PageSectionListResponse,
-  PageSectionConfig,
   SectionOverride,
   SettingsSectionEntry,
 } from "@/api/types";
@@ -141,23 +150,23 @@ export function useLibrarySections(libraryId: number) {
 export function useAdminSections(scope: string, libraryId?: number) {
   return useQuery({
     queryKey: sectionKeys.adminList(scope, libraryId),
-    queryFn: () => {
-      const params = new URLSearchParams({ scope });
-      if (libraryId) params.set("library_id", String(libraryId));
-      return api<PageSectionListResponse>(`/admin/sections?${params}`);
-    },
+    queryFn: ({ signal }) => fetchAdminSections(scope, libraryId, signal),
     enabled: scope !== "library" || Boolean(libraryId),
+  });
+}
+
+export function useAdminSectionCapabilities() {
+  return useQuery({
+    queryKey: [...sectionKeys.all, "admin-capabilities"],
+    queryFn: fetchAdminSectionCapabilities,
   });
 }
 
 export function useCreateSection() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<PageSectionConfig>) =>
-      api<PageSectionConfig>("/admin/sections", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+    retry: false,
+    mutationFn: createAdminSection,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: sectionKeys.all });
     },
@@ -182,11 +191,8 @@ export interface BulkCreateSectionsResponse {
 export function useBulkCreateSections() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: BulkCreateSectionsRequest) =>
-      api<BulkCreateSectionsResponse>("/admin/sections/bulk-create", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+    retry: false,
+    mutationFn: bulkCreateAdminSections,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: sectionKeys.all });
     },
@@ -196,11 +202,8 @@ export function useBulkCreateSections() {
 export function useUpdateSection() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }: Partial<PageSectionConfig> & { id: string }) =>
-      api<PageSectionConfig>(`/admin/sections/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      }),
+    retry: false,
+    mutationFn: updateAdminSection,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: sectionKeys.all });
     },
@@ -210,7 +213,8 @@ export function useUpdateSection() {
 export function useDeleteSection() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api<void>(`/admin/sections/${id}`, { method: "DELETE" }),
+    retry: false,
+    mutationFn: deleteAdminSection,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: sectionKeys.all });
       void invalidateAdminCollectionQueries(qc);
@@ -223,19 +227,31 @@ export function useDeleteSections() {
   const [progress, setProgress] = useState<BulkDeleteProgress | null>(null);
 
   const mutation = useMutation({
-    onMutate: (ids) => {
-      setProgress({ completed: 0, total: new Set(ids).size });
+    retry: false,
+    onMutate: (targets) => {
+      setProgress({ completed: 0, total: new Set(targets.map((target) => target.id)).size });
     },
-    mutationFn: (ids: string[]) =>
-      runBulkDelete(
-        ids,
-        (id) =>
-          api<void>(`/admin/sections/${encodeURIComponent(id)}`, {
-            method: "DELETE",
-          }),
-        (error) => (error instanceof ApiClientError && error.status === 404 ? "deleted" : "failed"),
+    mutationFn: async (targets: AdminSectionDeleteTarget[]) => {
+      const byID = new Map(targets.map((target) => [target.id, target]));
+      const deletedIds: string[] = [];
+      const failedIds: string[] = [];
+      const result = await runBulkDelete(
+        [...byID.keys()],
+        async (id) => {
+          try {
+            await deleteAdminSection(byID.get(id)!);
+            deletedIds.push(id);
+          } catch (error) {
+            if (error instanceof V2ProblemError && error.status === 404) deletedIds.push(id);
+            else failedIds.push(id);
+            throw error;
+          }
+        },
+        (error) => (error instanceof V2ProblemError && error.status === 404 ? "deleted" : "failed"),
         setProgress,
-      ),
+      );
+      return { ...result, deletedIds, failedIds };
+    },
     onSuccess: async ({ requested, deleted, failed, firstError }) => {
       if (failed === 0) {
         toast.success(`Deleted ${deleted} section${deleted === 1 ? "" : "s"}`);
@@ -264,11 +280,8 @@ export function useDeleteSections() {
 export function useReorderSections() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (entries: Array<{ id: string; position: number }>) =>
-      api<void>("/admin/sections/reorder", {
-        method: "PUT",
-        body: JSON.stringify({ entries }),
-      }),
+    retry: false,
+    mutationFn: reorderAdminSections,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: sectionKeys.all });
     },
@@ -333,11 +346,8 @@ export function useResetProfileOverrides() {
 export function useRestoreDefaultSections() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (params: { scope: string; library_id?: number; reset_profiles?: boolean }) =>
-      api<PageSectionListResponse>("/admin/sections/restore-defaults", {
-        method: "POST",
-        body: JSON.stringify(params),
-      }),
+    retry: false,
+    mutationFn: restoreAdminSections,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: sectionKeys.all });
     },
