@@ -23,11 +23,17 @@ rewriting.
 
 ## Getting Started
 
-- No pages yet.
+- [Bloem Server Admin Guide](admin-guide.md) - From a blank machine to a household streaming their
+  own library: install, first run, libraries, users and profiles, playback, access policy,
+  maintenance, and troubleshooting, written for a first-time operator.
+- [Bloem User Guide](user-guide.md) - The viewer's guide: signing in, profiles, finding and playing
+  things, downloads, requests, notifications, and using Jellyfin/Emby/Audiobookshelf apps with a
+  Bloem server.
 
 ## Features
 
-- No pages yet.
+- [Bloem User Guide → Watching](user-guide.md#4-watching) - Player controls, subtitles, quality,
+  audiobooks, the reader, and watching together, by device.
 
 ## Admin
 
