@@ -403,3 +403,59 @@ describe("v2 response validators", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("v2 declared request headers", () => {
+  it("transmits the exact If-Match validator without rewriting it", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => json({ id: "collection" }));
+    vi.stubGlobal("fetch", fetchMock);
+    await v2("PATCH /api/v2/collections/{id}", {
+      path: { id: "collection" },
+      body: { name: "Changed" },
+      headers: { "If-Match": '"observed-revision"' },
+    });
+    expect(lastRequest(fetchMock).init.headers["If-Match"]).toBe('"observed-revision"');
+  });
+
+  it("rejects session authority overrides from untyped callers regardless of casing", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    for (const header of [
+      "authorization",
+      "AUTHORIZATION",
+      "x-PROFILE-id",
+      "X-profile-TOKEN",
+      "x-device-id",
+    ]) {
+      // Exercise JavaScript callers that do not pass through TypeScript.
+      const options = { headers: { [header]: "other-authority" } };
+      await expect(v2("GET /api/v2/account/me", options as never)).rejects.toThrow(
+        "Session header",
+      );
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("checks required validators and rejects undeclared headers at compile time", () => {
+    const runTypeChecks = () => false;
+    if (runTypeChecks()) {
+      // @ts-expect-error If-Match is required for guarded collection updates.
+      void v2("PATCH /api/v2/collections/{id}", { path: { id: "c" }, body: {} });
+      // @ts-expect-error An empty header set cannot satisfy the required validator.
+      void v2("PATCH /api/v2/collections/{id}", { path: { id: "c" }, body: {}, headers: {} });
+      void v2("PATCH /api/v2/collections/{id}", {
+        path: { id: "c" },
+        body: {},
+        // @ts-expect-error Operation headers cannot carry session authority.
+        headers: { "If-Match": '"v1"', Authorization: "other" },
+      });
+      void v2("PATCH /api/v2/collections/{id}", {
+        path: { id: "c" },
+        body: {},
+        // @ts-expect-error Unknown headers are not part of the generated contract.
+        headers: { "If-Match": '"v1"', "X-Unknown": "x" },
+      });
+      // @ts-expect-error Operations without caller-owned headers expose no headers option.
+      void v2("GET /api/v2/account/me", { headers: { "X-Unknown": "x" } });
+    }
+  });
+});
