@@ -1306,7 +1306,35 @@ worker acknowledges cancellation at its next boundary. Pending cancellation retu
 history effects are not undone. Editing a source or mapping invalidates previously
 captured execution configuration rather than retargeting its run. Stale executions
 fail without automatic replay. See [History import execution](architecture/history-import-execution.md)
-for the persistence and cancellation boundaries, including the separate personal-run
-queue limitation. Run monitor errors and warnings use safe summaries; stored source
+for the persistence and cancellation boundaries. Run monitor errors and warnings use safe summaries; stored source
 credentials are never returned. The explicit Plex login exchange returns its newly
 issued token so the administrator can assign it to a source.
+
+
+### Personal history import acceptance and monitoring
+
+`POST /api/v2/history-imports/runs` accepts an account-owned import for the supplied
+profile. It returns 202 with the persisted queued run, canonical `Location`, and
+`Retry-After: 2` only after both execution intent and encrypted run credentials commit.
+Session-backed imports consume their login session in that transaction. Passwords are
+exchanged before admission and are never persisted. An uncertain response must not be
+automatically resubmitted; check the account's import list before starting another run.
+
+Poll `GET /api/v2/history-imports/runs/{id}` at its `Location`. The response has a strong
+`ETag`, supports `If-Match` and `If-None-Match`, and returns a bodyless 304 when unchanged.
+The account ownership check runs before evaluating either precondition; another
+account's run returns 404. Nonterminal responses, including 304, carry `Retry-After`.
+When `terminal` is true, stop polling; terminal responses omit the polling hint.
+
+The personal projection always reports `cancelable: false`: this surface has no cancel
+command. Existing administrator cancellation can appear as nonterminal `canceling`
+until the worker acknowledges it, then terminal `cancelled`. Both personal and admin
+monitors replace persisted diagnostic errors, warnings, and unmatched reasons with safe
+summaries. Run credentials and private dispatch metadata never appear in these responses.
+
+New queued personal imports survive server restart. Source changes invalidate captured
+configuration without retargeting the import; stale running executions fail without replay.
+Already committed history effects are retained. Historical personal jobs without durable
+metadata are left unchanged by the migration. See
+[History import execution](architecture/history-import-execution.md) for transaction,
+claim, cleanup, and failure boundaries.

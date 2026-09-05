@@ -1432,7 +1432,8 @@ func fixtureCases() []fixtureCase {
 		fixtureCase{name: "forget_device_missing", operationID: opForgetDevice, scenario: "Missing or already forgotten device.", method: http.MethodDelete, path: Prefix + "/devices/missing", headers: viewer, status: 404, assertHeaders: []string{"Content-Type"}, schema: problem},
 	)
 	cases = append(cases, adminHistoryImportFixtureCases()...)
-	return append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
+	cases = append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
+	return append(cases, personalHistoryImportFixtureCases()...)
 }
 
 // fixtureMultipartType is the multipart Content-Type of the avatar fixtures,

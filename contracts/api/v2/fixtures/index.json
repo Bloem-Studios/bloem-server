@@ -5475,6 +5475,97 @@
       "body_file": "payload_too_large.json"
     },
     {
+      "name": "personal_history_run_accepted",
+      "operation_id": "createHistoryImportRun",
+      "scenario": "Durable personal acceptance identifies the account-owned monitor; submitting again is not automatically safe.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/history-imports/runs",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        },
+        "body": "{\"profile_id\":\"p-owner\",\"source\":\"plex\",\"plex_base_url\":\"https://plex.example.test\",\"plex_token\":\"fixture-token\"}"
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "Location": "/api/v2/history-imports/runs/run-new",
+        "Retry-After": "2"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/HistoryImportRun",
+      "body_file": "personal_history_run_accepted.json"
+    },
+    {
+      "name": "personal_history_run_monitor",
+      "operation_id": "getHistoryImportRun",
+      "scenario": "A running personal monitor supplies a strong validator, polling delay, and no personal cancellation command.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/history-imports/runs/run-3",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"36bc1c558a5afd82c49c81e81dfef12e38603a9a8b9d952da9a1ebed777a533f\"",
+        "Location": "/api/v2/history-imports/runs/run-3",
+        "Retry-After": "2"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/HistoryImportRun",
+      "body_file": "personal_history_run_monitor.json"
+    },
+    {
+      "name": "personal_history_run_not_modified",
+      "operation_id": "getHistoryImportRun",
+      "scenario": "An account-owned conditional monitor can return no body while retaining its polling delay and validator.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/history-imports/runs/run-3",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "If-None-Match": "*"
+        }
+      },
+      "expected_status": 304,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "ETag": "\"36bc1c558a5afd82c49c81e81dfef12e38603a9a8b9d952da9a1ebed777a533f\"",
+        "Location": "/api/v2/history-imports/runs/run-3",
+        "Retry-After": "2"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
+      "name": "personal_history_run_terminal",
+      "operation_id": "getHistoryImportRun",
+      "scenario": "Terminal personal imports stop polling and expose safe diagnostic summaries.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/history-imports/runs/run-1",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"c0969e617628320855aeb3f207369a5d0eb7d924e277ffd5757ea6f3a3b15a20\"",
+        "Location": "/api/v2/history-imports/runs/run-1"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/HistoryImportRun",
+      "body_file": "personal_history_run_terminal.json"
+    },
+    {
       "name": "precondition_failed",
       "operation_id": null,
       "scenario": "A guarded mutation whose If-Match names a stale version: nothing changes and ETag carries the current validator to retry with.",

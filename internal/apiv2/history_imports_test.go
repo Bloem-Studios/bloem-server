@@ -229,7 +229,7 @@ func TestGetHistoryImportRun(t *testing.T) {
 		t.Fatal(rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), `"mapping_id":"3","fetched":4,"matched":3,"unmatched":1`) ||
-		!strings.Contains(rec.Body.String(), `"unmatched_samples":[{"kind":"movie","title":"Example","year":2021,"reason":"no catalog match"}]`) ||
+		!strings.Contains(rec.Body.String(), `"unmatched_samples":[{"kind":"movie","title":"Example","year":2021,"reason":"No matching catalog item was imported."}]`) ||
 		!strings.Contains(rec.Body.String(), `"started_at":"2026-01-02T03:04:06.678Z","completed_at":"2026-01-02T03:04:06.678Z"`) {
 		t.Fatalf("body = %s", rec.Body.String())
 	}

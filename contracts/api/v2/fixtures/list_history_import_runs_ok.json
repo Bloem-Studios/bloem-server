@@ -1,6 +1,8 @@
 {
   "items": [
     {
+      "terminal": false,
+      "cancelable": false,
       "id": "run-3",
       "user_id": "1",
       "profile_id": "p-owner",
@@ -21,6 +23,8 @@
       "started_at": "2026-01-02T03:04:06.678Z"
     },
     {
+      "terminal": true,
+      "cancelable": false,
       "id": "run-2",
       "user_id": "1",
       "profile_id": "p-owner",
@@ -37,14 +41,14 @@
       "favorites_imported": 0,
       "skipped": 0,
       "warnings": [
-        "one title skipped"
+        "An import item could not be processed."
       ],
       "unmatched_samples": [
         {
           "kind": "movie",
           "title": "Example",
           "year": 2021,
-          "reason": "no catalog match"
+          "reason": "No matching catalog item was imported."
         }
       ],
       "created_at": "2026-01-02T04:04:05.678Z",
@@ -52,6 +56,8 @@
       "completed_at": "2026-01-02T03:04:06.678Z"
     },
     {
+      "terminal": true,
+      "cancelable": false,
       "id": "run-1",
       "user_id": "1",
       "profile_id": "p-owner",
@@ -68,7 +74,7 @@
       "skipped": 0,
       "warnings": [],
       "unmatched_samples": [],
-      "error_message": "boom",
+      "error_message": "The import failed. Review the source configuration before starting a new run.",
       "created_at": "2026-01-02T03:04:05.678Z"
     }
   ],

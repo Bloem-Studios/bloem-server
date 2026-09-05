@@ -16,8 +16,6 @@ import (
 
 type AdminHistoryImportRun struct {
 	HistoryImportRun
-	Terminal   bool `json:"terminal"`
-	Cancelable bool `json:"cancelable"`
 }
 type AdminHistoryImportRunOutput struct {
 	Status     int
@@ -36,7 +34,6 @@ type AdminHistoryImportRunCollectionOutput struct {
 }
 
 const adminHistoryAccepted = "accepted"
-const adminHistoryCanceling = "canceling"
 
 type AdminHistoryImportBulkOutcome struct {
 	MappingID ID                     `json:"mapping_id"`
@@ -68,26 +65,7 @@ type AdminHistoryImportPlexLoginOutput struct {
 func adminHistoryRunLocation(id string) string { return Prefix + "/admin/history-imports/runs/" + id }
 func safeAdminHistoryRun(run *historyimport.Run) AdminHistoryImportRun {
 	out := AdminHistoryImportRun{HistoryImportRun: historyImportRunOf(run)}
-	out.Terminal = run.Status == historyimport.RunStatusCompleted || run.Status == historyimport.RunStatusFailed || run.Status == historyimport.RunStatusCancelled
 	out.Cancelable = !out.Terminal
-	if run.CancelRequested && !out.Terminal {
-		out.Status = adminHistoryCanceling
-	}
-	// Historic rows may contain upstream errors with addresses or credentials.
-	// Publish stable summaries rather than trusting persisted diagnostic strings.
-	if out.Status == historyimport.RunStatusCancelled {
-		out.ErrorMessage = ""
-	}
-	if out.ErrorMessage != "" && out.ErrorMessage != historyimport.ErrRunConfigurationChanged.Error() && out.ErrorMessage != historyimport.LegacyDispatchUnavailableMessage && out.ErrorMessage != historyimport.StaleRunInterruptedMessage {
-		out.ErrorMessage = "The import failed. Review the source configuration before starting a new run."
-	}
-	out.Warnings = make([]string, 0, len(run.Warnings))
-	for range run.Warnings {
-		out.Warnings = append(out.Warnings, "An import item could not be processed.")
-	}
-	for i := range out.UnmatchedSamples {
-		out.UnmatchedSamples[i].Reason = "No matching catalog item was imported."
-	}
 	return out
 }
 func registerAdminHistoryImportRuns(reg *Registry, op func(string, string, string, bool) Operation) {
