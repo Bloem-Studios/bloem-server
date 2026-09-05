@@ -144,18 +144,33 @@ func (m libraryCollectionMutation) attempt(ctx context.Context, expected *int64,
 	return tx.Commit(ctx)
 }
 
-// DeleteIfRevision checks references in the same transaction as the deletion.
-// Page sections currently store unchecked JSON references. This protects against
-// references visible to this transaction; concurrent legacy section inserts need
-// a future database integrity constraint or coordinated section-writer protocol.
+// DeleteIfRevision checks references under the same parent lock used by section
+// writers, then deletes and consumes the caller's witness in one transaction.
 func (r *LibraryCollectionRepository) DeleteIfRevision(ctx context.Context, id string, expected int64) error {
-	return (libraryCollectionMutation{pool: r.pool, collectionID: id}).run(ctx, &expected, func(tx pgx.Tx) error {
-		var found string
-		if err := tx.QueryRow(ctx, `SELECT id FROM library_collections WHERE id=$1 FOR UPDATE`, id).Scan(&found); err != nil {
+	_, err := r.deleteCollection(ctx, id, &expected, false)
+	return err
+}
+
+// DeleteSectionManagedIfUnreferenced skips collections whose management mode
+// changed before the parent lock was acquired. Callers may clean up external
+// artifacts only when deleted is true and err is nil.
+func (r *LibraryCollectionRepository) DeleteSectionManagedIfUnreferenced(ctx context.Context, id string) (deleted bool, err error) {
+	return r.deleteCollection(ctx, id, nil, true)
+}
+
+func (r *LibraryCollectionRepository) deleteCollection(ctx context.Context, id string, expected *int64, sectionManagedOnly bool) (bool, error) {
+	deleted := false
+	err := (libraryCollectionMutation{pool: r.pool, collectionID: id}).run(ctx, expected, func(tx pgx.Tx) error {
+		deleted = false
+		var mode string
+		if err := tx.QueryRow(ctx, `SELECT management_mode FROM library_collections WHERE id=$1 FOR UPDATE`, id).Scan(&mode); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return ErrLibraryCollectionNotFound
 			}
 			return err
+		}
+		if sectionManagedOnly && mode != "section" {
+			return nil
 		}
 		var inUse bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM page_sections WHERE config->>'library_collection_id'=$1)`, id).Scan(&inUse); err != nil {
@@ -164,9 +179,16 @@ func (r *LibraryCollectionRepository) DeleteIfRevision(ctx context.Context, id s
 		if inUse {
 			return ErrLibraryCollectionInUse
 		}
-		_, err := tx.Exec(ctx, `DELETE FROM library_collections WHERE id=$1`, id)
-		return err
+		if _, err := tx.Exec(ctx, `DELETE FROM library_collections WHERE id=$1`, id); err != nil {
+			return err
+		}
+		deleted = true
+		return nil
 	})
+	if err != nil {
+		return false, err
+	}
+	return deleted, nil
 }
 
 // AddItemIfAbsent is the native add operation. Existing membership retains its

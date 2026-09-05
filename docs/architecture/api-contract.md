@@ -1931,11 +1931,30 @@ memberships. This order also applies to legacy writers. Serialization failures r
 database transaction; an exact validator is reported stale only after a committed reread proves
 it changed. Deadlocks and unrelated database errors retain their original identity.
 
-Collection deletion checks existing section references and commits the guarded database delete
-before best-effort artwork cleanup. Section references are stored in JSON without a foreign key.
-The inherited read-committed section writer can insert a reference concurrently with deletion;
-this migration does not claim to close that race. The admin-sections integrity audit must
-coordinate section reference writes with collection deletion before that guarantee can be made.
+Collection deletion checks section references under the same parent locks used by section
+writers. Native, legacy, template-replacement, and section-managed cleanup paths share the atomic
+reference check and delete. Artwork and preference cleanup follow a committed deletion.
+Section references remain JSON without a foreign key. A section transaction locks the sorted
+union of its old and incoming collection parents, validates incoming references, and writes each
+parent's durable witness before committing its section changes. The parent write forces an
+older serializable delete snapshot to retry or report its exact validator stale; a row lock
+alone would allow that snapshot to miss a newly committed reference. Missing outgoing references
+can still be removed or replaced. Section-managed cleanup also checks management mode under the
+parent lock and reports whether it actually deleted the collection.
+
+Section storage writers use serializable transactions with sorted collection parents, section
+targets, and scope counters. Durable section and scope revisions cover definition, enabled,
+featured, membership, and order changes, including generated sections and default replacement.
+Deleted section revisions remain as tombstones. Canonical section ordering uses position then
+raw section ID. A guarded no-op consumes its witness; an exact serialization conflict becomes a
+stale validator only after a committed reread proves the revision changed.
+
+Replacing defaults and resetting all profile section overrides share one PostgreSQL transaction.
+The provider must guarantee that every account uses the section repository's PostgreSQL pool;
+notification decorators forward this capability. The all-profile reset is unavailable for SQLite
+or mixed user-store providers and is rejected before any definition write. Global section
+definitions still use PostgreSQL with either user store; supporting them does not imply support
+for resetting every profile's overrides.
 
 Manual membership GETs return signed position/item continuation bound to the collection revision.
 Administrator pages include hidden catalog entries. Native membership writes recheck the manual
@@ -1957,3 +1976,25 @@ available during adoption. No existing Apple or Android administrator collection
 found in the client inventory. Jellyfin does not expose this administrator editing surface;
 shared catalog write invariants continue to apply to its collection reads. Administrator section
 route migration is separate from collection template application.
+
+### Administrator section definitions
+
+The administrator section contract uses `/api/v2/admin/sections`. The eight legacy behavior
+mappings are reviewed and ratified. Global section definitions are
+separate from profile section overrides. Recipe `config` keeps the existing `SectionConfig`
+extension-object contract; top-level library IDs use opaque strings and timestamps use `Instant`.
+
+`GET /admin/sections/{id}` returns the canonical editor and a strong ETag. PATCH and DELETE use
+that captured validator. `GET /admin/sections/order?scope=...&library_id=...` returns every section
+ID in the surface, including disabled sections, with a scope ETag. The corresponding PUT accepts
+an exact permutation of those IDs. There is no collection group or ungrouped sentinel in a
+section order. A scope validator covers definition changes as well as membership and positions.
+
+`PUT /admin/sections/defaults?scope=...&library_id=...` replaces the surface with its canonical
+defaults and requires the captured scope ETag. Its response is the refreshed canonical order
+with its ETag; clients refetch definitions after replacement. `reset_profiles` selects the separate all-profile
+reset capability described above; an unsupported reset fails before definition writes. Creation
+and bulk creation use POST, while the retained preview POST samples recipe results using the
+requesting profile's access filter without saving a definition. Capabilities report whether the
+service, preview, and atomic profile reset are available. Clients do not automatically replay
+administrator section operations after a conflict or a partial multi-request flow.

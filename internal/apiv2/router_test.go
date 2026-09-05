@@ -413,6 +413,13 @@ func TestReconcileSpecSeeded(t *testing.T) {
 	observed = append(observed, "DELETE /api/v2/admin/collection-groups/{id}", "DELETE /api/v2/admin/collections/{id}", "DELETE /api/v2/admin/collections/{id}/image", "DELETE /api/v2/admin/collections/{id}/items/{item_id}", "GET /api/v2/admin/collection-groups/{group_id}/collections/order", "GET /api/v2/admin/collection-groups/{id}", "GET /api/v2/admin/collection-jobs/{job_id}", "GET /api/v2/admin/collections", "GET /api/v2/admin/collections/capabilities", "GET /api/v2/admin/collections/order", "GET /api/v2/admin/collections/template-bundles", "GET /api/v2/admin/collections/templates", "GET /api/v2/admin/collections/{id}", "GET /api/v2/admin/collections/{id}/items", "GET /api/v2/admin/collections/{id}/items/order", "GET /api/v2/admin/libraries/{library_id}/collection-groups", "GET /api/v2/admin/libraries/{library_id}/collection-groups/order", "PATCH /api/v2/admin/collection-groups/{id}", "PATCH /api/v2/admin/collections/{id}", "POST /api/v2/admin/collections", "POST /api/v2/admin/collections/import/mdblist", "POST /api/v2/admin/collections/import/tmdb", "POST /api/v2/admin/collections/import/trakt", "POST /api/v2/admin/collections/preview", "POST /api/v2/admin/collections/template-bundles/{bundle_id}/apply", "POST /api/v2/admin/collections/template-bundles/{bundle_id}/apply-job", "POST /api/v2/admin/collections/{id}/sync", "POST /api/v2/admin/libraries/{library_id}/collection-groups", "PUT /api/v2/admin/collection-groups/{group_id}/collections/order", "PUT /api/v2/admin/collections/order", "PUT /api/v2/admin/collections/{id}/backdrop", "PUT /api/v2/admin/collections/{id}/items/order", "PUT /api/v2/admin/collections/{id}/items/{item_id}", "PUT /api/v2/admin/collections/{id}/poster", "PUT /api/v2/admin/libraries/{library_id}/collection-groups/order")
 
 	observed = append(observed, "GET /api/v2/sync/progress/capabilities", "POST /api/v2/sync/progress/snapshots", "GET /api/v2/sync/progress/snapshots/{snapshot_id}")
+	observed = append(observed,
+		"GET /api/v2/admin/sections", "POST /api/v2/admin/sections",
+		"GET /api/v2/admin/sections/{id}", "PATCH /api/v2/admin/sections/{id}", "DELETE /api/v2/admin/sections/{id}",
+		"GET /api/v2/admin/sections/order", "PUT /api/v2/admin/sections/order", "PUT /api/v2/admin/sections/defaults",
+		"POST /api/v2/admin/sections/bulk", "POST /api/v2/admin/sections/preview", "GET /api/v2/admin/sections/capabilities",
+	)
+
 	unaccounted, unserved, err := reconcileSpec(observed, contracts.OpenAPI, nil)
 	if err != nil || len(unaccounted) != 0 || len(unserved) != 0 {
 		t.Fatalf("baseline: %v %v %v", unaccounted, unserved, err)

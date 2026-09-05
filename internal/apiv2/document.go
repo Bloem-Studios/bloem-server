@@ -503,6 +503,7 @@ func registerAll(reg *Registry) {
 	registerLibraryViews(reg)
 	registerPersonalCollections(reg)
 	registerAdminCollections(reg)
+	registerAdminSections(reg)
 	registerProfileSections(reg)
 	registerCatalogItems(reg)
 	registerMarkers(reg)

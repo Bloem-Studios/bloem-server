@@ -408,6 +408,107 @@
       "body_file": "admin_requests_ok.json"
     },
     {
+      "name": "admin_section_explicit_null_invalid",
+      "operation_id": "createAdminSection",
+      "scenario": "Optional section definition fields must be omitted rather than explicitly null.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/sections",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"title\":\"Section\",\"section_type\":\"recently_added\",\"enabled\":null}"
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_section_explicit_null_invalid.json"
+    },
+    {
+      "name": "admin_section_precondition_required",
+      "operation_id": "updateAdminSection",
+      "scenario": "An administrator section edit requires the validator captured with its canonical editor.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/admin/sections/s1",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"title\":\"Edited\"}"
+      },
+      "expected_status": 428,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_section_precondition_required.json"
+    },
+    {
+      "name": "admin_section_restore_precondition_required",
+      "operation_id": "restoreAdminSections",
+      "scenario": "Replacing defaults requires the captured scope validator even when profile reset is not selected.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/admin/sections/defaults?scope=home",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"reset_profiles\":false}"
+      },
+      "expected_status": 428,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_section_restore_precondition_required.json"
+    },
+    {
+      "name": "admin_section_scope_order",
+      "operation_id": "getAdminSectionOrder",
+      "scenario": "A section surface order includes its complete identifier list and a scope validator.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/sections/order?scope=home",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"93272854178acc6b53f14e94.1fmgqpavefas9\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminSectionOrder",
+      "body_file": "admin_section_scope_order.json"
+    },
+    {
+      "name": "admin_section_stale",
+      "operation_id": "deleteAdminSection",
+      "scenario": "A stale section deletion is rejected with the current validator before mutation.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/admin/sections/s1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "\"stale\""
+        }
+      },
+      "expected_status": 412,
+      "response_headers": {
+        "Content-Type": "application/problem+json",
+        "ETag": "\"35ce951926424eeb772d6f6e.3hay8xviit405\""
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_section_stale.json"
+    },
+    {
       "name": "authentication_required",
       "operation_id": null,
       "scenario": "An authenticated operation called without a credential.",
@@ -1412,6 +1513,26 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/AdminJob",
       "body_file": "get_admin_collection_template_job_completed.json"
+    },
+    {
+      "name": "get_admin_section_ok",
+      "operation_id": "getAdminSection",
+      "scenario": "The canonical administrator section editor returns its recipe configuration and a strong validator.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/sections/s1",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"35ce951926424eeb772d6f6e.3hay8xviit405\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminSection",
+      "body_file": "get_admin_section_ok.json"
     },
     {
       "name": "get_audio_preference_not_found",

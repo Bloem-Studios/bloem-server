@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -497,4 +499,10 @@ func preserveDeviceSettings(wrapped, inner userstore.UserStore) userstore.UserSt
 	default:
 		return wrapped
 	}
+}
+
+// The notification decorator preserves the provider's storage for every account.
+func (p *interestTrackingProvider) SupportsAtomicSectionProfileReset(pool *pgxpool.Pool) bool {
+	provider, ok := p.inner.(userstore.SectionProfileResetProvider)
+	return ok && provider.SupportsAtomicSectionProfileReset(pool)
 }

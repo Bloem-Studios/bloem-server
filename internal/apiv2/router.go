@@ -69,6 +69,7 @@ func init() {
 // it makes the operations behind that gate fail closed with a typed problem.
 type Dependencies struct {
 	Markers               MarkerService
+	AdminSections         AdminSectionService
 	AdminCollections      AdminCollectionService
 	AdminCollectionGroups AdminCollectionGroupService
 	WebhookSync           WebhookSyncService

@@ -57,7 +57,7 @@ type LibraryCollectionHandler struct {
 	SortPreferenceCleaner *userstore.CollectionSortPreferenceCleaner
 }
 
-var errLibraryCollectionInUse = errors.New("collection is used by one or more sections")
+var errLibraryCollectionInUse = catalog.ErrLibraryCollectionInUse
 
 const (
 	templateBundleSyncConcurrency    = 4
@@ -1012,41 +1012,33 @@ func (h *LibraryCollectionHandler) HandleDeleteAdminCollection(w http.ResponseWr
 }
 
 func (h *LibraryCollectionHandler) deleteServerCollection(ctx context.Context, collectionID string) error {
-	if h.SectionRepo != nil {
-		refs, err := h.SectionRepo.CountLibraryCollectionReferences(ctx, collectionID, "")
-		if err != nil {
-			return fmt.Errorf("checking collection usage: %w", err)
-		}
-		if refs > 0 {
-			return errLibraryCollectionInUse
-		}
-	}
-
-	// Clean up S3 images before deleting the collection row. Failures here
-	// only leak storage; the collection row delete must still proceed so the
-	// admin's request succeeds.
-	if h.s3GP != nil {
-		prefix := fmt.Sprintf("collection-images/%s/", collectionID)
-		keys, err := h.s3GP.ListObjects(ctx, h.s3GP.Bucket(), prefix)
-		if err != nil {
-			slog.WarnContext(ctx, "collection delete: listing S3 images failed; image keys may leak", "component", "api",
-				"collection_id", collectionID, "prefix", prefix, "error", err)
-		}
-		for _, key := range keys {
-			if err := h.s3GP.DeleteObject(ctx, h.s3GP.Bucket(), key); err != nil {
-				slog.WarnContext(ctx, "collection delete: removing S3 image failed; key leaks", "component", "api",
-					"collection_id", collectionID, "key", key, "error", err)
-			}
-		}
-	}
-
 	if err := h.repo.Delete(ctx, collectionID); err != nil {
 		return err
 	}
+	h.cleanupDeletedCollection(ctx, collectionID)
+	return nil
+}
+
+// cleanupDeletedCollection runs only after the SQL deletion has committed.
+func (h *LibraryCollectionHandler) cleanupDeletedCollection(ctx context.Context, collectionID string) {
 	if h.SortPreferenceCleaner != nil {
 		h.SortPreferenceCleaner.DeleteForCollection(ctx, userstore.CollectionKindLibrary, collectionID)
 	}
-	return nil
+	if h.s3GP == nil {
+		return
+	}
+	prefix := fmt.Sprintf("collection-images/%s/", collectionID)
+	keys, err := h.s3GP.ListObjects(ctx, h.s3GP.Bucket(), prefix)
+	if err != nil {
+		slog.WarnContext(ctx, "collection delete: listing S3 images failed; image keys may leak", "component", "api",
+			"collection_id", collectionID, "error", err)
+	}
+	for _, key := range keys {
+		if err := h.s3GP.DeleteObject(ctx, h.s3GP.Bucket(), key); err != nil {
+			slog.WarnContext(ctx, "collection delete: removing S3 image failed; key leaks", "component", "api",
+				"collection_id", collectionID, "error", err)
+		}
+	}
 }
 
 type adminReorderCollectionsRequest struct {

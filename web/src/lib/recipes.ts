@@ -1,4 +1,3 @@
-import { api } from "../api/client";
 import { v2 } from "../api/v2/request";
 
 export type Category =
@@ -88,8 +87,19 @@ export async function fetchCandidates(recipeType: string): Promise<Candidate[]> 
 }
 
 export async function previewSection(req: PreviewRequest): Promise<PreviewResponse> {
-  return api<PreviewResponse>("/admin/sections/preview", {
-    method: "POST",
-    body: JSON.stringify(req),
+  const result = await v2("POST /api/v2/admin/sections/preview", {
+    body: {
+      ...req,
+      library_id: req.library_id === undefined ? undefined : String(req.library_id),
+      library_ids: req.library_ids?.map(String),
+    },
   });
+  return {
+    items: result.items.map((item) => ({
+      content_id: item.content_id,
+      title: item.title,
+      poster_path: item.poster_url,
+    })),
+    total_count: result.total_count,
+  };
 }

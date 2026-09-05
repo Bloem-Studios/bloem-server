@@ -261,6 +261,10 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	}
 	expect[opCreateProgressSnapshot] = map[int]bool{http.StatusCreated: true, http.StatusConflict: true, http.StatusRequestEntityTooLarge: true, http.StatusTooManyRequests: true}
 	expect[opGetProgressSnapshot] = map[int]bool{http.StatusOK: true, http.StatusConflict: true, http.StatusNotFound: true}
+	for _, id := range []string{"listAdminSections", "createAdminSection", "getAdminSection", "updateAdminSection", "deleteAdminSection", "getAdminSectionOrder", "reorderAdminSections", "restoreAdminSections", "bulkCreateAdminSections", "previewAdminSection", "getAdminSectionCapabilities"} {
+		profileToken[id] = true
+	}
+
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {

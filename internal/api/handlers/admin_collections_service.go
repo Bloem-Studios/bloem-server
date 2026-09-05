@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -13,7 +12,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/collections/templates"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/userstore"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -697,20 +695,6 @@ func (h *LibraryCollectionHandler) DeleteAdminCollection(ctx context.Context, id
 	if err := h.repo.DeleteIfRevision(ctx, id, *revision); err != nil {
 		return err
 	}
-	if h.SortPreferenceCleaner != nil {
-		h.SortPreferenceCleaner.DeleteForCollection(ctx, userstore.CollectionKindLibrary, id)
-	}
-	// External cleanup follows the committed guarded deletion and is never retried with SQL.
-	if h.s3GP != nil {
-		keys, err := h.s3GP.ListObjects(ctx, h.s3GP.Bucket(), fmt.Sprintf("collection-images/%s/", id))
-		if err != nil {
-			slog.WarnContext(ctx, "Collection artwork cleanup failed", "error", err)
-		}
-		for _, key := range keys {
-			if err := h.s3GP.DeleteObject(ctx, h.s3GP.Bucket(), key); err != nil {
-				slog.WarnContext(ctx, "Collection artwork cleanup failed", "error", err)
-			}
-		}
-	}
+	h.cleanupDeletedCollection(ctx, id)
 	return nil
 }
