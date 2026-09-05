@@ -289,6 +289,12 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"GET " + Prefix + "/watchlist/{item_id}",
 		"PUT " + Prefix + "/watchlist/{item_id}",
 		"DELETE " + Prefix + "/watchlist/{item_id}",
+		"GET " + Prefix + "/history",
+		"POST " + Prefix + "/history/remove",
+		"POST " + Prefix + "/sync/progress",
+		"GET " + Prefix + "/watch/{id}",
+		"POST " + Prefix + "/watched/{id}",
+		"DELETE " + Prefix + "/watched/{id}",
 	}
 
 	unaccounted, unserved, err := reconcileSpec(observed, contracts.OpenAPI, nil)

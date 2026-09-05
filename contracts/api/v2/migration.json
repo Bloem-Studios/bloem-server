@@ -28273,13 +28273,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/history",
+        "operation_id": "listHistory"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-progress (profile_scoped). Offset pagination replaced by limit+opaque cursor (a keyset on (watched_at DESC, id DESC) underneath via the new store query ListHistoryPage, equal timestamps order by id; cards are emitted only for their globally newest visible watch across the movie or series, preventing duplicate cards across raw windows; has_more and next_cursor advance over scanned rows, so clients continue through short or empty nonterminal pages); offset rejected (422). v1 keeps its offset list. Cards are the shared CatalogItem schema with an added watch object {media_item_id, watched_at, duration_seconds, completed, source} for the most recent watch behind the card (an episode watch still collapses to its series card, as v1); watched_at is a UTC-ms instant. image_size is a strict enum answered 422."
     },
     {
       "listener": "api",
@@ -28336,13 +28336,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/history/remove",
+        "operation_id": "removeHistoryEntries"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-progress (profile_scoped). Same body {targets:[{content_id, scope}]} with scope a strict enum (item|show, default item) and targets minItems 1; a rejected target is 422 at body.targets, an unknown target 404; same 204. Retry safety: natural_idempotent (hiding an already hidden item is a no-op)."
     },
     {
       "listener": "api",
@@ -43293,19 +43293,19 @@
       "section": "personal-progress",
       "release_flow": "progress",
       "tier": 1,
-      "retry_safety": "domain_identity",
-      "retry_safety_note": "DEFECT: with updated_at the store applies SetProgressIfNewer, but without it (the web caller sends force_overwrite and no updated_at) the handler overwrites with a fresh server time, so a retried older payload replaces newer progress. The v2 port must require an event time on every item.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "updated_at is optional; a retry without it gets a fresh server timestamp and can overwrite newer progress. Require a stable event time on every item before automatic retries are safe.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/sync/progress",
+        "operation_id": "syncProgress"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; progressHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-progress (profile_scoped). Same batch shape {items:[...]} answered 200 {results:[{media_item_id, status, error}]} in request order; member changes: position/duration (float seconds) are position_ms/duration_ms (integer milliseconds, minimum 0), media_item_id is a string ID (minLength 1), updated_at is a UTC-ms instant (a malformed one is 422 at body.items[i].updated_at rather than a per-item error), items minItems 1, unknown members rejected. Retry safety: natural_idempotent (a replayed write with the same updated_at merges last-write-wins to the same row; a live write re-applies the same position)."
     },
     {
       "listener": "api",
@@ -45269,13 +45269,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/watch/{id}",
+        "operation_id": "getWatchState"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-progress (profile_scoped, profile header optional as v1). Same detail body: versions with tracks, chapters and markers, playback_variants, subtitles, markers, user_data, effective_* preferences; member changes: file_id/default_file_id/last_file_id are string IDs, added_at is a UTC-ms instant, duration -> duration_seconds and total_duration -> total_duration_seconds, markers are {start_seconds, end_seconds}; query fileId -> file_id (string ID), library_id stays, image_size is a strict enum; a series (v1 400 invalid_watch_target) is 422 at path.id, unknown target 404. Conditionally registered in v1 (authMiddleware != nil; itemsHandler != nil); v2 registers unconditionally and answers 503 when the items handler is not wired."
     },
     {
       "listener": "api",
@@ -45355,13 +45355,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/watched/{id}",
+        "operation_id": "unmarkWatched"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-progress (profile_scoped). Media kind confirmed from ItemsHandler.HandleMarkUnwatched: request has no body, v1 answers JSON {content_id, type, affected_count, played:false}; v2 answers 204 with no body. Same target resolution as markWatched (movie, ebook, episode, season, series; season/series expand to episodes), unknown or inaccessible target 404. Retry safety: natural_idempotent (clearing an unwatched item is a no-op). Conditionally registered in v1 (authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil); v2 registers unconditionally and answers 503 when the items handler is not wired."
     },
     {
       "listener": "api",
@@ -45435,19 +45435,19 @@
       "section": "personal-progress",
       "release_flow": "progress",
       "tier": 1,
-      "retry_safety": "domain_identity",
-      "retry_safety_note": "DEFECT: the watched flag converges, but each call inserts a fresh-uuid user_watch_history row unconditionally and re-dispatches the watch-provider event, so a retry duplicates history and notifications. The v2 port needs a client-supplied watch identity with a unique constraint.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Atomic marking now suppresses concurrent duplicates, but a delayed retry after an intervening unmark creates a new watch and provider event. Add a durable client watch identity before automatic retries are safe.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/watched/{id}",
+        "operation_id": "markWatched"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-progress (profile_scoped). Media kind confirmed from ItemsHandler.HandleMarkWatched: request has no body, v1 answers JSON {content_id, type, affected_count, played}; v2 answers 204 with no body (the client already knows the target and the played flag; the count is not consumed by any client). Target is a movie, ebook, episode, season or series (a season or series expands to its episodes; an ebook writes the reader-progress store), unknown or inaccessible target 404. Retry safety: natural_idempotent (a target the profile already completed is skipped atomically in the store transaction, including overlapping retries: no new history row, no provider event; an unmark clears that state so the next mark records again). Conditionally registered in v1 (authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil); v2 registers unconditionally and answers 503 when the items handler is not wired."
     },
     {
       "listener": "api",

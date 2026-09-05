@@ -572,33 +572,183 @@ func (h *PersonalDataHandler) HandleListHistory(w http.ResponseWriter, r *http.R
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
-		return
-	}
-
 	limit, offset := parsePagination(r)
 
-	entries, err := store.ListHistory(r.Context(), profileID, limit, offset)
+	entries, err := h.HistoryEntries(r.Context(), userID, profileID, limit, offset)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list history")
+		writeAPIError(w, err)
 		return
 	}
 
-	ids, err := catalog.ResolveHistoryDisplayIDs(r.Context(), entries, h.episodeRepo)
+	cards, err := h.HistoryCards(r.Context(), sectionViewerFromRequest(r), entries)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve history items")
+		writeAPIError(w, err)
 		return
 	}
-
-	items, err := resolveItemsByIDs(h, r.Context(), personalListViewerFromRequest(r), ids)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve history items")
-		return
+	items := make([]itemListResponse, 0, len(cards))
+	for _, card := range cards {
+		items = append(items, card.Item)
 	}
 
 	writeJSON(w, http.StatusOK, itemsListResponse{Items: items, HasMore: len(entries) == limit})
+}
+
+// History seams: the v1 handlers and the v2 history operations share them.
+// Each returns an *APIError on failure.
+
+// HistoryRemovalTarget is one thing to hide from history: an item, or a
+// season/episode widened to its show.
+type HistoryRemovalTarget = historyRemovalTargetRequest
+
+// HistoryCardView is one history card: the catalog card rendered for the
+// display item (an episode collapses to its series) and the most recent
+// watch record behind it.
+type HistoryCardView struct {
+	Item  CollectionItemView
+	Entry userstore.WatchHistoryEntry
+}
+
+// HistoryEntries pages the profile's visible history rows, most recent
+// watch first.
+func (h *PersonalDataHandler) HistoryEntries(ctx context.Context, userID int, profileID string, limit, offset int) ([]userstore.WatchHistoryEntry, error) {
+	store, err := h.storeProvider.ForUser(ctx, userID)
+	if err != nil {
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
+	}
+	entries, err := store.ListHistory(ctx, profileID, limit, offset)
+	if err != nil {
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to list history")
+	}
+	return entries, nil
+}
+
+// HistoryPage is the keyset form of HistoryEntries: at most limit visible
+// history rows strictly after the key in (watched_at DESC, id DESC) order,
+// nil starting at the most recent watch. The v2 listHistory operation pages
+// with it so a watch recorded or hidden mid-pagination never repeats or
+// skips a row.
+func (h *PersonalDataHandler) HistoryPage(ctx context.Context, userID int, profileID string, after *userstore.HistoryKey, limit int) ([]userstore.WatchHistoryEntry, error) {
+	store, err := h.storeProvider.ForUser(ctx, userID)
+	if err != nil {
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
+	}
+	entries, err := store.ListHistoryPage(ctx, profileID, after, limit)
+	if err != nil {
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to list history")
+	}
+	return entries, nil
+}
+
+// HistoryCards renders the cards of a history page in entry order, one per
+// display item, omitting items the viewer cannot see or that left the
+// catalog.
+func (h *PersonalDataHandler) HistoryCards(ctx context.Context, viewer SectionViewer, entries []userstore.WatchHistoryEntry) ([]HistoryCardView, error) {
+	display, err := catalog.ResolveHistoryDisplayEntries(ctx, entries, h.episodeRepo)
+	if err != nil {
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to resolve history items")
+	}
+	return h.historyDisplayCards(ctx, viewer, display)
+}
+
+// HistoryPageCards keeps only the newest visible watch of each display card.
+// Witnesses are selected across the whole group, not just the bounded raw
+// page, so older repeats on later pages cannot emit that card again.
+func (h *PersonalDataHandler) HistoryPageCards(ctx context.Context, viewer SectionViewer, entries []userstore.WatchHistoryEntry) ([]HistoryCardView, error) {
+	display, err := catalog.ResolveHistoryDisplayEntries(ctx, entries, h.episodeRepo)
+	if err != nil {
+		return nil, err
+	}
+	groups, err := catalog.HistoryDisplayGroups(ctx, display, h.episodeRepo)
+	if err != nil {
+		return nil, err
+	}
+	store, err := h.storeProvider.ForUser(ctx, viewer.Access.UserID)
+	if err != nil {
+		return nil, err
+	}
+	witnesses, err := store.LatestHistoryIDs(ctx, viewer.Access.ProfileID, groups)
+	if err != nil {
+		return nil, err
+	}
+	latest := display[:0]
+	for _, d := range display {
+		if witnesses[d.DisplayID] == d.Entry.ID {
+			latest = append(latest, d)
+		}
+	}
+	return h.historyDisplayCards(ctx, viewer, latest)
+}
+
+func (h *PersonalDataHandler) historyDisplayCards(ctx context.Context, viewer SectionViewer, display []catalog.HistoryDisplayEntry) ([]HistoryCardView, error) {
+	ids := make([]string, 0, len(display))
+	for _, d := range display {
+		ids = append(ids, d.DisplayID)
+	}
+	items, err := resolveItemsByIDs(h, ctx, PersonalListViewer{UserID: apimw.GetUserID(ctx), ProfileID: apimw.GetProfileID(ctx), Access: viewer.Access, ImageSize: viewer.ImageSize}, ids)
+	if err != nil {
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to resolve history items")
+	}
+	byID := make(map[string]itemListResponse, len(items))
+	for _, item := range items {
+		byID[item.ContentID] = item
+	}
+	cards := make([]HistoryCardView, 0, len(items))
+	for _, d := range display {
+		item, ok := byID[d.DisplayID]
+		if !ok {
+			continue
+		}
+		cards = append(cards, HistoryCardView{Item: item, Entry: d.Entry})
+	}
+	return cards, nil
+}
+
+// RemoveHistory hides every watch of the targets from the profile's history
+// and notifies the profile's sessions. Removing an already hidden item is a
+// no-op, so a replay converges.
+func (h *PersonalDataHandler) RemoveHistory(ctx context.Context, userID int, profileID string, filter catalog.AccessFilter, targets []HistoryRemovalTarget) error {
+	store, err := h.storeProvider.ForUser(ctx, userID)
+	if err != nil {
+		return apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
+	}
+
+	mediaItemSet := make(map[string]struct{})
+	mediaItemIDs := make([]string, 0, len(targets))
+	for _, target := range targets {
+		resolvedIDs, resolveErr := h.resolveHistoryRemovalMediaItemIDs(ctx, target, filter)
+		if resolveErr != nil {
+			if isNotFound(resolveErr) {
+				return apiError(http.StatusNotFound, "not_found", "History target not found")
+			}
+			return fieldError("targets", resolveErr.Error())
+		}
+		for _, mediaItemID := range resolvedIDs {
+			if _, ok := mediaItemSet[mediaItemID]; ok {
+				continue
+			}
+			mediaItemSet[mediaItemID] = struct{}{}
+			mediaItemIDs = append(mediaItemIDs, mediaItemID)
+		}
+	}
+
+	if err := store.RemoveHistoryItems(ctx, profileID, mediaItemIDs, time.Now().UTC()); err != nil {
+		return apiError(http.StatusInternalServerError, "internal_error", "Failed to remove history")
+	}
+
+	triggerProfileRefresh(ctx, h.profileStaler, h.profileRefreshRequester, userID, profileID)
+	for _, mediaItemID := range mediaItemIDs {
+		publishUserStateEvent(
+			ctx,
+			h.EventsHub,
+			userID,
+			profileID,
+			mediaItemID,
+			"",
+			"history",
+			userStateEventState{},
+		)
+	}
+	return nil
 }
 
 // HandleRemoveHistory handles POST /history/remove.
@@ -616,52 +766,9 @@ func (h *PersonalDataHandler) HandleRemoveHistory(w http.ResponseWriter, r *http
 		return
 	}
 
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
+	if err := h.RemoveHistory(r.Context(), userID, profileID, requestAccessFilter(r), req.Targets); err != nil {
+		writeAPIError(w, err)
 		return
-	}
-
-	filter := requestAccessFilter(r)
-	mediaItemSet := make(map[string]struct{})
-	mediaItemIDs := make([]string, 0, len(req.Targets))
-	for _, target := range req.Targets {
-		resolvedIDs, resolveErr := h.resolveHistoryRemovalMediaItemIDs(r.Context(), target, filter)
-		if resolveErr != nil {
-			switch {
-			case isNotFound(resolveErr):
-				writeError(w, http.StatusNotFound, "not_found", "History target not found")
-			default:
-				writeError(w, http.StatusBadRequest, "bad_request", resolveErr.Error())
-			}
-			return
-		}
-		for _, mediaItemID := range resolvedIDs {
-			if _, ok := mediaItemSet[mediaItemID]; ok {
-				continue
-			}
-			mediaItemSet[mediaItemID] = struct{}{}
-			mediaItemIDs = append(mediaItemIDs, mediaItemID)
-		}
-	}
-
-	if err := store.RemoveHistoryItems(r.Context(), profileID, mediaItemIDs, time.Now().UTC()); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to remove history")
-		return
-	}
-
-	triggerProfileRefresh(r.Context(), h.profileStaler, h.profileRefreshRequester, userID, profileID)
-	for _, mediaItemID := range mediaItemIDs {
-		publishUserStateEvent(
-			r.Context(),
-			h.EventsHub,
-			userID,
-			profileID,
-			mediaItemID,
-			"",
-			"history",
-			userStateEventState{},
-		)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -193,6 +193,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"getAudioPreference": true, "updateAudioPreference": true, "deleteAudioPreference": true,
 		"listLibraryPlaybackPreferences": true, "deleteLibraryPlaybackPreference": true, "updateLibraryPlaybackPreference": true,
 		"getSubtitlePreference": true, "updateSubtitlePreference": true, "deleteSubtitlePreference": true,
+		"listHistory": true, "removeHistoryEntries": true,
+		"syncProgress":  true,
+		"getWatchState": true, "markWatched": true, "unmarkWatched": true,
 	}
 	for _, id := range libraryOperationIDs {
 		profileToken[id] = true

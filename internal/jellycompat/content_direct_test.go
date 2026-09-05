@@ -358,6 +358,9 @@ func (s *progressCountingStore) AddHistoryIfMissing(context.Context, userstore.W
 func (s *progressCountingStore) ListHistory(context.Context, string, int, int) ([]userstore.WatchHistoryEntry, error) {
 	panic("unused")
 }
+func (s *progressCountingStore) ListHistoryPage(context.Context, string, *userstore.HistoryKey, int) ([]userstore.WatchHistoryEntry, error) {
+	panic("unused")
+}
 func (s *progressCountingStore) ListCompletedHistory(context.Context, userstore.CompletedHistoryQuery) ([]userstore.WatchHistoryEntry, error) {
 	panic("unused")
 }
@@ -1155,4 +1158,8 @@ func TestSeasonUserDataFromCountsMatchesEpisodeRollup(t *testing.T) {
 	if empty := catalog.SeasonUserDataFromCounts(userstore.SeriesWatchCounts{}); *empty != (catalog.SeasonUserData{}) {
 		t.Fatalf("zero counts must produce the empty rollup, got %+v", empty)
 	}
+}
+
+func (s *progressCountingStore) LatestHistoryIDs(context.Context, string, map[string][]string) (map[string]string, error) {
+	return nil, nil
 }

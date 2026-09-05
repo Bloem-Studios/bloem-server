@@ -96,6 +96,13 @@ type ListKey struct {
 	MediaItemID string
 }
 
+// HistoryKey is the keyset position of one visible history row in
+// (watched_at DESC, id DESC) order, in the store's own string form.
+type HistoryKey struct {
+	WatchedAt string
+	ID        string
+}
+
 // WatchProgress represents watch progress for a media item.
 type WatchProgress struct {
 	ProfileID       string

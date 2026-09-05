@@ -475,9 +475,9 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   process-local state, fires an external effect inline, lacks the dedup or ordering its
   identity implies, or re-runs a side effect a retry should not repeat (task run, collection
   sync, trailer refresh, person refresh, stale-id rematch, email-address verification,
-  invite-code redemption during signup, playback route events, mark-watched history,
+  invite-code redemption during signup, playback route events,
   watch-together selection and promotion, metadata-match-queue retry, playback session
-  progress, sync progress, download status, ebook reader progress, and onboarding progress,
+  progress, download status, ebook reader progress, and onboarding progress,
   whose last-write-wins update lets a delayed retry rewind a newer report, favorites,
   watchlist, and rating add and remove, the taste seed, subtitle download and upload,
   whose unique key resolves a retry but whose losing insert deletes the winner's S3
@@ -1277,6 +1277,36 @@ a `{section}` wrapper; `listSectionRecipes` groups recipes in an ordered `catego
 `{category, recipes}` instead of a map, never emits `hidden`, and declares each preset's
 `default_params` as the `section-config` extension bag; `listSectionRecipeCandidates` always
 emits `subtitle` and answers an unknown recipe type as a `not_found` problem.
+
+**Section personal-progress (Phase 4).** Seven profile-scoped rows: the pilot's `listProgress`
+plus `listHistory`, `removeHistoryEntries`, `syncProgress` (tags `history`, `progress`) and
+`getWatchState`, `markWatched`, `unmarkWatched` (tag `watch`). The section uses the shared domain services, with history-specific paging seams
+(`PersonalDataHandler.HistoryPage`/`HistoryPageCards`/`RemoveHistory`,
+`ProgressHandler.SyncProgress`, `ItemsHandler.WatchDetail`/`SetWatchedState`). Deliberate
+differences from v1, all recorded on the ledger rows: `listHistory` pages by `limit` plus an
+opaque cursor. A bounded raw window is filtered against the newest visible watch of each
+movie or series across its full history, so repeated watches and sibling episodes do not
+repeat cards on later pages. PostgreSQL and SQLite share this witness rule. A page may be
+short or empty; clients follow `page.next_cursor` until absent, regardless of item count.
+The cursor advances over scanned rows, including omitted cards. History ordering retains
+whole-second timestamps with the unique history ID as its descending tiebreaker, including
+when PostgreSQL stores fractional seconds. The witness lookup uses that same ordering.
+The operation answers
+`CatalogItem` cards with a `watch` record (`media_item_id`,
+`watched_at` instant, `duration_seconds`, `completed`, `source`); `removeHistoryEntries` takes a
+closed `scope` enum and answers `204`; `syncProgress` takes `position_ms`/`duration_ms` as
+integer milliseconds, string item ids and an `updated_at` instant (a malformed one is `422`, not a
+per-item error) and answers the v1 `results` list; `getWatchState` keeps the profile header
+optional as v1 does, takes `file_id` (string ID) and a strict `image_size`, renders file ids as
+string IDs, `added_at` as an instant, `duration`/`total_duration` as `*_seconds`, markers as
+`{start_seconds, end_seconds}`, and answers a series (not directly playable) as `422` at `path.id`;
+`markWatched`/`unmarkWatched` answer `204` instead of v1's `{content_id, type, affected_count,
+played}` echo. All four mutations declare `non_retryable` and are not `If-Match` protected.
+Atomic marking suppresses concurrent duplicate history and provider events, but a delayed
+retry after an intervening unmark can create another watch; a durable client watch identity
+is still needed. History removal and unmark choose a fresh cutoff, so a delayed retry can
+hide an intervening watch. Sync accepts an omitted `updated_at`, so a delayed replay can
+overwrite newer progress; every item needs a stable event time before automatic retries are safe.
 
 ## v1 lifecycle and release sequence
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -211,6 +212,12 @@ const markWatchedBatchProgressSQL = `
 			completed = 1,
 			updated_at = excluded.updated_at,
 			event_at = excluded.updated_at
+ WHERE NOT watch_progress.completed OR EXISTS (
+  SELECT 1 FROM hidden_history_items hhi
+  WHERE hhi.profile_id = watch_progress.profile_id AND hhi.media_item_id = watch_progress.media_item_id
+  AND watch_progress.updated_at <= hhi.hidden_before
+ )
+ RETURNING media_item_id
 	`
 
 // addVisibleHistorySQL inserts one history row at a watermark-adjusted
@@ -226,8 +233,8 @@ const addVisibleHistorySQL = `
 		RETURNING watched_at
 	`
 
-// MarkWatchedBatch marks every target watched and records its history entry
-// inside a single transaction, so a canceled series mark rolls back to
+// MarkWatchedBatch skips already-completed visible targets atomically with
+// the progress write and records history only for changed targets, so a canceled series mark rolls back to
 // "nothing marked" rather than stranding a partial subset. SQLite round-trips
 // are local and cheap, so this reuses the same per-row statements as the
 // single-item path and buys atomicity rather than fewer queries.
@@ -254,6 +261,7 @@ func MarkWatchedBatch(
 
 	now := nowUTC()
 	seen := make(map[string]struct{}, len(targets))
+	marked := make(map[string]bool, len(targets))
 	for _, target := range targets {
 		mediaItemID := strings.TrimSpace(target.MediaItemID)
 		if mediaItemID == "" {
@@ -267,16 +275,22 @@ func MarkWatchedBatch(
 		if duration < 0 {
 			duration = 0
 		}
-		if _, err := tx.ExecContext(ctx, markWatchedBatchProgressSQL,
+		var markedID string
+		err := tx.QueryRowContext(ctx, markWatchedBatchProgressSQL,
 			profileID, mediaItemID, duration, now, now, profileID, mediaItemID,
-		); err != nil {
+		).Scan(&markedID)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
 			return nil, fmt.Errorf("marking watched batch: %w", err)
 		}
+		marked[markedID] = true
 	}
 
 	written := make([]userstore.WatchHistoryEntry, 0, len(entries))
 	for _, entry := range entries {
-		if strings.TrimSpace(entry.MediaItemID) == "" {
+		if !marked[strings.TrimSpace(entry.MediaItemID)] {
 			continue
 		}
 		if entry.ID == "" {
@@ -748,9 +762,7 @@ func AddHistoryIfMissing(db *sql.DB, entry WatchHistoryEntry) (bool, error) {
 	return true, nil
 }
 
-// ListHistory returns paginated watch history entries ordered by most recent first.
-func ListHistory(db *sql.DB, profileID string, limit, offset int) ([]WatchHistoryEntry, error) {
-	query := `
+const historyListSelect = `
 		SELECT h.id, h.profile_id, h.media_item_id, h.watched_at, h.duration_seconds, h.completed, h.source, h.watch_identity
 		FROM watch_history h
 		WHERE h.profile_id = ?
@@ -760,11 +772,39 @@ func ListHistory(db *sql.DB, profileID string, limit, offset int) ([]WatchHistor
 			WHERE hhi.profile_id = h.profile_id
 			  AND hhi.media_item_id = h.media_item_id
 			  AND h.watched_at <= hhi.hidden_before
-		  )
+		  )`
+
+// ListHistory returns paginated watch history entries ordered by most recent first.
+func ListHistory(db *sql.DB, profileID string, limit, offset int) ([]WatchHistoryEntry, error) {
+	query := historyListSelect + `
 		ORDER BY watched_at DESC
 		LIMIT ? OFFSET ?
 	`
-	rows, err := db.Query(query, profileID, limit, offset)
+	return queryHistoryRows(db, query, profileID, limit, offset)
+}
+
+// ListHistoryPage pages by keyset over (watched_at DESC, id DESC). watched_at
+// is RFC 3339 UTC text at whole-second precision, so text order is time order
+// and the key string compares exactly; the comparison is spelled out rather
+// than written as a row value so it does not depend on the linked SQLite
+// supporting row values.
+func ListHistoryPage(db *sql.DB, profileID string, after *userstore.HistoryKey, limit int) ([]WatchHistoryEntry, error) {
+	args := []any{profileID}
+	query := historyListSelect
+	if after != nil {
+		query += `
+		  AND (h.watched_at < ? OR (h.watched_at = ? AND h.id < ?))`
+		args = append(args, after.WatchedAt, after.WatchedAt, after.ID)
+	}
+	args = append(args, limit)
+	query += `
+		ORDER BY h.watched_at DESC, h.id DESC
+		LIMIT ?`
+	return queryHistoryRows(db, query, args...)
+}
+
+func queryHistoryRows(db *sql.DB, query string, args ...any) ([]WatchHistoryEntry, error) {
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("listing history: %w", err)
 	}

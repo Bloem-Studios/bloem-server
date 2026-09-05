@@ -105,6 +105,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/history": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List the acting profile's watch history as catalog cards, most recent watch first. */
+    get: operations["listHistory"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/history/remove": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Hide the targets' watches from the acting profile's history; the server chooses the cutoff when this request runs. */
+    post: operations["removeHistoryEntries"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/home/dismissals/{surface}/{item_id}": {
     parameters: {
       query?: never;
@@ -1095,6 +1129,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/sync/progress": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Apply a batch of progress writes for the acting profile and answer one result per item; supply updated_at on each item to preserve event ordering. */
+    post: operations["syncProgress"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/system/info": {
     parameters: {
       query?: never;
@@ -1124,6 +1175,41 @@ export interface paths {
     put?: never;
     post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/watch/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get what is needed to play an item: its versions, subtitles, markers and the acting profile's progress. */
+    get: operations["getWatchState"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/watched/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Mark an item watched for the acting profile; a season or series marks every episode. Marking an already watched item is a no-op. */
+    post: operations["markWatched"];
+    /** Mark an item unwatched for the acting profile; a season or series clears every episode. The server chooses the history cutoff when this request runs. */
+    delete: operations["unmarkWatched"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2147,6 +2233,172 @@ export interface components {
       IsSet: boolean;
       /** Format: int64 */
       Size: number;
+    };
+    HistoryCard: {
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      added_at?: string;
+      backdrop_thumbhash?: string;
+      /** @description Presigned, short-lived */
+      backdrop_url?: string;
+      /** @description Section-specific badges (new, returning, …) */
+      badges?: string[];
+      /**
+       * @description Deterministic catalog identifier
+       * @example movie:heat-1995
+       */
+      content_id: string;
+      /** @example R */
+      content_rating?: string;
+      /** Format: double */
+      duration_seconds?: number;
+      /** Format: int64 */
+      episode_number?: number;
+      /** @description Empty, never null */
+      genres: string[];
+      /** @description On a continue-watching card: in_progress or next_up */
+      item_source?: string;
+      /** @description Empty, never null */
+      keywords: string[];
+      /** @description Calendar date, YYYY-MM-DD */
+      last_air_date?: string;
+      /** @description Presigned, short-lived */
+      logo_url?: string;
+      /** Format: int64 */
+      manga_chapter_count?: number;
+      /** Format: int64 */
+      manga_volume_count?: number;
+      networks?: string[];
+      /** @example en */
+      original_language?: string;
+      /** @description Technical badges of the best file */
+      overlay_summary?: components["schemas"]["CatalogItemOverlay"];
+      overview?: string;
+      /** @description The item to play when the card is a series or season; absent when the item plays itself */
+      play_content_id?: string;
+      /**
+       * Format: double
+       * @description Resume position on a continue-watching card
+       */
+      position_seconds?: number;
+      poster_thumbhash?: string;
+      /** @description Presigned, short-lived */
+      poster_url?: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      progress_updated_at?: string;
+      /** Format: double */
+      rating_imdb?: number;
+      /** Format: int64 */
+      rating_rt_audience?: number;
+      /** Format: int64 */
+      rating_rt_critic?: number;
+      /** Format: double */
+      rating_tmdb?: number;
+      /**
+       * @description Calendar date, YYYY-MM-DD
+       * @example 1995-12-15
+       */
+      release_date?: string;
+      /**
+       * Format: int64
+       * @description Minutes
+       * @example 170
+       */
+      runtime?: number;
+      /** Format: int64 */
+      season_number?: number;
+      /** @description Owning series of an episode or season */
+      series_id?: string;
+      series_title?: string;
+      /** @description Airing state of a series */
+      show_status?: string;
+      /** @description The values the listing was sorted by */
+      sort_metrics?: components["schemas"]["CatalogItemSortMetrics"];
+      /**
+       * @description Metadata match state of the item
+       * @example matched
+       */
+      status: string;
+      studios?: string[];
+      /** @example Heat */
+      title: string;
+      /**
+       * @description movie, series, season, episode, audiobook, ebook, podcast, podcast_episode
+       * @example movie
+       */
+      type: string;
+      upcoming_event?: components["schemas"]["CatalogItemUpcomingEvent"];
+      /** @description The viewer's flags; absent without a profile */
+      user_state?: components["schemas"]["CatalogItemUserState"];
+      /** @description The most recent watch of the card's item */
+      watch: components["schemas"]["HistoryWatch"];
+      /** @description Sibling editions of the same work */
+      work_formats?: components["schemas"]["CatalogWorkFormat"][];
+      /** @description The work (book) an audiobook or ebook edition belongs to */
+      work_id?: string;
+      work_title?: string;
+      /**
+       * Format: int64
+       * @example 1995
+       */
+      year?: number;
+    };
+    HistoryCollection: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["HistoryCard"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    HistoryRemovalTarget: {
+      /**
+       * @description A movie, ebook, series, season or episode
+       * @example episode:heat-s01e01
+       */
+      content_id: string;
+      /**
+       * @description item (default) removes the target itself, a series or season expanding to its episodes; show widens a season or episode to its whole series
+       * @example item
+       * @enum {string}
+       */
+      scope?: "item" | "show";
+    };
+    HistoryRemoveInputBody: {
+      /** @description Targets to hide from history */
+      targets: components["schemas"]["HistoryRemovalTarget"][];
+    };
+    HistoryWatch: {
+      /**
+       * @description Whether the watch counted as finished
+       * @example true
+       */
+      completed: boolean;
+      /**
+       * Format: double
+       * @description Known runtime at the time; 0 when unknown
+       * @example 5400
+       */
+      duration_seconds: number;
+      /**
+       * @description The item that was watched; an episode when the card is its series
+       * @example episode:heat-s01e01
+       */
+      media_item_id: string;
+      /**
+       * @description How the watch was recorded: playback, manual, import, legacy
+       * @example playback
+       */
+      source?: string;
+      /**
+       * Format: date-time
+       * @description When the watch was recorded
+       * @example 2026-01-02T03:04:05.000Z
+       */
+      watched_at: string;
     };
     HomeDismissal: {
       /**
@@ -3720,6 +3972,62 @@ export interface components {
        */
       updated_at: string;
     };
+    ProgressSyncInputBody: {
+      /** @description Writes to apply, in order */
+      items: components["schemas"]["ProgressSyncItem"][];
+    };
+    ProgressSyncItem: {
+      /**
+       * Format: int64
+       * @description Known runtime in milliseconds; 0 when unknown
+       * @example 5400000
+       */
+      duration_ms: number;
+      /**
+       * @description Write the position as given instead of merging it with the stored one
+       * @example false
+       */
+      force_overwrite?: boolean;
+      /**
+       * @description The catalog item
+       * @example movie-8f2c1a
+       */
+      media_item_id: string;
+      /**
+       * Format: int64
+       * @description Playback position in milliseconds
+       * @example 1325500
+       */
+      position_ms: number;
+      /**
+       * Format: date-time
+       * @description Client event time of an offline-queued write; the server clamps it to now and merges last-write-wins on it
+       * @example 2026-01-02T03:04:05.000Z
+       */
+      updated_at?: string;
+    };
+    ProgressSyncOutputBody: {
+      /** @description One per item, in request order */
+      results: components["schemas"]["ProgressSyncResult"][];
+    };
+    ProgressSyncResult: {
+      /**
+       * @description Why the write was not applied
+       * @example failed to update progress
+       */
+      error?: string;
+      /**
+       * @description Opaque identifier
+       * @example movie-8f2c1a
+       */
+      media_item_id: string;
+      /**
+       * @description ok when the write was applied (or skipped as below a threshold); error when it was not
+       * @example ok
+       * @enum {string}
+       */
+      status: "ok" | "error";
+    };
     ProviderChainEntry: {
       /** @example tmdb */
       capability_id: string;
@@ -4688,6 +4996,148 @@ export interface components {
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
+    WatchAudioTrack: {
+      /** Format: int64 */
+      bit_depth?: number;
+      /** Format: int64 */
+      bitrate?: number;
+      /** Format: int64 */
+      channels?: number;
+      /** @example eac3 */
+      codec?: string;
+      default: boolean;
+      embedded_title?: string;
+      /** @example eng */
+      language?: string;
+      layout?: string;
+      profile?: string;
+      /** Format: int64 */
+      sample_rate?: number;
+      title?: string;
+    };
+    WatchChapter: {
+      /** Format: double */
+      end_seconds: number;
+      /** Format: int64 */
+      index: number;
+      /** @description Where the chapter came from */
+      source: string;
+      /** Format: double */
+      start_seconds: number;
+      thumbnail_thumbhash?: string;
+      thumbnail_url?: string;
+      title: string;
+    };
+    WatchDetail: {
+      /** @example movie:heat-1995 */
+      content_id: string;
+      credits?: components["schemas"]["WatchMarker"];
+      effective_show_forced_subtitles?: boolean;
+      /** @description The subtitle language the profile's preferences resolve to */
+      effective_subtitle_language?: string;
+      effective_subtitle_mode?: string;
+      /** @description The subtitle track the profile last chose on this item */
+      effective_subtitle_track_signature?: components["schemas"]["WatchSubtitleSignature"];
+      effective_version_codec_video?: string;
+      effective_version_edition_key?: string;
+      effective_version_hdr?: boolean;
+      /** @description The version resolution the profile last played */
+      effective_version_resolution?: string;
+      /** Format: int64 */
+      episode_number?: number;
+      intro?: components["schemas"]["WatchMarker"];
+      overview?: string;
+      /** @description Logical watch choices, each spanning one or more ordered parts */
+      playback_variants?: components["schemas"]["WatchPlaybackVariant"][];
+      preview?: components["schemas"]["WatchMarker"];
+      recap?: components["schemas"]["WatchMarker"];
+      /** Format: int64 */
+      season_number?: number;
+      /** @description Owning series of an episode */
+      series_id?: string;
+      series_title?: string;
+      /** @description Empty, never null */
+      subtitles: components["schemas"]["WatchSubtitle"][];
+      /** @example Heat */
+      title: string;
+      /**
+       * @description movie, episode, audiobook, ebook
+       * @example movie
+       */
+      type: string;
+      /** @description The acting profile's progress; absent without a profile or progress */
+      user_data?: components["schemas"]["WatchUserData"];
+      /** @description Every playable file of the item; empty, never null */
+      versions: components["schemas"]["WatchFileVersion"][];
+      /**
+       * Format: int64
+       * @example 1995
+       */
+      year?: number;
+    };
+    WatchFileVersion: {
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       * @example 2026-01-02T03:04:05.000Z
+       */
+      added_at: string;
+      audio_tracks?: components["schemas"]["WatchAudioTrack"][];
+      /**
+       * Format: int64
+       * @description Bits per second
+       */
+      bitrate: number;
+      chapters?: components["schemas"]["WatchChapter"][];
+      /** @example eac3 */
+      codec_audio: string;
+      /** @example h264 */
+      codec_video: string;
+      /** @example mkv */
+      container: string;
+      credits?: components["schemas"]["WatchMarker"];
+      /**
+       * Format: int64
+       * @example 10200
+       */
+      duration_seconds: number;
+      edition_key?: string;
+      edition_raw?: string;
+      effective_audio_language?: string;
+      /** Format: int64 */
+      effective_audio_track_index?: number;
+      /**
+       * @description Opaque identifier
+       * @example 42
+       */
+      file_id: string;
+      file_name?: string;
+      /** @description Only for accounts allowed to see paths */
+      file_path?: string;
+      /**
+       * Format: int64
+       * @description Bytes
+       */
+      file_size: number;
+      hdr: boolean;
+      intro?: components["schemas"]["WatchMarker"];
+      /** Format: int64 */
+      multi_episode_end?: number;
+      /** Format: int64 */
+      multi_episode_start?: number;
+      presentation_group_key?: string;
+      presentation_kind?: string;
+      /** Format: int64 */
+      presentation_part_index?: number;
+      /** Format: int64 */
+      presentation_part_total?: number;
+      preview?: components["schemas"]["WatchMarker"];
+      recap?: components["schemas"]["WatchMarker"];
+      /** @example 1080p */
+      resolution: string;
+      subtitle_tracks?: components["schemas"]["WatchSubtitleTrack"][];
+      video_tracks?: components["schemas"]["WatchVideoTrack"][];
+    };
     WatchlistCollection: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["CatalogItem"][];
@@ -4706,6 +5156,157 @@ export interface components {
        * @example movie:heat-1995
        */
       item_id: string;
+    };
+    WatchMarker: {
+      /**
+       * Format: double
+       * @example 90
+       */
+      end_seconds: number;
+      /**
+       * Format: double
+       * @example 0
+       */
+      start_seconds: number;
+    };
+    WatchPlaybackVariant: {
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      default_file_id?: string;
+      edition_key?: string;
+      edition_raw?: string;
+      /** Format: int64 */
+      part_count: number;
+      /** @description Ordered; empty, never null */
+      parts: components["schemas"]["WatchPlaybackVariantPart"][];
+      presentation_group_key?: string;
+      presentation_kind?: string;
+      /** Format: int64 */
+      total_duration_seconds?: number;
+      variant_id: string;
+    };
+    WatchPlaybackVariantPart: {
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      default_file_id?: string;
+      /** Format: int64 */
+      part_index: number;
+      /** Format: int64 */
+      total_duration_seconds?: number;
+      /** @description Empty, never null */
+      versions: components["schemas"]["WatchFileVersion"][];
+    };
+    WatchSubtitle: {
+      codec?: string;
+      forced: boolean;
+      hearing_impaired: boolean;
+      /** @example eng */
+      language: string;
+      /**
+       * @description embedded or external
+       * @example embedded
+       */
+      source: string;
+      title?: string;
+    };
+    WatchSubtitleSignature: {
+      codec?: string;
+      forced: boolean;
+      hearing_impaired: boolean;
+      label?: string;
+      language?: string;
+      source?: string;
+    };
+    WatchSubtitleTrack: {
+      codec?: string;
+      default: boolean;
+      embedded_title?: string;
+      external: boolean;
+      file_name?: string;
+      forced: boolean;
+      hearing_impaired: boolean;
+      /** Format: int64 */
+      index?: number;
+      /** @example eng */
+      language?: string;
+      resolution?: string;
+      title?: string;
+    };
+    WatchUserData: {
+      /**
+       * Format: double
+       * @example 10200
+       */
+      duration_seconds?: number;
+      /** Format: int64 */
+      in_progress_count: number;
+      is_in_progress?: boolean;
+      last_codec_video?: string;
+      last_edition_key?: string;
+      /**
+       * @description The version last played
+       * @example 1
+       */
+      last_file_id?: string;
+      last_hdr?: boolean;
+      last_resolution?: string;
+      played: boolean;
+      /**
+       * Format: double
+       * @example 1325.5
+       */
+      position_seconds?: number;
+      /** Format: int64 */
+      unplayed_count: number;
+      /** Format: int64 */
+      watched_count: number;
+    };
+    WatchVideoTrack: {
+      aspect_ratio?: string;
+      /** Format: int64 */
+      bit_depth?: number;
+      /** Format: int64 */
+      bitrate?: number;
+      /** @example hevc */
+      codec?: string;
+      color_primaries?: string;
+      color_range?: string;
+      color_space?: string;
+      color_transfer?: string;
+      dolby_vision?: string;
+      /** Format: int64 */
+      dv_bl_compat_id?: number;
+      dv_bl_compat_id_present: boolean;
+      dv_bl_present?: boolean;
+      dv_config_present: boolean;
+      dv_el_present?: boolean;
+      /** @description none, mel, fel, unknown */
+      dv_enhancement_layer?: string;
+      /** Format: int64 */
+      dv_level?: number;
+      /** Format: int64 */
+      dv_profile?: number;
+      dv_rpu_present?: boolean;
+      frame_rate?: string;
+      hdr10_plus?: boolean;
+      /** Format: int64 */
+      height?: number;
+      interlaced: boolean;
+      /** Format: int64 */
+      level?: number;
+      pixel_format?: string;
+      profile?: string;
+      /** Format: int64 */
+      reference_frames?: number;
+      title?: string;
+      video_range?: string;
+      video_range_type?: string;
+      /** Format: int64 */
+      width?: number;
     };
   };
   responses: never;
@@ -5779,6 +6380,254 @@ export interface operations {
       };
       /** @description Not Acceptable */
       406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listHistory: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor from page.next_cursor */
+        cursor?: string;
+        /** @description Artwork variant to presign; absent picks each surface's default */
+        image_size?: "small" | "medium" | "large" | "original";
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HistoryCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  removeHistoryEntries: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HistoryRemoveInputBody"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
         headers: {
           [name: string]: unknown;
         };
@@ -15132,6 +15981,143 @@ export interface operations {
       };
     };
   };
+  syncProgress: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProgressSyncInputBody"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProgressSyncOutputBody"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   getSystemInfo: {
     parameters: {
       query?: never;
@@ -15227,6 +16213,336 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getWatchState: {
+    parameters: {
+      query?: {
+        /** @description Prefer this file when the item has several versions */
+        file_id?: string;
+        /** @description Artwork variant to presign; absent picks each surface's default */
+        image_size?: "small" | "medium" | "large" | "original";
+        /** @description Present the item as a member of this library */
+        library_id?: string;
+      };
+      header?: {
+        /** @description Optional. When present, it must name a profile of the authenticated account. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description A movie, episode, audiobook or ebook; a series is not directly playable */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WatchDetail"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  markWatched: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description A movie, ebook, episode, season or series; a season or series expands to its episodes */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  unmarkWatched: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description A movie, ebook, episode, season or series; a season or series expands to its episodes */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
         headers: {
           [name: string]: unknown;
         };

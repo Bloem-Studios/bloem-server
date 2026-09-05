@@ -113,6 +113,9 @@ func (s stubStore) AddHistoryIfMissing(context.Context, userstore.WatchHistoryEn
 func (s stubStore) ListHistory(context.Context, string, int, int) ([]userstore.WatchHistoryEntry, error) {
 	panic("unused")
 }
+func (s stubStore) ListHistoryPage(context.Context, string, *userstore.HistoryKey, int) ([]userstore.WatchHistoryEntry, error) {
+	panic("unused")
+}
 func (s stubStore) ListCompletedHistory(context.Context, userstore.CompletedHistoryQuery) ([]userstore.WatchHistoryEntry, error) {
 	panic("unused")
 }
@@ -728,4 +731,8 @@ type stubGroupProvider struct {
 
 func (p stubGroupProvider) GetPolicyForUser(context.Context, int) (*GroupPolicy, error) {
 	return p.group, p.err
+}
+
+func (s stubStore) LatestHistoryIDs(context.Context, string, map[string][]string) (map[string]string, error) {
+	return nil, nil
 }

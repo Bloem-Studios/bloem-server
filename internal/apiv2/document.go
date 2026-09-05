@@ -496,6 +496,7 @@ func registerAll(reg *Registry) {
 	registerPreferences(reg)
 	registerHome(reg)
 	registerFavorites(reg)
+	registerHistory(reg)
 	registerLibraries(reg)
 	registerLibraryViews(reg)
 	registerProfileSections(reg)
@@ -505,6 +506,7 @@ func registerAll(reg *Registry) {
 	registerRatings(reg)
 	registerSystem(reg)
 	registerWatchlist(reg)
+	registerWatch(reg)
 	registerOpenAPIDocument(reg)
 }
 
