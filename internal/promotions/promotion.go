@@ -32,10 +32,11 @@ const (
 	SurfaceHome        = "home"
 	SurfaceDetail      = "detail"
 	SurfacePrePlayback = "pre_playback"
+	SurfaceInPlayback  = "in_playback"
 )
 
 // Surfaces lists the delivery surfaces in capability order.
-var Surfaces = []string{SurfaceHome, SurfaceDetail, SurfacePrePlayback}
+var Surfaces = []string{SurfaceHome, SurfaceDetail, SurfacePrePlayback, SurfaceInPlayback}
 
 // DismissalSurfacePrefix namespaces promo dismissals inside the per-profile
 // home dismissal store ("promo:home", "promo:detail", "promo:pre_playback").
@@ -58,7 +59,7 @@ const (
 
 // IsSurface reports whether s is a delivery surface.
 func IsSurface(s string) bool {
-	return s == SurfaceHome || s == SurfaceDetail || s == SurfacePrePlayback
+	return s == SurfaceHome || s == SurfaceDetail || s == SurfacePrePlayback || s == SurfaceInPlayback
 }
 
 // DismissalSurface maps a delivery surface to its dismissal-store surface.
@@ -67,7 +68,7 @@ func DismissalSurface(surface string) string { return DismissalSurfacePrefix + s
 // IsDismissalSurface reports whether s is a promo dismissal surface
 // ("promo:<surface>").
 func IsDismissalSurface(s string) bool {
-	return strings.HasPrefix(s, DismissalSurfacePrefix) && IsSurface(strings.TrimPrefix(s, DismissalSurfacePrefix))
+	return s != DismissalSurface(SurfaceInPlayback) && strings.HasPrefix(s, DismissalSurfacePrefix) && IsSurface(strings.TrimPrefix(s, DismissalSurfacePrefix))
 }
 
 // CTA is the optional call-to-action button on a card.
@@ -82,9 +83,12 @@ type CTA struct {
 // the detail page; content_ids restricts detail / pre-playback delivery to
 // the listed catalog items.
 type Placement struct {
-	HomePosition *int     `json:"home_position,omitempty"`
-	DetailSlot   string   `json:"detail_slot,omitempty"`
-	ContentIDs   []string `json:"content_ids,omitempty"`
+	DurationSeconds int      `json:"duration_seconds,omitempty"`
+	VideoURL        string   `json:"video_url,omitempty"`
+	PlaybackStyle   string   `json:"playback_style,omitempty"`
+	HomePosition    *int     `json:"home_position,omitempty"`
+	DetailSlot      string   `json:"detail_slot,omitempty"`
+	ContentIDs      []string `json:"content_ids,omitempty"`
 }
 
 // Promotion is a stored campaign card (admin view).
@@ -112,29 +116,42 @@ type Promotion struct {
 }
 
 // Card is the client-facing shape: the same on the home `promoted` section
-// items and on GET /promotions. It carries no timer or wait field.
+// items and on GET /promotions. Duration controls playback overlays only; it
+// never requests a forced wait or a pause in playback.
 type Card struct {
-	ID          string `json:"id"`
-	Kicker      string `json:"kicker"`
-	Headline    string `json:"headline"`
-	Subtitle    string `json:"subtitle,omitempty"`
-	ImageURL    string `json:"image_url"`
-	Deeplink    string `json:"deeplink,omitempty"`
-	CTA         *CTA   `json:"cta,omitempty"`
-	Dismissible bool   `json:"dismissible"`
+	DurationSeconds int       `json:"duration_seconds,omitempty"`
+	VideoURL        string    `json:"video_url,omitempty"`
+	PlaybackStyle   string    `json:"playback_style,omitempty"`
+	ExpiresAt       time.Time `json:"expires_at"`
+	ID              string    `json:"id"`
+	Kicker          string    `json:"kicker"`
+	Headline        string    `json:"headline"`
+	Subtitle        string    `json:"subtitle,omitempty"`
+	ImageURL        string    `json:"image_url"`
+	Deeplink        string    `json:"deeplink,omitempty"`
+	CTA             *CTA      `json:"cta,omitempty"`
+	Dismissible     bool      `json:"dismissible"`
 }
 
 // Card projects the promotion onto the client shape.
 func (p Promotion) Card() Card {
+	duration := p.Placement.DurationSeconds
+	if duration == 0 && p.Placement.PlaybackStyle != "" {
+		duration = 10
+	}
 	return Card{
-		ID:          p.ID,
-		Kicker:      p.Kicker,
-		Headline:    p.Headline,
-		Subtitle:    p.Subtitle,
-		ImageURL:    p.ImageURL,
-		Deeplink:    p.Deeplink,
-		CTA:         p.CTA,
-		Dismissible: p.Dismissible,
+		DurationSeconds: duration,
+		PlaybackStyle:   p.Placement.PlaybackStyle,
+		VideoURL:        p.Placement.VideoURL,
+		ExpiresAt:       p.EndsAt,
+		ID:              p.ID,
+		Kicker:          p.Kicker,
+		Headline:        p.Headline,
+		Subtitle:        p.Subtitle,
+		ImageURL:        p.ImageURL,
+		Deeplink:        p.Deeplink,
+		CTA:             p.CTA,
+		Dismissible:     p.Dismissible,
 	}
 }
 
@@ -265,6 +282,11 @@ func Normalize(in Input) (Normalized, error) {
 	if in.Dismissible != nil {
 		out.Dismissible = *in.Dismissible
 	}
+	for _, surface := range out.Surfaces {
+		if surface == SurfaceInPlayback && (!out.Dismissible || out.Placement.PlaybackStyle == "") {
+			return out, invalid("in_playback requires a dismissible card or pip placement")
+		}
+	}
 	return out, nil
 }
 
@@ -315,7 +337,25 @@ func IsSixteenByNine(width, height int) bool {
 }
 
 func normalizePlacement(in Placement) (Placement, error) {
-	out := Placement{DetailSlot: strings.TrimSpace(in.DetailSlot)}
+	out := Placement{DurationSeconds: in.DurationSeconds, DetailSlot: strings.TrimSpace(in.DetailSlot), PlaybackStyle: strings.TrimSpace(in.PlaybackStyle), VideoURL: strings.TrimSpace(in.VideoURL)}
+	if out.PlaybackStyle != "" && out.PlaybackStyle != "card" && out.PlaybackStyle != "pip" {
+		return out, invalid("placement.playback_style must be card, pip or empty")
+	}
+	if out.PlaybackStyle != "" {
+		if out.DurationSeconds == 0 {
+			out.DurationSeconds = 10
+		}
+		if out.DurationSeconds < 5 || out.DurationSeconds > 60 {
+			return out, invalid("placement.duration_seconds must be between 5 and 60")
+		}
+	} else if out.DurationSeconds != 0 {
+		return out, invalid("duration_seconds requires a playback presentation")
+	}
+	if out.VideoURL != "" {
+		if out.PlaybackStyle != "pip" || (!strings.HasPrefix(out.VideoURL, "https://") || !ambience.IsAssetURL(out.VideoURL)) {
+			return out, invalid("video_url requires pip and HTTPS")
+		}
+	}
 	if in.HomePosition != nil {
 		if *in.HomePosition < 0 {
 			return out, invalid("placement.home_position must be zero or positive")

@@ -234,8 +234,8 @@ func (s *Service) ActiveHome(ctx context.Context, viewer Viewer) ([]Card, int, e
 	}
 	position := DefaultHomePosition
 	out := make([]Card, 0, len(promos))
-	for i, p := range promos {
-		if i == 0 && p.Placement.HomePosition != nil {
+	for _, p := range promos {
+		if len(out) == 0 && p.Placement.HomePosition != nil {
 			position = *p.Placement.HomePosition
 		}
 		out = append(out, p.Card())
@@ -245,7 +245,27 @@ func (s *Service) ActiveHome(ctx context.Context, viewer Viewer) ([]Card, int, e
 
 func (s *Service) activePromotions(ctx context.Context, q Query) ([]Promotion, error) {
 	if !IsSurface(q.Surface) {
-		return nil, invalid("surface must be one of home, detail, pre_playback")
+		return nil, invalid("surface must be one of home, detail, pre_playback, in_playback")
+	}
+	if q.Surface == SurfaceInPlayback {
+		if q.ContentID == "" {
+			return nil, invalid("content_id is required for in_playback")
+		}
+		// Unknown profile classification must never deliver an overlay.
+		if s.stores == nil || q.Viewer.ProfileID == "" {
+			return nil, nil
+		}
+		store, err := s.stores.ForUser(ctx, q.Viewer.UserID)
+		if err != nil {
+			return nil, err
+		}
+		profile, err := store.GetProfile(ctx, q.Viewer.ProfileID)
+		if err != nil {
+			return nil, err
+		}
+		if profile == nil || profile.IsChild {
+			return nil, nil
+		}
 	}
 	promos, err := s.queryPromotions(ctx, `
 		SELECT `+promoColumns+` FROM promotions
