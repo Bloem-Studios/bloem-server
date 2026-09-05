@@ -128,9 +128,7 @@ func TestWriteCatalogResponse_GroupedByWorkOmitsDiagnostics(t *testing.T) {
 func TestHandleCatalogSearchContextError_DeadlineReturnsRetryableTimeout(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/catalog?source=query&q=slow", nil)
-	if !handleCatalogSearchContextError(rec, req, errors.Join(errors.New("search failed"), context.DeadlineExceeded)) {
-		t.Fatal("deadline error was not handled")
-	}
+	handleCatalogResolveError(rec, req, errors.Join(errors.New("search failed"), context.DeadlineExceeded), false)
 	if rec.Code != http.StatusGatewayTimeout {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusGatewayTimeout, rec.Body.String())
 	}
@@ -146,9 +144,7 @@ func TestHandleCatalogSearchContextError_DeadlineReturnsRetryableTimeout(t *test
 func TestHandleCatalogSearchContextError_CanceledRequestWritesNothing(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/catalog?source=query&q=replaced", nil)
-	if !handleCatalogSearchContextError(rec, req, context.Canceled) {
-		t.Fatal("canceled request was not handled")
-	}
+	handleCatalogResolveError(rec, req, context.Canceled, false)
 	if rec.Body.Len() != 0 {
 		t.Fatalf("canceled request wrote a response body: %q", rec.Body.String())
 	}

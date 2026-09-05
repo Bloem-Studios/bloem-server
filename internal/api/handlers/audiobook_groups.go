@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -87,26 +88,25 @@ func (h *CatalogHandler) HandleGetAudiobookGroups(w http.ResponseWriter, r *http
 		return
 	}
 
-	result, err := catalog.ListAudiobookGroups(
-		r.Context(),
-		h.itemsH.browseRepo.Pool(),
-		catalog.AudiobookGroupsQuery{
-			LibraryID:    libraryID,
-			GroupBy:      groupBy,
-			SearchPrefix: strings.TrimSpace(r.URL.Query().Get("q")),
-			IncludeTotal: includeTotal,
-			Sort:         sort,
-			Limit:        limit,
-			Offset:       offset,
-		},
-		filter,
-	)
+	view, err := h.AudiobookGroups(r.Context(), viewerFromRequest(r, filter), catalog.AudiobookGroupsQuery{
+		LibraryID:    libraryID,
+		GroupBy:      groupBy,
+		SearchPrefix: strings.TrimSpace(r.URL.Query().Get("q")),
+		IncludeTotal: includeTotal,
+		Sort:         sort,
+		Limit:        limit,
+		Offset:       offset,
+	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list audiobook groups")
+		writeAPIError(w, err)
 		return
 	}
+	writeJSON(w, http.StatusOK, view)
+}
 
-	resolvedPosters := h.resolveAudiobookGroupPosterURLs(r, result.Groups, filter.ImageSize)
+// audiobookGroupsView renders a page of groups with presigned cover stacks.
+func (h *CatalogHandler) audiobookGroupsView(ctx context.Context, result catalog.AudiobookGroupsResult, filter catalog.AccessFilter) audiobookGroupsResponse {
+	resolvedPosters := h.resolveAudiobookGroupPosterURLs(ctx, result.Groups, filter.ImageSize)
 	resp := audiobookGroupsResponse{
 		Total:      result.Total,
 		TotalExact: result.TotalExact,
@@ -129,15 +129,14 @@ func (h *CatalogHandler) HandleGetAudiobookGroups(w http.ResponseWriter, r *http
 			PosterURLs:           posterURLs,
 		})
 	}
-
-	writeJSON(w, http.StatusOK, resp)
+	return resp
 }
 
 // resolveAudiobookGroupPosterURLs presigns the cover-stack posters for a page of
 // groups. size is the already-validated size off the request's access filter, so
 // the ladder rung and the plugin hint match the rest of the response instead of
 // being re-derived per item.
-func (h *CatalogHandler) resolveAudiobookGroupPosterURLs(r *http.Request, groups []catalog.AudiobookGroup, size imagesize.Size) map[string]catalog.ResolvedImageURL {
+func (h *CatalogHandler) resolveAudiobookGroupPosterURLs(ctx context.Context, groups []catalog.AudiobookGroup, size imagesize.Size) map[string]catalog.ResolvedImageURL {
 	if h == nil || h.itemsH == nil || h.itemsH.detailSvc == nil || len(groups) == 0 {
 		return map[string]catalog.ResolvedImageURL{}
 	}
@@ -157,5 +156,5 @@ func (h *CatalogHandler) resolveAudiobookGroupPosterURLs(r *http.Request, groups
 			paths = append(paths, normalized)
 		}
 	}
-	return h.itemsH.detailSvc.PresignURLsWithExpiry(r.Context(), paths, requestVariantHint("card", size))
+	return h.itemsH.detailSvc.PresignURLsWithExpiry(ctx, paths, requestVariantHint("card", size))
 }

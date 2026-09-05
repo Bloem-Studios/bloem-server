@@ -508,7 +508,7 @@ func (h *ItemsHandler) HandleGetWatchDetail(w http.ResponseWriter, r *http.Reque
 	}
 
 	if detail.Type == "movie" || detail.Type == "episode" || detail.Type == "ebook" || detail.Type == "audiobook" {
-		detail.UserData = h.getLeafUserData(r, detail.ContentID, detail.Type)
+		detail.UserData = h.getLeafUserData(r.Context(), h.viewerOrDeny(r), detail.ContentID, detail.Type)
 		applyEffectiveEditionPreference(detail.UserData, &detail.EffectiveVersionEditionKey)
 	}
 
@@ -935,12 +935,13 @@ func (h *ItemsHandler) writeCatalogBrowseResponse(w http.ResponseWriter, r *http
 	}
 
 	overlaySummaries := h.listOverlaySummaries(r.Context(), result.Items, filter)
-	userStates := h.listItemUserStates(r, result.Items)
-	playTargets := h.listPlayableTargets(r, result.Items, req.Query.LibraryIDs, filter)
+	viewer := viewerFromRequest(r, filter)
+	userStates := h.listItemUserStates(r.Context(), viewer, result.Items)
+	playTargets := h.listPlayableTargets(r.Context(), viewer, result.Items, req.Query.LibraryIDs, filter)
 	episodeMetadata := h.listEpisodeBrowseMetadata(r.Context(), result.Items)
 	items := make([]itemListResponse, 0, len(result.Items))
 	for _, item := range result.Items {
-		resp := h.toItemListResponseWithOverlay(r, item, overlaySummaries[item.ContentID], userStates[item.ContentID], filter.ImageSize)
+		resp := h.toItemListResponseWithOverlay(r.Context(), viewer, item, overlaySummaries[item.ContentID], userStates[item.ContentID], filter.ImageSize)
 		// The resolver validated the item's own hint against this profile, so
 		// its answer replaces the unvalidated one carried by the item.
 		resp.PlayContentID = playTargets[playableTargetKeyForItem(item)]
@@ -959,7 +960,7 @@ func (h *ItemsHandler) writeCatalogBrowseResponse(w http.ResponseWriter, r *http
 	return true
 }
 
-func (h *ItemsHandler) listPlayableTargets(r *http.Request, items []*models.MediaItem, libraryIDs []int, filter catalog.AccessFilter) map[string]string {
+func (h *ItemsHandler) listPlayableTargets(ctx context.Context, v ItemViewer, items []*models.MediaItem, libraryIDs []int, filter catalog.AccessFilter) map[string]string {
 	inputs := make([]catalog.PlayableTargetInput, 0, len(items))
 	for _, item := range items {
 		if item == nil || item.ContentID == "" {
@@ -967,7 +968,7 @@ func (h *ItemsHandler) listPlayableTargets(r *http.Request, items []*models.Medi
 		}
 		inputs = append(inputs, playableTargetInputForItem(item))
 	}
-	return h.resolvePlayableTargetInputs(r, inputs, libraryIDs, filter)
+	return h.resolvePlayableTargetInputs(ctx, v, inputs, libraryIDs, filter)
 }
 
 // playableTargetInputForItem builds the resolver input for one displayed card.
@@ -990,36 +991,32 @@ func playableTargetKeyForItem(item *models.MediaItem) string {
 	return playableTargetInputForItem(item).Key()
 }
 
-func (h *ItemsHandler) resolvePlayableTargetInputs(r *http.Request, inputs []catalog.PlayableTargetInput, libraryIDs []int, filter catalog.AccessFilter) map[string]string {
+func (h *ItemsHandler) resolvePlayableTargetInputs(ctx context.Context, v ItemViewer, inputs []catalog.PlayableTargetInput, libraryIDs []int, filter catalog.AccessFilter) map[string]string {
 	if h == nil || h.playableTargets == nil || len(inputs) == 0 {
 		return map[string]string{}
 	}
-	store, _, _ := h.userStoreForRequest(r)
-	targets, err := h.playableTargets.Resolve(r.Context(), catalog.PlayableTargetQuery{
-		UserID:        apimw.GetUserID(r.Context()),
-		ProfileID:     requestProfileID(r),
+	store, _, _ := h.userStoreFor(ctx, v.ProfileID)
+	targets, err := h.playableTargets.Resolve(ctx, catalog.PlayableTargetQuery{
+		UserID:        apimw.GetUserID(ctx),
+		ProfileID:     v.ProfileID,
 		LibraryIDs:    libraryIDs,
 		Access:        filter,
 		Items:         inputs,
 		ProgressStore: store,
 	})
 	if err != nil {
-		slog.WarnContext(r.Context(), "resolving playable poster targets", "component", "api", "error", err)
+		slog.WarnContext(ctx, "resolving playable poster targets", "component", "api", "error", err)
 		return map[string]string{}
 	}
 	return targets
 }
 
-func (h *ItemsHandler) enrichSeasonPlayTargets(r *http.Request, seriesID string, seasons []seasonResponse) {
+func (h *ItemsHandler) enrichSeasonPlayTargets(ctx context.Context, v ItemViewer, seriesID string, seasons []seasonResponse) {
 	inputs := make([]catalog.PlayableTargetInput, 0, len(seasons))
 	for i := range seasons {
 		inputs = append(inputs, seasonPlayableTargetInput(seriesID, &seasons[i]))
 	}
-	filter, err := h.accessFilter(r)
-	if err != nil {
-		return
-	}
-	targets := h.resolvePlayableTargetInputs(r, inputs, nil, filter)
+	targets := h.resolvePlayableTargetInputs(ctx, v, inputs, nil, v.Access)
 	for i := range inputs {
 		seasons[i].PlayContentID = targets[inputs[i].Key()]
 	}
@@ -1027,16 +1024,12 @@ func (h *ItemsHandler) enrichSeasonPlayTargets(r *http.Request, seriesID string,
 
 // resolveSeasonPlayTarget is the single-season counterpart of
 // enrichSeasonPlayTargets, for the endpoints that return one season.
-func (h *ItemsHandler) resolveSeasonPlayTarget(r *http.Request, seriesID string, season *seasonResponse) {
+func (h *ItemsHandler) resolveSeasonPlayTarget(ctx context.Context, v ItemViewer, seriesID string, season *seasonResponse) {
 	if season == nil {
 		return
 	}
-	filter, err := h.accessFilter(r)
-	if err != nil {
-		return
-	}
 	inputs := []catalog.PlayableTargetInput{seasonPlayableTargetInput(seriesID, season)}
-	targets := h.resolvePlayableTargetInputs(r, inputs, nil, filter)
+	targets := h.resolvePlayableTargetInputs(ctx, v, inputs, nil, v.Access)
 	season.PlayContentID = targets[inputs[0].Key()]
 }
 
@@ -1089,20 +1082,20 @@ func (h *ItemsHandler) writeCatalogFiltersResponse(w http.ResponseWriter, r *htt
 
 // toItemListResponse converts a MediaItem to an itemListResponse with presigned
 // URLs at the size the caller's request asked for.
-func (h *ItemsHandler) toItemListResponse(r *http.Request, item *models.MediaItem, size imagesize.Size) itemListResponse {
-	return h.toItemListResponseWithOverlay(r, item, nil, nil, size)
+func (h *ItemsHandler) toItemListResponse(ctx context.Context, v ItemViewer, item *models.MediaItem, size imagesize.Size) itemListResponse {
+	return h.toItemListResponseWithOverlay(ctx, v, item, nil, nil, size)
 }
 
-func (h *ItemsHandler) toItemListResponseWithOverlay(r *http.Request, item *models.MediaItem, overlaySummary *models.OverlaySummary, userState *itemUserStateResponse, size imagesize.Size) itemListResponse {
+func (h *ItemsHandler) toItemListResponseWithOverlay(ctx context.Context, v ItemViewer, item *models.MediaItem, overlaySummary *models.OverlaySummary, userState *itemUserStateResponse, size imagesize.Size) itemListResponse {
 	if h.detailSvc != nil {
-		if localized, err := h.detailSvc.LocalizeItemModel(r.Context(), item, h.accessFilterOrDeny(r)); err == nil && localized != nil {
+		if localized, err := h.detailSvc.LocalizeItemModel(ctx, item, v.Access); err == nil && localized != nil {
 			item = localized
 		}
 	}
 	resp := itemListResponseShell(item, overlaySummary, userState)
 	hint := requestVariantHint("card", size)
-	resp.PosterURL = h.presignURL(r, sizedCardPath(item.PosterPath, artworkkey.ImagePoster, size), hint)
-	resp.BackdropURL = h.presignURL(r, sizedCardBackdropPath(item.BackdropPath, size), hint)
+	resp.PosterURL = h.presignURLCtx(ctx, sizedCardPath(item.PosterPath, artworkkey.ImagePoster, size), hint)
+	resp.BackdropURL = h.presignURLCtx(ctx, sizedCardBackdropPath(item.BackdropPath, size), hint)
 	return resp
 }
 
@@ -1282,13 +1275,13 @@ func (h *ItemsHandler) listEpisodeBrowseMetadata(
 	return result
 }
 
-func (h *ItemsHandler) listItemUserStates(r *http.Request, items []*models.MediaItem) map[string]*itemUserStateResponse {
-	store, profileID, ok := h.userStoreForRequest(r)
+func (h *ItemsHandler) listItemUserStates(ctx context.Context, v ItemViewer, items []*models.MediaItem) map[string]*itemUserStateResponse {
+	store, profileID, ok := h.userStoreFor(ctx, v.ProfileID)
 	if !ok {
 		return map[string]*itemUserStateResponse{}
 	}
-	states, err := resolveItemUserStatesWithOptions(r.Context(), store, profileID, h.episodeRepo, items, itemUserStateOptions{
-		UserID:             apimw.GetUserID(r.Context()),
+	states, err := resolveItemUserStatesWithOptions(ctx, store, profileID, h.episodeRepo, items, itemUserStateOptions{
+		UserID:             apimw.GetUserID(ctx),
 		EbookProgressStore: h.ebookProgressStore,
 	})
 	if err != nil {
@@ -1329,9 +1322,8 @@ func episodeResponseShell(ep *models.Episode, fallback episodeImageFallback, siz
 // buildEpisodeResponses converts episodes to API responses using batched
 // lookups — localization, media files, watch progress, and image presigning
 // each resolve in one round-trip for the whole list instead of per episode.
-func (h *ItemsHandler) buildEpisodeResponses(r *http.Request, episodes []*models.Episode) []episodeResponse {
-	ctx := r.Context()
-	filter := h.accessFilterOrDeny(r)
+func (h *ItemsHandler) buildEpisodeResponses(ctx context.Context, v ItemViewer, episodes []*models.Episode) []episodeResponse {
+	filter := v.Access
 	size := filter.ImageSize
 
 	if h.detailSvc != nil {
@@ -1349,7 +1341,7 @@ func (h *ItemsHandler) buildEpisodeResponses(r *http.Request, episodes []*models
 		}
 	}
 	filesByEpisode := h.listEpisodeFiles(ctx, episodeIDs)
-	userData := h.listLeafUserData(r, episodeIDs)
+	userData := h.listLeafUserData(ctx, v, episodeIDs)
 
 	resp := make([]episodeResponse, 0, len(episodes))
 	stillPaths := make([]string, 0, len(episodes))
@@ -1869,7 +1861,7 @@ func maxFileBitrate(files []*models.MediaFile) int {
 }
 
 func (h *ItemsHandler) toSeasonResponseFromEpisodes(
-	r *http.Request,
+	ctx context.Context, v ItemViewer,
 	seriesID string,
 	s *models.Season,
 	episodes []*models.Episode,
@@ -1877,18 +1869,18 @@ func (h *ItemsHandler) toSeasonResponseFromEpisodes(
 	size imagesize.Size,
 ) seasonResponse {
 	if h.detailSvc != nil {
-		if localized, err := h.detailSvc.LocalizeSeasonModel(r.Context(), s, h.accessFilterOrDeny(r)); err == nil && localized != nil {
+		if localized, err := h.detailSvc.LocalizeSeasonModel(ctx, s, v.Access); err == nil && localized != nil {
 			s = localized
 		}
 	}
-	return h.seasonResponseFromEpisodes(r, s, episodes, userData, size)
+	return h.seasonResponseFromEpisodes(ctx, v, s, episodes, userData, size)
 }
 
 // seasonResponseFromEpisodes maps a season that has already been localized.
 // List endpoints use this after LocalizeSeasonModels so they do not repeat the
 // localization query for every row.
 func (h *ItemsHandler) seasonResponseFromEpisodes(
-	r *http.Request,
+	ctx context.Context, v ItemViewer,
 	s *models.Season,
 	episodes []*models.Episode,
 	userData *catalog.SeasonUserData,
@@ -1906,23 +1898,23 @@ func (h *ItemsHandler) seasonResponseFromEpisodes(
 	if s.AirDate != nil {
 		resp.AirDate = s.AirDate.Format("2006-01-02")
 	}
-	resp.PosterURL = h.presignURL(r, sizedPosterPath(s.PosterPath, size), requestVariantHint("featured", size))
+	resp.PosterURL = h.presignURLCtx(ctx, sizedPosterPath(s.PosterPath, size), requestVariantHint("featured", size))
 	resp.UserData = userData
 
 	return resp
 }
 
-func (h *ItemsHandler) getLeafUserData(r *http.Request, contentID string, itemType ...string) *catalog.SeasonUserData {
+func (h *ItemsHandler) getLeafUserData(ctx context.Context, v ItemViewer, contentID string, itemType ...string) *catalog.SeasonUserData {
 	if len(itemType) > 0 && itemType[0] == "ebook" {
-		return h.getEbookLeafUserData(r, contentID)
+		return h.getEbookLeafUserData(ctx, v, contentID)
 	}
 
-	store, profileID, ok := h.userStoreForRequest(r)
+	store, profileID, ok := h.userStoreFor(ctx, v.ProfileID)
 	if !ok {
 		return nil
 	}
 
-	progress, err := userstore.GetProgressWithCompletedHistory(r.Context(), store, profileID, contentID)
+	progress, err := userstore.GetProgressWithCompletedHistory(ctx, store, profileID, contentID)
 	if err != nil {
 		return nil
 	}
@@ -1931,13 +1923,13 @@ func (h *ItemsHandler) getLeafUserData(r *http.Request, contentID string, itemTy
 
 // listLeafUserData batch-fetches watch progress for the given content IDs in a
 // single query; the result only holds entries for items with progress rows.
-func (h *ItemsHandler) listLeafUserData(r *http.Request, contentIDs []string) map[string]*catalog.SeasonUserData {
-	store, profileID, ok := h.userStoreForRequest(r)
+func (h *ItemsHandler) listLeafUserData(ctx context.Context, v ItemViewer, contentIDs []string) map[string]*catalog.SeasonUserData {
+	store, profileID, ok := h.userStoreFor(ctx, v.ProfileID)
 	if !ok || len(contentIDs) == 0 {
 		return nil
 	}
 
-	progressMap, err := userstore.ListProgressWithCompletedHistory(r.Context(), store, profileID, contentIDs)
+	progressMap, err := userstore.ListProgressWithCompletedHistory(ctx, store, profileID, contentIDs)
 	if err != nil {
 		return nil
 	}
@@ -1967,17 +1959,17 @@ func leafUserDataFromProgress(progress *userstore.WatchProgress) *catalog.Season
 	}
 }
 
-func (h *ItemsHandler) getEbookLeafUserData(r *http.Request, contentID string) *catalog.SeasonUserData {
+func (h *ItemsHandler) getEbookLeafUserData(ctx context.Context, v ItemViewer, contentID string) *catalog.SeasonUserData {
 	if h == nil || h.ebookProgressStore == nil {
 		return nil
 	}
-	userID := apimw.GetUserID(r.Context())
-	profileID := requestProfileID(r)
+	userID := apimw.GetUserID(ctx)
+	profileID := v.ProfileID
 	if userID <= 0 || profileID == "" || contentID == "" {
 		return nil
 	}
 
-	progress, err := h.ebookProgressStore.ListByContentIDs(r.Context(), userID, profileID, []string{contentID})
+	progress, err := h.ebookProgressStore.ListByContentIDs(ctx, userID, profileID, []string{contentID})
 	if err != nil {
 		return nil
 	}
@@ -2008,30 +2000,30 @@ func applyEffectiveEditionPreference(userData *catalog.SeasonUserData, target **
 	}
 }
 
-func (h *ItemsHandler) getAggregateUserData(r *http.Request, episodes []*models.Episode) *catalog.SeasonUserData {
+func (h *ItemsHandler) getAggregateUserData(ctx context.Context, v ItemViewer, episodes []*models.Episode) *catalog.SeasonUserData {
 	if len(episodes) == 0 {
 		return nil
 	}
 
-	store, profileID, ok := h.userStoreForRequest(r)
+	store, profileID, ok := h.userStoreFor(ctx, v.ProfileID)
 	if !ok {
 		return nil
 	}
 
-	progressMap, err := h.listProgressForEpisodeIDs(r.Context(), store, profileID, episodeContentIDs(episodes))
+	progressMap, err := h.listProgressForEpisodeIDs(ctx, store, profileID, episodeContentIDs(episodes))
 	if err != nil {
 		return nil
 	}
 	return catalog.EpisodeRollupUserData(episodes, progressMap)
 }
 
-func (h *ItemsHandler) progressMapForEpisodes(r *http.Request, episodes []*models.Episode) (map[string]userstore.WatchProgress, bool) {
-	store, profileID, ok := h.userStoreForRequest(r)
+func (h *ItemsHandler) progressMapForEpisodes(ctx context.Context, v ItemViewer, episodes []*models.Episode) (map[string]userstore.WatchProgress, bool) {
+	store, profileID, ok := h.userStoreFor(ctx, v.ProfileID)
 	if !ok {
 		return nil, false
 	}
 	episodeIDs := episodeContentIDs(episodes)
-	progressMap, err := h.listProgressForEpisodeIDs(r.Context(), store, profileID, episodeIDs)
+	progressMap, err := h.listProgressForEpisodeIDs(ctx, store, profileID, episodeIDs)
 	if err != nil {
 		return nil, false
 	}
@@ -2096,21 +2088,26 @@ func requestProfileID(r *http.Request) string {
 }
 
 func (h *ItemsHandler) userStoreForRequest(r *http.Request) (userstore.UserStore, string, bool) {
+	return h.userStoreFor(r.Context(), requestProfileID(r))
+}
+
+// userStoreFor is the context form of userStoreForRequest: the profile is
+// the caller's declared one, already resolved by the listener.
+func (h *ItemsHandler) userStoreFor(ctx context.Context, profileID string) (userstore.UserStore, string, bool) {
 	if h.storeProvider == nil {
 		return nil, "", false
 	}
 
-	userID := apimw.GetUserID(r.Context())
+	userID := apimw.GetUserID(ctx)
 	if userID == 0 {
 		return nil, "", false
 	}
 
-	profileID := requestProfileID(r)
 	if profileID == "" {
 		return nil, "", false
 	}
 
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
+	store, err := h.storeProvider.ForUser(ctx, userID)
 	if err != nil || store == nil {
 		return nil, "", false
 	}
@@ -2158,8 +2155,12 @@ func featuredBackdropPath(path string) string {
 // DetailService which handles plugin-prefixed paths, HTTP pass-through,
 // and legacy S3 presigning.
 func (h *ItemsHandler) presignURL(r *http.Request, path string, variant string) string {
+	return h.presignURLCtx(r.Context(), path, variant)
+}
+
+func (h *ItemsHandler) presignURLCtx(ctx context.Context, path string, variant string) string {
 	if h.detailSvc != nil {
-		return h.detailSvc.PresignURL(r.Context(), path, variant)
+		return h.detailSvc.PresignURL(ctx, path, variant)
 	}
 	return ""
 }
@@ -2217,22 +2218,37 @@ func filterSortClause(sort, order string) string {
 // rather than fall back to an unrestricted filter (see accessFilterOrError and
 // accessFilterOrDeny).
 func (h *ItemsHandler) accessFilter(r *http.Request) (catalog.AccessFilter, error) {
-	deviceID := deviceMetadataFromRequest(r).DeviceID
-	selectedFileID := 0
+	opts := AccessFilterOptions{DeviceID: deviceMetadataFromRequest(r).DeviceID}
 	if fileIDRaw := strings.TrimSpace(r.URL.Query().Get("fileId")); fileIDRaw != "" {
 		if fileID, err := strconv.Atoi(fileIDRaw); err == nil && fileID > 0 {
-			selectedFileID = fileID
+			opts.SelectedFileID = fileID
 		}
 	}
-
-	var presentationLibraryID *int
 	if libraryIDRaw := strings.TrimSpace(r.URL.Query().Get("library_id")); libraryIDRaw != "" {
 		if libraryID, err := strconv.Atoi(libraryIDRaw); err == nil && libraryID > 0 {
-			presentationLibraryID = &libraryID
+			opts.PresentationLibraryID = &libraryID
 		}
 	}
+	return h.AccessFilterFor(r.Context(), opts)
+}
 
-	if scope, ok := access.GetScope(r.Context()); ok {
+// AccessFilterOptions is what a catalog read declares beyond the identity on
+// the context: the caller's device and the per-request presentation hints.
+type AccessFilterOptions struct {
+	DeviceID              string
+	SelectedFileID        int
+	PresentationLibraryID *int
+}
+
+// AccessFilterFor resolves the viewer's access filter from the identity on
+// the context (the middleware scope when present, the stored policy
+// otherwise) and the declared options. It is the seam the v2 operations
+// use; the v1 handlers reach it through accessFilter.
+func (h *ItemsHandler) AccessFilterFor(ctx context.Context, opts AccessFilterOptions) (catalog.AccessFilter, error) {
+	deviceID := opts.DeviceID
+	selectedFileID := opts.SelectedFileID
+	presentationLibraryID := opts.PresentationLibraryID
+	if scope, ok := access.GetScope(ctx); ok {
 		return catalog.AccessFilter{
 			AllowedLibraryIDs:         scope.AllowedLibraryIDs,
 			DisabledLibraryIDs:        scope.DisabledLibraryIDs,
@@ -2242,8 +2258,8 @@ func (h *ItemsHandler) accessFilter(r *http.Request) (catalog.AccessFilter, erro
 			ProfilePreferredLanguage:  scope.PreferredMetadataLanguage,
 			MetadataLanguageOverrides: scope.MetadataLanguageOverrides,
 			SelectedFileID:            selectedFileID,
-			UserID:                    apimw.GetUserID(r.Context()),
-			ProfileID:                 apimw.GetProfileID(r.Context()),
+			UserID:                    apimw.GetUserID(ctx),
+			ProfileID:                 apimw.GetProfileID(ctx),
 			DeviceID:                  deviceID,
 		}, nil
 	}
@@ -2251,16 +2267,16 @@ func (h *ItemsHandler) accessFilter(r *http.Request) (catalog.AccessFilter, erro
 	var libraryIDs []int
 	var maxPlaybackQuality string
 	if h.UserRepo != nil {
-		userID := apimw.GetUserID(r.Context())
+		userID := apimw.GetUserID(ctx)
 		if userID != 0 {
-			user, userErr := h.UserRepo.GetByID(r.Context(), userID)
+			user, userErr := h.UserRepo.GetByID(ctx, userID)
 			if userErr != nil {
-				slog.ErrorContext(r.Context(), "looking up user for library access", "component", "api", "error", userErr)
+				slog.ErrorContext(ctx, "looking up user for library access", "component", "api", "error", userErr)
 				return catalog.AccessFilter{}, userErr
 			}
-			effective, policyErr := access.EffectivePolicyForUser(r.Context(), user, h.AccessGroups)
+			effective, policyErr := access.EffectivePolicyForUser(ctx, user, h.AccessGroups)
 			if policyErr != nil {
-				slog.ErrorContext(r.Context(), "resolving user policy for library access", "component", "api", "error", policyErr)
+				slog.ErrorContext(ctx, "resolving user policy for library access", "component", "api", "error", policyErr)
 				return catalog.AccessFilter{}, policyErr
 			}
 			if effective.LibraryIDs != nil {
@@ -2275,10 +2291,30 @@ func (h *ItemsHandler) accessFilter(r *http.Request) (catalog.AccessFilter, erro
 		MaxPlaybackQuality:    maxPlaybackQuality,
 		PresentationLibraryID: presentationLibraryID,
 		SelectedFileID:        selectedFileID,
-		UserID:                apimw.GetUserID(r.Context()),
-		ProfileID:             apimw.GetProfileID(r.Context()),
+		UserID:                apimw.GetUserID(ctx),
+		ProfileID:             apimw.GetProfileID(ctx),
 		DeviceID:              deviceID,
 	}, nil
+}
+
+// ItemViewer is what the item read seams need to know about their caller
+// beyond the identity on the context: the resolved access filter (device,
+// image size, presentation hints included) and the declared profile.
+type ItemViewer struct {
+	Access    catalog.AccessFilter
+	ProfileID string
+}
+
+// viewerFromRequest pairs an already-resolved access filter with the
+// request's declared profile.
+func viewerFromRequest(r *http.Request, filter catalog.AccessFilter) ItemViewer {
+	return ItemViewer{Access: filter, ProfileID: requestProfileID(r)}
+}
+
+// viewerOrDeny is the viewer for enrichment paths with no error channel;
+// see accessFilterOrDeny.
+func (h *ItemsHandler) viewerOrDeny(r *http.Request) ItemViewer {
+	return viewerFromRequest(r, h.accessFilterOrDeny(r))
 }
 
 // accessFilterOrError resolves the viewer's access filter for a handler that
@@ -2481,7 +2517,13 @@ func isNotFound(err error) bool {
 }
 
 func (h *ItemsHandler) requestCanViewFilePaths(r *http.Request) bool {
-	claims := apimw.GetClaims(r.Context())
+	return h.canViewFilePaths(r.Context())
+}
+
+// canViewFilePaths reports whether the caller may see on-disk paths: admins
+// always, other accounts when their stored flag allows it.
+func (h *ItemsHandler) canViewFilePaths(ctx context.Context) bool {
+	claims := apimw.GetClaims(ctx)
 	if claims == nil {
 		return false
 	}
@@ -2491,9 +2533,9 @@ func (h *ItemsHandler) requestCanViewFilePaths(r *http.Request) bool {
 	if h == nil || h.UserRepo == nil {
 		return false
 	}
-	user, err := h.UserRepo.GetByID(r.Context(), claims.UserID)
+	user, err := h.UserRepo.GetByID(ctx, claims.UserID)
 	if err != nil {
-		slog.WarnContext(r.Context(), "checking file path visibility permissions", "component", "api", "user_id", claims.UserID, "error", err)
+		slog.WarnContext(ctx, "checking file path visibility permissions", "component", "api", "user_id", claims.UserID, "error", err)
 		return false
 	}
 	return auth.HasEffectivePermission(user, auth.PermissionMetadataCuration)
