@@ -8,20 +8,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Silo-Server/silo-server/internal/userdb"
 	"github.com/Silo-Server/silo-server/internal/userdb/bridgeimport"
+	"github.com/Silo-Server/silo-server/internal/userdb/bridgeimport/testdata"
 )
 
 func fixture(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "7.db")
-	source, err := userdb.NewUserDB(path, 7)
+	source, err := testdata.NewSource(path, 7)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = source.Close() })
-	// Every current table exists, using the real initialization path only to build
-	// synthetic data. Production inspection must never call this constructor.
+	// Build synthetic data against the frozen bridge schema22.
 	for _, statement := range []string{
 		`INSERT INTO personal_collection_revisions(collection_id,revision) VALUES('deleted-collection',87)`,
 		`INSERT INTO favorites VALUES('parent','item','2026-01-01')`,
@@ -143,7 +142,7 @@ func TestWALSourceRefusedWithoutChanges(t *testing.T) {
 
 func TestUnknownFutureAndLegacyBlockers(t *testing.T) {
 	path := fixture(t)
-	source, err := userdb.NewUserDB(path, 7)
+	source, err := testdata.OpenSource(path, 7)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +172,7 @@ func TestUnknownFutureAndLegacyBlockers(t *testing.T) {
 
 func TestOldVersionRemainsUnchanged(t *testing.T) {
 	path := fixture(t)
-	source, err := userdb.NewUserDB(path, 7)
+	source, err := testdata.OpenSource(path, 7)
 	if err != nil {
 		t.Fatal(err)
 	}

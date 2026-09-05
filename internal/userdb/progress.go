@@ -18,9 +18,8 @@ type WatchProgress = userstore.WatchProgress
 // WatchHistoryEntry is an alias for the canonical type in userstore.
 type WatchHistoryEntry = userstore.WatchHistoryEntry
 
-// UpdateProgress uses the forward-only guard - position only moves forward.
-// The position is only updated if the new value is greater than the existing one.
-// The completed flag is set to true when position/duration exceeds the watched threshold.
+// UpdateProgress stores the latest resume position, including backward seeks.
+// Completion is a watched latch, and completing clears the resume position.
 func UpdateProgress(db *sql.DB, profileID, mediaItemID string, position, duration float64, thresholds userstore.ProgressThresholds) error {
 	position, completed, skip := userstore.ResolveProgressState(position, duration, thresholds)
 	if skip {
@@ -59,10 +58,14 @@ func UpdateProgress(db *sql.DB, profileID, mediaItemID string, position, duratio
 	return nil
 }
 
-// SetProgress bypasses the forward-only guard (for rewatches/explicit seek)
-// after the min-resume threshold. The completed flag stays a one-way watched
+// SetProgress stores the latest position after the min-resume threshold.
+// The completed flag stays a one-way watched
 // latch: only ClearProgress/ClearProgressBatch (mark unwatched) release it.
 func SetProgress(db *sql.DB, profileID, mediaItemID string, position, duration float64, thresholds userstore.ProgressThresholds) error {
+	return setPlaybackProgress(db, profileID, mediaItemID, position, duration, thresholds)
+}
+
+func setPlaybackProgress(db preferenceSettingsExecutor, profileID, mediaItemID string, position, duration float64, thresholds userstore.ProgressThresholds) error {
 	position, completed, skip := userstore.ResolveProgressState(position, duration, thresholds)
 	if skip {
 		return nil
@@ -435,7 +438,12 @@ func ClearProgressBatch(db *sql.DB, profileID string, mediaItemIDs []string, upd
 
 // UpdateProgressHints writes version hint columns for an existing progress row.
 func UpdateProgressHints(db *sql.DB, profileID, mediaItemID string, hints userstore.VersionHints) error {
-	_, err := db.Exec(`
+	_, err := updatePlaybackProgressHints(db, profileID, mediaItemID, hints)
+	return err
+}
+
+func updatePlaybackProgressHints(db preferenceSettingsExecutor, profileID, mediaItemID string, hints userstore.VersionHints) (bool, error) {
+	result, err := db.Exec(`
 		UPDATE watch_progress
 		SET last_file_id = ?, last_resolution = ?, last_hdr = ?, last_codec_video = ?, last_edition_key = ?
 		WHERE profile_id = ? AND media_item_id = ?`,
@@ -443,9 +451,10 @@ func UpdateProgressHints(db *sql.DB, profileID, mediaItemID string, hints userst
 		profileID, mediaItemID,
 	)
 	if err != nil {
-		return fmt.Errorf("updating progress hints: %w", err)
+		return false, fmt.Errorf("updating progress hints: %w", err)
 	}
-	return nil
+	affected, err := result.RowsAffected()
+	return affected > 0, err
 }
 
 // GetProgress returns progress for a specific item, or nil if not found.
@@ -706,6 +715,10 @@ func AddHistory(db *sql.DB, entry WatchHistoryEntry) error {
 }
 
 func AddVisibleHistory(db *sql.DB, entry WatchHistoryEntry) (WatchHistoryEntry, error) {
+	return addPlaybackVisibleHistory(db, entry)
+}
+
+func addPlaybackVisibleHistory(db preferenceSettingsExecutor, entry WatchHistoryEntry) (WatchHistoryEntry, error) {
 	if entry.ID == "" {
 		entry.ID = generateUUID()
 	}

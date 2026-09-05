@@ -20,6 +20,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/progresssync"
 	"github.com/Silo-Server/silo-server/internal/userdb"
+	"github.com/Silo-Server/silo-server/internal/userdb/bridgeimport/testdata"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
@@ -83,7 +84,7 @@ func newImportFixture(t *testing.T, pool *pgxpool.Pool) importFixture {
 		_, _ = pool.Exec(ctx, "DELETE FROM media_folders WHERE id=$1", f.folder)
 	})
 	f.path = filepath.Join(t.TempDir(), strconv.Itoa(f.identity.AccountID)+".db")
-	source, err := userdb.NewUserDB(f.path, f.identity.AccountID)
+	source, err := testdata.NewSource(f.path, f.identity.AccountID)
 	if err != nil {
 		t.Fatal(err)
 	}

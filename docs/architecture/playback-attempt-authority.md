@@ -260,6 +260,11 @@ write is not atomic. Owner renewal and executor replacement must preserve this
 boundary and the original logical playback identity. Dead-worker exit
 acknowledgement cannot be an indefinite prerequisite for replacement.
 
+The inactive [selected-store sink](playback-progress-sink.md) now supplies atomic
+authority installation, sequenced progress and terminal receipts in PostgreSQL
+and SQLite. Its local transaction does not activate the cross-store coordinator
+or solve selected-source identity and restore handling.
+
 Legacy progress, stop, and finalization paths must refuse bound sessions before
 calling personal-state writers. This includes HTTP and shared control helpers,
 compatibility playback reports, and expiry/crash callbacks. Resource cleanup may
