@@ -10,13 +10,16 @@ existing request digest. The digest is supplied by the protocol boundary; the
 store never derives it from reserialized `NormalizedRequest`. The original
 normalized request and retention deadline remain unchanged by publication.
 
-Each reservation has a process-boot UUID, increasing epoch, database-clock lease,
-and state. `preparing` means transport preparation may proceed for the winning
+Each reservation has a process-boot UUID, row-incarnation UUID, increasing epoch,
+database-clock lease, and state. PostgreSQL generates a fresh incarnation on each
+insert; it remains stable across takeovers of that row. Every owner/epoch mutation
+also compares this incarnation, so retention cleanup and same-boot reuse of an
+attempt ID cannot make a delayed old mutation match a new reservation. `preparing` means transport preparation may proceed for the winning
 caller. Concurrent callers receive `Owned=false`, even if they supply the same
 boot UUID. An expired preparing reservation can be reclaimed with a higher epoch.
 An active attempt cannot be reclaimed through this operation.
 
-Publication compares the owner, epoch, live lease, identity, digest, and preparing
+Publication compares the incarnation, owner, epoch, live lease, identity, digest, and preparing
 state. It stores the existing decision response and recipe atomically and changes
 the state to `active` or `terminal`. Stop changes preparing or active state to a
 retained `stopped` tombstone. A stopped attempt cannot publish again. Retries read

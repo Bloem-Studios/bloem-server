@@ -22,9 +22,11 @@ const (
 type AttemptAuthorityV3 struct {
 	PlaybackAttemptID string
 	OwnerID           string
-	Epoch             int64
-	State             AttemptAuthorityStateV3
-	LeaseExpiresAt    time.Time
+	// Incarnation fences delayed calls after cleanup and same-boot attempt reuse.
+	Incarnation    string
+	Epoch          int64
+	State          AttemptAuthorityStateV3
+	LeaseExpiresAt time.Time
 }
 
 type AttemptReservationRequestV3 struct {

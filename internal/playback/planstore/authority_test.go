@@ -402,3 +402,47 @@ func TestAttemptAuthorityRetentionUsesDatabaseClock(t *testing.T) {
 		t.Fatalf("caller clock removed live tombstone: %+v %v", replay, err)
 	}
 }
+
+func TestAttemptAuthorityCleanupCannotResurrectOldFence(t *testing.T) {
+	for _, operation := range []string{"renew", "stop", "publish"} {
+		t.Run(operation, func(t *testing.T) {
+			f := newPlanstoreFixture(t)
+			store := NewPostgres(f.pool)
+			peer, _ := authorityPeer(t, f)
+			req := authorityRequest(f)
+			old, err := store.ReserveAttempt(t.Context(), req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Expire retention without sleeping, then use the actual cleanup path.
+			if _, err := f.pool.Exec(t.Context(), `UPDATE playback_v3_attempts SET
+			 expires_at = clock_timestamp() - interval '1 minute',
+			 control_lease_expires_at = clock_timestamp() - interval '1 minute'
+			 WHERE playback_attempt_id = $1`, req.PlaybackAttemptID); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.CleanupExpired(t.Context(), time.Now()); err != nil {
+				t.Fatal(err)
+			}
+			fresh, err := peer.ReserveAttempt(t.Context(), req)
+			if err != nil || !fresh.Owned {
+				t.Fatalf("reserve after cleanup: %+v %v", fresh, err)
+			}
+			record := f.attemptRecord(uuid.NewString(), req.PlaybackAttemptID, req.RequestDigest)
+			switch operation {
+			case "renew":
+				_, err = store.RenewAttempt(t.Context(), old.Authority, time.Minute)
+			case "stop":
+				err = store.StopAttempt(t.Context(), old.Authority)
+			case "publish":
+				err = store.PublishAttempt(t.Context(), old.Authority, record)
+			}
+			if !errors.Is(err, playback.ErrStaleAttemptAuthorityV3) {
+				t.Fatalf("old %s matched recreated attempt: %v", operation, err)
+			}
+			if err := peer.PublishAttempt(t.Context(), fresh.Authority, record); err != nil {
+				t.Fatalf("fresh owner cannot publish: %v", err)
+			}
+		})
+	}
+}
