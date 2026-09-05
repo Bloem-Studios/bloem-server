@@ -37,3 +37,24 @@ Ordinary offline unit runs retain optional database execution. Their skipped
 cases are not acceptance evidence. The catalog coverage gate still checks all
 existing scenarios, but the other unpaired rows remain outside this bounded
 acceptance pilot.
+
+## Device-list checkpoint
+
+`make test-scenario-device-pairing` requires the same guarded synthetic PostgreSQL
+fixture database. It runs the fixed 13 `devices_list.*` scenarios as 26 independent
+v1/v2 exchanges. A missing or duplicate case, cleared pairing, skipped exchange or
+failed assertion fails acceptance. `SILO_SCENARIO_REPORT` optionally writes the
+per-transport results; use separate report files for the profile and device targets.
+
+The device pairs exercise profile and household visibility, current-device marking,
+recency order, empty collections, row fields and authorization/validation failures
+through the production router and PostgreSQL provider. V2's `items`/`page` envelope,
+canonical UTC timestamps and Problem responses are intentional wire differences.
+Uppercase `scope` is a v2 enum validation error (422), while v1 normalizes it before
+authorization; a missing profile header is v2 validation 422 versus v1 bad request
+400. Neither transport's expectations are inferred from the other's response.
+
+This checkpoint covers the existing single-page fixture, not signed continuation,
+timestamp ties, device reset/forget effects, SQLite execution or performance.
+Those need separate executable evidence. The existing profile-list target remains
+required; passing these two slices does not complete tier-1 migration acceptance.

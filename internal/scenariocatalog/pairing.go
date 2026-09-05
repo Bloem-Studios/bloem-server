@@ -55,8 +55,24 @@ var RequiredProfileListScenarios = []string{
 }
 
 func ProfileListAcceptance(catalogs []*Catalog) ([]*Catalog, error) {
-	want := make(map[string]bool, len(RequiredProfileListScenarios))
-	for _, id := range RequiredProfileListScenarios {
+	return requiredListAcceptance(catalogs, "/api/v1/profiles/", RequiredProfileListScenarios)
+}
+
+// RequiredDeviceListScenarios fixes the bounded device-list acceptance inventory.
+var RequiredDeviceListScenarios = []string{
+	"devices_list.ok", "devices_list.own_only", "devices_list.current_device",
+	"devices_list.sorted", "devices_list.household_scope", "devices_list.household_forbidden",
+	"devices_list.scope_case", "devices_list.shape", "devices_list.shape_fields",
+	"devices_list.no_profile", "devices_list.other_account_profile", "devices_list.no_token", "devices_list.error_shape",
+}
+
+func DeviceListAcceptance(catalogs []*Catalog) ([]*Catalog, error) {
+	return requiredListAcceptance(catalogs, "/api/v1/devices/", RequiredDeviceListScenarios)
+}
+
+func requiredListAcceptance(catalogs []*Catalog, path string, required []string) ([]*Catalog, error) {
+	want := make(map[string]bool, len(required))
+	for _, id := range required {
 		want[id] = false
 	}
 	var selected []*Catalog
@@ -64,7 +80,7 @@ func ProfileListAcceptance(catalogs []*Catalog) ([]*Catalog, error) {
 		copy := *c
 		copy.Rows = nil
 		for _, row := range c.Rows {
-			if row.Listener != listenerAPI || row.Method != http.MethodGet || row.Path != "/api/v1/profiles/" || row.RegistrationIndex != 0 {
+			if row.Listener != listenerAPI || row.Method != http.MethodGet || row.Path != path || row.RegistrationIndex != 0 {
 				continue
 			}
 			picked := row
@@ -76,6 +92,9 @@ func ProfileListAcceptance(catalogs []*Catalog) ([]*Catalog, error) {
 				if err := ValidatePairing(scenario.V2Expectation); err != nil {
 					return nil, fmt.Errorf("%s: %w", scenario.ID, err)
 				}
+				if want[scenario.ID] {
+					return nil, fmt.Errorf("duplicate required scenario %s", scenario.ID)
+				}
 				want[scenario.ID] = true
 				picked.Scenarios = append(picked.Scenarios, scenario)
 			}
@@ -85,7 +104,7 @@ func ProfileListAcceptance(catalogs []*Catalog) ([]*Catalog, error) {
 			selected = append(selected, &copy)
 		}
 	}
-	for _, id := range RequiredProfileListScenarios {
+	for _, id := range required {
 		if !want[id] {
 			return nil, fmt.Errorf("required scenario %s is missing", id)
 		}
