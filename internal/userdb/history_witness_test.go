@@ -24,7 +24,7 @@ func TestHistoryWitnessIndexUpgradeFromV20(t *testing.T) {
 		t.Fatal("history witness index was not installed on upgrade")
 	}
 	version, err := userVersion(store.db)
-	if err != nil || version != 21 {
+	if err != nil || version != schemaVersion {
 		t.Fatalf("version=%d, error=%v", version, err)
 	}
 }
