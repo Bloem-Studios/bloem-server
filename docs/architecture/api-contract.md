@@ -1308,6 +1308,43 @@ is still needed. History removal and unmark choose a fresh cutoff, so a delayed 
 hide an intervening watch. Sync accepts an omitted `updated_at`, so a delayed replay can
 overwrite newer progress; every item needs a stable event time before automatic retries are safe.
 
+**Section catalog-recommendations, stage A (Phase 4).** Seven profile-scoped reads under the
+`recommendations` tag: `listBecauseWatched`, `getDiscover`, `getForYouMain`, `listForYouRows`,
+`listPopular`, `listRecentlyAdded`, `getRecommendationSection`. Every recommended item is the
+shared `CatalogItem`, rendered by the same seam the v1 discover page uses
+(`internal/api/handlers/recommendations_service.go`), so the plain lists are a
+`CatalogItemCollection` (bounded, no `page`) and the grouped reads answer `RecommendationRow`
+(`{type, title, kind, key, items}`). Deliberate differences from v1, all recorded on the ledger
+rows: the engine's `score`, `reason`, and bare `media_item_id` lists are not carried (no client
+reads them); `label` is `title` and `section_kind`/`section_key` are `kind`/`key`; `for-you/main`
+answers an empty row rather than `null`; `days` and `limit` are declared parameters answered
+`422` out of range where v1 silently fell back to a default; `section/{kind}/{key}` folds into
+`getRecommendationSection` with `key` as a query parameter, and `kind` is a strict enum.
+
+**Section catalog-recommendations, stage B (Phase 4).** The remaining seven rows: `listSimilar`,
+`listSimilarUsersLiked`, `getTasteProfile`, `listTasteSeedItems`, `createTasteSeed`,
+`getWatchTonight`, `listWatchTonightCards`, on the same seams. The two similar lists are
+`CatalogItemCollection`s; `TasteProfile` keeps v1's members with `updated_at` a UTC instant that
+is absent until the profile has been computed; `listTasteSeedItems` pages by cursor (the cursor
+carries the offset v1's `next_offset` did, minted under the same full-window rule) and rejects
+`offset`; `createTasteSeed` is the section's one command. Favorites are set membership, so a
+retried submission converges on the same set and reports `added` 0. The command remains
+non-retryable because insertion and refresh dispatch are separate; its `item_ids` bounds
+(1..200) are schema validation (`422`, where v1 was `400`).
+`WatchTonight` and `WatchTonightCardPage` embed the shared `CatalogItem` with a strict
+`watch_tonight_source` enum, `cards` is `items`, `mode` is a required enum, the `genres[]` /
+`exclude_ids[]` parameters are the exploded `genres` / `exclude_ids`, and an unknown genre is
+`422` at `query.genres[i]` where v1 dropped it silently. Every `limit` answers `422` out of range
+where v1 silently clamped or fell back to its default. Swipe sessions have a 200-identifier
+exclusion budget: the final batch is shortened to fit it. `has_more` describes remaining
+eligible candidates; `paging_limited` is true when those candidates require a new session.
+Clients stop paging when either `has_more` is false or `paging_limited` is true, and restart
+with an empty exclusion set. A limited session does not mean the catalog is exhausted.
+Apple and Android must honor this flag when adopting the v2 swipe endpoint.
+Apple and Android currently consume `similar`
+(`media_item_id` is now the card's `content_id`), `discover` (the member renames above), and
+`taste-profile` (`updated_at` only).
+
 ## v1 lifecycle and release sequence
 
 1. Freeze v1 feature development. Critical fixes needed to keep the bridge usable may still land;

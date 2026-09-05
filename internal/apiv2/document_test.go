@@ -209,6 +209,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range []string{"listFavorites", "getFavorite", "addFavorite", "deleteFavorite", "listRatings", "getRating", "setRating", "deleteRating", "listWatchlist", "getWatchlistEntry", "addToWatchlist", "deleteWatchlistEntry"} {
 		profileToken[id] = true
 	}
+	for _, id := range recommendationOperationIDs {
+		profileToken[id] = true
+	}
 	expect["refreshLibraryMetadata"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: true, http.StatusAccepted: true}
 	expect["uploadLibraryPoster"] = map[int]bool{http.StatusNotFound: true, http.StatusRequestEntityTooLarge: true, http.StatusUnsupportedMediaType: true}
 	expect["getLibraryLayout"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}
@@ -312,6 +315,13 @@ var libraryOperationIDs = []string{
 // catalog-libraries section registers.
 var libraryViewOperationIDs = []string{
 	"getLibraryLayout", "listLibrarySections", "getLibrarySectionItems", "getLibraryCollections", "getLibraryCollectionItems", "listLibraryUserCollections",
+}
+
+// recommendationOperationIDs is every profile-scoped recommendation read the
+// catalog-recommendations section registers.
+var recommendationOperationIDs = []string{
+	"listBecauseWatched", "getDiscover", "getForYouMain", "listForYouRows", "listPopular", "listRecentlyAdded", "getRecommendationSection",
+	"listSimilar", "listSimilarUsersLiked", "getTasteProfile", opListTasteSeedItems, "createTasteSeed", "getWatchTonight", "listWatchTonightCards",
 }
 
 func TestImpliedStatusesForConcurrency(t *testing.T) {

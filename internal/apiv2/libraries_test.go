@@ -567,7 +567,7 @@ func TestListLibraryRoots(t *testing.T) {
 	rec = do(t, h, http.MethodGet, "/api/v2/libraries/roots?library_id=1&limit=2&cursor="+first.Page.NextCursor, "", bearer(adminToken))
 	var second rootPage
 	decodeJSON(t, rec.Body, &second)
-	if len(second.Items) != 1 || second.Page.HasMore || string(second.Items[0]["title"]) != `"Heat"` || string(second.Items[0]["content_id"]) != `"movie:heat-1995"` {
+	if len(second.Items) != 1 || second.Page.HasMore || string(second.Items[0]["title"]) != `"Heat"` || string(second.Items[0][tiebreakerContentID]) != `"movie:heat-1995"` {
 		t.Fatalf("second = %s", rec.Body.String())
 	}
 	if string(second.Items[0]["active_override"]) != `{"forced_title":"Heat","forced_year":1995,"note":"checked"}` {

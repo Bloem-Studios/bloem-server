@@ -25,6 +25,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	mediacatalog "github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/recommendations"
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -151,6 +152,9 @@ type Dependencies struct {
 	PersonalLists PersonalListService
 	// Ratings reads and edits a profile's ratings (*handlers.RatingsHandler).
 	Ratings RatingService
+	// Recommendations answers the profile-scoped recommendation reads
+	// (*handlers.RecommendationsHandler).
+	Recommendations RecommendationService
 	// ProfileSections reads and writes a profile's home-row overrides
 	// (*handlers.SectionHandler).
 	ProfileSections ProfileSectionService
@@ -708,6 +712,27 @@ type RatingService interface {
 	// admits; an item outside it is a 404 error.
 	SetRating(ctx context.Context, userID int, profileID, itemID string, access mediacatalog.AccessFilter, rating int) error
 	DeleteRating(ctx context.Context, userID int, profileID, itemID string) error
+}
+
+// RecommendationService is the slice of *handlers.RecommendationsHandler the
+// viewer-facing recommendation reads use. Every method returns the cards
+// (or rows of cards) the discover page renders and an *handlers.APIError on
+// failure.
+type RecommendationService interface {
+	BecauseWatchedCards(ctx context.Context, userID int, profileID, itemID string, limit int, filter mediacatalog.AccessFilter) ([]handlers.SectionItemView, error)
+	PopularCards(ctx context.Context, userID int, profileID string, days, limit int, filter mediacatalog.AccessFilter) ([]handlers.SectionItemView, error)
+	RecentlyAddedCards(ctx context.Context, userID int, profileID string, days, limit int, filter mediacatalog.AccessFilter) ([]handlers.SectionItemView, error)
+	ForYouMainCards(ctx context.Context, userID int, profileID string, limit int, filter mediacatalog.AccessFilter) (handlers.DiscoverRowView, error)
+	ForYouRowCards(ctx context.Context, userID int, profileID string, limit int, filter mediacatalog.AccessFilter) ([]handlers.DiscoverRowView, error)
+	Discover(ctx context.Context, userID int, profileID string, filter mediacatalog.AccessFilter) (handlers.DiscoverView, error)
+	Section(ctx context.Context, userID int, profileID, kind, key string, limit int, filter mediacatalog.AccessFilter) (handlers.SectionDetailView, error)
+	SimilarCards(ctx context.Context, userID int, profileID, itemID string, limit int, filter mediacatalog.AccessFilter) ([]handlers.SectionItemView, error)
+	SimilarUsersCards(ctx context.Context, userID int, profileID string, limit int, filter mediacatalog.AccessFilter) ([]handlers.SectionItemView, error)
+	TasteProfile(ctx context.Context, userID int, profileID string) recommendations.TasteProfileSummary
+	TasteSeedItems(ctx context.Context, userID int, profileID string, filter mediacatalog.AccessFilter, limit, offset int) (items []handlers.SectionItemView, candidates int, err error)
+	SubmitTasteSeed(ctx context.Context, userID int, profileID string, itemIDs []string) (int, error)
+	WatchTonight(ctx context.Context, userID int, profileID string, filter mediacatalog.AccessFilter, limit int) (handlers.WatchTonightView, error)
+	WatchTonightCards(ctx context.Context, userID int, profileID string, filter mediacatalog.AccessFilter, mode string, genres []string, excludeIDs map[string]struct{}, limit int) handlers.WatchTonightCardsView
 }
 
 // unavailable is the fail-closed answer of an operation whose service is not

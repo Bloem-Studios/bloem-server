@@ -1978,6 +1978,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if ratingsHandler != nil {
 		v2deps.Ratings = ratingsHandler
 	}
+	if recsHandler != nil {
+		v2deps.Recommendations = recsHandler
+	}
 	if sectionHandler != nil {
 		v2deps.ProfileSections = sectionHandler
 	}
