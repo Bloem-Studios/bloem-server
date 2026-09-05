@@ -714,14 +714,8 @@ func (r *LibraryCollectionRepository) Update(ctx context.Context, input UpdateLi
 }
 
 func (r *LibraryCollectionRepository) Delete(ctx context.Context, id string) error {
-	tag, err := r.pool.Exec(ctx, "DELETE FROM library_collections WHERE id = $1", id)
-	if err != nil {
-		return fmt.Errorf("deleting library collection: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrLibraryCollectionNotFound
-	}
-	return nil
+	_, err := r.deleteCollection(ctx, id, nil, false)
+	return err
 }
 
 func (r *LibraryCollectionRepository) ReplaceItems(ctx context.Context, collectionID string, items []LibraryCollectionItemInput) error {

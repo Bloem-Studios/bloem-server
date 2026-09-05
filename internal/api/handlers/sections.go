@@ -21,6 +21,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
 
 // SectionHandler handles section management and batch section endpoints.
@@ -402,27 +403,14 @@ func (h *SectionHandler) deleteUnreferencedSectionManagedCollection(ctx context.
 	if collectionID == "" || h.CollectionRepo == nil {
 		return
 	}
-	collection, err := h.CollectionRepo.GetByID(ctx, collectionID)
+	deleted, err := h.CollectionRepo.DeleteSectionManagedIfUnreferenced(ctx, collectionID)
 	if err != nil {
-		if !errors.Is(err, catalog.ErrLibraryCollectionNotFound) {
-			slog.WarnContext(ctx, "failed to load section-managed collection during section delete", "component", "api", "collection_id", collectionID, "error", err)
+		if !errors.Is(err, catalog.ErrLibraryCollectionNotFound) && !errors.Is(err, catalog.ErrLibraryCollectionInUse) {
+			slog.WarnContext(ctx, "failed to delete unreferenced section-managed collection", "component", "api", "collection_id", collectionID, "error", err)
 		}
 		return
 	}
-	if collection.ManagementMode != "section" {
-		return
-	}
-	refs, err := h.repo.CountLibraryCollectionReferences(ctx, collectionID, "")
-	if err != nil {
-		slog.WarnContext(ctx, "failed to count section-managed collection references", "component", "api", "collection_id", collectionID, "error", err)
-		return
-	}
-	if refs > 0 {
-		return
-	}
-	if err := h.CollectionRepo.Delete(ctx, collectionID); err != nil && !errors.Is(err, catalog.ErrLibraryCollectionNotFound) {
-		slog.WarnContext(ctx, "failed to delete unreferenced section-managed collection", "component", "api", "collection_id", collectionID, "error", err)
-	} else if err == nil && h.SortPreferenceCleaner != nil {
+	if deleted && h.SortPreferenceCleaner != nil {
 		h.SortPreferenceCleaner.DeleteForCollection(ctx, userstore.CollectionKindLibrary, collectionID)
 	}
 }
@@ -1736,6 +1724,11 @@ func (h *SectionHandler) HandleRestoreDefaults(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	if req.ResetProfiles && !h.canResetAllSectionProfileOverrides() {
+		writeError(w, http.StatusNotImplemented, "capability_unsupported", "Resetting all profile section overrides is unavailable for this user store")
+		return
+	}
+
 	var defaults []*sections.PageSection
 	var err error
 	if req.Scope == "home" {
@@ -1758,23 +1751,11 @@ func (h *SectionHandler) HandleRestoreDefaults(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	created, err := h.repo.RestoreDefaults(r.Context(), req.Scope, req.LibraryID, defaults)
+	created, err := h.repo.RestoreDefaultsWithProfileReset(r.Context(), req.Scope, req.LibraryID, defaults, req.ResetProfiles)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "restoring default sections", "component", "api", "scope", req.Scope, "error", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to restore defaults")
 		return
-	}
-
-	// Optionally clear all profile overrides for this scope.
-	if req.ResetProfiles {
-		libraryIDStr := ""
-		if req.LibraryID != nil {
-			libraryIDStr = strconv.Itoa(*req.LibraryID)
-		}
-		if err := h.repo.ClearAllProfileOverrides(r.Context(), req.Scope, libraryIDStr); err != nil {
-			slog.ErrorContext(r.Context(), "clearing profile overrides", "component", "api", "scope", req.Scope, "error", err)
-			// Don't fail the whole request — sections were already restored.
-		}
 	}
 
 	resp := sectionListResponse{Sections: make([]sectionResponse, 0, len(created))}
@@ -1782,4 +1763,12 @@ func (h *SectionHandler) HandleRestoreDefaults(w http.ResponseWriter, r *http.Re
 		resp.Sections = append(resp.Sections, toSectionResponse(s))
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// Only the shared PostgreSQL provider stores every account's overrides in the
+// same transaction domain as page_sections. SQLite and mixed providers cannot
+// participate in the atomic all-profile reset.
+func (h *SectionHandler) canResetAllSectionProfileOverrides() bool {
+	provider, ok := h.StoreProvider.(*pgstore.PostgresProvider)
+	return ok && provider != nil
 }
