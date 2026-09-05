@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -78,5 +79,40 @@ func TestDeviceSettingsRollback(t *testing.T) {
 		}
 		item := page[0]
 		opts.After = &userstore.DevicePosition{LastSeenAt: item.LastSeenAt, ProfileID: item.ProfileID, DeviceID: item.DeviceID}
+	}
+	lock, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lock.Rollback(ctx) //nolint:errcheck
+	if _, err := lock.Exec(ctx, "SELECT pg_advisory_xact_lock($1,$2)", preferenceSettingsAdvisoryClass, int32(id)); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { _, err := store.RemoveDeviceSettings(ctx, "q", "d", false); done <- err }()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		var waiting bool
+		if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND classid=$1 AND objid=$2 AND NOT granted)`, uint32(preferenceSettingsAdvisoryClass), uint32(id)).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+		select {
+		case err := <-done:
+			t.Fatalf("reset bypassed account lock: %v", err)
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("reset did not wait on account lock")
+		}
+		runtime.Gosched()
+	}
+	if err := lock.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
 	}
 }

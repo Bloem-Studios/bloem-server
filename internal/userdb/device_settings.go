@@ -2,10 +2,10 @@ package userdb
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 
-	"database/sql"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
@@ -53,45 +53,43 @@ func (s *SQLiteUserStore) ListDeviceSettingsPage(ctx context.Context, opts users
 }
 
 func (s *SQLiteUserStore) RemoveDeviceSettings(ctx context.Context, profileID, deviceID string, forget bool) ([]string, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback() //nolint:errcheck
-	var owned bool
-	err = tx.QueryRowContext(ctx, `SELECT true FROM user_devices WHERE profile_id=? AND device_id=?`, profileID, deviceID).Scan(&owned)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, err
-	}
-	rows, err := tx.QueryContext(ctx, `DELETE FROM user_setting_values WHERE profile_id=? AND device_id=? AND scope='profile_device' RETURNING key`, profileID, deviceID)
-	if err != nil {
-		return nil, err
-	}
 	keys := []string{}
-	for rows.Next() {
-		var key string
-		if err := rows.Scan(&key); err != nil {
-			rows.Close()
-			return nil, err
+	err := s.withImmediateSettingsTransaction(ctx, func(tx preferenceSettingsExecutor) error {
+		var owned bool
+		err := tx.QueryRowContext(ctx, `SELECT true FROM user_devices WHERE profile_id=? AND device_id=?`, profileID, deviceID).Scan(&owned)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
 		}
-		keys = append(keys, key)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if !owned && len(keys) == 0 {
-		return nil, userstore.ErrDeviceNotFound
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM user_device_settings WHERE profile_id=? AND device_id=?`, profileID, deviceID); err != nil {
-		return nil, err
-	}
-	if forget {
-		if _, err := tx.ExecContext(ctx, `DELETE FROM user_devices WHERE profile_id=? AND device_id=?`, profileID, deviceID); err != nil {
-			return nil, err
+		rows, err := tx.QueryContext(ctx, `DELETE FROM user_setting_values WHERE profile_id=? AND device_id=? AND scope='profile_device' RETURNING key`, profileID, deviceID)
+		if err != nil {
+			return err
 		}
-	}
-	if err := tx.Commit(); err != nil {
+		for rows.Next() {
+			var key string
+			if err := rows.Scan(&key); err != nil {
+				rows.Close()
+				return err
+			}
+			keys = append(keys, key)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		if !owned && len(keys) == 0 {
+			return userstore.ErrDeviceNotFound
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM user_device_settings WHERE profile_id=? AND device_id=?`, profileID, deviceID); err != nil {
+			return err
+		}
+		if forget {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM user_devices WHERE profile_id=? AND device_id=?`, profileID, deviceID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return keys, nil

@@ -2,8 +2,11 @@ package userdb
 
 import (
 	"database/sql"
+	"encoding/json"
+	"path/filepath"
 	"testing"
 
+	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -50,5 +53,57 @@ func TestDeviceSettingsTiesAndRollback(t *testing.T) {
 	exists, err := store.DeviceExists(ctx, "a", "one")
 	if err != nil || !exists {
 		t.Fatalf("rollback: %v %v", exists, err)
+	}
+}
+
+func TestDeviceSettingsConcurrentWAL(t *testing.T) {
+	db, err := sql.Open("sqlite3", "file:"+filepath.Join(t.TempDir(), "devices.db")+"?_journal_mode=WAL&_busy_timeout=10000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(8)
+	if err := InitSchema(db); err != nil {
+		t.Fatal(err)
+	}
+	store := NewSQLiteUserStore(db)
+	ctx := t.Context()
+	if err := store.CreateProfile(ctx, userstore.Profile{ID: "p", Name: "P"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.RegisterDevice(ctx, userstore.DeviceEntry{ProfileID: "p", DeviceID: "d"}); err != nil {
+		t.Fatal(err)
+	}
+	// Production uses WAL and several connections. Mix clear commands with
+	// canonical read/merge/write transactions; deferred read transactions fail to
+	// upgrade their snapshots under this contention even with a busy timeout.
+	start := make(chan struct{})
+	results := make(chan error, 8)
+	for worker := range 8 {
+		go func() {
+			<-start
+			for range 20 {
+				var err error
+				if worker%2 == 0 {
+					_, err = store.RemoveDeviceSettings(ctx, "p", "d", false)
+				} else {
+					err = store.WithSettingMutationTransaction(ctx, "", func(w userstore.SettingMutationWriter) error {
+						_, err := w.UpsertSettingValue(ctx, userstore.SettingIdentity{Key: "theme", Scope: settingscontract.ScopeProfileDevice, ProfileID: "p", DeviceID: "d"}, json.RawMessage(`"dark"`))
+						return err
+					})
+				}
+				if err != nil {
+					results <- err
+					return
+				}
+			}
+			results <- nil
+		}()
+	}
+	close(start)
+	for range 8 {
+		if err := <-results; err != nil {
+			t.Error(err)
+		}
 	}
 }
