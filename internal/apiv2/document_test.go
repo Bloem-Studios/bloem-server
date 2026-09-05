@@ -212,6 +212,14 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range recommendationOperationIDs {
 		profileToken[id] = true
 	}
+	for _, id := range personalCollectionOperationIDs {
+		profileToken[id] = true
+	}
+	expect["createCollection"] = map[int]bool{http.StatusCreated: true, http.StatusOK: false}
+	expect["createCollectionGroup"] = map[int]bool{http.StatusCreated: true, http.StatusOK: false}
+	expect["importMDBListCollection"] = map[int]bool{http.StatusCreated: true, http.StatusOK: false}
+	expect["reorderCollections"] = map[int]bool{http.StatusOK: true, http.StatusPreconditionRequired: true, http.StatusPreconditionFailed: true}
+	expect["deleteCollectionGroup"] = map[int]bool{http.StatusNoContent: true}
 	expect["refreshLibraryMetadata"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: true, http.StatusAccepted: true}
 	expect["uploadLibraryPoster"] = map[int]bool{http.StatusNotFound: true, http.StatusRequestEntityTooLarge: true, http.StatusUnsupportedMediaType: true}
 	expect["getLibraryLayout"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}
@@ -1026,4 +1034,42 @@ func TestPersonalListMutationsDoNotAdvertiseAutomaticRetry(t *testing.T) {
 			}
 		}
 	}
+}
+
+// personalCollectionOperationIDs is every profile-scoped operation the
+// personal-collections section registers (stage A).
+var personalCollectionOperationIDs = []string{
+	"addCollectionItem",
+	"clearCollectionSortPreference",
+	"createCollection",
+	"createCollectionGroup",
+	"deleteCollection",
+	"deleteCollectionGroup",
+	"deleteCollectionImage",
+	"getCollection",
+	"getCollectionCapabilities",
+	"getCollectionGroup",
+	"getCollectionGroupsOrder",
+	"getCollectionItems",
+	"getCollectionItemsOrder",
+	"getCollectionOrder",
+	"getLibraryCollectionItems",
+	"importMDBListCollection",
+	"importTMDBCollection",
+	"importTraktCollection",
+	"listCollectionTemplates",
+	"listCollections",
+	"listServerCollections",
+	"listTopMDBListLists",
+	"previewCollection",
+	"removeCollectionItem",
+	"reorderCollectionGroups",
+	"reorderCollectionItems",
+	"reorderCollections",
+	"searchMDBListLists",
+	"setCollectionSortPreference",
+	"syncCollection",
+	"updateCollection",
+	"updateCollectionGroup",
+	"uploadCollectionPoster",
 }

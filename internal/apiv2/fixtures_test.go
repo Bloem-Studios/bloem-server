@@ -16,7 +16,10 @@ import (
 
 	chimw "github.com/go-chi/chi/v5/middleware"
 
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	catalogsvc "github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/routeinventory"
+	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
 var updateFixtures = flag.Bool("update-apiv2-fixtures", false, "rewrite contracts/api/v2/fixtures from the real v2 router")
@@ -1148,6 +1151,12 @@ func fixtureCases() []fixtureCase {
 			method:   http.MethodDelete, path: "/api/v2/probe/guarded/a",
 			headers: map[string]string{"If-Match": RenderETag(guardedProbeScope, "a", 1).String()},
 			status:  http.StatusNoContent, assertHeaders: []string{"Cache-Control"}},
+		{name: "list_collections_ok", operationID: "listCollections", scenario: "Visible personal collections and account groups.", method: http.MethodGet, path: "/api/v2/collections", headers: viewer, status: 200, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/PersonalCollectionCollection"},
+		{name: "get_collection_ok", operationID: "getCollection", scenario: "Canonical collection editor and strong validator.", method: http.MethodGet, path: "/api/v2/collections/c1", headers: viewer, status: 200, assertHeaders: []string{"Content-Type", "ETag"}, schema: "#/components/schemas/PersonalCollection"},
+		{name: "create_collection_ok", operationID: "createCollection", scenario: "A non-retryable manual collection creation.", method: http.MethodPost, path: "/api/v2/collections", body: `{"name":"Rainy days","collection_type":"manual"}`, headers: viewer, status: 201, assertHeaders: []string{"Content-Type", "Location"}, schema: "#/components/schemas/PersonalCollection"},
+		{name: "collection_order_precondition_required", operationID: "reorderCollections", scenario: "Ordering needs the validator observed before the edit.", method: http.MethodPut, path: "/api/v2/collections/order", body: `{"ordered_ids":["c1"]}`, headers: viewer, status: 428, assertHeaders: []string{"Content-Type"}, schema: problem},
+		{name: "collection_group_stale", operationID: "updateCollectionGroup", scenario: "A stale group edit leaves the resource unchanged and supplies the current validator.", method: http.MethodPatch, path: "/api/v2/collections/groups/g1", body: `{"name":"Winter"}`, headers: with(viewer, "If-Match", `"stale"`), status: 412, assertHeaders: []string{"Content-Type", "ETag"}, schema: problem},
+		{name: "get_collection_items_ok", operationID: "getCollectionItems", scenario: "A bounded manual membership page with its continuation envelope.", method: http.MethodGet, path: "/api/v2/collections/c1/items", headers: viewer, status: 200, assertHeaders: []string{"Content-Type"}, schema: "#/components/schemas/CollectionPersonalCollectionItem"},
 	}
 }
 
@@ -1173,6 +1182,8 @@ func profileOwner() map[string]string { return with(bearer(memberToken), "X-Prof
 // produced by the gate translation the production limiter goes through.
 func fixtureDeps() Dependencies {
 	deps := pilotDeps(&fakeProgress{entries: progressRows()}, nil)
+	deps.PersonalCollections = &fixturePersonalCollections{fakePersonalCollections: fakePersonalCollections{list: handlers.PersonalCollectionListView{Collections: []handlers.PersonalCollectionView{fixtureCollectionView()}, Groups: []handlers.CollectionGroupView{}}}}
+	deps.CollectionImports = &fakeCollectionImports{configured: true}
 	deps, _ = withLibraryAdmin(deps)
 	deps.LibrarySections = &fakeLibraryViews{}
 	deps.LibraryCollections = &fakeLibraryViews{}
@@ -1386,4 +1397,10 @@ func TestContractFixturesAreDeterministic(t *testing.T) {
 			t.Errorf("%s differs between generations", name)
 		}
 	}
+}
+
+type fixturePersonalCollections struct{ fakePersonalCollections }
+
+func (f *fixturePersonalCollections) PersonalCollectionItemsPage(context.Context, int, string, string, catalogsvc.AccessFilter, userstore.CollectionItemsPageOptions, *catalogsvc.QueryCursor) (handlers.PersonalCollectionPageView, error) {
+	return handlers.PersonalCollectionPageView{Items: []handlers.PersonalCollectionItemView{{CollectionID: "c1", MediaItemID: "movie:heat-1995", Position: 0, AddedAt: "2026-01-02T03:04:05.000Z"}}, Revision: 1}, nil
 }

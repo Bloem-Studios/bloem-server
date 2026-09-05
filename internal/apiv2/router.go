@@ -161,6 +161,12 @@ type Dependencies struct {
 	// SectionFlags reads the profile-facing sections settings
 	// (*handlers.SectionSettingsHandler).
 	SectionFlags SectionFlagService
+	// PersonalCollections manages a profile's own collections and groups
+	// (*handlers.CollectionHandler).
+	PersonalCollections PersonalCollectionService
+	// CollectionImports creates synced collections from external lists and
+	// searches MDBList (*handlers.UserCollectionImportHandler).
+	CollectionImports CollectionImportService
 
 	// bodyReadTimeout overrides BodyReadTimeout; tests use it to exercise the
 	// 408 boundary without waiting for the production deadline.

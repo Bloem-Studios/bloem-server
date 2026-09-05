@@ -499,6 +499,7 @@ func registerAll(reg *Registry) {
 	registerHistory(reg)
 	registerLibraries(reg)
 	registerLibraryViews(reg)
+	registerPersonalCollections(reg)
 	registerProfileSections(reg)
 	registerProfiles(reg)
 	registerProgress(reg)

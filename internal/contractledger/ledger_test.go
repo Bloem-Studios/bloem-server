@@ -1175,7 +1175,9 @@ func TestRetrySafetyMismatchesFire(t *testing.T) {
 // with the reason. It is empty today; the reconcile test refuses an unmapped
 // mutation that is not listed here, the same rule guardedWithoutLegacyRow
 // applies to concurrency.
-var mutationWithoutLegacyRow = map[string]string{}
+var mutationWithoutLegacyRow = map[string]string{
+	"uploadCollectionPoster": "V2 separates poster upload from legacy multipart collection create and update; their legacy rows remain mapped separately.",
+}
 
 // retrySafetyMismatches compares every operation the v2 registry declares
 // against the legacy rows mapped to it through v2.operation_id. exempt names

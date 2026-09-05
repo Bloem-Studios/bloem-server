@@ -1,4 +1,3 @@
-import { api } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
 import type {
   BrowseResponse,
@@ -7,7 +6,11 @@ import type {
   LibraryTabResponse,
   ServerVisibleUserCollection,
 } from "@/api/types";
-import { libraryCollectionTabFromV2, userCollectionFromV2 } from "@/api/v2/catalog";
+import {
+  catalogItemFromV2,
+  libraryCollectionTabFromV2,
+  userCollectionFromV2,
+} from "@/api/v2/catalog";
 import { v2 } from "@/api/v2/request";
 import { libraryCollectionKeys } from "./keys";
 
@@ -56,14 +59,21 @@ export function getLibraryCollectionList(
   return resp?.collections ?? [];
 }
 
-// Collection item reads stay on v1 until v2 provides stable continuation.
+// Pinned rows are bounded teasers; the title opens the full catalog collection.
 export function useLibraryCollectionItems(libraryId: number, collectionId: string | null) {
   return useQuery({
     queryKey: libraryCollectionKeys.items(libraryId, collectionId ?? ""),
     queryFn: ({ signal }) =>
-      api<BrowseResponse>(
-        `/library/${libraryId}/collections/${encodeURIComponent(collectionId ?? "")}/items`,
-        { signal },
+      v2("GET /api/v2/library/{id}/collections/{collection_id}/items", {
+        path: { id: String(libraryId), collection_id: collectionId ?? "" },
+        query: { limit: 50 },
+        signal,
+      }).then(
+        (data): BrowseResponse => ({
+          items: data.items.map(catalogItemFromV2),
+          total: data.items.length,
+          has_more: data.page?.has_more ?? false,
+        }),
       ),
     enabled:
       Number.isFinite(libraryId) &&

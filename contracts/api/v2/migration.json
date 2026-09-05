@@ -22557,13 +22557,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/collections",
+        "operation_id": "listCollections"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -22639,19 +22639,19 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "unique_constraint",
-      "retry_safety_note": "Server mints the id in v1; the v2 port takes a client-selected id so a retry resolves to the existing row.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/collections",
+        "operation_id": "createCollection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -22706,13 +22706,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/collections/capabilities",
+        "operation_id": "getCollectionCapabilities"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -22783,18 +22783,19 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "unique_constraint",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/collections/groups",
+        "operation_id": "createCollectionGroup"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2.",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -22863,19 +22864,20 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/collections/groups/order",
+        "operation_id": "reorderCollectionGroups"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2. Canonical editor/order GET supplies a strong ETag; the mutation requires If-Match and compares the version inside the storage transaction. First-party clients retain their observed tag and preserve drafts on 412.",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -22944,19 +22946,20 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/collections/groups/{id}",
+        "operation_id": "deleteCollectionGroup"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2. Canonical editor/order GET supplies a strong ETag; the mutation requires If-Match and compares the version inside the storage transaction. First-party clients retain their observed tag and preserve drafts on 412.",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -23027,19 +23030,20 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/collections/groups/{id}",
+        "operation_id": "updateCollectionGroup"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2. Canonical editor/order GET supplies a strong ETag; the mutation requires If-Match and compares the version inside the storage transaction. First-party clients retain their observed tag and preserve drafts on 412.",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -23091,19 +23095,19 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "unique_constraint",
-      "retry_safety_note": "Server mints the id in v1; the v2 port takes a client-selected id so a retry resolves to the existing row.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/collections/import/mdblist",
+        "operation_id": "importMDBListCollection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil; userImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -23159,13 +23163,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/collections/import/mdblist/search",
+        "operation_id": "searchMDBListLists"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil; userImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -23221,13 +23225,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/collections/import/mdblist/top",
+        "operation_id": "listTopMDBListLists"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil; userImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -23279,19 +23283,19 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "unique_constraint",
-      "retry_safety_note": "Server mints the id in v1; the v2 port takes a client-selected id so a retry resolves to the existing row.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/collections/import/tmdb",
+        "operation_id": "importTMDBCollection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil; userImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -23343,19 +23347,19 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "unique_constraint",
-      "retry_safety_note": "Server mints the id in v1; the v2 port takes a client-selected id so a retry resolves to the existing row.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/collections/import/trakt",
+        "operation_id": "importTraktCollection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil; userImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -23424,19 +23428,20 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/collections/order",
+        "operation_id": "reorderCollections"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2. Canonical editor/order GET supplies a strong ETag; the mutation requires If-Match and compares the version inside the storage transaction. First-party clients retain their observed tag and preserve drafts on 412.",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -23488,18 +23493,18 @@
       "release_flow": "browse_search",
       "tier": 1,
       "retry_safety": "natural_idempotent",
-      "retry_safety_note": "Read-only query carried on POST for body size; writes nothing, so a retry is a plain re-read.",
+      "retry_safety_note": "Read-only query preview has no mutation effects.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/collections/preview",
+        "operation_id": "previewCollection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -23555,13 +23560,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/collections/server",
+        "operation_id": "listServerCollections"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -23602,18 +23607,19 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/collections/sort-preference",
+        "operation_id": "clearCollectionSortPreference"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: a per-profile preference, not a collection definition."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2.",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -23662,18 +23668,19 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/collections/sort-preference",
+        "operation_id": "setCollectionSortPreference"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: a per-profile preference, not a collection definition."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2.",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -23729,13 +23736,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/collections/templates",
+        "operation_id": "listCollectionTemplates"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil; userImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -23810,18 +23817,18 @@
       "release_flow": "browse_search",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "DEFECT: collection deletion removes its database row, items and sort preferences but never deletes uploaded poster variants; no collection-image orphan reconciler resumes cleanup. The personal-collections section must retain the image prefix and perform durable cleanup before clients may retry.",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/collections/{id}",
+        "operation_id": "deleteCollection"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2. Canonical editor/order GET supplies a strong ETag; the mutation requires If-Match and compares the version inside the storage transaction. First-party clients retain their observed tag and preserve drafts on 412.",
       "concurrency": "if_match"
     },
     {
@@ -23900,19 +23907,20 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/collections/{id}",
+        "operation_id": "updateCollection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2. Canonical editor/order GET supplies a strong ETag; the mutation requires If-Match and compares the version inside the storage transaction. First-party clients retain their observed tag and preserve drafts on 412.",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -23968,14 +23976,14 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/collections/{id}/image",
+        "operation_id": "deleteCollectionImage"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: image removal, not the collection definition; the definition PUT/DELETE is guarded.",
-      "retry_safety_note": "Stale retry hazard: a delayed retry deletes the deterministic variants and clears the poster fields of an image uploaded after the first success. The collections section adds Guarded/If-Match on collection artwork before clients may retry."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2.",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -24047,13 +24055,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/collections/{id}/items",
+        "operation_id": "getCollectionItems"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -24104,19 +24112,20 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/collections/{id}/items/order",
+        "operation_id": "reorderCollectionItems"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2. Canonical editor/order GET supplies a strong ETag; the mutation requires If-Match and compares the version inside the storage transaction. First-party clients retain their observed tag and preserve drafts on 412.",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -24182,14 +24191,14 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/collections/{id}/items/{item_id}",
+        "operation_id": "removeCollectionItem"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: idempotent membership add/remove, which the contract keeps on domain semantics.",
-      "retry_safety_note": "Stale retry hazard: a delayed retry removes a membership the user re-added after the first success. The collections section adds a durable membership generation or ordering rule before clients may retry."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2.",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -24253,14 +24262,14 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/collections/{id}/items/{item_id}",
+        "operation_id": "addCollectionItem"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; collectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: idempotent membership add/remove, which the contract keeps on domain semantics.",
-      "retry_safety_note": "Stale retry hazard: a delayed retry resurrects a membership the user removed after the first success. The collections section adds a durable membership generation or ordering rule before clients may retry."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2.",
+      "retry_safety_note": "No durable request identity or mutation generation is implemented. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -24312,19 +24321,19 @@
       "section": "personal-collections",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "coalescing",
-      "retry_safety_note": "DEFECT: v1 answers 409 sync_in_flight instead of the active run, and the gate is a process-local sync.Map. The v2 port must return the active run from a cluster-visible record.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "The scheduler gate is process-local and sync does not return a cluster-visible active run. No coalescing or durable retry guarantee is advertised; clients must not retry automatically.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/collections/{id}/sync",
+        "operation_id": "syncCollection"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; collectionHandler != nil; userImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Personal collection v2 operation uses the shared profile-scoped service. Storage capabilities distinguish unsupported SQLite imports, groups, artwork and reorder. Native Apple and Android adoption remains follow-up; bundled web consumes v2."
     },
     {
       "listener": "api",
@@ -31115,13 +31124,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/library/{id}/collections/{collection_id}/items",
+        "operation_id": "getLibraryCollectionItems"
       },
-      "notes": "Deferred from the recovered catalog-libraries section: mutable curated and smart collection orders need stable keyset continuation or an atomic result revision before v2 paging can be exposed. The web collection-item read remains on v1. Collection listing and other library reads are ported separately."
+      "notes": "Stable manual tuple continuation uses atomic durable collection revisions; smart queries use QueryExecutor tuple continuation. Every request checks viewer access; changed collection definitions or membership require restart."
     },
     {
       "listener": "api",

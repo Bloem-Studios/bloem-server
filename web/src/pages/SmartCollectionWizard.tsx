@@ -36,6 +36,7 @@ import CollectionAccessEditor from "@/components/collections/CollectionAccessEdi
 import { useCatalogWindow } from "@/hooks/queries/catalog";
 import {
   useCreateCollection,
+  useCollectionCapabilities,
   useDeleteUserCollectionImage,
   useUpdateCollection,
 } from "@/hooks/queries/collections";
@@ -61,6 +62,7 @@ type WizardStep = 1 | 2;
 
 type UserModeProps = {
   mode: "user";
+  etag?: string;
   collection: Collection | null;
   onClose: () => void;
 };
@@ -392,6 +394,7 @@ function Step2UserMetadata({
 }: Step2BaseProps & { wizard: UserModeProps }) {
   const { profile } = useCurrentProfile();
   const { data: profiles = [] } = useProfiles();
+  const { data: capabilities } = useCollectionCapabilities();
   const createMutation = useCreateCollection();
   const updateMutation = useUpdateCollection();
   const deletePosterMutation = useDeleteUserCollectionImage();
@@ -408,7 +411,7 @@ function Step2UserMetadata({
         poster_source_url: trimmedSource || undefined,
       };
       updateMutation.mutate(
-        { id: collection.id, body, poster: posterFile },
+        { id: collection.id, etag: wizard.etag ?? "", body, poster: posterFile },
         { onSuccess: wizard.onClose },
       );
     } else {
@@ -456,22 +459,24 @@ function Step2UserMetadata({
           />
         </div>
 
-        <div className="space-y-3">
-          <h2 className="text-base font-semibold">Poster</h2>
-          <ImageUploadField
-            label="Poster"
-            currentUrl={collection?.poster_url}
-            file={posterFile}
-            onFileChange={onPosterFileChange}
-            sourceUrl={posterSourceUrl}
-            onSourceUrlChange={onPosterSourceUrlChange}
-            onDelete={
-              collection?.poster_url
-                ? () => deletePosterMutation.mutate({ id: collection.id, type: "poster" })
-                : undefined
-            }
-          />
-        </div>
+        {capabilities?.artwork && !readOnly && (
+          <div className="space-y-3">
+            <h2 className="text-base font-semibold">Poster</h2>
+            <ImageUploadField
+              label="Poster"
+              currentUrl={collection?.poster_url}
+              file={posterFile}
+              onFileChange={onPosterFileChange}
+              sourceUrl={posterSourceUrl}
+              onSourceUrlChange={onPosterSourceUrlChange}
+              onDelete={
+                collection?.poster_url
+                  ? () => deletePosterMutation.mutate({ id: collection.id, type: "poster" })
+                  : undefined
+              }
+            />
+          </div>
+        )}
       </div>
 
       <SaveBar

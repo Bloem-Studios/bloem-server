@@ -164,7 +164,7 @@ CREATE TRIGGER user_personal_collection_profiles_advance_revision AFTER INSERT O
     FOR EACH ROW EXECUTE FUNCTION user_personal_collection_profiles_advance_revision();
 
 CREATE INDEX library_collection_items_continuation_idx ON library_collection_items (collection_id, (COALESCE(position, 0)), media_item_id);
-CREATE INDEX user_collection_items_continuation_idx ON user_personal_collection_items (user_id, collection_id, (COALESCE(position, 0)), media_item_id) WHERE sub_item_id = ''; 
+CREATE INDEX user_collection_items_continuation_idx ON user_personal_collection_items (user_id, collection_id, (COALESCE(position, 0)), media_item_id) WHERE sub_item_id = '';
 
 -- +goose Down
 DROP INDEX library_collection_items_continuation_idx;

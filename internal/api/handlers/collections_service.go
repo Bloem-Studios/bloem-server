@@ -106,6 +106,11 @@ func (h *CollectionHandler) CreatePersonalCollection(ctx context.Context, cmd Pe
 		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
 	}
 
+	if cmd.PosterFile != nil || req.PosterSourceURL != "" {
+		if err := collectionFeatureError(store, "artwork"); err != nil {
+			return none, err
+		}
+	}
 	queryDefinitionJSON := defaultJSON(req.QueryDefinition)
 	collectionType := firstNonEmptyCollection(req.CollectionType, "manual")
 	if collectionType == "smart" {
@@ -162,7 +167,13 @@ func (h *CollectionHandler) ReorderPersonalCollections(ctx context.Context, user
 	if err != nil {
 		return apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
 	}
-	if err := store.ReorderCollections(ctx, profileID, groupID, orderedIDs); err != nil {
+	if err := collectionFeatureError(store, "item_reorder"); err != nil {
+		return err
+	}
+	if err := reorderCollectionsWithRevision(ctx, store, profileID, groupID, orderedIDs); err != nil {
+		if errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
+			return err
+		}
 		if errors.Is(err, collectionutil.ErrOrderedIDsMismatch) {
 			return fieldError("ordered_ids", "ordered_ids must include every visible collection in the group exactly once")
 		}
@@ -186,6 +197,9 @@ func (h *CollectionHandler) CreateCollectionGroup(ctx context.Context, userID in
 	store, err := h.storeProvider.ForUser(ctx, userID)
 	if err != nil {
 		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
+	}
+	if err := collectionFeatureError(store, "groups"); err != nil {
+		return CollectionGroupView{}, err
 	}
 	group, err := store.CreateCollectionGroup(ctx, req.Name, req.Slug, userstore.GroupSortMode(req.DefaultSortMode))
 	if err != nil {
@@ -215,13 +229,19 @@ func (h *CollectionHandler) UpdateCollectionGroup(ctx context.Context, userID in
 	if err != nil {
 		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
 	}
+	if err := collectionFeatureError(store, "groups"); err != nil {
+		return CollectionGroupView{}, err
+	}
 	var sortMode *userstore.GroupSortMode
 	if req.DefaultSortMode != nil {
 		mode := userstore.GroupSortMode(*req.DefaultSortMode)
 		sortMode = &mode
 	}
-	group, err := store.UpdateCollectionGroup(ctx, id, req.Name, req.Slug, sortMode)
+	group, err := updateCollectionGroupWithRevision(ctx, store, id, req.Name, req.Slug, sortMode)
 	if err != nil {
+		if errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
+			return none, err
+		}
 		return none, apiError(http.StatusBadRequest, policyErrorBadRequest, err.Error())
 	}
 	return collectionGroupView(*group), nil
@@ -236,7 +256,13 @@ func (h *CollectionHandler) DeleteCollectionGroup(ctx context.Context, userID in
 	if err != nil {
 		return apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
 	}
-	if err := store.DeleteCollectionGroup(ctx, id); err != nil {
+	if err := collectionFeatureError(store, "groups"); err != nil {
+		return err
+	}
+	if err := deleteCollectionGroupWithRevision(ctx, store, id); err != nil {
+		if errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
+			return err
+		}
 		return apiError(http.StatusBadRequest, policyErrorBadRequest, err.Error())
 	}
 	return nil
@@ -248,7 +274,13 @@ func (h *CollectionHandler) ReorderCollectionGroups(ctx context.Context, userID 
 	if err != nil {
 		return apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
 	}
-	if err := store.ReorderCollectionGroups(ctx, orderedIDs); err != nil {
+	if err := collectionFeatureError(store, "groups"); err != nil {
+		return err
+	}
+	if err := reorderCollectionGroupsWithRevision(ctx, store, orderedIDs); err != nil {
+		if errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
+			return err
+		}
 		return apiError(http.StatusBadRequest, policyErrorBadRequest, err.Error())
 	}
 	return nil
@@ -278,4 +310,39 @@ func posterFileReader(r *http.Request) func() ([]byte, error) {
 		return nil
 	}
 	return func() ([]byte, error) { return readCollectionImageMultipart(r, "poster") }
+}
+
+// PersonalCollectionFeatures describes the acting account's storage support.
+func (h *CollectionHandler) PersonalCollectionFeatures(ctx context.Context, userID int) (userstore.CollectionFeatures, error) {
+	store, err := h.storeProvider.ForUser(ctx, userID)
+	if err != nil {
+		return userstore.CollectionFeatures{}, apiError(500, "internal_error", "Failed to access user store")
+	}
+	if features, ok := store.(userstore.CollectionFeatureProvider); ok {
+		return features.CollectionFeatures(), nil
+	}
+	return userstore.CollectionFeatures{}, nil
+}
+
+func collectionFeatureError(store userstore.UserStore, feature string) error {
+	provider, ok := store.(userstore.CollectionFeatureProvider)
+	if !ok {
+		return nil
+	}
+	f := provider.CollectionFeatures()
+	supported := false
+	switch feature {
+	case "groups":
+		supported = f.Groups
+	case "imports":
+		supported = f.Imports
+	case "artwork":
+		supported = f.Artwork
+	case "item_reorder":
+		supported = f.ItemReorder
+	}
+	if !supported {
+		return apiError(http.StatusNotImplemented, "unsupported", "The acting account does not support collection "+feature)
+	}
+	return nil
 }

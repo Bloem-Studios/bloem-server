@@ -447,6 +447,36 @@ BEGIN
     ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
 END;
 
+CREATE TABLE IF NOT EXISTS personal_collection_order_revision (
+ singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+ revision INTEGER NOT NULL DEFAULT 1
+);
+INSERT OR IGNORE INTO personal_collection_order_revision VALUES(1,1);
+CREATE TRIGGER IF NOT EXISTS personal_collections_order_revision_insert AFTER INSERT ON personal_collections
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collections_order_revision_update AFTER UPDATE ON personal_collections
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collections_order_revision_delete AFTER DELETE ON personal_collections
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_profiles_order_revision_insert AFTER INSERT ON personal_collection_profiles
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_profiles_order_revision_update AFTER UPDATE ON personal_collection_profiles
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_profiles_order_revision_delete AFTER DELETE ON personal_collection_profiles
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+
 `
 
 // InitSchema creates all tables in the given SQLite database.

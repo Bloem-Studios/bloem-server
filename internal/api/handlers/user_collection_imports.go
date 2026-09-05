@@ -231,6 +231,9 @@ func (h *UserCollectionImportHandler) createImportedCollection(
 	if err != nil {
 		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
 	}
+	if err := collectionFeatureError(store, "imports"); err != nil {
+		return UserImportView{}, err
+	}
 
 	schedule, err := usercollections.ResolveSyncSchedule(shared.SyncSchedule)
 	if err != nil {
@@ -381,40 +384,9 @@ func (h *UserCollectionImportHandler) presignCollectionPoster(ctx context.Contex
 }
 
 func (h *UserCollectionImportHandler) HandleSync(w http.ResponseWriter, r *http.Request) {
-	collectionID := chi.URLParam(r, "id")
-	if collectionID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Collection ID is required")
-		return
-	}
-	userID := apimw.GetUserID(r.Context())
-	profileID := apimw.GetProfileID(r.Context())
-
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
+	result, err := h.SyncPersonalCollection(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "id"))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
-		return
-	}
-	collection, err := store.GetCollection(r.Context(), collectionID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "not_found", "Collection not found")
-		return
-	}
-	if collection.CreatorProfileID != profileID {
-		writeError(w, http.StatusForbidden, "forbidden", "Only the creator can sync this collection")
-		return
-	}
-	if h.scheduler != nil && h.scheduler.IsInFlight(collectionID) {
-		writeError(w, http.StatusConflict, "sync_in_flight", "A sync is already running for this collection")
-		return
-	}
-
-	result, _, err := h.sync.RunSync(r.Context(), store, collection)
-	if err != nil {
-		if errors.Is(err, usercollections.ErrSyncUnsupported) {
-			writeError(w, http.StatusBadRequest, "bad_request", "This collection does not support sync")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", fmt.Sprintf("Sync failed: %v", err))
+		writeAPIError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -495,4 +467,44 @@ func validateOptionalLibraryIDs(libraryIDs []int) error {
 		}
 	}
 	return nil
+}
+
+func (h *UserCollectionImportHandler) SyncPersonalCollection(ctx context.Context, userID int, profileID, collectionID string) (*usercollections.SyncResult, error) {
+	if h.sync == nil {
+		return nil, apiError(http.StatusServiceUnavailable, "unavailable", "Collection sync is unavailable")
+	}
+	if collectionID == "" {
+		return nil, apiError(http.StatusBadRequest, "bad_request", "Collection ID is required")
+	}
+
+	store, err := h.storeProvider.ForUser(ctx, userID)
+	if err != nil {
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
+	}
+	if err := collectionFeatureError(store, "imports"); err != nil {
+		return nil, err
+	}
+	collection, err := store.GetCollection(ctx, collectionID)
+	if err != nil {
+		return nil, apiError(http.StatusNotFound, "not_found", "Collection not found")
+	}
+	if collection.CreatorProfileID != profileID {
+		return nil, apiError(http.StatusForbidden, "forbidden", "Only the creator can sync this collection")
+	}
+	if h.scheduler != nil && h.scheduler.IsInFlight(collectionID) {
+		return nil, apiError(http.StatusConflict, "sync_in_flight", "A sync is already running for this collection")
+	}
+
+	result, _, err := h.sync.RunSync(ctx, store, collection)
+	if err != nil {
+		if errors.Is(err, usercollections.ErrSyncUnsupported) {
+			return nil, apiError(http.StatusBadRequest, "bad_request", "This collection does not support sync")
+		}
+		return nil, apiError(http.StatusInternalServerError, "internal_error", fmt.Sprintf("Sync failed: %v", err))
+	}
+	return result, nil
+}
+
+func (h *UserCollectionImportHandler) CollectionTemplates() templates.Catalog {
+	return h.registry.Catalog()
 }

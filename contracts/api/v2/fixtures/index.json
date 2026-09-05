@@ -181,6 +181,50 @@
       "body_file": "check_library_mount_ok.json"
     },
     {
+      "name": "collection_group_stale",
+      "operation_id": "updateCollectionGroup",
+      "scenario": "A stale group edit leaves the resource unchanged and supplies the current validator.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/collections/groups/g1",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "If-Match": "\"stale\"",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"name\":\"Winter\"}"
+      },
+      "expected_status": 412,
+      "response_headers": {
+        "Content-Type": "application/problem+json",
+        "ETag": "\"851a440b070a75a6569aa59c.3r49ydbqg4fzt\""
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "collection_group_stale.json"
+    },
+    {
+      "name": "collection_order_precondition_required",
+      "operation_id": "reorderCollections",
+      "scenario": "Ordering needs the validator observed before the edit.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/collections/order",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"ordered_ids\":[\"c1\"]}"
+      },
+      "expected_status": 428,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "collection_order_precondition_required.json"
+    },
+    {
       "name": "confirm_empty_root_cleanup_ok",
       "operation_id": "confirmEmptyRootCleanup",
       "scenario": "The next scan of the library may clean up an empty root once.",
@@ -219,6 +263,28 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "confirm_empty_root_cleanup_permission_denied.json"
+    },
+    {
+      "name": "create_collection_ok",
+      "operation_id": "createCollection",
+      "scenario": "A non-retryable manual collection creation.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/collections",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"name\":\"Rainy days\",\"collection_type\":\"manual\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "Location": "/api/v2/collections/c1"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/PersonalCollection",
+      "body_file": "create_collection_ok.json"
     },
     {
       "name": "create_library_ok",
@@ -962,6 +1028,47 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "get_calendar_window_too_long.json"
+    },
+    {
+      "name": "get_collection_items_ok",
+      "operation_id": "getCollectionItems",
+      "scenario": "A bounded manual membership page with its continuation envelope.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/collections/c1/items",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionPersonalCollectionItem",
+      "body_file": "get_collection_items_ok.json"
+    },
+    {
+      "name": "get_collection_ok",
+      "operation_id": "getCollection",
+      "scenario": "Canonical collection editor and strong validator.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/collections/c1",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"0c504e617c17fd3b12546443.2liy2jaopuymu\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/PersonalCollection",
+      "body_file": "get_collection_ok.json"
     },
     {
       "name": "get_current_user_ok",
@@ -2383,6 +2490,27 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "list_because_watched_profile_header_required.json"
+    },
+    {
+      "name": "list_collections_ok",
+      "operation_id": "listCollections",
+      "scenario": "Visible personal collections and account groups.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/collections",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/PersonalCollectionCollection",
+      "body_file": "list_collections_ok.json"
     },
     {
       "name": "list_effective_settings_authentication_required",

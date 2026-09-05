@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { GripVertical, Loader2, Plus, Search, Trash2 } from "lucide-react";
 
@@ -13,6 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   useAddItemToCollection,
   useCollectionItems,
+  useCollectionCapabilities,
+  useCollectionItemOrderSnapshot,
   useRemoveCollectionItem,
   useReorderCollectionItems,
 } from "@/hooks/queries/collections";
@@ -144,8 +146,28 @@ export function ManualCollectionItemsEditor({
   readOnly = false,
   source = "user",
 }: ManualCollectionItemsEditorProps) {
-  const { data, isLoading } = useCollectionItems(collectionId);
-  const items = useMemo(() => data ?? [], [data]);
+  const [page, setPage] = useState({ collectionId, cursor: "" });
+  const cursor = page.collectionId === collectionId ? page.cursor : "";
+  const { data, isLoading, error, refetch } = useCollectionItems(collectionId, cursor);
+  const items = useMemo(() => data?.items ?? [], [data]);
+  const { data: capabilities } = useCollectionCapabilities();
+  const { data: orderSnapshot } = useCollectionItemOrderSnapshot(
+    collectionId,
+    capabilities?.item_reorder === true,
+  );
+  const dragOrder = useRef<typeof orderSnapshot>(undefined);
+  const sameOrder =
+    !!orderSnapshot &&
+    orderSnapshot.ordered_ids.length === items.length &&
+    orderSnapshot.ordered_ids.every((id, index) => id === items[index]?.media_item_id);
+  const canReorder =
+    !readOnly &&
+    capabilities?.item_reorder === true &&
+    sameOrder &&
+    !orderSnapshot?.has_more &&
+    !cursor &&
+    data?.page?.has_more === false;
+  const restart = () => setPage({ collectionId, cursor: "" });
   const reorderMutation = useReorderCollectionItems(collectionId);
   const removeMutation = useRemoveCollectionItem(collectionId);
   const existingIds = useMemo(() => new Set(items.map((i) => i.media_item_id)), [items]);
@@ -153,7 +175,10 @@ export function ManualCollectionItemsEditor({
   const { sensors, collisionDetection, handleDragEnd } = useSortableList(
     items,
     (item) => item.media_item_id,
-    (orderedIds) => reorderMutation.mutate(orderedIds),
+    (orderedIds) => {
+      if (canReorder && dragOrder.current)
+        reorderMutation.mutate({ orderedIds, etag: dragOrder.current.etag });
+    },
   );
 
   if (isLoading) {
@@ -171,7 +196,20 @@ export function ManualCollectionItemsEditor({
       {!readOnly && (
         <AddItemPanel collectionId={collectionId} source={source} existingIds={existingIds} />
       )}
-      {items.length === 0 ? (
+      {error ? (
+        <div role="alert" className="space-y-2 text-sm">
+          <p>{error instanceof Error ? error.message : "Could not load collection items."}</p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              restart();
+              void refetch();
+            }}
+          >
+            Reload from start
+          </Button>
+        </div>
+      ) : items.length === 0 ? (
         <div className="text-muted-foreground rounded-lg border border-dashed px-4 py-5 text-sm">
           No items yet. Search above to add titles.
         </div>
@@ -179,7 +217,10 @@ export function ManualCollectionItemsEditor({
         <DndContext
           sensors={sensors}
           collisionDetection={collisionDetection}
-          onDragEnd={readOnly ? undefined : handleDragEnd}
+          onDragStart={() => {
+            dragOrder.current = orderSnapshot;
+          }}
+          onDragEnd={canReorder ? handleDragEnd : undefined}
         >
           <SortableContext
             items={items.map((item) => item.media_item_id)}
@@ -192,12 +233,35 @@ export function ManualCollectionItemsEditor({
                   item={item}
                   index={index}
                   readOnly={readOnly}
-                  onRemove={() => removeMutation.mutate(item.media_item_id)}
+                  canReorder={canReorder}
+                  onRemove={() => removeMutation.mutate(item.media_item_id, { onSuccess: restart })}
                 />
               ))}
             </div>
           </SortableContext>
         </DndContext>
+      )}
+      {(cursor || data?.page?.has_more) && (
+        <div className="space-y-2">
+          {!readOnly && (
+            <p className="text-muted-foreground text-sm">
+              Showing up to 200 items. Reordering is available when the complete collection fits on
+              one page.
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" disabled={!cursor} onClick={restart}>
+              First page
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!data?.page?.has_more || !data.page?.next_cursor}
+              onClick={() => setPage({ collectionId, cursor: data?.page?.next_cursor ?? "" })}
+            >
+              Next page
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -207,16 +271,18 @@ function SortableItemRow({
   item,
   index,
   readOnly,
+  canReorder,
   onRemove,
 }: {
   item: CollectionItem;
   index: number;
   readOnly: boolean;
+  canReorder: boolean;
   onRemove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.media_item_id,
-    disabled: readOnly,
+    disabled: !canReorder,
   });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -230,7 +296,7 @@ function SortableItemRow({
       style={style}
       className="surface-panel-subtle flex items-center gap-3 rounded-xl px-3 py-2"
     >
-      {!readOnly ? (
+      {canReorder ? (
         <button
           type="button"
           aria-label={`Drag item ${item.media_item_id}`}

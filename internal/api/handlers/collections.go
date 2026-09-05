@@ -14,7 +14,6 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/s3client"
-	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -23,6 +22,7 @@ type CollectionHandler struct {
 	storeProvider      userstore.UserStoreProvider
 	LibraryCollections collectionPreferenceLibraryReader
 	Executor           *catalog.QueryExecutor
+	ItemReader         collectionMutationItemReader
 	S3GP               *s3client.Client
 	HTTPClient         *http.Client
 	PresignTTL         time.Duration
@@ -47,7 +47,7 @@ type PersonalCollectionCreateRequest struct {
 	PosterSourceURL            string          `json:"poster_source_url"`
 }
 
-type updateCollectionRequest struct {
+type PersonalCollectionUpdateRequest struct {
 	Name                       *string                `json:"name"`
 	Description                *string                `json:"description"`
 	IsShared                   *bool                  `json:"is_shared"`
@@ -146,28 +146,28 @@ type reorderCollectionGroupsRequest struct {
 	OrderedIDs []string `json:"ordered_ids"`
 }
 
-type collectionItemResponse struct {
+type PersonalCollectionItemView struct {
 	CollectionID string `json:"collection_id"`
 	MediaItemID  string `json:"media_item_id"`
 	Position     int    `json:"position"`
 	AddedAt      string `json:"added_at"`
 }
 
-type collectionItemsListResponse struct {
-	Items []collectionItemResponse `json:"items"`
+type PersonalCollectionItemsView struct {
+	Items []PersonalCollectionItemView `json:"items"`
 }
 
-type previewCollectionRequest struct {
+type PersonalCollectionPreviewRequest struct {
 	QueryDefinition json.RawMessage `json:"query_definition"`
 	Limit           int             `json:"limit"`
 }
 
-type previewCollectionResponse struct {
-	Items []previewCollectionItemResponse `json:"items"`
-	Total int                             `json:"total"`
+type PersonalCollectionPreviewView struct {
+	Items []PersonalCollectionPreviewItemView `json:"items"`
+	Total int                                 `json:"total"`
 }
 
-type previewCollectionItemResponse struct {
+type PersonalCollectionPreviewItemView struct {
 	ContentID string `json:"content_id"`
 	Title     string `json:"title"`
 	Type      string `json:"type"`
@@ -212,308 +212,62 @@ func (h *CollectionHandler) HandleCreateCollection(w http.ResponseWriter, r *htt
 
 // HandleUpdateCollection handles PUT /collections/{id}.
 func (h *CollectionHandler) HandleUpdateCollection(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	collectionID := chi.URLParam(r, "id")
-
-	if collectionID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Collection ID is required")
-		return
-	}
-
-	var req updateCollectionRequest
+	var req PersonalCollectionUpdateRequest
 	if err := decodeJSONOrMultipart(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		writeError(w, 400, "bad_request", "Invalid request body")
 		return
 	}
-
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
+	resp, err := h.UpdatePersonalCollection(r.Context(), PersonalCollectionUpdateCommand{UserID: apimw.GetUserID(r.Context()), ProfileID: apimw.GetProfileID(r.Context()), CollectionID: chi.URLParam(r, "id"), Request: req, PosterFile: posterFileReader(r)})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
+		writeAPIError(w, err)
 		return
 	}
-
-	profileID := apimw.GetProfileID(r.Context())
-	input := userstore.UpdateCollectionInput{
-		ID:                         collectionID,
-		RequestProfileID:           profileID,
-		Name:                       req.Name,
-		Description:                req.Description,
-		AllowedProfileIDs:          req.AllowedProfileIDs,
-		IncludeInServerCollections: req.IncludeInServerCollections,
-	}
-	if req.DisplayQueryDefinition != nil {
-		displayQueryDefinition, err := catalog.NormalizeDisplayQueryFragment(req.DisplayQueryDefinition)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-			return
-		}
-		input.DisplayQueryDefinition = &displayQueryDefinition
-	}
-	if len(req.QueryDefinition) > 0 {
-		normalized, err := normalizeSmartCollectionQueryDefinitionJSON(req.QueryDefinition, true, true)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "Invalid query_definition")
-			return
-		}
-		value := string(normalized)
-		input.QueryDefinition = &value
-	}
-	if len(req.SortConfig) > 0 {
-		value, err := NormalizeCollectionSortConfig(req.SortConfig, true)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-			return
-		}
-		input.SortConfig = &value
-	}
-	input.IsShared = req.IsShared
-	if req.GroupID.Set() {
-		groupID := req.GroupID.Value()
-		if groupID != nil && strings.TrimSpace(*groupID) == "" {
-			groupID = nil
-		}
-		if groupID != nil {
-			if err := store.EnsureCollectionGroup(r.Context(), *groupID); err != nil {
-				if errors.Is(err, userstore.ErrCollectionGroupNotFound) {
-					writeError(w, http.StatusBadRequest, "bad_request", "Collection group not found")
-					return
-				}
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to validate collection group")
-				return
-			}
-		}
-		input.GroupID = &groupID
-	}
-
-	// Source URL and max items both live inside source_config (Limit / URL).
-	// Load the existing collection and re-marshal so the unaffected fields
-	// (preset, media_type, etc.) survive untouched.
-	if req.SourceURL != nil || req.MaxItems != nil || req.LibraryIDs != nil {
-		existing, err := store.GetCollection(r.Context(), collectionID)
-		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				writeError(w, http.StatusNotFound, "not_found", "Collection not found")
-				return
-			}
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load collection")
-			return
-		}
-		cfg, err := usercollections.ParseSourceConfig(existing.SourceConfig)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to parse source config")
-			return
-		}
-		if req.LibraryIDs != nil {
-			if !catalog.IsSyncableType(existing.CollectionType) {
-				writeError(w, http.StatusBadRequest, "bad_request", "library_ids can only be edited for imported collections")
-				return
-			}
-			if err := validateOptionalLibraryIDs(*req.LibraryIDs); err != nil {
-				writeAPIError(w, err)
-				return
-			}
-			cfg.LibraryIDs = append([]int(nil), (*req.LibraryIDs)...)
-			emptyQuery := "{}"
-			input.QueryDefinition = &emptyQuery
-		}
-		if req.MaxItems != nil {
-			if *req.MaxItems < 0 {
-				writeError(w, http.StatusBadRequest, "bad_request", "max_items must be zero or positive")
-				return
-			}
-			if *req.MaxItems == 0 {
-				cfg.Limit = nil
-			} else {
-				value := *req.MaxItems
-				cfg.Limit = &value
-			}
-		}
-		if req.SourceURL != nil {
-			if existing.CollectionType != "mdblist" {
-				writeError(w, http.StatusBadRequest, "bad_request", "source_url can only be edited for MDBList collections")
-				return
-			}
-			normalized, err := usercollections.CanonicalMDBListURL(*req.SourceURL)
-			if err != nil {
-				writeError(w, http.StatusBadRequest, "bad_request", "source_url must be an MDBList list (https://mdblist.com/lists/...)")
-				return
-			}
-			cfg.URL = normalized
-			topURL := normalized
-			input.SourceURL = &topURL
-		}
-		raw, err := usercollections.MarshalSourceConfig(cfg)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to encode source config")
-			return
-		}
-		input.SourceConfig = &raw
-	}
-
-	if err := store.UpdateCollection(r.Context(), input); err != nil {
-		if strings.Contains(err.Error(), "creator") {
-			writeError(w, http.StatusForbidden, "forbidden", "Only the creator can edit this collection")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update collection")
-		return
-	}
-
-	posterSource := pointerStringValue(req.PosterSourceURL)
-	if _, err := h.processCollectionPoster(r.Context(), store, collectionID, profileID, posterFileReader(r), posterSource); err != nil {
-		if errors.Is(err, errCollectionForbidden) {
-			writeError(w, http.StatusForbidden, "forbidden", "Only the creator can edit this collection")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
-		return
-	}
-
-	// Re-read the collection to return updated state.
-	collection, err := store.GetCollection(r.Context(), collectionID)
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			writeError(w, http.StatusNotFound, "not_found", "Collection not found")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to retrieve updated collection")
-		return
-	}
-
-	writeJSON(w, http.StatusOK, h.toCollectionResponse(r, *collection))
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *CollectionHandler) HandlePreviewCollection(w http.ResponseWriter, r *http.Request) {
-	if h.Executor == nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Preview is not configured")
-		return
-	}
-
-	var req previewCollectionRequest
+	var req PersonalCollectionPreviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		writeError(w, 400, "bad_request", "Invalid request body")
 		return
 	}
-
-	var def catalog.QueryDefinition
-	if len(req.QueryDefinition) > 0 {
-		normalized, err := normalizeQueryDefinitionJSON(req.QueryDefinition, true, true)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "Invalid query_definition")
-			return
-		}
-		if err := json.Unmarshal(normalized, &def); err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "Invalid query_definition")
-			return
-		}
-	}
-
-	items, total, err := h.Executor.Preview(r.Context(), def, requestAccessFilter(r), req.Limit)
+	resp, err := h.PreviewPersonalCollection(r.Context(), req, requestAccessFilter(r))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		writeAPIError(w, err)
 		return
-	}
-
-	resp := previewCollectionResponse{Items: make([]previewCollectionItemResponse, 0, len(items)), Total: total}
-	for _, item := range items {
-		resp.Items = append(resp.Items, previewCollectionItemResponse{
-			ContentID: item.ContentID,
-			Title:     item.Title,
-			Type:      item.Type,
-		})
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleDeleteCollection handles DELETE /collections/{id}.
 func (h *CollectionHandler) HandleDeleteCollection(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	collectionID := chi.URLParam(r, "id")
-
-	if collectionID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Collection ID is required")
+	if err := h.DeletePersonalCollection(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "id")); err != nil {
+		writeAPIError(w, err)
 		return
 	}
-
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
-		return
-	}
-
-	if err := store.DeleteCollection(r.Context(), collectionID); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to delete collection")
-		return
-	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // HandleListCollectionItems handles GET /collections/{id}/items.
 func (h *CollectionHandler) HandleListCollectionItems(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	collectionID := chi.URLParam(r, "id")
-
-	if collectionID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Collection ID is required")
-		return
-	}
-
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
+	resp, err := h.ListPersonalCollectionItems(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "id"))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
+		writeAPIError(w, err)
 		return
 	}
-
-	items, err := store.ListCollectionItems(r.Context(), collectionID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list collection items")
-		return
-	}
-
-	resp := collectionItemsListResponse{
-		Items: make([]collectionItemResponse, 0, len(items)),
-	}
-	for _, ci := range items {
-		resp.Items = append(resp.Items, collectionItemResponse{
-			CollectionID: ci.CollectionID,
-			MediaItemID:  ci.MediaItemID,
-			Position:     ci.Position,
-			AddedAt:      ci.AddedAt,
-		})
-	}
-
 	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleAddCollectionItem handles PUT /collections/{id}/items/{item_id}.
 func (h *CollectionHandler) HandleAddCollectionItem(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	collectionID := chi.URLParam(r, "id")
-	itemID := chi.URLParam(r, "item_id")
-
-	if collectionID == "" || itemID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Collection ID and item ID are required")
-		return
-	}
-
 	var req collectionItemRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		// Default position to 0 if body is empty or invalid.
 		req.Position = 0
 	}
-
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
+	if err := h.AddPersonalCollectionItem(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "id"), chi.URLParam(r, "item_id"), req.Position); err != nil {
+		writeAPIError(w, err)
 		return
 	}
-
-	if err := store.AddCollectionItem(r.Context(), collectionID, itemID, req.Position); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to add item to collection")
-		return
-	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -600,56 +354,24 @@ func (h *CollectionHandler) HandleReorderCollectionGroups(w http.ResponseWriter,
 // HandleReorderCollectionItems handles PUT /collections/{id}/items/order.
 // The body must contain every item currently in the collection.
 func (h *CollectionHandler) HandleReorderCollectionItems(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	collectionID := chi.URLParam(r, "id")
-
-	if collectionID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Collection ID is required")
-		return
-	}
-
 	var req reorderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		writeError(w, 400, "bad_request", "Invalid request body")
 		return
 	}
-
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
+	if err := h.ReorderPersonalCollectionItems(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "id"), req.OrderedIDs); err != nil {
+		writeAPIError(w, err)
 		return
 	}
-
-	if err := store.ReorderCollectionItems(r.Context(), collectionID, req.OrderedIDs); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		return
-	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // HandleRemoveCollectionItem handles DELETE /collections/{id}/items/{item_id}.
 func (h *CollectionHandler) HandleRemoveCollectionItem(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	collectionID := chi.URLParam(r, "id")
-	itemID := chi.URLParam(r, "item_id")
-
-	if collectionID == "" || itemID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Collection ID and item ID are required")
+	if err := h.RemovePersonalCollectionItem(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "id"), chi.URLParam(r, "item_id")); err != nil {
+		writeAPIError(w, err)
 		return
 	}
-
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
-		return
-	}
-
-	if err := store.RemoveCollectionItem(r.Context(), collectionID, itemID); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to remove item from collection")
-		return
-	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -758,50 +480,8 @@ var errCollectionForbidden = errors.New("only the creator can edit this collecti
 // The query parameter "type" is required and currently only "poster" is
 // supported.
 func (h *CollectionHandler) HandleDeleteCollectionImage(w http.ResponseWriter, r *http.Request) {
-	collectionID := chi.URLParam(r, "id")
-	if collectionID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Collection ID is required")
-		return
-	}
-	imageType := r.URL.Query().Get("type")
-	if imageType != "poster" {
-		writeError(w, http.StatusBadRequest, "bad_request", `type must be "poster"`)
-		return
-	}
-
-	userID := apimw.GetUserID(r.Context())
-	profileID := apimw.GetProfileID(r.Context())
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
-		return
-	}
-	collection, err := store.GetCollection(r.Context(), collectionID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "not_found", "Collection not found")
-		return
-	}
-	if collection.CreatorProfileID != profileID {
-		writeError(w, http.StatusForbidden, "forbidden", "Only the creator can edit this collection")
-		return
-	}
-
-	if err := removeCollectionImageVariants(r.Context(), h.S3GP, userCollectionImagePrefix, collectionID, imageType); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to delete images")
-		return
-	}
-	empty := ""
-	if err := store.UpdateCollection(r.Context(), userstore.UpdateCollectionInput{
-		ID:               collectionID,
-		RequestProfileID: profileID,
-		PosterURL:        &empty,
-		PosterThumbhash:  &empty,
-	}); err != nil {
-		if strings.Contains(err.Error(), "creator") {
-			writeError(w, http.StatusForbidden, "forbidden", "Only the creator can edit this collection")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to clear poster")
+	if err := h.DeletePersonalCollectionImage(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "id"), r.URL.Query().Get("type")); err != nil {
+		writeAPIError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -906,3 +586,6 @@ func (h *CollectionHandler) presignUserCollectionPoster(ctx context.Context, pat
 func (h *CollectionHandler) toCollectionResponse(r *http.Request, c userstore.Collection) PersonalCollectionView {
 	return h.collectionView(r.Context(), c)
 }
+
+// previewCollectionRequest is shared with the library collection bridge handler.
+type previewCollectionRequest = PersonalCollectionPreviewRequest
