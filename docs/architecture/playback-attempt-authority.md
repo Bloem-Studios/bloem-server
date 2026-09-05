@@ -16,7 +16,9 @@ insert; it remains stable across takeovers of that row. Every owner/epoch mutati
 also compares this incarnation, so retention cleanup and same-boot reuse of an
 attempt ID cannot make a delayed old mutation match a new reservation. `preparing` means transport preparation may proceed for the winning
 caller. Concurrent callers receive `Owned=false`, even if they supply the same
-boot UUID. An expired preparing reservation can be reclaimed with a higher epoch.
+boot UUID. An expired preparing reservation that has never issued a grant can be reclaimed
+with a higher epoch; its uncommitted staged route is cleared. A reservation that
+has issued any grant must drain instead.
 An active attempt cannot be reclaimed through this operation.
 
 Publication compares the incarnation, owner, epoch, live lease, identity, digest, and preparing
@@ -47,3 +49,39 @@ fence execution and long responses, and progress/stop must commit their sequence
 winning state, and ownership check in the selected personal-state store. Active
 owner takeover, lease-based worker execution, and coordinated deployment behavior
 remain separate acceptance requirements.
+
+
+## Durable grants and drain
+
+`GrantPlanStoreV3` extends the same store. Grant issuance requires an explicit
+`AttemptGrantPolicyV3` maximum duration; the ordinary Postgres constructor keeps
+issuance disabled. Test fixtures use five seconds, which is not a protocol or
+production tuning promise.
+
+`StageAttemptRoute` freezes the existing plan and executable recipe with their
+session, transport, execution-node, and egress-node identities. Repeating the same
+binding is allowed; changing it is rejected. Node zero denotes the owning API's
+local role. Publication must match the staged binding. Execute grants may use a
+preparing or active route; serve grants require the committed active route.
+Requests must match the session, plan, transport, purpose and appropriate node.
+Every operation also compares the incarnation, boot identity and epoch.
+
+Issuance locks the row before reading database time. The grant expires no later
+than the requested duration, configured maximum, owner lease, or retention.
+The row's maximum issued deadline is committed before the response is returned.
+A lost response still counts; a later shorter grant cannot lower that maximum.
+Renewal does not shorten the owner lease beneath already-issued grants.
+
+`BeginAttemptDrain` forbids further issuance and records a stable deadline no
+earlier than the maximum issued grant. It can run after owner-lease expiry with
+the same fence. `CompleteAttemptDrain` marks the record stopped only once that
+database deadline has elapsed. Direct stop cannot bypass an outstanding grant.
+These are durable state transitions, not evidence that HTTP responses or FFmpeg
+have stopped. They create no successor or active-takeover path.
+
+Runtime recovery must isolate output by incarnation, epoch, and executor
+generation, publish immutable recipe locators under authority CAS, and fence
+serving and shared-state writes. Obsolete computation can overlap if it cannot
+affect the authoritative successor. Positive exit acknowledgement must not be an
+indefinite prerequisite for recovery from a dead worker. Those runtime changes
+and selected-store progress fencing remain separate from this storage checkpoint.
