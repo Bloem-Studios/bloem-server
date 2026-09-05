@@ -235,3 +235,13 @@ func optionalPolicyID(s string) *ID {
 	}
 	return new(ID(s))
 }
+
+type AdminPolicyDocumentsInput struct {
+	Limit  int    `query:"limit" default:"50" minimum:"1" maximum:"200"`
+	Cursor string `query:"cursor"`
+}
+type AdminPolicyVersionsInput struct {
+	ID     ID     `path:"id"`
+	Limit  int    `query:"limit" default:"50" minimum:"1" maximum:"200"`
+	Cursor string `query:"cursor"`
+}

@@ -8,6 +8,9 @@ func adminPolicyFixtureCases() []fixtureCase {
 	}
 	canonical := get("admin_policy_document", "getAdminPolicyDocument", "/documents/1", "AdminPolicySnapshot", "Canonical document with a strong revision validator and string identifiers.")
 	canonical.assertHeaders = append(canonical.assertHeaders, "ETag")
+	cursors := NewCursors([]byte("fixture-cursor-key"))
+	docCursor, _ := cursors.Encode(CursorScope{OperationID: "listAdminPolicyDocuments", Security: "2/", Sort: "id", Tiebreaker: "id"}, int64(1))
+	versionCursor, _ := cursors.Encode(CursorScope{OperationID: "listAdminPolicyVersions", Security: "2/", Filter: "1", Sort: "-version_number", Tiebreaker: "version_number"}, 1)
 	return []fixtureCase{
 		get("admin_policy_vendor", "listAdminPolicyVendor", "/vendor", "CollectionAdminPolicyVendor", "Vendor source modules use a named collection envelope."),
 		get("admin_policy_documents", "listAdminPolicyDocuments", "/documents", "CollectionAdminPolicyDocument", "Saved document identities use string identifiers and UTC millisecond timestamps."),
@@ -26,5 +29,8 @@ func adminPolicyFixtureCases() []fixtureCase {
 		{name: "admin_policy_stale_guard", operationID: "activateAdminPolicyVersion", method: "PUT", path: base + "/documents/1/active-version", headers: with(bearer(adminToken), "If-Match", `"stale"`), body: `{"version_id":"2"}`, status: 412, assertHeaders: []string{"Content-Type", "ETag"}, schema: schema + "Problem", scenario: "A stale activation is rejected before persistence and returns the current validator."},
 		{name: "admin_policy_null_enabled", operationID: "setAdminPolicyEnabled", method: "PATCH", path: base + "/documents/1", headers: with(bearer(adminToken), "If-Match", "*"), body: `{"enabled":null}`, status: 422, assertHeaders: []string{"Content-Type"}, schema: schema + "Problem", scenario: "Explicit null cannot silently disable a policy document."},
 		{name: "admin_policy_delete_stale", operationID: "deleteAdminPolicyDocument", method: "DELETE", path: base + "/documents/1", headers: with(bearer(adminToken), "If-Match", `"stale"`), status: 412, assertHeaders: []string{"Content-Type", "ETag"}, schema: schema + "Problem", scenario: "A stale deletion fails before active-version constraints or persistence."},
+		get("admin_policy_documents_continuation", "listAdminPolicyDocuments", "/documents?limit=2&cursor="+docCursor, "CollectionAdminPolicyDocument", "A valid signed document continuation returns explicit terminal page state."),
+		get("admin_policy_versions_continuation", "listAdminPolicyVersions", "/documents/1/versions?limit=2&cursor="+versionCursor, "CollectionAdminPolicyVersion", "A valid version continuation bound to document 1 returns terminal page state."),
+		{name: "admin_policy_version_cursor_mismatch", operationID: "listAdminPolicyVersions", method: "GET", path: base + "/documents/99/versions?cursor=" + versionCursor, headers: bearer(adminToken), status: 400, assertHeaders: []string{"Content-Type"}, schema: schema + "Problem", scenario: "A signed version continuation cannot be used for another document."},
 	}
 }

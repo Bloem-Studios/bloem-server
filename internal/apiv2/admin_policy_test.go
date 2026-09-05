@@ -31,7 +31,10 @@ func (f *fakeAdminPolicy) AdminPolicyReady(editor, _, _ bool) error {
 	}
 	return nil
 }
-func (f *fakeAdminPolicy) ListAdminPolicyDocuments(context.Context) ([]policy.Document, error) {
+func (f *fakeAdminPolicy) ListAdminPolicyDocuments(_ context.Context, after int64, _ int) ([]policy.Document, error) {
+	if after >= f.document.ID {
+		return nil, nil
+	}
 	return []policy.Document{f.document}, nil
 }
 func (f *fakeAdminPolicy) GetAdminPolicyDocument(_ context.Context, id int64) (policy.DocumentSnapshot, error) {
@@ -51,7 +54,10 @@ func (f *fakeAdminPolicy) CreateAdminPolicyDocument(_ context.Context, domain, n
 	f.document.Name = name
 	return f.document, nil
 }
-func (f *fakeAdminPolicy) ListAdminPolicyVersions(context.Context, int64) ([]policy.Version, error) {
+func (f *fakeAdminPolicy) ListAdminPolicyVersions(_ context.Context, _ int64, before int, _ int) ([]policy.Version, error) {
+	if before > 0 && before <= f.version.VersionNumber {
+		return nil, nil
+	}
 	return []policy.Version{f.version}, nil
 }
 func (f *fakeAdminPolicy) GetAdminPolicyVersion(_ context.Context, id, version int64) (policy.Version, error) {

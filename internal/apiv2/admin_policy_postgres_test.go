@@ -127,4 +127,5 @@ func TestAdminPolicyPostgresTransport(t *testing.T) {
 	if generation != after {
 		t.Fatal("stale replay advanced generation")
 	}
+	testAdminPolicyPages(t, pool, h, doc.ID)
 }

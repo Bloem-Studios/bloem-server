@@ -18,8 +18,8 @@ func (h *PolicyHandler) AdminPolicyReady(editor, storage, decisions bool) error 
 	}
 	return nil
 }
-func (h *PolicyHandler) ListAdminPolicyDocuments(ctx context.Context) ([]policy.Document, error) {
-	return h.store.ListDocuments(ctx)
+func (h *PolicyHandler) ListAdminPolicyDocuments(ctx context.Context, after int64, limit int) ([]policy.Document, error) {
+	return h.store.ListDocumentsPage(ctx, after, limit)
 }
 func (h *PolicyHandler) GetAdminPolicyDocument(ctx context.Context, id int64) (policy.DocumentSnapshot, error) {
 	return h.store.GetDocumentSnapshot(ctx, id)
@@ -27,11 +27,11 @@ func (h *PolicyHandler) GetAdminPolicyDocument(ctx context.Context, id int64) (p
 func (h *PolicyHandler) CreateAdminPolicyDocument(ctx context.Context, domain, name string) (policy.Document, error) {
 	return h.store.CreateDocument(ctx, domain, name)
 }
-func (h *PolicyHandler) ListAdminPolicyVersions(ctx context.Context, id int64) ([]policy.Version, error) {
+func (h *PolicyHandler) ListAdminPolicyVersions(ctx context.Context, id int64, before, limit int) ([]policy.Version, error) {
 	if _, err := h.store.GetDocument(ctx, id); err != nil {
 		return nil, err
 	}
-	return h.store.ListVersions(ctx, id)
+	return h.store.ListVersionsPage(ctx, id, before, limit)
 }
 func (h *PolicyHandler) GetAdminPolicyVersion(ctx context.Context, id, version int64) (policy.Version, error) {
 	return h.store.GetVersion(ctx, id, version)

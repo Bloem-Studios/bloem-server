@@ -14,10 +14,10 @@ import (
 
 type AdminPolicyService interface {
 	AdminPolicyReady(editor, storage, decisions bool) error
-	ListAdminPolicyDocuments(context.Context) ([]policy.Document, error)
+	ListAdminPolicyDocuments(context.Context, int64, int) ([]policy.Document, error)
 	GetAdminPolicyDocument(context.Context, int64) (policy.DocumentSnapshot, error)
 	CreateAdminPolicyDocument(context.Context, string, string) (policy.Document, error)
-	ListAdminPolicyVersions(context.Context, int64) ([]policy.Version, error)
+	ListAdminPolicyVersions(context.Context, int64, int, int) ([]policy.Version, error)
 	GetAdminPolicyVersion(context.Context, int64, int64) (policy.Version, error)
 	CreateAdminPolicyVersion(context.Context, int64, string, string) (policy.Version, error)
 	ActivateAdminPolicyVersion(context.Context, int64, int64, int64) (policy.DocumentApplyResult, error)
@@ -42,14 +42,18 @@ func adminPolicyOperation(method, path, id, summary string, guarded bool) Operat
 func registerAdminPolicy(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
 	Register(reg, adminPolicyOperation(http.MethodGet, "/vendor", "listAdminPolicyVendor", "Read embedded vendor policy sources.", false), reg.listAdminPolicyVendor)
-	Register(reg, adminPolicyOperation(http.MethodGet, "/documents", "listAdminPolicyDocuments", "List saved policy documents.", false), reg.listAdminPolicyDocuments)
+	Register(reg, adminPolicyOperation(http.MethodGet, "/documents", "listAdminPolicyDocuments", "List saved policy documents.", false), func(ctx context.Context, in *AdminPolicyDocumentsInput) (*AdminPolicyDocumentsOutput, error) {
+		return reg.listAdminPolicyDocuments(ctx, cursors, in)
+	})
 	create := adminPolicyOperation(http.MethodPost, "/documents", "createAdminPolicyDocument", "Create a policy document without an active version.", false)
 	create.DefaultStatus = http.StatusCreated
 	Register(reg, create, reg.createAdminPolicyDocument)
 	Register(reg, adminPolicyOperation(http.MethodGet, "/documents/{id}", "getAdminPolicyDocument", "Read a canonical document, active source, and document validator.", false), reg.getAdminPolicyDocument)
 	Register(reg, adminPolicyOperation(http.MethodDelete, "/documents/{id}", "deleteAdminPolicyDocument", "Delete an inactive document using its captured validator.", true), reg.deleteAdminPolicyDocument)
 	Register(reg, adminPolicyOperation(http.MethodPatch, "/documents/{id}", "setAdminPolicyEnabled", "Set enabled state and report persisted and local application outcomes.", true), reg.setAdminPolicyEnabled)
-	Register(reg, adminPolicyOperation(http.MethodGet, "/documents/{id}/versions", "listAdminPolicyVersions", "List immutable version metadata.", false), reg.listAdminPolicyVersions)
+	Register(reg, adminPolicyOperation(http.MethodGet, "/documents/{id}/versions", "listAdminPolicyVersions", "List immutable version metadata.", false), func(ctx context.Context, in *AdminPolicyVersionsInput) (*AdminPolicyVersionsOutput, error) {
+		return reg.listAdminPolicyVersions(ctx, cursors, in)
+	})
 	version := adminPolicyOperation(http.MethodPost, "/documents/{id}/versions", "createAdminPolicyVersion", "Save an immutable draft, including drafts that fail compilation.", false)
 	version.DefaultStatus = http.StatusCreated
 	Register(reg, version, reg.createAdminPolicyVersion)
@@ -135,19 +139,40 @@ func (reg *Registry) listAdminPolicyVendor(ctx context.Context, _ *struct{}) (*A
 	}
 	return &AdminPolicyVendorOutput{Body: out}, nil
 }
-func (reg *Registry) listAdminPolicyDocuments(ctx context.Context, _ *struct{}) (*AdminPolicyDocumentsOutput, error) {
+func (reg *Registry) listAdminPolicyDocuments(ctx context.Context, cursors *Cursors, in *AdminPolicyDocumentsInput) (*AdminPolicyDocumentsOutput, error) {
 	if p := reg.adminPolicyReady(true, true, false); p != nil {
 		return nil, p
 	}
-	values, err := reg.deps.AdminPolicy.ListAdminPolicyDocuments(ctx)
+	scope := adminPolicyListScope(ctx, "listAdminPolicyDocuments", "", "id", "id")
+	var after int64
+	if in.Cursor != "" {
+		if p := cursors.Decode(scope, in.Cursor, &after); p != nil {
+			return nil, p
+		}
+		if after <= 0 {
+			return nil, NewProblem(TypeInvalidCursor, "The cursor position is invalid.")
+		}
+	}
+	values, err := reg.deps.AdminPolicy.ListAdminPolicyDocuments(ctx, after, in.Limit+1)
 	if err != nil {
 		return nil, adminPolicyError(err)
 	}
-	out := NewCollection([]AdminPolicyDocument{})
-	for _, v := range values {
-		out.Items = append(out.Items, adminPolicyDocumentOf(v))
+	next := ""
+	if len(values) > in.Limit {
+		values = values[:in.Limit]
+		next, err = cursors.Encode(scope, values[len(values)-1].ID)
+		if err != nil {
+			return nil, NewProblem(TypeInternalError, "Unable to encode cursor.")
+		}
 	}
-	return &AdminPolicyDocumentsOutput{Body: out}, nil
+	items := make([]AdminPolicyDocument, 0, len(values))
+	for _, v := range values {
+		items = append(items, adminPolicyDocumentOf(v))
+	}
+	return &AdminPolicyDocumentsOutput{Body: Paginated(items, next)}, nil
+}
+func adminPolicyListScope(ctx context.Context, operation, filter, sort, tiebreaker string) CursorScope {
+	return CursorScope{OperationID: operation, Security: strconv.Itoa(claimsFrom(ctx).UserID) + "/" + profileFrom(ctx), Filter: filter, Sort: sort, Tiebreaker: tiebreaker}
 }
 func (reg *Registry) getAdminPolicyDocument(ctx context.Context, in *AdminPolicyIDInput) (*AdminPolicyDocumentOutput, error) {
 	if p := reg.adminPolicyReady(true, true, false); p != nil {
@@ -194,7 +219,7 @@ func (reg *Registry) deleteAdminPolicyDocument(ctx context.Context, in *AdminPol
 	}
 	return nil, nil
 }
-func (reg *Registry) listAdminPolicyVersions(ctx context.Context, in *AdminPolicyIDInput) (*AdminPolicyVersionsOutput, error) {
+func (reg *Registry) listAdminPolicyVersions(ctx context.Context, cursors *Cursors, in *AdminPolicyVersionsInput) (*AdminPolicyVersionsOutput, error) {
 	if p := reg.adminPolicyReady(true, true, false); p != nil {
 		return nil, p
 	}
@@ -202,15 +227,33 @@ func (reg *Registry) listAdminPolicyVersions(ctx context.Context, in *AdminPolic
 	if p != nil {
 		return nil, p
 	}
-	values, err := reg.deps.AdminPolicy.ListAdminPolicyVersions(ctx, id)
+	scope := adminPolicyListScope(ctx, "listAdminPolicyVersions", string(in.ID), "-version_number", "version_number")
+	var before int
+	if in.Cursor != "" {
+		if p := cursors.Decode(scope, in.Cursor, &before); p != nil {
+			return nil, p
+		}
+		if before <= 0 {
+			return nil, NewProblem(TypeInvalidCursor, "The cursor position is invalid.")
+		}
+	}
+	values, err := reg.deps.AdminPolicy.ListAdminPolicyVersions(ctx, id, before, in.Limit+1)
 	if err != nil {
 		return nil, adminPolicyError(err)
 	}
-	out := NewCollection([]AdminPolicyVersion{})
-	for _, v := range values {
-		out.Items = append(out.Items, adminPolicyVersionOf(v, false))
+	next := ""
+	if len(values) > in.Limit {
+		values = values[:in.Limit]
+		next, err = cursors.Encode(scope, values[len(values)-1].VersionNumber)
+		if err != nil {
+			return nil, NewProblem(TypeInternalError, "Unable to encode cursor.")
+		}
 	}
-	return &AdminPolicyVersionsOutput{Body: out}, nil
+	items := make([]AdminPolicyVersion, 0, len(values))
+	for _, v := range values {
+		items = append(items, adminPolicyVersionOf(v, false))
+	}
+	return &AdminPolicyVersionsOutput{Body: Paginated(items, next)}, nil
 }
 func (reg *Registry) getAdminPolicyVersion(ctx context.Context, in *AdminPolicyVersionInput) (*AdminPolicyVersionOutput, error) {
 	if p := reg.adminPolicyReady(true, true, false); p != nil {

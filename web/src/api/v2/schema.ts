@@ -20275,7 +20275,10 @@ export interface operations {
   };
   listAdminPolicyDocuments: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: {
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
@@ -21095,10 +21098,11 @@ export interface operations {
   };
   listAdminPolicyVersions: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: {
-        "If-Match"?: string;
-        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
         /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */

@@ -418,6 +418,25 @@
       "body_file": "admin_policy_documents.json"
     },
     {
+      "name": "admin_policy_documents_continuation",
+      "operation_id": "listAdminPolicyDocuments",
+      "scenario": "A valid signed document continuation returns explicit terminal page state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/policy/documents?limit=2&cursor=eyJ2IjoxLCJwIjoxfQ.A5GWUuZfLWdFmiaQByIla-YHbNfRuPukwNzDY_R2IwQ",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminPolicyDocument",
+      "body_file": "admin_policy_documents_continuation.json"
+    },
+    {
       "name": "admin_policy_enable_apply_failed",
       "operation_id": "setAdminPolicyEnabled",
       "scenario": "A committed enable write reports its persisted generation and failed local application and publication without inviting replay.",
@@ -602,6 +621,25 @@
       "body_file": "admin_policy_version.json"
     },
     {
+      "name": "admin_policy_version_cursor_mismatch",
+      "operation_id": "listAdminPolicyVersions",
+      "scenario": "A signed version continuation cannot be used for another document.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/policy/documents/99/versions?cursor=eyJ2IjoxLCJwIjoxfQ.RhM3sMBznT8RqsTr4dlnXqAQ5VSfz5fvf_b67Ku68uA",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 400,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_policy_version_cursor_mismatch.json"
+    },
+    {
       "name": "admin_policy_versions",
       "operation_id": "listAdminPolicyVersions",
       "scenario": "Immutable version metadata omits source bodies.",
@@ -619,6 +657,25 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/CollectionAdminPolicyVersion",
       "body_file": "admin_policy_versions.json"
+    },
+    {
+      "name": "admin_policy_versions_continuation",
+      "operation_id": "listAdminPolicyVersions",
+      "scenario": "A valid version continuation bound to document 1 returns terminal page state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/policy/documents/1/versions?limit=2&cursor=eyJ2IjoxLCJwIjoxfQ.RhM3sMBznT8RqsTr4dlnXqAQ5VSfz5fvf_b67Ku68uA",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminPolicyVersion",
+      "body_file": "admin_policy_versions_continuation.json"
     },
     {
       "name": "admin_request_integration_created",

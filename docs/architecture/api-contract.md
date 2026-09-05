@@ -2032,10 +2032,16 @@ has an administrator policy consumer in the migration inventory. Jellyfin expose
 policy evaluation behavior shared with its clients is unchanged.
 
 Document and version IDs are opaque strings. Version paths select the saved version ID, not the
-per-document version number. Lists use named collection envelopes; decision lists include cursor
-page state. Decision cursors bind the account, acting profile, filters, and timestamp/ID order
-using the shared v2 signing key. Policy input, simulation results, and retained decision samples carry policy-domain
-JSON values, explicitly outside the fixed HTTP field contract.
+per-document version number. Document, version, and decision lists use named collection envelopes
+with explicit cursor page state, default limit 50, and maximum 200. Repository reads fetch at most limit plus one
+rows. Documents sort by ascending ID; versions sort by descending per-document unique version
+number. These are live traversals: document updates do not move the key, and version appends
+appear on a restarted history rather than in an older continuation. Document and version
+cursors bind the account, acting profile, operation, and ordering; version cursors also bind
+the document ID. Only the finite embedded vendor list remains unpaged. Decision cursors bind the
+account, acting profile, filters, and timestamp/ID order using the shared v2 signing key. Policy
+input, simulation results, and retained decision samples carry policy-domain JSON values, explicitly
+outside the fixed HTTP field contract.
 
 The canonical document GET includes its active source when present and supplies a strong,
 caller-bound ETag. The ETag covers version-history changes as well as the document fields. PATCH

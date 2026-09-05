@@ -32032,6 +32032,26 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "format": "int64",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -33260,15 +33280,21 @@
             }
           },
           {
-            "in": "header",
-            "name": "If-Match",
+            "explode": false,
+            "in": "query",
+            "name": "limit",
             "schema": {
-              "type": "string"
+              "default": 50,
+              "format": "int64",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
             }
           },
           {
-            "in": "header",
-            "name": "If-None-Match",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
             "schema": {
               "type": "string"
             }
