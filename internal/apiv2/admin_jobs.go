@@ -14,7 +14,10 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
-const adminJobSchemaRef = "#/components/schemas/AdminJob"
+const (
+	adminJobSchemaRef = "#/components/schemas/AdminJob"
+	jobLocationHeader = "Location"
+)
 
 // JobFailure is safe terminal failure data, not an HTTP problem response.
 type JobFailure struct {
@@ -136,7 +139,7 @@ func registerLibraryJobs(reg *Registry) {
 	op.Responses = map[string]*huma.Response{"200": {
 		Description: "The job was already canceled.",
 		Content:     map[string]*huma.MediaType{mediaTypeJSON: {Schema: &huma.Schema{Ref: adminJobSchemaRef}}},
-		Headers:     map[string]*huma.Header{etagField: {Schema: &huma.Schema{Type: "string"}}, "Location": {Schema: &huma.Schema{Type: "string"}}},
+		Headers:     map[string]*huma.Header{etagField: {Schema: &huma.Schema{Type: huma.TypeString}}, jobLocationHeader: {Schema: &huma.Schema{Type: huma.TypeString}}},
 	}}
 	Register(reg, Operation{Operation: op, Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyCoalescing}, reg.cancelLibraryJob)
 }
