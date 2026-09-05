@@ -2003,8 +2003,11 @@ administrator section operations after a conflict or a partial multi-request flo
 
 Policy documents have a per-document revision independent of `policy_generation`. The revision
 covers document updates and version-history changes, including appends and foreign-key updates
-to version metadata. Database triggers maintain it for legacy and guarded writers. Creating a document or
-appending a version does not advance the runtime generation; activation and enabling
+to version metadata. Database triggers maintain it for legacy and guarded writers. Attributed
+version creation locks the author before the document. Before account deletion clears version
+authorship, a trigger locks all attributed documents in ID order, avoiding a child-to-parent lock
+inversion with document deletion. Creating a document or appending a version does not advance the
+runtime generation; activation and enabling
 retain their existing generation increments, including accepted no-op writes. Deleting a document
 with an active version remains forbidden.
 

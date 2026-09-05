@@ -134,6 +134,15 @@ func (s *PolicyStore) CreateVersion(ctx context.Context, documentID int64, regoS
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// Account deletion takes the user row before locking attributed documents
+	// for ON DELETE SET NULL. Acquire the same author-before-document order;
+	// the insert's existing FK still reports a missing author.
+	if createdBy != nil {
+		if _, err := tx.Exec(ctx, `SELECT id FROM users WHERE id = $1 FOR KEY SHARE`, *createdBy); err != nil {
+			return Version{}, fmt.Errorf("lock policy version author: %w", err)
+		}
+	}
+
 	var lockedID int64
 	if err := tx.QueryRow(ctx, `SELECT id FROM policy_documents WHERE id = $1 FOR UPDATE`, documentID).Scan(&lockedID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
