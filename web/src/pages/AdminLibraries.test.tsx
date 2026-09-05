@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -95,6 +95,19 @@ const unmatchedItemsResult = (items: unknown[]) => ({
   fetchNextPage: vi.fn(),
   isFetching: false,
   isLoading: false,
+});
+
+const staleID = (id: string, title: string) => ({
+  content_id: id,
+  library_id: 1,
+  library_name: "Movies",
+  title,
+  year: 2000,
+  content_type: "movie",
+  provider: "tmdb",
+  provider_id: id,
+  first_seen_at: "2026-03-23T20:00:00Z",
+  last_seen_at: "2026-03-23T21:00:00Z",
 });
 
 // renderPage wraps the page in the providers it needs at runtime: a
@@ -389,18 +402,80 @@ describe("AdminLibraries", () => {
     expect(mocks.useStaleMediaIDs).toHaveBeenCalledWith({ enabled: false, search: "" });
   });
 
-  it("hides Stale External IDs once the first page confirms there are none", () => {
-    mocks.useStaleMediaIDs.mockReturnValue({
+  it("reopens Stale External IDs after an empty result to show newly discovered IDs", () => {
+    const emptyResult = {
       data: { pages: [{ staleIDs: [], nextCursor: undefined }] },
       isFetched: true,
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
+    };
+    mocks.useStaleMediaIDs.mockReturnValue({ ...emptyResult, data: undefined, isFetched: false });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const page = () => (
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <AdminLibraries />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    const view = render(page());
+    fireEvent.click(screen.getByRole("button", { name: /Stale External IDs/ }));
+    expect(mocks.useStaleMediaIDs).toHaveBeenLastCalledWith({ enabled: true, search: "" });
+    mocks.useStaleMediaIDs.mockReturnValue(emptyResult);
+    view.rerender(page());
+    fireEvent.click(screen.getByRole("button", { name: /Stale External IDs/ }));
+    const reopen = screen.getByRole("button", { name: /Stale External IDs/ });
+    expect(reopen.getAttribute("aria-expanded")).toBe("false");
+    mocks.useStaleMediaIDs.mockReturnValue({
+      ...emptyResult,
+      data: { pages: [{ staleIDs: [staleID("new", "Newly discovered")], nextCursor: undefined }] },
     });
+    fireEvent.click(reopen);
+    expect(mocks.useStaleMediaIDs).toHaveBeenLastCalledWith({ enabled: true, search: "" });
+    expect(screen.getByText("Newly discovered")).toBeDefined();
+  });
 
-    const markup = renderPage();
-
-    expect(markup).not.toContain("Stale External IDs");
+  it("keeps stale IDs in server page order without offering partial-result sort controls", () => {
+    const firstPage = {
+      staleIDs: [staleID("newest", "Zulu"), staleID("middle", "Middle")],
+      nextCursor: "older",
+    };
+    const result = {
+      data: { pages: [firstPage] },
+      isFetched: true,
+      hasNextPage: true,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    };
+    mocks.useStaleMediaIDs.mockImplementation(() => result);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const page = () => (
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <AdminLibraries />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    const view = render(page());
+    fireEvent.click(screen.getByRole("button", { name: /Stale External IDs/ }));
+    const table = screen.getByRole("table", { name: "Stale external IDs" });
+    for (const label of ["Title", "Year", "Library", "Provider", "First seen", "Last seen"]) {
+      expect(within(table).queryByRole("button", { name: label })).toBeNull();
+    }
+    const titles = () =>
+      within(table)
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => within(row).getAllByRole("cell")[0]?.textContent);
+    expect(titles()).toEqual(["Zulu", "Middle"]);
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    expect(result.fetchNextPage).toHaveBeenCalledTimes(1);
+    result.data = {
+      pages: [firstPage, { staleIDs: [staleID("oldest", "Alpha")], nextCursor: "last" }],
+    };
+    view.rerender(page());
+    expect(titles()).toEqual(["Zulu", "Middle", "Alpha"]);
   });
 
   it.each(["search", "first", "previous"])(

@@ -2114,14 +2114,11 @@ function UnmatchedItemsSection() {
 
 /* ─── Stale External IDs ────────────────────────────────────────── */
 
-type StaleSortField = "title" | "year" | "library" | "provider" | "first_seen" | "last_seen";
-
 function StaleIDsSection() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 250);
   const [matchItem, setMatchItem] = useState<StaleMediaID | null>(null);
-  const { sortField, sortDir, toggle } = useSort<StaleSortField>("last_seen", "desc");
   // The listing is paged on demand: the first page loads when the section
   // opens and "Load more" fetches the rest, so a large stale-id table does
   // not make the server walk every row on mount.
@@ -2130,45 +2127,16 @@ function StaleIDsSection() {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-    isFetched,
   } = useStaleMediaIDs({ enabled: open, search: debouncedSearch });
   const staleIDs = useMemo(() => flattenStaleMediaIDs(stalePages), [stalePages]);
 
-  const filtered = staleIDs;
-
-  const sorted = useMemo(() => {
-    const cmp = sortDir === "asc" ? 1 : -1;
-    return [...filtered].sort((a, b) => {
-      switch (sortField) {
-        case "title":
-          return cmp * a.title.localeCompare(b.title);
-        case "year":
-          return cmp * (a.year - b.year);
-        case "library":
-          return cmp * a.library_name.localeCompare(b.library_name);
-        case "provider":
-          return cmp * a.provider.localeCompare(b.provider);
-        case "first_seen":
-          return cmp * a.first_seen_at.localeCompare(b.first_seen_at);
-        case "last_seen":
-          return cmp * a.last_seen_at.localeCompare(b.last_seen_at);
-        default:
-          return 0;
-      }
-    });
-  }, [filtered, sortField, sortDir]);
-
-  const pag = usePagination(sorted);
-
-  // Nothing to show once the first page confirms the table is empty.
-  if (isFetched && !open && !search && staleIDs.length === 0 && !hasNextPage) {
-    return null;
-  }
+  // Preserve the server's last-seen order across the pages loaded so far.
+  const pag = usePagination(staleIDs);
 
   return (
     <CollapsibleDiagnosticsSection
       title="Stale External IDs"
-      description="Provider IDs no longer resolve; metadata refresh will fail until re-matched."
+      description="Provider IDs no longer resolve; metadata refresh will fail until re-matched. Most recently seen first."
       count={staleIDs.length}
       icon={<Unlink className="h-4 w-4 text-red-400" />}
       iconClassName="bg-red-500/10"
@@ -2188,58 +2156,16 @@ function StaleIDsSection() {
         />
       </div>
       <div className="border-border/40 bg-background/40 overflow-x-auto rounded-xl border">
-        <Table>
+        <Table aria-label="Stale external IDs">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <SortableHead
-                field="title"
-                activeField={sortField}
-                activeDir={sortDir}
-                onSort={toggle}
-              >
-                Title
-              </SortableHead>
-              <SortableHead
-                field="year"
-                activeField={sortField}
-                activeDir={sortDir}
-                onSort={toggle}
-              >
-                Year
-              </SortableHead>
-              <SortableHead
-                field="library"
-                activeField={sortField}
-                activeDir={sortDir}
-                onSort={toggle}
-              >
-                Library
-              </SortableHead>
-              <SortableHead
-                field="provider"
-                activeField={sortField}
-                activeDir={sortDir}
-                onSort={toggle}
-              >
-                Provider
-              </SortableHead>
+              <TableHead>Title</TableHead>
+              <TableHead>Year</TableHead>
+              <TableHead>Library</TableHead>
+              <TableHead>Provider</TableHead>
               <TableHead>Provider ID</TableHead>
-              <SortableHead
-                field="first_seen"
-                activeField={sortField}
-                activeDir={sortDir}
-                onSort={toggle}
-              >
-                First seen
-              </SortableHead>
-              <SortableHead
-                field="last_seen"
-                activeField={sortField}
-                activeDir={sortDir}
-                onSort={toggle}
-              >
-                Last seen
-              </SortableHead>
+              <TableHead>First seen</TableHead>
+              <TableHead>Last seen</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
