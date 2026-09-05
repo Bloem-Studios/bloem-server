@@ -77,7 +77,8 @@ Neither later heartbeats nor authority advancement reopen stopped state.
 
 ## Transaction and observer boundaries
 
-PostgreSQL takes the existing profile history lock before locking the sink row.
+PostgreSQL locks the account source gate, then takes the existing profile
+history lock before locking the sink row.
 This serializes sink writes with history hiding even when a hidden-watermark
 row does not exist yet. Projection statements preserve visibility adjustment,
 the watched latch, `hide_from_continue`, history source/stable identity and
@@ -101,6 +102,42 @@ Observer delivery remains best-effort. A lost commit reply can leave durable
 data without a notification. Exactly-once external delivery would require a
 separate outbox and consumer deduplication protocol.
 
+## Exact source handles
+
+`PlaybackSourceProvider.OpenPlaybackSink` accepts an exact backend, account,
+canonical source UUID and positive selection generation. Its handle retains
+that reference for its lifetime. Every operation checks the source marker in
+the same transaction as the sink state. Missing, mismatched, quarantined and
+sealed markers refuse bound operations. Once a marker exists, ordinary
+unbound sink calls fail rather than following the latest selection. Empty
+marker tables preserve the earlier unconfigured sink behavior.
+
+Migrations create empty marker tables. Opening a handle neither provisions nor
+activates a source. PostgreSQL holds a shared account advisory lock before
+locking its marker row; future first-marker provisioning must take the
+exclusive advisory lock using the same account key. This also orders writes
+that observed an absent marker. Marker updates serialize with bound writers
+through the marker row lock.
+
+SQLite opens only an existing account file, with no schema migration or journal
+mode conversion. It validates the marker and verifies WAL. Each actual pinned
+writing connection must use and verify `synchronous=FULL` before
+`BEGIN IMMEDIATE`; the marker and receipt checks then execute in that
+transaction. Durability depends on the operating system, filesystem and
+storage honoring synchronization. Transaction and recovery tests do not
+establish physical power-loss durability.
+
+Each SQLite handle owns its connection pool independently of the legacy user
+database cache. PostgreSQL handles share the provider pool. Closing a handle
+waits for its operations, rejects later calls and does not close another
+handle or the provider. Notification wrappers preserve this ownership and the
+exact source reference.
+
+SQLite schema 24 adds source markers after schema 23 added sink receipts.
+The personal-data bridge still accepts only its explicit schema 22 contract.
+Frozen schema 23 and current schema 24 sources remain unsupported; neither
+authority receipts nor source markers are implicitly imported as personal data.
+
 ## Activation requirements
 
 Local sink atomicity is not a transaction spanning control PostgreSQL and
@@ -111,9 +148,8 @@ An old write that commits before sink advancement is ordered before that
 advancement. Afterward its fence is stale. Control-plane lease expiry alone
 does not atomically revoke a selected SQLite writer.
 
-Source-instance pinning, restore/copy cutover, coordinated receipt retirement,
+Operational source registration, restore/copy cutover, coordinated receipt retirement,
 pending/install/activate recovery, public lifecycle and executor replacement
-remain inactive. Current SQLite wrappers have no durable database-instance
-identity; account and path alone cannot detect a substituted database. Even a
+remain inactive. Exact source handles detect a different marker, but a
 persisted UUID cannot prove that a restored copy contains current fences.
 Those storage-topology and recovery rules must be implemented before activation.

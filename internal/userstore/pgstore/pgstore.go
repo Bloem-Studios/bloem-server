@@ -14,6 +14,7 @@ import (
 type PostgresUserStore struct {
 	pool   *pgxpool.Pool
 	userID int
+	source *postgresPlaybackSinkHandle
 }
 
 // Compile-time interface check.

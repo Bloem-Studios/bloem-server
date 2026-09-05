@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion = 23
+const schemaVersion = 24
 
 func runMigrations(db *sql.DB) error {
 	version, err := userVersion(db)
@@ -225,6 +225,14 @@ func runMigrations(db *sql.DB) error {
 		}
 	}
 
+	if version < 24 {
+		if _, err := tx.Exec(playbackSourceSchema); err != nil {
+			return fmt.Errorf("migration v24 failed: %w", err)
+		}
+		if _, err := tx.Exec("PRAGMA user_version = 24"); err != nil {
+			return err
+		}
+	}
 	return tx.Commit()
 }
 

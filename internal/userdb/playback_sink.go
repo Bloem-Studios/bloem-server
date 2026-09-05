@@ -18,10 +18,16 @@ func (s *SQLiteUserStore) ReadPlaybackProgress(ctx context.Context, scope userst
 	if err := scope.Validate(); err != nil {
 		return userstore.PlaybackProgressState{}, err
 	}
-	state, err := readPlaybackSink(ctx, s.db, scope)
+	var state *userstore.PlaybackProgressState
+	err := s.withPlaybackSinkTransaction(ctx, func(exec preferenceSettingsExecutor) error {
+		var err error
+		state, err = readPlaybackSink(ctx, exec, scope)
+		return err
+	})
 	if err != nil {
 		return userstore.PlaybackProgressState{}, err
 	}
+
 	if state == nil {
 		return userstore.PlaybackProgressState{}, userstore.ErrPlaybackSinkNotFound
 	}
@@ -181,12 +187,22 @@ func savePlaybackSink(ctx context.Context, exec preferenceSettingsExecutor, stat
 // Reserve the writer before reading receipts, on the exact selected database.
 // No operation inside this callback may return to the connection pool.
 func (s *SQLiteUserStore) withPlaybackSinkTransaction(ctx context.Context, fn func(preferenceSettingsExecutor) error) error {
+	s.sourceMu.RLock()
+	defer s.sourceMu.RUnlock()
+	if s.sourceClosed {
+		return userstore.ErrPlaybackSourceClosed
+	}
 	conn, err := s.db.Conn(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = conn.Close() }()
 	exec := settingMutationConnExecutor{ctx: ctx, conn: conn}
+	if s.sourceRef != nil {
+		if err := verifyPlaybackSourceDurability(ctx, exec); err != nil {
+			return err
+		}
+	}
 	if _, err := exec.ExecContext(ctx, "BEGIN IMMEDIATE"); err != nil {
 		return err
 	}
@@ -200,6 +216,9 @@ func (s *SQLiteUserStore) withPlaybackSinkTransaction(ctx context.Context, fn fu
 			}
 		}
 	}()
+	if err := s.checkPlaybackSource(ctx, exec); err != nil {
+		return err
+	}
 	if err := fn(exec); err != nil {
 		return err
 	}

@@ -283,7 +283,7 @@ CREATE INDEX IF NOT EXISTS idx_home_item_dismissals_lookup
 
 CREATE INDEX IF NOT EXISTS idx_hidden_history_items_lookup
     ON hidden_history_items(profile_id, hidden_before);
-` + settingContractSchema + jellycompatDisplayPrefsSchema + playbackSinkSchema
+` + settingContractSchema + jellycompatDisplayPrefsSchema + playbackSinkSchema + playbackSourceSchema
 
 // The selected account database supplies account scope. Receipts deliberately
 // do not reference watch_history: deleting history must not reopen a stop.
@@ -1117,3 +1117,13 @@ func migratePlaybackSettingsToDeviceScope(db *sql.DB) error {
 
 	return tx.Commit()
 }
+
+// No source is automatically provisioned or writable by migration.
+const playbackSourceSchema = `
+CREATE TABLE IF NOT EXISTS playback_source_markers (
+ user_id INTEGER PRIMARY KEY,
+ source_id TEXT NOT NULL,
+ selection_generation INTEGER NOT NULL CHECK(selection_generation > 0),
+ gate TEXT NOT NULL DEFAULT 'quarantined' CHECK(gate IN ('writable','quarantined','sealed'))
+);
+`

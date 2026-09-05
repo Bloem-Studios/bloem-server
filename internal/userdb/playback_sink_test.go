@@ -16,13 +16,17 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore/storetest"
 )
 
-func TestSQLitePlaybackSinkConformance(t *testing.T) {
+func TestSQLitePlaybackSinkRawConformance(t *testing.T) {
 	storetest.PlaybackSink(t, newConformanceStore)
+}
+
+func TestSQLitePlaybackSinkConformance(t *testing.T) {
+	storetest.PlaybackSink(t, func(t *testing.T) userstore.UserStore { s, _, _, _ := sqlitePlaybackSinkFixture(t); return s })
 }
 
 func sqlitePlaybackSinkFixture(t *testing.T) (*SQLiteUserStore, *SQLiteUserStore, userstore.PlaybackProgressScope, userstore.PlaybackProgressFence) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "playback.db")
+	path := filepath.Join(t.TempDir(), "1.db")
 	first, err := NewUserDB(path, 1)
 	if err != nil {
 		t.Fatal(err)
@@ -33,15 +37,27 @@ func sqlitePlaybackSinkFixture(t *testing.T) (*SQLiteUserStore, *SQLiteUserStore
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = second.Close() })
-	first.DB.SetMaxOpenConns(8)
-	second.DB.SetMaxOpenConns(8)
+	ref := userstore.PlaybackSourceRef{Backend: "sqlite", AccountID: 1, SourceID: uuid.NewString(), SelectionGeneration: 1}
+	if _, err := first.DB.Exec(`INSERT INTO playback_source_markers VALUES(?,?,?,'writable')`, ref.AccountID, ref.SourceID, ref.SelectionGeneration); err != nil {
+		t.Fatal(err)
+	}
+	provider := NewSQLiteProvider(NewUserDBPool(PoolConfig{DataDir: filepath.Dir(path)}))
+	open := func() *SQLiteUserStore {
+		h, err := provider.OpenPlaybackSink(t.Context(), ref)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = h.Close() })
+		return h.(*sqlitePlaybackSinkHandle).SQLiteUserStore
+	}
+	bound, peer := open(), open()
 	scope := userstore.PlaybackProgressScope{ProfileID: "profile", SessionID: uuid.NewString(), MediaItemID: "movie"}
 	fence := userstore.PlaybackProgressFence{AttemptID: uuid.NewString(), Incarnation: uuid.NewString(), OwnerID: uuid.NewString(), Epoch: 1}
-	s := NewSQLiteUserStore(first.DB)
+	s := bound
 	if _, err := s.InstallPlaybackAuthority(t.Context(), userstore.InstallPlaybackAuthorityRequest{Scope: scope, Next: fence}); err != nil {
 		t.Fatal(err)
 	}
-	return s, NewSQLiteUserStore(second.DB), scope, fence
+	return s, peer, scope, fence
 }
 
 func TestSQLitePlaybackSinkConcurrentStop(t *testing.T) {
@@ -244,7 +260,7 @@ func TestSQLitePlaybackSinkUsesOneConnection(t *testing.T) {
 	}
 }
 
-func TestSQLitePlaybackSinkMigration23PreservesExistingData(t *testing.T) {
+func TestSQLitePlaybackSinkMigration23And24PreservesExistingData(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "upgrade.db")
 	db, err := NewUserDB(path, 1)
 	if err != nil {
@@ -256,7 +272,7 @@ func TestSQLitePlaybackSinkMigration23PreservesExistingData(t *testing.T) {
 	if err := AddHistory(db.DB, userstore.WatchHistoryEntry{ID: "existing", ProfileID: "profile", MediaItemID: "movie"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.DB.Exec(`DROP TABLE playback_progress_sinks; PRAGMA user_version=22;`); err != nil {
+	if _, err := db.DB.Exec(`DROP TABLE playback_progress_sinks; DROP TABLE playback_source_markers; PRAGMA user_version=22;`); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -272,10 +288,18 @@ func TestSQLitePlaybackSinkMigration23PreservesExistingData(t *testing.T) {
 		t.Fatal(err)
 	}
 	version, err := userVersion(raw)
-	if err != nil || version != 23 {
+	if err != nil || version != schemaVersion {
 		t.Fatalf("upgrade version=%d %v", version, err)
 	}
-	s := NewSQLiteUserStore(raw)
+	ref := userstore.PlaybackSourceRef{Backend: "sqlite", AccountID: 1, SourceID: uuid.NewString(), SelectionGeneration: 1}
+	if _, err := raw.Exec(`INSERT INTO playback_source_markers VALUES(?,?,?,'writable')`, ref.AccountID, ref.SourceID, ref.SelectionGeneration); err != nil {
+		t.Fatal(err)
+	}
+	raw.SetMaxOpenConns(1)
+	if _, err := raw.Exec("PRAGMA synchronous=FULL"); err != nil {
+		t.Fatal(err)
+	}
+	s := &SQLiteUserStore{db: raw, sourceRef: &ref}
 	progress, err := s.GetProgress(t.Context(), "profile", "movie")
 	if err != nil || progress == nil || progress.PositionSeconds != 30 {
 		t.Fatalf("upgrade changed progress: %+v %v", progress, err)
@@ -297,7 +321,11 @@ func TestSQLitePlaybackSinkMigration23PreservesExistingData(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = reopened.Close() }()
-	state, err := NewSQLiteUserStore(reopened.DB).ReadPlaybackProgress(t.Context(), scope)
+	reopened.DB.SetMaxOpenConns(1)
+	if _, err := reopened.DB.Exec("PRAGMA synchronous=FULL"); err != nil {
+		t.Fatal(err)
+	}
+	state, err := (&SQLiteUserStore{db: reopened.DB, sourceRef: &ref}).ReadPlaybackProgress(t.Context(), scope)
 	if err != nil || state.Fence != fence {
 		t.Fatalf("reopen lost installed authority: %+v %v", state, err)
 	}
