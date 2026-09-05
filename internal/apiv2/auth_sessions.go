@@ -102,7 +102,8 @@ const setupDomain = "setup"
 
 // SetupServerInput creates the first administrator.
 type SetupServerInput struct {
-	Body struct {
+	RawBody []byte
+	Body    struct {
 		Username             string `json:"username" minLength:"1" maxLength:"254" doc:"Login name of the administrator" example:"admin"`
 		Email                string `json:"email" minLength:"1" maxLength:"254" doc:"Contact email of the administrator" example:"admin@example.test"`
 		Password             string `json:"password" minLength:"8" maxLength:"72" doc:"Account password; at least 8 characters and at most 72 UTF-8 bytes" example:"correct horse battery staple"`
@@ -123,7 +124,8 @@ type SignupStatusOutput struct {
 
 // SignupInput creates an account from an invite code.
 type SignupInput struct {
-	Body struct {
+	RawBody []byte
+	Body    struct {
 		Username             string `json:"username" minLength:"1" maxLength:"254" doc:"Login name" example:"alice"`
 		Email                string `json:"email" minLength:"1" maxLength:"254" doc:"Contact email" example:"alice@example.test"`
 		Password             string `json:"password" minLength:"8" maxLength:"72" doc:"Account password; at least 8 characters and at most 72 UTF-8 bytes" example:"correct horse battery staple"`
@@ -301,6 +303,10 @@ func (reg *Registry) registration(ctx context.Context, username, email, password
 }
 
 func (reg *Registry) setupServer(ctx context.Context, in *SetupServerInput) (*TokenPairOutput, error) {
+	if p := rejectNonNullableNulls(in.RawBody, nil); p != nil {
+		return nil, p
+	}
+
 	if reg.deps.Sessions == nil {
 		return nil, unavailable("account")
 	}
@@ -327,6 +333,10 @@ func (reg *Registry) getSignupStatus(ctx context.Context, _ *struct{}) (*SignupS
 }
 
 func (reg *Registry) signup(ctx context.Context, in *SignupInput) (*TokenPairOutput, error) {
+	if p := rejectNonNullableNulls(in.RawBody, nil); p != nil {
+		return nil, p
+	}
+
 	if reg.deps.Sessions == nil {
 		return nil, unavailable("account")
 	}

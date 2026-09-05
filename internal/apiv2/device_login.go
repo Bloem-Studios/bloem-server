@@ -55,7 +55,8 @@ type DeviceLoginCapabilityOutput struct {
 
 // StartDeviceLoginInput opens a pairing request.
 type StartDeviceLoginInput struct {
-	Body struct {
+	RawBody []byte
+	Body    struct {
 		DeviceName     string `json:"device_name,omitempty" maxLength:"128" doc:"Human-readable device name shown to the approver" example:"Living room TV"`
 		DevicePlatform string `json:"device_platform,omitempty" maxLength:"64" doc:"Platform label shown to the approver" example:"tvos"`
 		ClientPurpose  string `json:"client_purpose,omitempty" enum:"device_login,remote_playback" doc:"Pairing purpose; defaults to device_login. remote_playback requires temporary=true and is approved through approve-handoff" example:"device_login"`
@@ -136,7 +137,8 @@ type DeviceLoginPollOutput struct {
 // DecideDeviceLoginInput identifies the request being approved or denied by
 // either code; at least one must be given.
 type DecideDeviceLoginInput struct {
-	Body struct {
+	RawBody []byte
+	Body    struct {
 		Token string `json:"token,omitempty" doc:"Browser code from the verification link" example:"br0ws3rc0d3"`
 		Code  string `json:"code,omitempty" doc:"User code the person typed" example:"ABCD-1234"`
 	}
@@ -218,6 +220,10 @@ func (reg *Registry) getDeviceLoginCapability(_ context.Context, _ *struct{}) (*
 }
 
 func (reg *Registry) startDeviceLogin(ctx context.Context, in *StartDeviceLoginInput) (*DeviceLoginStartOutput, error) {
+	if p := rejectNonNullableNulls(in.RawBody, nil); p != nil {
+		return nil, p
+	}
+
 	if reg.deps.Devices == nil {
 		return nil, unavailable("device login")
 	}
@@ -361,6 +367,9 @@ func (reg *Registry) denyDeviceLogin(ctx context.Context, in *DecideDeviceLoginI
 // decisionCodes requires one of the two identifying codes. v1 forwards an
 // empty pair to the store and answers 404; v2 names the omission.
 func decisionCodes(in *DecideDeviceLoginInput) *Problem {
+	if p := rejectNonNullableNulls(in.RawBody, nil); p != nil {
+		return p
+	}
 	if in.Body.Token == "" && in.Body.Code == "" {
 		return NewProblem(TypeValidationFailed, "The request did not pass validation; see errors.").
 			WithErrors(ProblemError{Location: locationBody + ".code", Code: codeRequired, Detail: "Either token or code is required."})

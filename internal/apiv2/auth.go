@@ -16,7 +16,8 @@ import (
 
 // LoginInput is a password login.
 type LoginInput struct {
-	Body struct {
+	RawBody []byte
+	Body    struct {
 		Username string `json:"username" minLength:"1" maxLength:"254" doc:"Login name or, for providers that accept it, email" example:"alice"`
 		Password string `json:"password" minLength:"1" maxLength:"1024" doc:"Account password" example:"correct horse battery staple"`
 		Provider string `json:"provider,omitempty" doc:"Authentication provider id exactly as listAuthProviders advertises it; unbounded because plugin ids are composite. Empty selects the default" example:""`
@@ -85,6 +86,10 @@ func registerAuth(reg *Registry) {
 }
 
 func (reg *Registry) login(ctx context.Context, in *LoginInput) (*LoginOutput, error) {
+	if p := rejectNonNullableNulls(in.RawBody, nil); p != nil {
+		return nil, p
+	}
+
 	if reg.deps.Sessions == nil {
 		return nil, unavailable(loginDomain)
 	}
