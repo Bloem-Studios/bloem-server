@@ -5,9 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/playback"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -20,21 +23,22 @@ const (
 
 // SessionInfo represents an active streaming session stored in Redis.
 type SessionInfo struct {
-	SessionID         string `json:"session_id"`
-	NodeURL           string `json:"node_url"`
-	NodeName          string `json:"node_name"`
-	UserID            string `json:"user_id,omitempty"`
-	MediaItemID       string `json:"media_item_id,omitempty"`
-	MediaTitle        string `json:"media_title,omitempty"`
-	Type              string `json:"type"` // "direct_play", "remux", "transcode", "download_prepare", "download"
-	CodecVideo        string `json:"codec_video,omitempty"`
-	CodecAudio        string `json:"codec_audio,omitempty"`
-	Resolution        string `json:"resolution,omitempty"`
-	HWAccel           string `json:"hw_accel,omitempty"`
-	ToneMapMode       string `json:"tone_map_mode,omitempty"`
-	StartedAt         string `json:"started_at"`
-	StartedAtUnixNano int64  `json:"started_at_unix_nano,omitempty"`
-	StartedAtSource   string `json:"started_at_source,omitempty"`
+	Executor          *playback.ExecutorNamespaceV3 `json:"executor,omitempty"`
+	SessionID         string                        `json:"session_id"`
+	NodeURL           string                        `json:"node_url"`
+	NodeName          string                        `json:"node_name"`
+	UserID            string                        `json:"user_id,omitempty"`
+	MediaItemID       string                        `json:"media_item_id,omitempty"`
+	MediaTitle        string                        `json:"media_title,omitempty"`
+	Type              string                        `json:"type"` // "direct_play", "remux", "transcode", "download_prepare", "download"
+	CodecVideo        string                        `json:"codec_video,omitempty"`
+	CodecAudio        string                        `json:"codec_audio,omitempty"`
+	Resolution        string                        `json:"resolution,omitempty"`
+	HWAccel           string                        `json:"hw_accel,omitempty"`
+	ToneMapMode       string                        `json:"tone_map_mode,omitempty"`
+	StartedAt         string                        `json:"started_at"`
+	StartedAtUnixNano int64                         `json:"started_at_unix_nano,omitempty"`
+	StartedAtSource   string                        `json:"started_at_source,omitempty"`
 
 	// AuthUserID / ProfileID / MediaFileID are the numeric ownership keys the
 	// node copies from the verified stream token. They enrich the live admin
@@ -55,8 +59,8 @@ type Tracker struct {
 	nodeHash string // first 8 chars of SHA-256 of nodeURL
 
 	mu       sync.Mutex
-	sessions map[string]struct{}  // set of active session IDs
-	touched  map[string]time.Time // ephemeral sessions by last-activity time
+	sessions map[string]struct{}  // set of active Redis keys
+	touched  map[string]time.Time // ephemeral Redis keys by last-activity time
 }
 
 // NewTracker creates a session tracker for the given node.
@@ -122,14 +126,17 @@ func (tr *Tracker) Track(ctx context.Context, info SessionInfo) {
 		slog.DebugContext(ctx, "session track marshal failed", "component", "nodesessions", "error", err)
 		return
 	}
-	key := tr.redisKey(info.SessionID)
+	key, err := tr.infoKey(info)
+	if err != nil {
+		return
+	}
 	if err := tr.rdb.Set(ctx, key, data, sessionTTL).Err(); err != nil {
 		slog.DebugContext(ctx, "session track set failed", "component", "nodesessions", "error", err, "session", info.SessionID)
 		return
 	}
 
 	tr.mu.Lock()
-	tr.sessions[info.SessionID] = struct{}{}
+	tr.sessions[key] = struct{}{}
 	tr.mu.Unlock()
 }
 
@@ -141,9 +148,13 @@ func (tr *Tracker) Touch(ctx context.Context, info SessionInfo) {
 	if tr.rdb == nil {
 		return
 	}
+	key, err := tr.infoKey(info)
+	if err != nil {
+		return
+	}
 	tr.mu.Lock()
-	_, known := tr.touched[info.SessionID]
-	tr.touched[info.SessionID] = time.Now()
+	_, known := tr.touched[key]
+	tr.touched[key] = time.Now()
 	tr.mu.Unlock()
 	if known {
 		return
@@ -154,7 +165,7 @@ func (tr *Tracker) Touch(ctx context.Context, info SessionInfo) {
 		slog.DebugContext(ctx, "session touch marshal failed", "component", "nodesessions", "error", err)
 		return
 	}
-	if err := tr.rdb.Set(ctx, tr.redisKey(info.SessionID), data, sessionTTL).Err(); err != nil {
+	if err := tr.rdb.Set(ctx, key, data, sessionTTL).Err(); err != nil {
 		slog.DebugContext(ctx, "session touch set failed", "component", "nodesessions", "error", err, "session", info.SessionID)
 	}
 }
@@ -165,8 +176,8 @@ func (tr *Tracker) Remove(ctx context.Context, sessionID string) {
 		return
 	}
 	tr.mu.Lock()
-	delete(tr.sessions, sessionID)
-	delete(tr.touched, sessionID)
+	delete(tr.sessions, tr.redisKey(sessionID))
+	delete(tr.touched, tr.redisKey(sessionID))
 	tr.mu.Unlock()
 
 	if err := tr.rdb.Del(ctx, tr.redisKey(sessionID)).Err(); err != nil {
@@ -199,7 +210,7 @@ func (tr *Tracker) Cleanup(ctx context.Context) {
 
 	pipe := tr.rdb.Pipeline()
 	for _, id := range ids {
-		pipe.Del(ctx, tr.redisKey(id))
+		pipe.Del(ctx, id)
 	}
 	if _, err := pipe.Exec(ctx); err != nil {
 		slog.DebugContext(ctx, "session cleanup pipeline failed", "component", "nodesessions", "error", err)
@@ -252,9 +263,40 @@ func (tr *Tracker) refreshAll(ctx context.Context) {
 
 	pipe := tr.rdb.Pipeline()
 	for _, id := range ids {
-		pipe.Expire(ctx, tr.redisKey(id), sessionTTL)
+		pipe.Expire(ctx, id, sessionTTL)
 	}
 	if _, err := pipe.Exec(ctx); err != nil {
 		slog.DebugContext(ctx, "session refresh pipeline failed", "component", "nodesessions", "error", err)
+	}
+}
+
+// infoKey gives each immutable executor its own record. Legacy Remove and stale
+// refresh/cleanup snapshots cannot address a successor generation's key.
+func (tr *Tracker) infoKey(info SessionInfo) (string, error) {
+	if info.Executor == nil {
+		return tr.redisKey(info.SessionID), nil
+	}
+	if err := info.Executor.Validate(); err != nil {
+		return "", err
+	}
+	id := sha256.Sum256([]byte(info.SessionID))
+	return fmt.Sprintf("%s%s:_authority:%x:%s:%d:%s", keyPrefix, tr.nodeHash, id, info.Executor.Incarnation, info.Executor.Epoch, info.Executor.ExecutorID), nil
+}
+
+// RemoveExecutor removes only the captured executor generation.
+func (tr *Tracker) RemoveExecutor(ctx context.Context, sessionID string, executor playback.ExecutorNamespaceV3) {
+	if tr.rdb == nil {
+		return
+	}
+	key, err := tr.infoKey(SessionInfo{SessionID: sessionID, Executor: &executor})
+	if err != nil {
+		return
+	}
+	tr.mu.Lock()
+	delete(tr.sessions, key)
+	delete(tr.touched, key)
+	tr.mu.Unlock()
+	if err := tr.rdb.Del(ctx, key).Err(); err != nil {
+		slog.DebugContext(ctx, "executor session remove failed", "component", "nodesessions", "error", err)
 	}
 }
