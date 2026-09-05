@@ -24,11 +24,14 @@ import (
 
 // Result is the outcome of one scenario.
 type Result struct {
-	Catalog  string
-	Row      string
-	Scenario string
-	Skipped  string
-	Failures []string
+	ID          string
+	Transport   string
+	OperationID string
+	Catalog     string
+	Row         string
+	Scenario    string
+	Skipped     string
+	Failures    []string
 }
 
 // Passed reports a scenario that ran and met every assertion.
@@ -70,7 +73,28 @@ func RunAll(t *testing.T, catalogs []*scenariocatalog.Catalog) []Result {
 // receives the result before any Skip/Fatal unwinds the subtest.
 func (e *Env) Run(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.Row, s scenariocatalog.Scenario, record func(Result)) {
 	t.Helper()
-	res := Result{Catalog: c.File, Row: row.Key().String(), Scenario: s.ID}
+	run := func(transport, operationID, method string, scenario scenariocatalog.Scenario) {
+		t.Run(transport, func(t *testing.T) {
+			if s.V2Expectation != nil && e.HasDatabase() {
+				e.Reseed()
+			}
+			e.runTransport(t, c, row, scenario, transport, operationID, method, record)
+		})
+	}
+	run("v1", "", s.Method(), s)
+	if pair := s.V2Expectation; pair != nil {
+		paired := s
+		paired.Request, paired.Expect, paired.Then = pair.Request, pair.Expect, nil
+		if pair.Principal != nil {
+			paired.Principal = *pair.Principal
+		}
+		run("v2", pair.OperationID, pair.Method, paired)
+	}
+}
+
+func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.Row, s scenariocatalog.Scenario, transport, operationID, method string, record func(Result)) {
+	t.Helper()
+	res := Result{ID: s.ID + "/" + transport, Transport: transport, OperationID: operationID, Catalog: c.File, Row: row.Key().String(), Scenario: s.ID}
 	defer func() { record(res) }()
 	dbUnavailable := s.HasRequirement("database_unavailable")
 	// A scenario on the rate-limited registration variant (#1 rows, which
@@ -122,7 +146,7 @@ func (e *Env) Run(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.
 		e.resetRateLimits()
 	}
 
-	failures, fatal := e.exchange(server.URL, s.Method(), s.Request, s.Principal, s.Expect)
+	failures, fatal := e.exchange(server.URL, method, s.Request, s.Principal, s.Expect)
 	if fatal != nil {
 		res.Failures = []string{fatal.Error()}
 		t.Fatal(res.Failures[0])

@@ -46,7 +46,61 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "The v2 profile list preserves account ownership and ordering using the items envelope, explicit empty strings and arrays, and Problem Details for refusals.",
+            "recorded_in": "internal/apiv2/profiles_test.go",
+            "operation_id": "listProfiles",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items",
+                    "avatar_upload_enabled"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 4
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${profile_primary}"
+                },
+                {
+                  "pointer": "/items/1/id",
+                  "op": "equals",
+                  "value": "${profile_secondary}"
+                },
+                {
+                  "pointer": "/items/2/id",
+                  "op": "equals",
+                  "value": "${profile_child}"
+                },
+                {
+                  "pointer": "/items/3/id",
+                  "op": "equals",
+                  "value": "${profile_locked}"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_list.meaning",
@@ -99,7 +153,88 @@
             ]
           },
           "notes": "avatar_upload_enabled is true even though no object store is configured: the router assigns the nil *s3client.Client to the handler's interface field, which then compares non-nil. Flagged for the section PR (typed-nil).",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "The v2 profile list preserves account ownership and ordering using the items envelope, explicit empty strings and arrays, and Problem Details for refusals.",
+            "recorded_in": "internal/apiv2/profiles_test.go",
+            "operation_id": "listProfiles",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 4
+                },
+                {
+                  "pointer": "/items/0/is_primary",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${profile_primary}"
+                },
+                {
+                  "pointer": "/items/2/is_child",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/items/2/max_content_rating",
+                  "op": "equals",
+                  "value": "PG"
+                },
+                {
+                  "pointer": "/items/3/has_pin",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/avatar_upload_enabled",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 4
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${profile_primary}"
+                },
+                {
+                  "pointer": "/items/1/id",
+                  "op": "equals",
+                  "value": "${profile_secondary}"
+                },
+                {
+                  "pointer": "/items/2/id",
+                  "op": "equals",
+                  "value": "${profile_child}"
+                },
+                {
+                  "pointer": "/items/3/id",
+                  "op": "equals",
+                  "value": "${profile_locked}"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_list.shape",
@@ -168,7 +303,107 @@
             ]
           },
           "notes": "allowed_library_ids serializes as null for an empty list while max_playback_quality is an empty string; inconsistent empty representations. Flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "The v2 profile list preserves account ownership and ordering using the items envelope, explicit empty strings and arrays, and Problem Details for refusals.",
+            "recorded_in": "internal/apiv2/profiles_test.go",
+            "operation_id": "listProfiles",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 4
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "keys_include",
+                    "value": [
+                      "id",
+                      "name",
+                      "has_pin",
+                      "is_child",
+                      "is_primary",
+                      "auto_skip_intro",
+                      "auto_skip_credits",
+                      "auto_skip_recap",
+                      "auto_play_next_preview",
+                      "show_forced_subtitles",
+                      "library_restrictions_enabled",
+                      "allowed_library_ids",
+                      "max_playback_quality",
+                      "created_at",
+                      "updated_at"
+                    ]
+                  }
+                },
+                {
+                  "pointer": "/items/0/allowed_library_ids",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/items/0/avatar",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/items/0/max_content_rating",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/items/0/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/items/0/max_playback_quality",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 4
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${profile_primary}"
+                },
+                {
+                  "pointer": "/items/1/id",
+                  "op": "equals",
+                  "value": "${profile_secondary}"
+                },
+                {
+                  "pointer": "/items/2/id",
+                  "op": "equals",
+                  "value": "${profile_child}"
+                },
+                {
+                  "pointer": "/items/3/id",
+                  "op": "equals",
+                  "value": "${profile_locked}"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_list.sorted",
@@ -203,7 +438,71 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "The v2 profile list preserves account ownership and ordering using the items envelope, explicit empty strings and arrays, and Problem Details for refusals.",
+            "recorded_in": "internal/apiv2/profiles_test.go",
+            "operation_id": "listProfiles",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 4
+                },
+                {
+                  "pointer": "/items",
+                  "op": "sorted",
+                  "value": {
+                    "by": "/created_at",
+                    "direction": "asc"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "unique_by",
+                  "value": "/id"
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 4
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${profile_primary}"
+                },
+                {
+                  "pointer": "/items/1/id",
+                  "op": "equals",
+                  "value": "${profile_secondary}"
+                },
+                {
+                  "pointer": "/items/2/id",
+                  "op": "equals",
+                  "value": "${profile_child}"
+                },
+                {
+                  "pointer": "/items/3/id",
+                  "op": "equals",
+                  "value": "${profile_locked}"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_list.no_profile_needed",
@@ -218,7 +517,53 @@
           "expect": {
             "status": 200
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "The v2 profile list preserves account ownership and ordering using the items envelope, explicit empty strings and arrays, and Problem Details for refusals.",
+            "recorded_in": "internal/apiv2/profiles_test.go",
+            "operation_id": "listProfiles",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 4
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${profile_primary}"
+                },
+                {
+                  "pointer": "/items/1/id",
+                  "op": "equals",
+                  "value": "${profile_secondary}"
+                },
+                {
+                  "pointer": "/items/2/id",
+                  "op": "equals",
+                  "value": "${profile_child}"
+                },
+                {
+                  "pointer": "/items/3/id",
+                  "op": "equals",
+                  "value": "${profile_locked}"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_list.other_account",
@@ -240,7 +585,53 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "The v2 profile list preserves account ownership and ordering using the items envelope, explicit empty strings and arrays, and Problem Details for refusals.",
+            "recorded_in": "internal/apiv2/profiles_test.go",
+            "operation_id": "listProfiles",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${profile_admin_primary}"
+                },
+                {
+                  "pointer": "/items/1/id",
+                  "op": "equals",
+                  "value": "${profile_admin_secondary}"
+                },
+                {
+                  "pointer": "/items/2/id",
+                  "op": "equals",
+                  "value": "${profile_admin_locked}"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_list.api_key",
@@ -262,7 +653,53 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "The v2 profile list preserves account ownership and ordering using the items envelope, explicit empty strings and arrays, and Problem Details for refusals.",
+            "recorded_in": "internal/apiv2/profiles_test.go",
+            "operation_id": "listProfiles",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/items/0/id",
+                  "op": "equals",
+                  "value": "${profile_admin_primary}"
+                },
+                {
+                  "pointer": "/items/1/id",
+                  "op": "equals",
+                  "value": "${profile_admin_secondary}"
+                },
+                {
+                  "pointer": "/items/2/id",
+                  "op": "equals",
+                  "value": "${profile_admin_locked}"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_list.other_account_profile",
@@ -316,7 +753,64 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "The v2 profile list preserves account ownership and ordering using the items envelope, explicit empty strings and arrays, and Problem Details for refusals.",
+            "recorded_in": "internal/apiv2/profiles_test.go",
+            "operation_id": "listProfiles",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                },
+                {
+                  "pointer": "/type",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/type",
+                  "op": "contains",
+                  "value": "/docs/api/v2/problems/not_found"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Profile not found"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_list.no_token",
@@ -368,7 +862,64 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "The v2 profile list preserves account ownership and ordering using the items envelope, explicit empty strings and arrays, and Problem Details for refusals.",
+            "recorded_in": "internal/apiv2/profiles_test.go",
+            "operation_id": "listProfiles",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                },
+                {
+                  "pointer": "/type",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/type",
+                  "op": "contains",
+                  "value": "/docs/api/v2/problems/authentication_required"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Authentication is required."
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_list.error_shape",
@@ -403,7 +954,64 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "The v2 profile list preserves account ownership and ordering using the items envelope, explicit empty strings and arrays, and Problem Details for refusals.",
+            "recorded_in": "internal/apiv2/profiles_test.go",
+            "operation_id": "listProfiles",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles"
+            },
+            "expect": {
+              "status": 401,
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                },
+                {
+                  "pointer": "/type",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/type",
+                  "op": "contains",
+                  "value": "/docs/api/v2/problems/authentication_required"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Authentication is required."
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ]
+            }
+          }
         }
       ]
     },
