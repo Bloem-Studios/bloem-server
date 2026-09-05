@@ -247,6 +247,7 @@ func registerHistoryImports(reg *Registry) {
 	accountOp := func(op huma.Operation) Operation {
 		registered := Operation{Operation: op, Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true}
 		if op.Method == http.MethodPost {
+			registered.DemoRestricted = true
 			// Creation has no durable request identity; polling can repeat an
 			// unclaimed provider exchange across nodes.
 			registered.RetrySafety = RetrySafetyNonRetryable

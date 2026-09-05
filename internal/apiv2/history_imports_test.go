@@ -298,3 +298,27 @@ func upstreamAPIError(t *testing.T, status int) error {
 	}
 	return err
 }
+
+func TestHistoryImportDemoGuard(t *testing.T) {
+	deps := historyImportDeps(nil)
+	deps.DemoSettings = fakeSettings{demo: true}
+	h := newTestHandler(t, deps)
+	// A missing service would return 503 if the guard allowed any exchange.
+	for _, tc := range []struct{ path, body string }{
+		{"/runs", `{"source":"plex","profile_id":"p-owner","plex_session_id":"plex-sess","plex_server_id":"abc"}`},
+		{"/plex/auth/pin", ""},
+		{"/plex/auth/check", `{"session_id":"plex-sess"}`},
+		{"/emby-connect/login", `{"username":"example","password":"test-password"}`},
+	} {
+		requireProblem(t, do(t, h, http.MethodPost, Prefix+"/history-imports"+tc.path, tc.body, bearer(memberToken)), TypePermissionDenied)
+	}
+	fake := fixtureHistoryImports()
+	deps.HistoryImports = fake
+	h = newTestHandler(t, deps)
+	if r := do(t, h, http.MethodGet, Prefix+"/history-imports/sources", "", bearer(memberToken)); r.Code != 200 {
+		t.Fatalf("demo read: %d %s", r.Code, r.Body)
+	}
+	if r := do(t, h, http.MethodPost, Prefix+"/history-imports/plex/auth/pin", "", bearer(adminToken)); r.Code != 200 || fake.pinCalls != 1 {
+		t.Fatalf("admin demo write: %d %s", r.Code, r.Body)
+	}
+}
