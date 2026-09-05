@@ -13,6 +13,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/sections"
+	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
 // Catalog item seams: the profile-scoped catalog browse and item reads the
@@ -70,6 +71,13 @@ func (h *CatalogHandler) Browse(ctx context.Context, v ItemViewer, req catalog.C
 	if h == nil || h.resolver == nil || h.itemsH == nil {
 		return CatalogBrowseView{}, apiError(http.StatusInternalServerError, "internal_error", "Catalog is not configured")
 	}
+	if req.CursorPaging {
+		// A distant window seek may scan a large sorted prefix. Bound the whole
+		// resolve/enrichment operation and preserve earlier client cancellation.
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+	}
 	if groupedByWork {
 		result, entries, err := h.resolveGroupedCatalogByWork(ctx, req, v.Access)
 		if err != nil {
@@ -82,14 +90,14 @@ func (h *CatalogHandler) Browse(ctx context.Context, v ItemViewer, req catalog.C
 				applyWorkSummaryToCatalogItem(&items[i], entries[i].summary)
 			}
 		}
-		return catalogBrowseView(result, items, true), nil
+		return catalogBrowseView(result, items), nil
 	}
 	result, err := h.resolver.Resolve(ctx, req, v.Access)
 	if err != nil {
 		return CatalogBrowseView{}, catalogResolveError(ctx, err, false)
 	}
 	items := h.catalogItemResponses(ctx, v, result.Items, catalogSortMetricField(req, result), playableTargetLibraryIDs(req), v.Access)
-	return catalogBrowseView(result, items, false), nil
+	return catalogBrowseView(result, items), nil
 }
 
 // catalogResolveError keeps grouped and ordinary catalog resolution on the
@@ -99,6 +107,19 @@ func (h *CatalogHandler) Browse(ctx context.Context, v ItemViewer, req catalog.C
 // request context: there is no client left, so the error passes through
 // untouched and the caller writes nothing.
 func catalogResolveError(ctx context.Context, err error, groupedByWork bool) error {
+	if errors.Is(err, catalog.ErrSearchWindowUnsupported) {
+		return apiError(http.StatusNotImplemented, "search_window_unsupported", "The configured search index result window is unsupported")
+	}
+	if errors.Is(err, catalog.ErrSearchContinuationUnavailable) {
+		return apiError(http.StatusServiceUnavailable, "search_continuation_unavailable", "Search continuation storage is unavailable")
+	}
+
+	if errors.Is(err, catalog.ErrCatalogStorageUnsupported) {
+		return apiError(http.StatusServiceUnavailable, "catalog_storage_unsupported", err.Error())
+	}
+	if errors.Is(err, catalog.ErrCatalogCursorChanged) {
+		return apiError(http.StatusBadRequest, "catalog_cursor_changed", err.Error())
+	}
 	if errors.Is(err, catalog.ErrInvalidCatalogRequest) {
 		return apiError(http.StatusBadRequest, "bad_request", err.Error())
 	}
@@ -116,25 +137,27 @@ func catalogResolveError(ctx context.Context, err error, groupedByWork bool) err
 	return apiError(http.StatusInternalServerError, "internal_error", "Failed to resolve catalog")
 }
 
-func catalogBrowseView(result *catalog.CatalogResult, items []itemListResponse, groupedByWork bool) CatalogBrowseView {
+func catalogBrowseView(result *catalog.CatalogResult, items []itemListResponse) CatalogBrowseView {
 	var snapshot string
 	if !result.SnapshotAt.IsZero() {
 		snapshot = result.SnapshotAt.Format(time.RFC3339Nano)
 	}
 	// A non-empty Provider is the single gate: only the direct-search path sets
 	// it. Browse / preview / non-relevance-sort q= (which never run a provider)
-	// and group=work (fresh CatalogResult with empty Provider) all omit it.
+	// omit it when the resolver did not use a search provider.
 	var diag *searchDiagnostics
 	if result.Provider != "" {
-		diag = &searchDiagnostics{Provider: result.Provider, Mode: result.Mode, SemanticUsed: result.SemanticUsed, FallbackReason: result.FallbackReason, IndexPendingUpdates: result.IndexPendingEvents}
+		diag = &searchDiagnostics{Provider: result.Provider, Mode: result.Mode, SemanticUsed: result.SemanticUsed, FallbackReason: result.FallbackReason, IndexPendingUpdates: result.IndexPendingEvents, ResultWindowLimit: result.ResultWindowLimit, SessionExpiresAt: result.SessionExpiresAt}
 	}
 	var effectiveSort *effectiveSortResponse
 	if field := strings.TrimSpace(result.EffectiveSort.Field); field != "" {
 		effectiveSort = &effectiveSortResponse{Field: field, Order: result.EffectiveSort.Order}
 	}
 	return CatalogBrowseView{
+		Next:              result.Next,
+		CursorScope:       result.CursorScope,
 		Total:             result.Total,
-		TotalExact:        result.TotalExact && !groupedByWork,
+		TotalExact:        result.TotalExact,
 		HasMore:           result.HasMore,
 		Items:             items,
 		Snapshot:          snapshot,
@@ -296,8 +319,23 @@ func (h *CatalogHandler) AudiobookGroups(ctx context.Context, v ItemViewer, quer
 	if h == nil || h.itemsH == nil || h.itemsH.browseRepo == nil {
 		return AudiobookGroupsView{}, apiError(http.StatusInternalServerError, "internal_error", "Catalog is not configured")
 	}
+	if query.CursorPaging {
+		if h.itemsH.storeProvider == nil {
+			return AudiobookGroupsView{}, catalogResolveError(ctx, catalog.ErrCatalogStorageUnsupported, false)
+		}
+		store, err := h.itemsH.storeProvider.ForUser(ctx, v.Access.UserID)
+		if err != nil {
+			return AudiobookGroupsView{}, catalogResolveError(ctx, err, false)
+		}
+		if !userstore.HasCatalogSQLState(store) {
+			return AudiobookGroupsView{}, catalogResolveError(ctx, catalog.ErrCatalogStorageUnsupported, false)
+		}
+	}
 	result, err := catalog.ListAudiobookGroups(ctx, h.itemsH.browseRepo.Pool(), query, v.Access)
 	if err != nil {
+		if query.CursorPaging {
+			return AudiobookGroupsView{}, catalogResolveError(ctx, err, false)
+		}
 		return AudiobookGroupsView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to list audiobook groups")
 	}
 	return h.audiobookGroupsView(ctx, result, v.Access), nil
@@ -554,4 +592,15 @@ func (h *CatalogResourceHandler) SeasonEpisodes(ctx context.Context, v ItemViewe
 		}
 	}
 	return h.items.buildEpisodeResponses(ctx, v, episodes), nil
+}
+
+func (h *CatalogHandler) SearchContinuationCapabilities(ctx context.Context) (catalog.SearchContinuationCapabilities, error) {
+	if h == nil || h.resolver == nil {
+		return catalog.SearchContinuationCapabilities{}, apiError(http.StatusServiceUnavailable, "dependency_unavailable", "Catalog is not configured")
+	}
+	result, err := h.resolver.SearchContinuationCapabilities(ctx)
+	if err != nil {
+		return result, catalogResolveError(ctx, err, false)
+	}
+	return result, nil
 }

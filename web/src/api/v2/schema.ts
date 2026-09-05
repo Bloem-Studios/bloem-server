@@ -341,6 +341,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/catalog/search/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Search continuation provider, result window, and session lifetime. */
+    get: operations["getCatalogSearchCapabilities"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/catalog/series/{id}/seasons": {
     parameters: {
       query?: never;
@@ -2326,6 +2343,8 @@ export interface components {
       total: number;
       /** @example true */
       total_exact: boolean;
+      /** @description Opaque seed for subsequent explicit window jumps; carries query scope and the initial insertion fence */
+      window_cursor: string;
     };
     CatalogEffectiveSort: {
       /** @example title */
@@ -2712,6 +2731,10 @@ export interface components {
       played: boolean;
     };
     CatalogQuery: {
+      collection_id?: string;
+      cursor?: string;
+      /** @enum {string} */
+      group?: "work";
       /** @description Rule groups; empty matches everything */
       groups?: components["schemas"]["CatalogQueryGroup"][];
       /**
@@ -2721,8 +2744,8 @@ export interface components {
       library_id?: string;
       /**
        * Format: int64
-       * @description Page size; default 20, maximum 100
-       * @example 20
+       * @description Page size; default 50, maximum 100
+       * @example 50
        */
       limit?: number;
       /**
@@ -2730,19 +2753,39 @@ export interface components {
        * @enum {string}
        */
       match?: "all" | "any";
-      /**
-       * Format: int64
-       * @description Rows to skip
-       * @example 0
-       */
-      offset?: number;
+      name_prefix?: string;
       /** @enum {string} */
       order?: "asc" | "desc";
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      person_id?: string;
+      q?: string;
+      /** Format: int64 */
+      query_limit?: number;
+      /** @enum {string} */
+      scope?: "home" | "library";
+      section_id?: string;
+      /** Format: int64 */
+      seek?: number;
+      skip_total?: boolean;
       /**
        * @description Sort field; default added date, newest first
        * @example title
        */
       sort?: string;
+      /** @enum {string} */
+      source?:
+        | "query"
+        | "section"
+        | "library_collection"
+        | "user_collection"
+        | "favorites"
+        | "watchlist"
+        | "history"
+        | "person";
+      type?: string;
     };
     CatalogQueryGroup: {
       /** @enum {string} */
@@ -2758,6 +2801,34 @@ export interface components {
       /** @description Scalar or array, as the operator requires */
       value: unknown;
     };
+    CatalogSearchCapabilities: {
+      /** @description Whether the current principal may use the capability */
+      allowed?: boolean;
+      /**
+       * Format: int64
+       * @description Oldest ranking sessions expire when this retention bound is exceeded
+       */
+      max_sessions_per_account?: number;
+      /** @enum {string} */
+      provider: "postgres" | "meilisearch";
+      /**
+       * Format: int64
+       * @description Maximum candidates in a Meilisearch ranked window; absent for PostgreSQL live queries
+       */
+      result_window_limit?: number;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * Format: int64
+       * @description Fixed Meilisearch ranking-session lifetime; requests do not extend it
+       */
+      session_ttl_seconds?: number;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
+    };
     CatalogSearchDiagnostics: {
       fallback_reason?: string;
       /** Format: int64 */
@@ -2769,8 +2840,18 @@ export interface components {
       mode: string;
       /** @example postgres */
       provider: string;
+      /**
+       * Format: int64
+       * @description Candidate limit of the retained ranking window; not an exact global match count
+       */
+      result_window_limit?: number;
       /** @example false */
       semantic_used: boolean;
+      /**
+       * Format: date-time
+       * @description Fixed expiry of the retained search ranking
+       */
+      session_expires_at?: string;
     };
     CatalogTechnicalFilters: {
       audio_languages: string[];
@@ -8065,6 +8146,8 @@ export interface operations {
         genre?: string;
         /** @description group=work collapses editions of one book into one card */
         group?: "work";
+        /** @description JSON array of structured rule groups; use POST catalog/query for larger queries */
+        groups?: string;
         /** @description Artwork variant to presign */
         image_size?: "small" | "medium" | "large" | "original";
         /** @description Restrict to one library; required for library sections */
@@ -8079,10 +8162,14 @@ export interface operations {
         person_id?: string;
         /** @description Search text */
         q?: string;
+        /** @description Maximum items in the query result; zero means uncapped */
+        query_limit?: number;
         /** @description For source=section: which page the section is on; default library */
         scope?: "home" | "library";
         /** @description For source=section */
         section_id?: string;
+        /** @description Explicit zero-based window jump; the server locates a boundary without returning intermediate cards */
+        seek?: number;
         /** @description true skips the exact count; the total is then an estimate */
         skip_total?: boolean;
         /** @description sort=field or -field; one term. Fields: title, year, release_date, added_at, rating, runtime, random, … (see the filters document); absent applies the source's saved or default order */
@@ -9756,6 +9843,112 @@ export interface operations {
       };
       /** @description Unsupported Media Type */
       415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getCatalogSearchCapabilities: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CatalogSearchCapabilities"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
         headers: {
           [name: string]: unknown;
         };

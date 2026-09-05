@@ -37,6 +37,7 @@ export const v2Operations = {
   "GET /api/v2/catalog/items/{id}/versions": "listCatalogItemVersions",
   "GET /api/v2/catalog/people": "listPeople",
   "GET /api/v2/catalog/people/{id}": "getPerson",
+  "GET /api/v2/catalog/search/capabilities": "getCatalogSearchCapabilities",
   "GET /api/v2/catalog/series/{id}/seasons": "listSeriesSeasons",
   "GET /api/v2/catalog/series/{id}/seasons/{num}": "getSeriesSeason",
   "GET /api/v2/catalog/series/{id}/seasons/{num}/episodes": "listSeasonEpisodes",

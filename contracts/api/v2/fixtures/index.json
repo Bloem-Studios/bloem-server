@@ -1086,6 +1086,44 @@
       "body_file": "get_catalog_item_ok.json"
     },
     {
+      "name": "get_catalog_search_capabilities_authentication_required",
+      "operation_id": "getCatalogSearchCapabilities",
+      "scenario": "Search capability discovery requires a viewer session.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/search/capabilities"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_catalog_search_capabilities_authentication_required.json"
+    },
+    {
+      "name": "get_catalog_search_capabilities_ok",
+      "operation_id": "getCatalogSearchCapabilities",
+      "scenario": "Search exposes its ranked result window and fixed session lifetime.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/search/capabilities",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CatalogSearchCapabilities",
+      "body_file": "get_catalog_search_capabilities_ok.json"
+    },
+    {
       "name": "get_current_user_ok",
       "operation_id": "getCurrentUser",
       "scenario": "The signed-in account with no profile selected; impersonation is absent outside an admin impersonation session.",

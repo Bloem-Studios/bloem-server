@@ -3,7 +3,7 @@
   "title": "Validation failed",
   "status": 422,
   "detail": "The request did not pass validation; see errors.",
-  "instance": "urn:silo:request:00000000000000000000010a",
+  "instance": "urn:silo:request:00000000000000000000010c",
   "errors": [
     {
       "location": "query.group_by",

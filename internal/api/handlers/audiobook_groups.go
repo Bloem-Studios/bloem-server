@@ -21,10 +21,11 @@ type audiobookGroupResponse struct {
 }
 
 type audiobookGroupsResponse struct {
-	Total      int                      `json:"total"`
-	TotalExact bool                     `json:"total_exact"`
-	HasMore    bool                     `json:"has_more"`
-	Groups     []audiobookGroupResponse `json:"groups"`
+	Next       *catalog.AudiobookGroupCursor `json:"-"`
+	Total      int                           `json:"total"`
+	TotalExact bool                          `json:"total_exact"`
+	HasMore    bool                          `json:"has_more"`
+	Groups     []audiobookGroupResponse      `json:"groups"`
 }
 
 // HandleGetAudiobookGroups — GET /api/v1/catalog/audiobook-groups
@@ -109,6 +110,7 @@ func (h *CatalogHandler) audiobookGroupsView(ctx context.Context, result catalog
 	resolvedPosters := h.resolveAudiobookGroupPosterURLs(ctx, result.Groups, filter.ImageSize)
 	resp := audiobookGroupsResponse{
 		Total:      result.Total,
+		Next:       result.Next,
 		TotalExact: result.TotalExact,
 		HasMore:    result.HasMore,
 		Groups:     make([]audiobookGroupResponse, 0, len(result.Groups)),

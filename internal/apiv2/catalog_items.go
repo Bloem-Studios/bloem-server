@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -15,7 +16,6 @@ import (
 	catalogpkg "github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/imagesize"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/sections"
 )
 
 // Section catalog-items: the profile-scoped catalog browse, facet documents,
@@ -47,7 +47,11 @@ type CatalogBrowseInput struct {
 	SkipTotal     bool     `query:"skip_total" doc:"true skips the exact count; the total is then an estimate"`
 	ImageSize     string   `query:"image_size" enum:"small,medium,large,original" doc:"Artwork variant to presign"`
 	LimitParam
-	Cursor string `query:"cursor" doc:"Opaque cursor from page.next_cursor"`
+	Cursor      string `query:"cursor" doc:"Opaque cursor from page.next_cursor"`
+	Groups      string `query:"groups" maxLength:"32768" doc:"JSON array of structured rule groups; use POST catalog/query for larger queries"`
+	QueryLimit  int    `query:"query_limit" minimum:"0" doc:"Maximum items in the query result; zero means uncapped"`
+	Seek        int    `query:"seek" minimum:"0" maximum:"10000000" doc:"Explicit zero-based window jump; the server locates a boundary without returning intermediate cards"`
+	operationID string
 }
 
 // CatalogFiltersInput is the getCatalogFilters query: the scope whose
@@ -92,13 +96,25 @@ type CatalogQueryInput struct {
 
 // CatalogQuery is the queryCatalogItems body.
 type CatalogQuery struct {
-	Match     string              `json:"match,omitempty" enum:"all,any" doc:"How the groups combine; default all"`
-	Groups    []CatalogQueryGroup `json:"groups,omitempty" doc:"Rule groups; empty matches everything"`
-	Sort      string              `json:"sort,omitempty" doc:"Sort field; default added date, newest first" example:"title"`
-	Order     string              `json:"order,omitempty" enum:"asc,desc"`
-	LibraryID ID                  `json:"library_id,omitempty" doc:"Restrict to one library" example:"1"`
-	Limit     int                 `json:"limit,omitempty" minimum:"1" maximum:"100" doc:"Page size; default 20, maximum 100" example:"20"`
-	Offset    int                 `json:"offset,omitempty" minimum:"0" doc:"Rows to skip" example:"0"`
+	Match        string              `json:"match,omitempty" enum:"all,any" doc:"How the groups combine; default all"`
+	Groups       []CatalogQueryGroup `json:"groups,omitempty" doc:"Rule groups; empty matches everything"`
+	Sort         string              `json:"sort,omitempty" doc:"Sort field; default added date, newest first" example:"title"`
+	Order        string              `json:"order,omitempty" enum:"asc,desc"`
+	LibraryID    ID                  `json:"library_id,omitempty" doc:"Restrict to one library" example:"1"`
+	Limit        int                 `json:"limit,omitempty" minimum:"1" maximum:"100" doc:"Page size; default 50, maximum 100" example:"50"`
+	Source       string              `json:"source,omitempty" enum:"query,section,library_collection,user_collection,favorites,watchlist,history,person"`
+	Scope        string              `json:"scope,omitempty" enum:"home,library"`
+	SectionID    string              `json:"section_id,omitempty"`
+	CollectionID string              `json:"collection_id,omitempty"`
+	PersonID     ID                  `json:"person_id,omitempty"`
+	Q            string              `json:"q,omitempty"`
+	NamePrefix   string              `json:"name_prefix,omitempty"`
+	Type         string              `json:"type,omitempty"`
+	Group        string              `json:"group,omitempty" enum:"work"`
+	SkipTotal    bool                `json:"skip_total,omitzero"`
+	QueryLimit   int                 `json:"query_limit,omitzero" minimum:"0"`
+	Cursor       string              `json:"cursor,omitempty"`
+	Seek         int                 `json:"seek,omitempty" minimum:"0" maximum:"10000000"`
 }
 
 // CatalogQueryGroup is one rule group of a query.
@@ -139,6 +155,7 @@ type CatalogSeasonInput struct {
 
 // CatalogBrowseCollection is one page of the catalog browse.
 type CatalogBrowseCollection struct {
+	WindowCursor string `json:"window_cursor" doc:"Opaque seed for subsequent explicit window jumps; carries query scope and the initial insertion fence"`
 	Collection[CatalogItem]
 	Total             int                       `json:"total" doc:"Items in the whole result; an estimate unless total_exact" example:"1240"`
 	TotalExact        bool                      `json:"total_exact" example:"true"`
@@ -148,11 +165,13 @@ type CatalogBrowseCollection struct {
 
 // CatalogSearchDiagnostics reports how a search was answered.
 type CatalogSearchDiagnostics struct {
-	Provider            string `json:"provider" example:"postgres"`
-	Mode                string `json:"mode" doc:"keyword, semantic, or hybrid after any fallback" example:"keyword"`
-	SemanticUsed        bool   `json:"semantic_used" example:"false"`
-	FallbackReason      string `json:"fallback_reason,omitempty"`
-	IndexPendingUpdates int    `json:"index_pending_updates,omitempty"`
+	ResultWindowLimit   int      `json:"result_window_limit,omitzero" doc:"Candidate limit of the retained ranking window; not an exact global match count"`
+	SessionExpiresAt    *Instant `json:"session_expires_at,omitempty" doc:"Fixed expiry of the retained search ranking"`
+	Provider            string   `json:"provider" example:"postgres"`
+	Mode                string   `json:"mode" doc:"keyword, semantic, or hybrid after any fallback" example:"keyword"`
+	SemanticUsed        bool     `json:"semantic_used" example:"false"`
+	FallbackReason      string   `json:"fallback_reason,omitempty"`
+	IndexPendingUpdates int      `json:"index_pending_updates,omitempty"`
 }
 
 // CatalogEffectiveSort is a resolved sort.
@@ -166,11 +185,13 @@ type CatalogBrowseOutput struct {
 	Body CatalogBrowseCollection
 }
 
-// catalogBrowsePosition is the browse cursor: the offset to resume at and the
-// snapshot the first page froze the result set to.
+// catalogBrowsePosition retains source continuation, resolved sort and an
+// insertion fence. Offset is the visible window position for explicit jumps.
 type catalogBrowsePosition struct {
-	Offset   int    `json:"o"`
-	Snapshot string `json:"s,omitempty"`
+	After    *catalogpkg.QueryCursor `json:"a,omitempty"`
+	Sort     *catalogpkg.QuerySort   `json:"sort,omitempty"`
+	Offset   int                     `json:"o"`
+	Snapshot string                  `json:"s,omitempty"`
 }
 
 // CatalogFilters is the facet document of a scope.
@@ -461,11 +482,14 @@ type SeasonOutput struct {
 // --- registration ---
 
 const (
-	opListCatalogItems    = "listCatalogItems"
-	opListAudiobookGroups = "listAudiobookGroups"
+	opListCatalogItems     = "listCatalogItems"
+	opQueryCatalogItems    = "queryCatalogItems"
+	locationQueryImageSize = "query.image_size"
+	opListAudiobookGroups  = "listAudiobookGroups"
 )
 
 func registerCatalogItems(reg *Registry) {
+	registerCatalogSearchCapabilities(reg)
 	cursors := NewCursors(reg.deps.CursorSecret)
 	viewer := func(op huma.Operation) Operation {
 		return Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true}
@@ -484,12 +508,14 @@ func registerCatalogItems(reg *Registry) {
 		"The facet values available in a scope, for filter menus.")), reg.getCatalogFilters)
 	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/filters/search", "searchCatalogFacet", "catalog",
 		"Prefix typeahead over one facet of a scope.")), reg.searchCatalogFacet)
-	query := humaOp(http.MethodPost, Prefix+"/catalog/query", "queryCatalogItems", "catalog",
+	query := humaOp(http.MethodPost, Prefix+"/catalog/query", opQueryCatalogItems, "catalog",
 		"Page the catalog by a JSON rule-group query; the body form of the browse.")
 	query.DefaultStatus = http.StatusOK
 	queryOperation := viewer(query)
 	queryOperation.RetrySafety = RetrySafetyNaturalIdempotent
-	Register(reg, queryOperation, reg.queryCatalogItems)
+	Register(reg, queryOperation, func(ctx context.Context, in *CatalogQueryInput) (*CatalogBrowseOutput, error) {
+		return reg.queryCatalogItems(ctx, cursors, in)
+	})
 	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/items/{id}", "getCatalogItem", "catalog",
 		"The detail page of one item, with the viewer's state.")), reg.getCatalogItem)
 	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/items/{id}/episodes", "listCatalogItemEpisodes", "catalog",
@@ -573,10 +599,25 @@ func (id ID) positive(location string) (int, *Problem) {
 // 422 at location, a search deadline is a dependency problem with a retry
 // hint, the rest follow the status.
 func catalogProblem(err error, location string) *Problem {
+	if errors.Is(err, catalogpkg.ErrCatalogStorageUnsupported) {
+		return NewProblem(TypeCapabilityUnsupported, "The selected user storage does not support this catalog query.")
+	}
+	if errors.Is(err, catalogpkg.ErrCatalogCursorChanged) {
+		return NewProblem(TypeInvalidCursor, "The catalog source changed. Restart from the first page.")
+	}
 	var apiErr *handlers.APIError
 	if errors.As(err, &apiErr) {
 		switch apiErr.Status {
+		case http.StatusNotImplemented:
+			return NewProblem(TypeCapabilityUnsupported, apiErr.Message)
+		case http.StatusServiceUnavailable:
+			if apiErr.Code == "catalog_storage_unsupported" {
+				return NewProblem(TypeCapabilityUnsupported, "The selected user storage does not support this catalog query.")
+			}
 		case http.StatusBadRequest:
+			if apiErr.Code == "catalog_cursor_changed" {
+				return NewProblem(TypeInvalidCursor, "The catalog source changed. Restart from the first page.")
+			}
 			return NewProblem(TypeValidationFailed, "The request did not pass validation; see errors.").
 				WithErrors(ProblemError{Location: location, Code: codeInvalid, Detail: apiErr.Message})
 		case http.StatusGatewayTimeout:
@@ -593,6 +634,11 @@ func catalogProblem(err error, location string) *Problem {
 // so v2 and v1 build the same CatalogRequest from the same choices.
 func (in *CatalogBrowseInput) catalogValues() (url.Values, *Problem) {
 	v := url.Values{}
+	if in.LibraryID != "" {
+		if _, p := in.LibraryID.positive("query.library_id"); p != nil {
+			return nil, p
+		}
+	}
 	set := func(k, s string) {
 		if s != "" {
 			v.Set(k, s)
@@ -607,6 +653,9 @@ func (in *CatalogBrowseInput) catalogValues() (url.Values, *Problem) {
 	set("q", in.Q)
 	set("name_prefix", in.NamePrefix)
 	set("match", in.Match)
+	if in.QueryLimit > 0 {
+		v.Set("query_limit", strconv.Itoa(in.QueryLimit))
+	}
 	set("type", in.Type)
 	set("genre", in.Genre)
 	set("status", in.Status)
@@ -708,9 +757,35 @@ func (reg *Registry) listCatalogItems(ctx context.Context, cursors *Cursors, in 
 	if p != nil {
 		return nil, p
 	}
+	if in.Groups != "" {
+		var groups []CatalogQueryGroup
+		decoder := json.NewDecoder(strings.NewReader(in.Groups))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&groups); err != nil || !json.Valid([]byte(in.Groups)) {
+			return nil, NewProblem(TypeValidationFailed, "Invalid structured filters.").WithErrors(ProblemError{Location: "query.groups", Code: codeInvalid, Detail: "expected a JSON array of rule groups"})
+		}
+		for _, g := range groups {
+			rules := make([]catalogpkg.QueryRule, 0, len(g.Rules))
+			for _, rule := range g.Rules {
+				rules = append(rules, catalogpkg.QueryRule{Field: rule.Field, Op: rule.Op, Value: rule.Value})
+			}
+			req.Query.Groups = append(req.Query.Groups, catalogpkg.QueryGroup{Match: g.Match, Rules: rules})
+		}
+		canonical, _ := json.Marshal(groups)
+		values.Set("groups", string(canonical))
+		if err := req.Query.Validate(); err != nil {
+			return nil, NewProblem(TypeValidationFailed, "Invalid structured filters.").WithErrors(ProblemError{Location: "query.groups", Code: codeInvalid, Detail: err.Error()})
+		}
+	}
+	operationID := in.operationID
+	if operationID == "" {
+		operationID = opListCatalogItems
+	}
+	values.Del("include_total")
+	values.Set("limit", strconv.Itoa(in.Limit))
 	claims := claimsFrom(ctx)
 	scope := CursorScope{
-		OperationID: opListCatalogItems,
+		OperationID: operationID,
 		Security:    strconv.Itoa(claims.UserID) + "/" + viewer.ProfileID + "/" + viewerScopeDigest(ctx),
 		Filter:      values.Encode() + "&group=" + in.Group + "&image_size=" + in.ImageSize,
 		Sort:        req.Query.Sort.Field + "," + req.Query.Sort.Order,
@@ -728,14 +803,24 @@ func (reg *Registry) listCatalogItems(ctx context.Context, cursors *Cursors, in 
 		}
 	}
 	req.Offset = pos.Offset
+	if in.Seek > 0 {
+		req.Seek = new(in.Seek)
+		req.Offset = in.Seek
+	}
+	req.CursorPaging = true
+	req.After = pos.After
+	req.ResolvedSort = pos.Sort
 	req.Limit = in.Limit
 	view, err := svc.Browse(ctx, viewer, req, in.Group == "work")
 	if err != nil {
 		return nil, catalogProblem(err, "query.source")
 	}
+	if view.EffectiveSort != nil {
+		req.ResolvedSort = &catalogpkg.QuerySort{Field: view.EffectiveSort.Field, Order: view.EffectiveSort.Order}
+	}
 	next := ""
 	if view.HasMore {
-		next, err = cursors.Encode(scope, catalogBrowsePosition{Offset: pos.Offset + in.Limit, Snapshot: view.Snapshot})
+		next, err = cursors.Encode(scope, catalogBrowsePosition{Offset: req.Offset + len(view.Items), Snapshot: view.Snapshot, After: view.Next, Sort: req.ResolvedSort})
 		if err != nil {
 			return nil, NewProblem(TypeInternalError, "An unexpected error occurred.")
 		}
@@ -744,9 +829,17 @@ func (reg *Registry) listCatalogItems(ctx context.Context, cursors *Cursors, in 
 	for _, item := range view.Items {
 		items = append(items, catalogItemOfListing(item))
 	}
-	out := CatalogBrowseCollection{Collection: Paginated(items, next), Total: view.Total, TotalExact: view.TotalExact}
+	window, err := cursors.Encode(scope, catalogBrowsePosition{Snapshot: view.Snapshot, Sort: req.ResolvedSort, After: view.CursorScope})
+	if err != nil {
+		return nil, NewProblem(TypeInternalError, "An unexpected error occurred.")
+	}
+	out := CatalogBrowseCollection{WindowCursor: window, Collection: Paginated(items, next), Total: view.Total, TotalExact: view.TotalExact}
 	if d := view.SearchDiagnostics; d != nil {
 		out.SearchDiagnostics = &CatalogSearchDiagnostics{Provider: d.Provider, Mode: d.Mode, SemanticUsed: d.SemanticUsed, FallbackReason: d.FallbackReason, IndexPendingUpdates: d.IndexPendingUpdates}
+		out.SearchDiagnostics.ResultWindowLimit = d.ResultWindowLimit
+		if d.SessionExpiresAt != nil {
+			out.SearchDiagnostics.SessionExpiresAt = new(NewInstant(*d.SessionExpiresAt))
+		}
 	}
 	if s := view.EffectiveSort; s != nil {
 		out.EffectiveSort = &CatalogEffectiveSort{Field: s.Field, Order: s.Order}
@@ -772,18 +865,21 @@ func (reg *Registry) listAudiobookGroups(ctx context.Context, cursors *Cursors, 
 	scope := CursorScope{
 		OperationID: opListAudiobookGroups,
 		Security:    strconv.Itoa(claims.UserID) + "/" + viewer.ProfileID + "/" + viewerScopeDigest(ctx),
-		Filter:      "library_id=" + strconv.Itoa(libraryID) + "&group_by=" + in.GroupBy + "&q=" + in.Q + "&image_size=" + in.ImageSize,
+		Filter:      "library_id=" + strconv.Itoa(libraryID) + "&group_by=" + in.GroupBy + "&q=" + in.Q + "&image_size=" + in.ImageSize + "&limit=" + strconv.Itoa(in.Limit),
 		Sort:        in.Sort,
-		Tiebreaker:  tiebreakerOffset,
+		Tiebreaker:  "group_key",
 	}
-	offset, p := decodeOffset(cursors, scope, in.Cursor)
-	if p != nil {
-		return nil, p
+	var after *catalogpkg.AudiobookGroupCursor
+	if in.Cursor != "" {
+		after = new(catalogpkg.AudiobookGroupCursor)
+		if p := cursors.Decode(scope, in.Cursor, after); p != nil {
+			return nil, p
+		}
 	}
 	query := catalogpkg.AudiobookGroupsQuery{
 		LibraryID: libraryID, GroupBy: groupBy, SearchPrefix: strings.TrimSpace(in.Q),
 		IncludeTotal: !in.SkipTotal,
-		Sort:         in.Sort, Limit: in.Limit, Offset: offset,
+		Sort:         in.Sort, Limit: in.Limit, CursorPaging: true, After: after,
 	}
 	view, err := svc.AudiobookGroups(ctx, viewer, query)
 	if err != nil {
@@ -791,7 +887,10 @@ func (reg *Registry) listAudiobookGroups(ctx context.Context, cursors *Cursors, 
 	}
 	next := ""
 	if view.HasMore {
-		next, err = cursors.Encode(scope, offsetPosition{Offset: offset + in.Limit})
+		if view.Next == nil {
+			return nil, NewProblem(TypeInternalError, "An unexpected error occurred.")
+		}
+		next, err = cursors.Encode(scope, view.Next)
 		if err != nil {
 			return nil, NewProblem(TypeInternalError, "An unexpected error occurred.")
 		}
@@ -852,50 +951,36 @@ func (reg *Registry) searchCatalogFacet(ctx context.Context, in *CatalogFacetSea
 	return &CatalogFacetMatchesOutput{Body: CatalogFacetMatches{Matches: NonNil(view.Matches), HasMore: view.HasMore}}, nil
 }
 
-func (reg *Registry) queryCatalogItems(ctx context.Context, in *CatalogQueryInput) (*CatalogBrowseOutput, error) {
-	svc, p := reg.catalogBrowse()
-	if p != nil {
-		return nil, p
+func (reg *Registry) queryCatalogItems(ctx context.Context, cursors *Cursors, in *CatalogQueryInput) (*CatalogBrowseOutput, error) {
+	body := in.Body
+	limit := body.Limit
+	if limit == 0 {
+		limit = 50
 	}
-	viewer, p := reg.itemViewer(ctx, in.ImageSize, "", "")
-	if p != nil {
-		return nil, p
+	sort := body.Sort
+	if body.Order == "desc" && sort != "" {
+		sort = "-" + sort
 	}
-	req := handlers.CatalogQueryRequest{Limit: in.Body.Limit, Offset: in.Body.Offset}
-	req.Match = in.Body.Match
-	req.Sort = in.Body.Sort
-	req.Order = in.Body.Order
-	req.Groups = make([]sections.FilterGroup, 0, len(in.Body.Groups))
-	for _, g := range in.Body.Groups {
-		rules := make([]sections.FilterRule, 0, len(g.Rules))
-		for _, r := range g.Rules {
-			rules = append(rules, sections.FilterRule{Field: r.Field, Op: r.Op, Value: r.Value})
-		}
-		req.Groups = append(req.Groups, sections.FilterGroup{Match: g.Match, Rules: rules})
-	}
-	if in.Body.LibraryID != "" {
-		n, p := in.Body.LibraryID.positive("body.library_id")
-		if p != nil {
-			return nil, p
-		}
-		req.LibraryID = n
-	}
-	if req.Limit <= 0 {
-		req.Limit = 20
-	}
-	view, err := svc.QueryItems(ctx, viewer, req)
+	groups, err := json.Marshal(body.Groups)
 	if err != nil {
-		return nil, catalogProblem(err, "body.groups")
+		return nil, NewProblem(TypeValidationFailed, "Invalid structured filters.")
 	}
-	items := make([]CatalogItem, 0, len(view.Items))
-	for _, item := range view.Items {
-		items = append(items, catalogItemOfListing(item))
+	output, err := reg.listCatalogItems(ctx, cursors, &CatalogBrowseInput{
+		Source: body.Source, Scope: body.Scope, SectionID: body.SectionID,
+		LibraryID: body.LibraryID, CollectionID: body.CollectionID, PersonID: body.PersonID,
+		Q: body.Q, NamePrefix: body.NamePrefix, Match: body.Match, Type: body.Type,
+		Sort: sort, Group: body.Group, SkipTotal: body.SkipTotal, ImageSize: in.ImageSize,
+		LimitParam: LimitParam{Limit: limit}, Cursor: body.Cursor, Groups: string(groups),
+		QueryLimit: body.QueryLimit, Seek: body.Seek, operationID: opQueryCatalogItems,
+	})
+	if p, ok := errors.AsType[*Problem](err); ok {
+		for i := range p.Errors {
+			if strings.HasPrefix(p.Errors[i].Location, "query.") && p.Errors[i].Location != locationQueryImageSize {
+				p.Errors[i].Location = "body." + strings.TrimPrefix(p.Errors[i].Location, "query.")
+			}
+		}
 	}
-	// The body form pages by its own offset; the envelope carries has_more
-	// without a cursor, as the request already names the next offset.
-	c := NewCollection(items)
-	c.Page = &PageInfo{HasMore: view.HasMore}
-	return &CatalogBrowseOutput{Body: CatalogBrowseCollection{Collection: c, Total: view.Total, TotalExact: view.TotalExact}}, nil
+	return output, err
 }
 
 func (reg *Registry) getCatalogItem(ctx context.Context, in *CatalogItemInput) (*CatalogItemDetailOutput, error) {

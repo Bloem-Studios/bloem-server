@@ -1137,9 +1137,14 @@
               true
             ],
             "type": "boolean"
+          },
+          "window_cursor": {
+            "description": "Opaque seed for subsequent explicit window jumps; carries query scope and the initial insertion fence",
+            "type": "string"
           }
         },
         "required": [
+          "window_cursor",
           "total",
           "total_exact",
           "items"
@@ -2118,6 +2123,18 @@
       "CatalogQuery": {
         "additionalProperties": false,
         "properties": {
+          "collection_id": {
+            "type": "string"
+          },
+          "cursor": {
+            "type": "string"
+          },
+          "group": {
+            "enum": [
+              "work"
+            ],
+            "type": "string"
+          },
           "groups": {
             "description": "Rule groups; empty matches everything",
             "items": {
@@ -2134,9 +2151,9 @@
             "type": "string"
           },
           "limit": {
-            "description": "Page size; default 20, maximum 100",
+            "description": "Page size; default 50, maximum 100",
             "examples": [
-              20
+              50
             ],
             "format": "int64",
             "maximum": 100,
@@ -2151,14 +2168,8 @@
             ],
             "type": "string"
           },
-          "offset": {
-            "description": "Rows to skip",
-            "examples": [
-              0
-            ],
-            "format": "int64",
-            "minimum": 0,
-            "type": "integer"
+          "name_prefix": {
+            "type": "string"
           },
           "order": {
             "enum": [
@@ -2167,11 +2178,62 @@
             ],
             "type": "string"
           },
+          "person_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "q": {
+            "type": "string"
+          },
+          "query_limit": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "scope": {
+            "enum": [
+              "home",
+              "library"
+            ],
+            "type": "string"
+          },
+          "section_id": {
+            "type": "string"
+          },
+          "seek": {
+            "format": "int64",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "skip_total": {
+            "type": "boolean"
+          },
           "sort": {
             "description": "Sort field; default added date, newest first",
             "examples": [
               "title"
             ],
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "query",
+              "section",
+              "library_collection",
+              "user_collection",
+              "favorites",
+              "watchlist",
+              "history",
+              "person"
+            ],
+            "type": "string"
+          },
+          "type": {
             "type": "string"
           }
         },
@@ -2227,6 +2289,57 @@
         ],
         "type": "object"
       },
+      "CatalogSearchCapabilities": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed": {
+            "description": "Whether the current principal may use the capability",
+            "type": "boolean"
+          },
+          "max_sessions_per_account": {
+            "description": "Oldest ranking sessions expire when this retention bound is exceeded",
+            "format": "int64",
+            "type": "integer"
+          },
+          "provider": {
+            "enum": [
+              "postgres",
+              "meilisearch"
+            ],
+            "type": "string"
+          },
+          "result_window_limit": {
+            "description": "Maximum candidates in a Meilisearch ranked window; absent for PostgreSQL live queries",
+            "format": "int64",
+            "type": "integer"
+          },
+          "revision": {
+            "description": "Opaque revision of this document",
+            "type": "string"
+          },
+          "session_ttl_seconds": {
+            "description": "Fixed Meilisearch ranking-session lifetime; requests do not extend it",
+            "format": "int64",
+            "type": "integer"
+          },
+          "state": {
+            "description": "Support and configuration state, not health",
+            "enum": [
+              "available",
+              "disabled",
+              "not_configured",
+              "unsupported"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "revision",
+          "state"
+        ],
+        "type": "object"
+      },
       "CatalogSearchDiagnostics": {
         "additionalProperties": false,
         "properties": {
@@ -2250,11 +2363,23 @@
             ],
             "type": "string"
           },
+          "result_window_limit": {
+            "description": "Candidate limit of the retained ranking window; not an exact global match count",
+            "format": "int64",
+            "type": "integer"
+          },
           "semantic_used": {
             "examples": [
               false
             ],
             "type": "boolean"
+          },
+          "session_expires_at": {
+            "description": "Fixed expiry of the retained search ranking",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
           }
         },
         "required": [
@@ -13744,6 +13869,42 @@
               "description": "Opaque cursor from page.next_cursor",
               "type": "string"
             }
+          },
+          {
+            "description": "JSON array of structured rule groups; use POST catalog/query for larger queries",
+            "explode": false,
+            "in": "query",
+            "name": "groups",
+            "schema": {
+              "description": "JSON array of structured rule groups; use POST catalog/query for larger queries",
+              "maxLength": 32768,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items in the query result; zero means uncapped",
+            "explode": false,
+            "in": "query",
+            "name": "query_limit",
+            "schema": {
+              "description": "Maximum items in the query result; zero means uncapped",
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Explicit zero-based window jump; the server locates a boundary without returning intermediate cards",
+            "explode": false,
+            "in": "query",
+            "name": "seek",
+            "schema": {
+              "description": "Explicit zero-based window jump; the server locates a boundary without returning intermediate cards",
+              "format": "int64",
+              "maximum": 10000000,
+              "minimum": 0,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -16498,6 +16659,149 @@
         ],
         "x-silo-class": "profile_scoped",
         "x-silo-retry-safety": "natural_idempotent",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/catalog/search/capabilities": {
+      "get": {
+        "operationId": "getCatalogSearchCapabilities",
+        "parameters": [
+          {
+            "description": "The household profile acting for this request; it must belong to the authenticated account.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogSearchCapabilities"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Search continuation provider, result window, and session lifetime.",
+        "tags": [
+          "catalog"
+        ],
+        "x-silo-class": "profile_scoped",
         "x-silo-service-backed": true
       }
     },

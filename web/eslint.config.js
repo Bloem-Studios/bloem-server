@@ -72,6 +72,7 @@ export default tseslint.config(
       "src/pages/setup-wizard/steps/ProfileStep.tsx",
       "src/player/utils/subtitleChoicePersistence.ts",
       "src/hooks/queries/catalogRead.ts",
+      "src/hooks/queries/catalog.ts",
       "src/hooks/queries/audiobookGroups.ts",
       "src/hooks/queries/people.ts",
       "src/hooks/queries/metadataAI.ts",

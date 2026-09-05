@@ -317,7 +317,7 @@ var libraryOperationIDs = []string{
 // libraryViewOperationIDs is every profile-scoped library read the
 // catalog-libraries section registers.
 var libraryViewOperationIDs = []string{
-	"listCatalogItems", "listAudiobookGroups", "getCatalogFilters", "searchCatalogFacet", "queryCatalogItems", "getCatalogItem",
+	"getCatalogSearchCapabilities", "listCatalogItems", "listAudiobookGroups", "getCatalogFilters", "searchCatalogFacet", "queryCatalogItems", "getCatalogItem",
 	"listCatalogItemEpisodes", "listCatalogItemMangaFiles", "listCatalogItemVersions", "listSeriesSeasons", "getSeriesSeason", "listSeasonEpisodes",
 	"getTrailersCapability", "refreshCatalogItemTrailers", "getMetadataAICapability", "translateCatalogItemDescription",
 	"listPeople", "getPerson", "refreshPerson", "getLiteraryWork",

@@ -55,12 +55,12 @@ function defaultCatalogSubtitle(source: string): string {
 export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
   const state = useMemo(() => parseCatalogSearchParams(searchParams), [searchParams]);
-  const emptySearchTitle =
-    state.source === "query" && !state.q ? "Search" : defaultCatalogTitle(state.source, state.q);
+  const isEmptySearch = state.source === "query" && !state.q && !state.library_id;
+  const emptySearchTitle = isEmptySearch ? "Search" : defaultCatalogTitle(state.source, state.q);
 
   useDocumentTitle(emptySearchTitle);
 
-  if (state.source === "query" && !state.q) {
+  if (isEmptySearch) {
     return (
       <section className="page-shell flex min-h-[calc(100dvh-10rem)] flex-col items-center justify-center py-16 text-center">
         <div className="text-muted-foreground mb-6">

@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import queryCatalogItemsOk from "../../../../contracts/api/v2/fixtures/query_catalog_items_ok.json";
+
 import getCatalogFiltersOk from "../../../../contracts/api/v2/fixtures/get_catalog_filters_ok.json";
 import searchCatalogFacetOk from "../../../../contracts/api/v2/fixtures/search_catalog_facet_ok.json";
 
@@ -89,19 +91,132 @@ describe("catalog browse and facets on the v2 contract", () => {
     expect(result).toEqual({ matches: ["Frank Herbert"], has_more: true });
   });
 
-  it("keeps the browse on the v1 offset endpoint until v2 carries rule groups", async () => {
-    const fetchMock = stubFetch({ items: [], total: 0, has_more: false });
+  it("posts structured filters, query cap and explicit sorting without bracket parameters", async () => {
+    const fetchMock = stubFetch({ ...queryCatalogItemsOk, window_cursor: "opaque-window" });
+    const query = createEmptyQueryDefinition();
+    query.match = "any";
+    query.groups = [
+      { match: "all", rules: [{ field: "genre", op: "in", value: ["Crime", "Drama"] }] },
+    ];
+    query.limit = 250;
+    query.sort = { field: "title", order: "asc" };
+    query.library_ids = [7];
+    const signal = new AbortController().signal;
 
+    const result = await fetchCatalogPage({ source: "query", query_definition: query }, 60, 0, {
+      signal,
+    });
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/v2/catalog/query");
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "POST", signal });
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      source: "query",
+      library_id: "7",
+      match: "any",
+      groups: query.groups,
+      sort: "title",
+      order: "asc",
+      query_limit: 250,
+      limit: 60,
+    });
+    expect(result.snapshot).toBe("opaque-window");
+    expect(result.items[0]?.poster_url).toBe("");
+    expect(result.items[0]?.rating_imdb).toBeNull();
+  });
+
+  it("jumps directly using the opaque seed and skips the total", async () => {
+    const fetchMock = stubFetch({ ...queryCatalogItemsOk, window_cursor: "opaque-window" });
     await fetchCatalogPage(
-      { source: "query", library_id: 7, query_definition: createEmptyQueryDefinition() },
+      { source: "query", query_definition: createEmptyQueryDefinition() },
       60,
-      120,
+      60000,
       undefined,
       false,
+      "opaque-window",
     );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+      cursor: "opaque-window",
+      seek: 60000,
+      skip_total: true,
+    });
+  });
 
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
-      "/api/v1/catalog?source=query&library_id=7&sort=added_at&order=desc&limit=60&offset=120&include_total=false",
+  it("seeks back to zero when reusing a snapshot", async () => {
+    const fetchMock = stubFetch(queryCatalogItemsOk);
+    await fetchCatalogPage(
+      {
+        source: "favorites",
+        query_definition: createEmptyQueryDefinition(),
+        uses_source_order: true,
+      },
+      60,
+      0,
+      undefined,
+      false,
+      "opaque-window",
     );
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body).toMatchObject({ cursor: "opaque-window", seek: 0 });
+    expect(body).not.toHaveProperty("sort");
+    expect(body).not.toHaveProperty("order");
+  });
+
+  it("does not overlay a section's saved filters or order", async () => {
+    const fetchMock = stubFetch(queryCatalogItemsOk);
+    const query = createEmptyQueryDefinition();
+    query.groups = [{ match: "all", rules: [{ field: "year", op: "gte", value: 2000 }] }];
+    await fetchCatalogPage(
+      {
+        source: "section",
+        scope: "library",
+        library_id: 7,
+        section_id: "recent",
+        q: "ignored",
+        query_definition: query,
+      },
+      60,
+      0,
+    );
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      source: "section",
+      scope: "library",
+      library_id: "7",
+      section_id: "recent",
+      limit: 60,
+    });
+  });
+
+  it("preserves provider search diagnostics", async () => {
+    const diagnostics = {
+      provider: "postgres",
+      mode: "keyword",
+      semantic_used: false,
+      fallback_reason: "semantic_unavailable",
+      index_pending_updates: 4,
+    };
+    stubFetch({
+      ...queryCatalogItemsOk,
+      window_cursor: "opaque-window",
+      search_diagnostics: diagnostics,
+    });
+    const result = await fetchCatalogPage(
+      { source: "query", q: "Dune", query_definition: createEmptyQueryDefinition() },
+      60,
+      0,
+    );
+    expect(result.search_diagnostics).toEqual(diagnostics);
+  });
+
+  it("rejects seeks outside the server bound before dispatch", async () => {
+    const fetchMock = stubFetch(queryCatalogItemsOk);
+    await expect(
+      fetchCatalogPage(
+        { source: "query", query_definition: createEmptyQueryDefinition() },
+        60,
+        10_000_001,
+      ),
+    ).rejects.toBeInstanceOf(RangeError);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -673,6 +673,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 			)
 		}
 		if catalogSearchService != nil {
+			if deps.RedisClient != nil {
+				catalogSearchService.WithSearchSessionStore(deps.RedisClient)
+			}
 			catalogSearchService.StartCoverageRefresh(deps.AppContext)
 		}
 		activeSearchProvider := catalog.SearchProviderPostgres

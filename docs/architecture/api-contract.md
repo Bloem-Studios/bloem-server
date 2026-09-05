@@ -1373,7 +1373,12 @@ operations call the same seams on `handlers.CatalogHandler` and `handlers.Catalo
 filter plus declared profile); v2 resolves the viewer through `ItemsHandler.ContextAccessFilter` with
 no device id. Cards are the shared `CatalogItem`; `CatalogItemDetail` composes it. Deliberate
 differences from v1, all recorded on the ledger rows: the browse and the audiobook groups page by
-`limit` plus an opaque cursor that pins the first page's snapshot; `include_total=false` and
+`limit` plus an opaque cursor. SQL query paths retain typed ordering tuples and an insertion
+cutoff where supported; later pages observe live mutable values. Recent-TV events, work
+representatives and audiobook groups retain their own final ordering tuples. PostgreSQL search
+uses live ranking tuples; Meilisearch uses bounded immutable rankings in shared expiring storage.
+`getCatalogSearchCapabilities` exposes the provider window and retention limits.
+See `docs/catalog-api.md` for source-specific guarantees; `include_total=false` and
 `include_technical=false` became the boolean flags `skip_total` and `skip_technical`; the browse
 `sort`/`order` pair is the `sort=field` / `-field` grammar with one term, validated against the
 executor's field set; `content_rating` repeats the key; the technical facets sit under one

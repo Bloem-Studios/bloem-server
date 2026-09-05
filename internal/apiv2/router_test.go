@@ -308,7 +308,7 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST " + Prefix + "/recommendations/taste-seed",
 		"GET " + Prefix + "/recommendations/watch-tonight",
 		"GET " + Prefix + "/recommendations/watch-tonight/cards",
-		"GET " + Prefix + "/catalog", "GET " + Prefix + "/catalog/audiobook-groups", "GET " + Prefix + "/catalog/filters", "GET " + Prefix + "/catalog/filters/search", "POST " + Prefix + "/catalog/query",
+		"GET " + Prefix + "/catalog/search/capabilities", "GET " + Prefix + "/catalog", "GET " + Prefix + "/catalog/audiobook-groups", "GET " + Prefix + "/catalog/filters", "GET " + Prefix + "/catalog/filters/search", "POST " + Prefix + "/catalog/query",
 		"GET " + Prefix + "/catalog/items/{id}", "GET " + Prefix + "/catalog/items/{id}/episodes", "GET " + Prefix + "/catalog/items/{id}/manga-files", "GET " + Prefix + "/catalog/items/{id}/versions",
 		"GET " + Prefix + "/catalog/series/{id}/seasons", "GET " + Prefix + "/catalog/series/{id}/seasons/{num}", "GET " + Prefix + "/catalog/series/{id}/seasons/{num}/episodes",
 		"GET " + Prefix + "/capabilities/trailers", "POST " + Prefix + "/catalog/items/{id}/trailers/refresh", "GET " + Prefix + "/capabilities/metadata-ai", "POST " + Prefix + "/catalog/items/{id}/translate-description",

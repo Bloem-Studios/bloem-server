@@ -1152,6 +1152,14 @@ func fixtureCases() []fixtureCase {
 		// catalog-items section (Phase 4). One ok case per operation, one
 		// class denial, and one validation failure where the operation takes
 		// input.
+		{name: "get_catalog_search_capabilities_ok", operationID: "getCatalogSearchCapabilities",
+			scenario: "Search exposes its ranked result window and fixed session lifetime.",
+			method:   http.MethodGet, path: "/api/v2/catalog/search/capabilities", headers: viewer,
+			status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/CatalogSearchCapabilities"},
+		{name: "get_catalog_search_capabilities_authentication_required", operationID: "getCatalogSearchCapabilities",
+			scenario: "Search capability discovery requires a viewer session.",
+			method:   http.MethodGet, path: "/api/v2/catalog/search/capabilities",
+			status: http.StatusUnauthorized, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: problem},
 		{name: "list_catalog_items_ok", operationID: "listCatalogItems",
 			scenario: "The first page of a library's catalog sorted by release date, newest first, with a cursor to the next page.",
 			method:   http.MethodGet, path: "/api/v2/catalog?library_id=1&sort=-release_date&limit=2&image_size=medium", headers: viewer,

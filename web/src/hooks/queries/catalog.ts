@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 
-import { api } from "@/api/client";
 import type { CatalogFiltersResponse, CatalogResponse } from "@/api/types";
-import { catalogFiltersFromV2 } from "@/api/v2/catalog";
-import { v2, type V2Query } from "@/api/v2/request";
+import { catalogFiltersFromV2, catalogItemFromV2 } from "@/api/v2/catalog";
+import { v2, type V2Body, type V2Query, type V2Result } from "@/api/v2/request";
 import type { CatalogParams } from "@/hooks/queries/keys";
 import { catalogKeys } from "@/hooks/queries/keys";
 import { createEmptyQueryDefinition, type CatalogSource } from "@/api/types";
@@ -36,30 +35,13 @@ function catalogParamsForKey(
     person_id: state.person_id,
     type: state.type_override ?? state.query_definition.media_scope,
     uses_source_order: state.uses_source_order,
-    query_fingerprint: JSON.stringify(state.query_definition),
+    query_fingerprint: JSON.stringify([state.query_definition, state.sort_from_server]),
     include_total: includeTotal,
     limit,
   };
 }
 
-function buildCatalogUrl(
-  state: CatalogSearchState,
-  limit: number,
-  offset: number,
-  includeTotal: boolean,
-  snapshot?: string,
-): string {
-  const params = buildCatalogApiSearchParams(state);
-  params.set("limit", String(limit));
-  params.set("offset", String(offset));
-  if (!includeTotal) {
-    params.set("include_total", "false");
-  }
-  if (snapshot) {
-    params.set("snapshot", snapshot);
-  }
-  return `/catalog?${params.toString()}`;
-}
+const MAX_CATALOG_SEEK = 10_000_000;
 
 type CatalogScopeQuery = V2Query<"GET /api/v2/catalog/filters">;
 
@@ -84,6 +66,10 @@ function catalogScopeQuery(state: CatalogSearchState): CatalogScopeQuery {
   };
 }
 
+export interface CatalogPage extends CatalogResponse {
+  search_diagnostics?: V2Result<"POST /api/v2/catalog/query">["search_diagnostics"];
+}
+
 export async function fetchCatalogPage(
   state: CatalogSearchState,
   limit: number,
@@ -91,11 +77,47 @@ export async function fetchCatalogPage(
   options?: RequestInit,
   includeTotal = true,
   snapshot?: string,
-): Promise<CatalogResponse> {
-  return api<CatalogResponse>(
-    buildCatalogUrl(state, limit, offset, includeTotal, snapshot),
-    options,
-  );
+): Promise<CatalogPage> {
+  if (!Number.isInteger(offset) || offset < 0 || offset > MAX_CATALOG_SEEK) {
+    throw new RangeError("Narrow your filters or search to browse beyond this result window.");
+  }
+  const params = buildCatalogApiSearchParams(state);
+  const overlay = catalogSourceAllowsOverlay(state.source);
+  const body: V2Body<"POST /api/v2/catalog/query"> = {
+    ...catalogScopeQuery(state),
+    match: overlay ? state.query_definition.match : undefined,
+    groups: overlay ? state.query_definition.groups : undefined,
+    sort: params.get("sort") ?? undefined,
+    order: (params.get("order") as "asc" | "desc" | null) ?? undefined,
+    q: params.get("q") ?? undefined,
+    query_limit: params.has("query_limit") ? Number(params.get("query_limit")) : undefined,
+    limit,
+    skip_total: includeTotal ? undefined : true,
+    cursor: snapshot,
+    seek: offset > 0 || snapshot !== undefined ? offset : undefined,
+  };
+  const result = await v2("POST /api/v2/catalog/query", {
+    body,
+    signal: options?.signal ?? undefined,
+  });
+  return {
+    items: result.items.map(catalogItemFromV2),
+    total: result.total,
+    total_exact: result.total_exact,
+    search_diagnostics: result.search_diagnostics,
+    has_more: result.page?.has_more ?? false,
+    snapshot: result.window_cursor,
+    title: state.title,
+    effective_sort: result.effective_sort
+      ? {
+          ...result.effective_sort,
+          field: result.effective_sort.field as NonNullable<
+            CatalogResponse["effective_sort"]
+          >["field"],
+          order: result.effective_sort.order as "asc" | "desc",
+        }
+      : undefined,
+  };
 }
 
 export async function fetchCatalogFilters(
@@ -194,15 +216,19 @@ export function useCatalogWindow(
   const canFetchRemainingPages =
     enabled && page0Result.data !== undefined && !page0Result.isPlaceholderData;
 
+  const lastKnownPage =
+    page0Result.data?.total_exact === true
+      ? Math.max(0, Math.ceil(page0Result.data.total / limit) - 1)
+      : undefined;
   const remainingPageIndices = useMemo(() => {
     const indices = new Set<number>();
-    for (let page = startPage; page <= endPage; page++) {
+    for (let page = startPage; page <= Math.min(endPage, lastKnownPage ?? endPage); page++) {
       if (page > 0) {
         indices.add(page);
       }
     }
     return Array.from(indices).sort((a, b) => a - b);
-  }, [endPage, startPage]);
+  }, [endPage, startPage, lastKnownPage]);
 
   const remainingResults = useQueries({
     queries: remainingPageIndices.map((pageIndex) => {
@@ -270,7 +296,7 @@ export function useCatalogWindow(
     collection_id: state.collection_id,
     person_id: state.person_id,
     type: state.type_override ?? state.query_definition.media_scope,
-    query_fingerprint: JSON.stringify(state.query_definition),
+    query_fingerprint: JSON.stringify([state.query_definition, state.sort_from_server]),
     limit,
   });
 

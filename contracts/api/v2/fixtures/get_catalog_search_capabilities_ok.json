@@ -1,0 +1,9 @@
+{
+  "revision": "1",
+  "state": "available",
+  "provider": "meilisearch",
+  "result_window_limit": 1000,
+  "session_ttl_seconds": 900,
+  "max_sessions_per_account": 16
+}
+

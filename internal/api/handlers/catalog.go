@@ -54,12 +54,14 @@ func (h *CatalogHandler) SetWorkSummaryProvider(provider catalog.WorkSummaryProv
 }
 
 type catalogResponse struct {
-	Total             int                `json:"total"`
-	TotalExact        bool               `json:"total_exact"`
-	HasMore           bool               `json:"has_more"`
-	Items             []itemListResponse `json:"items"`
-	Snapshot          string             `json:"snapshot,omitempty"`
-	SearchDiagnostics *searchDiagnostics `json:"search_diagnostics,omitempty"`
+	CursorScope       *catalog.QueryCursor `json:"-"`
+	Next              *catalog.QueryCursor `json:"-"`
+	Total             int                  `json:"total"`
+	TotalExact        bool                 `json:"total_exact"`
+	HasMore           bool                 `json:"has_more"`
+	Items             []itemListResponse   `json:"items"`
+	Snapshot          string               `json:"snapshot,omitempty"`
+	SearchDiagnostics *searchDiagnostics   `json:"search_diagnostics,omitempty"`
 	// EffectiveSort reports the order a collection or personal-list source
 	// actually resolved in after saved/default precedence was applied. Omitted
 	// for other sources and when the source kept its own order.
@@ -78,11 +80,13 @@ type effectiveSortResponse struct {
 // semantic_used=false). fallback_reason and index_pending_updates are omitted
 // when empty.
 type searchDiagnostics struct {
-	Provider            string `json:"provider"`
-	Mode                string `json:"mode"`
-	SemanticUsed        bool   `json:"semantic_used"`
-	FallbackReason      string `json:"fallback_reason,omitempty"`
-	IndexPendingUpdates int    `json:"index_pending_updates,omitempty"`
+	ResultWindowLimit   int        `json:"result_window_limit,omitempty"`
+	SessionExpiresAt    *time.Time `json:"session_expires_at,omitempty"`
+	Provider            string     `json:"provider"`
+	Mode                string     `json:"mode"`
+	SemanticUsed        bool       `json:"semantic_used"`
+	FallbackReason      string     `json:"fallback_reason,omitempty"`
+	IndexPendingUpdates int        `json:"index_pending_updates,omitempty"`
 }
 
 type catalogFiltersResponse struct {
@@ -244,7 +248,7 @@ func applyEpisodeBrowseMetadata(resp *itemListResponse, meta episodeBrowseMetada
 }
 
 func (h *CatalogHandler) writeCatalogResponse(w http.ResponseWriter, result *catalog.CatalogResult, items []itemListResponse, groupedByWork bool) {
-	writeJSON(w, http.StatusOK, catalogBrowseView(result, items, groupedByWork))
+	writeJSON(w, http.StatusOK, catalogBrowseView(result, items))
 }
 
 type groupedCatalogEntry struct {
@@ -253,8 +257,46 @@ type groupedCatalogEntry struct {
 }
 
 func (h *CatalogHandler) resolveGroupedCatalogByWork(ctx context.Context, req catalog.CatalogRequest, accessFilter catalog.AccessFilter) (*catalog.CatalogResult, []groupedCatalogEntry, error) {
+	if req.CursorPaging {
+		req.GroupByWork = true
+		result, err := h.resolver.Resolve(ctx, req, accessFilter)
+		if err != nil {
+			return nil, nil, err
+		}
+		summaries, err := h.workSummariesForItems(ctx, result.Items, accessFilter)
+		if err != nil {
+			return nil, nil, err
+		}
+		entries := make([]groupedCatalogEntry, 0, len(result.Items))
+		for _, item := range result.Items {
+			entries = append(entries, groupedCatalogEntry{item: item, summary: summaries[item.ContentID]})
+		}
+		return result, entries, nil
+	}
+	return h.resolveGroupedCatalogByWorkUsing(ctx, req, accessFilter, h.resolver.Resolve)
+}
+
+// Grouping still rescans source rows to deduplicate works before applying the
+// grouped offset. Advancing raw tuple pages fixes traversal, but does not make
+// the grouped result itself a stable keyset.
+func (h *CatalogHandler) resolveGroupedCatalogByWorkUsing(ctx context.Context, req catalog.CatalogRequest, accessFilter catalog.AccessFilter, resolve func(context.Context, catalog.CatalogRequest, catalog.AccessFilter) (*catalog.CatalogResult, error)) (*catalog.CatalogResult, []groupedCatalogEntry, error) {
+	if req.Seek != nil {
+		req.Offset = *req.Seek
+	}
+
 	fetchReq := req
 	fetchReq.Offset = 0
+	fetchReq.Seek = nil
+	// A grouped continuation carries source scope only: restarting the raw
+	// traversal is necessary to deduplicate works across previous raw pages.
+	fetchReq.After = nil
+	var cursorScope *catalog.QueryCursor
+	if req.After != nil && req.After.Collection != nil {
+		collection := *req.After.Collection
+		collection.Position = nil
+		cursorScope = &catalog.QueryCursor{Collection: &collection}
+		fetchReq.After = cursorScope
+	}
 	fetchReq.Limit = groupedCatalogFetchLimit(req.Limit)
 	fetchReq.SkipTotal = true
 
@@ -271,9 +313,15 @@ func (h *CatalogHandler) resolveGroupedCatalogByWork(ctx context.Context, req ca
 	firstPage := true
 
 	for {
-		result, err := h.resolver.Resolve(ctx, fetchReq, accessFilter)
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		result, err := resolve(ctx, fetchReq, accessFilter)
 		if err != nil {
 			return nil, nil, err
+		}
+		if result.CursorScope != nil {
+			cursorScope = result.CursorScope
 		}
 		if firstPage {
 			firstPage = false
@@ -306,10 +354,14 @@ func (h *CatalogHandler) resolveGroupedCatalogByWork(ctx context.Context, req ca
 				break
 			}
 		}
-		if len(entries) > req.Limit || !result.HasMore || len(result.Items) == 0 {
+		if len(entries) > req.Limit || !result.HasMore || (len(result.Items) == 0 && result.Next == nil) {
 			break
 		}
-		fetchReq.Offset += len(result.Items)
+		if result.Next != nil {
+			fetchReq.After = result.Next
+		} else {
+			fetchReq.Offset += len(result.Items)
+		}
 	}
 
 	hasMore := len(entries) > req.Limit
@@ -321,12 +373,16 @@ func (h *CatalogHandler) resolveGroupedCatalogByWork(ctx context.Context, req ca
 		total++
 	}
 	result := &catalog.CatalogResult{
+		CursorScope:   cursorScope,
 		Items:         groupedCatalogItems(entries),
 		Total:         total,
 		HasMore:       hasMore,
 		TotalExact:    false,
 		SnapshotAt:    snapshot,
 		EffectiveSort: effectiveSort,
+	}
+	if hasMore {
+		result.Next = cursorScope
 	}
 	return result, entries, nil
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -85,10 +87,17 @@ func (f *fakeCatalog) AudiobookGroups(_ context.Context, v handlers.ItemViewer, 
 		return handlers.AudiobookGroupsView{}, f.err
 	}
 	f.lastGroups, f.lastViewer = q, v
-	view := handlers.AudiobookGroupsView{Total: 2, TotalExact: q.IncludeTotal, HasMore: q.Offset == 0 && q.Limit == 1}
+	offset := 0
+	if q.After != nil {
+		offset = 1
+	}
+	view := handlers.AudiobookGroupsView{Total: 2, TotalExact: q.IncludeTotal, HasMore: offset == 0 && q.Limit == 1}
 	names := []string{"Frank Herbert", "Ursula K. Le Guin"}
-	for i := q.Offset; i < len(names) && len(view.Groups) < q.Limit; i++ {
+	for i := offset; i < len(names) && len(view.Groups) < q.Limit; i++ {
 		view.Groups = append(view.Groups, handlers.AudiobookGroupView{Name: names[i], ItemCount: 3, TotalDurationSeconds: 7200, PosterURLs: nil})
+	}
+	if view.HasMore {
+		view.Next = &catalogpkg.AudiobookGroupCursor{GroupKey: "frank herbert", Value: 3}
 	}
 	return view, nil
 }
@@ -271,6 +280,65 @@ func TestListCatalogItems(t *testing.T) {
 	requireProblem(t, do(t, newTestHandler(t, deps), http.MethodGet, "/api/v2/catalog", "", viewerHeaders()), TypeDependencyUnavailable)
 }
 
+func TestCatalogStructuredWindowScope(t *testing.T) {
+	deps, fake := catalogDeps(t)
+	h := newTestHandler(t, deps)
+	request := map[string]any{
+		"source": "query", "library_id": "1", "limit": 2, "sort": "title", "query_limit": 3,
+		"groups": []any{map[string]any{"match": "all", "rules": []any{map[string]any{"field": "year", "op": "gte", "value": 1990}}}},
+	}
+	send := func() *httptest.ResponseRecorder {
+		t.Helper()
+		body, err := json.Marshal(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return do(t, h, http.MethodPost, "/api/v2/catalog/query", string(body), viewerHeaders())
+	}
+	rec := send()
+	if rec.Code != 200 {
+		t.Fatal(rec.Code, rec.Body.String())
+	}
+	var first struct {
+		Window string   `json:"window_cursor"`
+		Page   PageInfo `json:"page"`
+	}
+	decodeJSON(t, rec.Body, &first)
+	if first.Window == "" || first.Page.NextCursor == "" || !fake.lastReq.CursorPaging || fake.lastReq.Query.Limit == nil || *fake.lastReq.Query.Limit != 3 {
+		t.Fatalf("window or query cap missing: %s %+v", rec.Body.String(), fake.lastReq)
+	}
+	request["cursor"], request["skip_total"], request["seek"] = first.Window, true, 2
+	if rec = send(); rec.Code != 200 || fake.lastReq.Seek == nil || *fake.lastReq.Seek != 2 || !fake.lastReq.SkipTotal {
+		t.Fatalf("window jump: %d %s %+v", rec.Code, rec.Body.String(), fake.lastReq)
+	}
+	request["seek"] = 0
+	if rec = send(); rec.Code != 200 || fake.lastReq.Offset != 0 || fake.lastReq.After != nil {
+		t.Fatalf("return to first window: %d %s %+v", rec.Code, rec.Body.String(), fake.lastReq)
+	}
+	request["limit"] = 1
+	requireProblem(t, send(), TypeInvalidCursor)
+	request["limit"], request["library_id"] = 2, "2"
+	requireProblem(t, send(), TypeInvalidCursor)
+	request["library_id"], request["query_limit"] = "1", 4
+	requireProblem(t, send(), TypeInvalidCursor)
+	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/catalog?limit=2&cursor="+url.QueryEscape(first.Window), "", viewerHeaders()), TypeInvalidCursor)
+	// JSON filters on GET receive the same field/operator validation as POST.
+	bad := `[{"match":"all","rules":[{"field":"not_a_field","op":"is","value":true}]}]`
+	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/catalog?groups="+url.QueryEscape(bad), "", viewerHeaders()), TypeValidationFailed)
+	delete(request, "cursor")
+	request["groups"] = json.RawMessage(bad)
+	requireProblem(t, send(), TypeValidationFailed)
+}
+
+func TestCatalogUnsupportedStorageProblem(t *testing.T) {
+	deps, fake := catalogDeps(t)
+	h := newTestHandler(t, deps)
+	for _, err := range []error{catalogpkg.ErrCatalogStorageUnsupported, &handlers.APIError{Status: http.StatusServiceUnavailable, Code: "catalog_storage_unsupported"}} {
+		fake.err = err
+		requireProblem(t, do(t, h, http.MethodGet, "/api/v2/catalog", "", viewerHeaders()), TypeCapabilityUnsupported)
+	}
+}
+
 func TestListAudiobookGroups(t *testing.T) {
 	deps, fake := catalogDeps(t)
 	h := newTestHandler(t, deps)
@@ -279,7 +347,7 @@ func TestListAudiobookGroups(t *testing.T) {
 		t.Fatal(rec.Code, rec.Body.String())
 	}
 	q := fake.lastGroups
-	if q.LibraryID != 3 || q.GroupBy != catalogpkg.AudiobookGroupByAuthor || q.Limit != 1 || q.Sort != "count" || q.SearchPrefix != "fr" || !q.IncludeTotal {
+	if !q.CursorPaging || q.LibraryID != 3 || q.GroupBy != catalogpkg.AudiobookGroupByAuthor || q.Limit != 1 || q.Sort != "count" || q.SearchPrefix != "fr" || !q.IncludeTotal {
 		t.Fatalf("query = %+v", q)
 	}
 	var body struct {
@@ -287,7 +355,20 @@ func TestListAudiobookGroups(t *testing.T) {
 	}
 	decodeJSON(t, rec.Body, &body)
 	rec = do(t, h, http.MethodGet, "/api/v2/catalog/audiobook-groups?library_id=3&group_by=author&limit=1&sort=count&q=fr&cursor="+body.Page.NextCursor, "", viewerHeaders())
-	if rec.Code != 200 || fake.lastGroups.Offset != 1 || !strings.Contains(rec.Body.String(), `"Ursula K. Le Guin"`) {
+	if rec.Code != 200 || (fake.lastGroups.After == nil || fake.lastGroups.After.GroupKey != "frank herbert" || fake.lastGroups.After.Value != 3) || !strings.Contains(rec.Body.String(), `"Ursula K. Le Guin"`) {
+		t.Fatal(rec.Code, rec.Body.String())
+	}
+	for _, changed := range []string{
+		"library_id=4&group_by=author&limit=1&sort=count&q=fr",
+		"library_id=3&group_by=narrator&limit=1&sort=count&q=fr",
+		"library_id=3&group_by=author&limit=2&sort=count&q=fr",
+		"library_id=3&group_by=author&limit=1&sort=name&q=fr",
+		"library_id=3&group_by=author&limit=1&sort=count&q=xx",
+	} {
+		requireProblem(t, do(t, h, http.MethodGet, "/api/v2/catalog/audiobook-groups?"+changed+"&cursor="+body.Page.NextCursor, "", viewerHeaders()), TypeInvalidCursor)
+	}
+	rec = do(t, h, http.MethodGet, "/api/v2/catalog/audiobook-groups?library_id=3&group_by=author&limit=1&sort=count&q=fr&skip_total=true&cursor="+body.Page.NextCursor, "", viewerHeaders())
+	if rec.Code != 200 || fake.lastGroups.IncludeTotal {
 		t.Fatal(rec.Code, rec.Body.String())
 	}
 	rec = do(t, h, http.MethodGet, "/api/v2/catalog/audiobook-groups?library_id=3&group_by=author&skip_total=true", "", viewerHeaders())
@@ -339,18 +420,18 @@ func TestCatalogFiltersAndFacetSearch(t *testing.T) {
 func TestQueryCatalogItems(t *testing.T) {
 	deps, fake := catalogDeps(t)
 	h := newTestHandler(t, deps)
-	body := `{"match":"all","groups":[{"match":"any","rules":[{"field":"genre","op":"contains","value":"Crime"}]}],"sort":"title","order":"asc","library_id":"1","limit":10,"offset":0}`
+	body := `{"match":"all","groups":[{"match":"any","rules":[{"field":"genre","op":"contains","value":"Crime"}]}],"sort":"title","order":"asc","library_id":"1","limit":10}`
 	rec := do(t, h, http.MethodPost, "/api/v2/catalog/query?image_size=large", body, viewerHeaders())
-	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"content_id":"movie:heat-1995"`) || !strings.Contains(rec.Body.String(), `"page":{"has_more":false}`) || !strings.Contains(rec.Body.String(), `"total":1`) {
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"content_id":"movie:heat-1995"`) || !strings.Contains(rec.Body.String(), `"page":{"has_more":false}`) || !strings.Contains(rec.Body.String(), `"total":3`) {
 		t.Fatal(rec.Code, rec.Body.String())
 	}
-	q := fake.lastQuery
-	if q.LibraryID != 1 || q.Limit != 10 || q.Sort != "title" || len(q.Groups) != 1 || q.Groups[0].Rules[0].Value != "Crime" || fake.lastViewer.Access.ImageSize != "large" {
+	q := fake.lastReq
+	if len(q.Query.LibraryIDs) != 1 || q.Query.LibraryIDs[0] != 1 || q.Limit != 10 || q.Query.Sort.Field != "title" || len(q.Query.Groups) != 1 || q.Query.Groups[0].Rules[0].Value != "Crime" || fake.lastViewer.Access.ImageSize != "large" {
 		t.Fatalf("query = %+v viewer = %+v", q, fake.lastViewer)
 	}
 	rec = do(t, h, http.MethodPost, "/api/v2/catalog/query", `{}`, viewerHeaders())
-	if rec.Code != 200 || fake.lastQuery.Limit != 20 {
-		t.Fatalf("defaults: %d limit=%d", rec.Code, fake.lastQuery.Limit)
+	if rec.Code != 200 || fake.lastReq.Limit != 50 {
+		t.Fatalf("defaults: %d limit=%d", rec.Code, fake.lastReq.Limit)
 	}
 	requireProblem(t, do(t, h, http.MethodPost, "/api/v2/catalog/query", `{"limit":500}`, viewerHeaders()), TypeValidationFailed)
 	requireProblem(t, do(t, h, http.MethodPost, "/api/v2/catalog/query", `{"library_id":"0"}`, viewerHeaders()), TypeValidationFailed)
@@ -358,7 +439,7 @@ func TestQueryCatalogItems(t *testing.T) {
 	requireProblem(t, do(t, h, http.MethodPost, "/api/v2/catalog/query", `{}`, bearer(memberToken)), TypeValidationFailed)
 	fake.err = &handlers.APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: "Invalid filter: unknown field"}
 	p := requireProblem(t, do(t, h, http.MethodPost, "/api/v2/catalog/query", `{}`, viewerHeaders()), TypeValidationFailed)
-	if len(p.Errors) != 1 || p.Errors[0].Location != "body.groups" {
+	if len(p.Errors) != 1 || p.Errors[0].Location != "body.source" {
 		t.Fatalf("errors = %+v", p.Errors)
 	}
 }
