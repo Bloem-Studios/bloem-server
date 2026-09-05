@@ -283,7 +283,25 @@ CREATE INDEX IF NOT EXISTS idx_home_item_dismissals_lookup
 
 CREATE INDEX IF NOT EXISTS idx_hidden_history_items_lookup
     ON hidden_history_items(profile_id, hidden_before);
-` + settingContractSchema + jellycompatDisplayPrefsSchema
+` + settingContractSchema + jellycompatDisplayPrefsSchema + playbackSinkSchema
+
+// The selected account database supplies account scope. Receipts deliberately
+// do not reference watch_history: deleting history must not reopen a stop.
+const playbackSinkSchema = `
+CREATE TABLE IF NOT EXISTS playback_progress_sinks (
+    profile_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    media_item_id TEXT NOT NULL,
+    attempt_id TEXT NOT NULL,
+    incarnation TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    epoch INTEGER NOT NULL CHECK (epoch > 0),
+    state TEXT NOT NULL CHECK (state IN ('active', 'stopped')),
+    last_sequence INTEGER NOT NULL CHECK (last_sequence >= 0),
+    document TEXT NOT NULL,
+    PRIMARY KEY (profile_id, session_id)
+);
+`
 
 // jellycompatDisplayPrefsSchema is the dedicated home for Jellyfin
 // DisplayPreferences blobs, which used to ride user_settings under synthetic
