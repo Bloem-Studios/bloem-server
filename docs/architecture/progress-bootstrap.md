@@ -87,3 +87,24 @@ visibility and current-request authority wiring, durable cleanup lifecycle,
 signed transport and capability contract, and coordinated Apple and Android
 replacement staging with offline-queue preservation. None is advertised as
 implemented by the storage checkpoint.
+
+## Production service composition
+
+The service accepts only the selected account's explicit PostgreSQL snapshot
+source. Its pool and account ID must match the central authority database and
+request; notification decorators forward both values. SQLite remains unsupported.
+A generic PostgreSQL-looking wrapper or unrelated feature marker is insufficient.
+
+Account, group, profile, canonical preferences and catalog visibility use their
+owning query helpers on the snapshot transaction. The existing PDP and PIN rules
+evaluate those facts; custom policy is never replaced with a local approximation.
+The strict preference path propagates read failures rather than applying degraded
+visibility defaults. A final fresh transaction rechecks generation, authority and
+returned-item visibility, with mandatory current-credential/PIN callbacks around
+the operation. The transport must supply that callback from authenticated request
+state; a nil callback is rejected. This service checkpoint is not route activation.
+
+Application lifecycle wiring must start RunCleanup with its cancellable context.
+It runs at startup and once per minute, bounds each pass to 30 seconds, and does
+not change provider selection or importer readiness. Cleanup errors must be logged
+without raw database error text, account IDs or source values.

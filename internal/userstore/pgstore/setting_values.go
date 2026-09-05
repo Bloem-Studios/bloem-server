@@ -95,12 +95,15 @@ func (s *PostgresUserStore) ListSettingValuesForResolution(
 	ctx context.Context,
 	query userstore.SettingResolutionQuery,
 ) ([]userstore.SettingValue, error) {
+	return listSettingValuesForResolution(ctx, s.pool, s.userID, query)
+}
+func listSettingValuesForResolution(ctx context.Context, db preferenceSettingsExecutor, userID int, query userstore.SettingResolutionQuery) ([]userstore.SettingValue, error) {
 	q := query.Normalized()
 	if len(q.Keys) == 0 {
 		return nil, nil
 	}
 
-	rows, err := s.pool.Query(ctx, `
+	rows, err := db.Query(ctx, `
 		SELECT `+settingValueColumns+`
 		FROM user_setting_values
 		WHERE user_id = $1
@@ -120,7 +123,7 @@ func (s *PostgresUserStore) ListSettingValuesForResolution(
 			      )
 		ORDER BY key, scope, COALESCE(profile_id, ''), COALESCE(client_family, ''), COALESCE(device_id, ''),
 		         COALESCE(library_id, 0), COALESCE(series_id, '')`,
-		s.userID, q.Keys, q.ProfileIDs, string(q.ClientFamily), q.DeviceID, q.LibraryIDs, q.SeriesIDs,
+		userID, q.Keys, q.ProfileIDs, string(q.ClientFamily), q.DeviceID, q.LibraryIDs, q.SeriesIDs,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing setting values for resolution: %w", err)
