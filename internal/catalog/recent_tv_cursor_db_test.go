@@ -167,7 +167,6 @@ func TestRecentTVCursorFinalEventTuple(t *testing.T) {
 	}
 	q.After = recentTVCursor(first[0], 1)
 	exec(`DELETE FROM media_files WHERE episode_id=$1`, id("b1"))
-	exec(`DELETE FROM episodes WHERE content_id=$1`, id("b1"))
 	exec(`DELETE FROM media_item_libraries WHERE content_id=$1`, id("b"))
 	addEpisode("new", "a", "run-new", 5, snapshot.Add(time.Hour), false)
 	page, _, _, err := repo.List(ctx, q)

@@ -112,7 +112,7 @@ the group cursor. A query cap limits source editions before grouping.
 
 `GET /api/v2/catalog/search/capabilities` reports the selected provider and, for
 Meilisearch, `result_window_limit`, `session_ttl_seconds`, and
-`max_sessions_per_account`. The body defaults to 50 results per page. Search
+`max_sessions_per_account`. Catalog query bodies default to 50 results per page. Search
 responses also expose the applicable window limit and fixed session expiry in
 `search_diagnostics`.
 
