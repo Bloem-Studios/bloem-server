@@ -57,6 +57,13 @@ type QueryOf<Op> =
       : Q
     : never;
 
+type HeadersOf<Op> =
+  ParamsOf<Op> extends { header?: infer H extends object }
+    ? [H] extends [never]
+      ? never
+      : Omit<H, "Authorization" | "X-Profile-Id" | "X-Profile-Token" | "X-Device-Id">
+    : never;
+
 type BodyOf<Op> = Op extends { requestBody: { content: { "application/json": infer B } } }
   ? B
   : never;
@@ -112,6 +119,9 @@ export type V2Query<K extends V2OperationKey> = QueryOf<OperationOf<K>>;
 /** The path parameter type of a v2 operation (`never` when it has none). */
 export type V2PathParams<K extends V2OperationKey> = PathParamsOf<OperationOf<K>>;
 
+/** Only headers declared by the operation; required validators remain required. */
+export type V2Headers<K extends V2OperationKey> = HeadersOf<OperationOf<K>>;
+
 // ---------------------------------------------------------------------------
 // Request options: only the parts the operation declares are accepted, and
 // the whole options object is optional when nothing is required.
@@ -131,13 +141,20 @@ interface CommonOptions {
   profileContext?: ProfileRequestContextSnapshot;
   /** Let the browser finish the request after navigation or tab close. */
   keepalive?: boolean;
+  /** Inspect metadata from a successfully decoded response, such as its ETag. */
+  onResponse?: (response: Response) => void;
 }
 
 export type V2RequestOptions<K extends V2OperationKey> = CommonOptions &
   ([V2PathParams<K>] extends [never] ? unknown : { path: V2PathParams<K> }) &
   ([V2Query<K>] extends [never] ? unknown : { query?: V2Query<K> }) &
   ([V2Body<K>] extends [never] ? unknown : { body: V2Body<K> }) &
-  ([V2Form<K>] extends [never] ? unknown : { form: V2Form<K> });
+  ([V2Form<K>] extends [never] ? unknown : { form: V2Form<K> }) &
+  ([V2Headers<K>] extends [never]
+    ? unknown
+    : Record<never, never> extends V2Headers<K>
+      ? { headers?: V2Headers<K> }
+      : { headers: V2Headers<K> });
 
 type RequestArgs<K extends V2OperationKey> =
   Record<never, never> extends V2RequestOptions<K>
@@ -170,8 +187,15 @@ export class V2ProblemError extends Error {
   readonly problemType: string;
   /** The `Retry-After` delay in seconds when the server sent one (rate limits, busy backends). */
   readonly retryAfterSeconds: number | null;
+  /** Current validator supplied with a precondition failure; never applied automatically. */
+  readonly currentETag: string | null;
 
-  constructor(operationId: string, problem: Problem, retryAfterSeconds: number | null = null) {
+  constructor(
+    operationId: string,
+    problem: Problem,
+    retryAfterSeconds: number | null = null,
+    currentETag: string | null = null,
+  ) {
     super(problem.detail || problem.title);
     this.name = "V2ProblemError";
     this.operationId = operationId;
@@ -179,6 +203,7 @@ export class V2ProblemError extends Error {
     this.status = problem.status;
     this.problemType = problemId(problem);
     this.retryAfterSeconds = retryAfterSeconds;
+    this.currentETag = currentETag;
   }
 }
 
@@ -288,6 +313,7 @@ export async function v2<K extends V2OperationKey>(
 ): Promise<V2Result<K>> {
   const [method, route] = key.split(" ", 2) as [string, string];
   const options = (args[0] ?? {}) as CommonOptions & {
+    headers?: Record<string, string | number | undefined>;
     path?: Record<string, string | number>;
     query?: Record<string, QueryValue>;
     body?: unknown;
@@ -298,6 +324,9 @@ export async function v2<K extends V2OperationKey>(
     Accept: "application/json",
     ...V2_CLIENT_HEADERS,
   };
+  for (const [name, value] of Object.entries(options.headers ?? {})) {
+    if (value !== undefined) headers[name] = String(value);
+  }
   const init: RequestInit = { method, headers, signal: options.signal };
   if (options.keepalive) init.keepalive = true;
   if (options.body !== undefined) {
@@ -328,7 +357,9 @@ export async function v2<K extends V2OperationKey>(
   }
 
   try {
-    return await decodeV2Response(key, res);
+    const decoded = await decodeV2Response(key, res);
+    options.onResponse?.(res);
+    return decoded;
   } catch (err) {
     if (
       err instanceof V2ProblemError &&
@@ -365,5 +396,5 @@ export async function decodeV2Response<K extends V2OperationKey>(
       "the error response is not a problem document",
     );
   }
-  throw new V2ProblemError(operationId, body, retryAfterSecondsOf(res));
+  throw new V2ProblemError(operationId, body, retryAfterSecondsOf(res), res.headers.get("ETag"));
 }

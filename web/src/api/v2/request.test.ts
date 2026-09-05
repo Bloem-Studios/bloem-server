@@ -367,3 +367,39 @@ describe("v2 type separation", () => {
     expect(typeof typeOnly).toBe("function");
   });
 });
+
+describe("v2 response validators", () => {
+  it("retains ETag metadata after successful decoding", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      json(getCurrentUserOk, 200, { ...JSON_HEADERS, ETag: '"version-one"' }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const onResponse = vi.fn();
+    await v2("GET /api/v2/account/me", { onResponse });
+    expect(onResponse).toHaveBeenCalledTimes(1);
+    expect(onResponse.mock.calls[0]?.[0].headers.get("ETag")).toBe('"version-one"');
+  });
+
+  it("exposes the current validator on 412 without invoking success hooks or retrying", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      json(
+        {
+          ...validationFailedBody,
+          status: 412,
+          title: "Precondition failed",
+          type: "https://example.invalid/problems/precondition_failed",
+        },
+        412,
+        { ...PROBLEM_HEADERS, ETag: '"version-two"' },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const onResponse = vi.fn();
+    await expect(v2("GET /api/v2/account/me", { onResponse })).rejects.toMatchObject({
+      status: 412,
+      currentETag: '"version-two"',
+    });
+    expect(onResponse).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
