@@ -19,6 +19,16 @@ import (
 // handlers and the v2 operations both call these; each returns *APIError for
 // a decision the transport renders in its own shape.
 
+const (
+	trailerItemTypeMovie  = "movie"
+	trailerItemTypeSeries = "series"
+	// metadataAIOnViewOff is the on-view mode of an unwired or unconfigured
+	// translation service.
+	metadataAIOnViewOff = "off"
+	// metadataAIStatusEnabledKey is the v1 status probe's enabled member.
+	metadataAIStatusEnabledKey = "enabled"
+)
+
 // TrailerRefreshCapabilityView is what a server offers for the viewer-facing
 // trailer fetch.
 type TrailerRefreshCapabilityView struct {
@@ -40,7 +50,7 @@ func (h *ItemsHandler) TrailerRefreshCapability() TrailerRefreshCapabilityView {
 			metadata.TrailerRefreshStatusCooldown,
 			metadata.TrailerRefreshStatusDisabled,
 		}
-		view.SupportedTypes = []string{"movie", "series"}
+		view.SupportedTypes = []string{trailerItemTypeMovie, trailerItemTypeSeries}
 	}
 	return view
 }
@@ -140,7 +150,7 @@ type MetadataAIStatusView struct {
 // viewer-facing on-view mode; a nil handler is the clean negative.
 func (h *MetadataAIHandler) Status() MetadataAIStatusView {
 	if h == nil || h.service == nil {
-		return MetadataAIStatusView{OnView: "off"}
+		return MetadataAIStatusView{OnView: metadataAIOnViewOff}
 	}
 	return MetadataAIStatusView{Enabled: h.service.Enabled(), OnView: h.service.OnViewMode()}
 }

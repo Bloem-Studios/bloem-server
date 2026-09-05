@@ -239,6 +239,9 @@ const (
 	cacheControlPrivateNoCache = "private, no-cache"
 	trailersDomain             = "trailers"
 	metadataAIDomain           = "metadata AI translation"
+	locationPathID             = "path.id"
+	trailerStatusQueued        = "queued"
+	metadataAIOnViewOff        = "off"
 )
 
 func registerCatalogActions(reg *Registry) {
@@ -297,13 +300,13 @@ func catalogActionProblem(err error) *Problem {
 		switch {
 		case apiErr.Status == http.StatusBadRequest && apiErr.Code == "unsupported_type":
 			return NewProblem(TypeValidationFailed, "The request did not pass validation; see errors.").
-				WithErrors(ProblemError{Location: "path.id", Code: codeInvalid, Detail: apiErr.Message})
+				WithErrors(ProblemError{Location: locationPathID, Code: codeInvalid, Detail: apiErr.Message})
 		case apiErr.Status == http.StatusBadRequest && apiErr.Field != "":
 			return NewProblem(TypeValidationFailed, "The request did not pass validation; see errors.").
 				WithErrors(ProblemError{Location: "body." + apiErr.Field, Code: codeInvalid, Detail: apiErr.Message})
 		case apiErr.Status == http.StatusBadRequest:
 			return NewProblem(TypeValidationFailed, "The request did not pass validation; see errors.").
-				WithErrors(ProblemError{Location: "body", Code: codeInvalid, Detail: apiErr.Message})
+				WithErrors(ProblemError{Location: locationBody, Code: codeInvalid, Detail: apiErr.Message})
 		case apiErr.Status == http.StatusServiceUnavailable && (apiErr.Code == "not_configured" || apiErr.Message == "Trailer refresh is not configured"):
 			return NewProblem(TypeCapabilityNotConfigured, apiErr.Message)
 		}
@@ -340,14 +343,14 @@ func (reg *Registry) refreshCatalogItemTrailers(ctx context.Context, in *Catalog
 		return nil, catalogActionProblem(err)
 	}
 	out := &TrailerRefreshOutput{Status: http.StatusOK, Body: TrailerRefresh{Status: view.Status, NextAllowedAt: instantPtr(view.NextAllowedAt)}}
-	if view.Status == "queued" {
+	if view.Status == trailerStatusQueued {
 		out.Status = http.StatusAccepted
 	}
 	return out, nil
 }
 
 func (reg *Registry) getMetadataAICapability(_ context.Context, _ *struct{}) (*MetadataAICapabilityOutput, error) {
-	view := handlers.MetadataAIStatusView{OnView: "off"}
+	view := handlers.MetadataAIStatusView{OnView: metadataAIOnViewOff}
 	if reg.deps.MetadataAI != nil {
 		view = reg.deps.MetadataAI.Status()
 	}
@@ -413,7 +416,7 @@ func (reg *Registry) getPerson(ctx context.Context, in *PersonInput) (*PersonOut
 	if _, _, p := viewerIdentity(ctx); p != nil {
 		return nil, p
 	}
-	id, p := in.ID.positive("path.id")
+	id, p := in.ID.positive(locationPathID)
 	if p != nil {
 		return nil, p
 	}
@@ -433,14 +436,14 @@ func (reg *Registry) refreshPerson(ctx context.Context, in *PersonInput) (*Perso
 	if p != nil {
 		return nil, p
 	}
-	id, p := in.ID.positive("path.id")
+	id, p := in.ID.positive(locationPathID)
 	if p != nil {
 		return nil, p
 	}
 	if err := svc.RefreshPerson(ctx, userID, int64(id)); err != nil {
 		return nil, catalogActionProblem(err)
 	}
-	return &PersonRefreshOutput{Body: PersonRefresh{Status: "queued", PersonID: in.ID}}, nil
+	return &PersonRefreshOutput{Body: PersonRefresh{Status: trailerStatusQueued, PersonID: in.ID}}, nil
 }
 
 func (reg *Registry) getLiteraryWork(ctx context.Context, in *LiteraryWorkInput) (*LiteraryWorkOutput, error) {

@@ -61,15 +61,15 @@ func NewMetadataAIHandler(service *translation.Service) *MetadataAIHandler {
 func (h *MetadataAIHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 	view := h.Status()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"enabled": view.Enabled,
-		"on_view": view.OnView,
+		metadataAIStatusEnabledKey: view.Enabled,
+		"on_view":                  view.OnView,
 	})
 }
 
 // WriteMetadataAIDisabledStatus answers the status probe with a clean negative
 // when no metadata AI handler is wired.
 func WriteMetadataAIDisabledStatus(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"enabled": false, "on_view": "off"})
+	writeJSON(w, http.StatusOK, map[string]any{metadataAIStatusEnabledKey: false, "on_view": metadataAIOnViewOff})
 }
 
 type translateDescriptionRequest struct {
