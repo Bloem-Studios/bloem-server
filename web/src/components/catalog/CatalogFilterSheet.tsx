@@ -68,7 +68,7 @@ interface CatalogFilterSheetProps {
   filtersLoading?: boolean;
   libraryType?: string;
   // Forwarded into the editor so audiobook-native facet sections can
-  // typeahead-search /api/v1/catalog/filters/search at the same scope.
+  // typeahead-search /api/v2/catalog/filters/search at the same scope.
   catalogState?: CatalogSearchState;
 }
 

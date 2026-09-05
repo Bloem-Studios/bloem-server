@@ -284,6 +284,21 @@ describe("Catalog page", () => {
     );
   });
 
+  it("browses an explicit library without requiring search text", () => {
+    appInitialEntries = ["/catalog?library_id=17&sort=title&order=asc"];
+    const markup = renderToStaticMarkup(
+      <QueryClientProvider client={new QueryClient()}>
+        <App />
+      </QueryClientProvider>,
+    );
+    expect(mockUseCatalogWindow).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "query", library_id: 17, q: undefined }),
+      expect.objectContaining({ includeTotal: true }),
+    );
+    expect(mockItemGrid).toHaveBeenCalled();
+    expect(markup).not.toContain("Find films, series, performances");
+  });
+
   it("renders the search-first landing for empty query catalog routes", () => {
     appInitialEntries = ["/catalog?source=query"];
 

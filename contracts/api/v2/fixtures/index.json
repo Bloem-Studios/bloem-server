@@ -1230,6 +1230,166 @@
       "body_file": "get_calendar_window_too_long.json"
     },
     {
+      "name": "get_catalog_filters_invalid_source",
+      "operation_id": "getCatalogFilters",
+      "scenario": "A source outside the enum.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/filters?source=everything",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_catalog_filters_invalid_source.json"
+    },
+    {
+      "name": "get_catalog_filters_locked_profile",
+      "operation_id": "getCatalogFilters",
+      "scenario": "A PIN-locked profile without X-Profile-Token.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/filters",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-locked"
+        }
+      },
+      "expected_status": 403,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_catalog_filters_locked_profile.json"
+    },
+    {
+      "name": "get_catalog_filters_ok",
+      "operation_id": "getCatalogFilters",
+      "scenario": "The facet values of one library including the file-derived technical facets.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/filters?library_id=1",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CatalogFilters",
+      "body_file": "get_catalog_filters_ok.json"
+    },
+    {
+      "name": "get_catalog_item_authentication_required",
+      "operation_id": "getCatalogItem",
+      "scenario": "An item detail without a credential.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/movie:heat-1995"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_catalog_item_authentication_required.json"
+    },
+    {
+      "name": "get_catalog_item_invalid_library_id",
+      "operation_id": "getCatalogItem",
+      "scenario": "A library_id that is not a positive integer identifier.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/movie:heat-1995?library_id=abc",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_catalog_item_invalid_library_id.json"
+    },
+    {
+      "name": "get_catalog_item_ok",
+      "operation_id": "getCatalogItem",
+      "scenario": "The detail page of a movie with the viewer's state, versions, and cast.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/movie:heat-1995?image_size=large&library_id=1",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CatalogItemDetail",
+      "body_file": "get_catalog_item_ok.json"
+    },
+    {
+      "name": "get_catalog_search_capabilities_authentication_required",
+      "operation_id": "getCatalogSearchCapabilities",
+      "scenario": "Search capability discovery requires a viewer session.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/search/capabilities"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_catalog_search_capabilities_authentication_required.json"
+    },
+    {
+      "name": "get_catalog_search_capabilities_ok",
+      "operation_id": "getCatalogSearchCapabilities",
+      "scenario": "Search exposes its ranked result window and fixed session lifetime.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/search/capabilities",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CatalogSearchCapabilities",
+      "body_file": "get_catalog_search_capabilities_ok.json"
+    },
+    {
       "name": "get_collection_items_ok",
       "operation_id": "getCollectionItems",
       "scenario": "A bounded manual membership page with its continuation envelope.",
@@ -1844,6 +2004,107 @@
       "body_file": "get_library_section_items_ok.json"
     },
     {
+      "name": "get_literary_work_authentication_required",
+      "operation_id": "getLiteraryWork",
+      "scenario": "A work without a credential.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/works/work:dune-1965"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_literary_work_authentication_required.json"
+    },
+    {
+      "name": "get_literary_work_blank_id",
+      "operation_id": "getLiteraryWork",
+      "scenario": "A blank work id: a validation failure naming path.work_id.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/works/%20",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_literary_work_blank_id.json"
+    },
+    {
+      "name": "get_literary_work_ok",
+      "operation_id": "getLiteraryWork",
+      "scenario": "A literary work with the editions the viewer can see and their reading progress.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/works/work:dune-1965",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/LiteraryWork",
+      "body_file": "get_literary_work_ok.json"
+    },
+    {
+      "name": "get_metadata_ai_capability_locked_profile",
+      "operation_id": "getMetadataAICapability",
+      "scenario": "A PIN-locked profile without X-Profile-Token.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/capabilities/metadata-ai",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-locked"
+        }
+      },
+      "expected_status": 403,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_metadata_ai_capability_locked_profile.json"
+    },
+    {
+      "name": "get_metadata_ai_capability_ok",
+      "operation_id": "getMetadataAICapability",
+      "scenario": "The metadata AI capability document on a server with on-view translation offered as a button.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/capabilities/metadata-ai",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "private, no-cache",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/MetadataAICapability",
+      "body_file": "get_metadata_ai_capability_ok.json"
+    },
+    {
       "name": "get_metadata_match_queue_offset_rejected",
       "operation_id": "getMetadataMatchQueue",
       "scenario": "The v1 offset parameter is not part of v2 pagination; the queue refuses it as unknown.",
@@ -1919,6 +2180,65 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/OverlayConfig",
       "body_file": "get_overlay_config_ok.json"
+    },
+    {
+      "name": "get_person_authentication_required",
+      "operation_id": "getPerson",
+      "scenario": "A person without a credential.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/people/7"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_person_authentication_required.json"
+    },
+    {
+      "name": "get_person_invalid_id",
+      "operation_id": "getPerson",
+      "scenario": "A person id that is not a positive integer identifier.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/people/abc",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_person_invalid_id.json"
+    },
+    {
+      "name": "get_person_ok",
+      "operation_id": "getPerson",
+      "scenario": "One person with a presigned photo.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/people/7",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/Person",
+      "body_file": "get_person_ok.json"
     },
     {
       "name": "get_plugin_settings_authentication_required",
@@ -2139,6 +2459,69 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "get_recommendation_section_profile_header_required.json"
+    },
+    {
+      "name": "get_series_season_invalid_number",
+      "operation_id": "getSeriesSeason",
+      "scenario": "A season number that is not an integer.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/series/series:severance/seasons/one",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_series_season_invalid_number.json"
+    },
+    {
+      "name": "get_series_season_locked_profile",
+      "operation_id": "getSeriesSeason",
+      "scenario": "A PIN-locked profile without X-Profile-Token.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/series/series:severance/seasons/1",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-locked"
+        }
+      },
+      "expected_status": 403,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_series_season_locked_profile.json"
+    },
+    {
+      "name": "get_series_season_ok",
+      "operation_id": "getSeriesSeason",
+      "scenario": "One season of a series by number.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/series/series:severance/seasons/1",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/Season",
+      "body_file": "get_series_season_ok.json"
     },
     {
       "name": "get_setting_value_authentication_required",
@@ -2394,6 +2777,44 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "get_taste_profile_profile_header_required.json"
+    },
+    {
+      "name": "get_trailers_capability_authentication_required",
+      "operation_id": "getTrailersCapability",
+      "scenario": "The trailer capability document without a credential.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/capabilities/trailers"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "get_trailers_capability_authentication_required.json"
+    },
+    {
+      "name": "get_trailers_capability_ok",
+      "operation_id": "getTrailersCapability",
+      "scenario": "The trailer capability document on a server with the viewer-facing trailer fetch configured.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/capabilities/trailers",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "private, no-cache",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/TrailersCapability",
+      "body_file": "get_trailers_capability_ok.json"
     },
     {
       "name": "get_watch_state_not_playable",
@@ -2672,6 +3093,68 @@
       "body_file": "list_admin_users_permission_denied.json"
     },
     {
+      "name": "list_audiobook_groups_invalid_group_by",
+      "operation_id": "listAudiobookGroups",
+      "scenario": "A group_by outside the enum.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/audiobook-groups?library_id=3&group_by=publisher",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_audiobook_groups_invalid_group_by.json"
+    },
+    {
+      "name": "list_audiobook_groups_ok",
+      "operation_id": "listAudiobookGroups",
+      "scenario": "The first author of an audiobook library with aggregate stats and a cursor to the next.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/audiobook-groups?library_id=3&group_by=author&limit=1",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AudiobookGroupCollection",
+      "body_file": "list_audiobook_groups_ok.json"
+    },
+    {
+      "name": "list_audiobook_groups_profile_header_required",
+      "operation_id": "listAudiobookGroups",
+      "scenario": "A profile-scoped catalog read without X-Profile-Id.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/audiobook-groups?library_id=3&group_by=author",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_audiobook_groups_profile_header_required.json"
+    },
+    {
       "name": "list_because_watched_limit_out_of_range",
       "operation_id": "listBecauseWatched",
       "scenario": "limit above 50; v1 silently clamped, v2 refuses.",
@@ -2732,6 +3215,249 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "list_because_watched_profile_header_required.json"
+    },
+    {
+      "name": "list_catalog_item_episodes_invalid_image_size",
+      "operation_id": "listCatalogItemEpisodes",
+      "scenario": "An image size outside the enum.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/series:severance-S01/episodes?image_size=huge",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_catalog_item_episodes_invalid_image_size.json"
+    },
+    {
+      "name": "list_catalog_item_episodes_locked_profile",
+      "operation_id": "listCatalogItemEpisodes",
+      "scenario": "A PIN-locked profile without X-Profile-Token.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/series:severance-S01/episodes",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-locked"
+        }
+      },
+      "expected_status": 403,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_catalog_item_episodes_locked_profile.json"
+    },
+    {
+      "name": "list_catalog_item_episodes_ok",
+      "operation_id": "listCatalogItemEpisodes",
+      "scenario": "The episodes of a season item with their files and the viewer's rollups.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/series:severance-S01/episodes",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/EpisodeCollection",
+      "body_file": "list_catalog_item_episodes_ok.json"
+    },
+    {
+      "name": "list_catalog_item_manga_files_authentication_required",
+      "operation_id": "listCatalogItemMangaFiles",
+      "scenario": "Manga files without a credential.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/series:berserk/manga-files"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_catalog_item_manga_files_authentication_required.json"
+    },
+    {
+      "name": "list_catalog_item_manga_files_invalid_file_id",
+      "operation_id": "listCatalogItemMangaFiles",
+      "scenario": "A file_id that is not a positive integer identifier.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/series:berserk/manga-files?file_id=-1",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_catalog_item_manga_files_invalid_file_id.json"
+    },
+    {
+      "name": "list_catalog_item_manga_files_ok",
+      "operation_id": "listCatalogItemMangaFiles",
+      "scenario": "The chapter files of a manga series as file descriptors.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/series:berserk/manga-files",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/MangaFiles",
+      "body_file": "list_catalog_item_manga_files_ok.json"
+    },
+    {
+      "name": "list_catalog_item_versions_ok",
+      "operation_id": "listCatalogItemVersions",
+      "scenario": "The playable file versions of a movie.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/movie:heat-1995/versions",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/FileVersionCollection",
+      "body_file": "list_catalog_item_versions_ok.json"
+    },
+    {
+      "name": "list_catalog_item_versions_profile_header_required",
+      "operation_id": "listCatalogItemVersions",
+      "scenario": "Versions without X-Profile-Id.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/movie:heat-1995/versions",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_catalog_item_versions_profile_header_required.json"
+    },
+    {
+      "name": "list_catalog_item_versions_unknown_query_parameter",
+      "operation_id": "listCatalogItemVersions",
+      "scenario": "A query parameter the operation does not declare.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/items/movie:heat-1995/versions?fileId=1",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_catalog_item_versions_unknown_query_parameter.json"
+    },
+    {
+      "name": "list_catalog_items_authentication_required",
+      "operation_id": "listCatalogItems",
+      "scenario": "The catalog browse without a credential.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog?library_id=1"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_catalog_items_authentication_required.json"
+    },
+    {
+      "name": "list_catalog_items_ok",
+      "operation_id": "listCatalogItems",
+      "scenario": "The first page of a library's catalog sorted by release date, newest first, with a cursor to the next page.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog?library_id=1&sort=-release_date&limit=2&image_size=medium",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CatalogBrowseCollection",
+      "body_file": "list_catalog_items_ok.json"
+    },
+    {
+      "name": "list_catalog_items_unknown_sort_field",
+      "operation_id": "listCatalogItems",
+      "scenario": "A sort field the executor does not know: a validation failure naming query.sort.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog?sort=bogus",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_catalog_items_unknown_sort_field.json"
     },
     {
       "name": "list_collections_ok",
@@ -3367,6 +4093,68 @@
       "body_file": "list_my_requests_ok.json"
     },
     {
+      "name": "list_people_limit_out_of_range",
+      "operation_id": "listPeople",
+      "scenario": "A limit below the minimum.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/people?q=al&limit=0",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_people_limit_out_of_range.json"
+    },
+    {
+      "name": "list_people_ok",
+      "operation_id": "listPeople",
+      "scenario": "People matching a name prefix.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/people?q=al&limit=5",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/PersonCollection",
+      "body_file": "list_people_ok.json"
+    },
+    {
+      "name": "list_people_profile_header_required",
+      "operation_id": "listPeople",
+      "scenario": "People search without X-Profile-Id.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/people?q=al",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_people_profile_header_required.json"
+    },
+    {
       "name": "list_plugin_settings_authentication_required",
       "operation_id": "listPluginSettings",
       "scenario": "The plugin settings listing needs a credential.",
@@ -3714,6 +4502,65 @@
       "body_file": "list_recently_added_profile_header_required.json"
     },
     {
+      "name": "list_season_episodes_authentication_required",
+      "operation_id": "listSeasonEpisodes",
+      "scenario": "Season episodes without a credential.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/series/series:severance/seasons/1/episodes"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_season_episodes_authentication_required.json"
+    },
+    {
+      "name": "list_season_episodes_negative_number",
+      "operation_id": "listSeasonEpisodes",
+      "scenario": "A negative season number.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/series/series:severance/seasons/-1/episodes",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_season_episodes_negative_number.json"
+    },
+    {
+      "name": "list_season_episodes_ok",
+      "operation_id": "listSeasonEpisodes",
+      "scenario": "The episodes of one season of a series by number.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/series/series:severance/seasons/1/episodes",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/EpisodeCollection",
+      "body_file": "list_season_episodes_ok.json"
+    },
+    {
       "name": "list_section_recipe_candidates_account_scoped",
       "operation_id": "listSectionRecipeCandidates",
       "scenario": "Candidates without X-Profile-Id: the header is optional here, as on v1, so an account-scoped caller reads the same values.",
@@ -3815,6 +4662,65 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/RecipeCatalog",
       "body_file": "list_section_recipes_ok.json"
+    },
+    {
+      "name": "list_series_seasons_authentication_required",
+      "operation_id": "listSeriesSeasons",
+      "scenario": "Seasons without a credential.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/series/series:severance/seasons"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_series_seasons_authentication_required.json"
+    },
+    {
+      "name": "list_series_seasons_invalid_image_size",
+      "operation_id": "listSeriesSeasons",
+      "scenario": "An image size outside the enum.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/series/series:severance/seasons?image_size=huge",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "list_series_seasons_invalid_image_size.json"
+    },
+    {
+      "name": "list_series_seasons_ok",
+      "operation_id": "listSeriesSeasons",
+      "scenario": "The seasons of a series with the viewer's rollups.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/series/series:severance/seasons",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/SeasonCollection",
+      "body_file": "list_series_seasons_ok.json"
     },
     {
       "name": "list_setting_values_authentication_required",
@@ -4466,6 +5372,71 @@
       "body_file": "profile_verification_required.json"
     },
     {
+      "name": "query_catalog_items_limit_out_of_range",
+      "operation_id": "queryCatalogItems",
+      "scenario": "A page size over the maximum is refused rather than clamped.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/query",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"limit\":500}"
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "query_catalog_items_limit_out_of_range.json"
+    },
+    {
+      "name": "query_catalog_items_ok",
+      "operation_id": "queryCatalogItems",
+      "scenario": "The JSON rule-group form of the browse: one genre rule, sorted by title.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/query",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"match\":\"all\",\"groups\":[{\"match\":\"any\",\"rules\":[{\"field\":\"genre\",\"op\":\"contains\",\"value\":\"Crime\"}]}],\"sort\":\"title\",\"order\":\"asc\",\"library_id\":\"1\",\"limit\":10}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CatalogBrowseCollection",
+      "body_file": "query_catalog_items_ok.json"
+    },
+    {
+      "name": "query_catalog_items_profile_header_required",
+      "operation_id": "queryCatalogItems",
+      "scenario": "The query browse without X-Profile-Id.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/query",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        },
+        "body": "{\"limit\":10}"
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "query_catalog_items_profile_header_required.json"
+    },
+    {
       "name": "rate_limited",
       "operation_id": null,
       "scenario": "The authenticated-route limiter refused the request; Retry-After is the only rate-limit header on v2.",
@@ -4486,6 +5457,68 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "rate_limited.json"
+    },
+    {
+      "name": "refresh_catalog_item_trailers_ok",
+      "operation_id": "refreshCatalogItemTrailers",
+      "scenario": "A trailer fetch queued for a movie: 202 with the queued status.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/items/movie:heat-1995/trailers/refresh",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/TrailerRefresh",
+      "body_file": "refresh_catalog_item_trailers_ok.json"
+    },
+    {
+      "name": "refresh_catalog_item_trailers_profile_header_required",
+      "operation_id": "refreshCatalogItemTrailers",
+      "scenario": "A trailer fetch without X-Profile-Id.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/items/movie:heat-1995/trailers/refresh",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "refresh_catalog_item_trailers_profile_header_required.json"
+    },
+    {
+      "name": "refresh_catalog_item_trailers_unsupported_type",
+      "operation_id": "refreshCatalogItemTrailers",
+      "scenario": "An episode id: trailers apply to movies and series only, a validation failure naming path.id.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/items/episode:severance-s01e01/trailers/refresh",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "refresh_catalog_item_trailers_unsupported_type.json"
     },
     {
       "name": "refresh_library_metadata_accepted",
@@ -4530,6 +5563,69 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "refresh_library_metadata_invalid_mode.json"
+    },
+    {
+      "name": "refresh_person_invalid_id",
+      "operation_id": "refreshPerson",
+      "scenario": "A person id that is not a positive integer identifier.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/people/0/refresh",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "refresh_person_invalid_id.json"
+    },
+    {
+      "name": "refresh_person_locked_profile",
+      "operation_id": "refreshPerson",
+      "scenario": "A PIN-locked profile without X-Profile-Token.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/people/7/refresh",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-locked"
+        }
+      },
+      "expected_status": 403,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "refresh_person_locked_profile.json"
+    },
+    {
+      "name": "refresh_person_ok",
+      "operation_id": "refreshPerson",
+      "scenario": "A provider refresh queued for a person: 202 with the acknowledgement.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/people/7/refresh",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/PersonRefresh",
+      "body_file": "refresh_person_ok.json"
     },
     {
       "name": "rematch_stale_id_permission_denied",
@@ -4764,6 +5860,65 @@
       "body_file": "retry_metadata_match_queue_ok.json"
     },
     {
+      "name": "search_catalog_facet_authentication_required",
+      "operation_id": "searchCatalogFacet",
+      "scenario": "Facet typeahead without a credential.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/filters/search?facet=author&q=fr"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "search_catalog_facet_authentication_required.json"
+    },
+    {
+      "name": "search_catalog_facet_missing_facet",
+      "operation_id": "searchCatalogFacet",
+      "scenario": "The required facet parameter is absent.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/filters/search?q=fr",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "search_catalog_facet_missing_facet.json"
+    },
+    {
+      "name": "search_catalog_facet_ok",
+      "operation_id": "searchCatalogFacet",
+      "scenario": "Prefix typeahead over the author facet.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/catalog/filters/search?facet=author&q=fr&limit=1",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CatalogFacetMatches",
+      "body_file": "search_catalog_facet_ok.json"
+    },
+    {
       "name": "set_library_providers_duplicate_level",
       "operation_id": "setLibraryProviders",
       "scenario": "A content level listed twice is a validation failure naming the second; success answers 204 with no body.",
@@ -4912,6 +6067,68 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "sync_progress_validation_failed.json"
+    },
+    {
+      "name": "translate_catalog_item_description_authentication_required",
+      "operation_id": "translateCatalogItemDescription",
+      "scenario": "A translation request without a credential.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/items/movie:heat-1995/translate-description",
+        "body": "{\"target_language\":\"de\"}"
+      },
+      "expected_status": 401,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "translate_catalog_item_description_authentication_required.json"
+    },
+    {
+      "name": "translate_catalog_item_description_missing_language",
+      "operation_id": "translateCatalogItemDescription",
+      "scenario": "A body without target_language.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/items/movie:heat-1995/translate-description",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{}"
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "translate_catalog_item_description_missing_language.json"
+    },
+    {
+      "name": "translate_catalog_item_description_ok",
+      "operation_id": "translateCatalogItemDescription",
+      "scenario": "An on-view description translation queued: 202 with the job.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/catalog/items/movie:heat-1995/translate-description",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"target_language\":\"de\"}"
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/MetadataTranslationJob",
+      "body_file": "translate_catalog_item_description_ok.json"
     },
     {
       "name": "undismiss_home_item_profile_header_required",

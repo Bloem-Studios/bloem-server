@@ -394,6 +394,11 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"PUT " + Prefix + "/collections/{id}/items/{item_id}",
 		"PUT " + Prefix + "/collections/{id}/poster",
 		"POST " + Prefix + "/collections/{id}/sync",
+		"GET " + Prefix + "/catalog/search/capabilities", "GET " + Prefix + "/catalog", "GET " + Prefix + "/catalog/audiobook-groups", "GET " + Prefix + "/catalog/filters", "GET " + Prefix + "/catalog/filters/search", "POST " + Prefix + "/catalog/query",
+		"GET " + Prefix + "/catalog/items/{id}", "GET " + Prefix + "/catalog/items/{id}/episodes", "GET " + Prefix + "/catalog/items/{id}/manga-files", "GET " + Prefix + "/catalog/items/{id}/versions",
+		"GET " + Prefix + "/catalog/series/{id}/seasons", "GET " + Prefix + "/catalog/series/{id}/seasons/{num}", "GET " + Prefix + "/catalog/series/{id}/seasons/{num}/episodes",
+		"GET " + Prefix + "/capabilities/trailers", "POST " + Prefix + "/catalog/items/{id}/trailers/refresh", "GET " + Prefix + "/capabilities/metadata-ai", "POST " + Prefix + "/catalog/items/{id}/translate-description",
+		"GET " + Prefix + "/catalog/people", "GET " + Prefix + "/catalog/people/{id}", "POST " + Prefix + "/catalog/people/{id}/refresh", "GET " + Prefix + "/catalog/works/{work_id}",
 	}
 
 	unaccounted, unserved, err := reconcileSpec(observed, contracts.OpenAPI, nil)

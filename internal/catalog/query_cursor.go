@@ -10,12 +10,42 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
+const (
+	querySortYear               = "year"
+	querySortRuntime            = "runtime"
+	querySortRatingIMDb         = "rating_imdb"
+	querySortRatingTMDb         = "rating_tmdb"
+	querySortRatingRTCritic     = "rating_rt_critic"
+	querySortRatingRTAudience   = "rating_rt_audience"
+	querySortResolution         = "resolution"
+	querySortProgress           = "progress"
+	querySortLatestEpisodeAdded = "latest_episode_added"
+	querySortPlays              = "plays"
+	querySortTitle              = "title"
+	querySortDateViewed         = "date_viewed"
+	querySortContentRating      = "content_rating"
+	cursorContentIDColumn       = "content_id"
+	cursorKindText              = "text"
+	cursorKindNumber            = "number"
+	cursorKindTimestamp         = "timestamp"
+	cursorKindDate              = "date"
+	cursorContentIDExpression   = "mi.content_id"
+	cursorTruePredicate         = "TRUE"
+	querySortAsc                = "asc"
+	querySortReleaseDate        = "release_date"
+	querySortLastAirDate        = "last_air_date"
+	querySortBitrate            = "bitrate"
+	querySortRandom             = "random"
+)
+
 // QueryCursor carries the complete SQL ordering tuple. The API must bind it to
 // the normalized query and viewer scope in its signed cursor envelope.
 // Values retain PostgreSQL's text precision rather than passing through float64.
 type QueryCursor struct {
-	Keys     []QueryCursorValue `json:"keys"`
-	Consumed int                `json:"consumed"`
+	Search     *CatalogSearchCursor `json:"search,omitempty"`
+	Collection *CollectionCursor    `json:"collection,omitempty"`
+	Keys       []QueryCursorValue   `json:"keys"`
+	Consumed   int                  `json:"consumed"`
 }
 type QueryCursorValue struct {
 	Kind  string  `json:"kind"`
@@ -37,7 +67,7 @@ type queryCursorTerm struct {
 
 func setCursorTermKinds(terms []queryCursorTerm, field string) {
 	for i := range terms {
-		terms[i].kind = "text"
+		terms[i].kind = cursorKindText
 		if !terms[i].descending {
 			terms[i].nullsLast = true
 		}
@@ -46,31 +76,31 @@ func setCursorTermKinds(terms []queryCursorTerm, field string) {
 		return
 	}
 	switch field {
-	case "last_air_date":
-		terms[0].kind = "date"
-	case "release_date":
+	case querySortLastAirDate:
+		terms[0].kind = cursorKindDate
+	case querySortReleaseDate:
 		if strings.HasSuffix(terms[0].expression, ".episode_air_date") {
-			terms[0].kind = "date"
+			terms[0].kind = cursorKindDate
 		}
-	case "added_at", "date_viewed", "latest_episode_added":
-		terms[0].kind = "timestamp"
-	case "year", "runtime", "rating_imdb", "rating_tmdb", "rating_rt_critic", "rating_rt_audience", "resolution", "bitrate", "progress", "plays", "content_rating":
-		terms[0].kind = "number"
-	case "series":
-		terms[1].kind = "number"
+	case defaultSortField, querySortDateViewed, querySortLatestEpisodeAdded:
+		terms[0].kind = cursorKindTimestamp
+	case querySortYear, querySortRuntime, querySortRatingIMDb, querySortRatingTMDb, querySortRatingRTCritic, querySortRatingRTAudience, querySortResolution, querySortBitrate, querySortProgress, querySortPlays, querySortContentRating:
+		terms[0].kind = cursorKindNumber
+	case playableTypeSeries:
+		terms[1].kind = cursorKindNumber
 	}
 }
 
 func (t queryCursorTerm) cast() string {
 	switch t.kind {
-	case "date":
-		return "date"
-	case "number":
+	case cursorKindDate:
+		return cursorKindDate
+	case cursorKindNumber:
 		return "numeric"
-	case "timestamp":
+	case cursorKindTimestamp:
 		return "timestamptz"
 	default:
-		return "text"
+		return cursorKindText
 	}
 }
 
@@ -136,7 +166,7 @@ func (e *QueryExecutor) PreviewCursorPage(ctx context.Context, def QueryDefiniti
 			return QueryCursorPage{}, fmt.Errorf("invalid cursor consumed count")
 		}
 	}
-	if def.Limit != nil {
+	if def.Limit != nil && !e.GroupByWork {
 		if *def.Limit <= 0 {
 			return QueryCursorPage{}, fmt.Errorf("query limit must be positive")
 		}
@@ -149,7 +179,7 @@ func (e *QueryExecutor) PreviewCursorPage(ctx context.Context, def QueryDefiniti
 	if err != nil {
 		return QueryCursorPage{}, err
 	}
-	if def.Limit != nil {
+	if def.Limit != nil && !e.GroupByWork {
 		plan.maxResults = *def.Limit - consumed
 	}
 	sql, args, err := plan.cursorSQL(after)
@@ -185,7 +215,7 @@ func (e *QueryExecutor) PreviewCursorPage(ctx context.Context, def QueryDefiniti
 		}
 	}
 	if includeTotal {
-		if def.Limit != nil {
+		if def.Limit != nil && !e.GroupByWork {
 			plan.maxResults = *def.Limit
 		}
 		countSQL, countArgs := plan.countSQL()
@@ -256,8 +286,8 @@ func (r *cursorRows) Scan(dest ...any) error {
 // position. Only explicit jumps use OFFSET; continuations always use the tuple.
 // The caller still binds the resulting cursor to its query and viewer scope.
 func (e *QueryExecutor) SeekCursor(ctx context.Context, def QueryDefinition, access AccessFilter, index int) (*QueryCursor, error) {
-	if index < 0 || index > 10000 {
-		return nil, fmt.Errorf("jump index must be between 0 and 10000")
+	if index < 0 || index > 10000000 {
+		return nil, fmt.Errorf("jump index must be between 0 and 10000000")
 	}
 	if index == 0 {
 		return nil, nil
@@ -265,8 +295,8 @@ func (e *QueryExecutor) SeekCursor(ctx context.Context, def QueryDefinition, acc
 	if e == nil || e.Pool == nil {
 		return nil, fmt.Errorf("query executor requires a database pool")
 	}
-	if def.Limit != nil && index >= *def.Limit {
-		return nil, fmt.Errorf("jump index exceeds query limit")
+	if def.Limit != nil && *def.Limit > 0 && index >= *def.Limit {
+		return nil, pgx.ErrNoRows
 	}
 	plan, err := e.buildPreviewPagePlan(def, access, 1, 0)
 	if err != nil {

@@ -242,6 +242,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range []string{"listWebhookConnections", "createWebhookConnection", "updateWebhookConnection", "deleteWebhookConnection", "rotateWebhookConnection", "getWebhookMappings", "updateWebhookMappings", "listWebhookEvents"} {
 		profileToken[id] = true
 	}
+	expect["refreshCatalogItemTrailers"] = map[int]bool{http.StatusOK: true, http.StatusAccepted: true, http.StatusConflict: true, http.StatusTooManyRequests: true}
+	expect["translateCatalogItemDescription"] = map[int]bool{http.StatusAccepted: true, http.StatusConflict: true}
+	expect["refreshPerson"] = map[int]bool{http.StatusAccepted: true, http.StatusTooManyRequests: true}
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {
@@ -341,6 +344,10 @@ var libraryOperationIDs = []string{
 // libraryViewOperationIDs is every profile-scoped library read the
 // catalog-libraries section registers.
 var libraryViewOperationIDs = []string{
+	"getCatalogSearchCapabilities", "listCatalogItems", "listAudiobookGroups", "getCatalogFilters", "searchCatalogFacet", "queryCatalogItems", "getCatalogItem",
+	"listCatalogItemEpisodes", "listCatalogItemMangaFiles", "listCatalogItemVersions", "listSeriesSeasons", "getSeriesSeason", "listSeasonEpisodes",
+	"getTrailersCapability", "refreshCatalogItemTrailers", "getMetadataAICapability", "translateCatalogItemDescription",
+	"listPeople", "getPerson", "refreshPerson", "getLiteraryWork",
 	"getLibraryLayout", "listLibrarySections", "getLibrarySectionItems", "getLibraryCollections", "listLibraryUserCollections",
 }
 

@@ -50,7 +50,7 @@ export function useContinueWatching(
   const detailQueries = useQueries({
     queries: entries.map((entry) => ({
       queryKey: catalogKeys.itemDetail(entry.media_item_id),
-      queryFn: () => fetchCatalogItemDetail(entry.media_item_id),
+      queryFn: ({ signal }) => fetchCatalogItemDetail(entry.media_item_id, undefined, { signal }),
       enabled: enabled && !!entry.media_item_id,
       staleTime: 2 * 60 * 1000,
     })),
