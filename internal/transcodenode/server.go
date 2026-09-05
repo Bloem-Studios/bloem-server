@@ -656,7 +656,7 @@ func (s *Server) reapSession(sessionID string, session *playback.TranscodeSessio
 		slog.Error("close idle transcode session", "component", "transcodenode", "error", err, "session", sessionID, "playback_session_id", sessionID)
 	}
 	if s.tracker != nil {
-		s.tracker.Remove(context.Background(), sessionID)
+		s.removeTrackedExecutor(context.Background(), sessionID, session.ExecutorNamespace())
 	}
 	slog.Info("transcode node reaped idle session", "component", "transcodenode",
 		"session", sessionID, "playback_session_id", sessionID, "idle_ms", time.Since(last).Milliseconds())
@@ -1591,6 +1591,7 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 	effectiveHWAccel := session.Opts().HWAccel
 	trackCtx := context.WithoutCancel(r.Context())
 	go s.tracker.Track(trackCtx, nodesessions.SessionInfo{
+		Executor:    session.ExecutorNamespace(),
 		SessionID:   req.SessionID,
 		NodeURL:     s.tracker.NodeURL(),
 		NodeName:    s.tracker.NodeName(),
@@ -1948,6 +1949,7 @@ func (s *Server) spawnReconstruct(r *http.Request, sessionID string, requestedSe
 
 	trackCtx := context.WithoutCancel(r.Context())
 	go s.tracker.Track(trackCtx, nodesessions.SessionInfo{
+		Executor:    session.ExecutorNamespace(),
 		SessionID:   sessionID,
 		NodeURL:     s.tracker.NodeURL(),
 		NodeName:    s.tracker.NodeName(),
@@ -2718,7 +2720,7 @@ func (s *Server) teardownForForceReload(ctx context.Context, previousRegisteredU
 		// also wipe unrelated tracker-only work, such as an active download
 		// preparation, even though force reload does not stop that job.
 		if s.tracker != nil {
-			s.tracker.Remove(ctx, victim.id)
+			s.removeTrackedExecutor(ctx, victim.id, victim.session.ExecutorNamespace())
 		}
 		unlock()
 	}
@@ -2840,4 +2842,19 @@ func (s *Server) acquireExecutorSession(r *http.Request, sessionID string) (*pla
 	}
 	s.noteSessionAccessLocked(sessionID)
 	return session, true, nil
+}
+
+// removeTrackedExecutor uses the retired object, never the latest session map.
+// A legacy-only tracker cannot address bound records; skipping removal is safer
+// than falling back to a logical ID that might identify a successor.
+func (s *Server) removeTrackedExecutor(ctx context.Context, sessionID string, executor *playback.ExecutorNamespaceV3) {
+	if executor == nil {
+		s.tracker.Remove(ctx, sessionID)
+		return
+	}
+	if tracker, ok := s.tracker.(interface {
+		RemoveExecutor(context.Context, string, playback.ExecutorNamespaceV3)
+	}); ok {
+		tracker.RemoveExecutor(ctx, sessionID, *executor)
+	}
 }

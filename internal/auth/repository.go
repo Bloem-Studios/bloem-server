@@ -133,6 +133,12 @@ func scanUsers(rows pgx.Rows) ([]*models.User, error) {
 
 // Create inserts a new user with a bcrypt-hashed password and returns the created user.
 func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInput) (*models.User, error) {
+	return createUser(ctx, r.pool, input)
+}
+
+func createUser(ctx context.Context, db interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, input models.CreateUserInput) (*models.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("hashing password: %w", err)
@@ -212,7 +218,7 @@ func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInpu
 		allColumns,
 	)
 
-	row := r.pool.QueryRow(ctx, query, args...)
+	row := db.QueryRow(ctx, query, args...)
 
 	user, err := scanUser(row)
 	if err != nil {
@@ -565,4 +571,28 @@ func derefSlice(value *[]int) []int {
 		return []int{}
 	}
 	return *value
+}
+
+// CreateInvited commits an invite use only with the account and its optional
+// profile. A failed insert, profile write, or duplicate account rolls it back.
+func (r *UserRepository) CreateInvited(ctx context.Context, input models.CreateUserInput, code string, provision func(*models.User, pgx.Tx) error) (*models.User, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("beginning invited account: %w", err)
+	}
+	defer tx.Rollback(context.WithoutCancel(ctx)) //nolint:errcheck
+	if err := redeemCode(ctx, tx, code); err != nil {
+		return nil, err
+	}
+	user, err := createUser(ctx, tx, input)
+	if err != nil {
+		return nil, err
+	}
+	if err := provision(user, tx); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("committing invited account: %w", err)
+	}
+	return user, nil
 }

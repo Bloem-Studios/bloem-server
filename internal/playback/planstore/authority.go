@@ -105,20 +105,37 @@ func (s *Postgres) ReserveAttempt(ctx context.Context, request playback.AttemptR
 }
 
 func (s *Postgres) RenewAttempt(ctx context.Context, authority playback.AttemptAuthorityV3, duration time.Duration) (playback.AttemptAuthorityV3, error) {
+	lease, err := s.RenewAttemptLease(ctx, authority, duration)
+	return lease.Authority, err
+}
+
+// RenewAttemptLease returns the database sample used to extend the captured
+// owner's lease. The sample is evaluated after the row lock is acquired, so a
+// blocked renewal cannot revive an expired owner. Callers measure the entire
+// round trip with a suspend-inclusive elapsed clock; IssuedAt is not a local
+// wall-clock deadline. Renewal never shortens an existing lease or grant.
+func (s *Postgres) RenewAttemptLease(ctx context.Context, authority playback.AttemptAuthorityV3, duration time.Duration) (playback.AttemptLeaseV3, error) {
+	var lease playback.AttemptLeaseV3
 	if duration < time.Microsecond {
-		return playback.AttemptAuthorityV3{}, fmt.Errorf("invalid playback authority lease duration")
+		return lease, fmt.Errorf("invalid playback authority lease duration")
 	}
 	err := s.withAuthorityLock(ctx, authority.PlaybackAttemptID, func(tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `UPDATE playback_v3_attempts SET
-	 control_lease_expires_at = LEAST(expires_at, GREATEST(control_lease_expires_at, clock_timestamp() + $4 * interval '1 microsecond')), updated_at = clock_timestamp()
+		return tx.QueryRow(ctx, `WITH timing AS MATERIALIZED (SELECT clock_timestamp() AS now)
+	 UPDATE playback_v3_attempts SET
+	 control_lease_expires_at = LEAST(expires_at, GREATEST(control_lease_expires_at, timing.now + $4 * interval '1 microsecond')), updated_at = timing.now
+	 FROM timing
 	 WHERE control_incarnation = NULLIF($5, '')::uuid AND playback_attempt_id = $1 AND control_owner = $2::uuid AND control_epoch = $3
-	 AND control_state IN ('preparing', 'active') AND control_lease_expires_at > clock_timestamp() AND expires_at > clock_timestamp()
-	 RETURNING control_state, control_lease_expires_at`, authority.PlaybackAttemptID, authority.OwnerID, authority.Epoch, duration.Microseconds(), authority.Incarnation).Scan(&authority.State, &authority.LeaseExpiresAt)
+	 AND control_state IN ('preparing', 'active') AND control_lease_expires_at > timing.now AND expires_at > timing.now
+	 RETURNING control_state, control_lease_expires_at, timing.now`, authority.PlaybackAttemptID, authority.OwnerID, authority.Epoch, duration.Microseconds(), authority.Incarnation).Scan(&authority.State, &authority.LeaseExpiresAt, &lease.IssuedAt)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return playback.AttemptAuthorityV3{}, playback.ErrStaleAttemptAuthorityV3
+		return playback.AttemptLeaseV3{}, playback.ErrStaleAttemptAuthorityV3
 	}
-	return authority, err
+	if err != nil {
+		return playback.AttemptLeaseV3{}, err
+	}
+	lease.Authority = authority
+	return lease, nil
 }
 
 // PublishAttempt commits the existing response and recipe together with the

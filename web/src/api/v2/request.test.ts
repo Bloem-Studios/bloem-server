@@ -14,6 +14,7 @@ import profileVerificationRequired from "../../../../contracts/api/v2/fixtures/p
 import type { AdminUser, User } from "../types";
 import {
   onProfileUnverified,
+  captureProfileRequestContext,
   setAccessToken,
   setProfileId,
   setProfileToken,
@@ -236,7 +237,7 @@ describe("v2 request boundary", () => {
     let protectedCalls = 0;
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
       const url = String(input);
-      if (url === "/api/v1/auth/refresh") {
+      if (url === "/api/v2/auth/refresh") {
         return json({ access_token: "fresh", refresh_token: "refresh-2", expires_in: 3600 });
       }
       protectedCalls += 1;
@@ -249,7 +250,10 @@ describe("v2 request boundary", () => {
     const me = await v2("GET /api/v2/account/me");
     expect(me.username).toBe("laura");
 
-    const v2Calls = fetchMock.mock.calls.filter(([input]) => String(input).startsWith("/api/v2/"));
+    expect(
+      fetchMock.mock.calls.filter(([input]) => String(input) === "/api/v2/auth/refresh"),
+    ).toHaveLength(1);
+    const v2Calls = fetchMock.mock.calls.filter(([input]) => String(input) === "/api/v2/account/me");
     expect(v2Calls).toHaveLength(2);
     const first = v2Calls[0]?.[1]?.headers as Record<string, string>;
     const retry = v2Calls[1]?.[1]?.headers as Record<string, string>;
@@ -261,6 +265,27 @@ describe("v2 request boundary", () => {
       Accept: "application/json",
     });
     expect(localStorage.getItem("refresh_token")).toBe("refresh-2");
+  });
+
+  it("sends a captured nonretryable mutation only once on 401", async () => {
+    setAccessToken("expired");
+    setRefreshToken("refresh-1");
+    setProfileId("p-owner");
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      json(authenticationRequired, 401, PROBLEM_HEADERS),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const profileContext = captureProfileRequestContext()!;
+    await expect(
+      v2("POST /api/v2/admin/api-keys", {
+        body: { label: "Review" },
+        profileContext,
+        retryAuthentication: false,
+      }),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]![0])).toBe("/api/v2/admin/api-keys");
+    expect(localStorage.getItem("refresh_token")).toBe("refresh-1");
   });
 
   it("does not retry a 401 when there is no refresh token", async () => {

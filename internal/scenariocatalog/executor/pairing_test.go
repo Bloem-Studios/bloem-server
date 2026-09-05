@@ -62,8 +62,12 @@ func TestRequiredDeviceListAcceptance(t *testing.T) {
 }
 
 func requiredDeviceResults(results []Result) error {
+	return requiredPairedResults(results, scenariocatalog.RequiredDeviceListScenarios)
+}
+
+func requiredPairedResults(results []Result, required []string) error {
 	want := make(map[string]bool)
-	for _, id := range scenariocatalog.RequiredDeviceListScenarios {
+	for _, id := range required {
 		for _, transport := range []string{"v1", "v2"} {
 			want[id+"/"+transport] = false
 		}

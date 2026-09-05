@@ -130,3 +130,24 @@ func TestRequireAuthEnforcesAPIKeyScopes(t *testing.T) {
 		t.Fatalf("out-of-scope route: status = %d, want 403", rec.Code)
 	}
 }
+
+func TestAPIKeyScopesCannotManageV2Credentials(t *testing.T) {
+	for _, route := range []struct{ method, path string }{
+		{http.MethodGet, "/api/v2/admin/api-keys/capabilities"},
+		{http.MethodGet, "/api/v2/admin/api-keys"},
+		{http.MethodGet, "/api/v2/admin/api-keys/1"},
+		{http.MethodPost, "/api/v2/admin/api-keys"},
+		{http.MethodPut, "/api/v2/admin/api-keys/1/tier"},
+		{http.MethodDelete, "/api/v2/admin/api-keys/1"},
+	} {
+		t.Run(route.method+route.path, func(t *testing.T) {
+			request := httptest.NewRequest(route.method, route.path, nil)
+			if apiKeyScopesAllow(auth.ValidAPIKeyScopes(), request) {
+				t.Fatal("scoped key can escape its allowlist through key management")
+			}
+			if !apiKeyScopesAllow(nil, request) {
+				t.Fatal("unscoped key lost its existing account-level access")
+			}
+		})
+	}
+}

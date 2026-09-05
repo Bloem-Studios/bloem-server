@@ -1522,13 +1522,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/api-keys",
+        "operation_id": "listAdminAPIKeys"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; apiKeyRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator API-key domain, transport, explicit-null validation, and bundled web adoption independently reviewed. Lists expose metadata only; creation returns the secret once. Canonical reads supply strong ETags, and storage atomically checks guarded mutations. Web editors preserve drafts on 412 and reload explicitly; mutations disable authentication replay. V2 capability: GET /api/v2/admin/api-keys/capabilities. No Apple or Android administrator API-key consumer or Jellyfin administrator editing surface requires adoption."
     },
     {
       "listener": "api",
@@ -1581,18 +1581,18 @@
       "release_flow": "core_admin",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "The secret is shown once, in the creating response only, so a retry after that response is lost cannot recover it and the client must delete and recreate, a different operation. The v2 port must keep a replayable creation result per key id until first read, or accept this as one-shot.",
+      "retry_safety_note": "Creation discloses a new credential once; guarded edits require explicit caller recovery after an uncertain response.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/api-keys",
+        "operation_id": "createAdminAPIKey"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; apiKeyRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator API-key domain, transport, explicit-null validation, and bundled web adoption independently reviewed. Lists expose metadata only; creation returns the secret once. Canonical reads supply strong ETags, and storage atomically checks guarded mutations. Web editors preserve drafts on 412 and reload explicitly; mutations disable authentication replay. V2 capability: GET /api/v2/admin/api-keys/capabilities. No Apple or Android administrator API-key consumer or Jellyfin administrator editing surface requires adoption."
     },
     {
       "listener": "api",
@@ -1642,19 +1642,20 @@
       "section": "admin-sessions",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/api-keys/{id}",
+        "operation_id": "deleteAdminAPIKey"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; apiKeyRepo != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Administrator API-key domain, transport, explicit-null validation, and bundled web adoption independently reviewed. Lists expose metadata only; creation returns the secret once. Canonical reads supply strong ETags, and storage atomically checks guarded mutations. Web editors preserve drafts on 412 and reload explicitly; mutations disable authentication replay. V2 capability: GET /api/v2/admin/api-keys/capabilities. No Apple or Android administrator API-key consumer or Jellyfin administrator editing surface requires adoption.",
+      "concurrency": "if_match",
+      "retry_safety_note": "Creation discloses a new credential once; guarded edits require explicit caller recovery after an uncertain response."
     },
     {
       "listener": "api",
@@ -1704,19 +1705,20 @@
       "section": "admin-sessions",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/api-keys/{id}/tier",
+        "operation_id": "updateAdminAPIKeyTier"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; apiKeyRepo != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Administrator API-key domain, transport, explicit-null validation, and bundled web adoption independently reviewed. Lists expose metadata only; creation returns the secret once. Canonical reads supply strong ETags, and storage atomically checks guarded mutations. Web editors preserve drafts on 412 and reload explicitly; mutations disable authentication replay. V2 capability: GET /api/v2/admin/api-keys/capabilities. No Apple or Android administrator API-key consumer or Jellyfin administrator editing surface requires adoption.",
+      "concurrency": "if_match",
+      "retry_safety_note": "Creation discloses a new credential once; guarded edits require explicit caller recovery after an uncertain response."
     },
     {
       "listener": "api",
@@ -19015,7 +19017,7 @@
         "path": "/api/v2/audio-prefs/{series_id}",
         "operation_id": "getAudioPreference"
       },
-      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; default is emitted as a bool; instants are UTC ms. The read goes through its own seam entry point, GetAudioPreferenceCanonical: the legacy user_audio_preferences row is the resource (a profile without one is 404 even when a canonical language row exists) and supplies the track identity, and audio_language is overlaid from the canonical profile_series row playback resolves \u2014 a present row replaces the legacy member, an absent row means no language (empty) \u2014 since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newer of the two rows."
+      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; default is emitted as a bool; instants are UTC ms. The read goes through its own seam entry point, GetAudioPreferenceCanonical: the legacy user_audio_preferences row is the resource (a profile without one is 404 even when a canonical language row exists) and supplies the track identity, and audio_language is overlaid from the canonical profile_series row playback resolves — a present row replaces the legacy member, an absent row means no language (empty) — since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newer of the two rows."
     },
     {
       "listener": "api",
@@ -19127,13 +19129,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/account/password/capability",
+        "operation_id": "getAccountPasswordCapability"
       },
-      "notes": "Conditionally registered: authHandler != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Ported as getAccountPasswordCapability (profile scoped with an optional X-Profile-Id, as v1's optional viewer-access group). Capability document in the system/info shape: revision and state head with v1's change_password as allowed, then requires_current_password, minimum_password_length and maximum_password_bytes; v1's schema_version is dropped in favour of revision, and a server without a password service is state not_configured with a 200. Cache-Control: private, no-cache. Conditionally registered on v1 (authHandler != nil; authMiddleware != nil); v2 registers the operation unconditionally and reports capability state instead. Web consumer (src/hooks/queries/account.ts, useAccountPasswordCapability) moved to v2 in the auth-core section PR; AccountPasswordCapability is now the V2Result alias, and AccountSettings reads allowed instead of v1's change_password."
     },
     {
       "listener": "api",
@@ -19193,13 +19195,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/account/password",
+        "operation_id": "changePassword"
       },
-      "notes": "Conditionally registered: authHandler != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Ported as changePassword (profile scoped with an optional X-Profile-Id, as v1's optional viewer-access group): same {current_password, new_password} body and 204 on success. A missing or blank member is 422 validation_failed at the member (v1: 400 bad_request); the wrong current password and a rejected new password are 422 validation_failed at body.current_password / body.new_password (v1: 400 invalid_current_password, weak_password, password_too_long); a non-primary profile, API key or impersonated session is 403 permission_denied (v1: password_change_forbidden); an account without local sign-in is 409 conflict (v1: password_login_disabled); a missing password service is 503 dependency_unavailable (v1: password_change_unavailable). Rate limit preserved: the operation declares RateLimitBucket password_change, so the class gate runs v1's per-endpoint AuthEndpointHandler(\"password_change\") budget (ratelimit.auth.password_change.*, keyed by client IP) in place of the generic authenticated limiter, and a refusal is 429 rate_limited with Retry-After. Conditionally registered on v1 (authHandler != nil; authMiddleware != nil); v2 registers the operation unconditionally. Web consumer (src/hooks/queries/account.ts, useChangeAccountPassword) moved to v2 in the auth-core section PR; the captured-profile authority v1 sent through apiWithProfileRequestContext is carried by the v2 client's profileContext option (same bearer/profile/PIN headers fixed at submit time, same stale-context rejection)."
     },
     {
       "listener": "api",
@@ -19286,13 +19288,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/auth/device",
+        "operation_id": "getDeviceLogin"
       },
-      "notes": "Conditionally registered: authHandler != nil; !(deps.RateLimitMW != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public lookup by ?token or ?code; one of the two is required (422), unlike v1 which answered 404 for neither. expires_at is a UTC-ms instant, omitted once expired; every other member is always emitted. Both registrations (plain, rate-limited) are one operation: the device_lookup bucket runs through the public rate-limit class."
     },
     {
       "listener": "api",
@@ -19381,13 +19383,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/auth/device",
+        "operation_id": "getDeviceLogin"
       },
-      "notes": "Conditionally registered: authHandler != nil; deps.RateLimitMW != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public lookup by ?token or ?code; one of the two is required (422), unlike v1 which answered 404 for neither. expires_at is a UTC-ms instant, omitted once expired; every other member is always emitted. Both registrations (plain, rate-limited) are one operation: the device_lookup bucket runs through the public rate-limit class."
     },
     {
       "listener": "api",
@@ -19465,13 +19467,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/device/approve",
+        "operation_id": "approveDeviceLogin"
       },
-      "notes": "Conditionally registered: authHandler != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Authenticated. Same {status} answer; 410 became device_login_expired (410 is otherwise client_upgrade_required); consumed/denied/purpose/conflict stay 409. A body naming neither token nor code is 422, not a 404 lookup of nothing."
     },
     {
       "listener": "api",
@@ -19541,13 +19543,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/device/approve-handoff",
+        "operation_id": "approveDeviceHandoff"
       },
-      "notes": "Conditionally registered: authHandler != nil; authMiddleware != nil; viewerAccessMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Profile scoped: the verified profile comes from the class gate (X-Profile-Id required) rather than an in-handler scope check. Same decision codes as approveDeviceLogin."
     },
     {
       "listener": "api",
@@ -19605,13 +19607,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/auth/device/capability",
+        "operation_id": "getDeviceLoginCapability"
       },
-      "notes": "Conditionally registered: authHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Capability document in the system/info shape: revision, state (available or not_configured when device login is not wired), remote_playback_handoff, protocol_versions. Cache-Control: private, no-cache."
     },
     {
       "listener": "api",
@@ -19696,13 +19698,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/device/deny",
+        "operation_id": "denyDeviceLogin"
       },
-      "notes": "Conditionally registered: authHandler != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Authenticated. Same {status} answer and the same decision codes as approveDeviceLogin."
     },
     {
       "listener": "api",
@@ -19791,13 +19793,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/device/poll",
+        "operation_id": "pollDeviceLogin"
       },
-      "notes": "Conditionally registered: authHandler != nil; !(deps.RateLimitMW != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public, device_poll rate-limit bucket; both registrations are one operation. device_code is required (422). The token pair moved under tokens {access_token, refresh_token, expires_in, user}, present only on the collecting poll; profile_id, profile_token and temporary are always emitted; session_expires_at is a UTC-ms instant, present only for a temporary session. Cache-Control: no-store."
     },
     {
       "listener": "api",
@@ -19888,13 +19890,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/device/poll",
+        "operation_id": "pollDeviceLogin"
       },
-      "notes": "Conditionally registered: authHandler != nil; deps.RateLimitMW != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public, device_poll rate-limit bucket; both registrations are one operation. device_code is required (422). The token pair moved under tokens {access_token, refresh_token, expires_in, user}, present only on the collecting poll; profile_id, profile_token and temporary are always emitted; session_expires_at is a UTC-ms instant, present only for a temporary session. Cache-Control: no-store."
     },
     {
       "listener": "api",
@@ -20001,13 +20003,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/device/start",
+        "operation_id": "startDeviceLogin"
       },
-      "notes": "Conditionally registered: authHandler != nil; !(deps.RateLimitMW != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public, device_start rate-limit bucket; both registrations are one operation. 201 with the same members; expires_at is a UTC-ms instant; client_purpose is a request enum (device_login, remote_playback) and a purpose/temporary mismatch is 422 at body.client_purpose."
     },
     {
       "listener": "api",
@@ -20116,13 +20118,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/device/start",
+        "operation_id": "startDeviceLogin"
       },
-      "notes": "Conditionally registered: authHandler != nil; deps.RateLimitMW != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public, device_start rate-limit bucket; both registrations are one operation. 201 with the same members; expires_at is a UTC-ms instant; client_purpose is a request enum (device_login, remote_playback) and a purpose/temporary mismatch is 422 at body.client_purpose."
     },
     {
       "listener": "api",
@@ -20173,13 +20175,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/impersonation/end",
+        "operation_id": "endImpersonation"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authHandler != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Authenticated. Same 204; v1 400 not_impersonating became 409 conflict (the request is well formed, the session state is not impersonating); a refused return stays 403."
     },
     {
       "listener": "api",
@@ -20248,13 +20250,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/login",
+        "operation_id": "login"
       },
-      "notes": "Conditionally registered: authHandler != nil; !(deps.RateLimitMW != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public, login rate-limit bucket; both registrations are one operation. Same token-pair body {access_token, refresh_token, expires_in, user} with user in the getCurrentUser shape (string id, role enum). Blank username/password is 422 at the member; wrong credentials are 401 invalid_token (not authentication_required); a disabled account is 403. Cache-Control: no-store."
     },
     {
       "listener": "api",
@@ -20325,13 +20327,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/login",
+        "operation_id": "login"
       },
-      "notes": "Conditionally registered: authHandler != nil; deps.RateLimitMW != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public, login rate-limit bucket; both registrations are one operation. Same token-pair body {access_token, refresh_token, expires_in, user} with user in the getCurrentUser shape (string id, role enum). Blank username/password is 422 at the member; wrong credentials are 401 invalid_token (not authentication_required); a disabled account is 403. Cache-Control: no-store."
     },
     {
       "listener": "api",
@@ -20419,13 +20421,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/logout",
+        "operation_id": "logout"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authHandler != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Authenticated. Same 204 with no body; the session id comes from the gate claims. An API key is 403 permission_denied (API keys cannot end a login session): v1 answers 401 because its logout re-validates the bearer as a JWT, while v2's gate admits the key with no session id, and the shared AuthHandler.Logout now refuses an empty session id instead of asking the store to revoke it (v1 unchanged)."
     },
     {
       "listener": "api",
@@ -20567,13 +20569,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/oauth/complete",
+        "operation_id": "completeOAuthLogin"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authHandler != nil; oauthHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Public. Same {access_token, refresh_token, expires_in, next} body; v1 plain-text errors became problems: empty code 422 at body.code, unknown/used/expired code 401 invalid_token, no completion store 503 dependency_unavailable. Registered unconditionally (v1 only registers when PublicURL and the DB are configured). Cache-Control: no-store."
     },
     {
       "listener": "api",
@@ -20788,13 +20790,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/auth/providers",
+        "operation_id": "listAuthProviders"
       },
-      "notes": "Conditionally registered: authHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Public. The v1 bare array becomes a bounded {items} collection; installation_id is a string ID and absent for the built-in provider. OAuth providers are omitted when the OAuth handshake is not configured, as on v1."
     },
     {
       "listener": "api",
@@ -20897,13 +20899,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/refresh",
+        "operation_id": "refreshSession"
       },
-      "notes": "Conditionally registered: authHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Public. Same {access_token, refresh_token, expires_in} body. Missing refresh_token is 422 at the member (v1: 400); a revoked session is 401 session_expired (v1: session_revoked) and any other refusal 401 invalid_token. Cache-Control: no-store."
     },
     {
       "listener": "api",
@@ -20944,13 +20946,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/auth/sessions",
+        "operation_id": "listSessions"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authHandler != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Authenticated. The v1 {sessions:[...]} envelope becomes {items:[...], page:{...}} with limit (default 50, max 200) + opaque keyset cursor on (created_at DESC, id DESC); offset rejected (422). Only live sessions are listed: expired and revoked rows are excluded in SQL (SessionRepository.ListByUserPage), so revoked_at is dropped from the item. v1 keeps its unbounded all-rows list byte-identical. Retention: the cleanup_auth_sessions task (startup + daily, like the neighbouring retention jobs) now runs SessionRepository.DeleteExpired, which nothing scheduled before."
     },
     {
       "listener": "api",
@@ -20992,13 +20994,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/auth/sessions/{id}",
+        "operation_id": "deleteSession"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authHandler != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Authenticated. Same 204; a session that is not the caller's or does not exist is 404 not_found as on v1."
     },
     {
       "listener": "api",
@@ -21142,13 +21144,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/setup",
+        "operation_id": "setupServer"
       },
-      "notes": "Conditionally registered: authHandler != nil; !(deps.RateLimitMW != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public, rate limited through the setup bucket; the two v1 registrations are one operation. Same 201 token pair with user in the getCurrentUser shape. Missing members are 422 at the member (v1: 400); setup already completed is 409 conflict (v1: 401 setup_complete). Cache-Control: no-store."
     },
     {
       "listener": "api",
@@ -21211,13 +21213,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/setup",
+        "operation_id": "setupServer"
       },
-      "notes": "Conditionally registered: authHandler != nil; deps.RateLimitMW != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public, rate limited through the setup bucket; the two v1 registrations are one operation. Same 201 token pair with user in the getCurrentUser shape. Missing members are 422 at the member (v1: 400); setup already completed is 409 conflict (v1: 401 setup_complete). Cache-Control: no-store."
     },
     {
       "listener": "api",
@@ -21284,13 +21286,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/auth/signup",
+        "operation_id": "getSignupStatus"
       },
-      "notes": "Conditionally registered: authHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Public. Same {enabled} body."
     },
     {
       "listener": "api",
@@ -21351,13 +21353,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/signup",
+        "operation_id": "signup"
       },
-      "notes": "Conditionally registered: authHandler != nil; !(deps.RateLimitMW != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public, rate limited through the signup bucket; the two v1 registrations are one operation. Same 201 token pair. Missing members are 422 at the member (v1: 400); an unknown, exhausted or disabled invite code is 422 at body.invite_code (v1: 400 invalid_code/code_exhausted/code_disabled); a taken username or email is 409 conflict (v1: 400 duplicate); signup disabled stays 403. Cache-Control: no-store."
     },
     {
       "listener": "api",
@@ -21420,13 +21422,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/signup",
+        "operation_id": "signup"
       },
-      "notes": "Conditionally registered: authHandler != nil; deps.RateLimitMW != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Public, rate limited through the signup bucket; the two v1 registrations are one operation. Same 201 token pair. Missing members are 422 at the member (v1: 400); an unknown, exhausted or disabled invite code is 422 at body.invite_code (v1: 400 invalid_code/code_exhausted/code_disabled); a taken username or email is 409 conflict (v1: 400 duplicate); signup disabled stays 403. Cache-Control: no-store."
     },
     {
       "listener": "api",
@@ -39955,7 +39957,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40311,7 +40313,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40382,7 +40384,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40451,7 +40453,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40522,7 +40524,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41461,7 +41463,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41531,7 +41533,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41599,7 +41601,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -42194,7 +42196,7 @@
         "path": "/api/v2/subtitle-prefs/{series_id}",
         "operation_id": "getSubtitlePreference"
       },
-      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; forced and hearing_impaired are emitted as bools; show_forced_subtitles is absent when the profile has no override; instants are UTC ms. The read goes through its own seam entry point, GetSubtitlePreferenceCanonical: the legacy user_subtitle_preferences row is the resource (a profile without one is 404 even when canonical rows exist) and supplies the track identity (index, external path, signature), and subtitle_language, subtitle_mode and show_forced_subtitles are overlaid from the canonical profile_series rows playback resolves \u2014 a present row replaces the legacy member, an absent row means the member is unset (empty language or mode, show_forced_subtitles absent) \u2014 since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newest of the legacy row and the canonical rows."
+      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; forced and hearing_impaired are emitted as bools; show_forced_subtitles is absent when the profile has no override; instants are UTC ms. The read goes through its own seam entry point, GetSubtitlePreferenceCanonical: the legacy user_subtitle_preferences row is the resource (a profile without one is 404 even when canonical rows exist) and supplies the track identity (index, external path, signature), and subtitle_language, subtitle_mode and show_forced_subtitles are overlaid from the canonical profile_series rows playback resolves — a present row replaces the legacy member, an absent row means the member is unset (empty language or mode, show_forced_subtitles absent) — since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newest of the legacy row and the canonical rows."
     },
     {
       "listener": "api",
@@ -43453,7 +43455,7 @@
         "path": "/api/v2/sync/progress",
         "operation_id": "syncProgress"
       },
-      "notes": "Section personal-progress (profile_scoped). Fixed per-item bulk contract: 1\u2013100 unique media_item_id targets, optional unique client_ref (1\u2013128 characters), request-wide preflight before effects, then HTTP 200 ProgressSyncBatchResult with ordered indexed success/failure items and exact summary. Hidden catalog items are item-level 404; store failures are safe typed item failures. Millisecond positions and optional UTC event times preserve the selected store and existing threshold/LWW semantics. Retry safety remains non_retryable: optional event time and repeated side effects do not provide a durable batch receipt. V1 remains unchanged. See docs/architecture/progress-bulk.md."
+      "notes": "Section personal-progress (profile_scoped). Fixed per-item bulk contract: 1–100 unique media_item_id targets, optional unique client_ref (1–128 characters), request-wide preflight before effects, then HTTP 200 ProgressSyncBatchResult with ordered indexed success/failure items and exact summary. Hidden catalog items are item-level 404; store failures are safe typed item failures. Millisecond positions and optional UTC event times preserve the selected store and existing threshold/LWW semantics. Retry safety remains non_retryable: optional event time and repeated side effects do not provide a durable batch receipt. V1 remains unchanged. See docs/architecture/progress-bulk.md."
     },
     {
       "listener": "api",

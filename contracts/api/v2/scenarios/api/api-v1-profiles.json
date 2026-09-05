@@ -1904,7 +1904,196 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves profile mutation and PIN-check meaning with v2 PATCH, canonical fields and Problems; explicit read-after verifies effects, household preservation and credential redaction.",
+            "recorded_in": "internal/scenariocatalog/executor/profile_mutations_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "body": {
+                "name": "Fixture Teen Renamed"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/id",
+                  "op": "equals",
+                  "value": "${profile_secondary}"
+                },
+                {
+                  "pointer": "/name",
+                  "op": "equals",
+                  "value": "Fixture Teen Renamed"
+                },
+                {
+                  "pointer": "/auto_skip_intro",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listProfiles",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profiles"
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 4
+                    },
+                    {
+                      "pointer": "/page",
+                      "op": "absent"
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/0/name",
+                      "op": "equals",
+                      "value": "Fixture Parent"
+                    },
+                    {
+                      "pointer": "/items/0/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/1/id",
+                      "op": "equals",
+                      "value": "${profile_secondary}"
+                    },
+                    {
+                      "pointer": "/items/1/name",
+                      "op": "equals",
+                      "value": "Fixture Teen Renamed"
+                    },
+                    {
+                      "pointer": "/items/1/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/2/id",
+                      "op": "equals",
+                      "value": "${profile_child}"
+                    },
+                    {
+                      "pointer": "/items/2/name",
+                      "op": "equals",
+                      "value": "Fixture Kid"
+                    },
+                    {
+                      "pointer": "/items/2/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/max_content_rating",
+                      "op": "equals",
+                      "value": "PG"
+                    },
+                    {
+                      "pointer": "/items/3/id",
+                      "op": "equals",
+                      "value": "${profile_locked}"
+                    },
+                    {
+                      "pointer": "/items/3/name",
+                      "op": "equals",
+                      "value": "Fixture Locked"
+                    },
+                    {
+                      "pointer": "/items/3/has_pin",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/items/3/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/3/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin_hash",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/profile_token",
+                        "op": "absent"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "profiles_update.partial",
@@ -1935,7 +2124,196 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves profile mutation and PIN-check meaning with v2 PATCH, canonical fields and Problems; explicit read-after verifies effects, household preservation and credential redaction.",
+            "recorded_in": "internal/scenariocatalog/executor/profile_mutations_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "body": {
+                "auto_skip_intro": true
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/id",
+                  "op": "equals",
+                  "value": "${profile_secondary}"
+                },
+                {
+                  "pointer": "/name",
+                  "op": "equals",
+                  "value": "Fixture Teen"
+                },
+                {
+                  "pointer": "/auto_skip_intro",
+                  "op": "equals",
+                  "value": true
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listProfiles",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profiles"
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 4
+                    },
+                    {
+                      "pointer": "/page",
+                      "op": "absent"
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/0/name",
+                      "op": "equals",
+                      "value": "Fixture Parent"
+                    },
+                    {
+                      "pointer": "/items/0/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/1/id",
+                      "op": "equals",
+                      "value": "${profile_secondary}"
+                    },
+                    {
+                      "pointer": "/items/1/name",
+                      "op": "equals",
+                      "value": "Fixture Teen"
+                    },
+                    {
+                      "pointer": "/items/1/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/auto_skip_intro",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/items/1/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/2/id",
+                      "op": "equals",
+                      "value": "${profile_child}"
+                    },
+                    {
+                      "pointer": "/items/2/name",
+                      "op": "equals",
+                      "value": "Fixture Kid"
+                    },
+                    {
+                      "pointer": "/items/2/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/max_content_rating",
+                      "op": "equals",
+                      "value": "PG"
+                    },
+                    {
+                      "pointer": "/items/3/id",
+                      "op": "equals",
+                      "value": "${profile_locked}"
+                    },
+                    {
+                      "pointer": "/items/3/name",
+                      "op": "equals",
+                      "value": "Fixture Locked"
+                    },
+                    {
+                      "pointer": "/items/3/has_pin",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/items/3/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/3/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin_hash",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/profile_token",
+                        "op": "absent"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "profiles_update.self_service",
@@ -2016,7 +2394,196 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves profile mutation and PIN-check meaning with v2 PATCH, canonical fields and Problems; explicit read-after verifies effects, household preservation and credential redaction.",
+            "recorded_in": "internal/scenariocatalog/executor/profile_mutations_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "body": {
+                "max_content_rating": "R"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/permission_denied$"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listProfiles",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profiles"
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 4
+                    },
+                    {
+                      "pointer": "/page",
+                      "op": "absent"
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/0/name",
+                      "op": "equals",
+                      "value": "Fixture Parent"
+                    },
+                    {
+                      "pointer": "/items/0/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/1/id",
+                      "op": "equals",
+                      "value": "${profile_secondary}"
+                    },
+                    {
+                      "pointer": "/items/1/name",
+                      "op": "equals",
+                      "value": "Fixture Teen"
+                    },
+                    {
+                      "pointer": "/items/1/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/2/id",
+                      "op": "equals",
+                      "value": "${profile_child}"
+                    },
+                    {
+                      "pointer": "/items/2/name",
+                      "op": "equals",
+                      "value": "Fixture Kid"
+                    },
+                    {
+                      "pointer": "/items/2/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/max_content_rating",
+                      "op": "equals",
+                      "value": "PG"
+                    },
+                    {
+                      "pointer": "/items/3/id",
+                      "op": "equals",
+                      "value": "${profile_locked}"
+                    },
+                    {
+                      "pointer": "/items/3/name",
+                      "op": "equals",
+                      "value": "Fixture Locked"
+                    },
+                    {
+                      "pointer": "/items/3/has_pin",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/items/3/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/3/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin_hash",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/profile_token",
+                        "op": "absent"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "profiles_update.other_profile",
@@ -2553,7 +3120,153 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves profile mutation and PIN-check meaning with v2 PATCH, canonical fields and Problems; explicit read-after verifies effects, household preservation and credential redaction.",
+            "recorded_in": "internal/scenariocatalog/executor/profile_mutations_test.go",
+            "operation_id": "deleteProfile",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}"
+            },
+            "expect": {
+              "status": 204,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [],
+              "body_kind": "empty"
+            },
+            "then": [
+              {
+                "operation_id": "listProfiles",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profiles"
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 3
+                    },
+                    {
+                      "pointer": "/page",
+                      "op": "absent"
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/0/name",
+                      "op": "equals",
+                      "value": "Fixture Parent"
+                    },
+                    {
+                      "pointer": "/items/0/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/1/id",
+                      "op": "equals",
+                      "value": "${profile_child}"
+                    },
+                    {
+                      "pointer": "/items/1/name",
+                      "op": "equals",
+                      "value": "Fixture Kid"
+                    },
+                    {
+                      "pointer": "/items/1/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/max_content_rating",
+                      "op": "equals",
+                      "value": "PG"
+                    },
+                    {
+                      "pointer": "/items/2/id",
+                      "op": "equals",
+                      "value": "${profile_locked}"
+                    },
+                    {
+                      "pointer": "/items/2/name",
+                      "op": "equals",
+                      "value": "Fixture Locked"
+                    },
+                    {
+                      "pointer": "/items/2/has_pin",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/items/2/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin_hash",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/profile_token",
+                        "op": "absent"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "profiles_delete.meaning",
@@ -2607,7 +3320,169 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves profile mutation and PIN-check meaning with v2 PATCH, canonical fields and Problems; explicit read-after verifies effects, household preservation and credential redaction.",
+            "recorded_in": "internal/scenariocatalog/executor/profile_mutations_test.go",
+            "operation_id": "deleteProfile",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "repeat": 2
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listProfiles",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profiles"
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 3
+                    },
+                    {
+                      "pointer": "/page",
+                      "op": "absent"
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/0/name",
+                      "op": "equals",
+                      "value": "Fixture Parent"
+                    },
+                    {
+                      "pointer": "/items/0/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/1/id",
+                      "op": "equals",
+                      "value": "${profile_child}"
+                    },
+                    {
+                      "pointer": "/items/1/name",
+                      "op": "equals",
+                      "value": "Fixture Kid"
+                    },
+                    {
+                      "pointer": "/items/1/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/max_content_rating",
+                      "op": "equals",
+                      "value": "PG"
+                    },
+                    {
+                      "pointer": "/items/2/id",
+                      "op": "equals",
+                      "value": "${profile_locked}"
+                    },
+                    {
+                      "pointer": "/items/2/name",
+                      "op": "equals",
+                      "value": "Fixture Locked"
+                    },
+                    {
+                      "pointer": "/items/2/has_pin",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/items/2/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin_hash",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/profile_token",
+                        "op": "absent"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "profiles_delete.primary_protected",
@@ -2654,7 +3529,168 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves profile mutation and PIN-check meaning with v2 PATCH, canonical fields and Problems; explicit read-after verifies effects, household preservation and credential redaction.",
+            "recorded_in": "internal/scenariocatalog/executor/profile_mutations_test.go",
+            "operation_id": "deleteProfile",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profiles/${profile_admin_primary}"
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/conflict$"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listProfiles",
+                "method": "GET",
+                "principal": {
+                  "class": "acting_admin"
+                },
+                "request": {
+                  "path": "/api/v2/profiles"
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 3
+                    },
+                    {
+                      "pointer": "/page",
+                      "op": "absent"
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "${profile_admin_primary}"
+                    },
+                    {
+                      "pointer": "/items/0/name",
+                      "op": "equals",
+                      "value": "Fixture Admin"
+                    },
+                    {
+                      "pointer": "/items/0/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/1/id",
+                      "op": "equals",
+                      "value": "${profile_admin_secondary}"
+                    },
+                    {
+                      "pointer": "/items/1/name",
+                      "op": "equals",
+                      "value": "Fixture Admin Two"
+                    },
+                    {
+                      "pointer": "/items/1/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/2/id",
+                      "op": "equals",
+                      "value": "${profile_admin_locked}"
+                    },
+                    {
+                      "pointer": "/items/2/name",
+                      "op": "equals",
+                      "value": "Fixture Admin Locked"
+                    },
+                    {
+                      "pointer": "/items/2/has_pin",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/items/2/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin_hash",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/profile_token",
+                        "op": "absent"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "profiles_delete.secondary_forbidden",
@@ -2984,7 +4020,194 @@
             ]
           },
           "notes": "This response carries tokens or a profile token yet sets no Cache-Control (writeJSON only sets Content-Type), so a shared cache may store it. Pinned as the current behavior and flagged for the section PR as an accidental omission.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves profile mutation and PIN-check meaning with v2 PATCH, canonical fields and Problems; explicit read-after verifies effects, household preservation and credential redaction.",
+            "recorded_in": "internal/scenariocatalog/executor/profile_mutations_test.go",
+            "operation_id": "verifyProfilePIN",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles/${profile_locked}/verify-pin",
+              "body": {
+                "pin": "${locked_pin}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/valid",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/expires_at",
+                  "op": "is_null"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "non_empty"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listProfiles",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profiles"
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 4
+                    },
+                    {
+                      "pointer": "/page",
+                      "op": "absent"
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/0/name",
+                      "op": "equals",
+                      "value": "Fixture Parent"
+                    },
+                    {
+                      "pointer": "/items/0/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/1/id",
+                      "op": "equals",
+                      "value": "${profile_secondary}"
+                    },
+                    {
+                      "pointer": "/items/1/name",
+                      "op": "equals",
+                      "value": "Fixture Teen"
+                    },
+                    {
+                      "pointer": "/items/1/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/2/id",
+                      "op": "equals",
+                      "value": "${profile_child}"
+                    },
+                    {
+                      "pointer": "/items/2/name",
+                      "op": "equals",
+                      "value": "Fixture Kid"
+                    },
+                    {
+                      "pointer": "/items/2/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/max_content_rating",
+                      "op": "equals",
+                      "value": "PG"
+                    },
+                    {
+                      "pointer": "/items/3/id",
+                      "op": "equals",
+                      "value": "${profile_locked}"
+                    },
+                    {
+                      "pointer": "/items/3/name",
+                      "op": "equals",
+                      "value": "Fixture Locked"
+                    },
+                    {
+                      "pointer": "/items/3/has_pin",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/items/3/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/3/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin_hash",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/profile_token",
+                        "op": "absent"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "verify_pin.wrong",
@@ -3012,7 +4235,194 @@
             ]
           },
           "notes": "A failed PIN is a 200 {valid:false}, not an error status. Recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves profile mutation and PIN-check meaning with v2 PATCH, canonical fields and Problems; explicit read-after verifies effects, household preservation and credential redaction.",
+            "recorded_in": "internal/scenariocatalog/executor/profile_mutations_test.go",
+            "operation_id": "verifyProfilePIN",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/profiles/${profile_locked}/verify-pin",
+              "body": {
+                "pin": "0000"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/valid",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/expires_at",
+                  "op": "is_null"
+                },
+                {
+                  "pointer": "/profile_token",
+                  "op": "absent"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listProfiles",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profiles"
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 4
+                    },
+                    {
+                      "pointer": "/page",
+                      "op": "absent"
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/0/name",
+                      "op": "equals",
+                      "value": "Fixture Parent"
+                    },
+                    {
+                      "pointer": "/items/0/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/1/id",
+                      "op": "equals",
+                      "value": "${profile_secondary}"
+                    },
+                    {
+                      "pointer": "/items/1/name",
+                      "op": "equals",
+                      "value": "Fixture Teen"
+                    },
+                    {
+                      "pointer": "/items/1/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/1/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items/2/id",
+                      "op": "equals",
+                      "value": "${profile_child}"
+                    },
+                    {
+                      "pointer": "/items/2/name",
+                      "op": "equals",
+                      "value": "Fixture Kid"
+                    },
+                    {
+                      "pointer": "/items/2/has_pin",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/2/max_content_rating",
+                      "op": "equals",
+                      "value": "PG"
+                    },
+                    {
+                      "pointer": "/items/3/id",
+                      "op": "equals",
+                      "value": "${profile_locked}"
+                    },
+                    {
+                      "pointer": "/items/3/name",
+                      "op": "equals",
+                      "value": "Fixture Locked"
+                    },
+                    {
+                      "pointer": "/items/3/has_pin",
+                      "op": "equals",
+                      "value": true
+                    },
+                    {
+                      "pointer": "/items/3/auto_skip_intro",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/3/max_content_rating",
+                      "op": "equals",
+                      "value": ""
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/pin_hash",
+                        "op": "absent"
+                      }
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "every",
+                      "value": {
+                        "pointer": "/profile_token",
+                        "op": "absent"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "verify_pin.shape",

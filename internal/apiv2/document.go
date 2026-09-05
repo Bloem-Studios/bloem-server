@@ -492,6 +492,9 @@ func declaresBody(t reflect.Type) bool {
 func registerAll(reg *Registry) {
 	// Alphabetical by domain file; registration order is deterministic.
 	registerAccount(reg)
+	registerAuth(reg)
+	registerAuthSessions(reg)
+	registerDeviceLogin(reg)
 	registerAdminUsers(reg)
 	registerPreferences(reg)
 	registerHome(reg)
@@ -519,6 +522,7 @@ func registerAll(reg *Registry) {
 	registerRequestLifecycle(reg, reg.deps.RequestLifecycle, reg.deps.WatchProviders)
 	registerHistoryImports(reg)
 	registerAdminHistoryImports(reg)
+	registerAdminAPIKeys(reg)
 	registerWebhookSync(reg)
 	registerSystem(reg)
 	registerWatchlist(reg)

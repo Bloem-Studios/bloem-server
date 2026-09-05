@@ -21,7 +21,10 @@ type ListResult struct {
 }
 
 // ListAll reads the live session records every proxy and transcode node
-// publishes under silo:sessions:{nodeHash}:{sessionID}.
+// publishes under silo:sessions:{nodeHash}:{sessionID} for legacy sessions or
+// silo:sessions:{nodeHash}:_authority:{sessionHash}:{incarnation}:{epoch}:{executor}.
+// These are diagnostic observations, not playback authority. Multiple executor
+// generations may appear until their respective cleanup or TTL expiry.
 //
 // It exists here rather than in a handler because this package owns the key
 // format and the record shape. Note that internal/api/handlers/nodes.go

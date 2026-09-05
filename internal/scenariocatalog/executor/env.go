@@ -154,8 +154,10 @@ const (
 // Env is one executor environment: an in-process server, its variants, and
 // the synthetic fixture identities the principals draw on.
 type Env struct {
-	t   testing.TB
-	ctx context.Context
+	// afterReseed is a test-local fixture overlay; ordinary execution leaves it nil.
+	afterReseed func()
+	t           testing.TB
+	ctx         context.Context
 
 	// Offline router (no reachable database) for CI-runnable scenarios, and
 	// the method+pattern set it registered: a row absent from it can only be
@@ -568,6 +570,9 @@ func (e *Env) Reseed() {
 	e.fixtures["admin_session_id"] = e.sessions[fixtureAdmin]
 	e.fixtures["access_group_id"] = strconv.FormatInt(group.ID, 10)
 	e.fixtures["locked_profile_token"] = e.mintProfileToken(member, profileLocked)
+	if e.afterReseed != nil {
+		e.afterReseed()
+	}
 }
 
 // guardScratchDatabase refuses to touch a database that looks like anything

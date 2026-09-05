@@ -3,6 +3,7 @@ package pgstore
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -36,4 +37,10 @@ func (p *PostgresProvider) Close() error {
 // overrides, so their reset can join the section-definition transaction.
 func (p *PostgresProvider) SupportsAtomicSectionProfileReset(pool *pgxpool.Pool) bool {
 	return p != nil && pool != nil && p.pool == pool
+}
+
+// CreateProfileInTransaction joins account provisioning's transaction so the
+// profile can reference the new user before the account and invite commit.
+func (p *PostgresProvider) CreateProfileInTransaction(ctx context.Context, tx pgx.Tx, userID int, profile userstore.Profile) error {
+	return createProfile(ctx, tx, userID, profile)
 }
