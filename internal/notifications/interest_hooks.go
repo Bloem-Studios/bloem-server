@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -25,7 +27,23 @@ func WrapUserStoreProvider(inner userstore.UserStoreProvider, system *System) us
 	if inner == nil || system == nil {
 		return inner
 	}
-	return &interestTrackingProvider{inner: inner, system: system}
+	tracked := &interestTrackingProvider{inner: inner, system: system}
+	if profiles, ok := inner.(transactionalProfileCreator); ok {
+		return &interestTrackingProviderWithProfileTransaction{interestTrackingProvider: tracked, transactionalProfileCreator: profiles}
+	}
+	return tracked
+}
+
+// Account creation probes this whole-provider capability before inserting its
+// default profile. Preserve it only when the selected backend can join that
+// PostgreSQL transaction; advertising it for SQLite would change its fallback.
+type transactionalProfileCreator interface {
+	CreateProfileInTransaction(context.Context, pgx.Tx, int, userstore.Profile) error
+}
+
+type interestTrackingProviderWithProfileTransaction struct {
+	*interestTrackingProvider
+	transactionalProfileCreator
 }
 
 type interestTrackingProvider struct {

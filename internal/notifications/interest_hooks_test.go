@@ -397,3 +397,17 @@ func TestInterestTrackingDeviceSettingsCapability(t *testing.T) {
 		}
 	}
 }
+
+func TestInterestTrackingProviderDoesNotInventProfileTransaction(t *testing.T) {
+	for name, inner := range map[string]userstore.UserStoreProvider{
+		"sqlite":  userdb.NewSQLiteProvider(nil),
+		"unknown": preferenceTransactionTestProvider{},
+	} {
+		t.Run(name, func(t *testing.T) {
+			wrapped := WrapUserStoreProvider(inner, &System{})
+			if _, ok := wrapped.(transactionalProfileCreator); ok {
+				t.Fatal("unsupported backend advertised a profile transaction")
+			}
+		})
+	}
+}
