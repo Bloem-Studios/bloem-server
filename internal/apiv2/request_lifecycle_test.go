@@ -166,11 +166,22 @@ func requestLifecycleFixtureCases() []fixtureCase {
 	}
 	for i := range cases {
 		cases[i].headers = viewer
+		if cases[i].operationID == "updateWatchProviderConnection" {
+			fake := new(fakeWatchLifecycle)
+			current, _ := fake.GetConnectionStatus(context.Background(), 1, "p-owner", "trakt")
+			cases[i].headers = with(viewer, "If-Match", watchConnectionTag(1, "p-owner", "trakt", current).String())
+		}
+		if cases[i].operationID == "getWatchProviderConnection" || cases[i].operationID == "updateWatchProviderConnection" {
+			cases[i].assertHeaders = []string{"Content-Type", "Cache-Control", "ETag"}
+		}
+
 		if cases[i].status == 0 {
 			cases[i].status = http.StatusOK
 		}
 		cases[i].scenario = "Profile-scoped lifecycle response with synthetic provider state."
-		cases[i].assertHeaders = []string{"Content-Type", "Cache-Control"}
+		if len(cases[i].assertHeaders) == 0 {
+			cases[i].assertHeaders = []string{"Content-Type", "Cache-Control"}
+		}
 		if cases[i].status == http.StatusNoContent {
 			cases[i].assertHeaders = []string{"Cache-Control"}
 		} else {

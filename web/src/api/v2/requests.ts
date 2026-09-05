@@ -56,8 +56,10 @@ export function createMediaRequestV2(body: V2Body<"POST /api/v2/requests">): Pro
 export async function listMyMediaRequestsV2(
   params: RequestListParams = {},
 ): Promise<MediaRequest[]> {
-  const wanted = params.limit != null && Number.isFinite(params.limit) && params.limit > 0
-    ? Math.min(100, Math.floor(params.limit)) : 50;
+  const wanted =
+    params.limit != null && Number.isFinite(params.limit) && params.limit > 0
+      ? Math.min(100, Math.floor(params.limit))
+      : 50;
   const status = params.status && params.status !== "all" ? params.status : undefined;
   const outcome = params.outcome && params.outcome !== "all" ? params.outcome : undefined;
   const out: MediaRequest[] = [];

@@ -47,7 +47,7 @@ func fixtureCases() []fixtureCase {
 	viewer := with(bearer(memberToken), "X-Profile-Id", "p-owner")
 	problem := "#/components/schemas/Problem"
 	validBody := `{"name":"fixture","cleared":null}`
-	return []fixtureCase{
+	cases := []fixtureCase{
 		{name: "get_system_info_ok", operationID: "getSystemInfo",
 			scenario: "Discovery before login: a public operation answered with the contract identity.",
 			method:   http.MethodGet, path: "/api/v2/system/info",
@@ -1151,17 +1151,19 @@ func fixtureCases() []fixtureCase {
 		{name: "list_my_requests_ok", operationID: opListMyRequests,
 			scenario: "Account requests have stable creation order and string identifiers.",
 			method:   http.MethodGet, path: "/api/v2/requests/mine", headers: viewer,
-			status: http.StatusOK, schema: "#/components/schemas/MediaRequestCollection"},
+			status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/MediaRequestCollection"},
 		{name: "create_request_ok", operationID: opCreateRequest,
 			scenario: "A new request is created; an uncertain response must not be automatically retried.",
 			method:   http.MethodPost, path: "/api/v2/requests", headers: viewer, body: `{"media_type":"movie","tmdb_id":12345,"title":"Example"}`,
-			status: http.StatusCreated, schema: "#/components/schemas/MediaRequest"},
+			status: http.StatusCreated, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/MediaRequest"},
 
 		{name: "list_history_import_runs_ok", operationID: opListHistoryImportRuns,
 			scenario: "Import runs belong to the authenticated account and use bounded keyset paging.",
 			method:   http.MethodGet, path: "/api/v2/history-imports/runs", headers: bearer(memberToken),
-			status: http.StatusOK, schema: "#/components/schemas/HistoryImportRunCollection"},
+			status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/HistoryImportRunCollection"},
 	}
+	cases = append(cases, requestLifecycleFixtureCases()...)
+	return append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
 }
 
 // fixtureMultipartType is the multipart Content-Type of the avatar fixtures,
@@ -1201,6 +1203,9 @@ func fixtureDeps() Dependencies {
 	deps.Recommendations = &fakeRecommendations{seedCandidates: 1, cardsHasMore: true}
 	deps.Requests = fixtureRequests()
 	deps.HistoryImports = fixtureHistoryImports()
+	deps.WebhookSync = &fakeWebhookManagement{}
+	deps.RequestLifecycle = &fakeLifecycle{}
+	deps.WatchProviders = &fakeWatchLifecycle{}
 	deps.CursorSecret = []byte("fixture-cursor-key")
 	deps.SettingValues.(*fakeSettingValuesSeam).contendedLabel = "Contended"
 	prefs := preferenceDeps(nil, nil)

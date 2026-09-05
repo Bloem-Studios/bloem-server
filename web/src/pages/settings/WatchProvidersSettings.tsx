@@ -378,7 +378,7 @@ function WatchProviderCard({ providerKey }: { providerKey: string }) {
   const syncNow = useTriggerWatchProviderSync(providerKey);
   const { data: syncRunsData } = useWatchProviderSyncRuns(
     providerKey,
-    Boolean(connection?.connected),
+    Boolean(savedConnection?.connected),
   );
   const [authSession, setAuthSession] = useState<DeviceAuthSession | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
