@@ -5,10 +5,12 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/userdb"
+
+	"github.com/Silo-Server/silo-server/internal/userdb/bridgeimport/testdata"
 )
 
-func TestImportSchemaAccountsForEveryCurrentColumn(t *testing.T) {
-	source, err := userdb.NewUserDB(filepath.Join(t.TempDir(), "7.db"), 7)
+func TestImportSchema22AccountsForEveryColumn(t *testing.T) {
+	source, err := testdata.NewSource(filepath.Join(t.TempDir(), "7.db"), 7)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,11 +43,12 @@ func TestImportSchemaRefusesUnclassifiedState(t *testing.T) {
 		"future version":   "PRAGMA user_version=23",
 	} {
 		t.Run(name, func(t *testing.T) {
-			source, err := userdb.NewUserDB(filepath.Join(t.TempDir(), "7.db"), 7)
+			source, err := testdata.NewSource(filepath.Join(t.TempDir(), "7.db"), 7)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer source.Close() //nolint:errcheck
+			assertSchema22(t, source)
 			if _, err := source.DB.Exec(statement); err != nil {
 				t.Fatal(err)
 			}
@@ -56,6 +59,57 @@ func TestImportSchemaRefusesUnclassifiedState(t *testing.T) {
 			defer tx.Rollback() //nolint:errcheck
 			if err := validateSourceSchema(t.Context(), tx); err == nil {
 				t.Fatal("unsupported source accepted")
+			}
+		})
+	}
+}
+
+func assertSchema22(t *testing.T, source *userdb.UserDB) {
+	t.Helper()
+	tx, err := source.DB.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if err := validateSourceSchema(t.Context(), tx); err != nil {
+		t.Fatalf("baseline schema22 invalid: %v", err)
+	}
+}
+
+func TestImportSchemaRefusesNewAndUpgraded23(t *testing.T) {
+	for _, upgrade := range []bool{false, true} {
+		name := "new"
+		if upgrade {
+			name = "upgraded"
+		}
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "7.db")
+			if upgrade {
+				old, err := testdata.NewSource(path, 7)
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertSchema22(t, old)
+				if err := old.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			source, err := userdb.NewUserDB(path, 7)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer source.Close() //nolint:errcheck
+			var version int
+			if err := source.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 23 {
+				t.Fatalf("expected schema23: %d %v", version, err)
+			}
+			tx, err := source.DB.BeginTx(t.Context(), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer tx.Rollback() //nolint:errcheck
+			if err := validateSourceSchema(t.Context(), tx); err == nil {
+				t.Fatal("schema23 accepted")
 			}
 		})
 	}
