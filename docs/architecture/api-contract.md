@@ -1977,10 +1977,10 @@ found in the client inventory. Jellyfin does not expose this administrator editi
 shared catalog write invariants continue to apply to its collection reads. Administrator section
 route migration is separate from collection template application.
 
-### Administrator section definitions (proposed migration)
+### Administrator section definitions
 
 The administrator section contract uses `/api/v2/admin/sections`. The eight legacy behavior
-mappings remain proposed until transport and web review finish. Global section definitions are
+mappings are reviewed and ratified. Global section definitions are
 separate from profile section overrides. Recipe `config` keeps the existing `SectionConfig`
 extension-object contract; top-level library IDs use opaque strings and timestamps use `Instant`.
 

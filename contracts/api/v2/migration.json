@@ -14846,13 +14846,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/sections",
         "operation_id": "listAdminSections"
       },
-      "notes": "Proposed administrator-section mapping. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Transport and web review are pending."
+      "notes": "Reviewed administrator-section port. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Web consumers preserve captured validators and partial creation outcomes without automatic replay."
     },
     {
       "listener": "api",
@@ -14908,13 +14908,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/sections",
         "operation_id": "createAdminSection"
       },
-      "notes": "Proposed administrator-section mapping. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Transport and web review are pending.",
+      "notes": "Reviewed administrator-section port. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Web consumers preserve captured validators and partial creation outcomes without automatic replay.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Administrator section operations do not replay automatically; guarded changes consume the captured row or scope validator."
     },
@@ -14973,13 +14973,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/sections/bulk",
         "operation_id": "bulkCreateAdminSections"
       },
-      "notes": "Proposed administrator-section mapping. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Transport and web review are pending.",
+      "notes": "Reviewed administrator-section port. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Web consumers preserve captured validators and partial creation outcomes without automatic replay.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Administrator section operations do not replay automatically; guarded changes consume the captured row or scope validator."
     },
@@ -15037,13 +15037,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/sections/preview",
         "operation_id": "previewAdminSection"
       },
-      "notes": "Proposed administrator-section mapping. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Transport and web review are pending.",
+      "notes": "Reviewed administrator-section port. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Web consumers preserve captured validators and partial creation outcomes without automatic replay.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Administrator section operations do not replay automatically; guarded changes consume the captured row or scope validator."
     },
@@ -15101,13 +15101,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/admin/sections/order",
         "operation_id": "reorderAdminSections"
       },
-      "notes": "Proposed administrator-section mapping. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Transport and web review are pending.",
+      "notes": "Reviewed administrator-section port. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Web consumers preserve captured validators and partial creation outcomes without automatic replay.",
       "concurrency": "if_match",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Administrator section operations do not replay automatically; guarded changes consume the captured row or scope validator."
@@ -15166,13 +15166,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/admin/sections/defaults",
         "operation_id": "restoreAdminSections"
       },
-      "notes": "Proposed administrator-section mapping. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Transport and web review are pending.",
+      "notes": "Reviewed administrator-section port. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Web consumers preserve captured validators and partial creation outcomes without automatic replay.",
       "concurrency": "if_match",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Administrator section operations do not replay automatically; guarded changes consume the captured row or scope validator."
@@ -15240,13 +15240,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "DELETE",
         "path": "/api/v2/admin/sections/{id}",
         "operation_id": "deleteAdminSection"
       },
-      "notes": "Proposed administrator-section mapping. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Transport and web review are pending.",
+      "notes": "Reviewed administrator-section port. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Web consumers preserve captured validators and partial creation outcomes without automatic replay.",
       "concurrency": "if_match",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Administrator section operations do not replay automatically; guarded changes consume the captured row or scope validator."
@@ -15305,13 +15305,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PATCH",
         "path": "/api/v2/admin/sections/{id}",
         "operation_id": "updateAdminSection"
       },
-      "notes": "Proposed administrator-section mapping. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Transport and web review are pending.",
+      "notes": "Reviewed administrator-section port. Canonical row and scope snapshots carry strong validators; definition, order, and default replacement writes require If-Match. Profile reset requires the whole-provider PostgreSQL transaction capability. Web consumers preserve captured validators and partial creation outcomes without automatic replay.",
       "concurrency": "if_match",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Administrator section operations do not replay automatically; guarded changes consume the captured row or scope validator."
