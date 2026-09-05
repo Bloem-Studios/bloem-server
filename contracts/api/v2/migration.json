@@ -21544,13 +21544,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog",
+        "operation_id": "listCatalogItems"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Cards are the shared CatalogItem; offset paging became limit+cursor (the cursor pins the first page's snapshot); include_total=false became skip_total=true; sort/order became sort=field or -field with one term; content_rating repeats the key; total/total_exact/search_diagnostics/effective_sort kept beside page; a parser or resolver refusal is 422 at the query parameter it names; a search deadline is 503 dependency_unavailable with Retry-After."
     },
     {
       "listener": "api",
@@ -21614,13 +21614,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/audiobook-groups",
+        "operation_id": "listAudiobookGroups"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Offset paging became limit+cursor; include_total=false became skip_total=true; group_by and sort are enums; groups sit in items with total/total_exact beside page; poster_urls is empty, never null."
     },
     {
       "listener": "api",
@@ -21694,13 +21694,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/filters",
+        "operation_id": "getCatalogFilters"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Facet document; include_technical=false became skip_technical=true and the three file-derived facets moved under a single technical member that is absent, not three nullable arrays; every list is empty, never null."
     },
     {
       "listener": "api",
@@ -21754,13 +21754,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/filters/search",
+        "operation_id": "searchCatalogFacet"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). facet is a required enum; limit maximum 100 is a 422 rather than a silent clamp; matches is empty, never null."
     },
     {
       "listener": "api",
@@ -21844,13 +21844,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/items/{id}",
+        "operation_id": "getCatalogItem"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). CatalogItemDetail composes the shared CatalogItem card; fileId became file_id; file ids and last_file_id are string IDs; version added_at is a UTC ms instant; keywords/original_language/status are empty on the detail because the detail service does not load them (as in v1)."
     },
     {
       "listener": "api",
@@ -21915,13 +21915,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/items/{id}/episodes",
+        "operation_id": "listCatalogItemEpisodes"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). {episodes:[...]} became {items:[...]}; file ids are string IDs; air_date is absent, not empty, when unknown."
     },
     {
       "listener": "api",
@@ -21976,13 +21976,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/items/{id}/manga-files",
+        "operation_id": "listCatalogItemMangaFiles"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). {files:[...],folder_paths} became {items:[...],folder_paths}; file descriptors only, never binary; paths absent for viewers without file-path visibility."
     },
     {
       "listener": "api",
@@ -22047,13 +22047,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/items/{id}/versions",
+        "operation_id": "listCatalogItemVersions"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Bare array became {items:[...]} (bounded, no page); file_id is a string ID; added_at is a UTC ms instant; a synthetic season answers an empty list as in v1."
     },
     {
       "listener": "api",
@@ -22097,13 +22097,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/catalog/query",
+        "operation_id": "queryCatalogItems"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Body form of the browse, no web consumer; unknown body members are rejected; limit above 100 is 422 rather than clamped; library_id is a string ID; the answer is the browse collection with page.has_more and no cursor since the body names its own offset; an invalid filter is 422 at body.groups."
     },
     {
       "listener": "api",
@@ -22187,13 +22187,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/series/{id}/seasons",
+        "operation_id": "listSeriesSeasons"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). {seasons:[...]} became {items:[...]}; air_date is absent, not empty, when unknown; last_file_id in user_data is a string ID."
     },
     {
       "listener": "api",
@@ -22248,13 +22248,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/series/{id}/seasons/{num}",
+        "operation_id": "getSeriesSeason"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). {season:{...}} became the season document itself; a non-integer or negative num is 422."
     },
     {
       "listener": "api",

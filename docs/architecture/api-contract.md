@@ -963,6 +963,30 @@ the long-running-work foundation rule; `uploadLibraryPoster` is the first multip
 wrapper, `getLibraryCollectionItems` drops v1's `total`/`has_more` on a bounded list, and
 `getLibraryCollections` has one shape whether or not collection groups are configured.
 
+**Section catalog-items (Phase 4), stage A.** Eleven profile-scoped operations under the
+`catalog` tag: `listCatalogItems` (the paged browse over the catalog, a section, a collection, a
+personal list, or a person's credits), `listAudiobookGroups`, the facet documents
+`getCatalogFilters` and `searchCatalogFacet`, `queryCatalogItems` (the JSON-body form of the
+browse), `getCatalogItem`, `listCatalogItemEpisodes`, `listCatalogItemMangaFiles`,
+`listCatalogItemVersions`, `listSeriesSeasons`, and `getSeriesSeason`. The v1 handlers and these
+operations call the same seams on `handlers.CatalogHandler` and `handlers.CatalogResourceHandler`
+(`internal/api/handlers/catalog_items_service.go`), each taking an `ItemViewer` (resolved access
+filter plus declared profile); v2 resolves the viewer through `ItemsHandler.AccessFilterFor` with
+no device id. Cards are the shared `CatalogItem`; `CatalogItemDetail` composes it. Deliberate
+differences from v1, all recorded on the ledger rows: the browse and the audiobook groups page by
+`limit` plus an opaque cursor that pins the first page's snapshot; `include_total=false` and
+`include_technical=false` became the boolean flags `skip_total` and `skip_technical`; the browse
+`sort`/`order` pair is the `sort=field` / `-field` grammar with one term, validated against the
+executor's field set; `content_rating` repeats the key; the technical facets sit under one
+`technical` member that is absent rather than three nullable arrays; a parser or resolver refusal
+is `422` at the query parameter it names, and a search deadline is `503` `dependency_unavailable`
+with `Retry-After`; `queryCatalogItems` rejects unknown body members and answers `422` for a limit
+over 100 rather than clamping; the episode, season, version, and manga-file lists are `{items}`
+envelopes, `getSeriesSeason` answers the season itself, and `getCatalogItem` leaves `keywords`,
+`original_language`, and `status` empty because the detail service does not load them. The
+remaining rows of the section (`people`, `works`, trailers, translate-description, the AI status
+capability) are stage B.
+
 ## v1 lifecycle and release sequence
 
 1. Freeze v1 feature development. Critical fixes needed to keep the bridge usable may still land;
