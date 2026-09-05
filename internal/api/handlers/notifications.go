@@ -6,9 +6,11 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/ambience"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/promotions"
@@ -26,12 +28,35 @@ const (
 type NotificationsHandler struct {
 	system *notifications.System
 	hub    *evt.Hub
+<<<<<<< HEAD
 	// dismissStore overrides System.Deliveries for the dismiss route (tests).
 	dismissStore deliveryDismisser
 	// ambience is the optional S-3 pack registry echoed on the capability payload.
 	ambience ambienceAccountSource
 	// promotions advertises the S-2 delivery surfaces on the capability payload.
 	promotions bool
+=======
+	// displayTokens mints the long-lived display token returned from Apple
+	// push registration. Nil when JWT auth is not configured; registration
+	// then omits the token and the extension falls back to the access token.
+	displayTokens ApplePushDisplayTokenIssuer
+}
+
+// ApplePushDisplayTokenIssuer mints the profile-scoped token the iOS
+// Notification Service extension presents to the display endpoint.
+type ApplePushDisplayTokenIssuer interface {
+	GenerateApplePushDisplayToken(userID int, role, sessionID, profileID string, impersonatorUserID *int) (string, time.Time, error)
+}
+
+// SetApplePushDisplayTokenIssuer wires the token issuer used by
+// HandleRegisterApplePushDevice. A nil *auth.JWTService is treated as unset.
+func (h *NotificationsHandler) SetApplePushDisplayTokenIssuer(issuer ApplePushDisplayTokenIssuer) {
+	if jwt, ok := issuer.(*auth.JWTService); ok && jwt == nil {
+		h.displayTokens = nil
+		return
+	}
+	h.displayTokens = issuer
+>>>>>>> upstream/main
 }
 
 // NewNotificationsHandler creates a NotificationsHandler.
@@ -466,6 +491,10 @@ type capabilityPush struct {
 	Available      bool     `json:"available"`
 	Provider       string   `json:"provider"`
 	SupportedModes []string `json:"supported_modes"`
+	// DisplayToken is true when Apple push registration returns a
+	// long-lived display token for the Notification Service extension.
+	// Additive; Android registration never carries one.
+	DisplayToken bool `json:"display_token,omitempty"`
 }
 
 type capabilityWebhooks struct {
@@ -530,6 +559,7 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 				Available:      true,
 				Provider:       notifications.PushProviderSiloRelay,
 				SupportedModes: []string{notifications.PushModePrivatePush, notifications.PushModeInAppOnly},
+				DisplayToken:   h.displayTokens != nil,
 			}
 		}
 		if h.system.Settings.AndroidPushDeliveryEnabled(r.Context()) {

@@ -11,7 +11,11 @@ export function onProfileUnverified(listener: ProfileUnverifiedListener | null) 
 
 let accessToken: string | null = null;
 let authContextVersion = 0;
-let refreshPromise: Promise<boolean> | null = null;
+let pendingRefresh: {
+  authContextVersion: number;
+  serverOrigin: string;
+  promise: Promise<boolean>;
+} | null = null;
 
 export type RequestPolicy = "safe" | "none" | "idempotentLifecycle";
 
@@ -208,6 +212,26 @@ function getDeviceHeaders(): Record<string, string> {
     // tablet, or desktop-native layouts.
     "X-Silo-Client-Family": "web",
   };
+}
+
+/** Share one token rotation across player and ordinary API requests. */
+export function refreshAuthentication(): Promise<boolean> {
+  const serverOrigin = currentServerOrigin();
+  if (
+    pendingRefresh?.authContextVersion === authContextVersion &&
+    pendingRefresh.serverOrigin === serverOrigin
+  ) {
+    return pendingRefresh.promise;
+  }
+  const promise = attemptRefresh().finally(() => {
+    if (pendingRefresh?.promise === promise) pendingRefresh = null;
+  });
+  pendingRefresh = { authContextVersion, serverOrigin, promise };
+  return promise;
+}
+
+export function getAuthContextVersion(): number {
+  return authContextVersion;
 }
 
 async function attemptRefresh(): Promise<boolean> {
@@ -516,6 +540,7 @@ async function apiResponseInternal(
     if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
       throw new StaleApiRequestContextError();
     }
+<<<<<<< HEAD
     if (
       res.status === 401 &&
       policy !== "none" &&
@@ -528,6 +553,25 @@ async function apiResponseInternal(
         refreshPromise = attemptRefresh().finally(() => {
           refreshPromise = null;
         });
+=======
+    const refreshed = await refreshAuthentication();
+    if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
+      throw new StaleApiRequestContextError();
+    }
+    if (refreshed) {
+      // Keep the profile and device identity captured for the original
+      // request. A household profile can change while refresh is pending;
+      // rebuilding every header here could replay an old-profile mutation
+      // under the newly selected profile. Only the refreshed account token
+      // is allowed to change for this retry.
+      const refreshedHeaders = { ...headers };
+      if (accessToken) {
+        setHeader(refreshedHeaders, "Authorization", `Bearer ${accessToken}`);
+      } else if (snapshot) {
+        throw new StaleApiRequestContextError();
+      } else {
+        delete refreshedHeaders.Authorization;
+>>>>>>> upstream/main
       }
       const refreshed = await refreshPromise;
       if (snapshot && !isProfileRequestContextCurrent(snapshot)) {

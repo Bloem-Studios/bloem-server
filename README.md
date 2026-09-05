@@ -317,7 +317,13 @@ change PostgreSQL server settings. Settings already written with `ALTER SYSTEM`
 remain in `postgresql.auto.conf`; reset those PostgreSQL parameters if you later
 move fully to a custom `postgresql.conf`.
 
+<<<<<<< HEAD
 ## Build from Source
+=======
+- [Documentation index](docs/wiki/index.md) — user and operator guides
+- [Development guide](DEVELOPMENT.md) — source setup, builds, tests, migrations
+- [Settings API](docs/settings-api.md), [Downloads API](docs/downloads-api.md), and [Apple Push Display Token](docs/notifications-push-api.md) — client contracts
+>>>>>>> upstream/main
 
 If you prefer running Bloem without Docker:
 

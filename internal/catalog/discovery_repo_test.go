@@ -278,7 +278,11 @@ func TestForgottenFavorites_BasicQuery(t *testing.T) {
 	if !strings.Contains(query, "uwh.watched_at >= NOW()") {
 		t.Fatalf("expected watched_at recency filter, got:\n%s", query)
 	}
+<<<<<<< HEAD
 	if !strings.Contains(query, "$3 * INTERVAL '1 day'") {
+=======
+	if !strings.Contains(query, "make_interval(days => $3)") {
+>>>>>>> upstream/main
 		t.Fatalf("expected lookback_days at $3, got:\n%s", query)
 	}
 	if !strings.Contains(query, "ORDER BY mi.rating_imdb DESC NULLS LAST") {
@@ -289,6 +293,13 @@ func TestForgottenFavorites_BasicQuery(t *testing.T) {
 	}
 	if len(args) != 4 {
 		t.Fatalf("expected 4 args (userID, profileID, lookbackDays, limit), got %d: %v", len(args), args)
+	}
+	// The lookback must reach Postgres as an integer. This assertion is the
+	// one that was missing: the query text was checked but never executed, so
+	// `($3 || ' days')::interval` -- which makes Postgres infer $3 as text and
+	// then fails to encode the int at runtime -- passed review and shipped.
+	if _, ok := args[2].(int); !ok {
+		t.Fatalf("expected lookback_days arg to be an int, got %T (%v)", args[2], args[2])
 	}
 }
 
