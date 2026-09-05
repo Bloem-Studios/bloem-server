@@ -170,6 +170,15 @@ func (s *interestTrackingStore) WithSettingMutationTransaction(
 	return transactioner.WithSettingMutationTransaction(ctx, mutationID, fn)
 }
 
+// Preserve coherent preference reads when the store is wrapped for notifications.
+func (s *interestTrackingStore) WithPreferenceSettingsSnapshot(ctx context.Context, fn func(userstore.PreferenceSettingsReader) error) error {
+	reader, ok := s.UserStore.(userstore.PreferenceSettingsSnapshotter)
+	if !ok {
+		return fmt.Errorf("wrapped user store does not support preference snapshots")
+	}
+	return reader.WithPreferenceSettingsSnapshot(ctx, fn)
+}
+
 // progressState is the transition-relevant projection of a progress row.
 type progressState struct {
 	exists     bool

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -106,45 +107,63 @@ func (h *SubtitlePrefHandler) GetSubtitlePreference(ctx context.Context, userID 
 // canonical rows clear those overrides; a missing legacy track row remains a 404.
 // v1 keeps its legacy-only read.
 func (h *SubtitlePrefHandler) GetSubtitlePreferenceCanonical(ctx context.Context, userID int, profileID, seriesID string) (userstore.SubtitlePreference, error) {
-	var none userstore.SubtitlePreference
-	pref, err := h.GetSubtitlePreference(ctx, userID, profileID, seriesID)
-	if err != nil {
-		return none, err
-	}
+	var pref userstore.SubtitlePreference
 	store, err := h.storeProvider.ForUser(ctx, userID)
 	if err != nil {
-		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
+		return pref, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
 	}
-	base := userstore.SettingIdentity{
-		Scope: settingscontract.ScopeProfileSeries, ProfileID: profileID, SeriesID: seriesID,
+	snapshots, ok := store.(userstore.PreferenceSettingsSnapshotter)
+	if !ok {
+		return pref, apiError(http.StatusInternalServerError, "internal_error", "Preference snapshots unavailable")
 	}
-	var (
-		language, mode *string
-		forced         *bool
-	)
-	languageAt, err := canonicalMemberAt(ctx, store, base, settingskeys.PlaybackSubtitleLanguage, &language)
+	err = snapshots.WithPreferenceSettingsSnapshot(ctx, func(reader userstore.PreferenceSettingsReader) error {
+		legacy, err := reader.GetSubtitlePreference(ctx, profileID, seriesID)
+		if err != nil {
+			return err
+		}
+		if legacy == nil {
+			return apiError(http.StatusNotFound, "not_found", "Subtitle preference not found")
+		}
+		pref = *legacy
+		base := userstore.SettingIdentity{
+			Scope: settingscontract.ScopeProfileSeries, ProfileID: profileID, SeriesID: seriesID,
+		}
+		var (
+			language, mode *string
+			forced         *bool
+		)
+		languageAt, err := canonicalMemberAt(ctx, reader, base, settingskeys.PlaybackSubtitleLanguage, &language)
+		if err != nil {
+			return apiError(http.StatusInternalServerError, "internal_error", "Failed to get subtitle preference")
+		}
+		modeAt, err := canonicalMemberAt(ctx, reader, base, settingskeys.PlaybackSubtitleMode, &mode)
+		if err != nil {
+			return apiError(http.StatusInternalServerError, "internal_error", "Failed to get subtitle preference")
+		}
+		forcedAt, err := canonicalMemberAt(ctx, reader, base, settingskeys.PlaybackShowForcedSubtitles, &forced)
+		if err != nil {
+			return apiError(http.StatusInternalServerError, "internal_error", "Failed to get subtitle preference")
+		}
+		pref.SubtitleLanguage, pref.SubtitleMode = "", ""
+		if language != nil {
+			pref.SubtitleLanguage = *language
+		}
+		if mode != nil {
+			pref.SubtitleMode = *mode
+		}
+		pref.HasShowForcedSubtitles = forced != nil
+		pref.ShowForcedSubtitles = forced != nil && *forced
+		for _, at := range []string{languageAt, modeAt, forcedAt} {
+			pref.UpdatedAt = newestUpdatedAt(pref.UpdatedAt, at)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to get subtitle preference")
-	}
-	modeAt, err := canonicalMemberAt(ctx, store, base, settingskeys.PlaybackSubtitleMode, &mode)
-	if err != nil {
-		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to get subtitle preference")
-	}
-	forcedAt, err := canonicalMemberAt(ctx, store, base, settingskeys.PlaybackShowForcedSubtitles, &forced)
-	if err != nil {
-		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to get subtitle preference")
-	}
-	pref.SubtitleLanguage, pref.SubtitleMode = "", ""
-	if language != nil {
-		pref.SubtitleLanguage = *language
-	}
-	if mode != nil {
-		pref.SubtitleMode = *mode
-	}
-	pref.HasShowForcedSubtitles = forced != nil
-	pref.ShowForcedSubtitles = forced != nil && *forced
-	for _, at := range []string{languageAt, modeAt, forcedAt} {
-		pref.UpdatedAt = newestUpdatedAt(pref.UpdatedAt, at)
+		if _, ok := errors.AsType[*APIError](err); ok {
+			return userstore.SubtitlePreference{}, err
+		}
+		return userstore.SubtitlePreference{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to get subtitle preference")
 	}
 	return pref, nil
 }

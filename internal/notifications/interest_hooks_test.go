@@ -57,6 +57,22 @@ func TestInterestTrackingStorePreservesSettingCapabilities(t *testing.T) {
 		t.Fatal("transaction callback was not invoked")
 	}
 
+	snapshotter, ok := wrapped.(userstore.PreferenceSettingsSnapshotter)
+	if !ok {
+		t.Fatal("interest-tracking wrapper dropped PreferenceSettingsSnapshotter")
+	}
+	called = false
+	if err := snapshotter.WithPreferenceSettingsSnapshot(t.Context(), func(reader userstore.PreferenceSettingsReader) error {
+		called = true
+		_, err := reader.GetAudioPreference(t.Context(), "missing", "missing")
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !called {
+		t.Fatal("snapshot callback was not invoked")
+	}
+
 	cas, ok := wrapped.(userstore.SettingValueCompareAndSetter)
 	if !ok {
 		t.Fatal("interest-tracking wrapper dropped SettingValueCompareAndSetter")

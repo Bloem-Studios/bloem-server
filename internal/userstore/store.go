@@ -11,6 +11,18 @@ import (
 
 var ErrCollectionGroupNotFound = errors.New("collection group not found")
 
+// PreferenceSettingsReader reads track identity and canonical overrides from
+// one committed snapshot so an atomic preference update cannot be torn apart.
+type PreferenceSettingsReader interface {
+	GetAudioPreference(context.Context, string, string) (*AudioPreference, error)
+	GetSubtitlePreference(context.Context, string, string) (*SubtitlePreference, error)
+	GetSettingValue(context.Context, SettingIdentity) (*SettingValue, error)
+}
+
+type PreferenceSettingsSnapshotter interface {
+	WithPreferenceSettingsSnapshot(context.Context, func(PreferenceSettingsReader) error) error
+}
+
 // PreferenceSettingsWriter is the subset of the user store that participates
 // in legacy-preference/canonical-setting synchronization. Implementations pass
 // a transaction-scoped writer to WithPreferenceSettingsTransaction so callers

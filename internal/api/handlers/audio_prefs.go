@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -88,27 +89,45 @@ func (h *AudioPrefHandler) GetAudioPreference(ctx context.Context, userID int, p
 // canonical series language for v2. An absent canonical row clears the language;
 // a missing legacy track row remains a 404. v1 keeps its legacy-only read.
 func (h *AudioPrefHandler) GetAudioPreferenceCanonical(ctx context.Context, userID int, profileID, seriesID string) (userstore.AudioPreference, error) {
-	var none userstore.AudioPreference
-	pref, err := h.GetAudioPreference(ctx, userID, profileID, seriesID)
-	if err != nil {
-		return none, err
-	}
+	var pref userstore.AudioPreference
 	store, err := h.storeProvider.ForUser(ctx, userID)
 	if err != nil {
-		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
+		return pref, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
 	}
-	var language *string
-	languageAt, err := canonicalMemberAt(ctx, store, userstore.SettingIdentity{
-		Scope: settingscontract.ScopeProfileSeries, ProfileID: profileID, SeriesID: seriesID,
-	}, settingskeys.PlaybackAudioLanguage, &language)
+	snapshots, ok := store.(userstore.PreferenceSettingsSnapshotter)
+	if !ok {
+		return pref, apiError(http.StatusInternalServerError, "internal_error", "Preference snapshots unavailable")
+	}
+	err = snapshots.WithPreferenceSettingsSnapshot(ctx, func(reader userstore.PreferenceSettingsReader) error {
+		legacy, err := reader.GetAudioPreference(ctx, profileID, seriesID)
+		if err != nil {
+			return err
+		}
+		if legacy == nil {
+			return apiError(http.StatusNotFound, "not_found", "Audio preference not found")
+		}
+		pref = *legacy
+		var language *string
+		languageAt, err := canonicalMemberAt(ctx, reader, userstore.SettingIdentity{
+			Scope: settingscontract.ScopeProfileSeries, ProfileID: profileID, SeriesID: seriesID,
+		}, settingskeys.PlaybackAudioLanguage, &language)
+		if err != nil {
+			return apiError(http.StatusInternalServerError, "internal_error", "Failed to get audio preference")
+		}
+		pref.AudioLanguage = ""
+		if language != nil {
+			pref.AudioLanguage = *language
+		}
+		pref.UpdatedAt = newestUpdatedAt(pref.UpdatedAt, languageAt)
+
+		return nil
+	})
 	if err != nil {
-		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to get audio preference")
+		if _, ok := errors.AsType[*APIError](err); ok {
+			return userstore.AudioPreference{}, err
+		}
+		return userstore.AudioPreference{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to get audio preference")
 	}
-	pref.AudioLanguage = ""
-	if language != nil {
-		pref.AudioLanguage = *language
-	}
-	pref.UpdatedAt = newestUpdatedAt(pref.UpdatedAt, languageAt)
 	return pref, nil
 }
 

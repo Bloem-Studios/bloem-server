@@ -54,9 +54,13 @@ func setAudioPreference(exec preferenceSettingsExecutor, pref AudioPreference) e
 // GetAudioPreference retrieves the audio preference for a profile
 // and series. Returns nil (not an error) if no preference exists.
 func GetAudioPreference(db *sql.DB, profileID, seriesID string) (*AudioPreference, error) {
+	return getAudioPreference(db, profileID, seriesID)
+}
+
+func getAudioPreference(exec preferenceSettingsExecutor, profileID, seriesID string) (*AudioPreference, error) {
 	var pref AudioPreference
 	var signatureJSON string
-	err := db.QueryRow(`
+	err := exec.QueryRow(`
 		SELECT profile_id, series_id, audio_track_index,
 		       audio_language, audio_track_signature, updated_at
 		FROM audio_preferences

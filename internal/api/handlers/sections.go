@@ -793,11 +793,27 @@ type SectionOverridesQuery struct {
 	LibraryID string
 }
 
+// The addressed library must be visible before reading or changing its
+// profile override set, even when individual section configs name no libraries.
+func (h *SectionHandler) requireOverrideLibrary(ctx context.Context, scope, libraryID string) error {
+	if scope != "library" {
+		return nil
+	}
+	id, err := strconv.Atoi(libraryID)
+	if err != nil || id <= 0 {
+		return apiError(http.StatusBadRequest, "bad_request", "Library ID is required")
+	}
+	return h.requireViewableLibrary(ctx, id)
+}
+
 // ListProfileOverrides lists the profile's saved overrides for one page; the
 // result is never nil. v1 GET /profile/sections and v2
 // listProfileSectionOverrides both call it; a failure is an *APIError
 // carrying the v1 status, code and message.
 func (h *SectionHandler) ListProfileOverrides(ctx context.Context, q SectionOverridesQuery) ([]userstore.SectionOverride, error) {
+	if err := h.requireOverrideLibrary(ctx, q.Scope, q.LibraryID); err != nil {
+		return nil, err
+	}
 	if h.StoreProvider == nil {
 		return []userstore.SectionOverride{}, nil
 	}
@@ -845,6 +861,9 @@ func (h *SectionHandler) HandleSaveProfileOverrides(w http.ResponseWriter, r *ht
 // replaceProfileSectionOverrides both call it; a failure is an *APIError
 // carrying the v1 status, code and message.
 func (h *SectionHandler) SaveProfileOverrides(ctx context.Context, q SectionOverridesQuery, writes []SectionOverrideWrite) error {
+	if err := h.requireOverrideLibrary(ctx, q.Scope, q.LibraryID); err != nil {
+		return err
+	}
 	// Gate: validate user-added overrides before touching the store.
 	allowCustom := false
 	if h.Settings != nil {
@@ -951,6 +970,9 @@ func (h *SectionHandler) HandleResetProfileOverrides(w http.ResponseWriter, r *h
 // v1 DELETE /profile/sections/reset and v2 resetProfileSectionOverrides both
 // call it; a failure is an *APIError carrying the v1 status, code and message.
 func (h *SectionHandler) ResetProfileOverrides(ctx context.Context, q SectionOverridesQuery) error {
+	if err := h.requireOverrideLibrary(ctx, q.Scope, q.LibraryID); err != nil {
+		return err
+	}
 	if h.StoreProvider == nil {
 		return apiError(http.StatusInternalServerError, "internal_error", "User store not available")
 	}
@@ -1028,6 +1050,14 @@ func (h *SectionHandler) HandleSectionSettings(w http.ResponseWriter, r *http.Re
 // /profile/sections/settings and v2 getProfileSectionSettings both call it;
 // a failure is an *APIError carrying the v1 status, code and message.
 func (h *SectionHandler) ResolveProfileSectionSettings(ctx context.Context, userID int, profileID, scope string, libraryID *int, filter catalog.AccessFilter) ([]sections.ResolvedSection, error) {
+	if scope == "library" {
+		if libraryID == nil {
+			return nil, apiError(http.StatusBadRequest, "bad_request", "Library ID is required")
+		}
+		if err := h.requireViewableLibrary(ctx, *libraryID); err != nil {
+			return nil, err
+		}
+	}
 	adminSections, err := h.repo.ListByScope(ctx, scope, libraryID)
 	if err != nil {
 		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to load sections")
