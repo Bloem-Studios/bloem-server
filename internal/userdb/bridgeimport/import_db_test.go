@@ -206,7 +206,7 @@ func TestImportCompleteAccountDB(t *testing.T) {
 
 func TestImportRollbackAndCollisionDB(t *testing.T) {
 	pool := accountImportPool(t)
-	for _, mode := range []string{"transition failure", "cancellation", "target collision", "source orphan", "source changed", "JSON duplicate", "timestamp precision", "catalog missing", "section collision", "foreign installation"} {
+	for _, mode := range []string{"transition failure", "cancellation", "target collision", "source orphan", "source changed", "JSON duplicate", "timestamp precision", "catalog missing", "section collision", "foreign installation", "boolean fractional true", "boolean fractional false", "boolean text"} {
 		t.Run(mode, func(t *testing.T) {
 			f := newImportFixture(t, pool)
 			ctx, cancel := context.WithCancel(t.Context())
@@ -234,13 +234,19 @@ func TestImportRollbackAndCollisionDB(t *testing.T) {
 				}
 			case "foreign installation":
 				f.identity.InstallationID = uuid.NewString()
-			case "source orphan", "source changed", "JSON duplicate", "timestamp precision", "catalog missing", "section collision":
+			case "source orphan", "source changed", "JSON duplicate", "timestamp precision", "catalog missing", "section collision", "boolean fractional true", "boolean fractional false", "boolean text":
 				source, err := sql.Open("sqlite3", f.path)
 				if err != nil {
 					t.Fatal(err)
 				}
 				statement := "UPDATE favorites SET profile_id='missing'"
 				switch mode {
+				case "boolean fractional true":
+					statement = "UPDATE watch_progress SET completed=1.5"
+				case "boolean fractional false":
+					statement = "UPDATE watch_progress SET completed=0.5"
+				case "boolean text":
+					statement = "UPDATE watch_progress SET completed='invalid'"
 				case "JSON duplicate":
 					statement = `UPDATE user_setting_values SET value='{"private":1,"private":2}'`
 				case "timestamp precision":

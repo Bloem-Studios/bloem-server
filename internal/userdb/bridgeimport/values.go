@@ -27,8 +27,8 @@ func importValue(column SourceColumn, value any) (any, error) {
 		}
 		return n, nil
 	case booleanColumn:
-		// Source SELECT casts booleans to INTEGER: the SQLite driver's automatic
-		// boolean decoding would otherwise hide invalid stored integers such as 2.
+		// The source expression preserves storage values while preventing the
+		// driver from decoding declared BOOLEAN columns before validation.
 		n, ok := value.(int64)
 		if !ok || (n != 0 && n != 1) {
 			return nil, errors.New("invalid boolean")

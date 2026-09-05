@@ -24,7 +24,9 @@ func importTable(ctx context.Context, source *sql.Tx, target pgx.Tx, userID int,
 		name := pgx.Identifier{column.Name}.Sanitize()
 		sourceSelect[i] = name
 		if column.Kind == booleanColumn {
-			sourceSelect[i] = "CAST(" + name + " AS INTEGER)"
+			// Unary plus removes declared-type decoding without converting the
+			// SQLite storage value. CAST would truncate reals and coerce text.
+			sourceSelect[i] = "+" + name
 		}
 		if column.PrimaryKey > 0 {
 			order = append(order, column)
