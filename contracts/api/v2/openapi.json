@@ -2201,7 +2201,7 @@
               "minLength": 1,
               "type": "string"
             },
-            "maxItems": 1000,
+            "maxItems": 100,
             "type": "array",
             "uniqueItems": true
           },

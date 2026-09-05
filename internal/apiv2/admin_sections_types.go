@@ -110,7 +110,7 @@ type AdminSectionCapabilities struct {
 type AdminSectionCapabilitiesOutput struct{ Body AdminSectionCapabilities }
 type AdminSectionBulkCreate struct {
 	Scope       string        `json:"scope,omitempty" enum:"home,library" default:"home"`
-	LibraryIDs  []ID          `json:"library_ids,omitempty" uniqueItems:"true" maxItems:"1000"`
+	LibraryIDs  []ID          `json:"library_ids,omitempty" uniqueItems:"true" maxItems:"100"`
 	SectionType string        `json:"section_type" minLength:"1" maxLength:"100"`
 	Title       string        `json:"title" maxLength:"500"`
 	Featured    bool          `json:"featured,omitempty"`

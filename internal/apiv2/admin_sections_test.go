@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 
 type fakeAdminSections struct {
 	view                                                                  handlers.AdminSection
+	bulkLibraryCount                                                      int
 	revision, scopeRevision                                               int64
 	caps                                                                  handlers.AdminSectionCapabilitiesView
 	reads, updates, deletes, creates, reorders, restores, bulks, previews int
@@ -107,8 +109,9 @@ func (f *fakeAdminSections) RestoreAdminSections(context.Context, handlers.Admin
 	}
 	return []handlers.AdminSection{f.view}, nil
 }
-func (f *fakeAdminSections) BulkCreateAdminSections(context.Context, handlers.AdminSectionBulkCreate) (handlers.AdminSectionBulkResult, error) {
+func (f *fakeAdminSections) BulkCreateAdminSections(_ context.Context, req handlers.AdminSectionBulkCreate) (handlers.AdminSectionBulkResult, error) {
 	f.bulks++
+	f.bulkLibraryCount = len(req.LibraryIDs)
 	return handlers.AdminSectionBulkResult{Created: 1}, nil
 }
 func (f *fakeAdminSections) PreviewAdminSection(context.Context, handlers.AdminSectionPreviewRequest) (handlers.AdminSectionPreviewResult, error) {
@@ -320,4 +323,29 @@ func TestAdminSectionsListAndBulkTransport(t *testing.T) {
 		t.Fatalf("empty list %d %s", empty.Code, empty.Body)
 	}
 	requireProblem(t, do(t, h, http.MethodGet, path+"/s1", "", bearer(adminToken)), TypeNotFound)
+}
+
+func TestAdminSectionsSynchronousBulkLimit(t *testing.T) {
+	for _, count := range []int{100, 101} {
+		t.Run(strconv.Itoa(count), func(t *testing.T) {
+			f := newFakeAdminSections()
+			h := adminSectionsTestHandler(t, f)
+			ids := make([]ID, count)
+			for i := range ids {
+				ids[i] = ID(strconv.Itoa(i + 1))
+			}
+			body, err := json.Marshal(AdminSectionBulkCreate{Scope: "library", LibraryIDs: ids, SectionType: "recently_added", Title: "Bulk", Config: SectionConfig{}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			response := do(t, h, http.MethodPost, Prefix+"/admin/sections/bulk", string(body), bearer(adminToken))
+			if count == 100 {
+				if response.Code != http.StatusOK || f.bulks != 1 || f.bulkLibraryCount != 100 {
+					t.Fatalf("100-library boundary: status=%d calls=%d body=%s", response.Code, f.bulks, response.Body)
+				}
+			} else if response.Code != http.StatusUnprocessableEntity || f.bulks != 0 {
+				t.Fatalf("oversized bulk reached service: status=%d calls=%d body=%s", response.Code, f.bulks, response.Body)
+			}
+		})
+	}
 }
