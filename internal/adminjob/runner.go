@@ -874,6 +874,16 @@ func (r *Runner) publishJob(ctx context.Context, eventType notifications.Type, j
 	if r == nil || r.realtimeHub == nil || job == nil {
 		return
 	}
+	// Cancellation may win the terminal database transition even when the
+	// executor returned success or failure. Publish the committed outcome.
+	switch job.Status {
+	case StatusCancelled:
+		eventType = notifications.TypeJobCancelled
+	case StatusCompleted:
+		eventType = notifications.TypeJobCompleted
+	case StatusFailed:
+		eventType = notifications.TypeJobFailed
+	}
 	if err := r.realtimeHub.PublishJob(ctx, eventType, job); err != nil {
 		slog.WarnContext(ctx, "admin jobs: failed to publish realtime job event", "component", "adminjob",
 			"job_id", job.ID,

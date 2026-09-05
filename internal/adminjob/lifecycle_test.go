@@ -285,3 +285,28 @@ func TestLibraryDeletionCompetingAcceptanceAndInsertRollback(t *testing.T) {
 		t.Fatalf("independent library blocked: %v", err)
 	}
 }
+
+func TestJobOrdinaryCompletionAfterClaim(t *testing.T) {
+	r := lifecycleRepo(t)
+	for _, kind := range []string{JobTypeCatalogExport, JobTypeCatalogImport, JobTypeDeleteLibrary, JobTypeLibraryRefresh} {
+		t.Run(kind, func(t *testing.T) {
+			job := lifecycleJob(t, r, kind)
+			claimed, err := r.ClaimNextQueued(t.Context(), kind)
+			if err != nil || claimed == nil || claimed.ID != job.ID {
+				t.Fatalf("claim %v %+v", err, claimed)
+			}
+			if err := r.withClaim(claimed).Complete(t.Context(), job.ID, CompleteJobInput{ResultPayload: struct {
+				Done bool `json:"done"`
+			}{Done: true}}); err != nil {
+				t.Fatal(err)
+			}
+			terminal, err := r.GetByID(t.Context(), job.ID)
+			if err != nil || terminal.Status != StatusCompleted {
+				t.Fatalf("completion %v %+v", err, terminal)
+			}
+			if string(terminal.ResultPayload) != `{"done": true}` {
+				t.Fatalf("result %s", terminal.ResultPayload)
+			}
+		})
+	}
+}
