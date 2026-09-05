@@ -1522,13 +1522,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/api-keys",
+        "operation_id": "listAdminAPIKeys"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; apiKeyRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator API-key domain, transport, explicit-null validation, and bundled web adoption independently reviewed. Lists expose metadata only; creation returns the secret once. Canonical reads supply strong ETags, and storage atomically checks guarded mutations. Web editors preserve drafts on 412 and reload explicitly; mutations disable authentication replay. V2 capability: GET /api/v2/admin/api-keys/capabilities. No Apple or Android administrator API-key consumer or Jellyfin administrator editing surface requires adoption."
     },
     {
       "listener": "api",
@@ -1581,18 +1581,18 @@
       "release_flow": "core_admin",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "The secret is shown once, in the creating response only, so a retry after that response is lost cannot recover it and the client must delete and recreate, a different operation. The v2 port must keep a replayable creation result per key id until first read, or accept this as one-shot.",
+      "retry_safety_note": "Creation discloses a new credential once; guarded edits require explicit caller recovery after an uncertain response.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/api-keys",
+        "operation_id": "createAdminAPIKey"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; apiKeyRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator API-key domain, transport, explicit-null validation, and bundled web adoption independently reviewed. Lists expose metadata only; creation returns the secret once. Canonical reads supply strong ETags, and storage atomically checks guarded mutations. Web editors preserve drafts on 412 and reload explicitly; mutations disable authentication replay. V2 capability: GET /api/v2/admin/api-keys/capabilities. No Apple or Android administrator API-key consumer or Jellyfin administrator editing surface requires adoption."
     },
     {
       "listener": "api",
@@ -1642,19 +1642,20 @@
       "section": "admin-sessions",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/api-keys/{id}",
+        "operation_id": "deleteAdminAPIKey"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; apiKeyRepo != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Administrator API-key domain, transport, explicit-null validation, and bundled web adoption independently reviewed. Lists expose metadata only; creation returns the secret once. Canonical reads supply strong ETags, and storage atomically checks guarded mutations. Web editors preserve drafts on 412 and reload explicitly; mutations disable authentication replay. V2 capability: GET /api/v2/admin/api-keys/capabilities. No Apple or Android administrator API-key consumer or Jellyfin administrator editing surface requires adoption.",
+      "concurrency": "if_match",
+      "retry_safety_note": "Creation discloses a new credential once; guarded edits require explicit caller recovery after an uncertain response."
     },
     {
       "listener": "api",
@@ -1704,19 +1705,20 @@
       "section": "admin-sessions",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/api-keys/{id}/tier",
+        "operation_id": "updateAdminAPIKeyTier"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; apiKeyRepo != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Administrator API-key domain, transport, explicit-null validation, and bundled web adoption independently reviewed. Lists expose metadata only; creation returns the secret once. Canonical reads supply strong ETags, and storage atomically checks guarded mutations. Web editors preserve drafts on 412 and reload explicitly; mutations disable authentication replay. V2 capability: GET /api/v2/admin/api-keys/capabilities. No Apple or Android administrator API-key consumer or Jellyfin administrator editing surface requires adoption.",
+      "concurrency": "if_match",
+      "retry_safety_note": "Creation discloses a new credential once; guarded edits require explicit caller recovery after an uncertain response."
     },
     {
       "listener": "api",

@@ -1958,6 +1958,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, requireActingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
+	if apiKeyRepo != nil {
+		v2deps.AdminAPIKeys = handlers.NewAPIKeyHandler(apiKeyRepo)
+	}
 	if markersHandler != nil {
 		v2deps.Markers = markersHandler
 	}

@@ -151,6 +151,8 @@ interface CommonOptions {
   profileContext?: ProfileRequestContextSnapshot;
   /** Let the browser finish the request after navigation or tab close. */
   keepalive?: boolean;
+  /** Disable refresh-and-replay for a mutation that must be sent only once. */
+  retryAuthentication?: boolean;
   /** Inspect metadata from a successfully decoded response, such as its ETag. */
   onResponse?: (response: Response) => void;
 }
@@ -368,6 +370,7 @@ export async function v2<K extends V2OperationKey>(
     buildUrl(route, options.path, options.query),
     init,
     snapshot,
+    options.retryAuthentication,
   );
   if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
     throw new StaleApiRequestContextError();

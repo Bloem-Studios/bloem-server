@@ -475,6 +475,7 @@ export async function fetchWithSession(
   url: string,
   options: RequestInit,
   snapshot?: ProfileRequestContextSnapshot,
+  retryAuthentication = true,
 ): Promise<SessionFetchResult> {
   if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
     throw new StaleApiRequestContextError();
@@ -499,6 +500,7 @@ export async function fetchWithSession(
   // with the new access token and the exact captured profile/PIN headers.
   if (
     res.status === 401 &&
+    retryAuthentication &&
     getRefreshToken() &&
     (snapshot !== undefined || !explicitAuthorization)
   ) {

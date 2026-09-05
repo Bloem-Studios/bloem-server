@@ -268,6 +268,10 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range []string{"getAccountPasswordCapability", "changePassword", "approveDeviceHandoff"} {
 		profileToken[id] = true
 	}
+	for _, id := range []string{"getAdminAPIKeyCapabilities", "listAdminAPIKeys", "getAdminAPIKey", "createAdminAPIKey", "updateAdminAPIKeyTier", "deleteAdminAPIKey"} {
+		profileToken[id] = true
+	}
+
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {

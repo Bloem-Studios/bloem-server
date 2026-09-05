@@ -4377,23 +4377,6 @@ export interface OnboardingState {
   done: boolean;
 }
 
-// API Keys
-export interface AdminAPIKey {
-  id: number;
-  user_id: number;
-  username: string;
-  label: string;
-  key: string;
-  rate_tier: string;
-  created_at: string;
-  last_used_at?: string;
-}
-
-export interface AdminCreateAPIKeyRequest {
-  label: string;
-  user_id?: number;
-}
-
 // Rate Limiting
 export interface RateLimitTierConfig {
   requests_per_second: number;

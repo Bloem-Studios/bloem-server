@@ -5,6 +5,7 @@
 
 /** Operation ids keyed by `METHOD /path`, as the committed v2 OpenAPI document lists them. */
 export const v2Operations = {
+  "DELETE /api/v2/admin/api-keys/{id}": "deleteAdminAPIKey",
   "DELETE /api/v2/admin/collection-groups/{id}": "deleteAdminCollectionGroup",
   "DELETE /api/v2/admin/collections/{id}": "deleteAdminCollection",
   "DELETE /api/v2/admin/collections/{id}/image": "deleteAdminCollectionImage",
@@ -43,6 +44,9 @@ export const v2Operations = {
   "DELETE /api/v2/webhook-sync/connections/{id}": "deleteWebhookConnection",
   "GET /api/v2/account/me": "getCurrentUser",
   "GET /api/v2/account/password/capability": "getAccountPasswordCapability",
+  "GET /api/v2/admin/api-keys": "listAdminAPIKeys",
+  "GET /api/v2/admin/api-keys/capabilities": "getAdminAPIKeyCapabilities",
+  "GET /api/v2/admin/api-keys/{id}": "getAdminAPIKey",
   "GET /api/v2/admin/collection-groups/{group_id}/collections/order":
     "getAdminGroupCollectionOrder",
   "GET /api/v2/admin/collection-groups/{id}": "getAdminCollectionGroup",
@@ -213,6 +217,7 @@ export const v2Operations = {
   "PATCH /api/v2/profiles/{id}": "updateProfile",
   "PATCH /api/v2/watch-providers/{provider}/connection": "updateWatchProviderConnection",
   "POST /api/v2/account/password": "changePassword",
+  "POST /api/v2/admin/api-keys": "createAdminAPIKey",
   "POST /api/v2/admin/collections": "createAdminCollection",
   "POST /api/v2/admin/collections/import/mdblist": "importAdminMDBList",
   "POST /api/v2/admin/collections/import/tmdb": "importAdminTMDB",
@@ -291,6 +296,7 @@ export const v2Operations = {
   "POST /api/v2/watched/{id}": "markWatched",
   "POST /api/v2/webhook-sync/connections": "createWebhookConnection",
   "POST /api/v2/webhook-sync/connections/{id}/webhook/rotate": "rotateWebhookConnection",
+  "PUT /api/v2/admin/api-keys/{id}/tier": "updateAdminAPIKeyTier",
   "PUT /api/v2/admin/collection-groups/{group_id}/collections/order":
     "moveAndReorderAdminGroupCollections",
   "PUT /api/v2/admin/collections/order": "reorderAdminCollections",
