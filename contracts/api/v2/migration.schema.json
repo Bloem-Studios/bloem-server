@@ -276,7 +276,7 @@
         "notes": { "type": "string" },
         "concurrency": {
           "enum": ["if_match"],
-          "description": "Optional, curated. if_match marks a resource with demonstrated lost-update risk whose v2 operation is registered Guarded (docs/architecture/api-contract.md, \"Optimistic concurrency\"): PUT/PATCH/DELETE require If-Match, a missing field is 428, a stale tag is 412. Allowed only on tier-1 ported rows whose method is PUT, PATCH or DELETE (the methods a Guarded v2 operation may use); internal/contractledger enforces that and reconciles the set against the v2 registry in both directions."
+          "description": "Optional, curated. if_match marks a resource with demonstrated lost-update risk whose v2 operation is registered Guarded (docs/architecture/api-contract.md, \"Optimistic concurrency\"): PUT/PATCH/DELETE require If-Match, a missing field is 428, a stale tag is 412. Allowed only on ported rows at either tier whose method is PUT, PATCH or DELETE (the methods a Guarded v2 operation may use); internal/contractledger enforces that and reconciles the set against the v2 registry in both directions."
         },
         "retry_safety": {
           "enum": ["natural_idempotent", "unique_constraint", "domain_identity", "coalescing", "durable_dispatch", "idempotency_key", "non_retryable"],
@@ -290,6 +290,18 @@
         }
       },
       "allOf": [
+        {
+          "$comment": "Concurrency marking is only for ported rows at either tier with a method a Guarded operation may use. Review and owner requirements remain independent.",
+          "if": {
+            "not": {
+              "properties": {
+                "disposition": { "const": "ported" },
+                "method": { "enum": ["PUT", "PATCH", "DELETE"] }
+              }
+            }
+          },
+          "then": { "properties": { "concurrency": false } }
+        },
         {
           "$comment": "retry_safety is a mutation-only classification of a ported row at either tier. internal/contractledger requires it for tier-1 inventory rows and mapped v2 mutations.",
           "if": {
