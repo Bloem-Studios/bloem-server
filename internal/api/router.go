@@ -1924,6 +1924,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		)
 	}
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, requireActingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
+	if markersHandler != nil {
+		v2deps.Markers = markersHandler
+	}
 	// The pilot operations call the v1 handlers' extracted business logic;
 	// a typed nil must not become a non-nil interface, so each is set only
 	// when the v1 handler exists.

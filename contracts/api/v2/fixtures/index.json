@@ -358,6 +358,26 @@
       "body_file": "check_library_mount_ok.json"
     },
     {
+      "name": "clear_file_marker_segment_ok",
+      "operation_id": "clearFileMarkerSegment",
+      "scenario": "Synthetic marker projection; supplied segments update or clear while omitted segments remain unchanged.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/markers/files/5/intro",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/FileMarkers",
+      "body_file": "clear_file_marker_segment_ok.json"
+    },
+    {
       "name": "collection_group_stale",
       "operation_id": "updateCollectionGroup",
       "scenario": "A stale group edit leaves the resource unchanged and supplies the current validator.",
@@ -1612,6 +1632,26 @@
       "body_file": "get_favorite_ok.json"
     },
     {
+      "name": "get_file_markers_ok",
+      "operation_id": "getFileMarkers",
+      "scenario": "Synthetic marker projection; supplied segments update or clear while omitted segments remain unchanged.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/markers/files/5",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/FileMarkers",
+      "body_file": "get_file_markers_ok.json"
+    },
+    {
       "name": "get_for_you_main_limit_out_of_range",
       "operation_id": "getForYouMain",
       "scenario": "limit of 0 is below the minimum.",
@@ -1775,6 +1815,26 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "get_home_section_items_profile_header_required.json"
+    },
+    {
+      "name": "get_item_markers_ok",
+      "operation_id": "getItemMarkers",
+      "scenario": "Synthetic marker projection; supplied segments update or clear while omitted segments remain unchanged.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/markers/items/movie:one",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/FileMarkers",
+      "body_file": "get_item_markers_ok.json"
     },
     {
       "name": "get_library_collections_locked_profile",
@@ -5917,6 +5977,69 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/CatalogFacetMatches",
       "body_file": "search_catalog_facet_ok.json"
+    },
+    {
+      "name": "set_file_markers_ok",
+      "operation_id": "setFileMarkers",
+      "scenario": "Synthetic marker projection; supplied segments update or clear while omitted segments remain unchanged.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/markers/files/5",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"intro\":{\"end_seconds\":12},\"credits\":null}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/FileMarkers",
+      "body_file": "set_file_markers_ok.json"
+    },
+    {
+      "name": "set_file_markers_permission_denied",
+      "operation_id": "setFileMarkers",
+      "scenario": "An account without marker-edit permission cannot mutate marker state.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/markers/files/5",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        },
+        "body": "{}"
+      },
+      "expected_status": 403,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "set_file_markers_permission_denied.json"
+    },
+    {
+      "name": "set_item_markers_ok",
+      "operation_id": "setItemMarkers",
+      "scenario": "Synthetic marker projection; supplied segments update or clear while omitted segments remain unchanged.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/markers/items/movie:one",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"recap\":null}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/FileMarkers",
+      "body_file": "set_item_markers_ok.json"
     },
     {
       "name": "set_library_providers_duplicate_level",
