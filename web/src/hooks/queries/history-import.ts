@@ -38,7 +38,7 @@ export function historyImportRunFromV2(
 function createRunBodyToV2(
   body: CreateHistoryImportRunRequest,
 ): V2Body<"POST /api/v2/history-imports/runs"> {
-  const { source_id, server_url: _serverUrl, ...rest } = body;
+  const { source_id, ...rest } = body;
   return {
     ...rest,
     source: body.source as "emby" | "jellyfin" | "plex",

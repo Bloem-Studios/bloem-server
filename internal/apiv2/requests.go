@@ -139,16 +139,15 @@ type DiscoverBrandCollection struct {
 
 // DiscoverBrowsePage is one page of a studio, network, or genre browse.
 type DiscoverBrowsePage struct {
-	Kind        string  `json:"kind" doc:"studio, network, or genre" example:"studio"`
-	Slug        string  `json:"slug" example:"marvel-studios"`
-	DisplayName string  `json:"display_name" example:"Marvel Studios"`
-	LogoURL     *string `json:"logo_url,omitempty" nullable:"true"`
-	MediaType   string  `json:"media_type" doc:"movie or series" example:"movie"`
-	Sort        string  `json:"slices"
- "cmp" example:"popularity"`
-	Page       int                  `json:"page" example:"1"`
-	TotalPages int                  `json:"total_pages" example:"20"`
-	Results    []RequestMediaResult `json:"results" doc:"Empty, never null"`
+	Kind        string               `json:"kind" doc:"studio, network, or genre" example:"studio"`
+	Slug        string               `json:"slug" example:"marvel-studios"`
+	DisplayName string               `json:"display_name" example:"Marvel Studios"`
+	LogoURL     *string              `json:"logo_url,omitempty" nullable:"true"`
+	MediaType   string               `json:"media_type" doc:"movie or series" example:"movie"`
+	Sort        string               `json:"sort" example:"popularity"`
+	Page        int                  `json:"page" example:"1"`
+	TotalPages  int                  `json:"total_pages" example:"20"`
+	Results     []RequestMediaResult `json:"results" doc:"Empty, never null"`
 }
 
 // RequestTarget is one fulfillment of a request against one integration
@@ -295,8 +294,7 @@ type DiscoverBrandCollectionOutput struct {
 // DiscoverBrowseInput is the studio and network browse request.
 type DiscoverBrowseInput struct {
 	Slug string `path:"slug" minLength:"1" doc:"The brand slug from the list operation" example:"marvel-studios"`
-	Sort string `query:"slices"
- "cmp" enum:"popularity,vote_average,release_date" default:"popularity" doc:"Result order" example:"popularity"`
+	Sort string `query:"sort" enum:"popularity,vote_average,release_date" default:"popularity" doc:"Result order" example:"popularity"`
 	ProviderPage
 }
 
@@ -305,8 +303,7 @@ type DiscoverBrowseInput struct {
 type DiscoverGenreBrowseInput struct {
 	Slug      string `path:"slug" minLength:"1" doc:"The genre slug from the list operation" example:"action"`
 	MediaType string `query:"media_type" enum:"movie,series" required:"true" doc:"The media type to browse" example:"movie"`
-	Sort      string `query:"slices"
- "cmp" enum:"popularity,vote_average,release_date" default:"popularity" doc:"Result order" example:"popularity"`
+	Sort      string `query:"sort" enum:"popularity,vote_average,release_date" default:"popularity" doc:"Result order" example:"popularity"`
 	ProviderPage
 }
 
