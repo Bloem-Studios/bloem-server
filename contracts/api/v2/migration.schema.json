@@ -276,7 +276,7 @@
         "notes": { "type": "string" },
         "concurrency": {
           "enum": ["if_match"],
-          "description": "Optional, curated. if_match marks a resource with demonstrated lost-update risk whose v2 operation is registered Guarded (docs/architecture/api-contract.md, \"Optimistic concurrency\"): PUT/PATCH/DELETE require If-Match, a missing field is 428, a stale tag is 412. Allowed only on ported rows at either tier whose method is PUT, PATCH or DELETE (the methods a Guarded v2 operation may use); internal/contractledger enforces that and reconciles the set against the v2 registry in both directions."
+          "description": "Optional, curated. if_match marks a resource with demonstrated lost-update risk whose v2 operation is registered Guarded (docs/architecture/api-contract.md, \"Optimistic concurrency\"): PUT/PATCH/DELETE require If-Match, a missing field is 428, a stale tag is 412. Allowed only on ported rows at either tier whose mapped v2 method is PUT, PATCH or DELETE (the methods a Guarded v2 operation may use); unmapped rows use their source method; internal/contractledger enforces that and reconciles the set against the v2 registry in both directions."
         },
         "retry_safety": {
           "enum": ["natural_idempotent", "unique_constraint", "domain_identity", "coalescing", "durable_dispatch", "idempotency_key", "non_retryable"],
@@ -291,13 +291,19 @@
       },
       "allOf": [
         {
-          "$comment": "Concurrency marking is only for ported rows at either tier with a method a Guarded operation may use. Review and owner requirements remain independent.",
+          "$comment": "Concurrency marking is only for ported rows at either tier with a mapped v2 method a Guarded operation may use, falling back to the source method only for unmapped rows. Review and owner requirements remain independent.",
           "if": {
             "not": {
               "properties": {
-                "disposition": { "const": "ported" },
-                "method": { "enum": ["PUT", "PATCH", "DELETE"] }
-              }
+                "disposition": { "const": "ported" }
+              },
+              "anyOf": [
+                { "properties": { "v2": { "properties": { "method": { "enum": ["PUT", "PATCH", "DELETE"] } } } } },
+                { "properties": {
+                  "v2": { "properties": { "method": { "type": "null" } } },
+                  "method": { "enum": ["PUT", "PATCH", "DELETE"] }
+                } }
+              ]
             }
           },
           "then": { "properties": { "concurrency": false } }
