@@ -34,6 +34,8 @@ func Manifest() []Mapping {
 		result = append(result, Mapping{name, name, "add account identity; preserve semantic scope, revisions, replay and opaque values; remap integer surrogate IDs"})
 	}
 	return append(result,
+		Mapping{"personal_collection_revisions", "user_collection_revisions", "add account identity; preserve per-collection revision witnesses including tombstones without live collections; reconcile destination trigger increments before enabling validators"},
+		Mapping{"personal_collection_order_revision", "user_collection_order_revisions", "map singleton 1 to the account user_id, not a profile or group; preserve account-wide order witness; reconcile destination revisions before enabling validators"},
 		Mapping{"profile_section_overrides", "user_settings", "group all profiles into section_overrides:<scope>:<libraryID> JSON; preserve IDs and timestamps"},
 		Mapping{"playback_sessions", "", "legacy disposition required if nonempty"},
 		Mapping{"downloads", "", "legacy disposition required if nonempty"})
@@ -96,8 +98,8 @@ func Inspect(ctx context.Context, path string, accountID int64) (Report, error) 
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&r.Version); err != nil {
 		return r, errors.New("cannot read source version")
 	}
-	if r.Version != 21 {
-		r.Blockers = append(r.Blockers, "source schema is not current version 21; upgrades are not performed")
+	if r.Version != 22 {
+		r.Blockers = append(r.Blockers, "source schema is not current version 22; upgrades are not performed")
 	}
 	var integrity string
 	if err := tx.QueryRowContext(ctx, "PRAGMA integrity_check").Scan(&integrity); err != nil || integrity != "ok" {

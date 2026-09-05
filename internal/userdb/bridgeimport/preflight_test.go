@@ -23,6 +23,7 @@ func fixture(t *testing.T) string {
 	// Every current table exists, using the real initialization path only to build
 	// synthetic data. Production inspection must never call this constructor.
 	for _, statement := range []string{
+		`INSERT INTO personal_collection_revisions(collection_id,revision) VALUES('deleted-collection',87)`,
 		`INSERT INTO favorites VALUES('parent','item','2026-01-01')`,
 		`INSERT INTO watchlist VALUES('parent','item','2026-01-01',4)`,
 		`INSERT INTO home_item_dismissals VALUES('parent','continue_watching','item','series','2026-01-01','2026-01-02')`,
@@ -71,10 +72,16 @@ func TestCompleteSchemaInventoryPreservesSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.Ready || report.Version != 21 || len(report.Tables) != len(bridgeimport.Manifest()) {
+	if report.Ready || report.Version != 22 || len(report.Tables) != 29 || len(report.Tables) != len(bridgeimport.Manifest()) {
 		t.Fatalf("unexpected inventory: %+v", report)
 	}
 	for _, table := range report.Tables {
+		if table.Name == "personal_collection_revisions" && table.Rows != 3 {
+			t.Fatalf("revision inventory lost a live collection or tombstone: %+v", table)
+		}
+		if table.Name == "personal_collection_order_revision" && table.Rows != 1 {
+			t.Fatalf("account order singleton missing: %+v", table)
+		}
 		if table.Name != "downloads" && table.Name != "playback_sessions" && table.Rows == 0 {
 			t.Fatalf("fixture omitted %s", table.Name)
 		}
@@ -170,7 +177,7 @@ func TestOldVersionRemainsUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := source.DB.Exec("PRAGMA user_version=1"); err != nil {
+	if _, err := source.DB.Exec("DROP TABLE personal_collection_revisions; DROP TABLE personal_collection_order_revision; PRAGMA user_version=21"); err != nil {
 		t.Fatal(err)
 	}
 	if err := source.Close(); err != nil {
@@ -184,7 +191,7 @@ func TestOldVersionRemainsUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.Version != 1 || len(report.Blockers) != 7 {
+	if report.Version != 21 || len(report.Blockers) != 9 {
 		t.Fatalf("old version not blocked: %+v", report)
 	}
 	after, err := os.ReadFile(path)

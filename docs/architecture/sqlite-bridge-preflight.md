@@ -31,10 +31,12 @@ JSON output contains the schema version, known table names, row and column count
 and blockers. It excludes paths, profile names, IDs, values, PIN hashes, SQL error
 messages, and unknown table names. Unknown tables are represented with a redacted
 label and block import even when empty. Integrity errors stop inspection. Missing
-tables, schema versions other than the current version 21, and nonempty legacy
+tables, schema versions other than the current version 22, and nonempty legacy
 session/download tables are blockers. Old sources are never upgraded in place.
 
-The manifest covers all current persistent application tables. Its rules describe
+The manifest covers all 29 current persistent application tables. Schema 21 remains
+an old source: its missing revision tables and version block import, and inspection
+does not create the tables or upgrade its version. Manifest rules describe
 required mappings, not implemented transformations. In particular:
 
 - Preserve account-scoped profile, collection and history IDs, visibility,
@@ -46,6 +48,14 @@ required mappings, not implemented transformations. In particular:
   representation without losing IDs, flags or timestamps.
 - Explicitly classify nonempty legacy SQLite session/download rows. They cannot be
   copied into unrelated modern central tables.
+- Map `personal_collection_revisions` to PostgreSQL `user_collection_revisions`
+  with account identity. Retain revision tombstones for deleted collections;
+  absence of a live collection is not permission to discard its witness. Map
+  `personal_collection_order_revision` singleton 1 to `user_collection_order_revisions`
+  by account ID, not profile or group. The later writer must reconcile source
+  witnesses with destination trigger increments and existing revisions before
+  enabling validators, so old ETags cannot accidentally become valid again.
+  Inventory does not implement that reconciliation.
 - Define progress sync sequence handling before clients reconnect; SQLite's
   per-file sequence cannot be copied blindly into PostgreSQL's global sequence.
 
