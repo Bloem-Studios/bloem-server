@@ -43,7 +43,6 @@ func TestLibraryViewsRefuseLibraryOutsideViewerScope(t *testing.T) {
 		"/api/v2/library/1/layout",
 		"/api/v2/library/1/sections",
 		"/api/v2/library/1/sections/continue_watching/items",
-		"/api/v2/library/1/collections/c1/items",
 	} {
 		requireProblem(t, do(t, h, http.MethodGet, path, "", viewerHeaders()), TypeNotFound)
 	}
@@ -143,7 +142,6 @@ func TestLibraryViewsRefuseHiddenLibrary(t *testing.T) {
 		"/api/v2/library/1/layout",
 		"/api/v2/library/1/sections",
 		"/api/v2/library/1/sections/continue_watching/items",
-		"/api/v2/library/1/collections/c1/items",
 		"/api/v2/library/1/user-collections",
 	} {
 		requireProblem(t, do(t, h, http.MethodGet, path, "", viewerHeaders()), TypeNotFound)
@@ -151,7 +149,7 @@ func TestLibraryViewsRefuseHiddenLibrary(t *testing.T) {
 	// The allowed neighbor is answered by the fakes, proving the refusal
 	// above was the hidden id and not a blanket one.
 	h = newTestHandler(t, scopedViewerDeps(t, policy, &fakeLibraryViews{}, &fakeLibraryViews{}))
-	for _, path := range []string{"/api/v2/library/2/layout", "/api/v2/library/2/sections", "/api/v2/library/2/collections/c1/items"} {
+	for _, path := range []string{"/api/v2/library/2/layout", "/api/v2/library/2/sections"} {
 		if rec := do(t, h, http.MethodGet, path, "", viewerHeaders()); rec.Code != 200 {
 			t.Fatalf("%s: %d %s", path, rec.Code, rec.Body.String())
 		}

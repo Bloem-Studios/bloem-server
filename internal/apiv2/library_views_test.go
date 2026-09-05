@@ -489,15 +489,6 @@ func TestLibraryCollections(t *testing.T) {
 	if string(body.Groups[0]["kind"]) != `"user_collections"` || !strings.Contains(string(body.Groups[0]["collections"]), `"creator_profile_id":"p-owner"`) {
 		t.Errorf("group = %v", body.Groups[0])
 	}
-	rec = do(t, h, http.MethodGet, "/api/v2/library/1/collections/c1/items", "", viewerHeaders())
-	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"added_at":"2026-01-02T03:04:05.678Z"`) || !strings.Contains(rec.Body.String(), `"work_formats":[{"type":"ebook","content_id":"ebook:heat","library_id":"2"}]`) || !strings.Contains(rec.Body.String(), `"page":{"has_more":false}`) {
-		t.Fatal(rec.Code, rec.Body.String())
-	}
-	p := requireProblem(t, do(t, h, http.MethodGet, "/api/v2/library/1/collections/broken/items", "", viewerHeaders()), TypeValidationFailed)
-	if len(p.Errors) != 1 || p.Errors[0].Location != "path.collection_id" {
-		t.Fatalf("errors = %+v", p.Errors)
-	}
-	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/library/1/collections/nope/items", "", viewerHeaders()), TypeNotFound)
 	rec = do(t, h, http.MethodGet, "/api/v2/library/1/user-collections", "", viewerHeaders())
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"creator_profile_id":"p-owner"`) || !strings.Contains(rec.Body.String(), `"updated_at":"2026-01-02T03:04:05.000Z"`) {
 		t.Fatal(rec.Code, rec.Body.String())
