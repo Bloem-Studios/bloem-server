@@ -571,23 +571,14 @@ type trailerRefreshCapabilityResponse struct {
 // answer in that case; the router registers it unconditionally so a client
 // never has to interpret a 404 on the probe itself.
 func (h *ItemsHandler) HandleTrailerRefreshCapability(w http.ResponseWriter, _ *http.Request) {
-	enabled := h != nil && h.trailerRefreshRequester != nil && h.trailerItemAccess != nil
-	resp := trailerRefreshCapabilityResponse{
-		SchemaVersion:  1,
-		Refresh:        enabled,
-		Statuses:       []string{},
-		SupportedTypes: []string{},
-	}
-	if enabled {
-		resp.CooldownSeconds = int(metadata.TrailerRefreshCooldown / time.Second)
-		resp.Statuses = []string{
-			metadata.TrailerRefreshStatusQueued,
-			metadata.TrailerRefreshStatusCooldown,
-			metadata.TrailerRefreshStatusDisabled,
-		}
-		resp.SupportedTypes = []string{"movie", "series"}
-	}
-	writeJSON(w, http.StatusOK, resp)
+	view := h.TrailerRefreshCapability()
+	writeJSON(w, http.StatusOK, trailerRefreshCapabilityResponse{
+		SchemaVersion:   1,
+		Refresh:         view.Enabled,
+		CooldownSeconds: view.CooldownSeconds,
+		Statuses:        view.Statuses,
+		SupportedTypes:  view.SupportedTypes,
+	})
 }
 
 // HandleRequestTrailersRefresh handles POST /api/v1/items/{id}/trailers/refresh:
@@ -601,102 +592,34 @@ func (h *ItemsHandler) HandleTrailerRefreshCapability(w http.ResponseWriter, _ *
 // through its own table to 400 unsupported-type; only genuinely unknown content
 // answers 404.
 func (h *ItemsHandler) HandleRequestTrailersRefresh(w http.ResponseWriter, r *http.Request) {
-	if h == nil || h.trailerRefreshRequester == nil || h.trailerItemAccess == nil {
-		writeError(w, http.StatusServiceUnavailable, "unavailable", "Trailer refresh is not configured")
-		return
-	}
-
 	contentID := strings.TrimSpace(chi.URLParam(r, "id"))
-	if contentID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Item ID is required")
-		return
-	}
-
-	userID := apimw.GetUserID(r.Context())
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return
-	}
-
-	if h.trailerRefreshLimiter != nil {
-		// The limiter may be the process-wide one the middleware uses, so the
-		// key is namespaced: an unprefixed user id would share a counter with
-		// whatever else keys on the same string.
-		result := h.trailerRefreshLimiter.Allow(r.Context(), trailerRefreshLimiterKey(userID), trailerRefreshRate)
-		if !result.Allowed {
-			if result.RetryAfter > 0 {
-				w.Header().Set("Retry-After", strconv.Itoa(max(1, int(result.RetryAfter.Seconds()))))
-			}
-			writeError(w, http.StatusTooManyRequests, "rate_limited", "Too many trailer refresh requests")
-			return
+	view, err := h.RequestTrailersRefresh(r.Context(), apimw.GetUserID(r.Context()), contentID, func() (catalog.AccessFilter, error) {
+		filter, err := h.accessFilter(r)
+		if err != nil {
+			return catalog.AccessFilter{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to resolve user access")
 		}
-	}
-
-	target, err := h.resolveTrailerRefreshTarget(r.Context(), contentID)
+		size, err := imagesize.FromRequest(r)
+		if err != nil {
+			return catalog.AccessFilter{}, apiError(http.StatusBadRequest, "invalid_image_size", "image_size must be one of small, medium, large, original")
+		}
+		filter.ImageSize = size
+		return filter, nil
+	})
 	if err != nil {
-		if errors.Is(err, catalog.ErrItemNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Item not found")
-			return
-		}
-		slog.ErrorContext(r.Context(), "trailers: failed to look up item", "component", "api",
-			"content_id", contentID, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to authorize item")
+		writeAPIError(w, err)
 		return
 	}
-	// Authorize against the series for a season or episode ID, exactly as the
-	// on-view translation route does, so an unsupported-type answer never
-	// leaks the existence of content the caller cannot see.
-	filter, ok := h.accessFilterOrError(w, r)
-	if !ok {
-		return
-	}
-	if err := h.trailerItemAccess.EnsureAccessible(r.Context(), target.accessContentID, filter); err != nil {
-		if errors.Is(err, catalog.ErrItemNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Item not found")
-			return
-		}
-		slog.ErrorContext(r.Context(), "trailers: failed to authorize item", "component", "api",
-			"content_id", contentID, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to authorize item")
-		return
-	}
-
-	// Only movie and series detail responses carry videos/extras, so anything
-	// else — another media_items type, or a season/episode ID, which is not a
-	// media_items row at all — is a client bug rather than an empty result.
-	if !target.supportsTrailers {
-		writeError(w, http.StatusBadRequest, "unsupported_type", "Trailers are only available for movies and series")
-		return
-	}
-
-	outcome, err := h.trailerRefreshRequester.RequestTrailersRefresh(r.Context(), contentID)
-	if err != nil {
-		if errors.Is(err, catalog.ErrItemNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Item not found")
-			return
-		}
-		slog.ErrorContext(r.Context(), "trailers: failed to request refresh", "component", "api",
-			"content_id", contentID, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to request trailers")
-		return
-	}
-
-	switch outcome.Status {
+	resp := trailerRefreshResponse{Status: view.Status}
+	status := http.StatusOK
+	switch view.Status {
 	case metadata.TrailerRefreshStatusQueued:
-		writeJSON(w, http.StatusAccepted, trailerRefreshResponse{Status: outcome.Status})
+		status = http.StatusAccepted
 	case metadata.TrailerRefreshStatusCooldown:
-		resp := trailerRefreshResponse{Status: outcome.Status}
-		if outcome.NextAllowedAt != nil {
-			resp.NextAllowedAt = outcome.NextAllowedAt.UTC().Format(time.RFC3339)
+		if view.NextAllowedAt != nil {
+			resp.NextAllowedAt = view.NextAllowedAt.UTC().Format(time.RFC3339)
 		}
-		writeJSON(w, http.StatusOK, resp)
-	case metadata.TrailerRefreshStatusDisabled:
-		writeJSON(w, http.StatusOK, trailerRefreshResponse{Status: outcome.Status})
-	default:
-		slog.ErrorContext(r.Context(), "trailers: unexpected refresh outcome", "component", "api",
-			"content_id", contentID, "status", outcome.Status)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to request trailers")
 	}
+	writeJSON(w, status, resp)
 }
 
 // trailerRefreshTarget is what a content ID on the trailer refresh route turned

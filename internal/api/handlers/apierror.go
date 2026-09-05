@@ -13,6 +13,9 @@ type APIError struct {
 	// Field names the request member a 400 bad_request rejected, so the v2
 	// listener can render it as a 422 validation problem at body.<Field>.
 	Field string
+	// RetryAfter is the delta-seconds a 429 asks the caller to wait; zero
+	// when the limiter gave no hint. Both listeners render it as Retry-After.
+	RetryAfter int
 	// cause is the underlying error for callers that branch on it.
 	cause error
 }

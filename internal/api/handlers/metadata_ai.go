@@ -59,9 +59,10 @@ func NewMetadataAIHandler(service *translation.Service) *MetadataAIHandler {
 // show or hide their entry points.
 // GET /api/v1/metadata/ai/status
 func (h *MetadataAIHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
+	view := h.Status()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"enabled": h.service.Enabled(),
-		"on_view": h.service.OnViewMode(),
+		"enabled": view.Enabled,
+		"on_view": view.OnView,
 	})
 }
 
@@ -106,45 +107,15 @@ func (h *MetadataAIHandler) HandleTranslateOnView(w http.ResponseWriter, r *http
 		UserID:             scope.UserID,
 		ProfileID:          scope.ProfileID,
 	}
-	target, err := h.resolveTranslationTarget(r.Context(), contentID)
-	if err != nil {
-		if errors.Is(err, catalog.ErrItemNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Item not found")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to authorize item")
-		return
-	}
-	if err := h.ItemAccess.EnsureAccessible(r.Context(), target.accessContentID, filter); err != nil {
-		if errors.Is(err, catalog.ErrItemNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Item not found")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to authorize item")
-		return
-	}
-
 	var requestedBy *int
 	if userID := apimw.GetUserID(r.Context()); userID != 0 {
 		requestedBy = &userID
 	}
-
-	job, err := h.service.RequestOnView(r.Context(), target.kind, contentID, req.TargetLanguage, requestedBy)
+	job, err := h.TranslateOnView(r.Context(), filter, contentID, req.TargetLanguage, requestedBy)
 	if err != nil {
-		switch {
-		case errors.Is(err, translation.ErrNotConfigured):
-			writeError(w, http.StatusServiceUnavailable, "not_configured",
-				"On-view translation is not enabled on this server")
-		case errors.Is(err, translation.ErrInvalidRequest):
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		default:
-			slog.ErrorContext(r.Context(), "failed to request on-view translation", "component", "api",
-				"content_id", contentID, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to start translation")
-		}
+		writeAPIError(w, err)
 		return
 	}
-
 	writeJSON(w, http.StatusAccepted, map[string]any{"job": job})
 }
 

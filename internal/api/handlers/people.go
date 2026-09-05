@@ -78,7 +78,7 @@ func (h *PeopleHandler) SetRefreshService(refresher PersonRefresher) {
 	h.refresher = refresher
 }
 
-type personResponse struct {
+type PersonView struct {
 	ID             int64   `json:"id"`
 	Name           string  `json:"name"`
 	Bio            string  `json:"bio,omitempty"`
@@ -96,44 +96,27 @@ type personResponse struct {
 
 // HandleSearch serves GET /api/people?q=&limit=
 func (h *PeopleHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("q")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	if limit <= 0 {
-		limit = 20
-	}
-
-	people, err := h.personRepo.Search(r.Context(), query, limit)
+	resp, err := h.SearchPeople(r.Context(), r.URL.Query().Get("q"), limit)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "search_failed", err.Error())
+		writeAPIError(w, err)
 		return
-	}
-
-	resp := make([]personResponse, len(people))
-	for i, p := range people {
-		resp[i] = h.toResponse(r.Context(), p)
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleGetPerson serves GET /api/people/:id
 func (h *PeopleHandler) HandleGetPerson(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_id", "invalid person ID")
+	id, ok := parsePersonID(w, r)
+	if !ok {
 		return
 	}
-
-	person, err := h.personRepo.Get(r.Context(), id)
+	resp, err := h.Person(r.Context(), id)
 	if err != nil {
-		slog.WarnContext(r.Context(), "people: get person failed", "component", "api", "id", id, "id_str", idStr, "error", err)
-		writeError(w, http.StatusNotFound, "not_found", "person not found")
+		writeAPIError(w, err)
 		return
 	}
-
-	h.enqueuePersonRefreshIfDue(*person)
-
-	writeJSON(w, http.StatusOK, h.toResponse(r.Context(), *person))
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleRefreshPerson serves POST /api/v1/people/:id/refresh.
@@ -142,34 +125,14 @@ func (h *PeopleHandler) HandleRefreshPerson(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Person refresh is not configured")
 		return
 	}
-
 	id, ok := parsePersonID(w, r)
 	if !ok {
 		return
 	}
-
-	userID := apimw.GetUserID(r.Context())
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
+	if err := h.RefreshPerson(r.Context(), apimw.GetUserID(r.Context()), id); err != nil {
+		writeAPIError(w, err)
 		return
 	}
-
-	result := h.refreshLimiter.Allow(r.Context(), strconv.Itoa(userID), personRefreshRate)
-	if !result.Allowed {
-		if result.RetryAfter > 0 {
-			w.Header().Set("Retry-After", strconv.Itoa(max(1, int(result.RetryAfter.Seconds()))))
-		}
-		writeError(w, http.StatusTooManyRequests, "rate_limited", "Too many person refresh requests")
-		return
-	}
-
-	person, err := h.personRepo.Get(r.Context(), id)
-	if err != nil || person == nil {
-		writeError(w, http.StatusNotFound, "not_found", "person not found")
-		return
-	}
-
-	h.refreshQueue.Enqueue(id)
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"status":    "queued",
 		"person_id": id,
@@ -337,8 +300,8 @@ func (h *PeopleHandler) HandleGetPersonItems(w http.ResponseWriter, r *http.Requ
 	})
 }
 
-func (h *PeopleHandler) toResponse(ctx context.Context, p models.Person) personResponse {
-	resp := personResponse{
+func (h *PeopleHandler) toResponse(ctx context.Context, p models.Person) PersonView {
+	resp := PersonView{
 		ID:         p.ID,
 		Name:       p.Name,
 		Bio:        p.Bio,
