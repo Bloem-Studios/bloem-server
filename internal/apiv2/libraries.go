@@ -573,9 +573,9 @@ func registerLibraries(reg *Registry) {
 		operation := Operation{Operation: op, Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
 		switch op.OperationID {
 		case opCreateLibrary, opUpdateLibrary, opRematchStaleId, opSetLibraryProviders,
-			opConfirmEmptyRootCleanup, opRetryMetadataMatchQueue, opCancelMetadataMatchQueue, opDeleteLibraryPoster:
+			opConfirmEmptyRootCleanup, opRetryMetadataMatchQueue, opCancelMetadataMatchQueue, opDeleteLibraryPoster, opDeleteRootOverride:
 			operation.RetrySafety = RetrySafetyNonRetryable
-		case opDeleteLibrary, opCheckLibraryMount, opReorderLibraries, opSetRootOverride, opDeleteRootOverride:
+		case opDeleteLibrary, opCheckLibraryMount, opReorderLibraries, opSetRootOverride:
 			operation.RetrySafety = RetrySafetyNaturalIdempotent
 		case opRefreshLibraryMetadata:
 			operation.RetrySafety = RetrySafetyCoalescing
