@@ -265,21 +265,91 @@
     "v2Expectation": {
       "description": "Null until the section PR records the intended v2 behavior or a reviewed intentional difference.",
       "oneOf": [
-        { "type": "null" },
+        {
+          "type": "null"
+        },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "recorded_in"],
+          "required": [
+            "kind",
+            "recorded_in",
+            "operation_id",
+            "method",
+            "request",
+            "expect"
+          ],
           "properties": {
-            "kind": { "enum": ["same", "intentional_difference"] },
-            "summary": { "type": "string", "minLength": 1 },
-            "expect": { "$ref": "#/$defs/expect" },
+            "kind": {
+              "enum": [
+                "same",
+                "intentional_difference"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expect": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/expect"
+                },
+                {
+                  "required": [
+                    "status",
+                    "headers",
+                    "body"
+                  ]
+                }
+              ]
+            },
             "recorded_in": {
               "description": "PR or ledger reference the review happened in.",
               "type": "string",
               "minLength": 1
+            },
+            "operation_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9]*$"
+            },
+            "method": {
+              "$ref": "#/$defs/method"
+            },
+            "request": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/request"
+                },
+                {
+                  "properties": {
+                    "path": {
+                      "pattern": "^/api/v2/"
+                    }
+                  }
+                }
+              ]
+            },
+            "principal": {
+              "$ref": "#/$defs/principal"
             }
-          }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "intentional_difference"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "summary"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

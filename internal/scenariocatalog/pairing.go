@@ -1,0 +1,94 @@
+package scenariocatalog
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+
+	apiv2 "github.com/Silo-Server/silo-server/contracts/api/v2"
+)
+
+// ValidatePairing ties the recorded operation to its actual method and route.
+// Concrete fixture values may fill path parameters; they cannot change the route.
+func ValidatePairing(pair *V2Expectation) error {
+	if pair == nil {
+		return fmt.Errorf("missing v2 expectation")
+	}
+	var spec struct {
+		Paths map[string]map[string]struct {
+			OperationID string `json:"operationId"`
+		} `json:"paths"`
+	}
+	if err := json.Unmarshal(apiv2.OpenAPI, &spec); err != nil {
+		return err
+	}
+	for path, methods := range spec.Paths {
+		operation, ok := methods[strings.ToLower(pair.Method)]
+		if !ok || operation.OperationID != pair.OperationID {
+			continue
+		}
+		want, got := strings.Split(path, "/"), strings.Split(pair.Request.Path, "/")
+		if len(want) != len(got) {
+			continue
+		}
+		matches := true
+		for i, segment := range want {
+			parameter := strings.HasPrefix(segment, "{") && strings.HasSuffix(segment, "}")
+			if (parameter && got[i] == "") || (!parameter && segment != got[i]) {
+				matches = false
+			}
+		}
+		if matches {
+			return nil
+		}
+	}
+	return fmt.Errorf("v2 operation %q does not match %s %s", pair.OperationID, pair.Method, pair.Request.Path)
+}
+
+// RequiredProfileListScenarios is deliberately fixed: deleting a pilot case or
+// clearing its pairing must fail acceptance rather than shrink the tested set.
+var RequiredProfileListScenarios = []string{
+	"profiles_list.ok", "profiles_list.meaning", "profiles_list.shape", "profiles_list.sorted",
+	"profiles_list.no_profile_needed", "profiles_list.other_account", "profiles_list.api_key",
+	"profiles_list.other_account_profile", "profiles_list.no_token", "profiles_list.error_shape",
+}
+
+func ProfileListAcceptance(catalogs []*Catalog) ([]*Catalog, error) {
+	want := make(map[string]bool, len(RequiredProfileListScenarios))
+	for _, id := range RequiredProfileListScenarios {
+		want[id] = false
+	}
+	var selected []*Catalog
+	for _, c := range catalogs {
+		copy := *c
+		copy.Rows = nil
+		for _, row := range c.Rows {
+			if row.Listener != listenerAPI || row.Method != http.MethodGet || row.Path != "/api/v1/profiles/" || row.RegistrationIndex != 0 {
+				continue
+			}
+			picked := row
+			picked.Scenarios = nil
+			for _, scenario := range row.Scenarios {
+				if _, ok := want[scenario.ID]; !ok {
+					continue
+				}
+				if err := ValidatePairing(scenario.V2Expectation); err != nil {
+					return nil, fmt.Errorf("%s: %w", scenario.ID, err)
+				}
+				want[scenario.ID] = true
+				picked.Scenarios = append(picked.Scenarios, scenario)
+			}
+			copy.Rows = append(copy.Rows, picked)
+		}
+		if len(copy.Rows) > 0 {
+			selected = append(selected, &copy)
+		}
+	}
+	for _, id := range RequiredProfileListScenarios {
+		if !want[id] {
+			return nil, fmt.Errorf("required scenario %s is missing", id)
+		}
+	}
+	return selected, nil
+}

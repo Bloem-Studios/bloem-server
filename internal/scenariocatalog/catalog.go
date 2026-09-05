@@ -107,11 +107,24 @@ type Scenario struct {
 	// Then lists follow-up exchanges run after the primary request, in the
 	// same state, so a scenario can pin the effect of a mutation (the poll
 	// after an approval, the GET after a PUT) instead of only its status.
-	Then          []Step          `json:"then,omitempty"`
-	Notes         string          `json:"notes,omitempty"`
-	V2Expectation json.RawMessage `json:"v2_expectation"`
+	Then          []Step         `json:"then,omitempty"`
+	Notes         string         `json:"notes,omitempty"`
+	V2Expectation *V2Expectation `json:"v2_expectation"`
 
 	method string
+}
+
+// V2Expectation is an independently recorded executable exchange. Kind describes
+// semantic equivalence or an intentional contract difference, never an inferred URL rewrite.
+type V2Expectation struct {
+	Kind        string     `json:"kind"`
+	Summary     string     `json:"summary,omitempty"`
+	RecordedIn  string     `json:"recorded_in"`
+	OperationID string     `json:"operation_id"`
+	Method      string     `json:"method"`
+	Request     Request    `json:"request"`
+	Principal   *Principal `json:"principal,omitempty"`
+	Expect      Expect     `json:"expect"`
 }
 
 // Step is one follow-up exchange of a scenario's then list. It names its
@@ -313,6 +326,11 @@ func (c *Catalog) check() []string {
 		rowsSeen[row.Key()] = true
 		covered := map[Category]bool{}
 		for _, s := range row.Scenarios {
+			if s.V2Expectation != nil {
+				if err := ValidatePairing(s.V2Expectation); err != nil {
+					problems = append(problems, fmt.Sprintf("%s: scenario %s: %v", c.File, s.ID, err))
+				}
+			}
 			if idsSeen[s.ID] {
 				problems = append(problems, fmt.Sprintf("%s: duplicate scenario id %q", c.File, s.ID))
 			}

@@ -418,3 +418,8 @@ include Makefile.local
 else ifneq ($(wildcard $(SHARED_MAKEFILE_LOCAL)),)
 include $(SHARED_MAKEFILE_LOCAL)
 endif
+
+# Required paired profile-list acceptance owns a dedicated, empty scenario DB.
+.PHONY: test-scenario-profile-pairing
+test-scenario-profile-pairing:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredProfileListAcceptance$$' ./internal/scenariocatalog/executor
