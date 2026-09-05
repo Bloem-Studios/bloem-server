@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/imagesize"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -69,6 +70,17 @@ type LibraryCollectionTabEntryView = libraryTabCollection
 // LibraryCollectionTabUngroupedView is the tab's ungrouped collections.
 type LibraryCollectionTabUngroupedView = libraryTabUngrouped
 
+// HomeLayout answers the home page's section layout for the profile on the
+// context.
+func (h *SectionHandler) HomeLayout(ctx context.Context) (SectionLayoutView, error) {
+	resolved, _, _, _, err := h.loadResolvedHomeSections(ctx)
+	if err != nil {
+		return SectionLayoutView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to load sections")
+	}
+	resolved = h.maybeInjectNextUp(ctx, resolved, apimw.GetUserID(ctx))
+	return sectionLayoutOf(resolved), nil
+}
+
 // requireViewableLibrary is the gate every profile-scoped section read
 // shares: the viewer scope must admit the library and, when a folder
 // repository is wired, the library must exist and be enabled. Every refusal
@@ -112,6 +124,10 @@ func (h *SectionHandler) LibraryLayout(ctx context.Context, libraryID int) (Sect
 	if err != nil {
 		return SectionLayoutView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to load sections")
 	}
+	return sectionLayoutOf(resolved), nil
+}
+
+func sectionLayoutOf(resolved []sections.ResolvedSection) SectionLayoutView {
 	resp := SectionLayoutView{Sections: make([]resolvedSectionLayoutResponse, 0, len(resolved))}
 	for _, s := range resolved {
 		resp.Sections = append(resp.Sections, resolvedSectionLayoutResponse{
@@ -124,7 +140,7 @@ func (h *SectionHandler) LibraryLayout(ctx context.Context, libraryID int) (Sect
 			Customized:  s.Customized,
 		})
 	}
-	return resp, nil
+	return resp
 }
 
 // LibrarySections answers every section of the library with its items.

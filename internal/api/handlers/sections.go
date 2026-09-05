@@ -529,30 +529,11 @@ type homeSectionItemsResponse struct {
 
 // HandleHomeLayout handles GET /home/layout
 func (h *SectionHandler) HandleHomeLayout(w http.ResponseWriter, r *http.Request) {
-	resolved, _, _, _, err := h.loadResolvedHomeSections(r)
+	resp, err := h.HomeLayout(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load sections")
+		writeAPIError(w, err)
 		return
 	}
-
-	userID := apimw.GetUserID(r.Context())
-	resolved = h.maybeInjectNextUp(r.Context(), resolved, userID)
-
-	resp := homeLayoutResponse{
-		Sections: make([]resolvedSectionLayoutResponse, 0, len(resolved)),
-	}
-	for _, s := range resolved {
-		resp.Sections = append(resp.Sections, resolvedSectionLayoutResponse{
-			ID:          s.ID,
-			SectionType: string(s.SectionType),
-			Title:       s.Title,
-			Featured:    s.Featured,
-			ItemLimit:   s.ItemLimit,
-			IsCustom:    s.IsCustom,
-			Customized:  s.Customized,
-		})
-	}
-
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -578,18 +559,12 @@ func (h *SectionHandler) HandleHomeSections(w http.ResponseWriter, r *http.Reque
 	if !rejectInvalidImageSize(w, r) {
 		return
 	}
-	resolved, libraryIDs, accessFilter, profileID, err := h.loadResolvedHomeSections(r)
+	resp, err := h.HomeSections(r.Context(), sectionViewerFromRequest(r))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load sections")
+		writeAPIError(w, err)
 		return
 	}
-
-	userID := apimw.GetUserID(r.Context())
-	resolved = h.maybeInjectNextUp(r.Context(), resolved, userID)
-	withItems := h.fetcher.FetchAll(r.Context(), resolved, nil, libraryIDs, userID, profileID, accessFilter)
-	withItems = applyDiversityFilter(withItems)
-	withItems = dropEmptySeasonalSections(withItems)
-	writeJSON(w, http.StatusOK, h.buildSectionsResponse(r, withItems, nil))
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleHomeSectionItems handles GET /home/sections/{id}/items
@@ -603,50 +578,12 @@ func (h *SectionHandler) HandleHomeSectionItems(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	resolved, libraryIDs, accessFilter, profileID, err := h.loadResolvedHomeSections(r)
+	section, err := h.HomeSectionItems(r.Context(), sectionID, sectionViewerFromRequest(r))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load sections")
+		writeAPIError(w, err)
 		return
 	}
-	userID := apimw.GetUserID(r.Context())
-	resolved = h.maybeInjectNextUp(r.Context(), resolved, userID)
-
-	for _, s := range resolved {
-		if s.ID != sectionID {
-			continue
-		}
-
-		withItems, fetchErr := h.fetcher.FetchOne(r.Context(), s, nil, libraryIDs, userID, profileID, accessFilter)
-		if fetchErr != nil {
-			slog.ErrorContext(r.Context(), "fetching section items", "component", "api", "section_id", s.ID, "type", s.SectionType, "error", fetchErr)
-			withItems = sections.SectionWithItems{
-				ResolvedSection: s,
-				Items:           []*models.MediaItem{},
-			}
-		}
-
-		resp := h.buildSectionsResponse(r, []sections.SectionWithItems{withItems}, nil)
-		if len(resp.Sections) == 0 {
-			resp.Sections = append(resp.Sections, resolvedSectionResponse{
-				ID:          withItems.ID,
-				SectionType: string(withItems.SectionType),
-				Title:       withItems.Title,
-				Featured:    withItems.Featured,
-				ItemLimit:   withItems.ItemLimit,
-				TotalCount:  withItems.TotalCount,
-				IsCustom:    withItems.IsCustom,
-				Customized:  withItems.Customized,
-				Items:       []sectionItemResponse{},
-			})
-		}
-
-		writeJSON(w, http.StatusOK, homeSectionItemsResponse{
-			Section: resp.Sections[0],
-		})
-		return
-	}
-
-	writeError(w, http.StatusNotFound, "not_found", "Section not found")
+	writeJSON(w, http.StatusOK, homeSectionItemsResponse{Section: section})
 }
 
 // HandleLibrarySections handles GET /library/{id}/sections
@@ -695,18 +632,18 @@ func (h *SectionHandler) HandleLibrarySectionItems(w http.ResponseWriter, r *htt
 	writeJSON(w, http.StatusOK, homeSectionItemsResponse{Section: section})
 }
 
-func (h *SectionHandler) loadResolvedHomeSections(r *http.Request) ([]sections.ResolvedSection, []int, catalog.AccessFilter, string, error) {
-	profileID := apimw.GetProfileID(r.Context())
-	userID := apimw.GetUserID(r.Context())
+func (h *SectionHandler) loadResolvedHomeSections(ctx context.Context) ([]sections.ResolvedSection, []int, catalog.AccessFilter, string, error) {
+	profileID := apimw.GetProfileID(ctx)
+	userID := apimw.GetUserID(ctx)
 
-	adminSections, err := h.repo.ListByScope(r.Context(), "home", nil)
+	adminSections, err := h.repo.ListByScope(ctx, "home", nil)
 	if err != nil {
 		return nil, nil, catalog.AccessFilter{}, profileID, err
 	}
 
 	// Fall back to default sections when none are admin-configured.
 	if len(adminSections) == 0 {
-		adminSections, err = h.defaultHomeSections(r.Context())
+		adminSections, err = h.defaultHomeSections(ctx)
 		if err != nil {
 			return nil, nil, catalog.AccessFilter{}, profileID, err
 		}
@@ -714,9 +651,9 @@ func (h *SectionHandler) loadResolvedHomeSections(r *http.Request) ([]sections.R
 
 	var overrides []sections.ProfileSectionOverride
 	if h.StoreProvider != nil && profileID != "" {
-		store, storeErr := h.StoreProvider.ForUser(r.Context(), userID)
+		store, storeErr := h.StoreProvider.ForUser(ctx, userID)
 		if storeErr == nil {
-			userOverrides, _ := store.ListSectionOverrides(r.Context(), profileID, "home", "")
+			userOverrides, _ := store.ListSectionOverrides(ctx, profileID, "home", "")
 			overrides = toSectionOverrides(userOverrides)
 		}
 	}
@@ -725,7 +662,7 @@ func (h *SectionHandler) loadResolvedHomeSections(r *http.Request) ([]sections.R
 
 	var libraryIDs []int
 	accessFilter := catalog.AccessFilter{}
-	if scope, ok := access.GetScope(r.Context()); ok {
+	if scope, ok := access.GetScope(ctx); ok {
 		libraryIDs = scope.AllowedLibraryIDs
 		accessFilter.AllowedLibraryIDs = scope.AllowedLibraryIDs
 		accessFilter.DisabledLibraryIDs = scope.DisabledLibraryIDs
@@ -734,15 +671,15 @@ func (h *SectionHandler) loadResolvedHomeSections(r *http.Request) ([]sections.R
 		// Fail closed: an unresolved policy must not serve unrestricted
 		// sections, so a lookup failure becomes an error for the caller
 		// rather than a silently permissive filter.
-		user, userErr := h.UserRepo.GetByID(r.Context(), userID)
+		user, userErr := h.UserRepo.GetByID(ctx, userID)
 		if userErr != nil {
-			slog.ErrorContext(r.Context(), "looking up user for section access", "component", "api", "error", userErr)
+			slog.ErrorContext(ctx, "looking up user for section access", "component", "api", "error", userErr)
 			return nil, nil, catalog.AccessFilter{}, profileID, userErr
 		}
 		if user != nil {
-			effective, policyErr := access.EffectivePolicyForUser(r.Context(), user, h.AccessGroups)
+			effective, policyErr := access.EffectivePolicyForUser(ctx, user, h.AccessGroups)
 			if policyErr != nil {
-				slog.ErrorContext(r.Context(), "resolving user policy for section access", "component", "api", "error", policyErr)
+				slog.ErrorContext(ctx, "resolving user policy for section access", "component", "api", "error", policyErr)
 				return nil, nil, catalog.AccessFilter{}, profileID, policyErr
 			}
 			if effective.LibraryIDs != nil {

@@ -494,6 +494,7 @@ func registerAll(reg *Registry) {
 	registerAccount(reg)
 	registerAdminUsers(reg)
 	registerPreferences(reg)
+	registerHome(reg)
 	registerLibraries(reg)
 	registerLibraryViews(reg)
 	registerProfileSections(reg)

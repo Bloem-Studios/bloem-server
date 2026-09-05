@@ -636,6 +636,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var seasonRepo *catalog.SeasonRepository
 	var detailSvc *catalog.DetailService
 	var calendarRepo *catalog.CalendarRepository
+	var calendarHandler *handlers.CalendarHandler
 	var catalogSearchService *catalog.CatalogSearchService
 	var webhookSyncHandler *handlers.WebhookSyncHandler
 	var requestHandler *handlers.RequestsHandler
@@ -1952,6 +1953,19 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if libraryCollectionHandler != nil {
 		v2deps.LibraryCollections = libraryCollectionHandler
 	}
+	if calendarRepo != nil {
+		calendarPopular := recommendations.NewRepo(deps.DB)
+		calendarTrending := sections.NewTrendingSnapshotRepository(deps.DB)
+		calendarHandler = handlers.NewCalendarHandler(calendarRepo, detailSvc, calendarPopular, calendarTrending)
+		v2deps.Calendar = calendarHandler
+	}
+	if homeDismissalHandler != nil {
+		v2deps.HomeDismissals = homeDismissalHandler
+	}
+	if sectionHandler != nil {
+		v2deps.HomeSections = sectionHandler
+	}
+	v2deps.Recipes = &handlers.RecipeHandler{}
 	if sectionHandler != nil {
 		v2deps.ProfileSections = sectionHandler
 	}
@@ -2473,9 +2487,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 				}
 
 				if calendarRepo != nil {
-					calendarPopular := recommendations.NewRepo(deps.DB)
-					calendarTrending := sections.NewTrendingSnapshotRepository(deps.DB)
-					calendarHandler := handlers.NewCalendarHandler(calendarRepo, detailSvc, calendarPopular, calendarTrending)
 					r.With(apimw.RequireProfile).Get("/calendar", calendarHandler.HandleGetCalendar)
 				}
 

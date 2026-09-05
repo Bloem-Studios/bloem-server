@@ -3,7 +3,7 @@
   "title": "Validation failed",
   "status": 422,
   "detail": "The collection's query definition could not be run; see errors.",
-  "instance": "urn:silo:request:000000000000000000000056",
+  "instance": "urn:silo:request:00000000000000000000006a",
   "errors": [
     {
       "location": "path.collection_id",

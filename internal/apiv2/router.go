@@ -130,6 +130,16 @@ type Dependencies struct {
 	// LibraryCollections answers a library's collections to viewers
 	// (*handlers.LibraryCollectionHandler).
 	LibraryCollections LibraryCollectionService
+	// Calendar answers the airing calendar (*handlers.CalendarHandler).
+	Calendar CalendarService
+	// HomeDismissals records and clears home-card dismissals
+	// (*handlers.HomeDismissalHandler).
+	HomeDismissals HomeDismissalService
+	// HomeSections answers the home page to viewers
+	// (*handlers.SectionHandler).
+	HomeSections HomeSectionService
+	// Recipes answers the section recipe gallery (*handlers.RecipeHandler).
+	Recipes RecipeService
 	// ProfileSections reads and writes a profile's home-row overrides
 	// (*handlers.SectionHandler).
 	ProfileSections ProfileSectionService
@@ -616,6 +626,33 @@ type LibraryCollectionService interface {
 	LibraryCollectionsTab(ctx context.Context, libraryID, userID int, profileID string) (handlers.LibraryCollectionTabView, error)
 	LibraryUserCollections(ctx context.Context, libraryID, userID int, profileID string) ([]usercollections.ServerVisibleCollection, error)
 	LibraryCollectionItems(ctx context.Context, libraryID int, collectionID string, access mediacatalog.AccessFilter, page handlers.CollectionItemPage) ([]handlers.CollectionItemView, bool, error)
+}
+
+// CalendarService is the slice of *handlers.CalendarHandler getCalendar uses.
+type CalendarService interface {
+	Calendar(ctx context.Context, q handlers.CalendarQuery, access mediacatalog.AccessFilter) (handlers.CalendarView, error)
+}
+
+// HomeDismissalService is the slice of *handlers.HomeDismissalHandler the
+// dismissal operations use.
+type HomeDismissalService interface {
+	DismissHomeItem(ctx context.Context, cmd handlers.HomeDismissalCommand) error
+	UndismissHomeItem(ctx context.Context, userID int, profileID, surface, itemID string) error
+}
+
+// HomeSectionService is the slice of *handlers.SectionHandler the
+// viewer-facing home reads use.
+type HomeSectionService interface {
+	HomeLayout(ctx context.Context) (handlers.SectionLayoutView, error)
+	HomeSections(ctx context.Context, viewer handlers.SectionViewer) (handlers.SectionsView, error)
+	HomeSectionItems(ctx context.Context, sectionID string, viewer handlers.SectionViewer) (handlers.SectionView, error)
+}
+
+// RecipeService is the slice of *handlers.RecipeHandler the section recipe
+// gallery reads use.
+type RecipeService interface {
+	Recipes() []handlers.RecipeCategoryView
+	RecipeCandidates(ctx context.Context, recipeType string) ([]handlers.Candidate, error)
 }
 
 // unavailable is the fail-closed answer of an operation whose service is not
