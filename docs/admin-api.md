@@ -1263,3 +1263,50 @@ levels at once (`?level=error,warn`). Values are trimmed, lowercased and
 de-duplicated; a single value behaves exactly as before. The same parsing
 applies to the log-stream WebSocket, so a stream filtered on two levels
 delivers both.
+
+## API v2 history imports
+
+The administrative history-import surface uses `/api/v2/admin/history-import-sources`
+for source configuration and `/api/v2/admin/history-imports` for mappings, credentials,
+and runs. All operations require an acting administrator and reject demo accounts.
+`GET /api/v2/admin/history-imports/capabilities` reports availability, guarded
+configuration, durable administrative runs, and the 200-mapping bulk limit.
+
+Read a source or mapping by ID before editing it. The response contains its canonical
+configuration and a strong `ETag`. Send that exact tag in `If-Match` on source,
+mapping, or token updates and deletes. Missing preconditions return 428; stale
+versions return 412 with the current tag. Reload explicitly before retrying an edit.
+Token replacement advances the source version without exposing the saved token.
+Legacy credential-bearing source URLs are redacted and marked `needs_reconfiguration`;
+review and save a safe address before using the source again.
+Changing a credential-bearing source address or system ID also requires a replacement
+token or an explicit empty-string clear. Source and mapping deletes, including token
+clear, return 204. Mapping labels and import timestamps are not canonical editor fields.
+
+Lists return `items` and `page`; follow the opaque `next_cursor`. Limits default to 50
+and cannot exceed 200. Mapping lists require `source_id`; run lists optionally filter
+by it. Source and mapping configuration sets and upstream user discovery are read as
+sets and exposed in bounded ID-ordered pages. Run history uses database keyset paging.
+Cursors are bound to the acting account, profile, operation, and filter. IDs are strings
+and run timestamps are UTC instants.
+
+Starting a mapping run returns 202 only after durable dispatch intent is stored. Poll
+its `Location`, respecting `Retry-After`, until `terminal` is true. Polling supports
+`ETag` and `If-None-Match`; pending cancellation is reported as `canceling`. Bulk start returns
+200 with an ordered outcome for each mapping (`accepted`, `active`, or `failed`), run
+locations when available, and counts for each outcome. A source with more than 200
+mappings is rejected before any run admission. Bulk work is partially successful;
+it is not an atomic transaction across mappings. Mutations are not automatically
+retryable after an uncertain response.
+
+Cancellation records intent. A queued run can become cancelled immediately; a running
+worker acknowledges cancellation at its next boundary. Pending cancellation returns
+202, an already cancelled run returns 200, and completed or failed runs return
+409 `job_not_cancelable`. Already committed external
+history effects are not undone. Editing a source or mapping invalidates previously
+captured execution configuration rather than retargeting its run. Stale executions
+fail without automatic replay. See [History import execution](architecture/history-import-execution.md)
+for the persistence and cancellation boundaries, including the separate personal-run
+queue limitation. Run monitor errors and warnings use safe summaries; stored source
+credentials are never returned. The explicit Plex login exchange returns its newly
+issued token so the administrator can assign it to a source.

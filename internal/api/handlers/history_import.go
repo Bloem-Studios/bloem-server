@@ -23,6 +23,8 @@ func NewHistoryImportHandler(service *historyimport.Service) *HistoryImportHandl
 	return &HistoryImportHandler{service: service}
 }
 
+func (h *HistoryImportHandler) Service() *historyimport.Service { return h.service }
+
 // ListImportSources is the seam v1 GET /history-imports/sources and v2
 // listHistoryImportSources share: the enabled sources a user may import from.
 func (h *HistoryImportHandler) ListImportSources(ctx context.Context) ([]historyimport.Source, error) {

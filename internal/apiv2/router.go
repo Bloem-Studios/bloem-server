@@ -166,11 +166,12 @@ type Dependencies struct {
 	SectionFlags SectionFlagService
 	// Requests serves media requests and the discovery surface
 	// (*requests.Service, the value *handlers.RequestsHandler wraps).
-	AdminRequests    handlers.RequestService
-	Requests         MediaRequestService
-	RequestLifecycle RequestLifecycleService
-	WatchProviders   WatchProviderService
-	HistoryImports   HistoryImportService
+	AdminRequests       handlers.RequestService
+	Requests            MediaRequestService
+	RequestLifecycle    RequestLifecycleService
+	WatchProviders      WatchProviderService
+	HistoryImports      HistoryImportService
+	AdminHistoryImports AdminHistoryImportService
 	// PersonalCollections manages a profile's own collections and groups
 	// (*handlers.CollectionHandler).
 	PersonalCollections PersonalCollectionService

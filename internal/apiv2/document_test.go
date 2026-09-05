@@ -242,6 +242,10 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range []string{"listWebhookConnections", "createWebhookConnection", "updateWebhookConnection", "deleteWebhookConnection", "rotateWebhookConnection", "getWebhookMappings", "updateWebhookMappings", "listWebhookEvents"} {
 		profileToken[id] = true
 	}
+	for _, id := range []string{"listAdminHistoryImportSources", "createAdminHistoryImportSource", "deleteAdminHistoryImportSource", "getAdminHistoryImportSource", "updateAdminHistoryImportSource", "getAdminHistoryImportCapabilities", "listAdminHistoryImportMappings", "createAdminHistoryImportMapping", "deleteAdminHistoryImportMapping", "getAdminHistoryImportMapping", "updateAdminHistoryImportMapping", "createAdminHistoryImportRun", "loginAdminHistoryImportPlex", "listAdminHistoryImportRuns", "getAdminHistoryImportRun", "cancelAdminHistoryImportRun", "bulkCreateAdminHistoryImportRuns", "clearAdminHistoryImportToken", "setAdminHistoryImportToken", "listAdminHistoryImportExternalUsers"} {
+		profileToken[id] = true
+	}
+
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {

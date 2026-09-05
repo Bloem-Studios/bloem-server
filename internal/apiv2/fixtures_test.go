@@ -1181,6 +1181,7 @@ func fixtureCases() []fixtureCase {
 	}
 	cases = append(cases, requestLifecycleFixtureCases()...)
 	cases = append(cases, adminRequestFixtureCases()...)
+	cases = append(cases, adminHistoryImportFixtureCases()...)
 	return append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
 }
 
@@ -1224,6 +1225,7 @@ func fixtureDeps() Dependencies {
 	deps.Recommendations = &fakeRecommendations{seedCandidates: 1, cardsHasMore: true}
 	deps.Requests = fixtureRequests()
 	deps.AdminRequests = fixtureAdminRequests()
+	deps.AdminHistoryImports = fixtureAdminHistoryImports()
 	deps.HistoryImports = fixtureHistoryImports()
 	deps.WebhookSync = &fakeWebhookManagement{}
 	deps.RequestLifecycle = &fakeLifecycle{}

@@ -2012,6 +2012,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if historyImportHandler != nil {
 		v2deps.HistoryImports = historyImportHandler
+		v2deps.AdminHistoryImports = historyImportHandler.Service()
 	}
 	v2deps.WatchProviders = deps.WatchProviderService
 	if requestHandler != nil {

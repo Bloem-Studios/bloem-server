@@ -5773,9 +5773,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/history-import-sources",
+        "operation_id": "listAdminHistoryImportSources"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -5835,11 +5835,12 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-import-sources",
+        "operation_id": "createAdminHistoryImportSource"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable"
     },
     {
       "listener": "api",
@@ -5895,11 +5896,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/history-import-sources/{id}",
+        "operation_id": "deleteAdminHistoryImportSource"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -5957,11 +5960,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/history-import-sources/{id}",
+        "operation_id": "updateAdminHistoryImportSource"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -6019,9 +6024,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/history-imports/mappings",
+        "operation_id": "listAdminHistoryImportMappings"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -6081,11 +6086,12 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-imports/mappings",
+        "operation_id": "createAdminHistoryImportMapping"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable"
     },
     {
       "listener": "api",
@@ -6141,11 +6147,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/history-imports/mappings/{id}",
+        "operation_id": "deleteAdminHistoryImportMapping"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -6203,11 +6211,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/history-imports/mappings/{id}",
+        "operation_id": "updateAdminHistoryImportMapping"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -6265,11 +6275,12 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-imports/mappings/{id}/run",
+        "operation_id": "createAdminHistoryImportRun"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable"
     },
     {
       "listener": "api",
@@ -6327,11 +6338,12 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-imports/plex/login",
+        "operation_id": "loginAdminHistoryImportPlex"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable"
     },
     {
       "listener": "api",
@@ -6389,9 +6401,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/history-imports/runs",
+        "operation_id": "listAdminHistoryImportRuns"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -6451,9 +6463,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/history-imports/runs/{id}",
+        "operation_id": "getAdminHistoryImportRun"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -6511,11 +6523,12 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-imports/runs/{id}/cancel",
+        "operation_id": "cancelAdminHistoryImportRun"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable"
     },
     {
       "listener": "api",
@@ -6573,11 +6586,12 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-imports/sources/{id}/bulk-run",
+        "operation_id": "bulkCreateAdminHistoryImportRuns"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable"
     },
     {
       "listener": "api",
@@ -6633,11 +6647,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/history-imports/sources/{id}/token",
+        "operation_id": "clearAdminHistoryImportToken"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -6693,11 +6709,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/history-imports/sources/{id}/token",
+        "operation_id": "setAdminHistoryImportToken"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -6755,9 +6773,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/history-imports/sources/{id}/users",
+        "operation_id": "listAdminHistoryImportExternalUsers"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },

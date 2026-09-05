@@ -511,6 +511,7 @@ func registerAll(reg *Registry) {
 	registerAdminRequests(reg)
 	registerRequestLifecycle(reg, reg.deps.RequestLifecycle, reg.deps.WatchProviders)
 	registerHistoryImports(reg)
+	registerAdminHistoryImports(reg)
 	registerWebhookSync(reg)
 	registerSystem(reg)
 	registerWatchlist(reg)

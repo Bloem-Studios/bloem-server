@@ -396,6 +396,8 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST " + Prefix + "/collections/{id}/sync",
 	}
 
+	observed = append(observed, "GET /api/v2/admin/history-import-sources", "POST /api/v2/admin/history-import-sources", "DELETE /api/v2/admin/history-import-sources/{id}", "GET /api/v2/admin/history-import-sources/{id}", "PUT /api/v2/admin/history-import-sources/{id}", "GET /api/v2/admin/history-imports/capabilities", "GET /api/v2/admin/history-imports/mappings", "POST /api/v2/admin/history-imports/mappings", "DELETE /api/v2/admin/history-imports/mappings/{id}", "GET /api/v2/admin/history-imports/mappings/{id}", "PUT /api/v2/admin/history-imports/mappings/{id}", "POST /api/v2/admin/history-imports/mappings/{id}/run", "POST /api/v2/admin/history-imports/plex/login", "GET /api/v2/admin/history-imports/runs", "GET /api/v2/admin/history-imports/runs/{id}", "POST /api/v2/admin/history-imports/runs/{id}/cancel", "POST /api/v2/admin/history-imports/sources/{id}/bulk-run", "DELETE /api/v2/admin/history-imports/sources/{id}/token", "PUT /api/v2/admin/history-imports/sources/{id}/token", "GET /api/v2/admin/history-imports/sources/{id}/users")
+
 	unaccounted, unserved, err := reconcileSpec(observed, contracts.OpenAPI, nil)
 	if err != nil || len(unaccounted) != 0 || len(unserved) != 0 {
 		t.Fatalf("baseline: %v %v %v", unaccounted, unserved, err)

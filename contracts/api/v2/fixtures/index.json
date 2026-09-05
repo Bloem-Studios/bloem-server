@@ -83,6 +83,116 @@
       "body_file": "add_to_watchlist_profile_header_required.json"
     },
     {
+      "name": "admin_history_mapping_canonical",
+      "operation_id": "getAdminHistoryImportMapping",
+      "scenario": "Canonical mapping configuration excludes enriched labels and import bookkeeping.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/history-imports/mappings/2",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"ca8bd025e4a68f72eeabc8d6.52w4obzprrwu\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminHistoryImportMapping",
+      "body_file": "admin_history_mapping_canonical.json"
+    },
+    {
+      "name": "admin_history_run_accepted",
+      "operation_id": "createAdminHistoryImportRun",
+      "scenario": "Durable administrative run acceptance identifies its canonical monitor and polling delay.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/history-imports/mappings/2/run",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "Location": "/api/v2/admin/history-imports/runs/run-1",
+        "Retry-After": "2"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminHistoryImportRun",
+      "body_file": "admin_history_run_accepted.json"
+    },
+    {
+      "name": "admin_history_source_canonical",
+      "operation_id": "getAdminHistoryImportSource",
+      "scenario": "Canonical source configuration with its strong editor tag and no saved credential.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/history-import-sources/1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"bbeaae03a287882fdb2eea77.36rwihnilksta\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminHistoryImportSource",
+      "body_file": "admin_history_source_canonical.json"
+    },
+    {
+      "name": "admin_history_source_precondition_required",
+      "operation_id": "updateAdminHistoryImportSource",
+      "scenario": "An editor must supply its captured source tag before an update.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/admin/history-import-sources/1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        },
+        "body": "{\"name\":\"Edited\"}"
+      },
+      "expected_status": 428,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_history_source_precondition_required.json"
+    },
+    {
+      "name": "admin_history_token_cleared",
+      "operation_id": "clearAdminHistoryImportToken",
+      "scenario": "Clearing a source token is guarded and returns no body or validator.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/admin/history-imports/sources/1/token",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "*",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {
+        "Cache-Control": "no-store"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
       "name": "admin_request_integration_created",
       "operation_id": "createRequestIntegration",
       "scenario": "Acting administrator reads or configures requests with synthetic integration state.",
