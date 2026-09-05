@@ -84,16 +84,19 @@ function formatCollectionOptionLabel(
 }
 
 function LibraryPicker({
+  disabled,
   libraries,
   value,
   onChange,
 }: {
+  disabled: boolean;
   libraries: Library[];
   value: number | null;
   onChange: (libraryId: number) => void;
 }) {
   return (
     <Select
+      disabled={disabled}
       value={value ? String(value) : undefined}
       onValueChange={(next) => onChange(Number(next))}
     >
@@ -323,6 +326,8 @@ export default function AdminSections() {
   }
 
   function handleScopeChange(nextScope: string) {
+    if (reorderMutation.isPending || nextScope === scope) return;
+    setOrderedSections([]);
     snapshotRequest.current++;
     dragSnapshot.current = null;
     setActiveId(null);
@@ -332,6 +337,8 @@ export default function AdminSections() {
   }
 
   function handleLibraryChange(libraryId: number) {
+    if (reorderMutation.isPending || libraryId === selectedLibraryId) return;
+    setOrderedSections([]);
     snapshotRequest.current++;
     dragSnapshot.current = null;
     setActiveId(null);
@@ -970,8 +977,12 @@ export default function AdminSections() {
       {snapshotLoading && <p role="status">Loading current section details…</p>}
       <Tabs value={scope} onValueChange={handleScopeChange}>
         <TabsList>
-          <TabsTrigger value="home">Home</TabsTrigger>
-          <TabsTrigger value="library">Library</TabsTrigger>
+          <TabsTrigger value="home" disabled={reorderMutation.isPending}>
+            Home
+          </TabsTrigger>
+          <TabsTrigger value="library" disabled={reorderMutation.isPending}>
+            Library
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -980,6 +991,7 @@ export default function AdminSections() {
           <Label>Library</Label>
           {librariesList.length > 0 ? (
             <LibraryPicker
+              disabled={reorderMutation.isPending}
               libraries={librariesList}
               value={selectedLibraryId}
               onChange={handleLibraryChange}

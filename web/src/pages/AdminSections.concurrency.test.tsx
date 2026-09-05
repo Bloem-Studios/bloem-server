@@ -160,6 +160,7 @@ let resetSupported: boolean;
 let failID: string | null;
 let writes: Array<{ operation: string; args: Args }>;
 type Args = {
+  query?: { scope?: string; library_id?: string };
   path?: { id: string };
   headers?: Record<string, string>;
   body?: Record<string, unknown>;
@@ -389,6 +390,58 @@ describe("admin section captured snapshots", () => {
       "row-b",
       "row-a",
     ]);
+  });
+  it("keeps scope controls fixed during a pending reorder and adopts the next scope after rejection", async () => {
+    await setup();
+    const implementation = mocks.request.getMockImplementation()!;
+    let fail!: () => void;
+    mocks.request.mockImplementation((operation: string, args: Args = {}) => {
+      if (operation === "PUT /api/v2/admin/sections/order")
+        return new Promise((_resolve, reject) => {
+          fail = () => reject(v2Problem(412, "precondition_failed", "Stale home order"));
+        });
+      if (args.query?.scope === "library") {
+        args.onResponse?.(new Response(null, { headers: { ETag: '"library-1"' } }));
+        if (operation === "GET /api/v2/admin/sections/order")
+          return { scope: "library", library_id: "7", ordered_ids: ["library-row"] };
+        if (operation === "GET /api/v2/admin/sections")
+          return {
+            items: [
+              {
+                ...initial("library-row"),
+                scope: "library",
+                library_id: "7",
+                title: "Library section",
+              },
+            ],
+          };
+      }
+      return implementation(operation, args);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Start drag" }));
+    fireEvent.click(screen.getByRole("button", { name: "End drag" }));
+    await waitFor(() => expect(fail).toBeTypeOf("function"));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Library" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    expect(screen.getByRole("tab", { name: "Home" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Library" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Home" })).toHaveAttribute("aria-selected", "true");
+    await act(async () => {
+      fail();
+    });
+    await screen.findByRole("button", { name: "Reload order" });
+    expect(screen.getByRole("tab", { name: "Library" })).toBeEnabled();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Library" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    expect(screen.queryByRole("button", { name: "Edit a" })).not.toBeInTheDocument();
+    await screen.findByRole("button", { name: "Edit library-row" });
+    expect(screen.queryByRole("button", { name: "Edit a" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete a" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reload order" })).not.toBeInTheDocument();
   });
   it("shows a failed initial read instead of an empty editable scope", async () => {
     const implementation = mocks.request.getMockImplementation()!;
