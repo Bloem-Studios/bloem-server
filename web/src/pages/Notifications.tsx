@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { Bell, BellOff, Check, CheckCheck, Loader2, Settings2 } from "lucide-react";
+import { Bell, BellOff, Check, CheckCheck, Loader2, Megaphone, Settings2 } from "lucide-react";
 import type { AppNotification } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -44,7 +44,12 @@ function formatNotificationTime(value: string): string {
   return date.toLocaleDateString(preferredDateLocale(), { month: "short", day: "numeric" });
 }
 
+function isAnnouncement(notification: AppNotification) {
+  return notification.type === "system.announcement" || notification.type === "system.alert";
+}
+
 function notificationTitle(notification: AppNotification): string {
+  if (isAnnouncement(notification)) return notification.title || "Server announcement";
   if (notification.type === "episode.available") {
     return notification.series_title || "New episode available";
   }
@@ -60,6 +65,7 @@ function notificationTitle(notification: AppNotification): string {
 }
 
 function notificationDescription(notification: AppNotification): string {
+  if (isAnnouncement(notification)) return notification.body || "";
   if (notification.type === "episode.available") {
     const code = formatEpisodeCode(notification);
     return (
@@ -133,7 +139,10 @@ function NotificationRow({
             : undefined
         }
       >
-        {notification.poster_url && (
+        {isAnnouncement(notification) && (
+          <Megaphone className="m-auto mt-5 h-5 w-5" aria-hidden="true" />
+        )}
+        {!isAnnouncement(notification) && notification.poster_url && (
           <img
             src={notification.poster_url}
             alt=""
@@ -151,16 +160,29 @@ function NotificationRow({
               aria-label="Unread"
             />
           )}
-          <span className={`truncate text-sm ${unread ? "font-semibold" : "font-medium"}`}>
+          <span
+            className={`${isAnnouncement(notification) ? "break-words" : "truncate"} text-sm ${unread ? "font-semibold" : "font-medium"}`}
+          >
             {notificationTitle(notification)}
           </span>
           <span className="text-muted-foreground ml-auto shrink-0 text-xs">
             {formatNotificationTime(notification.created_at)}
           </span>
         </div>
-        <div className="text-muted-foreground mt-0.5 truncate text-sm">
+        <div
+          className={`text-muted-foreground mt-0.5 text-sm ${isAnnouncement(notification) ? "break-words whitespace-pre-wrap" : "truncate"}`}
+        >
           {notificationDescription(notification)}
         </div>
+        {isAnnouncement(notification) && (
+          <p className="mt-2 text-xs font-medium">
+            {notification.severity === "critical"
+              ? "Critical"
+              : notification.severity === "warning"
+                ? "Warning"
+                : "Information"}
+          </p>
+        )}
         {reasonLabels(notification).length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
             {reasonLabels(notification).map((label) => (
@@ -200,7 +222,8 @@ function NotificationRow({
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-2 bottom-2 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+          className="ml-auto flex h-7 w-7"
+          aria-label="Mark as read"
           title="Mark as read"
           onClick={(event) => {
             event.preventDefault();
@@ -365,8 +388,7 @@ export default function Notifications() {
             {statusFilter === "unread" ? "No unread notifications" : "No notifications yet"}
           </div>
           <div className="max-w-sm text-xs">
-            You will be notified here when new episodes arrive for series you favorite, watchlist,
-            or are watching.
+            Server announcements, request updates, and new episodes appear here.
           </div>
         </div>
       ) : (

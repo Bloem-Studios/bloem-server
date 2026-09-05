@@ -1,5 +1,6 @@
 import {
   Bell,
+  Megaphone,
   Captions,
   Database,
   Download,
@@ -429,6 +430,14 @@ export const ADMIN_SETTINGS_GROUPS: AdminSettingsSearchGroup[] = [
           "Allowance resets",
         ),
         icon: Sparkles,
+      },
+      {
+        id: "announcements",
+        label: "Announcements",
+        description: "Publish messages to viewers and withdraw earlier announcements.",
+        groups: ["New announcement", "Published announcements"],
+        keywords: ["engagement", "banner", "alert", "audience", "broadcast", "inbox"],
+        icon: Megaphone,
       },
       {
         id: "notifications",

@@ -2863,6 +2863,15 @@ export interface NotificationReasonFlags {
 }
 
 export interface AppNotification {
+  title?: string;
+  body?: string;
+  severity?: "info" | "warning" | "critical";
+  deeplink?: string;
+  image_url?: string;
+  dismissible?: boolean;
+  cta?: { label: string; url: string };
+  expires_at?: string;
+  dismissed_at?: string;
   id: string;
   type: string;
   profile_id: string;

@@ -26,6 +26,7 @@ import DownloadsSettings from "./DownloadsSettings";
 import ProvidersSettings from "./ProvidersSettings";
 import WatchSyncSettings from "./WatchSyncSettings";
 import AISettings from "./AISettings";
+import AnnouncementsAdminSettings from "./AnnouncementsAdminSettings";
 import NotificationsAdminSettings from "./NotificationsAdminSettings";
 import CompatibilityProxiesSettings from "./CompatibilityProxiesSettings";
 import InfrastructureSettings from "./InfrastructureSettings";
@@ -47,6 +48,7 @@ const SETTINGS_COMPONENTS: Record<string, ComponentType> = {
   "watch-sync": WatchSyncSettings,
   ai: AISettings,
   notifications: NotificationsAdminSettings,
+  announcements: AnnouncementsAdminSettings,
   compatibility: CompatibilityProxiesSettings,
   infrastructure: InfrastructureSettings,
 };
