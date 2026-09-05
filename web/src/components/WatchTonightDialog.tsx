@@ -167,7 +167,7 @@ export default function WatchTonightDialog({ open, onOpenChange }: WatchTonightD
             <CardStack
               cards={cards}
               hasMore={hasMore}
-              pagingLimited={data?.pages.at(-1)?.paging_limited}
+              pagingLimited={data?.pages[data.pages.length - 1]?.paging_limited}
               isFetching={isFetching || isFetchingNextPage}
               onNeedMore={handleNeedMore}
               onClose={handleClose}

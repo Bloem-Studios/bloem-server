@@ -194,7 +194,7 @@ describe("recommendation reads on the v2 contract", () => {
       await waitFor(() => expect(result.current.data?.pages).toHaveLength(page + 1));
     }
     expect(result.current.data?.pages.flatMap((page) => page.cards)).toHaveLength(200);
-    expect(result.current.data?.pages.at(-1)?.has_more).toBe(true);
+    expect(result.current.data?.pages[result.current.data.pages.length - 1]?.has_more).toBe(true);
     expect(result.current.hasNextPage).toBe(false);
     await result.current.fetchNextPage();
     expect(fetchMock).toHaveBeenCalledTimes(17);
