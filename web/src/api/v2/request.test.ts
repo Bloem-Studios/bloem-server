@@ -367,3 +367,102 @@ describe("v2 type separation", () => {
     expect(typeof typeOnly).toBe("function");
   });
 });
+
+describe("v2 response validators", () => {
+  it("retains ETag metadata after successful decoding", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      json(getCurrentUserOk, 200, { ...JSON_HEADERS, ETag: '"version-one"' }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const onResponse = vi.fn();
+    await v2("GET /api/v2/account/me", { onResponse });
+    expect(onResponse).toHaveBeenCalledTimes(1);
+    expect(onResponse.mock.calls[0]?.[0].headers.get("ETag")).toBe('"version-one"');
+  });
+
+  it("exposes the current validator on 412 without invoking success hooks or retrying", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      json(
+        {
+          ...validationFailedBody,
+          status: 412,
+          title: "Precondition failed",
+          type: "https://example.invalid/problems/precondition_failed",
+        },
+        412,
+        { ...PROBLEM_HEADERS, ETag: '"version-two"' },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const onResponse = vi.fn();
+    await expect(v2("GET /api/v2/account/me", { onResponse })).rejects.toMatchObject({
+      status: 412,
+      currentETag: '"version-two"',
+    });
+    expect(onResponse).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("v2 declared request headers", () => {
+  it("transmits the exact If-Match validator without rewriting it", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => json({ id: "collection" }));
+    vi.stubGlobal("fetch", fetchMock);
+    await v2("PATCH /api/v2/watch-providers/{provider}/connection", {
+      path: { provider: "trakt" },
+      body: { scrobble_enabled: true },
+      headers: { "If-Match": '"observed-revision"' },
+    });
+    expect(lastRequest(fetchMock).init.headers["If-Match"]).toBe('"observed-revision"');
+  });
+
+  it("rejects session authority overrides from untyped callers regardless of casing", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    for (const header of [
+      "authorization",
+      "AUTHORIZATION",
+      "x-PROFILE-id",
+      "X-profile-TOKEN",
+      "x-device-id",
+    ]) {
+      // Exercise JavaScript callers that do not pass through TypeScript.
+      const options = { headers: { [header]: "other-authority" } };
+      await expect(v2("GET /api/v2/account/me", options as never)).rejects.toThrow(
+        "Session header",
+      );
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("checks required validators and rejects undeclared headers at compile time", () => {
+    const runTypeChecks = () => false;
+    if (runTypeChecks()) {
+      // @ts-expect-error If-Match is required for guarded watch-provider updates.
+      void v2("PATCH /api/v2/watch-providers/{provider}/connection", {
+        path: { provider: "trakt" },
+        body: {},
+      });
+      void v2("PATCH /api/v2/watch-providers/{provider}/connection", {
+        path: { provider: "trakt" },
+        body: {},
+        // @ts-expect-error An empty header set cannot satisfy the required validator.
+        headers: {},
+      });
+      void v2("PATCH /api/v2/watch-providers/{provider}/connection", {
+        path: { provider: "trakt" },
+        body: {},
+        // @ts-expect-error Operation headers cannot carry session authority.
+        headers: { "If-Match": '"v1"', Authorization: "other" },
+      });
+      void v2("PATCH /api/v2/watch-providers/{provider}/connection", {
+        path: { provider: "trakt" },
+        body: {},
+        // @ts-expect-error Unknown headers are not part of the generated contract.
+        headers: { "If-Match": '"v1"', "X-Unknown": "x" },
+      });
+      // @ts-expect-error Operations without caller-owned headers expose no headers option.
+      void v2("GET /api/v2/account/me", { headers: { "X-Unknown": "x" } });
+    }
+  });
+});

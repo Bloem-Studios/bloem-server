@@ -27834,13 +27834,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/history-imports/emby-connect/login",
+        "operation_id": "loginEmbyConnect"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Credential exchange, naturally idempotent (a repeat mints another short-lived connect session). Runs under the shared authenticated-route limiter; v1 mounts no dedicated bucket on it. username and password required at the schema (422); Emby Connect refusing the credentials is 422 at body (v1 401 unauthorized, which v2 reserves for the Silo session); Emby Connect unreachable 503 dependency_unavailable with Retry-After. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable client request identity or claimed external authorization exchange. An uncertain response must not trigger automatic retries."
     },
     {
       "listener": "api",
@@ -27894,13 +27896,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/history-imports/plex/auth/check",
+        "operation_id": "checkPlexPin"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Naturally idempotent poll of the sign-in; servers never null; session_id required at the schema (422); unknown session 404; expired or consumed session 422 at body (v1 400). Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable client request identity or claimed external authorization exchange. An uncertain response must not trigger automatic retries."
     },
     {
       "listener": "api",
@@ -27954,13 +27958,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/history-imports/plex/auth/pin",
+        "operation_id": "createPlexPin"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Device-style handshake start: every call mints a fresh plex.tv PIN and session (not idempotent by design; the session expires on its own and a duplicate only costs an unused PIN). No body. expires_at UTC ms.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable client request identity or claimed external authorization exchange. An uncertain response must not trigger automatic retries."
     },
     {
       "listener": "api",
@@ -28014,13 +28020,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/history-imports/runs",
+        "operation_id": "listHistoryImportRuns"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). v1 ?limit= (10, max 50) replaced by limit+opaque keyset cursor (created_at, id of the last emitted run; default 50, max 200); offset rejected (422). user_id and mapping_id are string ids; warnings and unmatched_samples never null. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -28074,13 +28080,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/history-imports/runs",
+        "operation_id": "createHistoryImportRun"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). A run is a job: 202 with the run resource, Location /api/v2/history-imports/runs/{id}, Retry-After 2 (v1 answered 201). Retry safety: durable run identity plus the active-run coalescing check (409 conflict while one is active), no generic mutation id. source is a closed enum (422 invalid_enum), profile_id required at the schema, source_id an opaque string id; the service member rules (v1 400 bad_request) are 422 at body; profile/session not found 404; a source server refusing the credentials is 422 at body, a source server that cannot answer 503 dependency_unavailable with Retry-After. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable client request identity or claimed external authorization exchange. An uncertain response must not trigger automatic retries."
     },
     {
       "listener": "api",
@@ -28134,13 +28142,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/history-imports/runs/{id}",
+        "operation_id": "getHistoryImportRun"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Another account's run is 404. Same run shape as listHistoryImportRuns. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -28194,13 +28202,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/history-imports/sources",
+        "operation_id": "listHistoryImportSources"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional: account level). Bounded unpaginated collection envelope; ids are strings, instants UTC ms. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35292,17 +35300,17 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
-      "owner": null,
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: GET /api/v2/webhook-sync/connections (listWebhookSyncConnections).",
+      "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35342,17 +35350,17 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
-      "owner": null,
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: POST /api/v2/webhook-sync/connections (createWebhookSyncConnection).",
+      "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35392,17 +35400,17 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
-      "owner": null,
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: DELETE /api/v2/webhook-sync/connections/{id} (deleteWebhookSyncConnection).",
+      "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35442,17 +35450,17 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
-      "owner": null,
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: GET /api/v2/webhook-sync/connections/{id}/profile-mappings (getWebhookSyncProfileMappings).",
+      "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35492,17 +35500,17 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
-      "owner": null,
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: PUT /api/v2/webhook-sync/connections/{id}/profile-mappings (replaceWebhookSyncProfileMappings).",
+      "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35542,17 +35550,17 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
-      "owner": null,
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: POST /api/v2/webhook-sync/connections/{id}/webhook/rotate (rotateWebhookSyncSecret).",
+      "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler over the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35595,17 +35603,17 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "disposition": "documented_exclusion",
+      "disposition_rule": "maintainer_decision",
+      "disposition_rationale": "Legacy public inbound receiver: external Plex servers were configured with this URL by connections created before the provider-neutral webhook-sync routes existed, so it keeps answering on v1 for the bridge release; the v2 receiver is registered only under /webhook-sync/webhooks/{secret} (webhook-sync section). Not ported as a second v2 receiver path.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "External caller: legacy Plex webhook delivery; the URL is still issued to Plex by the webhook-sync handler. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Stays on v1 only: served by the same WebhookSyncHandler.HandleWebhook as /api/v1/webhook-sync/webhooks/{secret} and retired with the v1 tombstone; connections created through the legacy routes advertise the legacy URL, so their Plex servers must be re-pointed at the webhook-sync URL (rotate the secret through v2 to get it) before the bridge release ends. External caller: legacy Plex webhook delivery; the URL is still issued to Plex by the webhook-sync handler. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -38531,19 +38539,19 @@
       "section": "personal-requests",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "unique_constraint",
+      "retry_safety": "non_retryable",
       "retry_safety_note": "DEFECT: idx_media_requests_active_tmdb is partial (outcome active, not completed), so once the first request reaches a terminal state a retry deletes the failed row, mints a fresh id, and re-notifies and re-submits. The v2 port must key on an immutable client request identity across terminal states.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/requests",
+        "operation_id": "createRequest"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "201 creates a request; strict movie/series enum and positive TMDB identity. Not safe to retry after an uncertain response: active-request uniqueness ends at terminal state, allowing another submission and notification. A durable client request identity is required before automatic retries can be supported."
     },
     {
       "listener": "api",
@@ -38618,13 +38626,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/detail/{media_type}/{tmdb_id}",
+        "operation_id": "getRequestMediaDetail"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). media_type strict path enum movie|series, tmdb_id integer >= 1 (422 otherwise, v1 answered 400). TMDB ids stay integers (external ids, not Silo IDs). genres, production_companies, networks, cast, creators, recommendations are empty, never null."
     },
     {
       "listener": "api",
@@ -38699,13 +38707,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover",
+        "operation_id": "listDiscoverSections"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). {sections:[...]} became {items:[...]} (bounded, no page). Section bodies as v1 incl. next_page. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -38760,13 +38768,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/browse/genre/{slug}",
+        "operation_id": "browseDiscoverGenre"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). media_type query required, strict enum movie|series (422, v1 answered 400); sort strict enum popularity|vote_average|release_date (default popularity); page is the provider page number; unknown slug 404. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -38821,13 +38829,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/browse/network/{slug}",
+        "operation_id": "browseDiscoverNetwork"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). sort strict enum popularity|vote_average|release_date (default popularity); page is the provider page number; unknown slug 404. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -38882,13 +38890,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/browse/studio/{slug}",
+        "operation_id": "browseDiscoverStudio"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). sort strict enum popularity|vote_average|release_date (default popularity); page is the provider page number; unknown slug 404. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -38943,13 +38951,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/genres",
+        "operation_id": "listDiscoverGenres"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). {genres:[...]} became {items:[...]} (bounded, no page); logo_url nullable. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -39004,13 +39012,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/networks",
+        "operation_id": "listDiscoverNetworks"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). {networks:[...]} became {items:[...]} (bounded, no page); logo_url nullable. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -39065,13 +39073,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/studios",
+        "operation_id": "listDiscoverStudios"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). {studios:[...]} became {items:[...]} (bounded, no page); logo_url nullable. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -39136,13 +39144,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/{section}",
+        "operation_id": "getDiscoverSection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). section is a strict path enum of the six discovery rows (422, v1 answered 400); page is the provider page number. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -39217,13 +39225,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/mine",
+        "operation_id": "listMyRequests"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). {requests:[...]} became {items:[...], page}; limit+offset became limit+opaque cursor over the store's created_at DESC order (limit maximum 50, the service caps at 100); status and outcome filters are strict enums. TMDB ids stay integers (external ids, not Silo IDs). Request ids string IDs, instants UTC ms."
     },
     {
       "listener": "api",
@@ -39298,13 +39306,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/search",
+        "operation_id": "searchRequestMedia"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). q required (422 when absent or blank); media_type strict enum movie|series|all (default all); page is the provider page number, not a Silo cursor (the provider owns the ordering). TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -39379,13 +39387,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/status",
+        "operation_id": "getRequestStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -39440,13 +39448,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/{id}",
+        "operation_id": "getRequest"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). Same body as createRequest. Another account's request is 403 permission_denied to a member, readable by an admin; unknown id 404."
     },
     {
       "listener": "api",
@@ -39507,18 +39515,19 @@
       "section": "personal-requests",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/requests/{id}/cancel",
+        "operation_id": "cancelRequest"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee.",
+      "retry_safety_note": "Cancellation has no saved response or request replay identity. A repeated cancellation can reject the terminal request. Reconcile the request before retrying; durable replay storage is required for an automatic retry guarantee."
     },
     {
       "listener": "api",
@@ -43748,13 +43757,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/watch-providers",
+        "operation_id": "listWatchProviders"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -43806,18 +43815,18 @@
       "release_flow": "browse_search",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "For a plugin-backed provider the API-key exchange runs before persistConnection consults durable state, so a retry after a lost response performs the external exchange twice and the second result overwrites the first. The v2 port must claim the request durably before calling out.",
+      "retry_safety_note": "The external credential exchange and connection write have no durable request identity. Overlapping or stale retries can replace a newer connection. Add a durable operation identity and generation guard before automatic retry.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/watch-providers/{provider}/auth/api-key",
+        "operation_id": "connectWatchProviderAPIKey"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -43869,18 +43878,18 @@
       "release_flow": "browse_search",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "StartDeviceAuth calls the provider (a new device code) before any durable claim and stores the result under a new session id, so a retry after a lost response opens a second provider session and row. The v2 port must claim an active session durably before calling out.",
+      "retry_safety_note": "Each call starts a new external authorization exchange and session. No durable request identity covers the exchange. Reconcile or restart explicitly rather than retrying an uncertain response.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/watch-providers/{provider}/auth/device-code",
+        "operation_id": "startWatchProviderDeviceAuth"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -43931,19 +43940,19 @@
       "section": "personal-requests",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "domain_identity",
-      "retry_safety_note": "DEFECT: keyed by auth_session_id, but the completion check is a plain read and the plugin is polled before the session is marked complete, so two overlapping polls across API nodes both call out and can consume the authorization twice. The v2 port must claim the session durably before calling out.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "The completion check precedes the external poll without a durable claim. Overlapping API nodes may consume authorization twice. Add a durable session claim and saved completion response before automatic retry.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/watch-providers/{provider}/auth/poll",
+        "operation_id": "pollWatchProviderDeviceAuth"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -43993,18 +44002,18 @@
       "release_flow": "browse_search",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "DeleteConnection removes whatever row currently holds the provider/user/profile identity, so a delayed retry after the profile reconnected removes the new connection. The v2 port must bind the delete to a connection generation with If-Match.",
+      "retry_safety_note": "Deletion identifies the provider and profile without the connection generation. A delayed replay can delete a reconnection. Require a generation precondition before automatic retry.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/watch-providers/{provider}/connection",
+        "operation_id": "deleteWatchProviderConnection"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: disconnect converges on the absent state; the PATCH that edits the connection is guarded."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -44059,13 +44068,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/watch-providers/{provider}/connection",
+        "operation_id": "getWatchProviderConnection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Full provider connection metadata has no ETag because provider configuration can change independently. The additional native getWatchProviderSettings operation returns only versioned stored preferences with an ETag."
     },
     {
       "listener": "api",
@@ -44116,19 +44125,20 @@
       "section": "personal-requests",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/watch-providers/{provider}/connection",
+        "operation_id": "updateWatchProviderConnection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "PATCH requires If-Match against the canonical settings read and checks connection generation and precise row version under a PostgreSQL row lock before effects. Returns only the versioned settings projection and its ETag. Stale edits return 412.",
+      "concurrency": "if_match",
+      "retry_safety_note": "Guarded preference writes do not provide atomic cross-store replay: provider-order cleanup can commit before the connection transaction fails. Cleanup is deadline-bounded; an uncertain response requires state reconciliation, not automatic retry."
     },
     {
       "listener": "api",
@@ -44179,19 +44189,19 @@
       "section": "personal-requests",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "coalescing",
-      "retry_safety_note": "RequestManualSync returns the active sync run from the database and enforces a cooldown.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Active-run lookup, cooldown check and run creation are separate database calls, and dispatch is process-local. Concurrent API nodes can create multiple runs. Add an atomic durable reservation and recoverable dispatch before advertising coalescing or automatic retry.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/watch-providers/{provider}/sync",
+        "operation_id": "triggerWatchProviderSync"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -44246,13 +44256,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/watch-providers/{provider}/sync-runs",
+        "operation_id": "listWatchProviderSyncRuns"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -45840,13 +45850,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/webhook-sync/connections",
+        "operation_id": "listWebhookConnections"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native account connection management, separate from external webhook ingress. Lists use bounded stable keyset pages. Existing domain ownership checks remain authoritative."
     },
     {
       "listener": "api",
@@ -45900,13 +45910,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/webhook-sync/connections",
+        "operation_id": "createWebhookConnection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native account connection management, separate from external webhook ingress. Lists use bounded stable keyset pages. Existing domain ownership checks remain authoritative.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No replay claim across external discovery, rotation, connection state changes or concurrent mapping replacement. Re-read state after an uncertain response."
     },
     {
       "listener": "api",
@@ -45958,13 +45970,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/webhook-sync/connections/{id}",
+        "operation_id": "deleteWebhookConnection"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native account connection management, separate from external webhook ingress. Lists use bounded stable keyset pages. Existing domain ownership checks remain authoritative.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No replay claim across external discovery, rotation, connection state changes or concurrent mapping replacement. Re-read state after an uncertain response."
     },
     {
       "listener": "api",
@@ -46018,13 +46032,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/webhook-sync/connections/{id}",
+        "operation_id": "updateWebhookConnection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native account connection management, separate from external webhook ingress. Lists use bounded stable keyset pages. Existing domain ownership checks remain authoritative.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No replay claim across external discovery, rotation, connection state changes or concurrent mapping replacement. Re-read state after an uncertain response."
     },
     {
       "listener": "api",
@@ -46078,13 +46094,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/webhook-sync/connections/{id}/events",
+        "operation_id": "listWebhookEvents"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native account connection management, separate from external webhook ingress. Lists use bounded stable keyset pages. Existing domain ownership checks remain authoritative."
     },
     {
       "listener": "api",
@@ -46138,13 +46154,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/webhook-sync/connections/{id}/profile-mappings",
+        "operation_id": "getWebhookMappings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native account connection management, separate from external webhook ingress. Lists use bounded stable keyset pages. Existing domain ownership checks remain authoritative."
     },
     {
       "listener": "api",
@@ -46196,13 +46212,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/webhook-sync/connections/{id}/profile-mappings",
+        "operation_id": "updateWebhookMappings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native account connection management, separate from external webhook ingress. Lists use bounded stable keyset pages. Existing domain ownership checks remain authoritative.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No replay claim across external discovery, rotation, connection state changes or concurrent mapping replacement. Re-read state after an uncertain response."
     },
     {
       "listener": "api",
@@ -46256,13 +46274,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/webhook-sync/connections/{id}/webhook/rotate",
+        "operation_id": "rotateWebhookConnection"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native account connection management, separate from external webhook ingress. Lists use bounded stable keyset pages. Existing domain ownership checks remain authoritative.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No replay claim across external discovery, rotation, connection state changes or concurrent mapping replacement. Re-read state after an uncertain response."
     },
     {
       "listener": "api",

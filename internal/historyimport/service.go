@@ -215,6 +215,14 @@ func (s *Service) CreateRun(ctx context.Context, userID int, input CreateRunInpu
 		return nil, fmt.Errorf("profile_id is required")
 	}
 
+	exists, err := s.repo.ProfileExistsForUser(ctx, userID, input.ProfileID)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, ErrProfileNotFound
+	}
+
 	var sourceType, connectionMode string
 	var provider Provider
 
@@ -258,14 +266,6 @@ func (s *Service) CreateRun(ctx context.Context, userID int, input CreateRunInpu
 
 	default:
 		return nil, fmt.Errorf("unsupported source type")
-	}
-
-	exists, err := s.repo.ProfileExistsForUser(ctx, userID, input.ProfileID)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, ErrProfileNotFound
 	}
 
 	run := Run{
@@ -545,57 +545,20 @@ func (s *Service) executeRun(run *Run, provider Provider) {
 			continue
 		}
 
-		shouldWriteProgress := true
-		localProgress, err := s.repo.GetProgress(ctx, run.UserID, run.ProfileID, match.MediaItemID)
+		updated, created, err := s.applyImportedWatch(ctx, run.UserID, run.ProfileID, match.MediaItemID, record)
 		if err != nil {
 			summary.Warnings = append(summary.Warnings, err.Error())
-			s.persistProgressMaybe(ctx, run.ID, summary, i+1, len(records))
-			continue
-		}
-		if !shouldWriteImportedProgress(record, localProgress) {
-			shouldWriteProgress = false
-			summary.Skipped++
-		}
-		if shouldWriteProgress {
-			created, err := s.watchState.RecordImportedWatch(
-				ctx,
-				run.UserID,
-				run.ProfileID,
-				match.MediaItemID,
-				record.DurationSeconds,
-				importedPosition(record),
-				record.Played,
-				record.UpdatedAt,
-				record.LastPlayedAt,
-			)
-			if err != nil {
-				summary.Warnings = append(summary.Warnings, err.Error())
-				s.persistProgressMaybe(ctx, run.ID, summary, i+1, len(records))
-				continue
-			}
-			summary.ProgressUpdated++
-			if created {
-				summary.HistoryCreated++
-			}
-		} else if record.LastPlayedAt != nil {
-			created, err := s.watchState.RecordImportedHistory(
-				ctx,
-				run.UserID,
-				run.ProfileID,
-				match.MediaItemID,
-				record.DurationSeconds,
-				record.Played,
-				record.LastPlayedAt,
-			)
-			if err != nil {
-				summary.Warnings = append(summary.Warnings, err.Error())
-				s.persistProgressMaybe(ctx, run.ID, summary, i+1, len(records))
-				continue
+		} else {
+			if updated {
+				summary.ProgressUpdated++
+			} else {
+				summary.Skipped++
 			}
 			if created {
 				summary.HistoryCreated++
 			}
 		}
+
 		s.persistProgressMaybe(ctx, run.ID, summary, i+1, len(records))
 	}
 
@@ -623,6 +586,26 @@ func (s *Service) executeRun(run *Run, provider Provider) {
 			slog.Warn("history import: failed to touch mapping last_imported_at", "mapping_id", *run.MappingID, "error", err)
 		}
 	}
+}
+
+// applyImportedWatch uses the selected user store's atomic freshness guard.
+// Unknown source timestamps sort before real activity, so replay never
+// replaces progress merely because an import happened later.
+func (s *Service) applyImportedWatch(ctx context.Context, userID int, profileID, itemID string, record Record) (bool, bool, error) {
+	store, err := s.stores.ForUser(ctx, userID)
+	if err != nil {
+		return false, false, err
+	}
+	updatedAt := record.UpdatedAt
+	if updatedAt.IsZero() {
+		updatedAt = time.Unix(0, 0).UTC()
+	}
+	updated, err := store.SetProgressIfNewer(ctx, profileID, itemID, importedPosition(record), record.DurationSeconds, record.Played, updatedAt)
+	if err != nil {
+		return false, false, err
+	}
+	created, err := s.watchState.RecordImportedHistory(ctx, userID, profileID, itemID, record.DurationSeconds, record.Played, record.LastPlayedAt)
+	return updated, created, err
 }
 
 func (s *Service) failRun(ctx context.Context, runID string, summary ExecutionSummary, err error) {
@@ -664,6 +647,15 @@ func (s *Service) ListRuns(ctx context.Context, userID, limit int) ([]Run, error
 		limit = 50
 	}
 	return s.repo.ListRunsForUser(ctx, userID, limit)
+}
+
+// ListRunsPage is the keyset listing behind v2: up to limit runs strictly
+// older than after, newest first, and whether more follow.
+func (s *Service) ListRunsPage(ctx context.Context, userID int, after *RunKey, limit int) ([]Run, bool, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	return s.repo.ListRunsPageForUser(ctx, userID, after, limit)
 }
 
 func (s *Service) ListActiveRuns(ctx context.Context, userID int) ([]Run, error) {

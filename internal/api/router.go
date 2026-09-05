@@ -1987,6 +1987,17 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if sectionSettingsHandler != nil {
 		v2deps.SectionFlags = sectionSettingsHandler
 	}
+	if webhookSyncHandler != nil {
+		v2deps.WebhookSync = webhookSyncHandler
+	}
+	if historyImportHandler != nil {
+		v2deps.HistoryImports = historyImportHandler
+	}
+	v2deps.WatchProviders = deps.WatchProviderService
+	if requestHandler != nil {
+		v2deps.Requests = requestHandler.Service()
+		v2deps.RequestLifecycle = requestHandler.Service()
+	}
 	if deps.v2Wiring != nil {
 		deps.v2Wiring(v2deps)
 	}

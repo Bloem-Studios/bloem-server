@@ -14,7 +14,11 @@ func TestImportedHistoryQueuesOnlyCreatedRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	db.SetMaxOpenConns(1)
 	if err := userdb.InitSchema(db); err != nil {
 		t.Fatal(err)

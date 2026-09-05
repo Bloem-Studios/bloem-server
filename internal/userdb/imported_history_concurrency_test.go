@@ -13,7 +13,11 @@ func TestImportedHistoryConcurrent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	db.SetMaxOpenConns(8)
 	if err := InitSchema(db); err != nil {
 		t.Fatal(err)

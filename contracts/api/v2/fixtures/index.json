@@ -141,6 +141,28 @@
       "body_file": "cancel_metadata_match_queue_permission_denied.json"
     },
     {
+      "name": "cancel_request_ok",
+      "operation_id": "cancelRequest",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/requests/r-1/cancel",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"reason\":\"No longer needed\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/MediaRequest",
+      "body_file": "cancel_request_ok.json"
+    },
+    {
       "name": "check_library_mount_not_found",
       "operation_id": "checkLibraryMount",
       "scenario": "A library identifier that names no library.",
@@ -306,6 +328,28 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "create_profile_name_required.json"
+    },
+    {
+      "name": "create_request_ok",
+      "operation_id": "createRequest",
+      "scenario": "A new request is created; an uncertain response must not be automatically retried.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/requests",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"media_type\":\"movie\",\"tmdb_id\":12345,\"title\":\"Example\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/MediaRequest",
+      "body_file": "create_request_ok.json"
     },
     {
       "name": "create_taste_seed_ok",
@@ -2568,6 +2612,26 @@
       "body_file": "list_for_you_rows_profile_header_required.json"
     },
     {
+      "name": "list_history_import_runs_ok",
+      "operation_id": "listHistoryImportRuns",
+      "scenario": "Import runs belong to the authenticated account and use bounded keyset paging.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/history-imports/runs",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/HistoryImportRunCollection",
+      "body_file": "list_history_import_runs_ok.json"
+    },
+    {
       "name": "list_history_invalid_image_size",
       "operation_id": "listHistory",
       "scenario": "image_size is a closed enum; an unknown value is a validation failure naming the parameter.",
@@ -2954,6 +3018,27 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/MetadataMatchQueueStatusCollection",
       "body_file": "list_metadata_match_queues_ok.json"
+    },
+    {
+      "name": "list_my_requests_ok",
+      "operation_id": "listMyRequests",
+      "scenario": "Account requests have stable creation order and string identifiers.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/requests/mine",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/MediaRequestCollection",
+      "body_file": "list_my_requests_ok.json"
     },
     {
       "name": "list_plugin_settings_authentication_required",
@@ -3835,6 +3920,26 @@
       "body_file": "list_watchlist_profile_header_required.json"
     },
     {
+      "name": "list_webhook_connections_ok",
+      "operation_id": "listWebhookConnections",
+      "scenario": "Account webhook management exposes receiver URLs without access tokens.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/webhook-sync/connections",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/WebhookConnectionCollection",
+      "body_file": "list_webhook_connections_ok.json"
+    },
+    {
       "name": "mark_watched_not_found",
       "operation_id": "markWatched",
       "scenario": "An item outside the viewer's catalog cannot be marked.",
@@ -4227,6 +4332,27 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "replace_profile_section_overrides_null_not_clearable.json"
+    },
+    {
+      "name": "request_status_ok",
+      "operation_id": "getRequestStatus",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/requests/status",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/FeatureStatus",
+      "body_file": "request_status_ok.json"
     },
     {
       "name": "resolve_effective_settings_authentication_required",
@@ -5320,6 +5446,221 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/ProfileVerification",
       "body_file": "verify_profile_pin_wrong.json"
+    },
+    {
+      "name": "watch_provider_api_key_ok",
+      "operation_id": "connectWatchProviderAPIKey",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/watch-providers/trakt/auth/api-key",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"api_key\":\"synthetic-token\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/WatchProviderConnection",
+      "body_file": "watch_provider_api_key_ok.json"
+    },
+    {
+      "name": "watch_provider_connection_ok",
+      "operation_id": "getWatchProviderConnection",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/watch-providers/trakt/connection",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/WatchProviderConnection",
+      "body_file": "watch_provider_connection_ok.json"
+    },
+    {
+      "name": "watch_provider_delete_ok",
+      "operation_id": "deleteWatchProviderConnection",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/watch-providers/trakt/connection",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {
+        "Cache-Control": "no-store"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
+      "name": "watch_provider_device_auth_ok",
+      "operation_id": "startWatchProviderDeviceAuth",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/watch-providers/trakt/auth/device-code",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/WatchProviderDeviceAuth",
+      "body_file": "watch_provider_device_auth_ok.json"
+    },
+    {
+      "name": "watch_provider_poll_ok",
+      "operation_id": "pollWatchProviderDeviceAuth",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/watch-providers/trakt/auth/poll",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"auth_session_id\":\"00000000-0000-4000-8000-000000000001\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/WatchProviderConnection",
+      "body_file": "watch_provider_poll_ok.json"
+    },
+    {
+      "name": "watch_provider_runs_ok",
+      "operation_id": "listWatchProviderSyncRuns",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/watch-providers/trakt/sync-runs",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionWatchProviderSyncRun",
+      "body_file": "watch_provider_runs_ok.json"
+    },
+    {
+      "name": "watch_provider_settings_ok",
+      "operation_id": "getWatchProviderSettings",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/watch-providers/trakt/connection/settings",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"17ed56967238795eef635bcd.3rcaydxvvf0ud\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/WatchProviderSettings",
+      "body_file": "watch_provider_settings_ok.json"
+    },
+    {
+      "name": "watch_provider_sync_ok",
+      "operation_id": "triggerWatchProviderSync",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/watch-providers/trakt/sync",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/WatchProviderSyncOutputBody",
+      "body_file": "watch_provider_sync_ok.json"
+    },
+    {
+      "name": "watch_provider_update_ok",
+      "operation_id": "updateWatchProviderConnection",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/watch-providers/trakt/connection",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "If-Match": "\"17ed56967238795eef635bcd.3rcaydxvvf0uc\"",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"scrobble_enabled\":true}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"17ed56967238795eef635bcd.3rcaydxvvf0ud\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/WatchProviderSettings",
+      "body_file": "watch_provider_update_ok.json"
+    },
+    {
+      "name": "watch_providers_ok",
+      "operation_id": "listWatchProviders",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/watch-providers",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionProviderSummary",
+      "body_file": "watch_providers_ok.json"
     }
   ]
 }

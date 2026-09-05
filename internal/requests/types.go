@@ -257,7 +257,14 @@ type CreateRequestInput struct {
 	BackdropPath string    `json:"backdrop_path,omitempty"`
 }
 
+// RequestPageKey identifies the last emitted request in descending creation order.
+type RequestPageKey struct {
+	CreatedAt time.Time `json:"created_at"`
+	ID        string    `json:"id"`
+}
+
 type ListFilter struct {
+	Before  *RequestPageKey
 	Status  Status
 	Outcome Outcome
 	Limit   int

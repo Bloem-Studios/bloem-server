@@ -1119,7 +1119,7 @@ func (s *PostgresUserStore) AddHistoryIfMissing(ctx context.Context, entry users
 	if err != nil {
 		return false, fmt.Errorf("begin imported history: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	// Shared with RemoveHistoryItems. The next statement gets a fresh READ
 	// COMMITTED snapshot after any concurrent import or hide has committed.
 	if err := lockImportedHistory(ctx, tx, s.userID, entry.ProfileID); err != nil {

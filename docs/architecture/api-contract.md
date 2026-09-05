@@ -1603,3 +1603,117 @@ demonstrated the contract it consumes.
 The cost is a coordinated multi-repository release and a temporarily larger server. Keeping the
 bridge bounded, sharing domain services, and making each migration slice include its consumers are
 what prevent that temporary cost from becoming permanent architecture.
+
+### Personal requests
+
+The bundled web client reads discovery and creates media requests through v2.
+`GET /api/v2/requests/mine` returns at most 50 requests per page, ordered by
+creation time and unique request ID descending. Its signed cursor binds the account,
+profile, filters and ordering; deleting an emitted request or inserting a newer one
+does not shift continuation. Request lists belong to the account; profile gates still
+apply to every call. Provider discovery retains the provider's page numbers.
+
+`POST /api/v2/requests` is non-retryable after an uncertain response. The database
+prevents concurrent active requests for the same media, but terminal requests no
+longer hold that uniqueness key. Safe automatic retries require a durable client
+request identity across terminal states. The web mutation disables retries.
+
+Native Apple and Android request migrations accompany this contract change;
+integrate those client changes before retiring their v1 routes. Jellyfin compatibility does not expose this request
+management surface and keeps its existing behavior.
+
+### History imports
+
+Seven v2 operations list sources, list/create/read import runs, create/check a Plex
+PIN and perform Emby Connect login. These are account operations with an optional
+profile header; creating a run separately verifies ownership of the target profile
+before source authentication. Run lists use signed `(created_at, id)` cursors scoped
+to the account. A 202 response identifies the persisted run and its polling location.
+Execution is dispatched within the server process; persistence of run status is not
+a durable job-dispatch guarantee.
+
+All four POST operations are non-retryable after an uncertain response. Import
+application checks freshness atomically in the selected PostgreSQL or SQLite user
+store; replaying an older record cannot replace newer progress. History insertion
+and other per-record effects are separate writes, so a whole import is not an atomic
+transaction. The bundled web imports hook uses the v2 contract and does not retry
+ambiguous Plex authorization calls automatically.
+
+Webhook connection management and external webhook ingress are separate surfaces.
+The seven import operations do not replace either surface. Legacy Plex management
+aliases are omitted from v2; existing v1 ingress remains available to external
+servers. No history-import consumers were found in the Apple and Android source inventory;
+v1 remains available during coordinated migration. Jellyfin protocol
+playback and user-state routes continue to use their existing shared store behavior.
+
+### Request lifecycle and watch providers
+
+Request capability status and cancellation are available through v2. The bundled
+web status hook uses v2; the coordinated Apple and Android migrations include
+status and cancellation. The bundled web has no cancel consumer.
+
+Watch-provider settings use typed v2 operations for connection reads/writes, device
+and API-key authorization, manual sync, and recent runs. Responses exclude provider
+access tokens and device codes. Recent runs are an explicit activity window of up
+to 50 entries, default 10, without continuation. Connection and run identifiers are
+strings, and timestamps use the standard UTC instant representation.
+
+Mutation retries remain disabled: device authorization does not claim an exchange
+across API nodes, and manual sync's active-run/cooldown checks and run creation are
+separate calls. A process dispatches the run after creation; this is not a durable
+job-dispatch mechanism. Cooldown problems retain their Retry-After header and the
+web settings page displays the delay. No watch-provider consumers were found in
+the Apple and Android source inventory.
+
+### Webhook connection management
+
+Eight v2 account operations manage webhook connections, secret rotation, external
+user mappings and event reads. Connection and event lists use bounded signed
+keyset cursors; event cursors also bind the connection. The web settings activity
+view intentionally shows the most recent 200 events. Connection listing reads
+persisted configuration without contacting providers; mapping reads perform the
+existing external user discovery.
+
+The receiver URL is relative to the server origin, which the web adapter resolves
+for display. Access tokens are never returned. Creation verifies target-profile
+ownership through the shared service, and all connection operations retain account
+ownership checks. Empty or repeated external mapping IDs fail validation before
+replacement. Mutations are conservatively non-retryable after uncertain responses.
+
+External webhook ingress remains separate from native management and continues on
+its existing v1 paths, including the legacy Plex receiver alias. Those externally
+configured URLs require their own migration decision before any v1 tombstone.
+Plex-only management aliases are proposed removals in the ledger and remain on v1;
+this work does not invent their pending reviewer. No webhook-management consumers
+were found in the native client inventory. Jellyfin protocol user-state behavior
+continues through the existing shared store paths.
+
+Imported history deduplication is atomic for concurrent import calls with the same
+account, profile, item and played-at timestamp. It is serialized with history hiding:
+a hide that wins prevents the import; an import that wins is removed by the hide.
+Normal playback history writes still permit repeated events. Only the import call
+that inserts a row emits the corresponding history notification side effect.
+
+The canonical `GET /watch-providers/{provider}/connection/settings` returns only
+persisted preference fields with an ETag bound to account, profile, provider,
+connection generation and precise database modification time. PATCH requires a
+matching validator and returns that same settings projection. It checks the
+validator again under a database row lock before changing
+settings or clearing provider-owned ordering. Concurrent changes return 412 with
+the current ETag. The web preserves the attempted toggle and asks whether to apply
+it against the refreshed state or use the latest settings; it never silently retries
+a stale edit. Runtime sync updates may also invalidate this validator.
+
+Preference updates modify only preference columns. Background connection upserts
+preserve those columns instead of restoring a stale snapshot. Provider-order cleanup
+can involve another user store: it is bounded by the request deadline and a five-second
+cleanup deadline, and failures leave the settings unchanged. Cleanup may already have
+committed if the later connection transaction fails, so the operation remains
+non-retryable and does not promise an atomic cross-store mutation.
+
+The full connection metadata read has no ETag: provider capabilities, display labels,
+credential availability and configuration schemas may change independently of the
+connection row. The canonical settings read exists to keep that external metadata
+out of the guarded representation; a missing connection returns 404. The web reads
+metadata and settings under the same captured profile authority and merges only the
+settings fields after a successful patch.

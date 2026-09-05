@@ -197,6 +197,11 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"syncProgress":  true,
 		"getWatchState": true, "markWatched": true, "unmarkWatched": true,
 	}
+	for _, id := range historyImportOperationIDs {
+		profileToken[id] = true
+	}
+	expect["createHistoryImportRun"] = map[int]bool{http.StatusAccepted: true, http.StatusConflict: true, http.StatusNotFound: true}
+	expect["getHistoryImportRun"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}
 	for _, id := range libraryOperationIDs {
 		profileToken[id] = true
 	}
@@ -212,9 +217,18 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range recommendationOperationIDs {
 		profileToken[id] = true
 	}
+	for _, id := range append(requestOperationIDs, requestLifecycleOperationIDs...) {
+		profileToken[id] = true
+	}
+	expect[opCreateRequest] = map[int]bool{http.StatusCreated: true, http.StatusConflict: true, http.StatusTooManyRequests: true, http.StatusNotFound: true}
+	expect[opListMyRequests] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}
+	expect[opGetRequestMediaDetail] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: true}
 	expect["refreshLibraryMetadata"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: true, http.StatusAccepted: true}
 	expect["uploadLibraryPoster"] = map[int]bool{http.StatusNotFound: true, http.StatusRequestEntityTooLarge: true, http.StatusUnsupportedMediaType: true}
 	expect["getLibraryLayout"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}
+	for _, id := range []string{"listWebhookConnections", "createWebhookConnection", "updateWebhookConnection", "deleteWebhookConnection", "rotateWebhookConnection", "getWebhookMappings", "updateWebhookMappings", "listWebhookEvents"} {
+		profileToken[id] = true
+	}
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {
@@ -1026,4 +1040,8 @@ func TestPersonalListMutationsDoNotAdvertiseAutomaticRetry(t *testing.T) {
 			}
 		}
 	}
+}
+
+var historyImportOperationIDs = []string{
+	"listHistoryImportSources", "listHistoryImportRuns", "createHistoryImportRun", "getHistoryImportRun", "createPlexPin", "checkPlexPin", "loginEmbyConnect",
 }
