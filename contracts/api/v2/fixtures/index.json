@@ -308,6 +308,25 @@
       "body_file": "create_profile_name_required.json"
     },
     {
+      "name": "create_request_ok",
+      "operation_id": "createRequest",
+      "scenario": "A new request is created; an uncertain response must not be automatically retried.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/requests",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"media_type\":\"movie\",\"tmdb_id\":12345,\"title\":\"Example\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {},
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/MediaRequest",
+      "body_file": "create_request_ok.json"
+    },
+    {
       "name": "create_taste_seed_ok",
       "operation_id": "createTasteSeed",
       "scenario": "Two picks recorded as favorites; a retry converges on the same set.",
@@ -2568,6 +2587,23 @@
       "body_file": "list_for_you_rows_profile_header_required.json"
     },
     {
+      "name": "list_history_import_runs_ok",
+      "operation_id": "listHistoryImportRuns",
+      "scenario": "Import runs belong to the authenticated account and use bounded keyset paging.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/history-imports/runs",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {},
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/HistoryImportRunCollection",
+      "body_file": "list_history_import_runs_ok.json"
+    },
+    {
       "name": "list_history_invalid_image_size",
       "operation_id": "listHistory",
       "scenario": "image_size is a closed enum; an unknown value is a validation failure naming the parameter.",
@@ -2954,6 +2990,24 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/MetadataMatchQueueStatusCollection",
       "body_file": "list_metadata_match_queues_ok.json"
+    },
+    {
+      "name": "list_my_requests_ok",
+      "operation_id": "listMyRequests",
+      "scenario": "Account requests have stable creation order and string identifiers.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/requests/mine",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {},
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/MediaRequestCollection",
+      "body_file": "list_my_requests_ok.json"
     },
     {
       "name": "list_plugin_settings_authentication_required",
