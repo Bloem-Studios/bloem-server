@@ -91,3 +91,24 @@ exist only within that transport's sequence and only the last response feeds the
 next step. This is bounded fixture infrastructure, not automatic traversal or a
 client retry implementation. Numeric/body/path captures and mutation acceptance
 catalog expansion are outside this checkpoint.
+
+## Device mutation effects
+
+`make test-scenario-device-mutations` requires six existing reset/forget cases,
+producing 12 transport results. Each v2 sequence explicitly reads the household
+list afterward to verify the target effect and preserve sibling devices and
+settings. Reset retains the target device with zero changed settings; forget
+removes it. Repeated forget returns 404, repeated reset remains 204, and denied
+or unknown-target mutations leave the fixture unchanged. These operations do not
+support conditional requests, so the cases do not invent ETag preconditions.
+
+Only this required target overlays one canonical setting on each fixture device,
+after every reseed and independently for each transport. Teardown reseeds without
+the overlay and checks that no profile-device settings remain. The ordinary list
+fixture and original v1 records remain unchanged. Missing pairs, missing explicit
+read-after vectors, skipped results and failed assertions fail the required gate.
+The six pairs issue 22 physical requests including repeats and v2 follow-ups;
+result counts describe transports rather than individual HTTP requests.
+
+This checkpoint requires the guarded PostgreSQL scenario database. It does not
+claim SQLite coverage, cursor traversal or conditional device mutation support.

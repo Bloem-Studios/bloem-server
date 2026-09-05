@@ -44,7 +44,11 @@ func (r Result) Passed() bool { return r.Skipped == "" && len(r.Failures) == 0 }
 // configured.
 func RunAll(t *testing.T, catalogs []*scenariocatalog.Catalog) []Result {
 	t.Helper()
-	env := New(t)
+	return runAll(t, catalogs, New(t))
+}
+
+func runAll(t *testing.T, catalogs []*scenariocatalog.Catalog, env *Env) []Result {
+	t.Helper()
 	var results []Result
 	for _, c := range catalogs {
 		c := c

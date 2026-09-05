@@ -1406,7 +1406,82 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves device mutation behavior with v2 Problems and an explicit household read verifying target effects and sibling preservation.",
+            "recorded_in": "internal/scenariocatalog/executor/device_mutations_test.go",
+            "operation_id": "forgetDevice",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/devices/${device_a}"
+            },
+            "expect": {
+              "status": 204,
+              "headers": [],
+              "body": [],
+              "body_kind": "empty"
+            },
+            "then": [
+              {
+                "operation_id": "listDevices",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/devices",
+                  "query": {
+                    "scope": "household"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 2
+                    },
+                    {
+                      "pointer": "/page/has_more",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/device_id",
+                      "op": "equals",
+                      "value": "fixture-device-c"
+                    },
+                    {
+                      "pointer": "/items/0/profile_id",
+                      "op": "equals",
+                      "value": "${profile_secondary}"
+                    },
+                    {
+                      "pointer": "/items/0/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/1/device_id",
+                      "op": "equals",
+                      "value": "${device_b}"
+                    },
+                    {
+                      "pointer": "/items/1/profile_id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/1/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "device_forget.gone",
@@ -1460,7 +1535,99 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves device mutation behavior with v2 Problems and an explicit household read verifying target effects and sibling preservation.",
+            "recorded_in": "internal/scenariocatalog/executor/device_mutations_test.go",
+            "operation_id": "forgetDevice",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/devices/${device_a}",
+              "repeat": 2
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listDevices",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/devices",
+                  "query": {
+                    "scope": "household"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 2
+                    },
+                    {
+                      "pointer": "/page/has_more",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/device_id",
+                      "op": "equals",
+                      "value": "fixture-device-c"
+                    },
+                    {
+                      "pointer": "/items/0/profile_id",
+                      "op": "equals",
+                      "value": "${profile_secondary}"
+                    },
+                    {
+                      "pointer": "/items/0/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/1/device_id",
+                      "op": "equals",
+                      "value": "${device_b}"
+                    },
+                    {
+                      "pointer": "/items/1/profile_id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/1/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "device_forget.other_profile",
@@ -1582,7 +1749,116 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves device mutation behavior with v2 Problems and an explicit household read verifying target effects and sibling preservation.",
+            "recorded_in": "internal/scenariocatalog/executor/device_mutations_test.go",
+            "operation_id": "forgetDevice",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/devices/${device_a}",
+              "query": {
+                "profile_id": "${profile_primary}"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/permission_denied$"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listDevices",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/devices",
+                  "query": {
+                    "scope": "household"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 3
+                    },
+                    {
+                      "pointer": "/page/has_more",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/device_id",
+                      "op": "equals",
+                      "value": "fixture-device-c"
+                    },
+                    {
+                      "pointer": "/items/0/profile_id",
+                      "op": "equals",
+                      "value": "${profile_secondary}"
+                    },
+                    {
+                      "pointer": "/items/0/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/1/device_id",
+                      "op": "equals",
+                      "value": "${device_b}"
+                    },
+                    {
+                      "pointer": "/items/1/profile_id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/1/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/2/device_id",
+                      "op": "equals",
+                      "value": "${device_a}"
+                    },
+                    {
+                      "pointer": "/items/2/profile_id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/2/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "device_forget.named_profile_missing",
@@ -1842,7 +2118,97 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves device mutation behavior with v2 Problems and an explicit household read verifying target effects and sibling preservation.",
+            "recorded_in": "internal/scenariocatalog/executor/device_mutations_test.go",
+            "operation_id": "clearDeviceSettings",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/devices/${device_a}/settings"
+            },
+            "expect": {
+              "status": 204,
+              "headers": [],
+              "body": [],
+              "body_kind": "empty"
+            },
+            "then": [
+              {
+                "operation_id": "listDevices",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/devices",
+                  "query": {
+                    "scope": "household"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 3
+                    },
+                    {
+                      "pointer": "/page/has_more",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/device_id",
+                      "op": "equals",
+                      "value": "fixture-device-c"
+                    },
+                    {
+                      "pointer": "/items/0/profile_id",
+                      "op": "equals",
+                      "value": "${profile_secondary}"
+                    },
+                    {
+                      "pointer": "/items/0/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/1/device_id",
+                      "op": "equals",
+                      "value": "${device_b}"
+                    },
+                    {
+                      "pointer": "/items/1/profile_id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/1/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/2/device_id",
+                      "op": "equals",
+                      "value": "${device_a}"
+                    },
+                    {
+                      "pointer": "/items/2/profile_id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/2/changed_count",
+                      "op": "equals",
+                      "value": 0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "device_clear.keeps_device",
@@ -1859,7 +2225,98 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves device mutation behavior with v2 Problems and an explicit household read verifying target effects and sibling preservation.",
+            "recorded_in": "internal/scenariocatalog/executor/device_mutations_test.go",
+            "operation_id": "clearDeviceSettings",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/devices/${device_a}/settings",
+              "repeat": 2
+            },
+            "expect": {
+              "status": 204,
+              "headers": [],
+              "body": [],
+              "body_kind": "empty"
+            },
+            "then": [
+              {
+                "operation_id": "listDevices",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/devices",
+                  "query": {
+                    "scope": "household"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 3
+                    },
+                    {
+                      "pointer": "/page/has_more",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/device_id",
+                      "op": "equals",
+                      "value": "fixture-device-c"
+                    },
+                    {
+                      "pointer": "/items/0/profile_id",
+                      "op": "equals",
+                      "value": "${profile_secondary}"
+                    },
+                    {
+                      "pointer": "/items/0/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/1/device_id",
+                      "op": "equals",
+                      "value": "${device_b}"
+                    },
+                    {
+                      "pointer": "/items/1/profile_id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/1/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/2/device_id",
+                      "op": "equals",
+                      "value": "${device_a}"
+                    },
+                    {
+                      "pointer": "/items/2/profile_id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/2/changed_count",
+                      "op": "equals",
+                      "value": 0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "device_clear.other_profile",
@@ -1958,7 +2415,113 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves device mutation behavior with v2 Problems and an explicit household read verifying target effects and sibling preservation.",
+            "recorded_in": "internal/scenariocatalog/executor/device_mutations_test.go",
+            "operation_id": "clearDeviceSettings",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/devices/nope/settings"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listDevices",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/devices",
+                  "query": {
+                    "scope": "household"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 3
+                    },
+                    {
+                      "pointer": "/page/has_more",
+                      "op": "equals",
+                      "value": false
+                    },
+                    {
+                      "pointer": "/items/0/device_id",
+                      "op": "equals",
+                      "value": "fixture-device-c"
+                    },
+                    {
+                      "pointer": "/items/0/profile_id",
+                      "op": "equals",
+                      "value": "${profile_secondary}"
+                    },
+                    {
+                      "pointer": "/items/0/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/1/device_id",
+                      "op": "equals",
+                      "value": "${device_b}"
+                    },
+                    {
+                      "pointer": "/items/1/profile_id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/1/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/2/device_id",
+                      "op": "equals",
+                      "value": "${device_a}"
+                    },
+                    {
+                      "pointer": "/items/2/profile_id",
+                      "op": "equals",
+                      "value": "${profile_primary}"
+                    },
+                    {
+                      "pointer": "/items/2/changed_count",
+                      "op": "equals",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "device_clear.named_profile",

@@ -4,9 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	apiv2 "github.com/Silo-Server/silo-server/contracts/api/v2"
+)
+
+const (
+	deviceListPath      = "/api/v2/devices"
+	deviceListOperation = "listDevices"
 )
 
 // ValidatePairing ties the recorded operation to its actual method and route.
@@ -77,7 +83,38 @@ func DeviceListAcceptance(catalogs []*Catalog) ([]*Catalog, error) {
 	return requiredListAcceptance(catalogs, "/api/v1/devices/", RequiredDeviceListScenarios)
 }
 
+var RequiredDeviceMutationScenarios = []string{
+	"device_forget.ok", "device_forget.gone", "device_forget.named_profile_forbidden",
+	"device_clear.ok", "device_clear.keeps_device", "device_clear.unknown",
+}
+
+func DeviceMutationAcceptance(catalogs []*Catalog) ([]*Catalog, error) {
+	selected, err := requiredAcceptance(catalogs, http.MethodDelete, []string{"/api/v1/devices/{device_id}", "/api/v1/devices/{device_id}/settings"}, RequiredDeviceMutationScenarios)
+	if err != nil {
+		return nil, err
+	}
+	for _, catalog := range selected {
+		for _, row := range catalog.Rows {
+			for _, scenario := range row.Scenarios {
+				then := scenario.V2Expectation.Then
+				if len(then) != 1 {
+					return nil, fmt.Errorf("%s: required household read-after is missing", scenario.ID)
+				}
+				step := then[0]
+				if step.OperationID != deviceListOperation || step.Method != http.MethodGet || step.Request.Path != deviceListPath || step.Request.Query["scope"] != "household" || step.Principal == nil || step.Principal.Class != "primary_profile" || len(step.Expect.Body) == 0 {
+					return nil, fmt.Errorf("%s: required household read-after is invalid", scenario.ID)
+				}
+			}
+		}
+	}
+	return selected, nil
+}
+
 func requiredListAcceptance(catalogs []*Catalog, path string, required []string) ([]*Catalog, error) {
+	return requiredAcceptance(catalogs, http.MethodGet, []string{path}, required)
+}
+
+func requiredAcceptance(catalogs []*Catalog, method string, paths []string, required []string) ([]*Catalog, error) {
 	want := make(map[string]bool, len(required))
 	for _, id := range required {
 		want[id] = false
@@ -87,7 +124,7 @@ func requiredListAcceptance(catalogs []*Catalog, path string, required []string)
 		copy := *c
 		copy.Rows = nil
 		for _, row := range c.Rows {
-			if row.Listener != listenerAPI || row.Method != http.MethodGet || row.Path != path || row.RegistrationIndex != 0 {
+			if row.Listener != listenerAPI || row.Method != method || !slices.Contains(paths, row.Path) || row.RegistrationIndex != 0 {
 				continue
 			}
 			picked := row

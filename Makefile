@@ -428,3 +428,8 @@ test-scenario-profile-pairing:
 .PHONY: test-scenario-device-pairing
 test-scenario-device-pairing:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceListAcceptance$$' ./internal/scenariocatalog/executor
+
+# Required mutation effects and sibling preservation on the guarded scratch DB.
+.PHONY: test-scenario-device-mutations
+test-scenario-device-mutations:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceMutationAcceptance$$' ./internal/scenariocatalog/executor
