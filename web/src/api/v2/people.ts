@@ -9,13 +9,28 @@ import { v2, type V2Result } from "@/api/v2/request";
 
 export type PersonRefreshResult = V2Result<"POST /api/v2/catalog/people/{id}/refresh">;
 
-export async function searchPeople(query: string, limit = 20): Promise<Person[]> {
-  const people = await v2("GET /api/v2/catalog/people", { query: { q: query, limit } });
+export async function searchPeople(
+  query: string,
+  limit = 20,
+  options?: Pick<RequestInit, "signal">,
+): Promise<Person[]> {
+  const people = await v2("GET /api/v2/catalog/people", {
+    query: { q: query, limit },
+    signal: options?.signal ?? undefined,
+  });
   return people.items.map(personFromV2);
 }
 
-export async function getPerson(id: string): Promise<Person> {
-  return personFromV2(await v2("GET /api/v2/catalog/people/{id}", { path: { id } }));
+export async function getPerson(
+  id: string,
+  options?: Pick<RequestInit, "signal">,
+): Promise<Person> {
+  return personFromV2(
+    await v2("GET /api/v2/catalog/people/{id}", {
+      path: { id },
+      signal: options?.signal ?? undefined,
+    }),
+  );
 }
 
 /** Queues a metadata refresh for a person; the server coalesces repeats. */

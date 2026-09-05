@@ -110,7 +110,7 @@ export async function fetchCatalogSeasonEpisodes(
 export function useCatalogItemDetail(id: string | undefined, libraryId?: number) {
   return useQuery({
     queryKey: catalogKeys.itemDetail(id!, libraryId),
-    queryFn: () => fetchCatalogItemDetail(id!, libraryId),
+    queryFn: ({ signal }) => fetchCatalogItemDetail(id!, libraryId, { signal }),
     enabled: !!id,
   });
 }
@@ -118,7 +118,7 @@ export function useCatalogItemDetail(id: string | undefined, libraryId?: number)
 export function useCatalogItemVersions(id: string | undefined) {
   return useQuery({
     queryKey: catalogKeys.itemVersions(id!),
-    queryFn: () => fetchCatalogItemVersions(id!),
+    queryFn: ({ signal }) => fetchCatalogItemVersions(id!, { signal }),
     enabled: !!id,
   });
 }
@@ -139,7 +139,7 @@ export async function fetchMangaSeriesFiles(
 export function useMangaSeriesFiles(id: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: [...catalogKeys.itemDetail(id!), "manga-files"],
-    queryFn: () => fetchMangaSeriesFiles(id!),
+    queryFn: ({ signal }) => fetchMangaSeriesFiles(id!, { signal }),
     enabled: !!id && enabled,
   });
 }
@@ -147,7 +147,7 @@ export function useMangaSeriesFiles(id: string | undefined, enabled: boolean) {
 export function useCatalogItemEpisodes(id: string | undefined, libraryId?: number) {
   return useQuery({
     queryKey: catalogKeys.itemEpisodes(id!, libraryId),
-    queryFn: () => fetchCatalogItemEpisodes(id!, libraryId),
+    queryFn: ({ signal }) => fetchCatalogItemEpisodes(id!, libraryId, { signal }),
     enabled: !!id,
   });
 }
@@ -163,11 +163,11 @@ export function usePrefetchCatalogSeason(libraryId?: number) {
     (seasonId: string) => {
       void queryClient.prefetchQuery({
         queryKey: catalogKeys.itemDetail(seasonId, libraryId),
-        queryFn: () => fetchCatalogItemDetail(seasonId, libraryId),
+        queryFn: ({ signal }) => fetchCatalogItemDetail(seasonId, libraryId, { signal }),
       });
       void queryClient.prefetchQuery({
         queryKey: catalogKeys.itemEpisodes(seasonId, libraryId),
-        queryFn: () => fetchCatalogItemEpisodes(seasonId, libraryId),
+        queryFn: ({ signal }) => fetchCatalogItemEpisodes(seasonId, libraryId, { signal }),
       });
     },
     [queryClient, libraryId],
@@ -181,7 +181,7 @@ export function usePrefetchCatalogItemDetail(libraryId?: number) {
     (itemId: string) => {
       void queryClient.prefetchQuery({
         queryKey: catalogKeys.itemDetail(itemId, libraryId),
-        queryFn: () => fetchCatalogItemDetail(itemId, libraryId),
+        queryFn: ({ signal }) => fetchCatalogItemDetail(itemId, libraryId, { signal }),
       });
     },
     [queryClient, libraryId],
@@ -191,7 +191,7 @@ export function usePrefetchCatalogItemDetail(libraryId?: number) {
 export function useCatalogSeriesSeasons(seriesId: string | undefined, libraryId?: number) {
   return useQuery({
     queryKey: catalogKeys.seriesSeasons(seriesId!, libraryId),
-    queryFn: () => fetchCatalogSeriesSeasons(seriesId!, libraryId),
+    queryFn: ({ signal }) => fetchCatalogSeriesSeasons(seriesId!, libraryId, { signal }),
     enabled: !!seriesId,
   });
 }
@@ -203,7 +203,7 @@ export function useCatalogSeasonDetail(
 ) {
   return useQuery({
     queryKey: catalogKeys.seasonDetail(seriesId!, seasonNum, libraryId),
-    queryFn: () => fetchCatalogSeasonDetail(seriesId!, seasonNum, libraryId),
+    queryFn: ({ signal }) => fetchCatalogSeasonDetail(seriesId!, seasonNum, libraryId, { signal }),
     select: (data) => data.season,
     enabled: !!seriesId && seasonNum >= 0,
   });
@@ -216,7 +216,8 @@ export function useCatalogSeasonEpisodes(
 ) {
   return useQuery({
     queryKey: catalogKeys.seasonEpisodes(seriesId!, seasonNum, libraryId),
-    queryFn: () => fetchCatalogSeasonEpisodes(seriesId!, seasonNum, libraryId),
+    queryFn: ({ signal }) =>
+      fetchCatalogSeasonEpisodes(seriesId!, seasonNum, libraryId, { signal }),
     enabled: !!seriesId && seasonNum >= 0,
   });
 }

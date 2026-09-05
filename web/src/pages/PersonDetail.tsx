@@ -34,7 +34,7 @@ export default function PersonDetail() {
 
   const { data: person, isLoading: personLoading } = useQuery({
     queryKey: personKeys.detail(id!),
-    queryFn: () => getPerson(id!),
+    queryFn: ({ signal }) => getPerson(id!, { signal }),
     enabled: !!id,
     refetchInterval: (query) => {
       const data = query.state.data;

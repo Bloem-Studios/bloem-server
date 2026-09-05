@@ -15,8 +15,12 @@ function onViewMode(value: string): MetadataAIOnViewMode {
   return value === "auto" || value === "button" ? value : "off";
 }
 
-export async function fetchMetadataAIStatus(): Promise<MetadataAIStatus> {
-  const capability = await v2("GET /api/v2/capabilities/metadata-ai");
+export async function fetchMetadataAIStatus(
+  options?: Pick<RequestInit, "signal">,
+): Promise<MetadataAIStatus> {
+  const capability = await v2("GET /api/v2/capabilities/metadata-ai", {
+    signal: options?.signal ?? undefined,
+  });
   return {
     enabled: capability.state === "available",
     on_view: onViewMode(capability.on_view),
@@ -28,7 +32,7 @@ export async function fetchMetadataAIStatus(): Promise<MetadataAIStatus> {
 export function useMetadataAIStatus(enabled = true) {
   return useQuery({
     queryKey: ["metadata-ai", "status"],
-    queryFn: fetchMetadataAIStatus,
+    queryFn: ({ signal }) => fetchMetadataAIStatus({ signal }),
     staleTime: 5 * 60 * 1000,
     enabled,
   });

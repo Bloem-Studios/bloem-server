@@ -30,6 +30,7 @@ vi.mock("./catalogRead", () => ({
 import { useContinueWatching, useReportMediaProgress } from "./progress";
 
 describe("useContinueWatching", () => {
+  const signal = new AbortController().signal;
   beforeEach(() => {
     mocks.useQuery.mockReset();
     mocks.useQueries.mockReset();
@@ -46,8 +47,12 @@ describe("useContinueWatching", () => {
       isLoading: false,
     });
     mocks.useQueries.mockImplementation(
-      ({ queries }: { queries: Array<{ queryFn: () => Promise<unknown> }> }) => {
-        void queries[0]?.queryFn();
+      ({
+        queries,
+      }: {
+        queries: Array<{ queryFn: (context: { signal: AbortSignal }) => Promise<unknown> }>;
+      }) => {
+        void queries[0]?.queryFn({ signal });
         return [{ data: undefined, isLoading: false }];
       },
     );
@@ -56,7 +61,7 @@ describe("useContinueWatching", () => {
   it("looks up continue-watching details through catalog item detail", () => {
     useContinueWatching();
 
-    expect(mocks.fetchCatalogItemDetail).toHaveBeenCalledWith("movie-123");
+    expect(mocks.fetchCatalogItemDetail).toHaveBeenCalledWith("movie-123", undefined, { signal });
   });
 });
 

@@ -1,3 +1,6 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import getCatalogItemOk from "../../../../contracts/api/v2/fixtures/get_catalog_item_ok.json";
@@ -19,6 +22,7 @@ import {
   fetchCatalogSeasonEpisodes,
   fetchCatalogSeriesSeasons,
   fetchMangaSeriesFiles,
+  useCatalogItemDetail,
 } from "./catalogRead";
 
 type FetchMock = ReturnType<typeof vi.fn<typeof fetch>>;
@@ -63,6 +67,79 @@ describe("catalog item reads on the v2 contract", () => {
     expect(detail.intro).toBeNull();
     expect(detail.user_state).toEqual({ played: true, is_favorite: true, in_watchlist: false });
     expect(detail.status).toBeUndefined();
+  });
+
+  it("preserves explicit subtitle choices and track identity in item detail", async () => {
+    const signature = {
+      source: "embedded",
+      language: "eng",
+      codec: "subrip",
+      label: "English SDH",
+      forced: false,
+      hearing_impaired: true,
+    };
+    stubFetch({
+      ...getCatalogItemOk,
+      effective_subtitle_language: "eng",
+      effective_subtitle_mode: "off",
+      effective_show_forced_subtitles: false,
+      effective_subtitle_track_signature: signature,
+      subtitles: [{ index: 3, language: "eng", forced: false }],
+    });
+
+    const detail = await fetchCatalogItemDetail("movie:heat-1995");
+
+    expect(detail.effective_subtitle_language).toBe("eng");
+    expect(detail.effective_subtitle_mode).toBe("off");
+    expect(detail.effective_show_forced_subtitles).toBe(false);
+    expect(detail.effective_subtitle_track_signature).toEqual(signature);
+    expect(detail.subtitles[0]).toMatchObject({ codec: "", title: "", forced: false });
+  });
+
+  it("aborts the detail fetch when its last observer unmounts", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let requestSignal: AbortSignal | null | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (_url, options) => {
+        requestSignal = options?.signal;
+        return new Promise<Response>((_resolve, reject) => {
+          requestSignal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("Aborted", "AbortError")),
+            { once: true },
+          );
+        });
+      }),
+    );
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+    const { unmount } = renderHook(() => useCatalogItemDetail("movie:heat-1995", 12), { wrapper });
+
+    await waitFor(() => expect(requestSignal).toBeDefined());
+    expect(requestSignal?.aborted).toBe(false);
+    unmount();
+    expect(requestSignal?.aborted).toBe(true);
+    queryClient.clear();
+  });
+
+  it("cancels an in-flight detail request through the transport", async () => {
+    const controller = new AbortController();
+    const aborted = new DOMException("The request was aborted", "AbortError");
+    const fetchMock = vi.fn<typeof fetch>(async (_url, options) => {
+      expect(options?.signal).toBe(controller.signal);
+      return new Promise<Response>((_resolve, reject) => {
+        options?.signal?.addEventListener("abort", () => reject(aborted), { once: true });
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = fetchCatalogItemDetail("movie:heat-1995", 12, { signal: controller.signal });
+    const rejection = expect(result).rejects.toBe(aborted);
+    controller.abort();
+
+    await rejection;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("encodes item ids and drops the library filter when none is given", async () => {

@@ -12,7 +12,7 @@ export function usePersonSearch(query: string, limit = 20, enabled = true) {
 
   return useQuery({
     queryKey: personKeys.search(normalizedQuery, limit),
-    queryFn: () => searchPeople(normalizedQuery, limit),
+    queryFn: ({ signal }) => searchPeople(normalizedQuery, limit, { signal }),
     enabled: enabled && normalizedQuery.length > 0,
     staleTime: 5 * 60 * 1000,
   });

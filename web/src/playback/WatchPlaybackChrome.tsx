@@ -532,7 +532,8 @@ export function WatchPlaybackHost() {
       try {
         await queryClient.fetchQuery({
           queryKey: catalogKeys.itemDetail(request.contentId, request.libraryId),
-          queryFn: () => fetchCatalogItemDetail(request.contentId, request.libraryId),
+          queryFn: ({ signal }) =>
+            fetchCatalogItemDetail(request.contentId, request.libraryId, { signal }),
         });
       } catch {
         // Best effort; still navigate so PiP flow is not blocked by a failed prefetch.
