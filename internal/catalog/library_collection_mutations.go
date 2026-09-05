@@ -1,0 +1,203 @@
+package catalog
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	ErrLibraryCollectionRevisionMismatch = errors.New("library collection revision mismatch")
+	ErrLibraryCollectionInUse            = errors.New("library collection is used by a page section")
+)
+
+// A collection witness covers its definition and items. A library witness covers
+// all collection memberships, groups, and the synthetic ungrouped position in
+// that library. Group editors use their owning library's witness.
+type libraryCollectionMutation struct {
+	pool         *pgxpool.Pool
+	collectionID string
+	libraryID    int
+	groupID      string
+}
+
+type libraryRevisionReader interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func (m libraryCollectionMutation) revision(ctx context.Context, q libraryRevisionReader) (int64, error) {
+	var revision int64
+	if m.collectionID != "" {
+		err := q.QueryRow(ctx, `SELECT v.revision FROM library_collections c JOIN library_collection_revisions v ON v.collection_id=c.id WHERE c.id=$1`, m.collectionID).Scan(&revision)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrLibraryCollectionNotFound
+		}
+		return revision, err
+	}
+	libraryID := m.libraryID
+	if m.groupID != "" {
+		err := q.QueryRow(ctx, `SELECT library_id FROM library_collection_groups WHERE id=$1`, m.groupID).Scan(&libraryID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrLibraryCollectionGroupNotFound
+		}
+		if err != nil {
+			return 0, err
+		}
+	}
+	err := q.QueryRow(ctx, `SELECT COALESCE(v.revision,1) FROM media_folders f LEFT JOIN library_collection_order_revisions v ON v.library_id=f.id WHERE f.id=$1`, libraryID).Scan(&revision)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrLibraryCollectionNotFound
+	}
+	return revision, err
+}
+
+func (r *LibraryCollectionRepository) CollectionOrderRevision(ctx context.Context, libraryID int) (int64, error) {
+	return (libraryCollectionMutation{pool: r.pool, libraryID: libraryID}).revision(ctx, r.pool)
+}
+func (r *LibraryCollectionGroupRepository) CollectionOrderRevision(ctx context.Context, libraryID int) (int64, error) {
+	return (libraryCollectionMutation{pool: r.pool, libraryID: libraryID}).revision(ctx, r.pool)
+}
+
+// run retries whole database-only transactions, preserving the original expected
+// revision. A 40001 becomes a precondition mismatch only after a committed read
+// proves that witness changed. Wildcards and unrelated SSI conflicts retry at
+// most twice. Deadlocks and other database errors retain their original identity.
+func (m libraryCollectionMutation) run(ctx context.Context, expected *int64, mutate func(pgx.Tx) error) error {
+	for attempt := range 3 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		err := m.attempt(ctx, expected, mutate)
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		pgErr, ok := errors.AsType[*pgconn.PgError](err)
+		if expected == nil || !ok || pgErr.Code != "40001" {
+			return err
+		}
+		if *expected != -1 {
+			current, readErr := m.revision(ctx, m.pool)
+			if readErr != nil {
+				return readErr
+			}
+			if current != *expected {
+				return fmt.Errorf("%w: %w", ErrLibraryCollectionRevisionMismatch, err)
+			}
+		}
+		if attempt == 2 {
+			return err
+		}
+	}
+	panic("unreachable library collection mutation retry")
+}
+
+func (m libraryCollectionMutation) attempt(ctx context.Context, expected *int64, mutate func(pgx.Tx) error) error {
+	options := pgx.TxOptions{}
+	if expected != nil {
+		options.IsoLevel = pgx.Serializable
+	}
+	tx, err := m.pool.BeginTx(ctx, options)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if expected != nil {
+		current, err := m.revision(ctx, tx)
+		if err != nil {
+			return err
+		}
+		if *expected != -1 && current != *expected {
+			return ErrLibraryCollectionRevisionMismatch
+		}
+	}
+	// Resolve the group scope before a successful delete removes the group row.
+	libraryID := m.libraryID
+	if expected != nil && m.groupID != "" {
+		if err := tx.QueryRow(ctx, `SELECT library_id FROM library_collection_groups WHERE id=$1`, m.groupID).Scan(&libraryID); err != nil {
+			return err
+		}
+	}
+	if err := mutate(tx); err != nil {
+		return err
+	}
+	if expected != nil {
+		// Consume no-ops only after target writes: never reserve a counter before
+		// acquiring rows that legacy writers acquire before their revision triggers.
+		if m.collectionID != "" {
+			_, err = tx.Exec(ctx, `UPDATE library_collection_revisions SET revision=revision+1 WHERE collection_id=$1`, m.collectionID)
+		} else {
+			_, err = tx.Exec(ctx, `INSERT INTO library_collection_order_revisions(library_id,revision) VALUES($1,2) ON CONFLICT(library_id) DO UPDATE SET revision=library_collection_order_revisions.revision+1`, libraryID)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+// DeleteIfRevision checks references in the same transaction as the deletion.
+// Page sections currently store unchecked JSON references. This protects against
+// references visible to this transaction; concurrent legacy section inserts need
+// a future database integrity constraint or coordinated section-writer protocol.
+func (r *LibraryCollectionRepository) DeleteIfRevision(ctx context.Context, id string, expected int64) error {
+	return (libraryCollectionMutation{pool: r.pool, collectionID: id}).run(ctx, &expected, func(tx pgx.Tx) error {
+		var found string
+		if err := tx.QueryRow(ctx, `SELECT id FROM library_collections WHERE id=$1 FOR UPDATE`, id).Scan(&found); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrLibraryCollectionNotFound
+			}
+			return err
+		}
+		var inUse bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM page_sections WHERE config->>'library_collection_id'=$1)`, id).Scan(&inUse); err != nil {
+			return err
+		}
+		if inUse {
+			return ErrLibraryCollectionInUse
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM library_collections WHERE id=$1`, id)
+		return err
+	})
+}
+
+// AddItemIfAbsent is the native add operation. Existing membership retains its
+// position and timestamp; the legacy AddItem method keeps its upsert behavior.
+func (r *LibraryCollectionRepository) AddItemIfAbsent(ctx context.Context, collectionID, mediaItemID string, position int) error {
+	return (libraryCollectionMutation{pool: r.pool, collectionID: collectionID}).run(ctx, nil, func(tx pgx.Tx) error {
+		if err := lockLibraryCollectionParent(ctx, tx, collectionID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `INSERT INTO library_collection_items(collection_id,media_item_id,position,source_rank) VALUES($1,$2,$3,0) ON CONFLICT(collection_id,media_item_id) DO NOTHING`, collectionID, mediaItemID, position)
+		return err
+	})
+}
+
+// Item and membership mutations acquire parent rows before their revision
+// triggers can run. Definition updates already acquire parents first. This
+// ordering prevents items->revision->parent and membership->revision inversions
+// between these repository writers, including the legacy entry points.
+func lockLibraryCollectionParent(ctx context.Context, tx pgx.Tx, id string) error {
+	var found string
+	err := tx.QueryRow(ctx, `SELECT id FROM library_collections WHERE id=$1 FOR NO KEY UPDATE`, id).Scan(&found)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrLibraryCollectionNotFound
+	}
+	return err
+}
+func lockLibraryCollectionParents(ctx context.Context, tx pgx.Tx, libraryID int) error {
+	// Moves compact the source and destination groups, so their affected parents
+	// include more than the submitted IDs. Lock the library's parents in one
+	// stable order, without materializing item IDs.
+	rows, err := tx.Query(ctx, `SELECT c.id FROM library_collections c JOIN library_collection_libraries l ON l.collection_id=c.id WHERE l.library_id=$1 ORDER BY c.id FOR NO KEY UPDATE OF c`, libraryID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+	}
+	return rows.Err()
+}
