@@ -9,6 +9,7 @@ const (
 	booleanColumn
 	realColumn
 	instantColumn
+	instantTextColumn
 	jsonColumn
 )
 
@@ -112,15 +113,15 @@ var sourceColumns = map[string][]SourceColumn{
 		{"position", sourceInteger, integerColumn, false, 0},
 		{sourceAddedAt, sourceText, instantColumn, true, 0},
 	},
-	"personal_collection_order_revision": {
-		{"singleton", sourceInteger, integerColumn, false, 1},
+	sourceOrderRevision: {
+		{sourceSingleton, sourceInteger, integerColumn, false, 1},
 		{sourceRevision, sourceInteger, integerColumn, true, 0},
 	},
 	"personal_collection_profiles": {
 		{sourceCollectionId, sourceText, textColumn, true, 1},
 		{sourceProfileID, sourceText, textColumn, true, 2},
 	},
-	"personal_collection_revisions": {
+	sourceCollectionRevisions: {
 		{sourceCollectionId, sourceText, textColumn, false, 1},
 		{sourceRevision, sourceInteger, integerColumn, true, 0},
 	},
@@ -154,11 +155,11 @@ var sourceColumns = map[string][]SourceColumn{
 		{sourceProfileID, sourceText, textColumn, true, 1},
 		{"tour_id", sourceText, textColumn, true, 2},
 		{"last_step", sourceText, textColumn, true, 0},
-		{"completed_at", sourceText, instantColumn, false, 0},
-		{"skipped_at", sourceText, instantColumn, false, 0},
-		{sourceUpdatedAt, sourceText, instantColumn, true, 0},
+		{"completed_at", sourceText, instantTextColumn, false, 0},
+		{"skipped_at", sourceText, instantTextColumn, false, 0},
+		{sourceUpdatedAt, sourceText, instantTextColumn, true, 0},
 	},
-	"profile_section_overrides": {
+	sourceSectionOverrides: {
 		{"id", sourceText, textColumn, false, 1},
 		{sourceProfileID, sourceText, textColumn, true, 0},
 		{"scope", sourceText, textColumn, true, 0},

@@ -36,8 +36,8 @@ session/download tables are blockers. Old sources are never upgraded in place.
 
 The manifest covers all 29 current persistent application tables. Schema 21 remains
 an old source: its missing revision tables and version block import, and inspection
-does not create the tables or upgrade its version. Manifest rules describe
-required mappings, not implemented transformations. In particular:
+does not create the tables or upgrade its version. The inventory does not run the account writer described below. Its manifest
+records the following mapping requirements:
 
 - Preserve account-scoped profile, collection and history IDs, visibility,
   restrictions, timestamps, ordering, history identities and hidden cutoffs.
@@ -52,7 +52,7 @@ required mappings, not implemented transformations. In particular:
   with account identity. Retain revision tombstones for deleted collections;
   absence of a live collection is not permission to discard its witness. Map
   `personal_collection_order_revision` singleton 1 to `user_collection_order_revisions`
-  by account ID, not profile or group. The later writer must reconcile source
+  by account ID, not profile or group. The account writer reconciles source
   witnesses with destination trigger increments and existing revisions before
   enabling validators, so old ETags cannot accidentally become valid again.
   Inventory does not implement that reconciliation.
@@ -63,13 +63,61 @@ The inventory always reports `ready: false`. The command exits 2 after producing
 inventory, 1 on inspection/output failure, and 0 only for `--manifest`. `go run`
 wraps the executable's exit status; scripts that need these exact codes should
 build and invoke the binary. Table presence and counts are not completeness proof.
-Column mappings, local and central reference validity, target collisions, semantic
-read equality, and all-account coverage are still unverified.
+The inventory itself does not verify column mappings, local and central reference
+validity, target collisions, semantic read equality, or all-account coverage.
 
-The next milestone must settle conflict and legacy-disposition rules, implement
-an atomic account transaction with a durable import receipt, and verify replay,
-lost acknowledgements, interruption and whole-backup recovery. Only after every
-account is verified, progress cursors are safe, and all nodes use the same selected
-backend can an explicit global switch proceed. Existing source files and SQLite
-support remain through the bridge. This command implements none of those writes
-or switching steps.
+## Supported-account transaction
+
+`internal/userdb/bridgeimport.ImportAccount` implements an explicit account import
+into PostgreSQL. It has no command, API route, provider selection, or automatic
+startup caller. The caller must first establish backup provenance and consistency,
+stop all account writers, retain the source backup, and supply the existing
+installation identity, account ID, and verified source SHA-256. The importer checks
+that installation identity against `diagnostics.server_instance_id`; a numeric
+filename is not sufficient authorization or provenance.
+
+The writer requires the exact supported version-22 table and column shape,
+including type, nullability, and primary keys. Unknown or generated columns are
+rejected. Both legacy session/download tables must be empty. It validates source
+profile/collection references and central catalog references, refuses existing
+mapped target account state, and imports all 27 mapped tables in one transaction.
+It does not repair, prune, or partially import unsupported data.
+
+Booleans must be 0 or 1. JSON destined for JSONB must be valid and have no duplicate
+keys. PostgreSQL timestamp columns require lossless microsecond representation;
+timestamps stored as text retain their original text precision. Text must be valid
+UTF-8 without NUL. Values and rows are bounded to 16 MiB, and grouped section
+settings are also bounded to 16 MiB. Unsupported representation aborts the whole
+transaction. Legacy opaque settings and encrypted values retain their exact key
+and value; successful copying does not certify that external encryption keys are
+available. Canonical settings remain separate from legacy settings.
+
+Rows are copied in bounded batches and verified by ordered semantic row counts
+and digests against PostgreSQL's target representation. Generated surrogate IDs
+and deliberately rebased sequence/revision values are excluded from that
+projection. Collection revision witnesses, including deleted collection
+tombstones, advance above both source and destination values. Section overrides
+use the owning PostgreSQL settings representation, and a preexisting source
+setting at the same derived key is a collision, not permission to overwrite it.
+
+The required progress transition runs in the same PostgreSQL transaction as the
+imported rows and receipt. `progresssync.RotateGeneration` supplies the durable
+generation transition and invalidates old bootstrap snapshots. A source maximum
+sequence does not bound cursors retained by clients after source rows were deleted.
+The bridge therefore remains blocked until the full replacement bootstrap and
+coordinated client reset protocol are active.
+
+The durable receipt binds installation, account, source digest, schema and mapping
+version, semantic verification, and progress generation. Equal receipt replay
+returns the original result without rewriting rows or rotating the generation;
+a different backup for that account is refused. Account deletion cascades its
+receipt. A failed transaction rolls back rows, generation, and receipt together.
+The source is opened read-only and its digest is checked again before commit.
+Errors identify fixed phases or known schema fields without exposing source values.
+
+Success is `account_imported` with `provider_switch: blocked`, never global
+readiness. The read-only inventory still always reports `ready: false`. Before
+activation, an owning operational workflow must verify every account, establish
+client progress reset safety, verify encryption and backup recovery prerequisites,
+and fence all nodes onto the same selected backend. Existing source files and
+SQLite support remain through that transition.

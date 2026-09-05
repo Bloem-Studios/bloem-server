@@ -10,6 +10,17 @@ import (
 // MappingVersion identifies the receipt transformation rules.
 const MappingVersion = 1
 
+const (
+	sourceReadOnlyQuery       = "mode=ro&immutable=1&_query_only=1"
+	sourceFileScheme          = "file"
+	providerSwitchBlocked     = "blocked"
+	sourceCollectionRevisions = "personal_collection_revisions"
+	accountImported           = "account_imported"
+	sourceSectionOverrides    = "profile_section_overrides"
+	sourceOrderRevision       = "personal_collection_order_revision"
+	sourceSingleton           = "singleton"
+)
+
 // ProgressTransition must establish the account's durable sync generation in
 // this transaction. It must not commit, rotate it outside the transaction, or
 // activate a provider. There is deliberately no default implementation: a live
