@@ -498,8 +498,8 @@ func reviewRules(k Key, e Entry, r inventoryRoute) []string {
 			out = append(out, fmt.Sprintf("unknown concurrency marking %q: %s", e.Concurrency, k))
 		case e.Disposition != DispositionPorted:
 			out = append(out, fmt.Sprintf("concurrency %s is only for ported rows; row is tier %d %s: %s", e.Concurrency, e.Tier, e.Disposition, k))
-		case !isGuardableMethod(e.Method):
-			out = append(out, fmt.Sprintf("concurrency %s is only for a method a Guarded v2 operation may use (PUT, PATCH, DELETE), not %s: %s", e.Concurrency, e.Method, k))
+		case !isGuardableMethod(concurrencyMethod(e)):
+			out = append(out, fmt.Sprintf("concurrency %s is only for a method a Guarded v2 operation may use (PUT, PATCH, DELETE), not %s: %s", e.Concurrency, concurrencyMethod(e), k))
 		}
 	}
 	out = append(out, retrySafetyRules(k, e)...)
@@ -534,12 +534,22 @@ func retrySafetyRules(k Key, e Entry) []string {
 }
 
 // eligibleForConcurrency reports whether the review rule above allows a row
-// to carry concurrency=if_match: ported at either tier, and a method a Guarded v2
-// operation may use. The reconcile against the registry requires the
-// marking only on such rows, so a redesigned or replaced row that names a
+// to carry concurrency=if_match: ported at either tier, with a target method a
+// Guarded v2 operation may use (or the source method before a target is assigned).
+// The reconcile against the registry requires the marking only on such rows,
+// so a redesigned or replaced row that names a
 // guarded v2 operation is not caught between the two rules.
 func eligibleForConcurrency(e Entry) bool {
-	return e.Disposition == DispositionPorted && isGuardableMethod(e.Method)
+	return e.Disposition == DispositionPorted && isGuardableMethod(concurrencyMethod(e))
+}
+
+// concurrencyMethod uses the mapped v2 method because a port may change the
+// HTTP method. Unmapped rows retain the source method for planned markings.
+func concurrencyMethod(e Entry) string {
+	if e.V2.Method != nil {
+		return *e.V2.Method
+	}
+	return e.Method
 }
 
 // isGuardableMethod mirrors apiv2.checkOperation: only PUT, PATCH and DELETE

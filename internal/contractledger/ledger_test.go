@@ -807,7 +807,7 @@ func TestConcurrencyMarkingIsRestricted(t *testing.T) {
 			continue
 		}
 		marked++
-		if e.Concurrency != ConcurrencyIfMatch || e.Disposition != DispositionPorted || !isGuardableMethod(e.Method) {
+		if e.Concurrency != ConcurrencyIfMatch || e.Disposition != DispositionPorted || !isGuardableMethod(concurrencyMethod(e)) {
 			t.Errorf("%s: concurrency %q on tier %d %s %s", e.key(), e.Concurrency, e.Tier, e.Disposition, e.Method)
 		}
 	}
@@ -1379,6 +1379,7 @@ func TestTier2ConcurrencyPlacementAndAgreement(t *testing.T) {
 			expectFailure(t, mutatedFS(t, func(doc map[string]any) {
 				row := entryWhere(t, doc, func(e map[string]any) bool { return e["tier"] == float64(2) && e["disposition"] == DispositionPorted })
 				row["method"] = method
+				row["v2"] = map[string]any{"method": nil, "path": nil, "operation_id": nil}
 				row["concurrency"] = ConcurrencyIfMatch
 				delete(row, "retry_safety")
 				delete(row, "retry_safety_note")
