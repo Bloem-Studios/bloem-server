@@ -33,8 +33,9 @@ type Service struct {
 	bgContext  context.Context
 
 	// runSemaphore limits concurrent run goroutines to maxConcurrentRuns.
-	runSemaphore chan struct{}
-	queueWake    chan struct{}
+	runSemaphore   chan struct{}
+	queueWake      chan struct{}
+	backgroundOnce sync.Once
 
 	// runCancels allows in-process cancellation of running import goroutines.
 	runCancels   map[string]context.CancelFunc
@@ -59,9 +60,13 @@ func NewService(bgContext context.Context, repo *Repository, storeProvider users
 		queueWake:    make(chan struct{}, 1),
 		runCancels:   make(map[string]context.CancelFunc),
 	}
-	service.startStaleRunMonitor()
-	service.startAdminQueue()
 	return service
+}
+
+// StartBackgroundWork activates recovery and dispatch after the resolver and
+// observers have been configured. Construction must not consume persisted jobs.
+func (s *Service) StartBackgroundWork() {
+	s.backgroundOnce.Do(func() { s.startStaleRunMonitor(); s.startAdminQueue() })
 }
 
 func (s *Service) SetStableIdentityResolver(identity *watchstate.StableIdentityResolver) {
@@ -462,7 +467,7 @@ func (s *Service) executeRunWithClaim(run *Run, provider Provider, claim RunClai
 		case s.runSemaphore <- struct{}{}:
 			defer func() { <-s.runSemaphore }()
 		case <-ctx.Done():
-			slog.Info("history import: run cancelled while queued", "run_id", run.ID)
+			slog.Info("history import: run canceled while queued", "run_id", run.ID)
 			return
 		}
 

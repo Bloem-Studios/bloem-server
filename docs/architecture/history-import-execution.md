@@ -6,6 +6,9 @@ the external user locator, and the original Silo account/profile target. Tokens
 remain in the source's encrypted storage and are decrypted only into the claimed
 worker's provider. A queued run does not depend on an in-memory provider or wake
 signal: each node polls for work as well as accepting local wake signals.
+Construction does not start recovery or dispatch. Production installs the stable
+identity resolver and run observers, then calls `StartBackgroundWork`; activation
+is idempotent. Configuration must finish before any persisted run can execute.
 
 A node reserves local capacity before atomically claiming a queued row. Claims use
 `FOR UPDATE SKIP LOCKED` and an incremented generation. Heartbeat, progress, and
