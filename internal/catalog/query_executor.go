@@ -116,6 +116,7 @@ func (e *QueryExecutor) PreviewPage(
 // PreviewPage (to execute) and by tests (to inspect the emitted SQL without a
 // database).
 type previewPagePlan struct {
+	cursorTerms []queryCursorTerm
 	// ctes holds optional CTE definitions (without the leading "WITH "
 	// keyword) prepended to the paged SELECT. cteArgs are bound at the
 	// front of the final arg list — the CTE definitions reference $1..$N
@@ -384,12 +385,16 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 		fromClauseCount = rebindSQLPlaceholders(fromClauseCount, cteShift)
 		whereClause = rebindSQLPlaceholders(whereClause, cteShift)
 		sortPlan.OrderBy = rebindSQLPlaceholders(sortPlan.OrderBy, cteShift)
+		for i := range sortPlan.terms {
+			sortPlan.terms[i].expression = rebindSQLPlaceholders(sortPlan.terms[i].expression, cteShift)
+		}
 		fromClausePaged += " LEFT JOIN user_last_watched uhist ON uhist.media_item_id = mi.content_id"
 		fromClauseCount += " LEFT JOIN user_last_watched uhist ON uhist.media_item_id = mi.content_id"
 		limitArgIdx += cteShift
 	}
 
 	return previewPagePlan{
+		cursorTerms:     sortPlan.terms,
 		ctes:            ctes,
 		cteArgs:         cteArgs,
 		fromClausePaged: fromClausePaged,
