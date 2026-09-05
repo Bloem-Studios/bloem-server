@@ -999,9 +999,8 @@ func concurrencyMismatches(entries []Entry, declared []apiv2registry.Declared, e
 }
 
 // TestRetrySafetyPlacement pins where the curated retry_safety field may
-// appear: required on a tier-1 ported row with a mutating method, forbidden
-// on every other row, one
-// of the seven contract values, and accompanied by a note for
+// appear: allowed on ported mutations at either tier, required for tier 1
+// and mapped v2 operations, one of the seven values, and accompanied by a note for
 // idempotency_key and non_retryable.
 func TestRetrySafetyPlacement(t *testing.T) {
 	ledger, err := Load()
@@ -1012,7 +1011,7 @@ func TestRetrySafetyPlacement(t *testing.T) {
 		if e.RetrySafety == "" {
 			continue
 		}
-		if !retrySafetyValues[e.RetrySafety] || !requiresRetrySafety(e) {
+		if !retrySafetyValues[e.RetrySafety] || !eligibleForRetrySafety(e) {
 			t.Errorf("%s: retry_safety %q on tier %d %s %s", e.key(), e.RetrySafety, e.Tier, e.Disposition, e.Method)
 		}
 	}
@@ -1042,12 +1041,12 @@ func TestRetrySafetyPlacement(t *testing.T) {
 		m, _ := e["method"].(string)
 		return isMutatingMethod(m) && e["tier"] == float64(1) && e["disposition"] == "ported"
 	}
-	isTier2 := func(e map[string]any) bool { return e["tier"] == float64(2) }
+	isExcluded := func(e map[string]any) bool { return e["disposition"] != "ported" }
 	expectFailure(t, mutatedFS(t, func(doc map[string]any) {
 		entryWhere(t, doc, isGET1)["retry_safety"] = RetrySafetyNaturalIdempotent
 	}), "retry_safety")
 	expectFailure(t, mutatedFS(t, func(doc map[string]any) {
-		entryWhere(t, doc, isTier2)["retry_safety"] = RetrySafetyNaturalIdempotent
+		entryWhere(t, doc, isExcluded)["retry_safety"] = RetrySafetyNaturalIdempotent
 	}), "retry_safety")
 	expectFailure(t, mutatedFS(t, func(doc map[string]any) {
 		entryWhere(t, doc, isMutation1)["retry_safety"] = "retry_later"
@@ -1082,7 +1081,11 @@ func TestRetrySafetyPlacement(t *testing.T) {
 		"non-retryable no note": func(e Entry) Entry { e.RetrySafety = RetrySafetyNonRetryable; return e },
 		"note without value":    func(e Entry) Entry { e.Tier = 2; e.RetrySafetyNote = "x"; return e },
 		"read row":              func(e Entry) Entry { e.Method = "GET"; e.RetrySafety = RetrySafetyNaturalIdempotent; return e },
-		"tier-2 row":            func(e Entry) Entry { e.Tier = 2; e.RetrySafety = RetrySafetyNaturalIdempotent; return e },
+		"excluded row": func(e Entry) Entry {
+			e.Disposition = DispositionRedesigned
+			e.RetrySafety = RetrySafetyNaturalIdempotent
+			return e
+		},
 		"long note": func(e Entry) Entry {
 			e.RetrySafety = RetrySafetyNaturalIdempotent
 			e.RetrySafetyNote = strings.Repeat("x", retrySafetyNoteMaxLen+1)
@@ -1223,11 +1226,11 @@ func retrySafetyMismatches(entries []Entry, declared []apiv2registry.Declared, e
 			problems = append(problems, fmt.Sprintf("mutating operation %s maps to no legacy row; a ported mutation records its v2 operation and retry_safety in the ledger, and a v2-only mutation names itself in mutationWithoutLegacyRow with a reason", op.OperationID))
 		}
 		for _, e := range rows {
-			// Only a row eligible for the classification (tier-1 ported
+			// Only a row eligible for the classification (ported
 			// mutation) is compared: a redesigned or replaced row may name
 			// a v2 mutation while the schema keeps retry_safety off it, and
 			// the two rules must not contradict each other.
-			if !requiresRetrySafety(e) {
+			if !eligibleForRetrySafety(e) {
 				continue
 			}
 			if e.RetrySafety != string(op.RetrySafety) {
@@ -1236,4 +1239,88 @@ func retrySafetyMismatches(entries []Entry, declared []apiv2registry.Declared, e
 		}
 	}
 	return problems
+}
+
+func TestTier2RetrySafety(t *testing.T) {
+	// Adding metadata must not alter tier assignments or classify untouched rows.
+	fsys := mutatedFS(t, func(doc map[string]any) {
+		e := entryWhere(t, doc, func(e map[string]any) bool {
+			m, _ := e["method"].(string)
+			return e["tier"] == float64(2) && e["disposition"] == "ported" && isMutatingMethod(m)
+		})
+		e["retry_safety"] = RetrySafetyNaturalIdempotent
+	})
+	if err := verify(fsys); err != nil {
+		t.Fatal(err)
+	}
+	e := Entry{copied: copied{Method: http.MethodPost}, Tier: 2, Disposition: DispositionPorted}
+	if got := retrySafetyRules(e.key(), e); len(got) != 0 {
+		t.Fatal(got)
+	}
+	e.V2.OperationID = new("createTier2")
+	if got := retrySafetyRules(e.key(), e); len(got) != 1 {
+		t.Fatalf("mapped row missing classification: %v", got)
+	}
+	e.RetrySafety = RetrySafetyUniqueConstraint
+	op := apiv2registry.Declared{Method: http.MethodPost, OperationID: "createTier2", RetrySafety: apiv2registry.RetrySafetyUniqueConstraint}
+	for _, tc := range []struct {
+		name     string
+		row      Entry
+		declared []apiv2registry.Declared
+		want     bool
+	}{
+		{"matching", e, []apiv2registry.Declared{op}, false},
+		{"undeclared target", e, nil, true},
+		{"target is read", e, []apiv2registry.Declared{{Method: http.MethodGet, OperationID: op.OperationID}}, true},
+		{"registry differs", e, []apiv2registry.Declared{{Method: http.MethodPost, OperationID: op.OperationID, RetrySafety: apiv2registry.RetrySafetyNaturalIdempotent}}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := retrySafetyMismatches([]Entry{tc.row}, tc.declared, nil)
+			if (len(got) > 0) != tc.want {
+				t.Fatal(got)
+			}
+		})
+	}
+	e.RetrySafety = ""
+	if got := retrySafetyMismatches([]Entry{e}, []apiv2registry.Declared{op}, nil); len(got) == 0 {
+		t.Fatal("mapped tier-2 row without metadata accepted")
+	}
+}
+
+func TestTier2RetrySchemaPreservesNotesAndExclusions(t *testing.T) {
+	for _, value := range []string{RetrySafetyNonRetryable, RetrySafetyIdempotencyKey} {
+		expectFailure(t, mutatedFS(t, func(doc map[string]any) {
+			e := entryWhere(t, doc, func(e map[string]any) bool {
+				m, _ := e["method"].(string)
+				return e["tier"] == float64(2) && e["disposition"] == "ported" && isMutatingMethod(m)
+			})
+			e["retry_safety"] = value
+			delete(e, "retry_safety_note")
+		}), "retry_safety_note")
+	}
+	expectFailure(t, mutatedFS(t, func(doc map[string]any) {
+		e := entryWhere(t, doc, func(e map[string]any) bool {
+			return e["disposition"] == DispositionDocumentedExcluded
+		})
+		e["retry_safety"] = RetrySafetyNaturalIdempotent
+	}), "retry_safety")
+}
+
+func TestUnmappedExternalWebhookRemainsUnclassified(t *testing.T) {
+	ledger, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, e := range ledger.Entries {
+		if e.Path == "/api/v1/webhook-sync/webhooks/{secret}" {
+			found = true
+			if requiresRetrySafety(e) || e.RetrySafety != "" || e.V2.OperationID != nil {
+				t.Fatalf("external ingress gained a native retry requirement: %+v", e)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("external webhook ingress absent")
+	}
 }

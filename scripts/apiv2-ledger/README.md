@@ -35,7 +35,9 @@ will pin rather than pointing the scripts at a working checkout.
   mutation rows and reconciles the set against the v2 registry. The curated
   fields `retry_safety` and `retry_safety_note` are preserved the same way.
   `retry_safety` is required on every tier-1 ported row with a mutating method
-  (POST, PUT, PATCH, DELETE) and forbidden on every other row; it records the
+  (POST, PUT, PATCH, DELETE) and every ported mutation mapped to `v2.operation_id`.
+  Ported tier-2 mutations may carry it before mapping; unimplemented tier-2 rows need no
+  classification. Reads and non-ported rows cannot carry it. It records the
   strategy from the contract's "Mutation retry safety" section that makes a
   duplicate submission or a retry after a lost response safe. The v2 registry
   declares the same value as `x-silo-retry-safety` and
@@ -45,7 +47,7 @@ will pin rather than pointing the scripts at a working checkout.
 
   | `retry_safety`       | Meaning                                                                        |
   | -------------------- | ------------------------------------------------------------------------------ |
-  | `natural_idempotent` | PUT or DELETE that converges on one resource state however often it runs.      |
+  | `natural_idempotent` | Repeating the same request converges without duplicate durable state or side effects, regardless of HTTP method.      |
   | `unique_constraint`  | Natural key or client-supplied id enforced by a database uniqueness constraint. |
   | `domain_identity`    | Durable domain operation id (playback attempt, upload, job, webhook delivery). |
   | `coalescing`         | Returns the already-active scan, refresh, sync or similar job.                 |

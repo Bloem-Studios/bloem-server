@@ -418,8 +418,10 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   above, spelled `natural_idempotent`, `unique_constraint`, `domain_identity`, `coalescing`,
   `durable_dispatch`, `idempotency_key`, `non_retryable`; an optional `retry_safety_note` (at
   most 300 characters) explains a non-obvious choice and is required for `idempotency_key` and
-  `non_retryable`. `migration.schema.json` forbids both fields on any other row and
-  `internal/contractledger` requires the value on every such row. `apiv2.Operation`
+  `non_retryable`. `migration.schema.json` permits both fields on ported mutations at either tier, and forbids
+  them on reads and non-ported rows. `internal/contractledger` requires the value on every
+  tier-1 ported mutation and any ported mutation mapped to `v2.operation_id`. Unmapped
+  tier-2 mutations may remain unclassified until their section is implemented. `apiv2.Operation`
   carries the same enum as `RetrySafety`: `Register` panics when a mutating operation omits it
   or a GET/HEAD declares it, and the document records it as `x-silo-retry-safety`.
   `TestDeclaredRetrySafetyMatchesTheLedger` fails when a mutating v2 operation maps to no

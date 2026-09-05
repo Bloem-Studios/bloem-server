@@ -50,8 +50,8 @@ const (
 
 	// RetrySafety values (migration.schema.json entry.retry_safety), one per
 	// bullet of the contract's "Mutation retry safety" section. The value is
-	// required on every tier-1 ported row with a mutating method and
-	// forbidden on every other row; internal/apiv2 declares the same set as
+	// allowed on ported mutations at either tier, required for tier 1 and
+	// mapped v2 operations; internal/apiv2 declares the same set as
 	// apiv2.RetrySafety and the reconcile test compares them.
 	RetrySafetyNaturalIdempotent = "natural_idempotent"
 	RetrySafetyUniqueConstraint  = "unique_constraint"
@@ -210,9 +210,14 @@ var retrySafetyValues = map[string]bool{
 }
 
 // requiresRetrySafety reports whether a row must carry retry_safety: a
-// tier-1 ported row with a mutating method.
+// ported mutation in the complete tier-1 inventory or mapped to a v2 operation.
 func requiresRetrySafety(e Entry) bool {
-	return e.Tier == 1 && e.Disposition == DispositionPorted && isMutatingMethod(e.Method)
+	return eligibleForRetrySafety(e) && (e.Tier == 1 || e.V2.OperationID != nil)
+}
+
+// eligibleForRetrySafety permits native ported mutations at either tier.
+func eligibleForRetrySafety(e Entry) bool {
+	return e.Disposition == DispositionPorted && isMutatingMethod(e.Method)
 }
 
 // V2Target is the v2 operation an entry maps to. All three are nil until the
@@ -502,21 +507,21 @@ func reviewRules(k Key, e Entry, r inventoryRoute) []string {
 }
 
 // retrySafetyRules enforces the classification's placement: required on a
-// tier-1 ported mutation row, forbidden elsewhere, a known value, and a note
+// tier-1 or mapped ported mutation; allowed on other ported mutations, with a note
 // where the value needs one.
 func retrySafetyRules(k Key, e Entry) []string {
 	var out []string
 	switch {
 	case e.RetrySafety == "" && requiresRetrySafety(e):
-		out = append(out, fmt.Sprintf("tier-1 ported mutation row has no retry_safety: %s", k))
+		out = append(out, fmt.Sprintf("tier-1 or mapped ported mutation row has no retry_safety: %s", k))
 	case e.RetrySafety == "":
 		if e.RetrySafetyNote != "" {
 			out = append(out, fmt.Sprintf("retry_safety_note without retry_safety: %s", k))
 		}
 	case !retrySafetyValues[e.RetrySafety]:
 		out = append(out, fmt.Sprintf("unknown retry_safety %q: %s", e.RetrySafety, k))
-	case !requiresRetrySafety(e):
-		out = append(out, fmt.Sprintf("retry_safety %s is only for tier-1 ported rows with a mutating method; row is tier %d %s %s: %s", e.RetrySafety, e.Tier, e.Disposition, e.Method, k))
+	case !eligibleForRetrySafety(e):
+		out = append(out, fmt.Sprintf("retry_safety %s is only for ported rows with a mutating method; row is tier %d %s %s: %s", e.RetrySafety, e.Tier, e.Disposition, e.Method, k))
 	case (e.RetrySafety == RetrySafetyIdempotencyKey || e.RetrySafety == RetrySafetyNonRetryable) && e.RetrySafetyNote == "":
 		out = append(out, fmt.Sprintf("retry_safety %s requires a retry_safety_note: %s", e.RetrySafety, k))
 	}
