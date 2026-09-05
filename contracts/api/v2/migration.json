@@ -31480,13 +31480,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "ratified",
+      "review_state": "proposed",
       "v2": {
         "method": "GET",
         "path": "/api/v2/markers/files/{file_id}",
         "operation_id": "getFileMarkers"
       },
-      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md."
+      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md. Independent source review pending; implementation authorization does not ratify this port."
     },
     {
       "listener": "api",
@@ -31540,13 +31540,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "ratified",
+      "review_state": "proposed",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/markers/files/{file_id}",
         "operation_id": "setFileMarkers"
       },
-      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md.",
+      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md. Independent source review pending; implementation authorization does not ratify this port.",
       "retry_safety_note": "Atomic database writes and contribution claims do not deduplicate every effect: realtime notifications may repeat, and provider acceptance followed by a lost response or receipt failure can be retried after claim release or expiry."
     },
     {
@@ -31593,13 +31593,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "ratified",
+      "review_state": "proposed",
       "v2": {
         "method": "DELETE",
         "path": "/api/v2/markers/files/{file_id}/{segment}",
         "operation_id": "clearFileMarkerSegment"
       },
-      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md.",
+      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md. Independent source review pending; implementation authorization does not ratify this port.",
       "retry_safety_note": "Atomic database writes and contribution claims do not deduplicate every effect: realtime notifications may repeat, and provider acceptance followed by a lost response or receipt failure can be retried after claim release or expiry."
     },
     {
@@ -31654,13 +31654,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "ratified",
+      "review_state": "proposed",
       "v2": {
         "method": "GET",
         "path": "/api/v2/markers/items/{item_id}",
         "operation_id": "getItemMarkers"
       },
-      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md."
+      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md. Independent source review pending; implementation authorization does not ratify this port."
     },
     {
       "listener": "api",
@@ -31716,13 +31716,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "ratified",
+      "review_state": "proposed",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/markers/items/{item_id}",
         "operation_id": "setItemMarkers"
       },
-      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md.",
+      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md. Independent source review pending; implementation authorization does not ratify this port.",
       "retry_safety_note": "Atomic database writes and contribution claims do not deduplicate every effect: realtime notifications may repeat, and provider acceptance followed by a lost response or receipt failure can be retried after claim release or expiry."
     },
     {
