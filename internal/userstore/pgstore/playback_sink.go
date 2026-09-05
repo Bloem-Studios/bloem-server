@@ -20,14 +20,14 @@ func (s *PostgresUserStore) ReadPlaybackProgress(ctx context.Context, scope user
 	if err := scope.Validate(); err != nil {
 		return userstore.PlaybackProgressState{}, err
 	}
-	state, err := loadPlaybackSink(ctx, s.pool, s.userID, scope, false)
-	if err != nil {
-		return userstore.PlaybackProgressState{}, err
+	if s.source != nil {
+		s.source.mu.RLock()
+		defer s.source.mu.RUnlock()
+		if s.source.closed {
+			return userstore.PlaybackProgressState{}, userstore.ErrPlaybackSourceClosed
+		}
 	}
-	if state == nil {
-		return userstore.PlaybackProgressState{}, userstore.ErrPlaybackSinkNotFound
-	}
-	return *state, nil
+	return s.readSourcePlaybackProgress(ctx, scope)
 }
 
 func (s *PostgresUserStore) InstallPlaybackAuthority(ctx context.Context, request userstore.InstallPlaybackAuthorityRequest) (userstore.PlaybackProgressResult, error) {
@@ -50,6 +50,13 @@ func (s *PostgresUserStore) StopPlaybackProgress(ctx context.Context, request us
 
 func (s *PostgresUserStore) mutatePlaybackSink(ctx context.Context, scope userstore.PlaybackProgressScope, prepare func(*userstore.PlaybackProgressState) (userstore.PlaybackProgressChange, error)) (userstore.PlaybackProgressResult, error) {
 	var zero userstore.PlaybackProgressResult
+	if s.source != nil {
+		s.source.mu.RLock()
+		defer s.source.mu.RUnlock()
+		if s.source.closed {
+			return zero, userstore.ErrPlaybackSourceClosed
+		}
+	}
 	if err := scope.Validate(); err != nil {
 		return zero, err
 	}
@@ -62,6 +69,9 @@ func (s *PostgresUserStore) mutatePlaybackSink(ctx context.Context, scope userst
 		defer cancel()
 		_ = tx.Rollback(rollbackCtx)
 	}()
+	if err := s.checkPlaybackSource(ctx, tx); err != nil {
+		return zero, err
+	}
 	if err := lockImportedHistory(ctx, tx, s.userID, scope.ProfileID); err != nil {
 		return zero, err
 	}

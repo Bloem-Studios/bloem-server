@@ -84,12 +84,50 @@ func TestImportSchemaRefusesNewAndUpgraded23(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "7.db")
+			var source *userdb.UserDB
+			var err error
 			if upgrade {
-				old, err := testdata.NewSource(path, 7)
+				source, err = testdata.NewSource(path, 7)
 				if err != nil {
 					t.Fatal(err)
 				}
-				assertSchema22(t, old)
+				assertSchema22(t, source)
+				if _, err = source.DB.Exec(testdata.Schema23Migration); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				source, err = testdata.NewSource23(path, 7)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			defer source.Close() //nolint:errcheck
+			assertUnsupportedVersion(t, source, 23)
+			var count int
+			if err := source.DB.QueryRow("SELECT count(*) FROM sqlite_schema WHERE name='playback_progress_sinks'").Scan(&count); err != nil || count != 1 {
+				t.Fatalf("not genuine schema23: %d %v", count, err)
+			}
+			if err := source.DB.QueryRow("SELECT count(*) FROM sqlite_schema WHERE name='playback_source_markers'").Scan(&count); err != nil || count != 0 {
+				t.Fatalf("historical23 contains future marker: %d %v", count, err)
+			}
+		})
+	}
+}
+
+func TestImportSchemaRefusesNewAndUpgraded24(t *testing.T) {
+	for _, upgrade := range []bool{false, true} {
+		name := "new"
+		if upgrade {
+			name = "upgraded"
+		}
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "7.db")
+			if upgrade {
+				old, err := testdata.NewSource23(path, 7)
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertUnsupportedVersion(t, old, 23)
 				if err := old.Close(); err != nil {
 					t.Fatal(err)
 				}
@@ -99,18 +137,27 @@ func TestImportSchemaRefusesNewAndUpgraded23(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer source.Close() //nolint:errcheck
-			var version int
-			if err := source.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 23 {
-				t.Fatalf("expected schema23: %d %v", version, err)
-			}
-			tx, err := source.DB.BeginTx(t.Context(), nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer tx.Rollback() //nolint:errcheck
-			if err := validateSourceSchema(t.Context(), tx); err == nil {
-				t.Fatal("schema23 accepted")
+			assertUnsupportedVersion(t, source, 24)
+			var count int
+			if err := source.DB.QueryRow("SELECT count(*) FROM sqlite_schema WHERE name='playback_source_markers'").Scan(&count); err != nil || count != 1 {
+				t.Fatalf("schema24 missing actual marker: %d %v", count, err)
 			}
 		})
+	}
+}
+
+func assertUnsupportedVersion(t *testing.T, source *userdb.UserDB, expected int) {
+	t.Helper()
+	var version int
+	if err := source.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != expected {
+		t.Fatalf("expected schema%d: %d %v", expected, version, err)
+	}
+	tx, err := source.DB.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if err := validateSourceSchema(t.Context(), tx); err == nil {
+		t.Fatalf("schema%d accepted", expected)
 	}
 }
