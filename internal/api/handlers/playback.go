@@ -532,6 +532,13 @@ func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID s
 	requestUserID := apimw.GetUserID(r.Context())
 	session, err := h.sessionMgr.GetSession(sessionID)
 	if err == nil {
+		// This legacy origin has no response-lifetime grant guard yet.
+		if session.Executor != nil {
+			return nil, playback.SessionUnavailable, nil, nil, &nativeRouteBindingErrorV3{status: http.StatusServiceUnavailable}
+		}
+		if runtime := h.tm.GetTranscodeSession(sessionID); runtime != nil && runtime.ExecutorNamespace() != nil {
+			return nil, playback.SessionUnavailable, nil, nil, &nativeRouteBindingErrorV3{status: http.StatusServiceUnavailable}
+		}
 		// Defense in depth: LoadOrReconstructSession enforces the same rule for
 		// every serve handler, but this fast path never reaches it.
 		if session.RequireMediaAuthorization && requestUserID == 0 {
@@ -577,6 +584,9 @@ func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID s
 	// Genuine miss (e.g. after a restart): now — and only now — pay for the token
 	// decode so the recipe is available for reconstruction.
 	card, claims := verifiedStreamCardFromToken(r.URL.Query().Get(streamTokenParam), sessionID, h.JWTSecret)
+	if card != nil && card.Executor != nil {
+		return nil, playback.SessionUnavailable, card, claims, &nativeRouteBindingErrorV3{status: http.StatusServiceUnavailable}
+	}
 	if card != nil {
 		if routeStatus := nativeAPIEgressStatusV3(card.RoutingWorkload, card.RoutingExecution, card.RoutingEgress); routeStatus != 0 {
 			return nil, playback.SessionUnavailable, card, claims, &nativeRouteBindingErrorV3{status: routeStatus}
@@ -659,12 +669,20 @@ func requireNativeSessionAPIEgressV3(w http.ResponseWriter, session *playback.Se
 	if session == nil {
 		return false
 	}
+	if session.Executor != nil {
+		writeNativeRouteStatusV3(w, http.StatusServiceUnavailable)
+		return false
+	}
 	return requireNativeAPIEgressV3(w, session.RoutingWorkload, session.RoutingExecution, session.RoutingEgress)
 }
 
 func requireNativeRecipeAPIEgressV3(w http.ResponseWriter, card *playback.RecipeCard) bool {
 	if card == nil {
 		return true
+	}
+	if card.Executor != nil {
+		writeNativeRouteStatusV3(w, http.StatusServiceUnavailable)
+		return false
 	}
 	return requireNativeAPIEgressV3(w, card.RoutingWorkload, card.RoutingExecution, card.RoutingEgress)
 }

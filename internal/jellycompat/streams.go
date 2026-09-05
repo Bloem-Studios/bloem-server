@@ -88,7 +88,7 @@ func compatWorkerHLSRouteAllowed(workload noderouting.Workload, policy config.Pl
 // change later (for example, during an audio switch), so the current recipe is
 // authoritative for its local-versus-worker executor.
 func compatChildHLSRouteMatches(source PlaybackMediaSource, recipe *playback.RecipeCard, assignment *playback.NodeRoutingAssignment) bool {
-	if recipe == nil || assignment == nil {
+	if recipe == nil || recipe.Executor != nil || assignment == nil {
 		return false
 	}
 	workload := noderouting.WorkloadRemux
@@ -100,7 +100,19 @@ func compatChildHLSRouteMatches(source PlaybackMediaSource, recipe *playback.Rec
 		assignment.Egress == string(noderouting.EgressAPI)
 }
 
+// Bound delivery is disabled on this origin until response-lifetime grants are wired.
+func requireCompatLegacyExecutor(w http.ResponseWriter, session *PlaybackSession) bool {
+	if session != nil && session.Recipe != nil && session.Recipe.Executor != nil {
+		writeError(w, http.StatusServiceUnavailable, compatRoutingPolicyUnsatisfiedCode, "Executor-bound delivery is not available on this origin")
+		return false
+	}
+	return true
+}
+
 func (h *PlaybackHandler) requireCompatChildHLSRoute(w http.ResponseWriter, playSession *PlaybackSession, source PlaybackMediaSource) bool {
+	if !requireCompatLegacyExecutor(w, playSession) {
+		return false
+	}
 	if playSession == nil || playSession.Recipe == nil || playSession.RoutingAssignment == nil {
 		writeError(w, http.StatusConflict, compatPlaybackRouteUnboundCode, "Request the master manifest before child HLS resources")
 		return false
@@ -434,6 +446,9 @@ func (h *PlaybackHandler) HandleVideoStream(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusNotFound, "NotFound", "Playback session not found")
 		return
 	}
+	if !requireCompatLegacyExecutor(w, playSession) {
+		return
+	}
 	if source == nil {
 		writeError(w, http.StatusBadRequest, "BadRequest", "Media source is required")
 		return
@@ -648,6 +663,9 @@ func (h *PlaybackHandler) HandleMasterManifest(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	if !requireCompatLegacyExecutor(w, playSession) {
+		return
+	}
 	source := findMediaSource(playSession, firstNonEmpty(r.URL.Query().Get("MediaSourceId"), r.URL.Query().Get("mediaSourceId")))
 	if source == nil {
 		writeError(w, http.StatusBadRequest, "BadRequest", "Media source is required")

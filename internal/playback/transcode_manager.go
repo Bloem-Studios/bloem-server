@@ -1,6 +1,7 @@
 package playback
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -56,6 +57,8 @@ type atomicSessionReconstructor interface {
 // Dependencies are injected as function fields so an embedding handler can wire
 // them lazily from its own (often late-set) fields without an ordering hazard.
 type TranscodeManager struct {
+	ExecuteGrants         ExecutorGrantProviderV3
+	ResolveExecutorRecipe func(context.Context, string, ExecutorNamespaceV3) (*RecipeCard, error)
 	// Sessions re-registers a reconstructed session under its existing id.
 	Sessions sessionReconstructor
 	// Config returns the current transcode runtime config (ffmpeg path, dir,
@@ -445,6 +448,18 @@ func (m *TranscodeManager) LoadOrReconstructSessionDetail(ctx context.Context, g
 		}
 		return session, SessionLoaded, true
 	}
+	var expected *ExecutorNamespaceV3
+	if card != nil {
+		expected = card.Executor
+	}
+	if session == nil || MatchExecutorNamespace(session.Executor, expected) != nil {
+		return nil, SessionLoadFailed, false
+	}
+	if expected != nil {
+		if m == nil || m.checkMetadataGrant(ctx, cmp.Or(session.TranscodeTransportID, sessionID), *expected) != nil {
+			return nil, SessionLoadFailed, false
+		}
+	}
 	// Live session: enforce the existing ownership check. A zero caller is
 	// allowed (these routes treat the session UUID as a bearer when auth is
 	// optional); a non-zero mismatch is refused.
@@ -469,6 +484,44 @@ type transcodeLoadResult struct {
 	runtime *TranscodeSession
 	status  SessionLoadStatus
 	err     error
+}
+
+func (m *TranscodeManager) checkMetadataGrant(ctx context.Context, transportID string, executor ExecutorNamespaceV3) error {
+	if m.ExecuteGrants == nil {
+		return errors.New("executor grant provider required")
+	}
+	grant, err := m.ExecuteGrants(ctx, transportID, executor, AttemptGrantServeV3)
+	if grant != nil {
+		defer grant.Close()
+	}
+	if err != nil {
+		return err
+	}
+	if grant == nil {
+		return errors.New("executor grant provider returned no grant")
+	}
+	return grant.CheckBinding(executor, AttemptGrantServeV3, transportID)
+}
+
+func (m *TranscodeManager) resolveBoundRecipe(ctx context.Context, sessionID string, card RecipeCard) (RecipeCard, error) {
+	if card.Executor == nil {
+		return card, nil
+	}
+	if err := card.Executor.Validate(); err != nil {
+		return RecipeCard{}, err
+	}
+	if m.ResolveExecutorRecipe == nil {
+		return RecipeCard{}, errors.New("executor recipe resolver required")
+	}
+	transportID := cmp.Or(card.TranscodeTransportID, sessionID)
+	resolved, err := m.ResolveExecutorRecipe(ctx, transportID, *card.Executor)
+	if err != nil {
+		return RecipeCard{}, err
+	}
+	if resolved == nil || resolved.SessionID != sessionID || cmp.Or(resolved.TranscodeTransportID, resolved.SessionID) != transportID || MatchExecutorNamespace(resolved.Executor, card.Executor) != nil {
+		return RecipeCard{}, ErrExecutorNamespaceMismatch
+	}
+	return *resolved, nil
 }
 
 // LoadOrReconstructTranscode atomically recovers the playback Session and its
@@ -535,13 +588,25 @@ func (m *TranscodeManager) doLoadOrReconstructTranscode(
 	requestUserID int,
 	requestedSegment int,
 	card *RecipeCard,
-) transcodeLoadResult {
+) (result transcodeLoadResult) {
 	atomicSessions, ok := m.Sessions.(atomicSessionReconstructor)
 	if !ok {
 		return transcodeLoadResult{status: SessionLoadFailed}
 	}
 	session, err := getSession(sessionID)
 	var inserted *Session
+	defer func() {
+		if inserted != nil && result.status != SessionLoaded {
+			atomicSessions.RollbackReconstructedToneMap(inserted)
+		}
+	}()
+	if card != nil && card.Executor != nil && (err != nil || m.GetTranscodeSession(sessionID) == nil) {
+		resolved, resolveErr := m.resolveBoundRecipe(ctx, sessionID, *card)
+		if resolveErr != nil {
+			return transcodeLoadResult{status: SessionLoadFailed, err: resolveErr}
+		}
+		card = &resolved
+	}
 	if err != nil {
 		if !errors.Is(err, ErrSessionNotFound) {
 			return transcodeLoadResult{status: SessionLoadFailed}
@@ -550,13 +615,25 @@ func (m *TranscodeManager) doLoadOrReconstructTranscode(
 			return transcodeLoadResult{status: SessionMissing}
 		}
 		var ok bool
-		session, inserted, ok = m.reconstructSession(ctx, sessionID, requestUserID, *card, true)
+		session, inserted, ok = m.reconstructSessionFromRecipe(ctx, sessionID, requestUserID, *card, true)
 		if !ok || session == nil {
 			return transcodeLoadResult{status: SessionMissing}
 		}
 	}
 	if requestUserID != 0 && session.UserID != requestUserID {
 		return transcodeLoadResult{status: SessionForbidden}
+	}
+	var expected *ExecutorNamespaceV3
+	if card != nil {
+		expected = card.Executor
+	}
+	if MatchExecutorNamespace(session.Executor, expected) != nil {
+		return transcodeLoadResult{status: SessionLoadFailed, err: ErrExecutorNamespaceMismatch}
+	}
+	if expected != nil {
+		if err := m.checkMetadataGrant(ctx, cmp.Or(session.TranscodeTransportID, sessionID), *expected); err != nil {
+			return transcodeLoadResult{status: SessionLoadFailed, err: err}
+		}
 	}
 	if runtime := m.GetTranscodeSession(sessionID); runtime != nil {
 		var expected *ExecutorNamespaceV3
@@ -594,9 +671,6 @@ func (m *TranscodeManager) doLoadOrReconstructTranscode(
 
 	runtime, reconstructErr := m.ReconstructTranscodeWithError(ctx, sessionID, requestedSegment, *card)
 	if runtime == nil {
-		if inserted != nil {
-			atomicSessions.RollbackReconstructedToneMap(inserted)
-		}
 		return transcodeLoadResult{status: SessionUnavailable, err: reconstructErr}
 	}
 	return m.completeTranscodeLoad(atomicSessions, getSession, session, inserted, runtime)
@@ -616,6 +690,9 @@ func (m *TranscodeManager) completeTranscodeLoad(
 		}
 	}
 	if current, err := getSession(session.ID); err == nil {
+		if current == nil || runtime.CheckExecutorNamespace(current.Executor) != nil {
+			return transcodeLoadResult{status: SessionLoadFailed, err: ErrExecutorNamespaceMismatch}
+		}
 		session = current
 	}
 	return transcodeLoadResult{session: session, runtime: runtime, status: SessionLoaded}
@@ -635,6 +712,17 @@ func (m *TranscodeManager) ReconstructSession(ctx context.Context, sessionID str
 }
 
 func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID string, requestUserID int, card RecipeCard, deferToneMapConfirmation bool) (*Session, *Session, bool) {
+	if m == nil {
+		return nil, nil, false
+	}
+	resolved, err := m.resolveBoundRecipe(ctx, sessionID, card)
+	if err != nil {
+		return nil, nil, false
+	}
+	return m.reconstructSessionFromRecipe(ctx, sessionID, requestUserID, resolved, deferToneMapConfirmation)
+}
+
+func (m *TranscodeManager) reconstructSessionFromRecipe(ctx context.Context, sessionID string, requestUserID int, card RecipeCard, deferToneMapConfirmation bool) (*Session, *Session, bool) {
 	if m == nil || m.Sessions == nil {
 		return nil, nil, false
 	}
@@ -646,6 +734,9 @@ func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str
 	if err := ValidateCopyFMP4RecipeCard(card); err != nil {
 		slog.WarnContext(ctx, "transcode reconstruct copy recipe rejected", "component", "playback",
 			"session", sessionID, "playback_session_id", sessionID, "error", err)
+		return nil, nil, false
+	}
+	if card.Executor != nil && m.checkMetadataGrant(ctx, cmp.Or(card.TranscodeTransportID, sessionID), *card.Executor) != nil {
 		return nil, nil, false
 	}
 	// Re-bind ownership to the card owner. A zero caller is allowed (the authless
@@ -672,6 +763,7 @@ func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str
 		toneMapMode = ""
 	}
 	s := &Session{
+		Executor:               cloneExecutorNamespace(card.Executor),
 		ID:                     card.SessionID,
 		UserID:                 card.UserID,
 		ProfileID:              card.ProfileID,
@@ -735,6 +827,9 @@ func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str
 			"session", sessionID, "playback_session_id", sessionID,
 			"user", card.UserID, "method", method, "error", err)
 		session = m.Sessions.RegisterReconstructed(s)
+	}
+	if session == nil || MatchExecutorNamespace(session.Executor, card.Executor) != nil {
+		return nil, nil, false
 	}
 	slog.InfoContext(ctx, "playback session reconstructed from recipe card", "component", "playback",
 		"session", sessionID, "playback_session_id", sessionID, "user", card.UserID, "method", method)
@@ -811,11 +906,20 @@ func (m *TranscodeManager) ReconstructTranscodeWithError(ctx context.Context, se
 		if err := existing.CheckExecutorNamespace(card.Executor); err != nil {
 			return nil, err
 		}
+		if card.Executor != nil {
+			if err := m.checkMetadataGrant(ctx, cmp.Or(card.TranscodeTransportID, sessionID), *card.Executor); err != nil {
+				return nil, err
+			}
+		}
 		return existing, nil
 	}
 
 	v, err, _ := m.reconstructGroup.Do(sessionID, func() (interface{}, error) {
-		return m.doReconstructTranscode(ctx, sessionID, requestedSegment, card)
+		resolved, err := m.resolveBoundRecipe(ctx, sessionID, card)
+		if err != nil {
+			return nil, err
+		}
+		return m.doReconstructTranscode(ctx, sessionID, requestedSegment, resolved)
 	})
 	if err != nil || v == nil {
 		return nil, err
@@ -884,6 +988,7 @@ func (m *TranscodeManager) doReconstructTranscode(ctx context.Context, sessionID
 		}
 	}
 	opts := card.TranscodeOpts(outputDir, cfg.FFmpegPath, m.logSink())
+	opts.ExecuteGrants = m.ExecuteGrants
 	// Recipe cards preserve the original launch tuning, but a reconstruction is
 	// not a fresh generation: restore the conservative manifest lead so recovery
 	// never exposes a hardware encoder after only one fragment.

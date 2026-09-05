@@ -216,6 +216,7 @@ type ExecutorRecipeResolver func(context.Context, string, playback.ExecutorNames
 
 // Server is the HTTP handler for transcode mode.
 type Server struct {
+	executorGrants            playback.ExecutorGrantProviderV3
 	executorRecipeResolver    ExecutorRecipeResolver
 	watcher                   *nodeconfig.Watcher
 	nodeRowID                 func() (int, bool)
@@ -1429,6 +1430,7 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 
 	opts := playback.TranscodeOpts{
 		Executor:                   req.Executor,
+		ExecuteGrants:              s.executorGrants,
 		InputPath:                  req.InputPath,
 		OutputDir:                  outputDir,
 		SessionID:                  req.SessionID,
@@ -1813,6 +1815,7 @@ func (s *Server) spawnReconstruct(r *http.Request, sessionID string, requestedSe
 		}
 	}
 	opts := card.TranscodeOpts(outputDir, cfg.Playback.FFmpegPath, s.ffmpegSink)
+	opts.ExecuteGrants = s.executorGrants
 	opts.SessionID = sessionID
 	// Recipe cards preserve the original launch tuning, but reconstruction must
 	// retain the normal manifest cushion rather than the fresh-start fast path.
@@ -2332,6 +2335,13 @@ func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
 		// not recorded this hit; count it so the reaper sees the liveness.
 		s.touchSession(sessionID)
 	}
+	grantedWriter, grantedRequest, closeGrant, grantErr := s.grantExecutorResponse(w, r, sessionID, session)
+	if grantErr != nil {
+		http.Error(w, "executor serving authority unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	defer closeGrant()
+	w, r = grantedWriter, grantedRequest
 	s.attachTelemetrySession(r, sessionID)
 
 	var manifest []byte
@@ -2387,6 +2397,13 @@ func (s *Server) handleSegment(w http.ResponseWriter, r *http.Request) {
 		// not recorded this hit; count it so the reaper sees the liveness.
 		s.touchSession(sessionID)
 	}
+	grantedWriter, grantedRequest, closeGrant, grantErr := s.grantExecutorResponse(w, r, sessionID, session)
+	if grantErr != nil {
+		http.Error(w, "executor serving authority unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	defer closeGrant()
+	w, r = grantedWriter, grantedRequest
 	s.attachTelemetrySession(r, sessionID)
 
 	segmentLease, err := session.OpenSegment(name)
@@ -2536,6 +2553,13 @@ func (s *Server) handleSegmentDownloaded(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "session not found", http.StatusNotFound)
 		return
 	}
+	grantedWriter, _, closeGrant, grantErr := s.grantExecutorResponse(w, r, sessionID, session)
+	if grantErr != nil {
+		http.Error(w, "executor serving authority unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	defer closeGrant()
+	w = grantedWriter
 	session.ReportSegmentDownloadedForGenerationToken(segmentNumber, generationToken)
 	w.WriteHeader(http.StatusNoContent)
 }

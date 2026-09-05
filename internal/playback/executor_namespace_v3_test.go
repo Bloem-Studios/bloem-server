@@ -1,6 +1,7 @@
 package playback
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -107,7 +108,7 @@ func TestExecutorNamespaceExclusiveSpawnAndStaleCleanup(t *testing.T) {
 	second.ExecutorID = uuid.NewString()
 	dir1, _ := first.OutputDir(root)
 	dir2, _ := second.OutputDir(root)
-	opts := TranscodeOpts{SessionID: "session", OutputDir: dir1, FFmpegPath: binary, TargetCodecVideo: "libx264", FastStart: true, Executor: &first}
+	opts := TranscodeOpts{ExecuteGrants: executorGrantTestProvider(nil), SessionID: "session", OutputDir: dir1, FFmpegPath: binary, TargetCodecVideo: "libx264", FastStart: true, Executor: &first}
 	session1, err := StartTranscode(t.Context(), opts)
 	if err != nil {
 		t.Fatal(err)
@@ -184,11 +185,15 @@ func TestExecutorNamespaceReconstructionExactAndFenced(t *testing.T) {
 	root := t.TempDir()
 	namespace := executorFixture()
 	manager := NewTranscodeManager()
+	manager.ExecuteGrants = executorGrantTestProvider(nil)
 	manager.Config = func() TranscodeRuntimeConfig {
 		return TranscodeRuntimeConfig{TranscodeDir: root, FFmpegPath: executorTestBinary(t)}
 	}
 	card := NewRecipeCard(1, "profile", 3, "", TranscodeOpts{SessionID: "session", TargetCodecVideo: "libx264", Executor: &namespace})
 	card.OutputSubdir = "session/legacy"
+	manager.ResolveExecutorRecipe = func(context.Context, string, ExecutorNamespaceV3) (*RecipeCard, error) {
+		return &card, nil
+	}
 	session, err := manager.ReconstructTranscodeWithError(t.Context(), "session", -1, card)
 	if err != nil {
 		t.Fatal(err)
@@ -218,6 +223,8 @@ func TestExecutorNamespaceReconstructionExactAndFenced(t *testing.T) {
 	}
 	otherManager := NewTranscodeManager()
 	otherManager.Config = manager.Config
+	otherManager.ExecuteGrants = manager.ExecuteGrants
+	otherManager.ResolveExecutorRecipe = manager.ResolveExecutorRecipe
 	if _, err := otherManager.ReconstructTranscodeWithError(t.Context(), "session", -1, card); !errors.Is(err, ErrExecutorReplacementRequired) {
 		t.Fatalf("crash namespace reuse=%v", err)
 	}
