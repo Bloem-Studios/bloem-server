@@ -42,7 +42,6 @@ import {
 } from "@/hooks/queries/collections";
 import {
   useCreateAdminCollection,
-  useDeleteCollectionImage,
   useUpdateAdminCollection,
 } from "@/hooks/queries/admin/collections";
 import { useUserLibraries } from "@/hooks/queries/libraries";
@@ -109,12 +108,14 @@ export default function SmartCollectionWizard(wizard: SmartCollectionWizardProps
   // Admin-only state still lives here so it survives step jumps too.
   const [backdropFile, setBackdropFile] = useState<File | null>(null);
   const [backdropSourceUrl, setBackdropSourceUrl] = useState("");
+  const [removeArtwork, setRemoveArtwork] = useState<("poster" | "backdrop")[]>([]);
   const [step, setStep] = useState<WizardStep>(1);
 
   useEffect(() => {
     setDraft(initialDraft);
     setPosterFile(null);
     setPosterSourceUrl("");
+    setRemoveArtwork([]);
     setBackdropFile(null);
     setBackdropSourceUrl("");
     setStep(1);
@@ -156,6 +157,8 @@ export default function SmartCollectionWizard(wizard: SmartCollectionWizardProps
         />
       ) : (
         <Step2AdminMetadata
+          removeArtwork={removeArtwork}
+          onRemoveArtworkChange={setRemoveArtwork}
           wizard={wizard}
           draft={draft}
           onDraftChange={setDraft}
@@ -495,6 +498,8 @@ function Step2UserMetadata({
 }
 
 interface Step2AdminMetadataProps extends Step2BaseProps {
+  removeArtwork: ("poster" | "backdrop")[];
+  onRemoveArtworkChange: (value: ("poster" | "backdrop")[]) => void;
   wizard: AdminModeProps;
   backdropFile: File | null;
   onBackdropFileChange: (file: File | null) => void;
@@ -504,6 +509,8 @@ interface Step2AdminMetadataProps extends Step2BaseProps {
 
 function Step2AdminMetadata({
   wizard,
+  removeArtwork,
+  onRemoveArtworkChange,
   draft,
   onDraftChange,
   posterFile,
@@ -518,7 +525,6 @@ function Step2AdminMetadata({
 }: Step2AdminMetadataProps) {
   const createMutation = useCreateAdminCollection();
   const updateMutation = useUpdateAdminCollection();
-  const deleteImage = useDeleteCollectionImage();
   const isPending = createMutation.isPending || updateMutation.isPending;
   const collection = wizard.collection;
   const hasLibrary = draft.query_definition.library_ids.length > 0;
@@ -533,7 +539,14 @@ function Step2AdminMetadata({
     };
     if (collection) {
       updateMutation.mutate(
-        { id: collection.id, etag: wizard.etag!, body, poster: posterFile, backdrop: backdropFile },
+        {
+          id: collection.id,
+          etag: wizard.etag!,
+          body,
+          removeArtwork,
+          poster: posterFile,
+          backdrop: backdropFile,
+        },
         { onSuccess: wizard.onClose },
       );
     } else {
@@ -606,37 +619,57 @@ function Step2AdminMetadata({
         <div className="space-y-4">
           <AdminCollectionArtworkField
             label="Poster"
-            currentUrl={collection?.poster_url}
+            currentUrl={removeArtwork.includes("poster") ? "" : collection?.poster_url}
             file={posterFile}
-            onFileChange={onPosterFileChange}
+            onFileChange={(file) => {
+              onPosterFileChange(file);
+              if (file) onRemoveArtworkChange(removeArtwork.filter((type) => type !== "poster"));
+            }}
             sourceUrl={posterSourceUrl}
-            onSourceUrlChange={onPosterSourceUrlChange}
+            onSourceUrlChange={(url) => {
+              onPosterSourceUrlChange(url);
+              if (url.trim())
+                onRemoveArtworkChange(removeArtwork.filter((type) => type !== "poster"));
+            }}
             onDelete={
               collection
-                ? () =>
-                    deleteImage.mutate({
-                      id: collection.id,
-                      type: "poster",
-                      libraryId: collection.library_id,
-                    })
+                ? () => {
+                    onRemoveArtworkChange(
+                      removeArtwork.includes("poster")
+                        ? removeArtwork
+                        : [...removeArtwork, "poster"],
+                    );
+                    onPosterFileChange(null);
+                    onPosterSourceUrlChange("");
+                  }
                 : undefined
             }
           />
           <AdminCollectionArtworkField
             label="Backdrop"
-            currentUrl={collection?.backdrop_url}
+            currentUrl={removeArtwork.includes("backdrop") ? "" : collection?.backdrop_url}
             file={backdropFile}
-            onFileChange={onBackdropFileChange}
+            onFileChange={(file) => {
+              onBackdropFileChange(file);
+              if (file) onRemoveArtworkChange(removeArtwork.filter((type) => type !== "backdrop"));
+            }}
             sourceUrl={backdropSourceUrl}
-            onSourceUrlChange={onBackdropSourceUrlChange}
+            onSourceUrlChange={(url) => {
+              onBackdropSourceUrlChange(url);
+              if (url.trim())
+                onRemoveArtworkChange(removeArtwork.filter((type) => type !== "backdrop"));
+            }}
             onDelete={
               collection
-                ? () =>
-                    deleteImage.mutate({
-                      id: collection.id,
-                      type: "backdrop",
-                      libraryId: collection.library_id,
-                    })
+                ? () => {
+                    onRemoveArtworkChange(
+                      removeArtwork.includes("backdrop")
+                        ? removeArtwork
+                        : [...removeArtwork, "backdrop"],
+                    );
+                    onBackdropFileChange(null);
+                    onBackdropSourceUrlChange("");
+                  }
                 : undefined
             }
           />

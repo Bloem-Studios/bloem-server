@@ -10,7 +10,6 @@ import {
 import {
   useAdminCollectionCapabilities,
   useCreateAdminCollection,
-  useDeleteCollectionImage,
   useImportMDBListCollection,
   useImportTMDBCollection,
   useImportTraktCollection,
@@ -481,10 +480,11 @@ export function CollectionForm({
   const [backdropFile, setBackdropFile] = useState<File | null>(null);
   const [posterSourceUrl, setPosterSourceUrl] = useState("");
   const [backdropSourceUrl, setBackdropSourceUrl] = useState("");
-  const deleteImage = useDeleteCollectionImage();
+  const [removeArtwork, setRemoveArtwork] = useState<("poster" | "backdrop")[]>([]);
 
   useEffect(() => {
     setDraft(toAdminCollectionBuilderValue(collection, initialLibraryId));
+    setRemoveArtwork([]);
     setPosterFile(null);
     setBackdropFile(null);
     setPosterSourceUrl("");
@@ -515,7 +515,14 @@ export function CollectionForm({
         };
         if (collection) {
           updateMutation.mutate(
-            { id: collection.id, etag: etag!, body, poster: posterFile, backdrop: backdropFile },
+            {
+              id: collection.id,
+              etag: etag!,
+              body,
+              removeArtwork,
+              poster: posterFile,
+              backdrop: backdropFile,
+            },
             { onSuccess: onClose },
           );
           return;
@@ -564,37 +571,54 @@ export function CollectionForm({
         <div className="grid gap-4 md:grid-cols-2">
           <AdminCollectionArtworkField
             label="Poster"
-            currentUrl={collection?.poster_url}
+            currentUrl={removeArtwork.includes("poster") ? "" : collection?.poster_url}
             file={posterFile}
-            onFileChange={setPosterFile}
+            onFileChange={(file) => {
+              setPosterFile(file);
+              if (file) setRemoveArtwork((current) => current.filter((type) => type !== "poster"));
+            }}
             sourceUrl={posterSourceUrl}
-            onSourceUrlChange={setPosterSourceUrl}
+            onSourceUrlChange={(url) => {
+              setPosterSourceUrl(url);
+              if (url.trim())
+                setRemoveArtwork((current) => current.filter((type) => type !== "poster"));
+            }}
             onDelete={
               collection
-                ? () =>
-                    deleteImage.mutate({
-                      id: collection.id,
-                      type: "poster",
-                      libraryId: collection.library_id,
-                    })
+                ? () => {
+                    setRemoveArtwork((current) =>
+                      current.includes("poster") ? current : [...current, "poster"],
+                    );
+                    setPosterFile(null);
+                    setPosterSourceUrl("");
+                  }
                 : undefined
             }
           />
           <AdminCollectionArtworkField
             label="Backdrop"
-            currentUrl={collection?.backdrop_url}
+            currentUrl={removeArtwork.includes("backdrop") ? "" : collection?.backdrop_url}
             file={backdropFile}
-            onFileChange={setBackdropFile}
+            onFileChange={(file) => {
+              setBackdropFile(file);
+              if (file)
+                setRemoveArtwork((current) => current.filter((type) => type !== "backdrop"));
+            }}
             sourceUrl={backdropSourceUrl}
-            onSourceUrlChange={setBackdropSourceUrl}
+            onSourceUrlChange={(url) => {
+              setBackdropSourceUrl(url);
+              if (url.trim())
+                setRemoveArtwork((current) => current.filter((type) => type !== "backdrop"));
+            }}
             onDelete={
               collection
-                ? () =>
-                    deleteImage.mutate({
-                      id: collection.id,
-                      type: "backdrop",
-                      libraryId: collection.library_id,
-                    })
+                ? () => {
+                    setRemoveArtwork((current) =>
+                      current.includes("backdrop") ? current : [...current, "backdrop"],
+                    );
+                    setBackdropFile(null);
+                    setBackdropSourceUrl("");
+                  }
                 : undefined
             }
           />
@@ -1439,7 +1463,7 @@ export function CollectionEditForm({
   const [backdropFile, setBackdropFile] = useState<File | null>(null);
   const [posterSourceUrl, setPosterSourceUrl] = useState("");
   const [backdropSourceUrl, setBackdropSourceUrl] = useState("");
-  const deleteImage = useDeleteCollectionImage();
+  const [removeArtwork, setRemoveArtwork] = useState<("poster" | "backdrop")[]>([]);
   const updateMutation = useUpdateAdminCollection();
   const { data: profiles = [] } = useProfiles();
   const [sourceUrl, setSourceUrl] = useState(collection.source_url ?? "");
@@ -1556,7 +1580,14 @@ export function CollectionEditForm({
     };
 
     updateMutation.mutate(
-      { id: collection.id, etag: etag!, body, poster: posterFile, backdrop: backdropFile },
+      {
+        id: collection.id,
+        etag: etag!,
+        body,
+        removeArtwork,
+        poster: posterFile,
+        backdrop: backdropFile,
+      },
       { onSuccess: onClose },
     );
   }
@@ -1634,33 +1665,48 @@ export function CollectionEditForm({
         <div className="grid gap-4 md:grid-cols-2">
           <AdminCollectionArtworkField
             label="Poster"
-            currentUrl={collection.poster_url}
+            currentUrl={removeArtwork.includes("poster") ? "" : collection.poster_url}
             file={posterFile}
-            onFileChange={setPosterFile}
+            onFileChange={(file) => {
+              setPosterFile(file);
+              if (file) setRemoveArtwork((current) => current.filter((type) => type !== "poster"));
+            }}
             sourceUrl={posterSourceUrl}
-            onSourceUrlChange={setPosterSourceUrl}
-            onDelete={() =>
-              deleteImage.mutate({
-                id: collection.id,
-                type: "poster",
-                libraryId: collection.library_id,
-              })
-            }
+            onSourceUrlChange={(url) => {
+              setPosterSourceUrl(url);
+              if (url.trim())
+                setRemoveArtwork((current) => current.filter((type) => type !== "poster"));
+            }}
+            onDelete={() => {
+              setRemoveArtwork((current) =>
+                current.includes("poster") ? current : [...current, "poster"],
+              );
+              setPosterFile(null);
+              setPosterSourceUrl("");
+            }}
           />
           <AdminCollectionArtworkField
             label="Backdrop"
-            currentUrl={collection.backdrop_url}
+            currentUrl={removeArtwork.includes("backdrop") ? "" : collection.backdrop_url}
             file={backdropFile}
-            onFileChange={setBackdropFile}
+            onFileChange={(file) => {
+              setBackdropFile(file);
+              if (file)
+                setRemoveArtwork((current) => current.filter((type) => type !== "backdrop"));
+            }}
             sourceUrl={backdropSourceUrl}
-            onSourceUrlChange={setBackdropSourceUrl}
-            onDelete={() =>
-              deleteImage.mutate({
-                id: collection.id,
-                type: "backdrop",
-                libraryId: collection.library_id,
-              })
-            }
+            onSourceUrlChange={(url) => {
+              setBackdropSourceUrl(url);
+              if (url.trim())
+                setRemoveArtwork((current) => current.filter((type) => type !== "backdrop"));
+            }}
+            onDelete={() => {
+              setRemoveArtwork((current) =>
+                current.includes("backdrop") ? current : [...current, "backdrop"],
+              );
+              setBackdropFile(null);
+              setBackdropSourceUrl("");
+            }}
           />
         </div>
 

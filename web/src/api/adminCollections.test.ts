@@ -136,4 +136,16 @@ describe("admin collection adapter", () => {
     );
     expect(request.mock.calls.every(([operation]) => operation.startsWith("GET"))).toBe(true);
   });
+  it("uses a replacement instead of deleting artwork when both are supplied", async () => {
+    request.mockResolvedValueOnce(collection);
+    const replacement = new File(["new"], "poster.png");
+    const result = await saveAdminArtwork(collection, {}, replacement, null, ["poster"]);
+    expect(result.artworkErrors).toEqual([]);
+    expect(request.mock.calls).toEqual([
+      [
+        "PUT /api/v2/admin/collections/{id}/poster",
+        { path: { id: "saved" }, form: { image: replacement } },
+      ],
+    ]);
+  });
 });

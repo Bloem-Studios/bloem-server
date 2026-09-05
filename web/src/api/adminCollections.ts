@@ -83,14 +83,23 @@ export async function saveAdminArtwork(
   body: { poster_source_url?: string; backdrop_source_url?: string },
   poster?: File | null,
   backdrop?: File | null,
+  removeArtwork: ("poster" | "backdrop")[] = [],
 ) {
   let collection = value;
   const artworkErrors: string[] = [];
   for (const type of ["poster", "backdrop"] as const) {
     const file = type === "poster" ? poster : backdrop;
     const source = body[`${type}_source_url`];
-    if (!file && !source) continue;
+    if (!file && !source && !removeArtwork.includes(type)) continue;
     try {
+      if (!file && !source) {
+        await v2("DELETE /api/v2/admin/collections/{id}/image", {
+          path: { id: value.id },
+          query: { type },
+        });
+        collection = { ...collection, [`${type}_url`]: "", [`${type}_thumbhash`]: undefined };
+        continue;
+      }
       collection = await v2(
         type === "poster"
           ? "PUT /api/v2/admin/collections/{id}/poster"
@@ -101,7 +110,9 @@ export async function saveAdminArtwork(
         },
       );
     } catch (error) {
-      artworkErrors.push(`${type}: ${error instanceof Error ? error.message : "Upload failed"}`);
+      artworkErrors.push(
+        `${type}: ${error instanceof Error ? error.message : "Artwork update failed"}`,
+      );
     }
   }
   return { collection: adminCollectionFromV2(collection), artworkErrors };

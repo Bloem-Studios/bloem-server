@@ -247,18 +247,20 @@ export function useUpdateAdminCollection() {
       body,
       poster,
       backdrop,
+      removeArtwork,
     }: {
       id: string;
       etag: string;
       body: UpdateLibraryCollectionRequest;
       poster?: File | null;
       backdrop?: File | null;
+      removeArtwork?: ("poster" | "backdrop")[];
     }) =>
       v2("PATCH /api/v2/admin/collections/{id}", {
         path: { id },
         headers: { "If-Match": requiredETag(etag) },
         body: adminUpdateBody(body),
-      }).then((value) => saveAdminArtwork(value, body, poster, backdrop)),
+      }).then((value) => saveAdminArtwork(value, body, poster, backdrop, removeArtwork)),
     onSuccess: (result) => {
       showArtworkErrors(result);
       toast.success("Collection saved");
@@ -353,33 +355,6 @@ export function useDeleteAdminCollections() {
   });
 
   return { ...mutation, progress };
-}
-
-export function useDeleteCollectionImage() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    retry: false,
-    mutationFn: ({
-      id,
-      type,
-      libraryId,
-    }: {
-      id: string;
-      type: "poster" | "backdrop";
-      libraryId: number;
-    }) =>
-      v2("DELETE /api/v2/admin/collections/{id}/image", { path: { id }, query: { type } }).then(
-        () => libraryId,
-      ),
-    onSuccess: (_libraryId) => {
-      toast.success("Image removed");
-      void invalidateAdminCollectionQueries(queryClient);
-    },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to remove image");
-    },
-  });
 }
 
 export function useSyncAdminCollection() {
