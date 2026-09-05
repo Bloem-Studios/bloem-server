@@ -19,12 +19,14 @@ const (
 // AttemptGrantRouteV3 freezes the selected transport and node identities beside
 // the existing plan/recipe. Node zero denotes the owning API's local role.
 type AttemptGrantRouteV3 struct {
-	TransportID     string `json:"transport_id"`
-	ExecutionNodeID int    `json:"execution_node_id"`
-	EgressNodeID    int    `json:"egress_node_id"`
+	Executor        ExecutorNamespaceV3 `json:"executor"`
+	TransportID     string              `json:"transport_id"`
+	ExecutionNodeID int                 `json:"execution_node_id"`
+	EgressNodeID    int                 `json:"egress_node_id"`
 }
 
 type AttemptGrantRequestV3 struct {
+	Executor    ExecutorNamespaceV3
 	SessionID   string
 	PlanID      string
 	TransportID string

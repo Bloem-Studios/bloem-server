@@ -85,3 +85,41 @@ serving and shared-state writes. Obsolete computation can overlap if it cannot
 affect the authoritative successor. Positive exit acknowledgement must not be an
 indefinite prerequisite for recovery from a dead worker. Those runtime changes
 and selected-store progress fencing remain separate from this storage checkpoint.
+
+## Executor output and recipe namespace foundation
+
+Staged routes and grant requests bind an `ExecutorNamespaceV3`: the row
+incarnation, epoch, and a separately supplied executor UUID. A replacement writer
+requires a fresh executor binding. This checkpoint does not add the lifecycle
+operation that replaces a staged binding.
+
+Bound HLS output resolves beneath the configured transcode root as
+`_authority/<incarnation>/<epoch>/<executor UUID>`. Starting a process exclusively
+claims that name before creating its output leaf. The claim survives process
+failure and leaf cleanup, preventing another process from reusing the name.
+Reconstruction can reuse an existing matching runtime or launch an unclaimed
+bound generation; it cannot respawn a consumed generation. Legacy restart rejects
+bound runtimes before stopping them. Cleanup removes only the bound leaf, and the
+legacy orphan sweep excludes the authority subtree. Claim retirement needs a
+separate authority-aware retention policy.
+
+Redis stores bound recipes under generation-specific keys with atomic
+put-if-absent semantics. Identical replay preserves expiry; conflicting bytes are
+rejected. A locator includes the namespace and the digest of the full versioned
+recipe. Reads verify both; deletion compares the exact stored bytes. Bound cards
+cannot use legacy session-key storage or reconstruction fallback.
+
+`PublishAttemptRecipeLocator` publishes that descriptor in PostgreSQL after the
+immutable Redis write. It compares the current live authority, staged executor,
+and expected locator in one update. Initial publication expects no locator; a
+confirmed locator can be replayed unchanged. A stale publisher can leave unused
+Redis bytes but cannot replace the current pointer. Preparing reclamation clears
+the old locator. A locator alone grants no execution or serving permission.
+
+Worker reconstruction has an explicit current-recipe resolver seam, unwired by
+default. Bound reads check their signed namespace against the runtime. Legacy
+stop and progressive remux reject bound runtimes or tokens because they do not
+yet carry the required authority operations. Runtime grant expiry enforcement,
+production resolver integration, and replacement lifecycle activation remain
+required before these foundations can serve authority-owned playback. The plain
+playback-session metadata fast path does not itself establish executor authority.
