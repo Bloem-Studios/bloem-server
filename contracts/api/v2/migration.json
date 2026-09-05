@@ -3613,13 +3613,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/collection-groups/{group_id}/collections/order",
+        "operation_id": "moveAndReorderAdminGroupCollections"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface. Canonical editor/order reads supply strong ETags; storage compares the witness atomically. Editors, confirmations, and drags retain the observed validator and preserve drafts or selection on 412.",
+      "concurrency": "if_match",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -3684,13 +3687,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/collection-groups/{id}",
+        "operation_id": "deleteAdminCollectionGroup"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface. Canonical editor/order reads supply strong ETags; storage compares the witness atomically. Editors, confirmations, and drags retain the observed validator and preserve drafts or selection on 412.",
+      "concurrency": "if_match",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -3755,13 +3761,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/admin/collection-groups/{id}",
+        "operation_id": "updateAdminCollectionGroup"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface. Canonical editor/order reads supply strong ETags; storage compares the witness atomically. Editors, confirmations, and drags retain the observed validator and preserve drafts or selection on 412.",
+      "concurrency": "if_match",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -3826,13 +3835,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/collections",
+        "operation_id": "listAdminCollections"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface."
     },
     {
       "listener": "api",
@@ -3888,13 +3897,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/collections",
+        "operation_id": "createAdminCollection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -3950,13 +3961,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/collections/import/mdblist",
+        "operation_id": "importAdminMDBList"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4012,13 +4025,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/collections/import/tmdb",
+        "operation_id": "importAdminTMDB"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4074,13 +4089,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/collections/import/trakt",
+        "operation_id": "importAdminTrakt"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4136,13 +4153,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/collections/order",
+        "operation_id": "reorderAdminCollections"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface. Canonical editor/order reads supply strong ETags; storage compares the witness atomically. Editors, confirmations, and drags retain the observed validator and preserve drafts or selection on 412.",
+      "concurrency": "if_match",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4198,13 +4218,14 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/collections/preview",
+        "operation_id": "previewAdminCollection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface.",
+      "retry_safety": "natural_idempotent"
     },
     {
       "listener": "api",
@@ -4260,13 +4281,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/collections/template-bundles",
+        "operation_id": "listAdminCollectionTemplateBundles"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface."
     },
     {
       "listener": "api",
@@ -4322,13 +4343,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/collections/template-bundles/{bundle_id}/apply",
+        "operation_id": "applyAdminCollectionTemplateBundle"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4384,13 +4407,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/collections/template-bundles/{bundle_id}/apply-job",
+        "operation_id": "startAdminCollectionTemplateBundleJob"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface. Accepted template jobs expose safe typed results through the dedicated collection-job poll; restored job discovery retains the shared jobs-list dependency.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4446,13 +4471,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/collections/templates",
+        "operation_id": "listAdminCollectionTemplates"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface."
     },
     {
       "listener": "api",
@@ -4517,13 +4542,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/collections/{id}",
+        "operation_id": "deleteAdminCollection"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface. Canonical editor/order reads supply strong ETags; storage compares the witness atomically. Editors, confirmations, and drags retain the observed validator and preserve drafts or selection on 412.",
+      "concurrency": "if_match",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4579,13 +4607,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/admin/collections/{id}",
+        "operation_id": "updateAdminCollection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface. Canonical editor/order reads supply strong ETags; storage compares the witness atomically. Editors, confirmations, and drags retain the observed validator and preserve drafts or selection on 412.",
+      "concurrency": "if_match",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4641,13 +4672,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/collections/{id}/image",
+        "operation_id": "deleteAdminCollectionImage"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4703,13 +4736,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/collections/{id}/items/order",
+        "operation_id": "reorderAdminCollectionItems"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface. Canonical editor/order reads supply strong ETags; storage compares the witness atomically. Editors, confirmations, and drags retain the observed validator and preserve drafts or selection on 412.",
+      "concurrency": "if_match",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4755,13 +4791,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/collections/{id}/items/{item_id}",
+        "operation_id": "removeAdminCollectionItem"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4815,13 +4853,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/collections/{id}/items/{item_id}",
+        "operation_id": "addAdminCollectionItem"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -4877,13 +4917,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/collections/{id}/sync",
+        "operation_id": "syncAdminCollection"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -8849,13 +8891,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/libraries/{library_id}/collection-groups",
+        "operation_id": "listAdminCollectionGroups"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface."
     },
     {
       "listener": "api",
@@ -8916,18 +8958,19 @@
       "section": "admin-collections",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "unique_constraint",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/libraries/{library_id}/collection-groups",
+        "operation_id": "createAdminCollectionGroup"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface.",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",
@@ -8988,19 +9031,20 @@
       "section": "admin-collections",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/libraries/{library_id}/collection-groups/order",
+        "operation_id": "reorderAdminCollectionGroups"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Administrator collection v2 operation uses shared services and typed string IDs. Bundled web consumes v2; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. Jellyfin has no administrator editing surface. Canonical editor/order reads supply strong ETags; storage compares the witness atomically. Editors, confirmations, and drags retain the observed validator and preserve drafts or selection on 412.",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is provided. Delayed replay can repeat side effects or overwrite a later action; clients must not retry automatically."
     },
     {
       "listener": "api",

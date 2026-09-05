@@ -1987,6 +1987,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if libraryCollectionHandler != nil {
 		v2deps.LibraryCollections = libraryCollectionHandler
+		v2deps.AdminCollections = libraryCollectionHandler
+	}
+	if libraryCollectionGroupHandler != nil {
+		v2deps.AdminCollectionGroups = libraryCollectionGroupHandler
 	}
 	if itemsHandler != nil {
 		v2deps.CatalogAccess = itemsHandler

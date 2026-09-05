@@ -502,6 +502,7 @@ func registerAll(reg *Registry) {
 	registerLibraryJobs(reg)
 	registerLibraryViews(reg)
 	registerPersonalCollections(reg)
+	registerAdminCollections(reg)
 	registerProfileSections(reg)
 	registerCatalogItems(reg)
 	registerMarkers(reg)

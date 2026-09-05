@@ -1171,11 +1171,13 @@ func TestRetrySafetyMismatchesFire(t *testing.T) {
 // against the legacy rows mapped to it through v2.operation_id.
 // mutationWithoutLegacyRow names the mutating v2 operations that port no
 // legacy route and so have no ledger row carrying a retry_safety value, each
-// with the reason. It is empty today; the reconcile test refuses an unmapped
+// with the reason. The reconcile test refuses an unmapped
 // mutation that is not listed here, the same rule guardedWithoutLegacyRow
 // applies to concurrency.
 var mutationWithoutLegacyRow = map[string]string{
-	"uploadCollectionPoster": "V2 separates poster upload from legacy multipart collection create and update; their legacy rows remain mapped separately.",
+	"uploadAdminCollectionPoster":   "V2 separates administrator poster upload from legacy multipart definition create and update; those legacy operations retain their own mappings.",
+	"uploadAdminCollectionBackdrop": "V2 separates administrator backdrop upload from legacy multipart definition create and update; those legacy operations retain their own mappings.",
+	"uploadCollectionPoster":        "V2 separates poster upload from legacy multipart collection create and update; their legacy rows remain mapped separately.",
 }
 
 // retrySafetyMismatches compares every operation the v2 registry declares

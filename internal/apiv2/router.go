@@ -68,8 +68,10 @@ func init() {
 // operations. Every field is optional: a missing gate never removes a route,
 // it makes the operations behind that gate fail closed with a typed problem.
 type Dependencies struct {
-	Markers     MarkerService
-	WebhookSync WebhookSyncService
+	Markers               MarkerService
+	AdminCollections      AdminCollectionService
+	AdminCollectionGroups AdminCollectionGroupService
+	WebhookSync           WebhookSyncService
 	// Auth is the bearer/API-key gate shared with the v1 router.
 	Auth *apimw.AuthMiddleware
 	// ViewerAccess resolves the declared profile into a viewer scope.

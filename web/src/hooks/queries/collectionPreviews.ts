@@ -2,13 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { v2 } from "@/api/v2/request";
 import { previewToV2, previewFromV2 } from "@/api/personalCollections";
-import { api } from "@/api/client";
-import type {
-  CollectionPreviewRequest,
-  CollectionPreviewResponse,
-  QueryDefinition,
-  QueryDefinitionInput,
-} from "@/api/types";
+import type { CollectionPreviewRequest, QueryDefinition, QueryDefinitionInput } from "@/api/types";
 import { normalizeQueryDefinition } from "@/api/types";
 
 import { collectionKeys } from "./keys";
@@ -48,9 +42,8 @@ function useCollectionPreview(scope: "user" | "admin", request?: CollectionPrevi
         ? v2("POST /api/v2/collections/preview", { body: previewToV2(normalized!) }).then(
             previewFromV2,
           )
-        : api<CollectionPreviewResponse>("/admin/collections/preview", {
-            method: "POST",
-            body: JSON.stringify(normalized),
+        : v2("POST /api/v2/admin/collections/preview", {
+            body: { ...normalized!, limit: normalized!.limit ?? 12 },
           }),
     enabled: normalized !== null,
     staleTime: 30_000,

@@ -1,7 +1,7 @@
+import { fetchAdminItemOrderSnapshot } from "@/api/adminCollections";
 import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  api,
   isCapturedProfileAuthorityActive,
   isProfileRequestContextCurrent,
   type ProfileRequestContextSnapshot,
@@ -28,7 +28,10 @@ import {
 } from "@/api/personalCollections";
 import { catalogKeys, collectionKeys } from "./keys";
 import { toast } from "sonner";
-import { invalidateUserCollectionQueries } from "./collectionSurfaceRefresh";
+import {
+  invalidateUserCollectionQueries,
+  invalidateAdminCollectionQueries,
+} from "./collectionSurfaceRefresh";
 
 // Single fetcher for /collections — both useCollections and useCollectionGroups
 // share the cache so the page makes one network round-trip.
@@ -90,23 +93,40 @@ export function useServerCollections() {
   });
 }
 
-export function useCollectionItems(collectionId: string, cursor = "") {
+export function useCollectionItems(
+  collectionId: string,
+  cursor = "",
+  source: "user" | "library" = "user",
+) {
   return useQuery({
-    queryKey: [...collectionKeys.items(collectionId), "page", cursor],
+    queryKey:
+      source === "user"
+        ? [...collectionKeys.items(collectionId), "page", cursor]
+        : ["libraryCollections", "items", collectionId, "page", cursor],
     queryFn: () =>
-      v2("GET /api/v2/collections/{id}/items", {
-        path: { id: collectionId },
-        query: { limit: 200, ...(cursor ? { cursor } : {}) },
-      }),
+      v2(
+        source === "user"
+          ? "GET /api/v2/collections/{id}/items"
+          : "GET /api/v2/admin/collections/{id}/items",
+        {
+          path: { id: collectionId },
+          query: { limit: 200, ...(cursor ? { cursor } : {}) },
+        },
+      ),
     // Keep only the visible edit window; old pages are inexpensive to refetch.
     gcTime: 0,
   });
 }
 
-export function useCollectionItemOrderSnapshot(id: string, enabled = true) {
+export function useCollectionItemOrderSnapshot(
+  id: string,
+  enabled = true,
+  source: "user" | "library" = "user",
+) {
   return useQuery({
-    queryKey: ["collections", "items", id, "order"],
-    queryFn: () => fetchItemOrderSnapshot(id),
+    queryKey: [source === "user" ? "collections" : "libraryCollections", "items", id, "order"],
+    queryFn: () =>
+      source === "user" ? fetchItemOrderSnapshot(id) : fetchAdminItemOrderSnapshot(id),
     enabled,
   });
 }
@@ -211,9 +231,9 @@ export function useAddItemToCollection() {
           path: { id: collectionId, item_id: mediaItemId },
           body: { position: position ?? 0 },
         });
-      return api<void>(`/admin/collections/${collectionId}/items/${mediaItemId}`, {
-        method: "PUT",
-        body: JSON.stringify({ position: position ?? 0 }),
+      return v2("PUT /api/v2/admin/collections/{id}/items/{item_id}", {
+        path: { id: collectionId, item_id: mediaItemId },
+        body: { position: position ?? 0 },
       });
     },
     onSuccess: (_data, vars) => {
@@ -221,10 +241,7 @@ export function useAddItemToCollection() {
       if (vars.source === "user") {
         return invalidateUserCollectionQueries(queryClient, vars.collectionId);
       }
-      // Library collection: invalidate its items query.
-      queryClient.invalidateQueries({
-        queryKey: ["libraryCollections", "items", vars.collectionId],
-      });
+      return invalidateAdminCollectionQueries(queryClient);
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to add to collection");
@@ -232,15 +249,23 @@ export function useAddItemToCollection() {
   });
 }
 
-export function useRemoveCollectionItem(collectionId: string) {
+export function useRemoveCollectionItem(collectionId: string, source: "user" | "library" = "user") {
   const queryClient = useQueryClient();
   return useMutation({
     retry: false,
     mutationFn: (mediaItemId: string) =>
-      v2("DELETE /api/v2/collections/{id}/items/{item_id}", {
-        path: { id: collectionId, item_id: mediaItemId },
-      }),
-    onSuccess: () => invalidateUserCollectionQueries(queryClient, collectionId),
+      v2(
+        source === "user"
+          ? "DELETE /api/v2/collections/{id}/items/{item_id}"
+          : "DELETE /api/v2/admin/collections/{id}/items/{item_id}",
+        {
+          path: { id: collectionId, item_id: mediaItemId },
+        },
+      ),
+    onSuccess: () =>
+      source === "user"
+        ? invalidateUserCollectionQueries(queryClient, collectionId)
+        : invalidateAdminCollectionQueries(queryClient),
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to remove item");
     },
@@ -399,22 +424,33 @@ export function useReorderCollectionGroups() {
   });
 }
 
-export function useReorderCollectionItems(collectionId: string) {
+export function useReorderCollectionItems(
+  collectionId: string,
+  source: "user" | "library" = "user",
+) {
   const queryClient = useQueryClient();
   return useMutation({
     retry: false,
     mutationFn: ({ orderedIds, etag }: { orderedIds: string[]; etag: string }) =>
-      v2("PUT /api/v2/collections/{id}/items/order", {
-        headers: { "If-Match": requiredETag(etag) },
-        path: { id: collectionId },
-        body: { ordered_ids: orderedIds },
-      }),
+      v2(
+        source === "user"
+          ? "PUT /api/v2/collections/{id}/items/order"
+          : "PUT /api/v2/admin/collections/{id}/items/order",
+        {
+          headers: { "If-Match": requiredETag(etag) },
+          path: { id: collectionId },
+          body: { ordered_ids: orderedIds },
+        },
+      ),
     onError: (err) => {
       toast.error(collectionMutationMessage(err, "Failed to reorder items"));
-      if (err instanceof V2ProblemError && err.status === 412)
+      if (source === "user" && err instanceof V2ProblemError && err.status === 412)
         void invalidateUserCollectionQueries(queryClient);
     },
-    onSettled: () => invalidateUserCollectionQueries(queryClient, collectionId),
+    onSettled: () =>
+      source === "user"
+        ? invalidateUserCollectionQueries(queryClient, collectionId)
+        : invalidateAdminCollectionQueries(queryClient),
   });
 }
 
