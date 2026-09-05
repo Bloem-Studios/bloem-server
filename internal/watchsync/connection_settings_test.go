@@ -154,7 +154,7 @@ func TestConnectionSettingsGuardDB(t *testing.T) {
 	}
 	unchanged, _, err := repo.GetConnection(ctx, "guard", userID, "guard-p")
 	if err != nil || !unchanged.SyncWatchlistOrderEnabled || !unchanged.UpdatedAt.Equal(ready.UpdatedAt) {
-		t.Fatalf("cancelled settings changed: %+v %v", unchanged, err)
+		t.Fatalf("canceled settings changed: %+v %v", unchanged, err)
 	}
 
 }
