@@ -22329,13 +22329,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/series/{id}/seasons/{num}/episodes",
+        "operation_id": "listSeasonEpisodes"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; itemsHandler != nil; catalogResourceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). {episodes:[...]} became an {items} collection; a non-integer or negative num is 422."
     },
     {
       "listener": "api",
@@ -28913,13 +28913,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/capabilities/trailers",
+        "operation_id": "getTrailersCapability"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; itemsHandler != nil && itemRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Now a typed capability document (revision, state available|not_configured, cooldown_seconds, statuses, supported_types) under /capabilities; schema_version and the refresh boolean are gone, state carries them. Cache-Control: private, no-cache."
     },
     {
       "listener": "api",
@@ -28974,13 +28974,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/catalog/items/{id}/trailers/refresh",
+        "operation_id": "refreshCatalogItemTrailers"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; itemsHandler != nil && itemRepo != nil; ok. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Keeps 202 {status:queued} and 200 for cooldown/disabled (coalescing action, not the 202 job-monitor contract); next_allowed_at is an Instant; 400 unsupported_type is 422 at path.id; 503 unconfigured is 409 capability_not_configured; the per-user 429 carries Retry-After."
     },
     {
       "listener": "api",
@@ -29051,13 +29051,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/catalog/items/{id}/translate-description",
+        "operation_id": "translateCatalogItemDescription"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; metadataAIHandler != nil; itemRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Answers 202 with the job itself rather than {job:{...}} (coalescing action, not the 202 job-monitor contract); a missing target_language is 422 at body.target_language; 503 not_configured is 409 capability_not_configured; unknown body members are rejected."
     },
     {
       "listener": "api",
@@ -31504,13 +31504,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/capabilities/metadata-ai",
+        "operation_id": "getMetadataAICapability"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; !(metadataAIHandler != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Section catalog-items (profile_scoped). One operation registered once for both v1 registrations: a typed capability document (revision, state available|not_configured, on_view) under /capabilities; the disabled fallback is the same operation answering not_configured. Cache-Control: private, no-cache."
     },
     {
       "listener": "api",
@@ -31584,13 +31584,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/capabilities/metadata-ai",
+        "operation_id": "getMetadataAICapability"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; metadataAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Section catalog-items (profile_scoped). One operation registered once for both v1 registrations: a typed capability document (revision, state available|not_configured, on_view) under /capabilities; the disabled fallback is the same operation answering not_configured. Cache-Control: private, no-cache."
     },
     {
       "listener": "api",
@@ -34006,13 +34006,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/people",
+        "operation_id": "listPeople"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; peopleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Moved under /catalog; the bare array became an {items} collection; limit is validated 1..100 (default 20) rather than silently defaulted; ids are strings."
     },
     {
       "listener": "api",
@@ -34086,13 +34086,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/people/{id}",
+        "operation_id": "getPerson"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; peopleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Moved under /catalog; a non-positive or non-integer id is 422 at path.id rather than 400 invalid_id; id is a string."
     },
     {
       "listener": "api",
@@ -34166,13 +34166,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/catalog/people/{id}/refresh",
+        "operation_id": "refreshPerson"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; peopleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Keeps 202 {status:queued, person_id} (coalescing action, not the 202 job-monitor contract) with person_id as a string; the per-user 429 carries Retry-After; an unconfigured queue is 503 dependency_unavailable."
     },
     {
       "listener": "api",
@@ -45980,13 +45980,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/catalog/works/{work_id}",
+        "operation_id": "getLiteraryWork"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; itemsHandler != nil; literaryWorkHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section catalog-items (profile_scoped). Moved under /catalog; library_id, file_id, and person_id are strings; progress.updated_at is an Instant; authors, formats, available_files, and genres are empty arrays rather than null; a blank work_id is 422 at path.work_id."
     },
     {
       "listener": "api",
