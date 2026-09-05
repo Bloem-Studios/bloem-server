@@ -99,7 +99,8 @@ type Dependencies struct {
 	// (*handlers.AuthHandler).
 	Accounts AccountService
 	// Progress lists watch progress (*handlers.ProgressHandler).
-	Progress ProgressService
+	Progress          ProgressService
+	ProgressBootstrap ProgressBootstrapService
 	// History lists and removes watch history
 	// (*handlers.PersonalDataHandler).
 	History        HistoryService

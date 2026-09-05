@@ -256,6 +256,11 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		profileToken[id] = true
 	}
 
+	for _, id := range []string{opProgressBootstrapCapabilities, opCreateProgressSnapshot, opGetProgressSnapshot} {
+		profileToken[id] = true
+	}
+	expect[opCreateProgressSnapshot] = map[int]bool{http.StatusCreated: true, http.StatusConflict: true, http.StatusRequestEntityTooLarge: true, http.StatusTooManyRequests: true}
+	expect[opGetProgressSnapshot] = map[int]bool{http.StatusOK: true, http.StatusConflict: true, http.StatusNotFound: true}
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {

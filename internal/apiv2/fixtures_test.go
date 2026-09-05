@@ -1433,6 +1433,7 @@ func fixtureCases() []fixtureCase {
 	)
 	cases = append(cases, adminHistoryImportFixtureCases()...)
 	cases = append(cases, markerFixtureCases()...)
+	cases = append(cases, progressBootstrapFixtureCases()...)
 	cases = append(cases,
 		fixtureCase{name: "get_admin_collection_ok", operationID: "getAdminCollection", scenario: "Canonical administrator collection editor uses string library identifiers and a strong validator, without expiring artwork URLs.", method: http.MethodGet, path: "/api/v2/admin/collections/c1", headers: bearer(adminToken), status: 200, assertHeaders: []string{"Content-Type", "ETag"}, schema: "#/components/schemas/AdminCollection"},
 		fixtureCase{name: "admin_collection_precondition_required", operationID: "updateAdminCollection", scenario: "An administrator definition update requires the validator observed before editing.", method: http.MethodPatch, path: "/api/v2/admin/collections/c1", headers: bearer(adminToken), body: `{"title":"Edited"}`, status: 428, assertHeaders: []string{"Content-Type"}, schema: problem},
@@ -1466,6 +1467,7 @@ func profileOwner() map[string]string { return with(bearer(memberToken), "X-Prof
 // produced by the gate translation the production limiter goes through.
 func fixtureDeps() Dependencies {
 	deps := pilotDeps(&fakeProgress{entries: progressRows()}, nil)
+	deps.ProgressBootstrap = &fakeBootstrap{}
 	deps.PersonalCollections = &fixturePersonalCollections{fakePersonalCollections: fakePersonalCollections{list: handlers.PersonalCollectionListView{Collections: []handlers.PersonalCollectionView{fixtureCollectionView()}, Groups: []handlers.CollectionGroupView{}}}}
 	deps.CollectionImports = &fakeCollectionImports{configured: true}
 	deps, _ = withLibraryAdmin(deps)

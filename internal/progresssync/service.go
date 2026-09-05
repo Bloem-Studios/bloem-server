@@ -231,6 +231,9 @@ func (s *Service) Capabilities(ctx context.Context, actor Actor) (Support, error
 	defer cancel()
 	for {
 		result, err := s.capabilities(ctx, actor)
+		if pgerr, ok := errors.AsType[*pgconn.PgError](err); ok && pgerr.Code == "42P01" {
+			return Support{}, ErrNotConfigured
+		}
 		if pgerr, ok := errors.AsType[*pgconn.PgError](err); ok && pgerr.Code == "40001" && ctx.Err() == nil {
 			continue
 		}
@@ -292,4 +295,25 @@ func (s *Service) RunCleanup(ctx context.Context, onError func(error)) {
 			cleanup()
 		}
 	}
+}
+
+// CheckSnapshotVisibility enforces resource hiding before transport cursor parsing.
+// Expired owned metadata remains visible for its reset-required response.
+func (s *Service) CheckSnapshotVisibility(ctx context.Context, actor Actor, snapshotID string) error {
+	ctx, cancel := context.WithTimeout(ctx, AdmissionTimeout)
+	defer cancel()
+	r, _, err := s.repository(ctx, actor)
+	if err != nil {
+		return err
+	}
+	var exists bool
+	err = r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM progress_bootstrap_snapshots WHERE id=$1 AND user_id=$2 AND profile_id=$3)`, snapshotID, actor.Input.UserID, actor.Input.ProfileID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrNotFound
+	}
+	_, err = checkActor(ctx, actor)
+	return err
 }

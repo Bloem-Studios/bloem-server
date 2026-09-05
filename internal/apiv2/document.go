@@ -508,6 +508,7 @@ func registerAll(reg *Registry) {
 	registerMarkers(reg)
 	registerProfiles(reg)
 	registerProgress(reg)
+	registerProgressBootstrap(reg)
 	registerSettings(reg)
 	registerRatings(reg)
 	registerRecommendations(reg)

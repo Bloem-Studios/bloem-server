@@ -89,6 +89,12 @@ func TestProductionWrappedProgressBootstrap(t *testing.T) {
 	if err != nil || last.Next != nil || len(last.Items) != 1 {
 		t.Fatalf("last=%+v err=%v", last, err)
 	}
+	if err = s.CheckSnapshotVisibility(t.Context(), actor, first.Snapshot.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err = s.CheckSnapshotVisibility(t.Context(), actor, uuid.NewString()); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown snapshot error=%v", err)
+	}
 	// Rechecking current account authority is required even when middleware was
 	// satisfied before the long snapshot operation began.
 	exec(t, pool, `UPDATE users SET enabled=false WHERE id=$1`, actor.Input.UserID)

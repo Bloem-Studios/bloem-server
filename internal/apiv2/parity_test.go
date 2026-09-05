@@ -97,7 +97,7 @@ func (f fakeAPIKeys) GetByKey(_ context.Context, key string) (*models.APIKey, er
 	if k, ok := f.keys[key]; ok {
 		return k, nil
 	}
-	return nil, errors.New("no key")
+	return nil, auth.ErrAPIKeyNotFound
 }
 func (f fakeAPIKeys) UpdateLastUsed(context.Context, int64) error { return nil }
 
