@@ -1618,8 +1618,8 @@ prevents concurrent active requests for the same media, but terminal requests no
 longer hold that uniqueness key. Safe automatic retries require a durable client
 request identity across terminal states. The web mutation disables retries.
 
-Native Apple and Android request consumers still require coordinated v2 adoption;
-their v1 routes remain available. Jellyfin compatibility does not expose this request
+Native Apple and Android request migrations accompany this contract change;
+integrate those client changes before retiring their v1 routes. Jellyfin compatibility does not expose this request
 management surface and keeps its existing behavior.
 
 ### History imports
@@ -1649,8 +1649,8 @@ playback and user-state routes continue to use their existing shared store behav
 ### Request lifecycle and watch providers
 
 Request capability status and cancellation are available through v2. The bundled
-web status hook uses v2; Apple and Android still consume the v1 status and cancel
-routes and need coordinated migration. The bundled web has no cancel consumer.
+web status hook uses v2; the coordinated Apple and Android migrations include
+status and cancellation. The bundled web has no cancel consumer.
 
 Watch-provider settings use typed v2 operations for connection reads/writes, device
 and API-key authorization, manual sync, and recent runs. Responses exclude provider
@@ -1663,8 +1663,7 @@ across API nodes, and manual sync's active-run/cooldown checks and run creation 
 separate calls. A process dispatches the run after creation; this is not a durable
 job-dispatch mechanism. Cooldown problems retain their Retry-After header and the
 web settings page displays the delay. No watch-provider consumers were found in
-the Apple and Android source inventory; their request consumers remain the
-required native follow-up.
+the Apple and Android source inventory.
 
 ### Webhook connection management
 
@@ -1695,9 +1694,11 @@ a hide that wins prevents the import; an import that wins is removed by the hide
 Normal playback history writes still permit repeated events. Only the import call
 that inserts a row emits the corresponding history notification side effect.
 
-Watch-provider settings reads return an ETag bound to account, profile, provider,
+The canonical `GET /watch-providers/{provider}/connection/settings` returns only
+persisted preference fields with an ETag bound to account, profile, provider,
 connection generation and precise database modification time. PATCH requires a
-matching validator and checks it again under a database row lock before changing
+matching validator and returns that same settings projection. It checks the
+validator again under a database row lock before changing
 settings or clearing provider-owned ordering. Concurrent changes return 412 with
 the current ETag. The web preserves the attempted toggle and asks whether to apply
 it against the refreshed state or use the latest settings; it never silently retries
@@ -1709,3 +1710,10 @@ can involve another user store: it is bounded by the request deadline and a five
 cleanup deadline, and failures leave the settings unchanged. Cleanup may already have
 committed if the later connection transaction fails, so the operation remains
 non-retryable and does not promise an atomic cross-store mutation.
+
+The full connection metadata read has no ETag: provider capabilities, display labels,
+credential availability and configuration schemas may change independently of the
+connection row. The canonical settings read exists to keep that external metadata
+out of the guarded representation; a missing connection returns 404. The web reads
+metadata and settings under the same captured profile authority and merges only the
+settings fields after a successful patch.

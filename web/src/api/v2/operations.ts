@@ -102,6 +102,7 @@ export const v2Operations = {
   "GET /api/v2/system/setup": "getSetupStatus",
   "GET /api/v2/watch-providers": "listWatchProviders",
   "GET /api/v2/watch-providers/{provider}/connection": "getWatchProviderConnection",
+  "GET /api/v2/watch-providers/{provider}/connection/settings": "getWatchProviderSettings",
   "GET /api/v2/watch-providers/{provider}/sync-runs": "listWatchProviderSyncRuns",
   "GET /api/v2/watch/{id}": "getWatchState",
   "GET /api/v2/watchlist": "listWatchlist",

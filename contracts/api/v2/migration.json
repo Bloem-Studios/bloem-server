@@ -44074,7 +44074,7 @@
         "path": "/api/v2/watch-providers/{provider}/connection",
         "operation_id": "getWatchProviderConnection"
       },
-      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
+      "notes": "Full provider connection metadata has no ETag because provider configuration can change independently. The additional native getWatchProviderSettings operation returns only versioned stored preferences with an ETag."
     },
     {
       "listener": "api",
@@ -44136,9 +44136,9 @@
         "path": "/api/v2/watch-providers/{provider}/connection",
         "operation_id": "updateWatchProviderConnection"
       },
-      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee.",
+      "notes": "PATCH requires If-Match against the canonical settings read and checks connection generation and precise row version under a PostgreSQL row lock before effects. Returns only the versioned settings projection and its ETag. Stale edits return 412.",
       "concurrency": "if_match",
-      "retry_safety_note": "The service reads, merges and writes connection preferences without a generation guard. A stale retry can overwrite intervening preferences. Add a durable generation precondition before automatic retry."
+      "retry_safety_note": "Guarded preference writes do not provide atomic cross-store replay: provider-order cleanup can commit before the connection transaction fails. Cleanup is deadline-bounded; an uncertain response requires state reconciliation, not automatic retry."
     },
     {
       "listener": "api",

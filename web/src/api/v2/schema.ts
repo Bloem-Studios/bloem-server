@@ -1846,6 +1846,23 @@ export interface paths {
     patch: operations["updateWatchProviderConnection"];
     trace?: never;
   };
+  "/api/v2/watch-providers/{provider}/connection/settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read persisted watch-provider preferences and their update validator. */
+    get: operations["getWatchProviderSettings"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/watch-providers/{provider}/sync": {
     parameters: {
       query?: never;
@@ -6997,6 +7014,20 @@ export interface components {
     WatchProviderPollInputBody: {
       /** Format: uuid */
       auth_session_id: string;
+    };
+    WatchProviderSettings: {
+      export_favorites_enabled: boolean;
+      export_unwatched_enabled: boolean;
+      export_watched_enabled: boolean;
+      export_watchlist_enabled: boolean;
+      import_favorites_enabled: boolean;
+      import_progress_enabled: boolean;
+      import_watched_enabled: boolean;
+      import_watchlist_enabled: boolean;
+      scrobble_enabled: boolean;
+      sync_favorite_removals_enabled: boolean;
+      sync_watchlist_order_enabled: boolean;
+      sync_watchlist_removals_enabled: boolean;
     };
     WatchProviderSyncOutputBody: {
       /** Format: int64 */
@@ -22824,7 +22855,6 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
-          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -23090,7 +23120,6 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
-          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -23235,7 +23264,6 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
-          ETag?: string;
           [name: string]: unknown;
         };
         content: {
@@ -23481,7 +23509,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["WatchProviderConnection"];
+          "application/json": components["schemas"]["WatchProviderSettings"];
         };
       };
       /** @description Bad Request */
@@ -23587,6 +23615,124 @@ export interface operations {
       };
       /** @description Precondition Required */
       428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getWatchProviderSettings: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        provider: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WatchProviderSettings"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
         headers: {
           [name: string]: unknown;
         };

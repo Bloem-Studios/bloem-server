@@ -324,6 +324,7 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST " + Prefix + "/requests/{id}/cancel",
 		"GET " + Prefix + "/watch-providers",
 		"GET " + Prefix + "/watch-providers/{provider}/connection",
+		"GET " + Prefix + "/watch-providers/{provider}/connection/settings",
 		"PATCH " + Prefix + "/watch-providers/{provider}/connection",
 		"DELETE " + Prefix + "/watch-providers/{provider}/connection",
 		"POST " + Prefix + "/watch-providers/{provider}/auth/device-code",

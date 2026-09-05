@@ -5484,8 +5484,7 @@
       "expected_status": 200,
       "response_headers": {
         "Cache-Control": "no-store",
-        "Content-Type": "application/json",
-        "ETag": "\"3e8d3d981d18687e4ca69c87.q6ewt9t2wu64\""
+        "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
       "schema": "#/components/schemas/WatchProviderConnection",
@@ -5576,6 +5575,28 @@
       "body_file": "watch_provider_runs_ok.json"
     },
     {
+      "name": "watch_provider_settings_ok",
+      "operation_id": "getWatchProviderSettings",
+      "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/watch-providers/trakt/connection/settings",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"17ed56967238795eef635bcd.3rcaydxvvf0ud\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/WatchProviderSettings",
+      "body_file": "watch_provider_settings_ok.json"
+    },
+    {
       "name": "watch_provider_sync_ok",
       "operation_id": "triggerWatchProviderSync",
       "scenario": "Profile-scoped lifecycle response with synthetic provider state.",
@@ -5605,7 +5626,7 @@
         "path": "/api/v2/watch-providers/trakt/connection",
         "headers": {
           "Authorization": "Bearer tok-member",
-          "If-Match": "\"3e8d3d981d18687e4ca69c87.q6ewt9t2wu64\"",
+          "If-Match": "\"17ed56967238795eef635bcd.3rcaydxvvf0uc\"",
           "X-Profile-Id": "p-owner"
         },
         "body": "{\"scrobble_enabled\":true}"
@@ -5614,10 +5635,10 @@
       "response_headers": {
         "Cache-Control": "no-store",
         "Content-Type": "application/json",
-        "ETag": "\"3e8d3d981d18687e4ca69c87.q6ewt9t2wu65\""
+        "ETag": "\"17ed56967238795eef635bcd.3rcaydxvvf0ud\""
       },
       "response_media_type": "application/json",
-      "schema": "#/components/schemas/WatchProviderConnection",
+      "schema": "#/components/schemas/WatchProviderSettings",
       "body_file": "watch_provider_update_ok.json"
     },
     {

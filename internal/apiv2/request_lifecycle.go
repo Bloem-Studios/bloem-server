@@ -7,11 +7,16 @@ import (
 	"strconv"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
 	"github.com/Silo-Server/silo-server/internal/watchsync"
 	"github.com/jackc/pgx/v5"
 )
+
+const opGetWatchProviderConnection = "getWatchProviderConnection"
+const opGetWatchProviderSettings = "getWatchProviderSettings"
+const opUpdateWatchProviderConnection = "updateWatchProviderConnection"
 
 // RequestLifecycleService preserves the domain's viewer checks for cancellation.
 type RequestLifecycleService interface {
@@ -58,15 +63,54 @@ type WatchProviderCollectionOutput struct {
 	Body Collection[watchsync.ProviderSummary]
 }
 type WatchProviderConnectionOutput struct {
-	ETag string `header:"ETag"`
 	Body WatchProviderConnection
 }
+type WatchProviderSettingsOutput struct {
+	ETag string `header:"ETag"`
+	Body WatchProviderSettings
+}
+
+// WatchProviderSettings contains only persisted connection preferences.
+// Provider metadata and runtime capability/configuration state have no place
+// in this representation: its strong validator is the connection row version.
+type WatchProviderSettings struct {
+	ImportWatchedEnabled         bool `json:"import_watched_enabled"`
+	ImportProgressEnabled        bool `json:"import_progress_enabled"`
+	ExportWatchedEnabled         bool `json:"export_watched_enabled"`
+	ExportUnwatchedEnabled       bool `json:"export_unwatched_enabled"`
+	ImportFavoritesEnabled       bool `json:"import_favorites_enabled"`
+	ExportFavoritesEnabled       bool `json:"export_favorites_enabled"`
+	SyncFavoriteRemovalsEnabled  bool `json:"sync_favorite_removals_enabled"`
+	ImportWatchlistEnabled       bool `json:"import_watchlist_enabled"`
+	ExportWatchlistEnabled       bool `json:"export_watchlist_enabled"`
+	SyncWatchlistRemovalsEnabled bool `json:"sync_watchlist_removals_enabled"`
+	SyncWatchlistOrderEnabled    bool `json:"sync_watchlist_order_enabled"`
+	ScrobbleEnabled              bool `json:"scrobble_enabled"`
+}
+
+func watchProviderSettingsOf(status watchsync.ConnectionStatus) WatchProviderSettings {
+	return WatchProviderSettings{
+		ImportWatchedEnabled:         status.ImportWatchedEnabled,
+		ImportProgressEnabled:        status.ImportProgressEnabled,
+		ExportWatchedEnabled:         status.ExportWatchedEnabled,
+		ExportUnwatchedEnabled:       status.ExportUnwatchedEnabled,
+		ImportFavoritesEnabled:       status.ImportFavoritesEnabled,
+		ExportFavoritesEnabled:       status.ExportFavoritesEnabled,
+		SyncFavoriteRemovalsEnabled:  status.SyncFavoriteRemovalsEnabled,
+		ImportWatchlistEnabled:       status.ImportWatchlistEnabled,
+		ExportWatchlistEnabled:       status.ExportWatchlistEnabled,
+		SyncWatchlistRemovalsEnabled: status.SyncWatchlistRemovalsEnabled,
+		SyncWatchlistOrderEnabled:    status.SyncWatchlistOrderEnabled,
+		ScrobbleEnabled:              status.ScrobbleEnabled,
+	}
+}
+
 type guardedWatchProviderService interface {
 	UpdateConnectionConditional(context.Context, int, string, string, watchsync.ConnectionVersion, watchsync.ConnectionUpdate) (watchsync.ConnectionStatus, error)
 }
 
 func watchConnectionTag(userID int, profileID, provider string, status watchsync.ConnectionStatus) EntityTag {
-	return RenderETag("watch-provider/"+strconv.Itoa(userID)+"/"+profileID+"/"+provider, status.Version.ID, status.Version.UpdatedAt.UnixMicro())
+	return RenderETag("watch-provider-settings/"+strconv.Itoa(userID)+"/"+profileID+"/"+provider, status.Version.ID, status.Version.UpdatedAt.UnixMicro())
 }
 
 type WatchProviderRunsOutput struct {
@@ -142,18 +186,32 @@ func registerRequestLifecycle(reg *Registry, requests RequestLifecycleService, p
 		if err != nil {
 			return nil, watchProviderProblem(err)
 		}
-		return &WatchProviderConnectionOutput{ETag: watchConnectionTag(u, p, key, s).String(), Body: watchProviderConnectionOf(s)}, nil
+		return &WatchProviderConnectionOutput{Body: watchProviderConnectionOf(s)}, nil
 	}
-	Register(reg, op(http.MethodGet, "/watch-providers/{provider}/connection", "getWatchProviderConnection", "Get the active profile's connection."), func(ctx context.Context, in *WatchProviderInput) (*WatchProviderConnectionOutput, error) {
+	Register(reg, op(http.MethodGet, "/watch-providers/{provider}/connection", opGetWatchProviderConnection, "Get the active profile's connection."), func(ctx context.Context, in *WatchProviderInput) (*WatchProviderConnectionOutput, error) {
 		u, p, err := scope(ctx)
 		if err != nil {
 			return nil, err
 		}
 		return connection(ctx, u, p, in.Provider)
 	})
-	update := op(http.MethodPatch, "/watch-providers/{provider}/connection", "updateWatchProviderConnection", "Update watch-provider synchronization preferences.")
+	Register(reg, op(http.MethodGet, "/watch-providers/{provider}/connection/settings", opGetWatchProviderSettings, "Read persisted watch-provider preferences and their update validator."), func(ctx context.Context, in *WatchProviderInput) (*WatchProviderSettingsOutput, error) {
+		u, p, err := scope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		current, err := providers.GetConnectionStatus(ctx, u, p, in.Provider)
+		if err != nil {
+			return nil, watchProviderProblem(err)
+		}
+		if current.Version.ID == "" {
+			return nil, watchProviderProblem(watchsync.ErrConnectionNotFound)
+		}
+		return &WatchProviderSettingsOutput{ETag: watchConnectionTag(u, p, in.Provider, current).String(), Body: watchProviderSettingsOf(current)}, nil
+	})
+	update := op(http.MethodPatch, "/watch-providers/{provider}/connection", opUpdateWatchProviderConnection, "Update watch-provider synchronization preferences.")
 	update.Guarded = true
-	Register(reg, update, func(ctx context.Context, in *WatchProviderUpdateInput) (*WatchProviderConnectionOutput, error) {
+	Register(reg, update, func(ctx context.Context, in *WatchProviderUpdateInput) (*WatchProviderSettingsOutput, error) {
 		u, p, err := scope(ctx)
 		if err != nil {
 			return nil, err
@@ -186,7 +244,7 @@ func registerRequestLifecycle(reg *Registry, requests RequestLifecycleService, p
 		if err != nil {
 			return nil, watchProviderProblem(err)
 		}
-		return &WatchProviderConnectionOutput{ETag: watchConnectionTag(u, p, in.Provider, saved).String(), Body: watchProviderConnectionOf(saved)}, nil
+		return &WatchProviderSettingsOutput{ETag: watchConnectionTag(u, p, in.Provider, saved).String(), Body: watchProviderSettingsOf(saved)}, nil
 	})
 
 	del := op(http.MethodDelete, "/watch-providers/{provider}/connection", "deleteWatchProviderConnection", "Disconnect the active profile from a watch provider.")
@@ -267,7 +325,7 @@ func registerRequestLifecycle(reg *Registry, requests RequestLifecycleService, p
 }
 func lifecycleViewer(ctx context.Context) mediarequests.Viewer {
 	c := claimsFrom(ctx)
-	return mediarequests.Viewer{UserID: c.UserID, ProfileID: profileFrom(ctx), IsAdmin: c.Role == "admin"}
+	return mediarequests.Viewer{UserID: c.UserID, ProfileID: profileFrom(ctx), IsAdmin: c.Role == models.RoleAdmin}
 }
 func watchProviderProblem(err error) *Problem {
 	if errors.Is(err, watchsync.ErrSettingsCleanupUnavailable) {
@@ -288,8 +346,7 @@ func watchProviderProblem(err error) *Problem {
 	}
 	if cooldown, ok := errors.AsType[watchsync.SyncCooldownError](err); ok {
 		p := NewProblem(TypeRateLimited, "Watch provider sync recently ran. Try again later.")
-		p.WithHeader("Retry-After", strconv.Itoa(max(1, cooldown.RetryAfterSeconds)))
-		return p
+		return p.WithHeader("Retry-After", strconv.Itoa(max(1, cooldown.RetryAfterSeconds)))
 	}
 	if watchsync.IsInvalidCredentialError(err) {
 		return NewProblem(TypeValidationFailed, "The watch provider rejected the supplied credential.")
@@ -422,4 +479,4 @@ func watchProviderSyncRunOf(s watchsync.SyncRun) WatchProviderSyncRun {
 	}
 }
 
-var requestLifecycleOperationIDs = []string{"getRequestStatus", "cancelRequest", "listWatchProviders", "getWatchProviderConnection", "updateWatchProviderConnection", "deleteWatchProviderConnection", "startWatchProviderDeviceAuth", "pollWatchProviderDeviceAuth", "connectWatchProviderAPIKey", "triggerWatchProviderSync", "listWatchProviderSyncRuns"}
+var requestLifecycleOperationIDs = []string{"getRequestStatus", "cancelRequest", "listWatchProviders", opGetWatchProviderConnection, opGetWatchProviderSettings, opUpdateWatchProviderConnection, "deleteWatchProviderConnection", "startWatchProviderDeviceAuth", "pollWatchProviderDeviceAuth", "connectWatchProviderAPIKey", "triggerWatchProviderSync", "listWatchProviderSyncRuns"}

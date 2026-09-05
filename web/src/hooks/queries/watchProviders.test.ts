@@ -24,9 +24,10 @@ vi.mock("@/api/v2/request", () => ({
 
 describe("watch provider v2 queries", () => {
   it("retains the server version with the displayed connection", async () => {
+    vi.mocked(v2).mockResolvedValueOnce({ connected: true, display_name: "Provider" } as never);
     vi.mocked(v2).mockImplementationOnce(async (_operation, options) => {
       options?.onResponse?.(new Response(null, { headers: { ETag: '"version-1"' } }));
-      return { connected: true } as never;
+      return { import_watched_enabled: true } as never;
     });
     expect(await fetchWatchProviderConnection("trakt")).toMatchObject({
       connected: true,
@@ -51,13 +52,11 @@ describe("watch provider v2 queries", () => {
     expect(v2).toHaveBeenLastCalledWith("POST /api/v2/watch-providers/{provider}/auth/poll", {
       path: { provider: "trakt" },
       body: { auth_session_id: "auth-1" },
-      onResponse: expect.any(Function),
     });
     await connectWatchProviderAPIKey("plugin:4:floppy", "token", { floppy: { region: "test" } });
     expect(v2).toHaveBeenLastCalledWith("POST /api/v2/watch-providers/{provider}/auth/api-key", {
       path: { provider: "plugin:4:floppy" },
       body: { api_key: "token", connection_config: { floppy: { region: "test" } } },
-      onResponse: expect.any(Function),
     });
     await updateWatchProviderConnection("trakt", { scrobble_enabled: true }, '"version-1"');
     expect(v2).toHaveBeenLastCalledWith("PATCH /api/v2/watch-providers/{provider}/connection", {

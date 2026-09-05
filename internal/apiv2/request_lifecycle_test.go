@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"maps"
 	"net/http"
@@ -31,9 +32,12 @@ func (f *fakeLifecycle) GetFeatureStatus(_ context.Context, v mediarequests.View
 }
 
 type fakeWatchLifecycle struct {
-	version     watchsync.ConnectionVersion
-	updateCalls int
-	staleUpdate bool
+	version               watchsync.ConnectionVersion
+	updateCalls           int
+	staleUpdate           bool
+	missingConnection     bool
+	credentialsConfigured bool
+	displayName           string
 	WatchProviderService
 	user         int
 	profile, key string
@@ -44,10 +48,10 @@ type fakeWatchLifecycle struct {
 func (f *fakeWatchLifecycle) ListProviders() []watchsync.ProviderSummary { return nil }
 func (f *fakeWatchLifecycle) GetConnectionStatus(_ context.Context, u int, p, key string) (watchsync.ConnectionStatus, error) {
 	f.user, f.profile, f.key = u, p, key
-	if f.version.ID == "" {
+	if f.version.ID == "" && !f.missingConnection {
 		f.version = watchsync.ConnectionVersion{ID: "connection-1", UpdatedAt: fixedTime()}
 	}
-	return watchsync.ConnectionStatus{Version: f.version, Provider: key, Connected: true}, f.err
+	return watchsync.ConnectionStatus{Version: f.version, Provider: key, Connected: !f.missingConnection, CredentialsConfigured: f.credentialsConfigured, DisplayName: f.displayName}, f.err
 }
 func (f *fakeWatchLifecycle) PollDeviceAuth(_ context.Context, u int, p, key, id string) (watchsync.Connection, error) {
 	f.user, f.profile, f.key = u, p, key
@@ -158,11 +162,12 @@ func requestLifecycleFixtureCases() []fixtureCase {
 		{name: "watch_provider_delete_ok", operationID: "deleteWatchProviderConnection", method: http.MethodDelete, path: Prefix + "/watch-providers/trakt/connection", status: http.StatusNoContent},
 		{name: "request_status_ok", operationID: "getRequestStatus", method: http.MethodGet, path: Prefix + "/requests/status", schema: "FeatureStatus"},
 		{name: "cancel_request_ok", operationID: "cancelRequest", method: http.MethodPost, path: Prefix + "/requests/r-1/cancel", body: `{"reason":"No longer needed"}`, schema: "MediaRequest"},
-		{name: "watch_provider_connection_ok", operationID: "getWatchProviderConnection", method: http.MethodGet, path: Prefix + "/watch-providers/trakt/connection", schema: "WatchProviderConnection"},
+		{name: "watch_provider_connection_ok", operationID: opGetWatchProviderConnection, method: http.MethodGet, path: Prefix + "/watch-providers/trakt/connection", schema: "WatchProviderConnection"},
 		{name: "watch_provider_device_auth_ok", operationID: "startWatchProviderDeviceAuth", method: http.MethodPost, path: Prefix + "/watch-providers/trakt/auth/device-code", schema: "WatchProviderDeviceAuth"},
 		{name: "watch_provider_poll_ok", operationID: "pollWatchProviderDeviceAuth", method: http.MethodPost, path: Prefix + "/watch-providers/trakt/auth/poll", body: `{"auth_session_id":"00000000-0000-4000-8000-000000000001"}`, schema: "WatchProviderConnection"},
 		{name: "watch_provider_api_key_ok", operationID: "connectWatchProviderAPIKey", method: http.MethodPost, path: Prefix + "/watch-providers/trakt/auth/api-key", body: `{"api_key":"synthetic-token"}`, schema: "WatchProviderConnection"},
-		{name: "watch_provider_update_ok", operationID: "updateWatchProviderConnection", method: http.MethodPatch, path: Prefix + "/watch-providers/trakt/connection", body: `{"scrobble_enabled":true}`, schema: "WatchProviderConnection"},
+		{name: "watch_provider_update_ok", operationID: "updateWatchProviderConnection", method: http.MethodPatch, path: Prefix + "/watch-providers/trakt/connection", body: `{"scrobble_enabled":true}`, schema: "WatchProviderSettings"},
+		{name: "watch_provider_settings_ok", operationID: "getWatchProviderSettings", method: http.MethodGet, path: Prefix + "/watch-providers/trakt/connection/settings", schema: "WatchProviderSettings"},
 	}
 	for i := range cases {
 		cases[i].headers = viewer
@@ -171,7 +176,7 @@ func requestLifecycleFixtureCases() []fixtureCase {
 			current, _ := fake.GetConnectionStatus(context.Background(), 1, "p-owner", "trakt")
 			cases[i].headers = with(viewer, "If-Match", watchConnectionTag(1, "p-owner", "trakt", current).String())
 		}
-		if cases[i].operationID == "getWatchProviderConnection" || cases[i].operationID == "updateWatchProviderConnection" {
+		if cases[i].operationID == "getWatchProviderSettings" || cases[i].operationID == "updateWatchProviderConnection" {
 			cases[i].assertHeaders = []string{"Content-Type", "Cache-Control", "ETag"}
 		}
 
@@ -208,7 +213,7 @@ func TestWatchProviderConnectionGuard(t *testing.T) {
 	fake := &fakeWatchLifecycle{}
 	h := lifecycleHandler(&fakeLifecycle{}, fake)
 	path := Prefix + "/watch-providers/trakt/connection"
-	get := do(t, h, http.MethodGet, path, "", requestOwner)
+	get := do(t, h, http.MethodGet, path+"/settings", "", requestOwner)
 	if get.Code != 200 || get.Header().Get("ETag") == "" {
 		t.Fatalf("GET=%d %s", get.Code, get.Body.String())
 	}
@@ -234,4 +239,65 @@ func TestWatchProviderConnectionGuard(t *testing.T) {
 	if raced.Header().Get("ETag") == "" || raced.Header().Get("ETag") == headers["If-Match"] {
 		t.Fatal("stale storage comparison did not return latest validator")
 	}
+}
+
+func TestWatchProviderMetadataHasNoSettingsValidator(t *testing.T) {
+	fake := &fakeWatchLifecycle{displayName: "Before"}
+	h := lifecycleHandler(&fakeLifecycle{}, fake)
+	path := Prefix + "/watch-providers/trakt/connection"
+	metadata := do(t, h, http.MethodGet, path, "", requestOwner)
+	if metadata.Code != 200 || metadata.Header().Get("ETag") != "" {
+		t.Fatalf("metadata GET=%d etag=%q", metadata.Code, metadata.Header().Get("ETag"))
+	}
+	before := do(t, h, http.MethodGet, path+"/settings", "", requestOwner)
+	if before.Code != 200 || before.Header().Get("ETag") == "" {
+		t.Fatalf("settings GET=%d", before.Code)
+	}
+	fake.credentialsConfigured = true
+	fake.displayName = "After"
+	changed := do(t, h, http.MethodGet, path, "", requestOwner)
+	if changed.Code != 200 || changed.Header().Get("ETag") != "" || changed.Body.String() == metadata.Body.String() {
+		t.Fatal("metadata change retained a validator or failed to change representation")
+	}
+	after := do(t, h, http.MethodGet, path+"/settings", "", requestOwner)
+	if before.Header().Get("ETag") != after.Header().Get("ETag") || before.Body.String() != after.Body.String() {
+		t.Fatal("dynamic provider metadata changed guarded settings")
+	}
+	var fields map[string]any
+	if err := json.Unmarshal(after.Body.Bytes(), &fields); err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 12 {
+		t.Fatalf("settings fields=%v", fields)
+	}
+	for key, value := range fields {
+		if _, ok := value.(bool); !ok {
+			t.Fatalf("non-preference field %s=%v", key, value)
+		}
+	}
+	headers := maps.Clone(requestOwner)
+	headers["If-Match"] = before.Header().Get("ETag")
+	patched := do(t, h, http.MethodPatch, path, `{"scrobble_enabled":true}`, headers)
+	if patched.Code != 200 {
+		t.Fatalf("metadata invalidated patch: %d %s", patched.Code, patched.Body.String())
+	}
+	fields = nil
+	if err := json.Unmarshal(patched.Body.Bytes(), &fields); err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 12 {
+		t.Fatalf("PATCH returned metadata: %v", fields)
+	}
+}
+
+func TestWatchProviderSettingsMissingConnection(t *testing.T) {
+	fake := &fakeWatchLifecycle{missingConnection: true}
+	h := lifecycleHandler(&fakeLifecycle{}, fake)
+	path := Prefix + "/watch-providers/trakt/connection"
+	status := do(t, h, http.MethodGet, path, "", requestOwner)
+	if status.Code != 200 || status.Header().Get("ETag") != "" {
+		t.Fatalf("disconnected status=%d %s", status.Code, status.Body.String())
+	}
+	requireProblem(t, do(t, h, http.MethodGet, path+"/settings", "", requestOwner), TypeNotFound)
+	requireProblem(t, do(t, h, http.MethodPatch, path, `{"scrobble_enabled":true}`, requestOwner), TypeNotFound)
 }

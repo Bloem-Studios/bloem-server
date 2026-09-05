@@ -413,6 +413,7 @@ function WatchProviderCard({ providerKey }: { providerKey: string }) {
       : "Sync now";
 
   const isBusy =
+    (connection.connected && !connection.etag) ||
     updateConnection.isPending ||
     startAuth.isPending ||
     pollAuth.isPending ||

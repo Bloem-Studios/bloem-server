@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { captureProfileRequestContext } from "@/api/client";
 import { v2, V2ProblemError } from "@/api/v2/request";
 import { favoriteKeys, watchlistKeys, watchProviderKeys } from "./keys";
 import { toast } from "sonner";
@@ -134,14 +135,22 @@ export async function fetchWatchProviders() {
 }
 
 export async function fetchWatchProviderConnection(provider: string) {
-  let etag: string | undefined;
+  const profileContext = captureProfileRequestContext();
+  const scope = profileContext ? { profileContext } : {};
   const result = await v2("GET /api/v2/watch-providers/{provider}/connection", {
     path: { provider },
+    ...scope,
+  });
+  if (!result.connected) return result as WatchProviderConnection;
+  let etag: string | undefined;
+  const settings = await v2("GET /api/v2/watch-providers/{provider}/connection/settings", {
+    path: { provider },
+    ...scope,
     onResponse: (response) => {
       etag = response.headers.get("ETag") ?? undefined;
     },
   });
-  return { ...result, etag } as WatchProviderConnection;
+  return { ...result, ...settings, etag } as WatchProviderConnection;
 }
 
 export function startWatchProviderDeviceAuth(provider: string) {
@@ -149,15 +158,11 @@ export function startWatchProviderDeviceAuth(provider: string) {
 }
 
 export async function pollWatchProviderDeviceAuth(provider: string, authSessionId: string) {
-  let etag: string | undefined;
   const result = await v2("POST /api/v2/watch-providers/{provider}/auth/poll", {
     path: { provider },
-    onResponse: (response) => {
-      etag = response.headers.get("ETag") ?? undefined;
-    },
     body: { auth_session_id: authSessionId },
   });
-  return { ...result, etag } as WatchProviderConnection;
+  return result as WatchProviderConnection;
 }
 
 export async function connectWatchProviderAPIKey(
@@ -165,15 +170,11 @@ export async function connectWatchProviderAPIKey(
   apiKey: string,
   connectionConfig: WatchProviderConnectionConfig = {},
 ) {
-  let etag: string | undefined;
   const result = await v2("POST /api/v2/watch-providers/{provider}/auth/api-key", {
     path: { provider },
-    onResponse: (response) => {
-      etag = response.headers.get("ETag") ?? undefined;
-    },
     body: { api_key: apiKey, connection_config: connectionConfig },
   });
-  return { ...result, etag } as WatchProviderConnection;
+  return result as WatchProviderConnection;
 }
 
 export async function updateWatchProviderConnection(
@@ -181,16 +182,18 @@ export async function updateWatchProviderConnection(
   body: UpdateWatchProviderConnection,
   expectedETag: string,
 ) {
+  const profileContext = captureProfileRequestContext();
   let etag: string | undefined;
   const result = await v2("PATCH /api/v2/watch-providers/{provider}/connection", {
     path: { provider },
+    ...(profileContext ? { profileContext } : {}),
     onResponse: (response) => {
       etag = response.headers.get("ETag") ?? undefined;
     },
     body,
     headers: { "If-Match": expectedETag },
   });
-  return { ...result, etag } as WatchProviderConnection;
+  return { ...result, etag };
 }
 
 export function deleteWatchProviderConnection(provider: string) {
@@ -260,6 +263,9 @@ export function usePollWatchProviderDeviceAuth(provider: string) {
     onSuccess: (connection) => {
       const profileId = getActiveProfileId();
       queryClient.setQueryData(watchProviderKeys.connection(profileId, provider), connection);
+      queryClient.invalidateQueries({
+        queryKey: watchProviderKeys.connection(profileId, provider),
+      });
       toast.success("Watch provider connected");
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to finish auth"),
@@ -280,6 +286,9 @@ export function useConnectWatchProviderAPIKey(provider: string) {
     onSuccess: (connection) => {
       const profileId = getActiveProfileId();
       queryClient.setQueryData(watchProviderKeys.connection(profileId, provider), connection);
+      queryClient.invalidateQueries({
+        queryKey: watchProviderKeys.connection(profileId, provider),
+      });
       toast.success("Watch provider connected");
     },
     onError: (err) =>
@@ -291,6 +300,7 @@ export function useUpdateWatchProviderConnection(provider: string) {
   const queryClient = useQueryClient();
   return useMutation({
     retry: false,
+    onMutate: () => ({ profileId: getActiveProfileId() }),
     mutationFn: (body: UpdateWatchProviderConnection) => {
       const current = queryClient.getQueryData<WatchProviderConnection>(
         watchProviderKeys.connection(getActiveProfileId(), provider),
@@ -298,14 +308,16 @@ export function useUpdateWatchProviderConnection(provider: string) {
       if (!current?.etag) throw new Error("Reload provider settings before saving changes.");
       return updateWatchProviderConnection(provider, body, current.etag);
     },
-    onSuccess: (connection) => {
-      const profileId = getActiveProfileId();
-      queryClient.setQueryData(watchProviderKeys.connection(profileId, provider), connection);
+    onSuccess: (settings, _variables, context) => {
+      queryClient.setQueryData<WatchProviderConnection>(
+        watchProviderKeys.connection(context?.profileId, provider),
+        (current) => (current ? { ...current, ...settings } : undefined),
+      );
     },
-    onError: async (err) => {
+    onError: async (err, _variables, context) => {
       if (err instanceof V2ProblemError && err.status === 412) {
         await queryClient.invalidateQueries({
-          queryKey: watchProviderKeys.connection(getActiveProfileId(), provider),
+          queryKey: watchProviderKeys.connection(context?.profileId, provider),
         });
         return;
       }
