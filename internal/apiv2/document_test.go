@@ -265,6 +265,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		profileToken[id] = true
 	}
 
+	for _, id := range []string{"getAccountPasswordCapability", "changePassword", "approveDeviceHandoff"} {
+		profileToken[id] = true
+	}
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {

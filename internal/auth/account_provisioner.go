@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
@@ -80,20 +82,52 @@ func (p *AccountProvisioner) createDefaultProfile(
 		return fmt.Errorf("open user store: %w", err)
 	}
 
+	profile, err := defaultAccountProfile(input)
+	if err != nil {
+		return err
+	}
+	if err := store.CreateProfile(ctx, profile); err != nil {
+		return fmt.Errorf("store profile: %w", err)
+	}
+
+	return nil
+}
+
+// CreateInvitedAccount couples account provisioning to invite redemption.
+func (p *AccountProvisioner) CreateInvitedAccount(ctx context.Context, input CreateAccountInput, code string) (*models.User, error) {
+	users, ok := p.users.(interface {
+		CreateInvited(ctx context.Context, input models.CreateUserInput, code string, provision func(*models.User, pgx.Tx) error) (*models.User, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("invited account provisioning unavailable")
+	}
+	return users.CreateInvited(ctx, input.User, code, func(user *models.User, tx pgx.Tx) error {
+		if !input.DefaultProfile.Enabled {
+			return nil
+		}
+		if provider, ok := p.storeProvider.(interface {
+			CreateProfileInTransaction(context.Context, pgx.Tx, int, userstore.Profile) error
+		}); ok {
+			profile, err := defaultAccountProfile(input)
+			if err != nil {
+				return err
+			}
+			return provider.CreateProfileInTransaction(ctx, tx, user.ID, profile)
+		}
+		// SQLite bridge stores are separate from the account database. Preserve
+		// their existing profile writer, but do not commit the account or invite
+		// if that writer fails.
+		return p.createDefaultProfile(ctx, user.ID, input)
+	})
+}
+
+func defaultAccountProfile(input CreateAccountInput) (userstore.Profile, error) {
 	name := strings.TrimSpace(input.DefaultProfile.Name)
 	if name == "" {
 		name = strings.TrimSpace(input.User.Username)
 	}
 	if name == "" {
-		return fmt.Errorf("default profile name is required")
+		return userstore.Profile{}, fmt.Errorf("default profile name is required")
 	}
-
-	if err := store.CreateProfile(ctx, userstore.Profile{
-		Name:                name,
-		ShowForcedSubtitles: true,
-	}); err != nil {
-		return fmt.Errorf("store profile: %w", err)
-	}
-
-	return nil
+	return userstore.Profile{Name: name, ShowForcedSubtitles: true}, nil
 }

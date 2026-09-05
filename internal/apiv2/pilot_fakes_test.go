@@ -7,14 +7,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	mediacatalog "github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
@@ -39,6 +43,60 @@ func (f fakeAccounts) CurrentUser(_ context.Context, claims *auth.Claims) (handl
 		return handlers.UserView{}, &handlers.APIError{Status: 500, Code: TypeInternalError.ID, Message: "An unexpected error occurred"}
 	}
 	return view, nil
+}
+
+// passwordChangeAllowed mirrors the v1 rule: a plain login session on the
+// primary profile, or an admin with no profile declared. parityDeps' primary
+// checker knows p-primary only for the admin account (user 2).
+func passwordChangeAllowed(claims *auth.Claims, profileID string) bool {
+	if claims == nil || claims.TokenType != auth.TokenTypeAccess || claims.SessionID == "" || claims.ImpersonatorUserID != nil {
+		return false
+	}
+	switch profileID {
+	case "":
+		return claims.Role == "admin"
+	case "p-primary", "p-primary-locked":
+		return claims.UserID == 2
+	}
+	return false
+}
+
+func (f fakeAccounts) AccountPasswordCapability(_ context.Context, claims *auth.Claims, profileID string) (handlers.AccountPasswordCapabilityView, error) {
+	if f.err != nil {
+		return handlers.AccountPasswordCapabilityView{}, f.err
+	}
+	return handlers.AccountPasswordCapabilityView{
+		Configured: true, ChangePassword: passwordChangeAllowed(claims, profileID) && f.users[claims.UserID].Username != "off",
+		RequiresCurrentPassword: true, MinimumPasswordLength: auth.MinimumPasswordLength, MaximumPasswordBytes: auth.MaximumPasswordBytes,
+	}, nil
+}
+
+func (f fakeAccounts) AuthorizePasswordChange(_ context.Context, claims *auth.Claims, profileID string) error {
+	if f.err != nil {
+		return f.err
+	}
+	if !passwordChangeAllowed(claims, profileID) {
+		return &handlers.APIError{Status: 403, Code: "password_change_forbidden", Message: "Changing the account password requires the account's primary profile"}
+	}
+	return nil
+}
+
+// ChangePassword answers the way the real seam does: "pw" is every account's
+// current password (as in Login), the limits are the auth package's.
+func (f fakeAccounts) ChangePassword(_ context.Context, _ *auth.Claims, current, next string) error {
+	switch {
+	case f.err != nil:
+		return f.err
+	case current != "pw":
+		return &handlers.APIError{Status: 400, Code: "invalid_current_password", Message: "Current password is incorrect", Field: "current_password"}
+	case utf8.RuneCountInString(next) < auth.MinimumPasswordLength:
+		return &handlers.APIError{Status: 400, Code: "weak_password", Message: "Password must be at least 8 characters", Field: "new_password"}
+	case len(next) > auth.MaximumPasswordBytes:
+		return &handlers.APIError{Status: 400, Code: "password_too_long", Message: "Password must be at most 72 bytes", Field: "new_password"}
+	case next == "oauth-only":
+		return &handlers.APIError{Status: 409, Code: "password_login_disabled", Message: "This account does not use local password sign-in"}
+	}
+	return nil
 }
 
 // fakeProgressQuery is one ListProgressPage call as the handler made it.
@@ -414,6 +472,9 @@ func pilotDeps(progress *fakeProgress, profiles *fakeProfiles) Dependencies {
 	if progress == nil {
 		progress = &fakeProgress{}
 	}
+	deps.Devices = fixtureDevices()
+	deps.Sessions = &fakeSessionService{signupOn: true}
+	deps.OAuth = fakeOAuth{codes: map[string]auth.OAuthCompletion{"c0de": {AccessToken: "acc", RefreshToken: "ref", ExpiresIn: 3600, NextURL: "/me"}}}
 	deps.Progress = progress
 	if profiles == nil {
 		profiles = &fakeProfiles{view: fixtureProfileView(), sessions: []handlers.PlaybackSessionView{fixtureSession(), fixtureProfilelessSession()}}
@@ -934,4 +995,359 @@ func fixtureSectionOverrides() []userstore.SectionOverride {
 		{ID: "o-1", ProfileID: "p-owner", Scope: "home", SectionID: "s-continue", Position: &pos, Hidden: true, Featured: &featured, ItemLimit: &limit, Title: "Keep watching", CreatedAt: "2026-01-02T03:04:05Z", UpdatedAt: "2026-01-02T03:04:05Z"},
 		{ID: "o-2", ProfileID: "p-owner", Scope: "home", IsUserAdded: true, UserSectionType: "hidden_gems", UserConfig: `{"library_ids":[3]}`, UserTitle: "Hidden gems"},
 	}
+}
+
+// fakeDevices stands in for the device-pairing seam on *handlers.AuthHandler:
+// a fixed set of requests keyed by their codes, answering the way the real
+// seam does (*handlers.APIError with the v1 status and code).
+type fakeDevices struct {
+	configured bool
+	// requests maps a device, browser, or user code to its request.
+	requests map[string]*fakeDeviceRequest
+	err      error
+}
+
+type fakeDeviceRequest struct {
+	Status    string
+	Temporary bool
+	Purpose   string
+	ExpiresAt time.Time
+	// approvedBy is set once approved; a poll then collects tokens.
+	approvedBy int
+	profileID  string
+}
+
+func (f fakeDevices) DeviceLoginConfigured() bool { return f.configured }
+
+func (f fakeDevices) StartDeviceLogin(_ context.Context, in auth.DeviceLoginStartInput) (*auth.DeviceLoginStartResult, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	purpose := in.ClientPurpose
+	if purpose == "" {
+		purpose = auth.DeviceLoginPurposeLogin
+	}
+	if (purpose == auth.DeviceLoginPurposeRemote) != in.Temporary {
+		return nil, &handlers.APIError{Status: 400, Code: "bad_request", Message: "Invalid device login purpose", Field: "client_purpose"}
+	}
+	return &auth.DeviceLoginStartResult{
+		DeviceCode: "dev-1", UserCode: "ABCD-1234", MatchCode: "42",
+		VerificationURI: in.BaseURL + "/link", VerificationURIComplete: in.BaseURL + "/link?code=ABCD-1234",
+		ExpiresAt: fixedTime().Add(10 * time.Minute), ExpiresIn: 600, Interval: 5,
+		DeviceName: in.DeviceName, DevicePlatform: in.DevicePlatform, ClientPurpose: purpose, Temporary: in.Temporary,
+	}, nil
+}
+
+func (f fakeDevices) find(in auth.DeviceLoginLookupInput) (*fakeDeviceRequest, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	if r := f.requests[in.BrowserCode]; r != nil && in.BrowserCode != "" {
+		return r, nil
+	}
+	if r := f.requests[in.UserCode]; r != nil && in.UserCode != "" {
+		return r, nil
+	}
+	return nil, &handlers.APIError{Status: 404, Code: "not_found", Message: "Device login request not found"}
+}
+
+func (f fakeDevices) LookupDeviceLogin(_ context.Context, in auth.DeviceLoginLookupInput) (*auth.DeviceLoginInfo, error) {
+	r, err := f.find(in)
+	if err != nil {
+		return nil, err
+	}
+	info := &auth.DeviceLoginInfo{Status: r.Status, UserCode: "ABCD-1234", MatchCode: "42", DeviceName: "Living room TV",
+		DevicePlatform: "tvos", IPAddressHint: "192.168.1.x", ExpiresAt: r.ExpiresAt, ClientPurpose: r.Purpose, Temporary: r.Temporary}
+	if r.Status == "expired" {
+		info.UserCode, info.MatchCode = "", ""
+	}
+	return info, nil
+}
+
+func (f fakeDevices) PollDeviceLogin(_ context.Context, deviceCode string) (*handlers.DeviceLoginPollView, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	r := f.requests[deviceCode]
+	if r == nil {
+		return nil, &handlers.APIError{Status: 404, Code: "not_found", Message: "Device login request not found"}
+	}
+	view := &handlers.DeviceLoginPollView{Status: r.Status, PollAfter: 5}
+	if r.Status == auth.DeviceLoginStatusApproved {
+		view.Tokens = &handlers.TokenPairView{AccessToken: "acc", RefreshToken: "ref", ExpiresIn: 3600,
+			User: handlers.UserView{ID: r.approvedBy, Username: "laura", Email: "laura@example.test", Role: "user", Permissions: []string{}, DownloadAllowed: true}}
+		if r.Temporary {
+			view.Temporary = true
+			view.ProfileID = r.profileID
+			view.ProfileToken = "ptok"
+			view.SessionExpiresAt = fixedTime().Add(2 * time.Hour)
+		}
+	}
+	return view, nil
+}
+
+func (f fakeDevices) decide(in auth.DeviceLoginLookupInput, want string) (handlers.DeviceLoginDecision, error) {
+	r, err := f.find(in)
+	if err != nil {
+		return handlers.DeviceLoginDecision{}, err
+	}
+	switch r.Status {
+	case "expired":
+		return handlers.DeviceLoginDecision{}, &handlers.APIError{Status: 410, Code: "expired", Message: "Device login request has expired"}
+	case auth.DeviceLoginStatusConsumed:
+		return handlers.DeviceLoginDecision{}, &handlers.APIError{Status: 409, Code: "consumed", Message: "Device login request has already been used"}
+	case auth.DeviceLoginStatusDenied:
+		return handlers.DeviceLoginDecision{}, &handlers.APIError{Status: 409, Code: "denied", Message: "Device login request has already been denied"}
+	}
+	return handlers.DeviceLoginDecision{Status: want}, nil
+}
+
+func (f fakeDevices) ApproveDeviceLogin(_ context.Context, in auth.DeviceLoginLookupInput, userID int) (handlers.DeviceLoginDecision, error) {
+	if userID == 0 {
+		return handlers.DeviceLoginDecision{}, &handlers.APIError{Status: 401, Code: "unauthorized", Message: "Authentication required"}
+	}
+	r, err := f.find(in)
+	if err == nil && r.Purpose == auth.DeviceLoginPurposeRemote {
+		return handlers.DeviceLoginDecision{}, &handlers.APIError{Status: 409, Code: "purpose_mismatch", Message: "Device login purpose does not match this approval route"}
+	}
+	return f.decide(in, auth.DeviceLoginStatusApproved)
+}
+
+func (f fakeDevices) ApproveDeviceHandoff(_ context.Context, in auth.DeviceLoginLookupInput, userID int, profileID string) (handlers.DeviceLoginDecision, error) {
+	if userID == 0 || profileID == "" {
+		return handlers.DeviceLoginDecision{}, &handlers.APIError{Status: 403, Code: "profile_required", Message: "An active verified profile is required"}
+	}
+	r, err := f.find(in)
+	if err == nil && r.Purpose != auth.DeviceLoginPurposeRemote {
+		return handlers.DeviceLoginDecision{}, &handlers.APIError{Status: 409, Code: "purpose_mismatch", Message: "Device login purpose does not match this approval route"}
+	}
+	return f.decide(in, auth.DeviceLoginStatusApproved)
+}
+
+func (f fakeDevices) DenyDeviceLogin(_ context.Context, in auth.DeviceLoginLookupInput, userID int) (handlers.DeviceLoginDecision, error) {
+	if userID == 0 {
+		return handlers.DeviceLoginDecision{}, &handlers.APIError{Status: 401, Code: "unauthorized", Message: "Authentication required"}
+	}
+	return f.decide(in, auth.DeviceLoginStatusDenied)
+}
+
+// fixtureDevices is the device-pairing fake every device test starts from.
+func fixtureDevices() fakeDevices {
+	exp := fixedTime().Add(10 * time.Minute)
+	pending := &fakeDeviceRequest{Status: auth.DeviceLoginStatusPending, Purpose: auth.DeviceLoginPurposeLogin, ExpiresAt: exp}
+	approved := &fakeDeviceRequest{Status: auth.DeviceLoginStatusApproved, Purpose: auth.DeviceLoginPurposeLogin, ExpiresAt: exp, approvedBy: 1}
+	handoff := &fakeDeviceRequest{Status: auth.DeviceLoginStatusApproved, Purpose: auth.DeviceLoginPurposeRemote, Temporary: true, ExpiresAt: exp, approvedBy: 1, profileID: "p-owner"}
+	remotePending := &fakeDeviceRequest{Status: auth.DeviceLoginStatusPending, Purpose: auth.DeviceLoginPurposeRemote, Temporary: true, ExpiresAt: exp}
+	return fakeDevices{configured: true, requests: map[string]*fakeDeviceRequest{
+		"dev-pending": pending, "br-pending": pending, "ABCD-1234": pending,
+		"dev-approved": approved,
+		"dev-handoff":  handoff,
+		"br-remote":    remotePending,
+		"br-expired":   {Status: "expired", Purpose: auth.DeviceLoginPurposeLogin},
+		"br-consumed":  {Status: auth.DeviceLoginStatusConsumed, Purpose: auth.DeviceLoginPurposeLogin, ExpiresAt: exp},
+		"br-denied":    {Status: auth.DeviceLoginStatusDenied, Purpose: auth.DeviceLoginPurposeLogin, ExpiresAt: exp},
+	}}
+}
+
+// fakeSessionService stands in for the login-session seam on
+// *handlers.AuthHandler.
+type fakeSessionService struct {
+	// sessions overrides the default live-session set; pageCalls records
+	// every ListSessionsPage query.
+	sessions  []*models.AuthSession
+	pageCalls []sessionPageQuery
+	// loggedOut, ended and revoked record the session ids the calls received.
+	loggedOut []string
+	ended     []string
+	revoked   []string
+	setupDone bool
+	signupOn  bool
+	err       error
+	// lastLogin is the input the most recent Login received.
+	lastLogin handlers.LoginInput
+}
+
+func (f *fakeSessionService) Login(_ context.Context, in handlers.LoginInput) (handlers.TokenPairView, error) {
+	f.lastLogin = in
+	if f.err != nil {
+		return handlers.TokenPairView{}, f.err
+	}
+	if in.Username == "" || in.Password == "" {
+		return handlers.TokenPairView{}, &handlers.APIError{Status: 400, Code: "bad_request", Message: "Username and password are required"}
+	}
+	switch {
+	case in.Username == "laura" && in.Password == "pw":
+		return handlers.TokenPairView{AccessToken: "acc", RefreshToken: "ref", ExpiresIn: 3600,
+			User: handlers.UserView{ID: 1, Username: "laura", Email: "laura@example.test", Role: "user", Permissions: []string{"marker_edit"}, DownloadAllowed: true}}, nil
+	case in.Username == "off":
+		return handlers.TokenPairView{}, &handlers.APIError{Status: 403, Code: "user_disabled", Message: "User account is disabled"}
+	}
+	return handlers.TokenPairView{}, &handlers.APIError{Status: 401, Code: "invalid_credentials", Message: "Invalid username or password"}
+}
+
+func (f *fakeSessionService) Logout(_ context.Context, claims *auth.Claims) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.loggedOut = append(f.loggedOut, claims.SessionID)
+	return nil
+}
+
+func (f *fakeSessionService) EndImpersonation(_ context.Context, claims *auth.Claims) error {
+	if f.err != nil {
+		return f.err
+	}
+	if claims.ImpersonatorUserID == nil {
+		return &handlers.APIError{Status: 400, Code: "not_impersonating", Message: "No active impersonation session"}
+	}
+	f.ended = append(f.ended, claims.SessionID)
+	return nil
+}
+
+func (f *fakeSessionService) ListProviders() []auth.LoginProviderInfo {
+	return []auth.LoginProviderInfo{
+		{ID: "local", DisplayName: "Silo account", Mode: "credentials", Default: true},
+		{ID: "plugin-3", DisplayName: "Example SSO", Mode: "oauth", IconURL: "https://plugins.example.test/icon.svg", InstallationID: 3},
+	}
+}
+
+func (f *fakeSessionService) Refresh(_ context.Context, token string) (handlers.RefreshedTokensView, error) {
+	switch token {
+	case "ref":
+		return handlers.RefreshedTokensView{AccessToken: "acc2", RefreshToken: "ref2", ExpiresIn: 3600}, nil
+	case "revoked":
+		return handlers.RefreshedTokensView{}, &handlers.APIError{Status: 401, Code: "session_revoked", Message: "Session has been revoked"}
+	}
+	return handlers.RefreshedTokensView{}, &handlers.APIError{Status: 401, Code: "invalid_token", Message: "Invalid or expired refresh token"}
+}
+
+// sessionPageQuery records one ListSessionsPage call.
+type sessionPageQuery struct {
+	After *auth.SessionKey
+	Limit int
+}
+
+// liveSessions is the fake's live-session set: three rows, newest first by
+// (created_at DESC, id DESC), with s3 and s2 sharing a created_at so the id
+// tiebreaker is exercised. The store's own filters (expired, revoked) are
+// modeled by simply not holding such rows.
+func (f *fakeSessionService) liveSessions(userID int) []*models.AuthSession {
+	if f.sessions != nil {
+		return f.sessions
+	}
+	expires := fixedTime().Add(30 * 24 * time.Hour)
+	return []*models.AuthSession{
+		{ID: "s3", UserID: userID, DeviceName: "Silo/1.0 (tvOS)", IPAddress: "127.0.0.1", CreatedAt: fixedTime().Add(time.Hour), ExpiresAt: expires},
+		{ID: "s2", UserID: userID, DeviceName: "Silo/1.0 (iOS)", IPAddress: "127.0.0.2", CreatedAt: fixedTime().Add(time.Hour), ExpiresAt: expires},
+		{ID: "s1", UserID: userID, DeviceName: "", IPAddress: "", CreatedAt: fixedTime(), ExpiresAt: expires},
+	}
+}
+
+// ListSessionsPage applies the keyset the way SessionRepository.ListByUserPage
+// does: rows strictly after (created_at, id) in descending order, limit rows,
+// and has_more when one more follows.
+func (f *fakeSessionService) ListSessionsPage(_ context.Context, userID int, after *auth.SessionKey, limit int) ([]*models.AuthSession, bool, error) {
+	f.pageCalls = append(f.pageCalls, sessionPageQuery{After: after, Limit: limit})
+	if f.err != nil {
+		return nil, false, f.err
+	}
+	var page []*models.AuthSession
+	for _, s := range f.liveSessions(userID) {
+		if after != nil && !s.CreatedAt.Before(after.CreatedAt) && (!s.CreatedAt.Equal(after.CreatedAt) || s.ID >= after.ID) {
+			continue
+		}
+		page = append(page, s)
+	}
+	if len(page) > limit {
+		return page[:limit], true, nil
+	}
+	return page, false, nil
+}
+
+func (f *fakeSessionService) RevokeSession(_ context.Context, sessionID string, _ int) error {
+	if f.err != nil {
+		return f.err
+	}
+	if sessionID != "s1" && sessionID != "s9" {
+		return &handlers.APIError{Status: 404, Code: "not_found", Message: "Session not found"}
+	}
+	f.revoked = append(f.revoked, sessionID)
+	return nil
+}
+
+func (f *fakeSessionService) SetupInitialUser(_ context.Context, in handlers.RegistrationInput) (handlers.TokenPairView, error) {
+	if f.err != nil {
+		return handlers.TokenPairView{}, f.err
+	}
+	if f.setupDone {
+		return handlers.TokenPairView{}, &handlers.APIError{Status: 401, Code: "setup_complete", Message: "Initial setup has already been completed"}
+	}
+	return handlers.TokenPairView{AccessToken: "acc", RefreshToken: "ref", ExpiresIn: 3600,
+		User: handlers.UserView{ID: 1, Username: in.Username, Email: in.Email, Role: "admin", Permissions: []string{"marker_edit", "metadata_curation"}, DownloadAllowed: true}}, nil
+}
+
+func (f *fakeSessionService) SignupEnabled(context.Context) (bool, error) { return f.signupOn, f.err }
+
+func (f *fakeSessionService) Signup(_ context.Context, in handlers.RegistrationInput) (handlers.TokenPairView, error) {
+	if f.err != nil {
+		return handlers.TokenPairView{}, f.err
+	}
+	if !f.signupOn {
+		return handlers.TokenPairView{}, &handlers.APIError{Status: 403, Code: "signup_disabled", Message: "Public signups are not currently enabled"}
+	}
+	switch in.InviteCode {
+	case "WELCOME-2026":
+	case "USED":
+		return handlers.TokenPairView{}, &handlers.APIError{Status: 400, Code: "code_exhausted", Message: "This invite code has reached its maximum uses", Field: "invite_code"}
+	default:
+		return handlers.TokenPairView{}, &handlers.APIError{Status: 400, Code: "invalid_code", Message: "Invalid invite code", Field: "invite_code"}
+	}
+	if in.Username == "laura" {
+		return handlers.TokenPairView{}, &handlers.APIError{Status: 400, Code: "duplicate", Message: "Username or email already taken"}
+	}
+	return handlers.TokenPairView{AccessToken: "acc", RefreshToken: "ref", ExpiresIn: 3600,
+		User: handlers.UserView{ID: 3, Username: in.Username, Email: in.Email, Role: "user", Permissions: []string{}, DownloadAllowed: true}}, nil
+}
+
+func (f *fakeSessionService) PluginLaunchToken(claims *auth.Claims, profileID string) (string, error) {
+	if claims == nil || claims.SessionID == "" {
+		return "", &handlers.APIError{Status: 401, Code: "unauthorized", Message: "Invalid or missing authentication token"}
+	}
+	return "plugin-" + claims.SessionID + "-" + strings.TrimSpace(profileID), nil
+}
+
+// fakeOAuth stands in for *auth.OAuthHandler: one redeemable code and a
+// fixed provider handshake.
+type fakeOAuth struct {
+	codes map[string]auth.OAuthCompletion
+}
+
+func (fakeOAuth) CallbackURL(prefix string, installID int) string {
+	return "https://silo.example.test" + prefix + "/auth/oauth/" + strconv.Itoa(installID) + "/callback"
+}
+
+func (fakeOAuth) Init(_ context.Context, installID int, next, redirectURI string) (string, error) {
+	if installID != 3 {
+		return "", &auth.OAuthHandshakeError{Status: 502, Message: "auth plugin unavailable"}
+	}
+	return "https://sso.example.test/authorize?redirect_uri=" + url.QueryEscape(redirectURI) + "&next=" + url.QueryEscape(next), nil
+}
+
+func (fakeOAuth) Callback(_ context.Context, in auth.OAuthCallbackInput) string {
+	if in.InstallID != 3 || in.State != "st" || in.Code != "pc" {
+		return "/login?error=oauth_failed&reason=state_invalid"
+	}
+	return "https://silo.example.test/login/oauth-complete?code=c0de"
+}
+
+func (f fakeOAuth) Complete(_ context.Context, code string) (auth.OAuthCompletion, error) {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return auth.OAuthCompletion{}, auth.ErrOAuthCodeRequired
+	}
+	c, ok := f.codes[code]
+	if !ok {
+		return auth.OAuthCompletion{}, auth.ErrOAuthCompletionInvalid
+	}
+	return c, nil
 }

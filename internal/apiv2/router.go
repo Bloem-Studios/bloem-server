@@ -68,6 +68,10 @@ func init() {
 // operations. Every field is optional: a missing gate never removes a route,
 // it makes the operations behind that gate fail closed with a typed problem.
 type Dependencies struct {
+	Devices               DeviceLoginService
+	Sessions              SessionService
+	OAuth                 OAuthService
+	BucketRateLimit       func(string) func(http.Handler) http.Handler
 	Markers               MarkerService
 	AdminSections         AdminSectionService
 	AdminCollections      AdminCollectionService
@@ -242,6 +246,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	r.Use(dropDelegationPattern)
 	r.Use(joinPreconditionFields)
 	r.Use(bufferResponse)
+	r.Use(withRequest)
 	r.NotFound(notFound)
 
 	api := humachi.New(r, humaConfig())
@@ -532,6 +537,9 @@ func (reg *Registry) methodNotAllowed(w http.ResponseWriter, r *http.Request) {
 // AccountService is the slice of *handlers.AuthHandler the account and setup
 // operations use.
 type AccountService interface {
+	AccountPasswordCapability(context.Context, *auth.Claims, string) (handlers.AccountPasswordCapabilityView, error)
+	AuthorizePasswordChange(context.Context, *auth.Claims, string) error
+	ChangePassword(context.Context, *auth.Claims, string, string) error
 	NeedsSetup(ctx context.Context) (bool, error)
 	CurrentUser(ctx context.Context, claims *auth.Claims) (handlers.UserView, error)
 }
@@ -875,4 +883,39 @@ func serviceProblem(err error) *Problem {
 		return p
 	}
 	return NewProblem(TypeInternalError, "An unexpected error occurred.")
+}
+
+// OAuthService is the slice of *auth.OAuthHandler completeOAuthLogin uses.
+type OAuthService interface {
+	Complete(ctx context.Context, code string) (auth.OAuthCompletion, error)
+	CallbackURL(prefix string, installID int) string
+	Init(ctx context.Context, installID int, next, redirectURI string) (string, error)
+	Callback(ctx context.Context, in auth.OAuthCallbackInput) string
+}
+
+// SessionService is the slice of *handlers.AuthHandler the login-session
+// operations use.
+type SessionService interface {
+	Login(ctx context.Context, in handlers.LoginInput) (handlers.TokenPairView, error)
+	Logout(ctx context.Context, claims *auth.Claims) error
+	EndImpersonation(ctx context.Context, claims *auth.Claims) error
+	ListProviders() []auth.LoginProviderInfo
+	Refresh(ctx context.Context, refreshToken string) (handlers.RefreshedTokensView, error)
+	ListSessionsPage(ctx context.Context, userID int, after *auth.SessionKey, limit int) ([]*models.AuthSession, bool, error)
+	RevokeSession(ctx context.Context, sessionID string, userID int) error
+	SetupInitialUser(ctx context.Context, in handlers.RegistrationInput) (handlers.TokenPairView, error)
+	SignupEnabled(ctx context.Context) (bool, error)
+	Signup(ctx context.Context, in handlers.RegistrationInput) (handlers.TokenPairView, error)
+}
+
+// DeviceLoginService is the slice of *handlers.AuthHandler the device-pairing
+// operations use.
+type DeviceLoginService interface {
+	DeviceLoginConfigured() bool
+	StartDeviceLogin(ctx context.Context, input auth.DeviceLoginStartInput) (*auth.DeviceLoginStartResult, error)
+	LookupDeviceLogin(ctx context.Context, input auth.DeviceLoginLookupInput) (*auth.DeviceLoginInfo, error)
+	PollDeviceLogin(ctx context.Context, deviceCode string) (*handlers.DeviceLoginPollView, error)
+	ApproveDeviceLogin(ctx context.Context, input auth.DeviceLoginLookupInput, userID int) (handlers.DeviceLoginDecision, error)
+	ApproveDeviceHandoff(ctx context.Context, input auth.DeviceLoginLookupInput, userID int, profileID string) (handlers.DeviceLoginDecision, error)
+	DenyDeviceLogin(ctx context.Context, input auth.DeviceLoginLookupInput, userID int) (handlers.DeviceLoginDecision, error)
 }

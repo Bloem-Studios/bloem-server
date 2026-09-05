@@ -308,6 +308,9 @@ func (s *Service) SetupInitialUser(
 	defaultProfileName string,
 	deviceName, ip string,
 ) (*TokenPair, *models.User, error) {
+	if err := ValidateNewPassword(password); err != nil {
+		return nil, nil, err
+	}
 	needsSetup, err := s.NeedsSetup(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -344,6 +347,9 @@ func (s *Service) Signup(
 	defaultProfileName string,
 	deviceName, ip string,
 ) (*TokenPair, *models.User, error) {
+	if err := ValidateNewPassword(password); err != nil {
+		return nil, nil, err
+	}
 	// Check global signup toggle.
 	if s.settings != nil {
 		enabled, err := s.settings.Get(ctx, "signup.enabled")
@@ -357,13 +363,8 @@ func (s *Service) Signup(
 		return nil, nil, ErrSignupDisabled
 	}
 
-	// Redeem the invite code (atomic increment).
-	if err := s.inviteCodes.RedeemCode(ctx, code); err != nil {
-		return nil, nil, err
-	}
-
 	// Create the user with standard role and access to all libraries.
-	if _, err := s.accounts.CreateAccount(ctx, CreateAccountInput{
+	if _, err := s.accounts.CreateInvitedAccount(ctx, CreateAccountInput{
 		User: models.CreateUserInput{
 			Username: username,
 			Email:    email,
@@ -374,7 +375,7 @@ func (s *Service) Signup(
 			Enabled: createDefaultProfile,
 			Name:    defaultProfileName,
 		},
-	}); err != nil {
+	}, code); err != nil {
 		return nil, nil, fmt.Errorf("creating user: %w", err)
 	}
 
@@ -598,10 +599,17 @@ func validatePasswordChange(user *models.User, currentPassword, newPassword stri
 	if !CheckPassword(user, currentPassword) {
 		return ErrCurrentPasswordInvalid
 	}
-	if utf8.RuneCountInString(newPassword) < MinimumPasswordLength {
+	return ValidateNewPassword(newPassword)
+}
+
+// ValidateNewPassword applies the shared local credential policy before a new
+// account or password is persisted. The minimum counts characters; bcrypt
+// limits the UTF-8 encoding to 72 bytes.
+func ValidateNewPassword(password string) error {
+	if utf8.RuneCountInString(password) < MinimumPasswordLength {
 		return ErrPasswordTooShort
 	}
-	if len(newPassword) > MaximumPasswordBytes {
+	if len(password) > MaximumPasswordBytes {
 		return ErrPasswordTooLong
 	}
 	return nil
@@ -610,6 +618,12 @@ func validatePasswordChange(user *models.User, currentPassword, newPassword stri
 // GetSessions returns all sessions for the given user ID.
 func (s *Service) GetSessions(ctx context.Context, userID int) ([]*models.AuthSession, error) {
 	return s.sessions.ListByUser(ctx, userID)
+}
+
+// GetSessionsPage returns one keyset page of the user's live sessions; see
+// SessionRepository.ListByUserPage.
+func (s *Service) GetSessionsPage(ctx context.Context, userID int, after *SessionKey, limit int) ([]*models.AuthSession, error) {
+	return s.sessions.ListByUserPage(ctx, userID, after, limit)
 }
 
 // RevokeSession revokes a specific session. It verifies the session belongs
