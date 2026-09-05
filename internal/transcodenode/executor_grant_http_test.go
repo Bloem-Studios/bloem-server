@@ -81,7 +81,7 @@ func TestExecutorGrantWriterExpiryAndDeadlineCap(t *testing.T) {
 		t.Fatal(err)
 	}
 	base := &workerDeadlineWriter{ResponseRecorder: httptest.NewRecorder()}
-	writer, cleanup, err := newExecutorGrantWriter(base, t.Context(), grant)
+	writer, cleanup, err := guardWorkerTestResponse(base, t.Context(), grant)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestExecutorGrantWriterRequiresDeadlineSupport(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer grant.Close()
-	if _, _, err := newExecutorGrantWriter(httptest.NewRecorder(), t.Context(), grant); !errors.Is(err, http.ErrNotSupported) {
+	if _, _, err := guardWorkerTestResponse(httptest.NewRecorder(), t.Context(), grant); !errors.Is(err, http.ErrNotSupported) {
 		t.Fatalf("unsupported writer accepted: %v", err)
 	}
 }
@@ -130,7 +130,7 @@ func TestExecutorGrantWriterInterruptsBlockedWrite(t *testing.T) {
 				t.Fatal(err)
 			}
 			base := &workerDeadlineWriter{ResponseRecorder: httptest.NewRecorder(), blocked: make(chan struct{}), released: make(chan struct{})}
-			writer, cleanup, err := newExecutorGrantWriter(base, ctx, grant)
+			writer, cleanup, err := guardWorkerTestResponse(base, ctx, grant)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -208,7 +208,7 @@ func TestExecutorGrantRealHTTPDoesNotResumeAfterRevocation(t *testing.T) {
 	}
 	denied := make(chan error, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writer, cleanup, err := newExecutorGrantWriter(w, r.Context(), grant)
+		writer, cleanup, err := guardWorkerTestResponse(w, r.Context(), grant)
 		if err != nil {
 			denied <- err
 			return
@@ -262,7 +262,7 @@ func TestExecutorGrantInterruptsUnreadSocketResponse(t *testing.T) {
 	done := make(chan error, 1)
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		observed := &workerObservedSocketWriter{ResponseWriter: w, started: started}
-		writer, cleanup, err := newExecutorGrantWriter(observed, r.Context(), grant)
+		writer, cleanup, err := guardWorkerTestResponse(observed, r.Context(), grant)
 		if err != nil {
 			done <- err
 			return
@@ -343,4 +343,14 @@ func (w *workerObservedSocketWriter) Write(body []byte) (int, error) {
 		close(w.started)
 	}
 	return w.ResponseWriter.Write(body)
+}
+
+// Exercise the shared response guard with an already acquired test lease.
+func guardWorkerTestResponse(w http.ResponseWriter, ctx context.Context, grant *playback.RuntimeGrantV3) (http.ResponseWriter, func(), error) {
+	request := grant.Request()
+	provider := func(context.Context, string, playback.ExecutorNamespaceV3, playback.AttemptGrantPurposeV3) (*playback.RuntimeGrantV3, error) {
+		return grant, nil
+	}
+	writer, _, cleanup, err := playback.GuardExecutorResponseV3(w, httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx), provider, request.TransportID, &request.Executor)
+	return writer, cleanup, err
 }

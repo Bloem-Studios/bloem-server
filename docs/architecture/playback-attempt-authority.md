@@ -173,9 +173,58 @@ socket write deadlines by remaining validity, flushes under that deadline, and
 interrupts blocked writes on cancellation. Unsupported deadline writers refuse
 bound delivery. Disconnect closes the response grant independently of execution.
 
-Public v2 lifecycle and active takeover remain disabled. Central native media
-and compatibility direct/master/child HLS paths reject bound delivery until they
-have response-lifetime guards; unbound legacy behavior remains available. Bound
-worker stop and progressive remux remain disabled. Production callback wiring,
-owner-lease renewal, generation replacement, selected-store progress fencing,
-and deployment/suspend acceptance remain activation requirements.
+Public v2 lifecycle and active takeover remain disabled. Central response
+integration is limited to the guarded paths below; unbound legacy behavior
+remains available. Bound worker stop and progressive remux remain disabled.
+Production callback wiring, owner-lease renewal, generation replacement,
+selected-store progress fencing, and deployment/suspend acceptance remain
+activation requirements.
+
+## Central response integration
+
+`GuardExecutorResponseV3` owns the response grant and writer for both worker and
+central handlers. Callers must defer its cleanup and pass its returned request
+and writer through all response work. Nil namespaces preserve legacy behavior;
+callers must first compare actual runtime or metadata bindings so a missing
+reference cannot select that fallback. The wrapper caps rolling deadlines and
+has no `ReaderFrom` or `Unwrap` path around write checks. Provider errors close
+any returned grant. Transport cancellation is exercised over HTTP/1 and HTTP/2.
+
+Native direct-file and local encoded-HLS handlers require a signed executor
+reference, authoritative recipe resolution, matching live metadata, and the
+complete supported route assignment. A direct route uses execution `none` and
+API egress; encoded HLS uses API execution and egress. Bound cold reconstruction
+runs under the response context and the manager's execute-grant/resolver checks.
+Error paths cannot call unfenced legacy progress or stop finalizers. Progressive
+remux, video-copy HLS, and remote proxy chains remain refused until their complete
+execution, serving, and finalization paths are guarded. Bound subtitle and font
+requests remain refused until extraction and delivery are guarded.
+
+Compatibility master, playlist, and segment handlers can serve an existing
+local encoded-HLS runtime using the authenticated compatibility session's
+stored reference and a matching authoritative recipe. They bypass legacy route
+selection, startup, and recipe mutation. A stripped recipe reference is rejected
+when local metadata or runtime still carries a binding. Cold compatibility
+startup, progressive/remux delivery, copy-video HLS, and remote proxy chains
+remain refused for bound sessions. Compatibility subtitle extraction is also
+refused for bound metadata.
+
+Ordinary local file reads can still block in the operating system. Response
+cancellation and write deadlines prevent later authorized body writes; they do
+not promise to interrupt every kernel filesystem operation. Deployment testing
+must cover the storage and suspend behavior actually used.
+
+A selected-store progress snapshot establishes a read source, not permission to
+mutate progress. Before lifecycle activation, the selected sink must commit its
+ownership fence, sequence watermark, progress/hints, and terminal receipt within
+one transaction. A control-plane lookup followed by an independent selected-store
+write is not atomic. Owner renewal and executor replacement must preserve this
+boundary and the original logical playback identity. Dead-worker exit
+acknowledgement cannot be an indefinite prerequisite for replacement.
+
+Legacy progress, stop, and finalization paths must refuse bound sessions before
+calling personal-state writers. This includes HTTP and shared control helpers,
+compatibility playback reports, and expiry/crash callbacks. Resource cleanup may
+act on its exact executor object, but it cannot imply a durable stop receipt or
+use a legacy progress/history writer. This restriction keeps delivery-only
+integration from implicitly activating an unfenced lifecycle.
