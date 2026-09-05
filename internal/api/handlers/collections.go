@@ -10,11 +10,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"golang.org/x/sync/errgroup"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog"
-	"github.com/Silo-Server/silo-server/internal/collectionutil"
 	"github.com/Silo-Server/silo-server/internal/s3client"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -37,7 +35,7 @@ func NewCollectionHandler(provider userstore.UserStoreProvider) *CollectionHandl
 
 // --- Request/Response types ---
 
-type createCollectionRequest struct {
+type PersonalCollectionCreateRequest struct {
 	Name                       string          `json:"name"`
 	CollectionType             string          `json:"collection_type"`
 	IsShared                   bool            `json:"is_shared"`
@@ -69,7 +67,7 @@ type collectionItemRequest struct {
 	Position int `json:"position"`
 }
 
-type collectionResponse struct {
+type PersonalCollectionView struct {
 	ID                         string          `json:"id"`
 	ProfileID                  string          `json:"profile_id"`
 	CreatorProfileID           string          `json:"creator_profile_id"`
@@ -98,20 +96,20 @@ type collectionResponse struct {
 	UpdatedAt                  string          `json:"updated_at"`
 }
 
-type collectionListResponse struct {
-	Collections []collectionResponse      `json:"collections"`
-	Groups      []collectionGroupResponse `json:"groups"`
+type PersonalCollectionListView struct {
+	Collections []PersonalCollectionView `json:"collections"`
+	Groups      []CollectionGroupView    `json:"groups"`
 }
 
-type collectionCapabilitiesResponse struct {
+type CollectionCapabilitiesView struct {
 	// DisplayFilterFields are the catalog query fields a personal-collection
 	// display filter may use. Clients build a display_query_definition fragment
 	// from these rather than a bespoke enum.
-	DisplayFilterFields       []string                       `json:"display_filter_fields"`
-	DisplayFilterPresets      collectionDisplayFilterPresets `json:"display_filter_presets"`
-	CollectionDefaultSort     bool                           `json:"collection_default_sort"`
-	CollectionSortPreferences bool                           `json:"collection_sort_preferences"`
-	EffectiveCollectionSort   bool                           `json:"effective_collection_sort"`
+	DisplayFilterFields       []string                           `json:"display_filter_fields"`
+	DisplayFilterPresets      CollectionDisplayFilterPresetsView `json:"display_filter_presets"`
+	CollectionDefaultSort     bool                               `json:"collection_default_sort"`
+	CollectionSortPreferences bool                               `json:"collection_sort_preferences"`
+	EffectiveCollectionSort   bool                               `json:"effective_collection_sort"`
 	// SortPreferenceKinds are the collection_kind values this server accepts on
 	// the sort-preference endpoints. CollectionSortPreferences alone cannot
 	// distinguish a server that also stores the personal-list kinds
@@ -119,12 +117,12 @@ type collectionCapabilitiesResponse struct {
 	SortPreferenceKinds []string `json:"sort_preference_kinds"`
 }
 
-type collectionDisplayFilterPresets struct {
+type CollectionDisplayFilterPresetsView struct {
 	Watched []string `json:"watched"`
 	Media   []string `json:"media"`
 }
 
-type collectionGroupResponse struct {
+type CollectionGroupView struct {
 	ID              string `json:"id"`
 	Name            string `json:"name"`
 	Slug            string `json:"slug"`
@@ -132,13 +130,13 @@ type collectionGroupResponse struct {
 	SortOrder       int    `json:"sort_order"`
 }
 
-type createCollectionGroupRequest struct {
+type CollectionGroupCreateRequest struct {
 	Name            string `json:"name"`
 	Slug            string `json:"slug"`
 	DefaultSortMode string `json:"default_sort_mode"`
 }
 
-type updateCollectionGroupRequest struct {
+type CollectionGroupUpdateRequest struct {
 	Name            *string `json:"name"`
 	Slug            *string `json:"slug"`
 	DefaultSortMode *string `json:"default_sort_mode"`
@@ -179,151 +177,37 @@ type previewCollectionItemResponse struct {
 
 // HandleListCollections handles GET /collections.
 func (h *CollectionHandler) HandleListCollections(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	profileID := apimw.GetProfileID(r.Context())
-
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
+	resp, err := h.ListPersonalCollections(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
+		writeAPIError(w, err)
 		return
 	}
-
-	collectionsCh := make(chan []userstore.Collection, 1)
-	groupsCh := make(chan []userstore.CollectionGroup, 1)
-	eg, egCtx := errgroup.WithContext(r.Context())
-	eg.Go(func() error {
-		collections, err := store.ListCollections(egCtx, profileID)
-		if err != nil {
-			return err
-		}
-		collectionsCh <- collections
-		return nil
-	})
-	eg.Go(func() error {
-		groups, err := store.ListCollectionGroups(egCtx)
-		if err != nil {
-			return err
-		}
-		groupsCh <- groups
-		return nil
-	})
-	if err := eg.Wait(); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list collections")
-		return
-	}
-	collections := <-collectionsCh
-	groups := <-groupsCh
-
-	resp := collectionListResponse{
-		Collections: make([]collectionResponse, 0, len(collections)),
-		Groups:      make([]collectionGroupResponse, 0, len(groups)),
-	}
-	for _, c := range collections {
-		resp.Collections = append(resp.Collections, h.toCollectionResponse(r, c))
-	}
-	for _, g := range groups {
-		resp.Groups = append(resp.Groups, collectionGroupResponse{
-			ID:              g.ID,
-			Name:            g.Name,
-			Slug:            g.Slug,
-			DefaultSortMode: string(g.DefaultSortMode),
-			SortOrder:       g.SortOrder,
-		})
-	}
-
 	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleCapabilities exposes additive feature support for collection clients.
 func (h *CollectionHandler) HandleCapabilities(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, collectionCapabilitiesResponse{
-		DisplayFilterFields: []string{"type", "watched"},
-		DisplayFilterPresets: collectionDisplayFilterPresets{
-			Watched: []string{"all", "watched", "unwatched"},
-			Media:   []string{"all", "movie", "series"},
-		},
-		CollectionDefaultSort:     true,
-		CollectionSortPreferences: true,
-		EffectiveCollectionSort:   true,
-		SortPreferenceKinds:       sortPreferenceKinds,
-	})
+	writeJSON(w, http.StatusOK, h.Capabilities())
 }
 
 // HandleCreateCollection handles POST /collections.
 func (h *CollectionHandler) HandleCreateCollection(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	profileID := apimw.GetProfileID(r.Context())
-
-	var req createCollectionRequest
+	var req PersonalCollectionCreateRequest
 	if err := decodeJSONOrMultipart(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-
-	if req.Name == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Collection name is required")
-		return
-	}
-
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
-		return
-	}
-
-	queryDefinitionJSON := defaultJSON(req.QueryDefinition)
-	collectionType := firstNonEmptyCollection(req.CollectionType, "manual")
-	if collectionType == "smart" {
-		queryDefinitionJSON, err = normalizeSmartCollectionQueryDefinitionJSON(queryDefinitionJSON, true, true)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "Invalid query_definition")
-			return
-		}
-	} else if len(req.QueryDefinition) > 0 {
-		queryDefinitionJSON, err = normalizeQueryDefinitionJSON(queryDefinitionJSON, true, true)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "bad_request", "Invalid query_definition")
-			return
-		}
-	}
-	queryDefinition := string(queryDefinitionJSON)
-	sortConfig, err := NormalizeCollectionSortConfig(req.SortConfig, true)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		return
-	}
-	displayQueryDefinition, err := catalog.NormalizeDisplayQueryFragment(req.DisplayQueryDefinition)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		return
-	}
-	collection, err := store.CreateCollection(r.Context(), userstore.CreateCollectionInput{
-		CreatorProfileID:           profileID,
-		Name:                       req.Name,
-		CollectionType:             collectionType,
-		IsShared:                   req.IsShared,
-		AllowedProfileIDs:          req.AllowedProfileIDs,
-		QueryDefinition:            queryDefinition,
-		SortConfig:                 sortConfig,
-		DisplayQueryDefinition:     displayQueryDefinition,
-		IncludeInServerCollections: req.IncludeInServerCollections,
+	created, err := h.CreatePersonalCollection(r.Context(), PersonalCollectionCreateCommand{
+		UserID:     apimw.GetUserID(r.Context()),
+		ProfileID:  apimw.GetProfileID(r.Context()),
+		Request:    req,
+		PosterFile: posterFileReader(r),
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create collection")
+		writeAPIError(w, err)
 		return
 	}
-
-	if err := h.processCollectionPoster(r, store, collection.ID, profileID, req.PosterSourceURL); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
-		return
-	}
-	if h.posterInputProvided(r, req.PosterSourceURL) {
-		if refreshed, err := store.GetCollection(r.Context(), collection.ID); err == nil {
-			collection = refreshed
-		}
-	}
-
-	writeJSON(w, http.StatusCreated, h.toCollectionResponse(r, *collection))
+	writeJSON(w, http.StatusCreated, created)
 }
 
 // HandleUpdateCollection handles PUT /collections/{id}.
@@ -424,7 +308,8 @@ func (h *CollectionHandler) HandleUpdateCollection(w http.ResponseWriter, r *htt
 				writeError(w, http.StatusBadRequest, "bad_request", "library_ids can only be edited for imported collections")
 				return
 			}
-			if !validateOptionalLibraryIDs(*req.LibraryIDs, w) {
+			if err := validateOptionalLibraryIDs(*req.LibraryIDs); err != nil {
+				writeAPIError(w, err)
 				return
 			}
 			cfg.LibraryIDs = append([]int(nil), (*req.LibraryIDs)...)
@@ -475,7 +360,7 @@ func (h *CollectionHandler) HandleUpdateCollection(w http.ResponseWriter, r *htt
 	}
 
 	posterSource := pointerStringValue(req.PosterSourceURL)
-	if err := h.processCollectionPoster(r, store, collectionID, profileID, posterSource); err != nil {
+	if _, err := h.processCollectionPoster(r.Context(), store, collectionID, profileID, posterFileReader(r), posterSource); err != nil {
 		if errors.Is(err, errCollectionForbidden) {
 			writeError(w, http.StatusForbidden, "forbidden", "Only the creator can edit this collection")
 			return
@@ -642,135 +527,57 @@ type reorderRequest struct {
 // The body must contain every collection in scope; concurrent edits that
 // would silently drop one are rejected.
 func (h *CollectionHandler) HandleReorderCollections(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	profileID := apimw.GetProfileID(r.Context())
-
 	var req reorderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
+	if err := h.ReorderPersonalCollections(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), req.GroupID, req.OrderedIDs); err != nil {
+		writeAPIError(w, err)
 		return
 	}
-
-	if err := store.ReorderCollections(r.Context(), profileID, req.GroupID, req.OrderedIDs); err != nil {
-		if errors.Is(err, collectionutil.ErrOrderedIDsMismatch) {
-			writeError(w, http.StatusBadRequest, "bad_request", "ordered_ids must include every visible collection in the group exactly once")
-			return
-		}
-		if strings.Contains(err.Error(), "ordered_ids contains duplicates") {
-			writeError(w, http.StatusBadRequest, "bad_request", "ordered_ids contains duplicates")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to reorder collections")
-		return
-	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // HandleCreateCollectionGroup handles POST /collections/groups.
 func (h *CollectionHandler) HandleCreateCollectionGroup(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	var req createCollectionGroupRequest
+	var req CollectionGroupCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	req.Name = strings.TrimSpace(req.Name)
-	req.Slug = strings.TrimSpace(req.Slug)
-	if req.Name == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "name is required")
-		return
-	}
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
+	group, err := h.CreateCollectionGroup(r.Context(), apimw.GetUserID(r.Context()), req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
+		writeAPIError(w, err)
 		return
 	}
-	sortMode := userstore.GroupSortMode(req.DefaultSortMode)
-	group, err := store.CreateCollectionGroup(r.Context(), req.Name, req.Slug, sortMode)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		return
-	}
-	writeJSON(w, http.StatusCreated, collectionGroupResponse{
-		ID:              group.ID,
-		Name:            group.Name,
-		Slug:            group.Slug,
-		DefaultSortMode: string(group.DefaultSortMode),
-		SortOrder:       group.SortOrder,
-	})
+	writeJSON(w, http.StatusCreated, group)
 }
 
 // HandleUpdateCollectionGroup handles PUT /collections/groups/{id}.
 func (h *CollectionHandler) HandleUpdateCollectionGroup(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
 	id := chi.URLParam(r, "id")
 	if id == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "id is required")
 		return
 	}
-	var req updateCollectionGroupRequest
+	var req CollectionGroupUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	if req.Name != nil {
-		name := strings.TrimSpace(*req.Name)
-		req.Name = &name
-		if name == "" {
-			writeError(w, http.StatusBadRequest, "bad_request", "name cannot be empty")
-			return
-		}
-	}
-	if req.Slug != nil {
-		slug := strings.TrimSpace(*req.Slug)
-		req.Slug = &slug
-	}
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
+	group, err := h.UpdateCollectionGroup(r.Context(), apimw.GetUserID(r.Context()), id, req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
+		writeAPIError(w, err)
 		return
 	}
-	var sortMode *userstore.GroupSortMode
-	if req.DefaultSortMode != nil {
-		mode := userstore.GroupSortMode(*req.DefaultSortMode)
-		sortMode = &mode
-	}
-	group, err := store.UpdateCollectionGroup(r.Context(), id, req.Name, req.Slug, sortMode)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, collectionGroupResponse{
-		ID:              group.ID,
-		Name:            group.Name,
-		Slug:            group.Slug,
-		DefaultSortMode: string(group.DefaultSortMode),
-		SortOrder:       group.SortOrder,
-	})
+	writeJSON(w, http.StatusOK, group)
 }
 
 // HandleDeleteCollectionGroup handles DELETE /collections/groups/{id}.
 func (h *CollectionHandler) HandleDeleteCollectionGroup(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "id is required")
-		return
-	}
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
-		return
-	}
-	if err := store.DeleteCollectionGroup(r.Context(), id); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+	if err := h.DeleteCollectionGroup(r.Context(), apimw.GetUserID(r.Context()), chi.URLParam(r, "id")); err != nil {
+		writeAPIError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -778,19 +585,13 @@ func (h *CollectionHandler) HandleDeleteCollectionGroup(w http.ResponseWriter, r
 
 // HandleReorderCollectionGroups handles PUT /collections/groups/order.
 func (h *CollectionHandler) HandleReorderCollectionGroups(w http.ResponseWriter, r *http.Request) {
-	userID := apimw.GetUserID(r.Context())
 	var req reorderCollectionGroupsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	store, err := h.storeProvider.ForUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to access user store")
-		return
-	}
-	if err := store.ReorderCollectionGroups(r.Context(), req.OrderedIDs); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+	if err := h.ReorderCollectionGroups(r.Context(), apimw.GetUserID(r.Context()), req.OrderedIDs); err != nil {
+		writeAPIError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -854,10 +655,10 @@ func (h *CollectionHandler) HandleRemoveCollectionItem(w http.ResponseWriter, r 
 
 // --- Helpers ---
 
-func toCollectionResponse(c userstore.Collection) collectionResponse {
+func toCollectionResponse(c userstore.Collection) PersonalCollectionView {
 	queryDefinition := defaultJSON([]byte(c.QueryDefinition))
 	sortConfig := defaultJSON([]byte(c.SortConfig))
-	resp := collectionResponse{
+	resp := PersonalCollectionView{
 		ID:                         c.ID,
 		ProfileID:                  c.ProfileID,
 		CreatorProfileID:           c.CreatorProfileID,
@@ -1008,75 +809,67 @@ func (h *CollectionHandler) HandleDeleteCollectionImage(w http.ResponseWriter, r
 
 // posterInputProvided reports whether the request body or form contained
 // poster artwork inputs that the upload pipeline would act on.
-func (h *CollectionHandler) posterInputProvided(r *http.Request, sourceURL string) bool {
-	if strings.TrimSpace(sourceURL) != "" {
-		return true
-	}
-	if r.MultipartForm == nil {
-		return false
-	}
-	_, ok := r.MultipartForm.File["poster"]
-	return ok
-}
-
-// processCollectionPoster persists a uploaded or sourced poster image on the
-// given user collection. It is a no-op when no poster input was provided.
+// processCollectionPoster persists an uploaded or sourced poster image on the
+// given user collection. posterFile reads the uploaded part (nil when the
+// request carried no multipart body; http.ErrMissingFile when the part is
+// absent). It is a no-op, answering false, when no poster input was provided.
 // The caller is responsible for ensuring the request profile owns the
 // collection.
 func (h *CollectionHandler) processCollectionPoster(
-	r *http.Request,
+	ctx context.Context,
 	store userstore.UserStore,
-	collectionID, requestProfileID, sourceURL string,
-) error {
+	collectionID, requestProfileID string,
+	posterFile func() ([]byte, error),
+	sourceURL string,
+) (bool, error) {
 	source := strings.TrimSpace(sourceURL)
-	isMultipart := strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/")
 
 	var fileData []byte
-	if isMultipart {
-		data, err := readCollectionImageMultipart(r, "poster")
+	if posterFile != nil {
+		data, err := posterFile()
 		switch {
 		case err == nil:
 			fileData = data
-		case err == http.ErrMissingFile:
+		case errors.Is(err, http.ErrMissingFile):
 			// fall through to source URL handling
 		default:
-			return fmt.Errorf("poster: %w", err)
+			return true, fmt.Errorf("poster: %w", err)
 		}
 	}
 	if fileData == nil {
 		if source == "" {
-			return nil
+			return false, nil
 		}
-		downloaded, err := downloadCollectionImageURL(r.Context(), h.HTTPClient, source)
+		downloaded, err := downloadCollectionImageURL(ctx, h.HTTPClient, source)
 		if err != nil {
-			return fmt.Errorf("poster source: %w", err)
+			return true, fmt.Errorf("poster source: %w", err)
 		}
 		fileData = downloaded
 	}
 
 	if h.S3GP == nil {
-		return fmt.Errorf("poster upload requires configured object storage")
+		return true, fmt.Errorf("poster upload requires configured object storage")
 	}
-	if err := removeCollectionImageVariants(r.Context(), h.S3GP, userCollectionImagePrefix, collectionID, "poster"); err != nil {
-		return fmt.Errorf("clearing previous poster: %w", err)
+	if err := removeCollectionImageVariants(ctx, h.S3GP, userCollectionImagePrefix, collectionID, "poster"); err != nil {
+		return true, fmt.Errorf("clearing previous poster: %w", err)
 	}
-	s3Path, thumbhash, err := uploadCollectionImageVariants(r.Context(), h.S3GP, userCollectionImagePrefix, collectionID, "poster", fileData)
+	s3Path, thumbhash, err := uploadCollectionImageVariants(ctx, h.S3GP, userCollectionImagePrefix, collectionID, "poster", fileData)
 	if err != nil {
-		return fmt.Errorf("poster: %w", err)
+		return true, fmt.Errorf("poster: %w", err)
 	}
 
-	if err := store.UpdateCollection(r.Context(), userstore.UpdateCollectionInput{
+	if err := store.UpdateCollection(ctx, userstore.UpdateCollectionInput{
 		ID:               collectionID,
 		RequestProfileID: requestProfileID,
 		PosterURL:        &s3Path,
 		PosterThumbhash:  &thumbhash,
 	}); err != nil {
 		if strings.Contains(err.Error(), "creator") {
-			return errCollectionForbidden
+			return true, errCollectionForbidden
 		}
-		return fmt.Errorf("persisting poster: %w", err)
+		return true, fmt.Errorf("persisting poster: %w", err)
 	}
-	return nil
+	return true, nil
 }
 
 // presignUserCollectionPoster returns a presigned URL for the card-sized
@@ -1110,8 +903,6 @@ func (h *CollectionHandler) presignUserCollectionPoster(ctx context.Context, pat
 // URLs using the handler's S3 client. Use this method when serving HTTP
 // responses; the package-level function is reserved for callers without a
 // presign capability.
-func (h *CollectionHandler) toCollectionResponse(r *http.Request, c userstore.Collection) collectionResponse {
-	resp := toCollectionResponse(c)
-	resp.PosterURL = h.presignUserCollectionPoster(r.Context(), c.PosterURL)
-	return resp
+func (h *CollectionHandler) toCollectionResponse(r *http.Request, c userstore.Collection) PersonalCollectionView {
+	return h.collectionView(r.Context(), c)
 }
