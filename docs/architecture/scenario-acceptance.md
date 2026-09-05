@@ -58,3 +58,36 @@ This checkpoint covers the existing single-page fixture, not signed continuation
 timestamp ties, device reset/forget effects, SQLite execution or performance.
 Those need separate executable evidence. The existing profile-list target remains
 required; passing these two slices does not complete tier-1 migration acceptance.
+
+## Explicit v2 follow-ups
+
+A `v2_expectation` may declare `then` steps with their own operation ID, method,
+request and assertions. These steps run against the same state as that transport's
+initial exchange. The executor never inherits the legacy `then` list. A failed v2
+exchange stops its dependent steps. Existing legacy follow-up behavior is unchanged.
+
+A step's optional `from_previous` array copies a nonempty string from exactly one
+header or JSON pointer in the immediately preceding response into exactly one
+request destination. Header destinations are restricted to `If-Match` and
+`If-None-Match`; query destinations must be declared string parameters of the
+step's named OpenAPI operation. For example:
+
+```json
+"from_previous": [{"header": "ETag", "request_header": "If-Match"}]
+```
+
+Use `{"pointer":"/page/next_cursor","query":"cursor"}` for a continuation.
+Captures are applied after fixture substitution and are never interpreted as
+another template. They cannot replace the URL path, origin, body, credentials or
+profile headers. Explicit fixture principals remain the sole authority selection
+mechanism. Static and captured values cannot share a destination. Missing,
+ambiguous, empty, non-string or oversized captures fail before the next request.
+A previously consumed captured cursor also fails before another dependent request.
+
+Each v2 sequence permits at most 16 physical requests, including declared repeats,
+with at most eight captures per follow-up and 16 KiB per captured string. A repeat
+retries the same constructed values; it does not consume another cursor. Captures
+exist only within that transport's sequence and only the last response feeds the
+next step. This is bounded fixture infrastructure, not automatic traversal or a
+client retry implementation. Numeric/body/path captures and mutation acceptance
+catalog expansion are outside this checkpoint.

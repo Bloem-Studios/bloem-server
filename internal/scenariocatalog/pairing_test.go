@@ -106,3 +106,42 @@ func TestRequiredDevicePairingRejectsDuplicate(t *testing.T) {
 		t.Fatal("duplicate accepted")
 	}
 }
+
+func TestV2FollowupSchemaAndOperation(t *testing.T) {
+	for _, kind := range []string{"valid", "unknown field", "wrong operation", "wrong method", "bad pointer", "authority header", "undeclared query", "too many requests"} {
+		t.Run(kind, func(t *testing.T) {
+			schema, _ := scenarios.FS.ReadFile(scenarios.SchemaPath)
+			raw, _ := scenarios.FS.ReadFile("api/api-v1-profiles.json")
+			var doc map[string]any
+			if err := json.Unmarshal(raw, &doc); err != nil {
+				t.Fatal(err)
+			}
+			pair := doc["rows"].([]any)[0].(map[string]any)["scenarios"].([]any)[0].(map[string]any)["v2_expectation"].(map[string]any)
+			binding := map[string]any{"pointer": "/page/next_cursor", "query": "cursor"}
+			step := map[string]any{"operation_id": "listDevices", "method": "GET", "request": map[string]any{"path": "/api/v2/devices"}, "expect": map[string]any{"status": 200}, "from_previous": []any{binding}}
+			switch kind {
+			case "unknown field":
+				binding["body_pointer"] = "/x"
+			case "wrong operation":
+				step["operation_id"] = "listProfiles"
+			case "wrong method":
+				step["method"] = "DELETE"
+			case "bad pointer":
+				binding["pointer"] = "/bad~2"
+			case "authority header":
+				delete(binding, "query")
+				binding["request_header"] = "Authorization"
+			case "undeclared query":
+				binding["query"] = "unknown"
+			case "too many requests":
+				step["request"].(map[string]any)["repeat"] = 16
+			}
+			pair["then"] = []any{step}
+			raw, _ = json.Marshal(doc)
+			_, err := load(fstest.MapFS{scenarios.SchemaPath: {Data: schema}, "api/api-v1-profiles.json": {Data: raw}})
+			if (err == nil) != (kind == "valid") {
+				t.Fatalf("%s: %v", kind, err)
+			}
+		})
+	}
+}
