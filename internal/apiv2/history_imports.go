@@ -2,6 +2,9 @@ package apiv2
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -66,16 +69,18 @@ type HistoryImportUnmatchedSample struct {
 }
 
 // HistoryImportRun is one import execution and its counters. Status is
-// queued, running, completed, failed, or the stored cancel state (spelled
-// with two l's); it is not declared as an enum because stored values predate
+// queued, running, canceling, completed, failed, or the stored cancel state;
+// it is not declared as an enum because stored values predate
 // the vocabulary.
 type HistoryImportRun struct {
+	Terminal          bool                           `json:"terminal" doc:"Whether this run has reached its final state"`
+	Cancelable        bool                           `json:"cancelable" doc:"False on the personal API, which has no cancellation command"`
 	ID                string                         `json:"id" doc:"Run identifier" example:"7b1d0d2e-3f4a-4b5c-8d6e-9f0a1b2c3d4e"`
 	UserID            ID                             `json:"user_id" doc:"The account that started the run" example:"1"`
 	ProfileID         ID                             `json:"profile_id" doc:"The profile the history is written to" example:"p-owner"`
 	SourceType        string                         `json:"source_type" doc:"emby, jellyfin, or plex" example:"plex"`
 	ConnectionMode    string                         `json:"connection_mode" doc:"How the source was reached (connect, custom, plex_oauth, predefined)" example:"plex_oauth"`
-	Status            string                         `json:"status" doc:"queued, running, completed, failed, or the stored cancel state" example:"queued"`
+	Status            string                         `json:"status" doc:"queued, running, canceling, completed, failed, or the stored cancel state" example:"queued"`
 	MappingID         *ID                            `json:"mapping_id,omitempty" doc:"The administrator user mapping the run used; absent for self-service runs" example:"3"`
 	Fetched           int                            `json:"fetched" example:"0"`
 	Matched           int                            `json:"matched" example:"0"`
@@ -95,7 +100,11 @@ type HistoryImportRun struct {
 
 // HistoryImportRunOutput is a single-run response.
 type HistoryImportRunOutput struct {
-	Body HistoryImportRun
+	Status     int
+	ETag       string `header:"ETag"`
+	Location   string `header:"Location"`
+	RetryAfter string `header:"Retry-After"`
+	Body       HistoryImportRun
 }
 
 // HistoryImportRunAcceptedOutput is the createHistoryImportRun response: the
@@ -109,6 +118,13 @@ type HistoryImportRunAcceptedOutput struct {
 // HistoryImportRunIDInput names one run.
 type HistoryImportRunIDInput struct {
 	ID string `path:"id" doc:"The run" example:"7b1d0d2e-3f4a-4b5c-8d6e-9f0a1b2c3d4e"`
+}
+
+// HistoryImportRunGetInput supports conditional account-owned monitoring.
+type HistoryImportRunGetInput struct {
+	HistoryImportRunIDInput
+	IfMatch     string `header:"If-Match"`
+	IfNoneMatch string `header:"If-None-Match"`
 }
 
 // HistoryImportRunListInput is the listHistoryImportRuns query.
@@ -241,6 +257,7 @@ const opListHistoryImportRuns = "listHistoryImportRuns"
 
 // historyImportPollSeconds is the Retry-After a queued run advertises.
 const historyImportPollSeconds = 2
+const historyImportCanceling = "canceling"
 
 func registerHistoryImports(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
@@ -248,8 +265,8 @@ func registerHistoryImports(reg *Registry) {
 		registered := Operation{Operation: op, Class: ClassProfileScoped, ProfileOptional: true, ServiceBacked: true}
 		if op.Method == http.MethodPost {
 			registered.DemoRestricted = true
-			// Creation has no durable request identity; polling can repeat an
-			// unclaimed provider exchange across nodes.
+			// Admission is durable, but submissions and upstream authentication
+			// have no durable request identity and must not be replayed automatically.
 			registered.RetrySafety = RetrySafetyNonRetryable
 		}
 		return registered
@@ -269,8 +286,10 @@ func registerHistoryImports(reg *Registry) {
 	create.Errors = []int{http.StatusConflict}
 	Register(reg, accountOp(create), reg.createHistoryImportRun)
 
-	Register(reg, accountOp(humaOp(http.MethodGet, Prefix+"/history-imports/runs/{id}", "getHistoryImportRun", "history-imports",
-		"Read one of the account's import runs.")), reg.getHistoryImportRun)
+	get := accountOp(humaOp(http.MethodGet, Prefix+"/history-imports/runs/{id}", "getHistoryImportRun", "history-imports",
+		"Read one of the account's import runs."))
+	get.Conditional = true
+	Register(reg, get, reg.getHistoryImportRun)
 
 	Register(reg, accountOp(humaOp(http.MethodPost, Prefix+"/history-imports/plex/auth/pin", "createPlexPin", "history-imports",
 		"Start a plex.tv sign-in: a PIN the user completes in a browser and a session to poll.")), reg.createPlexPin)
@@ -372,7 +391,7 @@ func (reg *Registry) createHistoryImportRun(ctx context.Context, in *HistoryImpo
 	}, nil
 }
 
-func (reg *Registry) getHistoryImportRun(ctx context.Context, in *HistoryImportRunIDInput) (*HistoryImportRunOutput, error) {
+func (reg *Registry) getHistoryImportRun(ctx context.Context, in *HistoryImportRunGetInput) (*HistoryImportRunOutput, error) {
 	svc, p := reg.historyImports()
 	if p != nil {
 		return nil, p
@@ -385,7 +404,22 @@ func (reg *Registry) getHistoryImportRun(ctx context.Context, in *HistoryImportR
 	if err != nil {
 		return nil, historyImportProblem(err)
 	}
-	return &HistoryImportRunOutput{Body: historyImportRunOf(run)}, nil
+	out := &HistoryImportRunOutput{Body: historyImportRunOf(run), Location: Prefix + "/history-imports/runs/" + run.ID}
+	data, _ := json.Marshal(out.Body)
+	sum := sha256.Sum256(data)
+	tag := EntityTag{Opaque: hex.EncodeToString(sum[:])}
+	out.ETag = tag.String()
+	if !out.Body.Terminal {
+		out.RetryAfter = strconv.Itoa(historyImportPollSeconds)
+	}
+	// Ownership has already been checked by GetImportRun, before any validator
+	// can reveal whether another account's run exists.
+	if matched, p := EvaluateReadPreconditions(in.IfMatch, in.IfNoneMatch, tag); p != nil {
+		return nil, p
+	} else if matched {
+		return NotModified(out, tag), nil
+	}
+	return out, nil
 }
 
 func (reg *Registry) createPlexPin(ctx context.Context, _ *struct{}) (*PlexPinOutput, error) {
@@ -480,6 +514,14 @@ func (b HistoryImportRunCreate) toInput() (historyimport.CreateRunInput, *Proble
 // since the Silo session is fine; a source server that could not answer is
 // the fail-closed problem with a retry hint; the rest follow the status.
 func historyImportProblem(err error) *Problem {
+	switch {
+	case errors.Is(err, historyimport.ErrPersonalAdmissionUncertain):
+		return NewProblem(TypeDependencyUnavailable, historyimport.ErrPersonalAdmissionUncertain.Error())
+	case errors.Is(err, historyimport.ErrPersonalCredentialsUnavailable):
+		return NewProblem(TypeDependencyUnavailable, "Personal imports are unavailable. No import was accepted.")
+	case errors.Is(err, historyimport.ErrPersonalSessionChanged), errors.Is(err, historyimport.ErrConnectSessionUsed), errors.Is(err, historyimport.ErrPlexSessionUsed), errors.Is(err, historyimport.ErrRunConfigurationChanged), errors.Is(err, historyimport.ErrSourceDisabled):
+		return NewProblem(TypeConflict, "The import source or login session changed. Review the configuration and authenticate again.")
+	}
 	apiErr, ok := errors.AsType[*handlers.APIError](err)
 	if !ok {
 		return serviceProblem(err)
@@ -521,7 +563,8 @@ func historyImportRunOf(run *historyimport.Run) HistoryImportRun {
 	if run.MappingID != nil {
 		mapping = new(IDFromInt(int64(*run.MappingID)))
 	}
-	return HistoryImportRun{
+	out := HistoryImportRun{
+		Terminal:          run.Status == historyimport.RunStatusCompleted || run.Status == historyimport.RunStatusFailed || run.Status == historyimport.RunStatusCancelled,
 		ID:                run.ID,
 		UserID:            IDFromInt(int64(run.UserID)),
 		ProfileID:         ID(run.ProfileID),
@@ -544,4 +587,23 @@ func historyImportRunOf(run *historyimport.Run) HistoryImportRun {
 		StartedAt:         instantPtr(run.StartedAt),
 		CompletedAt:       instantPtr(run.CompletedAt),
 	}
+	if run.CancelRequested && !out.Terminal {
+		out.Status = historyImportCanceling
+	}
+	if run.Status == historyimport.RunStatusCancelled {
+		out.ErrorMessage = ""
+	}
+	switch out.ErrorMessage {
+	case "", historyimport.ErrRunConfigurationChanged.Error(), historyimport.LegacyDispatchUnavailableMessage, historyimport.StaleRunInterruptedMessage, historyimport.ErrPersonalCredentialsUnavailable.Error():
+	default:
+		out.ErrorMessage = "The import failed. Review the source configuration before starting a new run."
+	}
+	out.Warnings = make([]string, 0, len(run.Warnings))
+	for range run.Warnings {
+		out.Warnings = append(out.Warnings, "An import item could not be processed.")
+	}
+	for i := range out.UnmatchedSamples {
+		out.UnmatchedSamples[i].Reason = "No matching catalog item was imported."
+	}
+	return out
 }

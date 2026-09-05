@@ -44,7 +44,7 @@ func (h *HistoryImportHandler) LoginEmbyConnect(ctx context.Context, userID int,
 }
 
 // CreateImportRun is the seam behind POST /history-imports/runs: it validates
-// the source, resolves credentials, and starts the run.
+// the source, resolves credentials, and atomically enqueues durable intent.
 func (h *HistoryImportHandler) CreateImportRun(ctx context.Context, userID int, input historyimport.CreateRunInput) (*historyimport.Run, error) {
 	run, err := h.service.CreateRun(ctx, userID, input)
 	if err != nil {
@@ -285,6 +285,13 @@ func (h *HistoryImportHandler) writeHistoryImportError(w http.ResponseWriter, er
 // credential from a Silo authentication failure.
 func historyImportAPIError(err error) *APIError {
 	switch {
+	case errors.Is(err, historyimport.ErrPersonalAdmissionUncertain):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "dependency_unavailable", Message: historyimport.ErrPersonalAdmissionUncertain.Error(), cause: err}
+	case errors.Is(err, historyimport.ErrPersonalCredentialsUnavailable):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "dependency_unavailable", Message: "Personal imports are unavailable. No import was accepted.", cause: err}
+	case errors.Is(err, historyimport.ErrPersonalSessionChanged), errors.Is(err, historyimport.ErrRunConfigurationChanged), errors.Is(err, historyimport.ErrSourceDisabled):
+		return &APIError{Status: http.StatusConflict, Code: policyErrorConflict, Message: "The import source or login session changed. Review the configuration and authenticate again.", cause: err}
+
 	case errors.Is(err, historyimport.ErrSourceNotFound),
 		errors.Is(err, historyimport.ErrRunNotFound),
 		errors.Is(err, historyimport.ErrProfileNotFound),

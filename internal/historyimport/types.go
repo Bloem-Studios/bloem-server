@@ -271,15 +271,6 @@ type localProgressRow struct {
 	UpdatedAt time.Time
 }
 
-type plexAuth struct {
-	BaseURL string
-	Token   string
-	// AccountToken is the plex.tv account token (PIN/OAuth session token or
-	// the user-supplied token), used for account-level fetches such as the
-	// watchlist. May equal Token for manual-token imports.
-	AccountToken string
-}
-
 // --- Admin types ---
 
 // ExternalUser is a user account on an external media server.

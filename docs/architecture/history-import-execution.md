@@ -1,21 +1,43 @@
 # History import execution
 
-Admin history imports persist a versioned dispatch intent in `history_import_runs`
-before reporting acceptance. The intent references source and mapping revisions,
-the external user locator, and the original Silo account/profile target. Tokens
-remain in the source's encrypted storage and are decrypted only into the claimed
-worker's provider. A queued run does not depend on an in-memory provider or wake
-signal: each node polls for work as well as accepting local wake signals.
+History imports persist a versioned dispatch intent in `history_import_runs`
+before reporting acceptance. Administrative intent references source and mapping revisions,
+the external user locator, and the original Silo account/profile target. Admin tokens
+remain in the source's encrypted storage. Personal intent retains the original target,
+optional predefined-source revision, and a run-scoped encrypted credential envelope.
+Tokens are decrypted only for the exact running claim generation. A queued run does
+not depend on an in-memory provider or wake signal: each node polls for work as well as accepting local wake signals.
 Construction does not start recovery or dispatch. Production installs the stable
 identity resolver and run observers, then calls `StartBackgroundWork`; activation
 is idempotent. Configuration must finish before any persisted run can execute.
 
 A node reserves local capacity before atomically claiming a queued row. Claims use
 `FOR UPDATE SKIP LOCKED` and an incremented generation. Heartbeat, progress, and
-terminal writes require the running status and exact generation. Personal import
-execution retains its existing provider path and uses generation zero; its legacy
-repository entrypoints cannot modify durable claims or terminal runs. This does
-not make personal import acceptance restart-durable.
+terminal writes require the running status and exact generation. New personal runs
+use dispatch kind `personal` and version 2; admin runs retain version 1. Older admin claimers selecting only version 1 cannot execute personal
+intent. Historical personal rows with no dispatch version retain their legacy
+meaning and are not recovered or swept merely because of migration. Generation-zero
+legacy execution entrypoints cannot modify durable claims or terminal runs.
+
+Personal authentication finishes before opening the admission transaction. Passwords
+are discarded after exchange. The transaction locks and revalidates the account/profile,
+the captured predefined source when present, and the account-owned login session when
+used. Session consumption, queued intent, and its credential row commit together.
+Credentials are stored in `history_import_run_credentials`, keyed only by run ID, with
+strict encryption and `secret.RowAAD` binding the payload to that row. Plex account and
+server tokens remain separate. Workers never reconstruct authorization from a consumed
+session, current source token, or saved password.
+
+Deferred constraints require every active personal run to have its immutable credential.
+All terminal transitions erase that credential atomically, including legacy maintenance
+and administrative cancellation. Missing or unsupported queued envelopes are quarantined
+as safe terminal failures so they cannot block later work. Invalid ciphertext, missing
+credentials, or changed execution authority fails closed after claim. A queued job survives
+a process exit; a running job with uncertain effects is never automatically replayed.
+
+A failed COMMIT response can be ambiguous. The API advises checking existing imports
+before another submission and does not report an uncertain admission as proven rollback.
+Submissions have no durable request identity and remain non-retryable automatically.
 
 Source, token, and mapping edits remain available during an import. Workers retain
 the original target, validate current configuration revisions before provider
@@ -37,9 +59,11 @@ Running jobs with expired heartbeats become terminal failures, never automatic r
 Some target writes may already have committed before a crash; an administrator can
 review the outcome and explicitly create a new run. Legacy queued admin jobs without
 reconstructible dispatch metadata fail with an operator-visible explanation. The
-continuous orphan sweep applies only to admin-token runs, not personal import jobs.
+continuous legacy orphan sweep applies only to admin-token runs. The unchanged stale-running
+heartbeat policy applies to both kinds; its conditional update rechecks freshness after
+waiting for a concurrent heartbeat and erases personal credentials only upon terminalization.
 
-Admission serializes on the mapping row and checks all active runs. A database trigger
+Administrative admission serializes on the mapping row and checks all active runs. A database trigger
 covers legacy insert paths as well as new admissions; a partial unique index additionally
 protects new durable jobs. Existing duplicate active rows remain unchanged and block
 new admissions until they reach terminal states. The migration does not delete or select
@@ -47,7 +71,8 @@ a winner among historical duplicates. Run targets and dispatch metadata are immu
 foreign-key deletion may detach a mapping while the retained dispatch locator preserves
 source-filtered audit history. Terminal execution state cannot be overwritten.
 
-The lock order for enqueue is source, then mapping. Claims and ordinary progress or
+The admin enqueue lock order is source, then mapping. Personal enqueue locks its
+optional source, account/profile pair, and login session in that order. Claims and ordinary progress or
 terminal transitions lock the run without acquiring a mapping admission lock. Mapping
 configuration edits use the same source-before-mapping order. The admission trigger
 performs its active-run lookup after the mapping lock wait; a PostgreSQL regression test

@@ -27,6 +27,7 @@ const LegacyDispatchUnavailableMessage = "Import cannot resume because durable d
 // RunClaim is execution authority, never part of the public run representation.
 // Generation zero is reserved for non-durable personal executions.
 type RunClaim struct {
+	DispatchKind    string
 	RunID           string
 	Generation      int64
 	SourceID        int
@@ -107,6 +108,14 @@ func (r *Repository) EnqueueAdminRun(ctx context.Context, mappingID int) (*Run, 
 }
 
 func (r *Repository) claimAdminRun(ctx context.Context) (*Run, RunClaim, error) {
+	return r.claimDispatchRun(ctx, false)
+}
+
+func (r *Repository) claimQueuedRun(ctx context.Context) (*Run, RunClaim, error) {
+	return r.claimDispatchRun(ctx, true)
+}
+
+func (r *Repository) claimDispatchRun(ctx context.Context, includePersonal bool) (*Run, RunClaim, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, RunClaim{}, err
@@ -114,10 +123,10 @@ func (r *Repository) claimAdminRun(ctx context.Context) (*Run, RunClaim, error) 
 	defer func() { _ = tx.Rollback(context.Background()) }()
 	run := &Run{}
 	claim := RunClaim{}
-	err = tx.QueryRow(ctx, `SELECT id,user_id,profile_id,source_type,mapping_id,dispatch_source_id,dispatch_source_revision,
- dispatch_mapping_id,dispatch_mapping_revision,dispatch_external_user_id FROM history_import_runs
- WHERE status='queued' AND dispatch_version=1 AND cancel_requested_at IS NULL
- ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1`).Scan(&run.ID, &run.UserID, &run.ProfileID, &run.SourceType, &run.MappingID, &claim.SourceID, &claim.SourceRevision, &claim.MappingID, &claim.MappingRevision, &claim.ExternalUserID)
+	err = tx.QueryRow(ctx, `SELECT id,user_id,profile_id,source_type,connection_mode,mapping_id,COALESCE(dispatch_source_id,0),COALESCE(dispatch_source_revision,0),
+ COALESCE(dispatch_mapping_id,0),COALESCE(dispatch_mapping_revision,0),COALESCE(dispatch_external_user_id,''),dispatch_kind,created_at FROM history_import_runs
+ WHERE status='queued' AND ((dispatch_kind='admin' AND dispatch_version=1) OR ($1 AND dispatch_kind='personal' AND dispatch_version=2)) AND cancel_requested_at IS NULL
+ ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1`, includePersonal).Scan(&run.ID, &run.UserID, &run.ProfileID, &run.SourceType, &run.ConnectionMode, &run.MappingID, &claim.SourceID, &claim.SourceRevision, &claim.MappingID, &claim.MappingRevision, &claim.ExternalUserID, &claim.DispatchKind, &run.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, RunClaim{}, nil
 	}
@@ -125,9 +134,29 @@ func (r *Repository) claimAdminRun(ctx context.Context) (*Run, RunClaim, error) 
 		return nil, RunClaim{}, err
 	}
 	claim.RunID = run.ID
-	run.ConnectionMode = ConnectionModeAdminToken
+	if claim.DispatchKind == dispatchKindPersonal {
+		var usable bool
+		err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM history_import_run_credentials WHERE run_id=$1 AND envelope_version=$2)`, run.ID, personalCredentialVersion).Scan(&usable)
+		if err != nil {
+			return nil, RunClaim{}, err
+		}
+		if !usable {
+			// Constraints prevent ordinary writers creating this state. Quarantine a
+			// damaged queued envelope without decrypting or starving later work.
+			run.Status = RunStatusFailed
+			run.ErrorMessage = ErrPersonalCredentialsUnavailable.Error()
+			err = tx.QueryRow(ctx, `UPDATE history_import_runs SET status='failed',error_message=$2,completed_at=now() WHERE id=$1 RETURNING completed_at`, run.ID, run.ErrorMessage).Scan(&run.CompletedAt)
+			if err != nil {
+				return nil, RunClaim{}, err
+			}
+			if err = tx.Commit(ctx); err != nil {
+				return nil, RunClaim{}, err
+			}
+			return run, claim, nil
+		}
+	}
 	run.Status = RunStatusRunning
-	err = tx.QueryRow(ctx, `UPDATE history_import_runs SET status='running',started_at=now(),last_heartbeat_at=now(),claim_generation=claim_generation+1 WHERE id=$1 RETURNING claim_generation`, run.ID).Scan(&claim.Generation)
+	err = tx.QueryRow(ctx, `UPDATE history_import_runs SET status='running',started_at=now(),last_heartbeat_at=now(),claim_generation=claim_generation+1 WHERE id=$1 RETURNING claim_generation,started_at`, run.ID).Scan(&claim.Generation, &run.StartedAt)
 	if err != nil {
 		return nil, RunClaim{}, err
 	}
@@ -140,23 +169,30 @@ func (r *Repository) claimAdminRun(ctx context.Context) (*Run, RunClaim, error) 
 // validateRunClaim is deliberately checked before effects and on each heartbeat.
 // It cannot make cross-store effects atomic with configuration changes/cancellation.
 func (r *Repository) validateRunClaim(ctx context.Context, claim RunClaim) error {
-	var status string
+	var status, kind string
 	var generation int64
-	var canceled, valid bool
-	err := r.pool.QueryRow(ctx, `SELECT r.status,r.claim_generation,r.cancel_requested_at IS NOT NULL,
- CASE WHEN $2=0 THEN r.dispatch_version IS NULL ELSE EXISTS(
+	var canceled, valid, credentialsValid bool
+	err := r.pool.QueryRow(ctx, `SELECT r.status,r.claim_generation,r.dispatch_kind,r.cancel_requested_at IS NOT NULL,
+ CASE WHEN $2=0 THEN r.dispatch_version IS NULL
+ WHEN r.dispatch_kind='personal' THEN r.dispatch_version=2
+ AND EXISTS(SELECT 1 FROM users u JOIN user_profiles p ON p.user_id=u.id WHERE u.id=r.user_id AND p.id=r.profile_id)
+ AND (r.dispatch_source_id IS NULL OR EXISTS(SELECT 1 FROM history_import_sources s
+ WHERE s.id=r.dispatch_source_id AND s.revision=r.dispatch_source_revision AND s.enabled AND s.source_type=r.source_type))
+ ELSE r.dispatch_version=1 AND EXISTS(
  SELECT 1 FROM history_import_sources s JOIN history_import_user_mappings m ON m.source_id=s.id
  WHERE s.id=r.dispatch_source_id AND s.revision=r.dispatch_source_revision AND s.enabled
  AND COALESCE(s.admin_token,'')<>'' AND m.id=r.dispatch_mapping_id AND m.revision=r.dispatch_mapping_revision
  AND m.silo_user_id=r.user_id AND m.silo_profile_id=r.profile_id AND m.external_user_id=r.dispatch_external_user_id
- ) END FROM history_import_runs r WHERE r.id=$1`, claim.RunID, claim.Generation).Scan(&status, &generation, &canceled, &valid)
+ ) END,
+ r.dispatch_kind<>'personal' OR EXISTS(SELECT 1 FROM history_import_run_credentials c WHERE c.run_id=r.id AND c.envelope_version=1)
+ FROM history_import_runs r WHERE r.id=$1`, claim.RunID, claim.Generation).Scan(&status, &generation, &kind, &canceled, &valid, &credentialsValid)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrRunClaimLost
 	}
 	if err != nil {
 		return err
 	}
-	if status != RunStatusRunning || generation != claim.Generation {
+	if status != RunStatusRunning || generation != claim.Generation || (claim.Generation != 0 && kind != claim.DispatchKind) {
 		return ErrRunClaimLost
 	}
 	if canceled {
@@ -164,6 +200,9 @@ func (r *Repository) validateRunClaim(ctx context.Context, claim RunClaim) error
 	}
 	if !valid {
 		return ErrRunConfigurationChanged
+	}
+	if !credentialsValid {
+		return ErrPersonalCredentialsUnavailable
 	}
 	return nil
 }

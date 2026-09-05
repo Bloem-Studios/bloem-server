@@ -4250,6 +4250,7 @@ export interface components {
       token: string;
     };
     AdminHistoryImportRun: {
+      /** @description False on the personal API, which has no cancellation command */
       cancelable: boolean;
       /**
        * Format: date-time
@@ -4325,10 +4326,11 @@ export interface components {
        */
       started_at?: string;
       /**
-       * @description queued, running, completed, failed, or the stored cancel state
+       * @description queued, running, canceling, completed, failed, or the stored cancel state
        * @example queued
        */
       status: string;
+      /** @description Whether this run has reached its final state */
       terminal: boolean;
       /**
        * Format: int64
@@ -6732,6 +6734,8 @@ export interface components {
       page?: components["schemas"]["PageInfo"];
     };
     HistoryImportRun: {
+      /** @description False on the personal API, which has no cancellation command */
+      cancelable: boolean;
       /**
        * Format: date-time
        * @description Absent until the run finishes
@@ -6806,10 +6810,12 @@ export interface components {
        */
       started_at?: string;
       /**
-       * @description queued, running, completed, failed, or the stored cancel state
+       * @description queued, running, canceling, completed, failed, or the stored cancel state
        * @example queued
        */
       status: string;
+      /** @description Whether this run has reached its final state */
+      terminal: boolean;
       /**
        * Format: int64
        * @example 0
@@ -30089,6 +30095,9 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
         /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
@@ -30105,11 +30114,24 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          Location?: string;
+          "Retry-After"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["HistoryImportRun"];
         };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -30150,6 +30172,17 @@ export interface operations {
       /** @description Not Acceptable */
       406: {
         headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content: {

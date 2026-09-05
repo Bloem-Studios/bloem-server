@@ -84,7 +84,7 @@ func (s *Service) CreateAdminRun(ctx context.Context, mappingID int) (*Run, erro
 		return nil, err
 	}
 	s.notifyRun(run)
-	s.wakeAdminQueue()
+	s.wakeImportQueue()
 	return run, nil
 }
 

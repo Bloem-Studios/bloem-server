@@ -16,6 +16,25 @@ import (
 
 func queueTestPool(t *testing.T, seedDuplicates bool) *pgxpool.Pool {
 	t.Helper()
+	pool := queueTestPoolBeforePersonalMigration(t, seedDuplicates)
+	applyPersonalQueueMigration(t, pool)
+	return pool
+}
+
+func applyPersonalQueueMigration(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	migration, err := os.ReadFile("../../migrations/sql/20260905204703_add_personal_history_import_durability.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	up, _, _ := strings.Cut(string(migration), "-- +goose Down")
+	if _, err = pool.Exec(t.Context(), up); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func queueTestPoolBeforePersonalMigration(t *testing.T, seedDuplicates bool) *pgxpool.Pool {
+	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")

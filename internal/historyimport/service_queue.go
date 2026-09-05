@@ -7,14 +7,14 @@ import (
 	"time"
 )
 
-func (s *Service) wakeAdminQueue() {
+func (s *Service) wakeImportQueue() {
 	select {
 	case s.queueWake <- struct{}{}:
 	default:
 	}
 }
 
-func (s *Service) startAdminQueue() {
+func (s *Service) startImportQueue() {
 	go func() {
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
@@ -22,7 +22,7 @@ func (s *Service) startAdminQueue() {
 			if err := s.repo.reconcileUndispatchedRuns(s.bgContext); err != nil {
 				slog.WarnContext(s.bgContext, "history import: queued reconciliation failed", "error", err)
 			}
-			s.dispatchAdminRuns()
+			s.dispatchQueuedRuns()
 			select {
 			case <-s.bgContext.Done():
 				return
@@ -35,7 +35,7 @@ func (s *Service) startAdminQueue() {
 
 // Capacity is held before touching a queued row, so another node can claim it
 // while this node is busy. Queued work has no process-local goroutine/provider.
-func (s *Service) dispatchAdminRuns() {
+func (s *Service) dispatchQueuedRuns() {
 	for {
 		if s.bgContext.Err() != nil {
 			return
@@ -45,7 +45,7 @@ func (s *Service) dispatchAdminRuns() {
 		default:
 			return
 		}
-		run, claim, err := s.repo.claimAdminRun(s.bgContext)
+		run, claim, err := s.repo.claimQueuedRun(s.bgContext)
 		if err != nil || run == nil {
 			<-s.runSemaphore
 			if err != nil {
@@ -53,22 +53,16 @@ func (s *Service) dispatchAdminRuns() {
 			}
 			return
 		}
+		if run.Status != RunStatusRunning {
+			// The claimer can quarantine structurally invalid credentials without
+			// starting work; continue so one damaged row cannot starve the queue.
+			<-s.runSemaphore
+			s.notifyRun(run)
+			continue
+		}
 		go func() {
-			defer func() { <-s.runSemaphore; s.wakeAdminQueue() }()
-			// Fetch the secret only after a durable claim. The provider keeps it solely
-			// in memory and is discarded on exit; restart reconstructs from the source.
-			err := s.repo.validateRunClaim(s.bgContext, claim)
-			var provider Provider
-			if err == nil {
-				source, token, loadErr := s.repo.GetSourceWithAdminToken(s.bgContext, claim.SourceID)
-				err = loadErr
-				if err == nil && source.Revision != claim.SourceRevision {
-					err = ErrRunConfigurationChanged
-				}
-				if err == nil {
-					provider, err = s.buildAdminProvider(source, token, claim.ExternalUserID)
-				}
-			}
+			defer func() { <-s.runSemaphore; s.wakeImportQueue() }()
+			provider, err := s.providerForClaim(s.bgContext, run, claim)
 			if err != nil {
 				s.failClaim(s.bgContext, claim, ExecutionSummary{}, err)
 				return
@@ -120,4 +114,36 @@ func (s *Service) failClaim(ctx context.Context, claim RunClaim, summary Executi
 
 func (s *Service) ListAdminRunsPage(ctx context.Context, sourceID *int, after *RunKey, limit int) ([]Run, bool, error) {
 	return s.repo.ListAdminRunsPage(ctx, sourceID, after, limit)
+}
+
+// A run-scoped personal credential is loaded only under its exact claim. The
+// execution loop validates again before Fetch and each user-state effect.
+func (s *Service) providerForClaim(ctx context.Context, run *Run, claim RunClaim) (Provider, error) {
+	if err := s.repo.validateRunClaim(ctx, claim); err != nil {
+		return nil, err
+	}
+	if claim.DispatchKind == dispatchKindPersonal {
+		credential, err := s.repo.readPersonalRunCredentials(ctx, claim)
+		if err != nil {
+			return nil, err
+		}
+		switch run.SourceType {
+		case SourceTypeEmby:
+			return NewEmbyProvider(s.emby, embyLocalAuth{BaseURL: credential.BaseURL, UserID: credential.ExternalUserID, AccessToken: credential.ServerToken}), nil
+		case SourceTypeJellyfin:
+			return NewJellyfinProvider(s.jellyfin, jellyfinLocalAuth{BaseURL: credential.BaseURL, UserID: credential.ExternalUserID, AccessToken: credential.ServerToken}), nil
+		case SourceTypePlex:
+			return NewPlexServerProvider(s.plex, credential.BaseURL, credential.ServerToken).WithAccountToken(credential.AccountToken), nil
+		default:
+			return nil, ErrPersonalCredentialsUnavailable
+		}
+	}
+	source, token, err := s.repo.GetSourceWithAdminToken(ctx, claim.SourceID)
+	if err != nil {
+		return nil, err
+	}
+	if source.Revision != claim.SourceRevision {
+		return nil, ErrRunConfigurationChanged
+	}
+	return s.buildAdminProvider(source, token, claim.ExternalUserID)
 }

@@ -12,11 +12,16 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/secret"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func queueRunnerRepository(t *testing.T) *Repository {
 	t.Helper()
-	pool := queueTestPool(t, false)
+	return queueRunnerRepositoryFromPool(t, queueTestPool(t, false))
+}
+
+func queueRunnerRepositoryFromPool(t *testing.T, pool *pgxpool.Pool) *Repository {
+	t.Helper()
 	_, err := pool.Exec(t.Context(), `CREATE TABLE history_import_sources(id integer PRIMARY KEY,name text NOT NULL DEFAULT 'Test',source_type text NOT NULL DEFAULT 'emby',base_url text NOT NULL DEFAULT 'http://example.test',system_id text,enabled boolean NOT NULL DEFAULT true,sort_order integer NOT NULL DEFAULT 0,admin_token text,revision bigint NOT NULL DEFAULT 1,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
  ALTER TABLE history_import_user_mappings ADD COLUMN source_id integer NOT NULL DEFAULT 1,ADD COLUMN silo_user_id integer NOT NULL DEFAULT 1,ADD COLUMN silo_profile_id text NOT NULL DEFAULT 'p',ADD COLUMN external_user_id text NOT NULL DEFAULT 'external',ADD COLUMN external_user_name text NOT NULL DEFAULT 'External',ADD COLUMN revision bigint NOT NULL DEFAULT 1,ADD COLUMN last_imported_at timestamptz,ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now()`)
 	if err != nil {
@@ -204,13 +209,13 @@ func TestQueuePersistedIntentRestartAndCapacity(t *testing.T) {
 	}
 	service := &Service{repo: repo, bgContext: ctx, emby: NewEmbyClient(), runSemaphore: make(chan struct{}, 1), queueWake: make(chan struct{}, 1), runCancels: make(map[string]context.CancelFunc)}
 	service.runSemaphore <- struct{}{}
-	service.dispatchAdminRuns()
+	service.dispatchQueuedRuns()
 	got, err := repo.GetRunByID(ctx, run.ID)
 	if err != nil || got.Status != RunStatusQueued || fetched.Load() != 0 {
 		t.Fatalf("capacity claimed=%+v %v fetches=%d", got, err, fetched.Load())
 	}
 	<-service.runSemaphore
-	service.dispatchAdminRuns()
+	service.dispatchQueuedRuns()
 	deadline, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	for {
