@@ -1984,6 +1984,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if sectionHandler != nil {
 		v2deps.LibrarySections = sectionHandler
+		v2deps.AdminSections = sectionHandler
 	}
 	if libraryCollectionHandler != nil {
 		v2deps.LibraryCollections = libraryCollectionHandler

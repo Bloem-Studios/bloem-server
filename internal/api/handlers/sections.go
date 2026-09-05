@@ -233,17 +233,12 @@ func (h *SectionHandler) HandleListSections(w http.ResponseWriter, r *http.Reque
 		libraryID = &v
 	}
 
-	list, err := h.repo.ListByScopeAll(r.Context(), scope, libraryID)
+	list, err := h.ListAdminSections(r.Context(), scope, libraryID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list sections")
+		writeAPIError(w, adminSectionServiceError(err))
 		return
 	}
-
-	resp := sectionListResponse{Sections: make([]sectionResponse, 0, len(list))}
-	for _, s := range list {
-		resp.Sections = append(resp.Sections, toSectionResponse(s))
-	}
-	writeJSON(w, http.StatusOK, resp)
+	writeJSON(w, http.StatusOK, sectionListResponse{Sections: list})
 }
 
 // HandleCreateSection handles POST /admin/sections
@@ -254,139 +249,36 @@ func (h *SectionHandler) HandleCreateSection(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if req.Title == "" || req.SectionType == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Title and section_type are required")
-		return
-	}
-
-	if !sections.ValidSectionTypes[sections.SectionType(req.SectionType)] {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid section_type")
-		return
-	}
-
-	scope := req.Scope
-	if scope == "" {
-		scope = "home"
-	}
-
-	if msg, ok := validateSectionScope(scope, req.LibraryID); !ok {
-		writeError(w, http.StatusBadRequest, "bad_request", msg)
-		return
-	}
-
-	if msg, ok := validateSectionConfig(sections.SectionType(req.SectionType), req.Config); !ok {
-		writeError(w, http.StatusBadRequest, "bad_request", msg)
-		return
-	}
-
-	sec := &sections.PageSection{
-		Scope:       scope,
-		LibraryID:   req.LibraryID,
-		Position:    req.Position,
-		SectionType: sections.SectionType(req.SectionType),
-		Title:       req.Title,
-		Featured:    req.Featured,
-		ItemLimit:   req.ItemLimit,
-		Config:      req.Config,
-		Enabled:     req.Enabled,
-	}
-	if sec.Scope == "" {
-		sec.Scope = "home"
-	}
-	if sec.ItemLimit <= 0 {
-		sec.ItemLimit = 20
-	}
-
-	created, err := h.repo.Create(r.Context(), sec)
+	resp, err := h.CreateAdminSection(r.Context(), req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create section")
+		writeAPIError(w, err)
 		return
 	}
-
-	writeJSON(w, http.StatusCreated, toSectionResponse(created))
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // HandleUpdateSection handles PUT /admin/sections/{id}
 func (h *SectionHandler) HandleUpdateSection(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Section ID is required")
-		return
-	}
-
-	existing, err := h.repo.GetByID(r.Context(), id)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "not_found", "Section not found")
-		return
-	}
-
 	var req updateSectionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		writeError(w, 400, "bad_request", "Invalid request body")
 		return
 	}
-
-	if req.Position != nil {
-		existing.Position = *req.Position
-	}
-	if req.SectionType != "" {
-		existing.SectionType = sections.SectionType(req.SectionType)
-	}
-	if req.Title != "" {
-		existing.Title = req.Title
-	}
-	if req.Featured != nil {
-		existing.Featured = *req.Featured
-	}
-	if req.ItemLimit != nil {
-		existing.ItemLimit = *req.ItemLimit
-	}
-	if len(req.Config) > 0 {
-		existing.Config = req.Config
-	}
-	if req.Enabled != nil {
-		existing.Enabled = *req.Enabled
-	}
-
-	if msg, ok := validateSectionScope(existing.Scope, existing.LibraryID); !ok {
-		writeError(w, http.StatusBadRequest, "bad_request", msg)
+	resp, err := h.UpdateAdminSection(r.Context(), id, req)
+	if err != nil {
+		writeAPIError(w, adminSectionServiceError(err))
 		return
 	}
-
-	if msg, ok := validateSectionConfig(existing.SectionType, existing.Config); !ok {
-		writeError(w, http.StatusBadRequest, "bad_request", msg)
-		return
-	}
-
-	if err := h.repo.Update(r.Context(), existing); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update section")
-		return
-	}
-
-	updated, _ := h.repo.GetByID(r.Context(), id)
-	writeJSON(w, http.StatusOK, toSectionResponse(updated))
+	writeJSON(w, 200, resp)
 }
 
 // HandleDeleteSection handles DELETE /admin/sections/{id}
 func (h *SectionHandler) HandleDeleteSection(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Section ID is required")
-		return
-	}
-
-	existing, err := h.repo.GetByID(r.Context(), id)
-	if err != nil {
+	if err := h.DeleteAdminSection(r.Context(), chi.URLParam(r, "id")); err != nil {
 		writeSectionDeleteError(w, err)
 		return
 	}
-	collectionID := strings.TrimSpace(sections.ParseCollectionConfig(existing.Config).LibraryCollectionID)
-
-	if err := h.repo.Delete(r.Context(), id); err != nil {
-		writeSectionDeleteError(w, err)
-		return
-	}
-	h.deleteUnreferencedSectionManagedCollection(r.Context(), collectionID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -422,7 +314,7 @@ func (h *SectionHandler) HandleReorderSections(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if err := h.repo.Reorder(r.Context(), req.Entries); err != nil {
+	if err := h.reorderLegacySections(r.Context(), req.Entries); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to reorder sections")
 		return
 	}
@@ -1707,61 +1599,12 @@ func (h *SectionHandler) HandleRestoreDefaults(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if req.Scope == "" {
-		req.Scope = "home"
-	}
-	if req.Scope != "home" && req.Scope != "library" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Scope must be 'home' or 'library'")
-		return
-	}
-	if req.Scope == "library" && req.LibraryID == nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "library_id is required for library scope")
-		return
-	}
-	if req.Scope == "home" && req.LibraryID != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "library_id must not be set for home scope")
-		return
-	}
-
-	if req.ResetProfiles && !h.canResetAllSectionProfileOverrides() {
-		writeError(w, http.StatusNotImplemented, "capability_unsupported", "Resetting all profile section overrides is unavailable for this user store")
-		return
-	}
-
-	var defaults []*sections.PageSection
-	var err error
-	if req.Scope == "home" {
-		defaults, err = h.defaultHomeSections(r.Context())
-		if err != nil {
-			slog.ErrorContext(r.Context(), "loading default home sections", "component", "api", "error", err)
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load libraries")
-			return
-		}
-	} else {
-		defaults, err = h.defaultLibrarySections(r.Context(), *req.LibraryID)
-		if err != nil {
-			if errors.Is(err, catalog.ErrFolderNotFound) {
-				writeError(w, http.StatusNotFound, "not_found", "Library not found")
-				return
-			}
-			slog.ErrorContext(r.Context(), "loading default library sections", "component", "api", "library_id", *req.LibraryID, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load library")
-			return
-		}
-	}
-
-	created, err := h.repo.RestoreDefaultsWithProfileReset(r.Context(), req.Scope, req.LibraryID, defaults, req.ResetProfiles)
+	resp, err := h.RestoreAdminSections(r.Context(), req)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "restoring default sections", "component", "api", "scope", req.Scope, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to restore defaults")
+		writeAPIError(w, err)
 		return
 	}
-
-	resp := sectionListResponse{Sections: make([]sectionResponse, 0, len(created))}
-	for _, s := range created {
-		resp.Sections = append(resp.Sections, toSectionResponse(s))
-	}
-	writeJSON(w, http.StatusOK, resp)
+	writeJSON(w, http.StatusOK, sectionListResponse{Sections: resp})
 }
 
 // Only the shared PostgreSQL provider stores every account's overrides in the

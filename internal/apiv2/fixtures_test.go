@@ -1441,6 +1441,14 @@ func fixtureCases() []fixtureCase {
 		fixtureCase{name: "admin_collection_template_job_accepted", operationID: "startAdminCollectionTemplateBundleJob", scenario: "Queued template application returns a safe typed job and a dedicated collection-job monitor Location.", method: http.MethodPost, path: "/api/v2/admin/collections/template-bundles/bundle/apply-job", headers: bearer(adminToken), body: `{"library_ids":["1"]}`, status: 202, assertHeaders: []string{"Content-Type", "Location", "Retry-After"}, schema: "#/components/schemas/AdminJob"},
 		fixtureCase{name: "get_admin_collection_template_job_completed", operationID: "getAdminCollectionJob", scenario: "Completed template jobs expose typed results with string library identifiers; internal reasons and payloads are omitted.", method: http.MethodGet, path: "/api/v2/admin/collection-jobs/collection-job", headers: bearer(adminToken), status: 200, assertHeaders: []string{"Content-Type", "ETag"}, schema: "#/components/schemas/AdminJob"},
 	)
+	cases = append(cases,
+		fixtureCase{name: "get_admin_section_ok", operationID: "getAdminSection", scenario: "The canonical administrator section editor returns its recipe configuration and a strong validator.", method: http.MethodGet, path: Prefix + "/admin/sections/s1", headers: bearer(adminToken), status: 200, assertHeaders: []string{"Content-Type", "ETag"}, schema: "#/components/schemas/AdminSection"},
+		fixtureCase{name: "admin_section_precondition_required", operationID: "updateAdminSection", scenario: "An administrator section edit requires the validator captured with its canonical editor.", method: http.MethodPatch, path: Prefix + "/admin/sections/s1", headers: bearer(adminToken), body: `{"title":"Edited"}`, status: 428, assertHeaders: []string{"Content-Type"}, schema: problem},
+		fixtureCase{name: "admin_section_stale", operationID: "deleteAdminSection", scenario: "A stale section deletion is rejected with the current validator before mutation.", method: http.MethodDelete, path: Prefix + "/admin/sections/s1", headers: with(bearer(adminToken), "If-Match", `"stale"`), status: 412, assertHeaders: []string{"Content-Type", "ETag"}, schema: problem},
+		fixtureCase{name: "admin_section_scope_order", operationID: "getAdminSectionOrder", scenario: "A section surface order includes its complete identifier list and a scope validator.", method: http.MethodGet, path: Prefix + "/admin/sections/order?scope=home", headers: bearer(adminToken), status: 200, assertHeaders: []string{"Content-Type", "ETag"}, schema: "#/components/schemas/AdminSectionOrder"},
+		fixtureCase{name: "admin_section_restore_precondition_required", operationID: "restoreAdminSections", scenario: "Replacing defaults requires the captured scope validator even when profile reset is not selected.", method: http.MethodPut, path: Prefix + "/admin/sections/defaults?scope=home", headers: bearer(adminToken), body: `{"reset_profiles":false}`, status: 428, assertHeaders: []string{"Content-Type"}, schema: problem},
+		fixtureCase{name: "admin_section_explicit_null_invalid", operationID: "createAdminSection", scenario: "Optional section definition fields must be omitted rather than explicitly null.", method: http.MethodPost, path: Prefix + "/admin/sections", headers: bearer(adminToken), body: `{"title":"Section","section_type":"recently_added","enabled":null}`, status: 422, assertHeaders: []string{"Content-Type"}, schema: problem},
+	)
 	return append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
 }
 
@@ -1478,6 +1486,7 @@ func fixtureDeps() Dependencies {
 	adminCollections.view.SourceConfig = json.RawMessage(`{}`)
 	adminCollections.job = &models.AdminJob{ID: "collection-job", JobType: adminjob.JobTypeTemplateBundleApply, Status: adminjob.StatusQueued, RequestedAt: fixedTime()}
 	deps.AdminCollections = adminCollections
+	deps.AdminSections = newFakeAdminSections()
 	deps.LibraryJobs = &fixtureAdminCollectionJobs{fakeLibraryJobs: *deps.LibraryJobs.(*fakeLibraryJobs)}
 	deps.LibrarySections = &fakeLibraryViews{}
 	deps.LibraryCollections = &fakeLibraryViews{}

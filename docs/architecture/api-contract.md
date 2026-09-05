@@ -1976,3 +1976,25 @@ available during adoption. No existing Apple or Android administrator collection
 found in the client inventory. Jellyfin does not expose this administrator editing surface;
 shared catalog write invariants continue to apply to its collection reads. Administrator section
 route migration is separate from collection template application.
+
+### Administrator section definitions (proposed migration)
+
+The administrator section contract uses `/api/v2/admin/sections`. The eight legacy behavior
+mappings remain proposed until transport and web review finish. Global section definitions are
+separate from profile section overrides. Recipe `config` keeps the existing `SectionConfig`
+extension-object contract; top-level library IDs use opaque strings and timestamps use `Instant`.
+
+`GET /admin/sections/{id}` returns the canonical editor and a strong ETag. PATCH and DELETE use
+that captured validator. `GET /admin/sections/order?scope=...&library_id=...` returns every section
+ID in the surface, including disabled sections, with a scope ETag. The corresponding PUT accepts
+an exact permutation of those IDs. There is no collection group or ungrouped sentinel in a
+section order. A scope validator covers definition changes as well as membership and positions.
+
+`PUT /admin/sections/defaults?scope=...&library_id=...` replaces the surface with its canonical
+defaults and requires the captured scope ETag. Its response is the refreshed canonical order
+with its ETag; clients refetch definitions after replacement. `reset_profiles` selects the separate all-profile
+reset capability described above; an unsupported reset fails before definition writes. Creation
+and bulk creation use POST, while the retained preview POST samples recipe results using the
+requesting profile's access filter without saving a definition. Capabilities report whether the
+service, preview, and atomic profile reset are available. Clients do not automatically replay
+administrator section operations after a conflict or a partial multi-request flow.
