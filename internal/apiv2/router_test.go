@@ -212,6 +212,8 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"PUT " + Prefix + "/profiles/{id}/avatar",
 		"DELETE " + Prefix + "/profiles/{id}/avatar",
 		"GET " + Prefix + "/progress",
+		"GET " + Prefix + "/history-imports/sources", "GET " + Prefix + "/history-imports/runs", "POST " + Prefix + "/history-imports/runs",
+		"GET " + Prefix + "/history-imports/runs/{id}", "POST " + Prefix + "/history-imports/plex/auth/pin", "POST " + Prefix + "/history-imports/plex/auth/check", "POST " + Prefix + "/history-imports/emby-connect/login",
 		"GET " + Prefix + "/system/info",
 		"GET " + Prefix + "/system/setup",
 		"GET " + Prefix + "/audio-prefs/{series_id}",

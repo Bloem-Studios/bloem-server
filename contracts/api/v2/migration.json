@@ -18895,7 +18895,7 @@
         "path": "/api/v2/audio-prefs/{series_id}",
         "operation_id": "getAudioPreference"
       },
-      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; default is emitted as a bool; instants are UTC ms. The read goes through its own seam entry point, GetAudioPreferenceCanonical: the legacy user_audio_preferences row is the resource (a profile without one is 404 even when a canonical language row exists) and supplies the track identity, and audio_language is overlaid from the canonical profile_series row playback resolves — a present row replaces the legacy member, an absent row means no language (empty) — since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newer of the two rows."
+      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; default is emitted as a bool; instants are UTC ms. The read goes through its own seam entry point, GetAudioPreferenceCanonical: the legacy user_audio_preferences row is the resource (a profile without one is 404 even when a canonical language row exists) and supplies the track identity, and audio_language is overlaid from the canonical profile_series row playback resolves \u2014 a present row replaces the legacy member, an absent row means no language (empty) \u2014 since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newer of the two rows."
     },
     {
       "listener": "api",
@@ -27834,13 +27834,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/history-imports/emby-connect/login",
+        "operation_id": "loginEmbyConnect"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Credential exchange, naturally idempotent (a repeat mints another short-lived connect session). Runs under the shared authenticated-route limiter; v1 mounts no dedicated bucket on it. username and password required at the schema (422); Emby Connect refusing the credentials is 422 at body (v1 401 unauthorized, which v2 reserves for the Silo session); Emby Connect unreachable 503 dependency_unavailable with Retry-After. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable client request identity or claimed external authorization exchange. An uncertain response must not trigger automatic retries."
     },
     {
       "listener": "api",
@@ -27894,13 +27896,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/history-imports/plex/auth/check",
+        "operation_id": "checkPlexPin"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Naturally idempotent poll of the sign-in; servers never null; session_id required at the schema (422); unknown session 404; expired or consumed session 422 at body (v1 400). Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable client request identity or claimed external authorization exchange. An uncertain response must not trigger automatic retries."
     },
     {
       "listener": "api",
@@ -27954,13 +27958,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/history-imports/plex/auth/pin",
+        "operation_id": "createPlexPin"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Device-style handshake start: every call mints a fresh plex.tv PIN and session (not idempotent by design; the session expires on its own and a duplicate only costs an unused PIN). No body. expires_at UTC ms.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable client request identity or claimed external authorization exchange. An uncertain response must not trigger automatic retries."
     },
     {
       "listener": "api",
@@ -28014,13 +28020,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/history-imports/runs",
+        "operation_id": "listHistoryImportRuns"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). v1 ?limit= (10, max 50) replaced by limit+opaque keyset cursor (created_at, id of the last emitted run; default 50, max 200); offset rejected (422). user_id and mapping_id are string ids; warnings and unmatched_samples never null. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -28074,13 +28080,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/history-imports/runs",
+        "operation_id": "createHistoryImportRun"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). A run is a job: 202 with the run resource, Location /api/v2/history-imports/runs/{id}, Retry-After 2 (v1 answered 201). Retry safety: durable run identity plus the active-run coalescing check (409 conflict while one is active), no generic mutation id. source is a closed enum (422 invalid_enum), profile_id required at the schema, source_id an opaque string id; the service member rules (v1 400 bad_request) are 422 at body; profile/session not found 404; a source server refusing the credentials is 422 at body, a source server that cannot answer 503 dependency_unavailable with Retry-After. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable client request identity or claimed external authorization exchange. An uncertain response must not trigger automatic retries."
     },
     {
       "listener": "api",
@@ -28134,13 +28142,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/history-imports/runs/{id}",
+        "operation_id": "getHistoryImportRun"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Another account's run is 404. Same run shape as listHistoryImportRuns. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -28194,13 +28202,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/history-imports/sources",
+        "operation_id": "listHistoryImportSources"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional: account level). Bounded unpaginated collection envelope; ids are strings, instants UTC ms. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35292,9 +35300,9 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: GET /api/v2/webhook-sync/connections (listWebhookSyncConnections).",
       "owner": null,
       "review_state": "proposed",
       "v2": {
@@ -35302,7 +35310,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35342,9 +35350,9 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: POST /api/v2/webhook-sync/connections (createWebhookSyncConnection).",
       "owner": null,
       "review_state": "proposed",
       "v2": {
@@ -35352,7 +35360,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35392,9 +35400,9 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: DELETE /api/v2/webhook-sync/connections/{id} (deleteWebhookSyncConnection).",
       "owner": null,
       "review_state": "proposed",
       "v2": {
@@ -35402,7 +35410,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35442,9 +35450,9 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: GET /api/v2/webhook-sync/connections/{id}/profile-mappings (getWebhookSyncProfileMappings).",
       "owner": null,
       "review_state": "proposed",
       "v2": {
@@ -35452,7 +35460,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35492,9 +35500,9 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: PUT /api/v2/webhook-sync/connections/{id}/profile-mappings (replaceWebhookSyncProfileMappings).",
       "owner": null,
       "review_state": "proposed",
       "v2": {
@@ -35502,7 +35510,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler, a Plex-shaped projection of the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35542,9 +35550,9 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "disposition": "removed",
+      "disposition_rule": "v1_scope_removals_table",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"The legacy /api/v1/plex-sync/* aliases\"); still registered on the bridge surface, retired by the tombstone. Successor: POST /api/v2/webhook-sync/connections/{id}/webhook/rotate (rotateWebhookSyncSecret).",
       "owner": null,
       "review_state": "proposed",
       "v2": {
@@ -35552,7 +35560,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Legacy Plex-only alias of the provider-neutral webhook-sync surface (same WebhookSyncHandler over the same connection rows); no first-party consumer calls it. Not ported as a separate v2 operation: the webhook-sync section rows carry the v2 contract. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -35595,17 +35603,17 @@
       "section": "personal-imports",
       "release_flow": "background_refresh",
       "tier": 2,
-      "disposition": "ported",
-      "disposition_rule": "default_ported",
-      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "disposition": "documented_exclusion",
+      "disposition_rule": "maintainer_decision",
+      "disposition_rationale": "Legacy public inbound receiver: external Plex servers were configured with this URL by connections created before the provider-neutral webhook-sync routes existed, so it keeps answering on v1 for the bridge release; the v2 receiver is registered only under /webhook-sync/webhooks/{secret} (webhook-sync section). Not ported as a second v2 receiver path.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": null,
         "path": null,
         "operation_id": null
       },
-      "notes": "External caller: legacy Plex webhook delivery; the URL is still issued to Plex by the webhook-sync handler. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports. Stays on v1 only: served by the same WebhookSyncHandler.HandleWebhook as /api/v1/webhook-sync/webhooks/{secret} and retired with the v1 tombstone; connections created through the legacy routes advertise the legacy URL, so their Plex servers must be re-pointed at the webhook-sync URL (rotate the secret through v2 to get it) before the bridge release ends. External caller: legacy Plex webhook delivery; the URL is still issued to Plex by the webhook-sync handler. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: webhookSyncHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -39814,7 +39822,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40170,7 +40178,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40241,7 +40249,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40310,7 +40318,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40381,7 +40389,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41320,7 +41328,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41390,7 +41398,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41458,7 +41466,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -42053,7 +42061,7 @@
         "path": "/api/v2/subtitle-prefs/{series_id}",
         "operation_id": "getSubtitlePreference"
       },
-      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; forced and hearing_impaired are emitted as bools; show_forced_subtitles is absent when the profile has no override; instants are UTC ms. The read goes through its own seam entry point, GetSubtitlePreferenceCanonical: the legacy user_subtitle_preferences row is the resource (a profile without one is 404 even when canonical rows exist) and supplies the track identity (index, external path, signature), and subtitle_language, subtitle_mode and show_forced_subtitles are overlaid from the canonical profile_series rows playback resolves — a present row replaces the legacy member, an absent row means the member is unset (empty language or mode, show_forced_subtitles absent) — since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newest of the legacy row and the canonical rows."
+      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; forced and hearing_impaired are emitted as bools; show_forced_subtitles is absent when the profile has no override; instants are UTC ms. The read goes through its own seam entry point, GetSubtitlePreferenceCanonical: the legacy user_subtitle_preferences row is the resource (a profile without one is 404 even when canonical rows exist) and supplies the track identity (index, external path, signature), and subtitle_language, subtitle_mode and show_forced_subtitles are overlaid from the canonical profile_series rows playback resolves \u2014 a present row replaces the legacy member, an absent row means the member is unset (empty language or mode, show_forced_subtitles absent) \u2014 since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newest of the legacy row and the canonical rows."
     },
     {
       "listener": "api",

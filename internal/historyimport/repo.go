@@ -811,6 +811,50 @@ func (r *Repository) ListRunsForUser(ctx context.Context, userID, limit int) ([]
 	return scanRunsWithMappingID(rows)
 }
 
+// RunKey is the keyset position of one run in the newest-first listing:
+// its creation instant and id.
+type RunKey struct {
+	CreatedAt time.Time
+	ID        string
+}
+
+// ListRunsPageForUser returns up to limit runs of the account strictly older
+// than after in (created_at DESC, id DESC) order, and whether more follow. A
+// nil after starts from the newest run.
+func (r *Repository) ListRunsPageForUser(ctx context.Context, userID int, after *RunKey, limit int) ([]Run, bool, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	limit = min(limit, 200)
+	query := `
+		SELECT id, user_id, profile_id, source_type, connection_mode, status,
+			mapping_id,
+			fetched, matched, unmatched, progress_updated, history_created, watchlist_added, favorites_imported, skipped,
+			warnings, unmatched_samples, COALESCE(error_message, ''), created_at, started_at, completed_at
+		FROM history_import_runs
+		WHERE user_id = $1`
+	args := []any{userID}
+	if after != nil {
+		query += ` AND (created_at, id) < ($2, $3)`
+		args = append(args, after.CreatedAt, after.ID)
+	}
+	query += fmt.Sprintf(` ORDER BY created_at DESC, id DESC LIMIT %d`, limit+1)
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, false, fmt.Errorf("listing history import runs page: %w", err)
+	}
+	defer rows.Close()
+	runs, err := scanRunsWithMappingID(rows)
+	if err != nil {
+		return nil, false, err
+	}
+	hasMore := len(runs) > limit
+	if hasMore {
+		runs = runs[:limit]
+	}
+	return runs, hasMore, nil
+}
+
 func (r *Repository) GetRunForUser(ctx context.Context, userID int, runID string) (*Run, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, user_id, profile_id, source_type, connection_mode, status,

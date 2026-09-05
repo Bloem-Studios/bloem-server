@@ -1619,3 +1619,27 @@ request identity across terminal states. The web mutation disables retries.
 Native Apple and Android request consumers still require coordinated v2 adoption;
 their v1 routes remain available. Jellyfin compatibility does not expose this request
 management surface and keeps its existing behavior.
+
+### History imports
+
+Seven v2 operations list sources, list/create/read import runs, create/check a Plex
+PIN and perform Emby Connect login. These are account operations with an optional
+profile header; creating a run separately verifies ownership of the target profile
+before source authentication. Run lists use signed `(created_at, id)` cursors scoped
+to the account. A 202 response identifies the persisted run and its polling location.
+Execution is dispatched within the server process; persistence of run status is not
+a durable job-dispatch guarantee.
+
+All four POST operations are non-retryable after an uncertain response. Import
+application checks freshness atomically in the selected PostgreSQL or SQLite user
+store; replaying an older record cannot replace newer progress. History insertion
+and other per-record effects are separate writes, so a whole import is not an atomic
+transaction. The bundled web imports hook uses the v2 contract and does not retry
+ambiguous Plex authorization calls automatically.
+
+Webhook connection management and external webhook ingress are separate surfaces.
+The seven import operations do not replace either surface. Legacy Plex management
+aliases are omitted from v2; existing v1 ingress remains available to external
+servers. Native clients need an import-consumer inventory before adopting these
+routes; v1 remains available during coordinated migration. Jellyfin protocol
+playback and user-state routes continue to use their existing shared store behavior.

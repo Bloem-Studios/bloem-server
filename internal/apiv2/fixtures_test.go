@@ -48,15 +48,6 @@ func fixtureCases() []fixtureCase {
 	problem := "#/components/schemas/Problem"
 	validBody := `{"name":"fixture","cleared":null}`
 	return []fixtureCase{
-		{name: "list_my_requests_ok", operationID: opListMyRequests,
-			scenario: "Account requests have stable creation order and string identifiers.",
-			method:   http.MethodGet, path: "/api/v2/requests/mine", headers: viewer,
-			status: http.StatusOK, schema: "#/components/schemas/MediaRequestCollection"},
-		{name: "create_request_ok", operationID: opCreateRequest,
-			scenario: "A new request is created; an uncertain response must not be automatically retried.",
-			method:   http.MethodPost, path: "/api/v2/requests", headers: viewer, body: `{"media_type":"movie","tmdb_id":12345,"title":"Example"}`,
-			status: http.StatusCreated, schema: "#/components/schemas/MediaRequest"},
-
 		{name: "get_system_info_ok", operationID: "getSystemInfo",
 			scenario: "Discovery before login: a public operation answered with the contract identity.",
 			method:   http.MethodGet, path: "/api/v2/system/info",
@@ -1157,6 +1148,19 @@ func fixtureCases() []fixtureCase {
 			method:   http.MethodDelete, path: "/api/v2/probe/guarded/a",
 			headers: map[string]string{"If-Match": RenderETag(guardedProbeScope, "a", 1).String()},
 			status:  http.StatusNoContent, assertHeaders: []string{"Cache-Control"}},
+		{name: "list_my_requests_ok", operationID: opListMyRequests,
+			scenario: "Account requests have stable creation order and string identifiers.",
+			method:   http.MethodGet, path: "/api/v2/requests/mine", headers: viewer,
+			status: http.StatusOK, schema: "#/components/schemas/MediaRequestCollection"},
+		{name: "create_request_ok", operationID: opCreateRequest,
+			scenario: "A new request is created; an uncertain response must not be automatically retried.",
+			method:   http.MethodPost, path: "/api/v2/requests", headers: viewer, body: `{"media_type":"movie","tmdb_id":12345,"title":"Example"}`,
+			status: http.StatusCreated, schema: "#/components/schemas/MediaRequest"},
+
+		{name: "list_history_import_runs_ok", operationID: opListHistoryImportRuns,
+			scenario: "Import runs belong to the authenticated account and use bounded keyset paging.",
+			method:   http.MethodGet, path: "/api/v2/history-imports/runs", headers: bearer(memberToken),
+			status: http.StatusOK, schema: "#/components/schemas/HistoryImportRunCollection"},
 	}
 }
 
@@ -1196,6 +1200,7 @@ func fixtureDeps() Dependencies {
 	deps.Watch = &fakeWatch{}
 	deps.Recommendations = &fakeRecommendations{seedCandidates: 1, cardsHasMore: true}
 	deps.Requests = fixtureRequests()
+	deps.HistoryImports = fixtureHistoryImports()
 	deps.CursorSecret = []byte("fixture-cursor-key")
 	deps.SettingValues.(*fakeSettingValuesSeam).contendedLabel = "Contended"
 	prefs := preferenceDeps(nil, nil)

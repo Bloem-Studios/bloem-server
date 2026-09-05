@@ -506,6 +506,7 @@ func registerAll(reg *Registry) {
 	registerRatings(reg)
 	registerRecommendations(reg)
 	registerRequests(reg)
+	registerHistoryImports(reg)
 	registerSystem(reg)
 	registerWatchlist(reg)
 	registerWatch(reg)

@@ -164,7 +164,8 @@ type Dependencies struct {
 	SectionFlags SectionFlagService
 	// Requests serves media requests and the discovery surface
 	// (*requests.Service, the value *handlers.RequestsHandler wraps).
-	Requests MediaRequestService
+	Requests       MediaRequestService
+	HistoryImports HistoryImportService
 
 	// bodyReadTimeout overrides BodyReadTimeout; tests use it to exercise the
 	// 408 boundary without waiting for the production deadline.

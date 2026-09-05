@@ -197,6 +197,11 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"syncProgress":  true,
 		"getWatchState": true, "markWatched": true, "unmarkWatched": true,
 	}
+	for _, id := range historyImportOperationIDs {
+		profileToken[id] = true
+	}
+	expect["createHistoryImportRun"] = map[int]bool{http.StatusAccepted: true, http.StatusConflict: true, http.StatusNotFound: true}
+	expect["getHistoryImportRun"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}
 	for _, id := range libraryOperationIDs {
 		profileToken[id] = true
 	}
@@ -1032,4 +1037,8 @@ func TestPersonalListMutationsDoNotAdvertiseAutomaticRetry(t *testing.T) {
 			}
 		}
 	}
+}
+
+var historyImportOperationIDs = []string{
+	"listHistoryImportSources", "listHistoryImportRuns", "createHistoryImportRun", "getHistoryImportRun", "createPlexPin", "checkPlexPin", "loginEmbyConnect",
 }
