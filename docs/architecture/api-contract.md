@@ -432,9 +432,9 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   `Idempotency-Key` header under any other strategy: the strategy, its required header, and
   the durable replay store land together with the first operation the inventory proves
   needs them, and the field is never advertised unimplemented. Inventory answer: all 225
-  tier-1 ported mutation rows (219 distinct operations) are classified (108
-  `natural_idempotent`, 26 `unique_constraint`, 14 `domain_identity`, 10 `coalescing`, 10
-  `durable_dispatch`, 51 `non_retryable`, 0 `idempotency_key`, counted per distinct
+  tier-1 ported mutation rows (219 distinct operations) are classified (106
+  `natural_idempotent`, 25 `unique_constraint`, 14 `domain_identity`, 9 `coalescing`, 10
+  `durable_dispatch`, 55 `non_retryable`, 0 `idempotency_key`, counted per distinct
   operation) and no residual group justifies a shared generic-key implementation. The `non_retryable` rows are a
   one-shot display or a secret shown once (invite-code top-up, admin session message,
   webhook rotate-secret, webhook test), a destructive command whose retry can hit state the
@@ -468,7 +468,10 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   (email-address verification; favorites, watchlist, and rating add and remove; taste seed;
   account and node deletion) name the durable dispatch or cleanup the v2 port must add before
   their retry is safe. The existing v2 profile creation and deletion operations remain
-  `non_retryable` until their durable identity and cleanup defects are fixed. Forty rows
+  `non_retryable` until their durable identity and cleanup defects are fixed. Library creation,
+  settings updates, stale-ID rematch, and provider-chain replacement also remain
+  `non_retryable`: their current seams cannot resume dispatch after saving state, or
+  repeat unclaimed provider work. Their ledger notes retain the required durable repair. Forty-two rows (41 distinct operations)
   carry a `DEFECT` note where v1 gates on
   process-local state, fires an external effect inline, lacks the dedup or ordering its
   identity implies, or re-runs a side effect a retry should not repeat (task run, collection
@@ -1179,6 +1182,30 @@ is a `422` naming it where v1 answered `400`. None of the nine registers `Guarde
 per-profile playback preference is in the plan's "progress, playback" carve-out that keeps
 domain behavior rather than a row version, so the `PUT`s and `PATCH` are unconditional
 last-write-wins replacements, the reads carry no `ETag`, and the ledger rows say `Not if_match`.
+
+**Section catalog-libraries (Phase 4).** Thirty operations under the `libraries` tag: the
+acting-admin, demo-guarded management surface `listLibraries`, `createLibrary`, `updateLibrary`,
+`deleteLibrary`, `checkLibraryMount`, `confirmEmptyRootCleanup`, `listMetadataMatchQueues`,
+`getMetadataMatchQueue`, `retryMetadataMatchQueue`, `cancelMetadataMatchQueue`,
+`refreshLibraryMetadata`, `getLibraryProviderDefaults`, `getLibraryProviders`,
+`setLibraryProviders`, `uploadLibraryPoster`, `deleteLibraryPoster`, `reorderLibraries`,
+`listLibraryRoots`, `setRootOverride`, `deleteRootOverride`, `listSkippedRoots`, `listStaleIds`,
+`rematchStaleId`, `listUnmatchedItems`; and the profile-scoped viewer reads `getLibraryLayout`,
+`listLibrarySections`, `getLibrarySectionItems`, `getLibraryCollections`,
+`getLibraryCollectionItems`, `listLibraryUserCollections`. Every card these reads answer is the
+one `CatalogItem` schema (`internal/apiv2/catalog_types.go`), which the catalog-items and
+catalog-home sections reuse. Deliberate differences from v1, all recorded on the ledger rows:
+`PUT` full updates are `PATCH`; offset paging (roots, unmatched items, the per-library match
+queue) is `limit` plus an opaque cursor, and v1's unpaginated stale-ID list pages the same way; ids are string `ID`s and timestamps UTC-millisecond
+instants; the provider-chain `levels` map is an ordered array of `{content_level, entries}` and
+`library_type` is required on the defaults read; `deleteRootOverride` takes its root in the query;
+the refresh `mode` and `image_size` are strict enums answered `422`; the queued-work operations
+(`deleteLibrary`, `refreshLibraryMetadata`) answer `409` without v1's `active_job` echo, pending
+the long-running-work foundation rule; `uploadLibraryPoster` is the first multipart operation
+(`multipart/form-data` only, else `415`; a wrong part media type is `422` at `body.poster`; over
+10 MiB is `413`); `getLibrarySectionItems` answers the section itself rather than a `{section}`
+wrapper, `getLibraryCollectionItems` drops v1's `total`/`has_more` on a bounded list, and
+`getLibraryCollections` has one shape whether or not collection groups are configured.
 
 ## v1 lifecycle and release sequence
 

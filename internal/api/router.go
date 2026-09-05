@@ -1907,6 +1907,15 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if subtitlePrefHandler != nil {
 		v2deps.SubtitlePreferences = subtitlePrefHandler
 	}
+	if libraryHandler != nil {
+		v2deps.LibraryAdmin = libraryHandler
+	}
+	if sectionHandler != nil {
+		v2deps.LibrarySections = sectionHandler
+	}
+	if libraryCollectionHandler != nil {
+		v2deps.LibraryCollections = libraryCollectionHandler
+	}
 	if sectionHandler != nil {
 		v2deps.ProfileSections = sectionHandler
 	}
