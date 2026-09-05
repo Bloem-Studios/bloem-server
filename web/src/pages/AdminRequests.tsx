@@ -1157,15 +1157,17 @@ function IntegrationEditor({
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Name">
+        <Field label="Name" error={fieldErrors.name}>
           <Input
+            aria-invalid={Boolean(fieldErrors.name)}
             value={form.name}
             onChange={(event) => patchForm({ name: event.target.value })}
             placeholder="Connection name"
           />
         </Field>
-        <Field label="API key or setting key">
+        <Field label="API key or setting key" error={fieldErrors.api_key_ref}>
           <Input
+            aria-invalid={Boolean(fieldErrors.api_key_ref)}
             value={form.api_key_ref}
             onChange={(event) => patchForm({ api_key_ref: event.target.value })}
             placeholder={form.has_api_key ? "Leave blank to keep saved key" : "API key"}
@@ -1173,15 +1175,19 @@ function IntegrationEditor({
         </Field>
       </div>
 
-      <Field label="Base URL">
+      <Field label="Base URL" error={fieldErrors.base_url}>
         <Input
+          aria-invalid={Boolean(fieldErrors.base_url)}
           value={form.base_url}
           onChange={(event) => patchForm({ base_url: event.target.value })}
           placeholder="http://localhost:7878"
         />
       </Field>
 
-      <Field label="Plugin">
+      <Field
+        label="Plugin"
+        error={[fieldErrors.installation_id, fieldErrors.capability_id].filter(Boolean).join(" ")}
+      >
         {installationsLoading ? (
           <Skeleton className="h-9 w-full rounded-md" />
         ) : installations.length === 0 ? (
@@ -1533,11 +1539,16 @@ function EditorConflict({ onReload }: { onReload: () => Promise<void> }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
       {children}
+      {error ? (
+        <p role="alert" className="text-destructive text-xs">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

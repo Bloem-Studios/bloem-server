@@ -176,6 +176,59 @@ describe("request administration conflict handling", () => {
     expect(writes).toHaveLength(1);
     expect(writes[0]![1]!).toMatchObject({ headers: { "If-Match": '"initial"' } });
   });
+  it("renders generic integration field errors inline and clears them on edit", async () => {
+    const row = {
+      id: "integration",
+      name: "Connection",
+      enabled: true,
+      base_url: "https://example.invalid",
+      has_api_key: true,
+      installation_id: "1",
+      capability_id: "arr",
+      plugin_config: {},
+      supported_media_types: [],
+      last_check_at: null,
+      last_check_status: "",
+      last_check_error: "",
+      updated_at: "2026-09-05T00:00:00Z",
+    };
+    const errors = [
+      { location: "body.name", code: "invalid", detail: "Connection name is rejected" },
+      { location: "body.api_key_ref", code: "invalid", detail: "Re-enter the credential" },
+      { location: "body.base_url", code: "invalid", detail: "Server URL is rejected" },
+      { location: "body.installation_id", code: "invalid", detail: "Choose another installation" },
+    ];
+    vi.mocked(v2).mockImplementation((operation, options) => {
+      if (operation === "GET /api/v2/admin/requests/capabilities")
+        return reply(options, { available: true, guarded_configuration: true });
+      if (operation === "GET /api/v2/admin/request-integrations")
+        return reply(options, { items: [row], page: { has_more: false } });
+      if (operation === "GET /api/v2/admin/request-integrations/{id}") return reply(options, row);
+      if (operation === "POST /api/v2/admin/request-integrations/{id}/options")
+        return reply(options, { options: {} });
+      if (operation === "PUT /api/v2/admin/request-integrations/{id}")
+        return Promise.reject(
+          new V2ProblemError("updateRequestIntegration", {
+            type: "https://example.invalid/problems/validation_failed",
+            title: "Invalid",
+            status: 422,
+            detail: "Review invalid fields",
+            instance: "test",
+            errors,
+          }),
+        );
+      throw new Error(operation);
+    });
+    mount("integrations");
+    fireEvent.click(await screen.findByRole("button", { name: "Save" }));
+    for (const error of errors) expect(await screen.findByText(error.detail)).toBeTruthy();
+    const name = screen.getByPlaceholderText("Connection name");
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    expect(name.parentElement?.textContent).toContain("Connection name is rejected");
+    fireEvent.change(name, { target: { value: "Corrected" } });
+    expect(screen.queryByText("Connection name is rejected")).toBeNull();
+    expect(name.getAttribute("aria-invalid")).toBe("false");
+  });
   it("keeps user override edits and validator until explicit reload after a stale response", async () => {
     let reads = 0;
     vi.mocked(v2).mockImplementation((operation, options) => {
