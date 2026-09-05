@@ -358,6 +358,24 @@
       "body_file": "check_library_mount_ok.json"
     },
     {
+      "name": "clear_device_settings_ok",
+      "operation_id": "clearDeviceSettings",
+      "scenario": "Clear device overrides while retaining its registry entry.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/devices/d-1/settings",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {},
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
       "name": "collection_group_stale",
       "operation_id": "updateCollectionGroup",
       "scenario": "A stale group edit leaves the resource unchanged and supplies the current validator.",
@@ -1103,6 +1121,44 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "dismiss_home_item_profile_header_required.json"
+    },
+    {
+      "name": "forget_device_missing",
+      "operation_id": "forgetDevice",
+      "scenario": "Missing or already forgotten device.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/devices/missing",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 404,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "forget_device_missing.json"
+    },
+    {
+      "name": "forget_device_ok",
+      "operation_id": "forgetDevice",
+      "scenario": "Forget a settings device without revoking login sessions.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/devices/d-1",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {},
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
     },
     {
       "name": "get_audio_preference_not_found",
@@ -3479,6 +3535,27 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/PersonalCollectionCollection",
       "body_file": "list_collections_ok.json"
+    },
+    {
+      "name": "list_devices_ok",
+      "operation_id": "listDevices",
+      "scenario": "Profile-scoped settings devices with logical override counts.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/devices",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/DeviceSettingsCollection",
+      "body_file": "list_devices_ok.json"
     },
     {
       "name": "list_effective_settings_authentication_required",

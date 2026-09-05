@@ -344,3 +344,56 @@ func TestInterestTrackingStoreForwardsRollupWhenSupported(t *testing.T) {
 		t.Error("rollup-capable wrapper dropped SettingValueCompareAndSetter")
 	}
 }
+
+func TestInterestTrackingDeviceSettingsCapability(t *testing.T) {
+	// Capability discovery is structural. Each combination must survive, and
+	// a backend with no device settings support must keep reporting absence.
+	plain := &struct{ userstore.UserStore }{}
+	provider := WrapUserStoreProvider(preferenceTransactionTestProvider{store: plain}, &System{})
+	wrapped, err := provider.ForUser(t.Context(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := wrapped.(userstore.DeviceSettingsStore); ok {
+		t.Fatal("invented device settings support")
+	}
+	supported := []userstore.UserStore{
+		&struct {
+			userstore.UserStore
+			userstore.DeviceSettingsStore
+		}{},
+		&struct {
+			userstore.UserStore
+			userstore.DeviceSettingsStore
+			userstore.DeviceRegistry
+		}{},
+		&struct {
+			userstore.UserStore
+			userstore.DeviceSettingsStore
+			userstore.SeriesEpisodeRollupStore
+		}{},
+		&struct {
+			userstore.UserStore
+			userstore.DeviceSettingsStore
+			userstore.DeviceRegistry
+			userstore.SeriesEpisodeRollupStore
+		}{},
+	}
+	for _, inner := range supported {
+		provider := WrapUserStoreProvider(preferenceTransactionTestProvider{store: inner}, &System{})
+		wrapped, err := provider.ForUser(t.Context(), 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := wrapped.(userstore.DeviceSettingsStore); !ok {
+			t.Fatal("lost device settings support")
+		}
+		_, beforeDevices := inner.(userstore.DeviceRegistry)
+		_, afterDevices := wrapped.(userstore.DeviceRegistry)
+		_, beforeRollup := inner.(userstore.SeriesEpisodeRollupStore)
+		_, afterRollup := wrapped.(userstore.SeriesEpisodeRollupStore)
+		if beforeDevices != afterDevices || beforeRollup != afterRollup {
+			t.Fatal("changed other capabilities")
+		}
+	}
+}

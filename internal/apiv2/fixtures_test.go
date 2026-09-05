@@ -1425,6 +1425,12 @@ func fixtureCases() []fixtureCase {
 	}
 	cases = append(cases, requestLifecycleFixtureCases()...)
 	cases = append(cases, adminRequestFixtureCases()...)
+	cases = append(cases,
+		fixtureCase{name: "list_devices_ok", operationID: opListDevices, scenario: "Profile-scoped settings devices with logical override counts.", method: http.MethodGet, path: Prefix + "/devices", headers: viewer, status: 200, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/DeviceSettingsCollection"},
+		fixtureCase{name: "forget_device_ok", operationID: opForgetDevice, scenario: "Forget a settings device without revoking login sessions.", method: http.MethodDelete, path: Prefix + "/devices/d-1", headers: viewer, status: 204},
+		fixtureCase{name: "clear_device_settings_ok", operationID: opClearDeviceSettings, scenario: "Clear device overrides while retaining its registry entry.", method: http.MethodDelete, path: Prefix + "/devices/d-1/settings", headers: viewer, status: 204},
+		fixtureCase{name: "forget_device_missing", operationID: opForgetDevice, scenario: "Missing or already forgotten device.", method: http.MethodDelete, path: Prefix + "/devices/missing", headers: viewer, status: 404, assertHeaders: []string{"Content-Type"}, schema: problem},
+	)
 	return append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
 }
 
@@ -1453,6 +1459,7 @@ func fixtureDeps() Dependencies {
 	deps.PersonalCollections = &fixturePersonalCollections{fakePersonalCollections: fakePersonalCollections{list: handlers.PersonalCollectionListView{Collections: []handlers.PersonalCollectionView{fixtureCollectionView()}, Groups: []handlers.CollectionGroupView{}}}}
 	deps.CollectionImports = &fakeCollectionImports{configured: true}
 	deps, _ = withLibraryAdmin(deps)
+	deps.DeviceSettings = &fakeDeviceSettings{}
 	deps.LibraryJobs = &fakeLibraryJobs{job: &models.AdminJob{ID: "job-2", JobType: adminjob.JobTypeLibraryRefresh, Status: adminjob.StatusQueued, RequestedAt: fixedTime()}}
 	deps.LibrarySections = &fakeLibraryViews{}
 	deps.LibraryCollections = &fakeLibraryViews{}

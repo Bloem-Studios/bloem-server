@@ -20,6 +20,7 @@ import (
 // behavior on its own, which is what keeps the PostgreSQL and per-user SQLite
 // stores from drifting on the table the whole contract rests on.
 func RunSettingValues(t *testing.T, newStore func(t *testing.T) userstore.UserStore) {
+	t.Run("DeviceSettings", func(t *testing.T) { RunDeviceSettings(t, newStore) })
 	t.Run("ExplicitValuesPerScope", func(t *testing.T) {
 		testSettingValueScopes(t, newStore)
 	})

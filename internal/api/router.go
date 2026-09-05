@@ -1960,6 +1960,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if userPluginSettingsHandler != nil {
 		v2deps.PluginSettings = userPluginSettingsHandler
 	}
+	if deviceHandler != nil {
+		v2deps.DeviceSettings = deviceHandler
+	}
 	if audioPrefHandler != nil {
 		v2deps.AudioPreferences = audioPrefHandler
 	}

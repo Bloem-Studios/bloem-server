@@ -24469,13 +24469,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/devices",
+        "operation_id": "listDevices"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; deviceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Independently reviewed ordinary port. Profile-scoped settings devices; household reads and named-profile mutations retain primary-profile/PIN or admin authority. Other accounts and missing devices return404 after operation authorization. Bounded keyset listing uses full-precision recency with profile/device ties and logical override counts. Cleanup atomically clears both settings generations and optionally the registry, with postcommit canonical-key invalidation. Forgetting does not revoke login sessions. Both mutation retry classifications remain non_retryable because retries can remove intervening settings. Web device hooks use v2; native clients have no callers for these three operations."
     },
     {
       "listener": "api",
@@ -24599,13 +24599,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/devices/{device_id}",
+        "operation_id": "forgetDevice"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; deviceHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Independently reviewed ordinary port. Profile-scoped settings devices; household reads and named-profile mutations retain primary-profile/PIN or admin authority. Other accounts and missing devices return404 after operation authorization. Bounded keyset listing uses full-precision recency with profile/device ties and logical override counts. Cleanup atomically clears both settings generations and optionally the registry, with postcommit canonical-key invalidation. Forgetting does not revoke login sessions. Both mutation retry classifications remain non_retryable because retries can remove intervening settings. Web device hooks use v2; native clients have no callers for these three operations."
     },
     {
       "listener": "api",
@@ -24660,13 +24660,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/devices/{device_id}/settings",
+        "operation_id": "clearDeviceSettings"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; deviceHandler != nil. v2 registers the operation unconditionally and reports capability state instead. The current reset is unguarded and non-retryable; a generation precondition is required before automatic retries can preserve newer settings."
+      "notes": "Independently reviewed ordinary port. Profile-scoped settings devices; household reads and named-profile mutations retain primary-profile/PIN or admin authority. Other accounts and missing devices return404 after operation authorization. Bounded keyset listing uses full-precision recency with profile/device ties and logical override counts. Cleanup atomically clears both settings generations and optionally the registry, with postcommit canonical-key invalidation. Forgetting does not revoke login sessions. Both mutation retry classifications remain non_retryable because retries can remove intervening settings. Web device hooks use v2; native clients have no callers for these three operations."
     },
     {
       "listener": "api",
