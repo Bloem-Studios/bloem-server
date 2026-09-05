@@ -2064,5 +2064,12 @@ Creating a version returns HTTP 201, its Location, and the saved immutable versi
 `compiled_ok` is false. Compilation diagnostics accompany that saved identity. Validation alone
 returns diagnostics without persistence. Saving a draft, enabling, activating, and deleting are
 non-retryable operations; clients refresh canonical state and obtain user intent before trying a
-new write after a conflict or uncertain outcome. The existing web consumer remains on v1 until
-its separate review and migration.
+new write after a conflict or uncertain outcome. The web policy consumer uses the generated v2
+operations while the shared policy capability remains on its auth-owned route. Document and version history pages load through explicit
+continuation controls; selecting a document does not depend on its presence in the first page.
+Editors pin the draft and original validator, retain both after 412, and require explicit
+current-state review before using a new revision after an append or conflict. A saved draft
+that fails compilation retains its identity. In-flight validation and save results remain
+associated with their submitted source. Mutations disable both query-library retries and
+authentication refresh replay; read refresh remains enabled. Persistence and local application
+are reported separately. The 14 mappings remain proposed until the consumer review completes.

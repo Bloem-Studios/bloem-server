@@ -420,14 +420,14 @@ export const adminKeys = {
   policyCapability: () => ["policy", "capability"] as const,
   policyVendor: () => ["admin", "policy", "vendor"] as const,
   policyDocuments: () => ["admin", "policy", "documents"] as const,
-  policyDocument: (id?: number) => ["admin", "policy", "documents", id ?? "none"] as const,
-  policyVersions: (id?: number) =>
+  policyDocument: (id?: string) => ["admin", "policy", "documents", id ?? "none"] as const,
+  policyVersions: (id?: string) =>
     ["admin", "policy", "documents", id ?? "none", "versions"] as const,
-  policyVersion: (id?: number, version?: number) =>
+  policyVersion: (id?: string, version?: string) =>
     ["admin", "policy", "documents", id ?? "none", "versions", version ?? "none"] as const,
   policyDecisions: (params: Record<string, unknown>) =>
     ["admin", "policy", "decisions", params] as const,
-  policyDecision: (id?: number) => ["admin", "policy", "decisions", id ?? "none"] as const,
+  policyDecision: (id?: string) => ["admin", "policy", "decisions", id ?? "none"] as const,
   subtitleProviders: () => ["admin", "subtitleProviders"] as const,
   downloadedSubtitles: (params: {
     provider?: string;
