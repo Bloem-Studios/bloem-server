@@ -67,6 +67,7 @@ import InviteCodesTab from "./admin-settings/InviteCodesTab";
 import {
   PERMISSION_MARKER_EDIT,
   PERMISSION_METADATA_CURATION,
+  PERMISSION_WATCH_LIVE_TV,
   hasAssignedPermission,
   setAssignedPermission,
 } from "@/lib/permissions";
@@ -583,6 +584,7 @@ function UserForm({ user, onClose }: { user: AdminUser | null; onClose: () => vo
   const enabledId = useId();
   const markerEditId = useId();
   const metadataCurationId = useId();
+  const liveTVId = useId();
   const maxProfilesId = useId();
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
@@ -722,6 +724,24 @@ function UserForm({ user, onClose }: { user: AdminUser | null; onClose: () => vo
                 onCheckedChange={(checked) =>
                   setPermissions((current) =>
                     setAssignedPermission(current, PERMISSION_MARKER_EDIT, checked),
+                  )
+                }
+              />
+            </div>
+            <div className="border-border flex items-center justify-between rounded-md border px-3 py-2">
+              <div>
+                <Label htmlFor={liveTVId}>Watch Live TV</Label>
+                <p className="text-muted-foreground text-xs">
+                  Watch channels and manage recordings. Independent of library access; group
+                  restrictions still apply.
+                </p>
+              </div>
+              <Switch
+                id={liveTVId}
+                checked={hasAssignedPermission(permissions, PERMISSION_WATCH_LIVE_TV)}
+                onCheckedChange={(checked) =>
+                  setPermissions((current) =>
+                    setAssignedPermission(current, PERMISSION_WATCH_LIVE_TV, checked),
                   )
                 }
               />

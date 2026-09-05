@@ -111,11 +111,21 @@ type Channel struct {
 
 // MarshalJSON keeps stream_url in the wire shape while redacting the upstream URL.
 func (c Channel) MarshalJSON() ([]byte, error) {
-	type Alias Channel
-	return json.Marshal(struct {
-		StreamURL string `json:"stream_url"`
-		Alias
-	}{StreamURL: "", Alias: Alias(c)})
+	return json.Marshal(c.ClientResponse())
+}
+
+// ChannelFields has no custom serializer; its tags define the public fields.
+type ChannelFields Channel
+
+// ChannelResponse includes the legacy empty stream_url field without exposing
+// the private tuner address. Native DTOs are generated from this actual shape.
+type ChannelResponse struct {
+	StreamURL string `json:"stream_url"`
+	ChannelFields
+}
+
+func (c Channel) ClientResponse() ChannelResponse {
+	return ChannelResponse{ChannelFields: ChannelFields(c)}
 }
 
 type GuideSource struct {

@@ -2878,46 +2878,7 @@ func NewRouter(deps Dependencies) chi.Router {
 					})
 				}
 
-				if liveTVHandler != nil {
-					r.Route("/livetv", func(r chi.Router) {
-						r.Get("/channels", liveTVHandler.HandleListChannels)
-						r.Get("/guide", liveTVHandler.HandleListGuide)
-						r.Get("/programs/{programId}", liveTVHandler.HandleGetProgram)
-						r.Get("/recordings", liveTVHandler.HandleListRecordings)
-						r.Get("/series-rules", liveTVHandler.HandleListSeriesRules)
-
-						r.Group(func(r chi.Router) {
-							r.Use(apimw.RequireProfile)
-							r.Post("/channels/{channelId}/session", liveTVHandler.HandleStartChannelSession)
-							r.Get("/sessions/{sessionId}/stream", liveTVHandler.HandleSessionStream)
-							r.Method(http.MethodHead, "/sessions/{sessionId}/stream", http.HandlerFunc(liveTVHandler.HandleSessionStream))
-							r.Get("/live-hls/{playbackId}/{name}", liveTVHandler.HandleLiveHLS)
-							r.Post("/sessions/{sessionId}/heartbeat", liveTVHandler.HandleSessionHeartbeat)
-							r.Delete("/sessions/{sessionId}", liveTVHandler.HandleReleaseSession)
-							r.Post("/recordings", liveTVHandler.HandleScheduleRecording)
-							r.Delete("/recordings/{recordingId}", liveTVHandler.HandleCancelRecording)
-							r.Post("/series-rules", liveTVHandler.HandleCreateSeriesRule)
-							r.Delete("/series-rules/{ruleId}", liveTVHandler.HandleDeleteSeriesRule)
-						})
-
-						r.Group(func(r chi.Router) {
-							r.Use(apimw.RequireAdmin)
-							r.Get("/tuners", liveTVHandler.HandleListTuners)
-							r.Post("/tuners/discover", liveTVHandler.HandleDiscoverTuners)
-							r.Post("/tuners", liveTVHandler.HandleAddTuner)
-							r.Delete("/tuners/{tunerId}", liveTVHandler.HandleDeleteTuner)
-							r.Post("/tuners/{tunerId}/scan", liveTVHandler.HandleScanTuner)
-							r.Patch("/channels/{channelId}", liveTVHandler.HandlePatchChannel)
-							r.Get("/guide-sources", liveTVHandler.HandleListGuideSources)
-							r.Post("/guide-sources/schedules-direct/lineups", liveTVHandler.HandleLookupSchedulesDirectLineups)
-							r.Post("/guide-sources/xml-sync/lineups", liveTVHandler.HandleLookupXMLSyncLineups)
-							r.Post("/guide-sources", liveTVHandler.HandleCreateGuideSource)
-							r.Patch("/guide-sources/{sourceId}", liveTVHandler.HandleUpdateGuideSource)
-							r.Delete("/guide-sources/{sourceId}", liveTVHandler.HandleDeleteGuideSource)
-							r.Post("/guide-sources/{sourceId}/sync", liveTVHandler.HandleSyncGuideSource)
-						})
-					})
-				}
+				mountLiveTVRoutes(r, liveTVHandler, requireActingAdmin)
 
 				// Onboarding tour routes (profile-scoped).
 				if onboardingHandler != nil {

@@ -34,7 +34,11 @@ import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useOrganizationLibraries } from "@/hooks/queries/admin/libraries";
-import { PERMISSION_MARKER_EDIT, PERMISSION_METADATA_CURATION } from "@/lib/permissions";
+import {
+  PERMISSION_MARKER_EDIT,
+  PERMISSION_METADATA_CURATION,
+  PERMISSION_WATCH_LIVE_TV,
+} from "@/lib/permissions";
 import {
   PLAYBACK_QUALITY_OPTIONS,
   playbackQualityPresetFromValue,
@@ -45,6 +49,11 @@ import {
 // The two assignable permissions (mirrors auth.assignablePermissions). A group
 // mask of `null` means "all assignable"; a list narrows to those named.
 const ASSIGNABLE_PERMISSIONS: Array<{ value: string; label: string; description: string }> = [
+  {
+    value: PERMISSION_WATCH_LIVE_TV,
+    label: "Watch Live TV",
+    description: "Permit an account’s Live TV grant; independent of library access.",
+  },
   {
     value: PERMISSION_METADATA_CURATION,
     label: "Metadata curation",

@@ -145,9 +145,11 @@ func (h *LiveTVHandler) HandleListChannels(w http.ResponseWriter, r *http.Reques
 	if channels == nil {
 		channels = []livetv.Channel{}
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Channels []livetv.Channel `json:"channels"`
-	}{Channels: channels})
+	publicChannels := make([]livetv.ChannelResponse, 0, len(channels))
+	for _, channel := range channels {
+		publicChannels = append(publicChannels, channel.ClientResponse())
+	}
+	writeJSON(w, http.StatusOK, livetv.ChannelsResponse{Channels: publicChannels})
 }
 
 func (h *LiveTVHandler) HandlePatchChannel(w http.ResponseWriter, r *http.Request) {
@@ -348,11 +350,7 @@ func (h *LiveTVHandler) HandleListGuide(w http.ResponseWriter, r *http.Request) 
 	if programs == nil {
 		programs = []livetv.Program{}
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Programs []livetv.Program `json:"programs"`
-		Start    time.Time        `json:"start"`
-		End      time.Time        `json:"end"`
-	}{Programs: programs, Start: start, End: end})
+	writeJSON(w, http.StatusOK, livetv.GuideResponse{Programs: programs, Start: start, End: end})
 }
 
 func (h *LiveTVHandler) HandleGetProgram(w http.ResponseWriter, r *http.Request) {
@@ -396,14 +394,7 @@ func (h *LiveTVHandler) HandleStartChannelSession(w http.ResponseWriter, r *http
 	if transport == "" {
 		transport = "mpegts"
 	}
-	writeJSON(w, http.StatusCreated, struct {
-		SessionID      string `json:"session_id"`
-		PlaybackTicket string `json:"playback_ticket"`
-		HLSURL         string `json:"hls_url"`
-		StreamURL      string `json:"stream_url"`
-		Transport      string `json:"transport,omitempty"`
-		Note           string `json:"note,omitempty"`
-	}{
+	writeJSON(w, http.StatusCreated, livetv.SessionStartResponse{
 		SessionID:      session.ID,
 		PlaybackTicket: ticket,
 		HLSURL:         hlsURL,
@@ -546,19 +537,11 @@ func (h *LiveTVHandler) HandleListRecordings(w http.ResponseWriter, r *http.Requ
 	if recordings == nil {
 		recordings = []livetv.Recording{}
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Recordings []livetv.Recording `json:"recordings"`
-	}{Recordings: recordings})
+	writeJSON(w, http.StatusOK, livetv.RecordingsResponse{Recordings: recordings})
 }
 
 func (h *LiveTVHandler) HandleScheduleRecording(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		ProgramID string    `json:"program_id"`
-		ChannelID string    `json:"channel_id"`
-		Start     time.Time `json:"start"`
-		Stop      time.Time `json:"stop"`
-		Title     string    `json:"title"`
-	}
+	var body livetv.ScheduleRecordingRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "invalid JSON body")
 		return
@@ -605,20 +588,11 @@ func (h *LiveTVHandler) HandleListSeriesRules(w http.ResponseWriter, r *http.Req
 	if rules == nil {
 		rules = []livetv.SeriesRule{}
 	}
-	writeJSON(w, http.StatusOK, struct {
-		SeriesRules []livetv.SeriesRule `json:"series_rules"`
-	}{SeriesRules: rules})
+	writeJSON(w, http.StatusOK, livetv.SeriesRulesResponse{SeriesRules: rules})
 }
 
 func (h *LiveTVHandler) HandleCreateSeriesRule(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		SeriesID   string  `json:"series_id"`
-		ChannelID  *string `json:"channel_id"`
-		TitleMatch string  `json:"title_match"`
-		NewOnly    bool    `json:"new_only"`
-		KeepLast   int     `json:"keep_last"`
-		Enabled    *bool   `json:"enabled"`
-	}
+	var body livetv.CreateSeriesRuleRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "invalid JSON body")
 		return

@@ -867,6 +867,49 @@
           "direction": "response"
         }
       ]
+    },
+    {
+      "path": "internal/livetv",
+      "dialect": "upstream-compat",
+      "roots": [
+        {
+          "type": "CapabilityResponse",
+          "direction": "response",
+          "dialect": "bloem"
+        },
+        {
+          "type": "ChannelsResponse",
+          "direction": "response"
+        },
+        {
+          "type": "GuideResponse",
+          "direction": "response"
+        },
+        {
+          "type": "SessionStartResponse",
+          "direction": "response"
+        },
+        {
+          "type": "RecordingsResponse",
+          "direction": "response"
+        },
+        {
+          "type": "SeriesRulesResponse",
+          "direction": "response"
+        },
+        {
+          "type": "ClientCapabilities",
+          "direction": "request"
+        },
+        {
+          "type": "ScheduleRecordingRequest",
+          "direction": "request"
+        },
+        {
+          "type": "CreateSeriesRuleRequest",
+          "direction": "request"
+        }
+      ]
     }
   ],
   "serializers": {
