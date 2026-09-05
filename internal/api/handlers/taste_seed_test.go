@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"context"
+	"testing"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"testing"
 )
 
 type countingProfileRefresher struct{ calls int }
