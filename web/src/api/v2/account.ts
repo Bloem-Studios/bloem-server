@@ -11,7 +11,7 @@ export type TokenPair = components["schemas"]["TokenPair"];
 
 /**
  * The account as the app still models it: numeric ids, because the v1
- * responses that remain (invitation accept, admin impersonate) answer with
+ * responses that remain (admin impersonate) answer with
  * them; the v2 id is the same account id rendered as a string.
  */
 export function userFromAccount(account: Account): User {
