@@ -983,9 +983,27 @@ is `422` at the query parameter it names, and a search deadline is `503` `depend
 with `Retry-After`; `queryCatalogItems` rejects unknown body members and answers `422` for a limit
 over 100 rather than clamping; the episode, season, version, and manga-file lists are `{items}`
 envelopes, `getSeriesSeason` answers the season itself, and `getCatalogItem` leaves `keywords`,
-`original_language`, and `status` empty because the detail service does not load them. The
-remaining rows of the section (`people`, `works`, trailers, translate-description, the AI status
-capability) are stage B.
+`original_language`, and `status` empty because the detail service does not load them.
+
+**Section catalog-items (Phase 4), stage B.** Nine more profile-scoped operations under the
+`catalog` tag complete the section: `listSeasonEpisodes`, the capability documents
+`getTrailersCapability` (`/capabilities/trailers`) and `getMetadataAICapability`
+(`/capabilities/metadata-ai`), the actions `refreshCatalogItemTrailers` and
+`translateCatalogItemDescription`, `listPeople`, `getPerson`, `refreshPerson`, and
+`getLiteraryWork`. The v1 handlers and these operations share the seams in
+`internal/api/handlers/catalog_actions_service.go`; `handlers.APIError` gained `RetryAfter` so
+both listeners render the per-user limiter's hint. Deliberate differences from v1, all recorded on
+the ledger rows: the two probes are typed `Capability` documents (`revision`, `state`, named
+fields) with `Cache-Control: private, no-cache`, and the two v1 registrations of
+`/metadata/ai/status` are one operation whose unwired answer is `not_configured`; the three
+background actions keep their v1 `202` with a small body (trailer refresh still answers `200` for
+`cooldown` and `disabled`) and are classified as coalescing actions, not the 202 job-monitor
+contract; an unconfigured action is `409 capability_not_configured` rather than `503`; the trailer
+`unsupported_type` refusal is `422` at `path.id`, and a missing `target_language` is `422` at
+`body.target_language`; `translateCatalogItemDescription` answers the job itself rather than
+`{job}`; people and works moved under `/catalog`, the people search is an `{items}` collection
+with `limit` validated `1..100`, integer identifiers are strings, and the work document's lists are
+empty arrays rather than `null`.
 
 ## v1 lifecycle and release sequence
 
