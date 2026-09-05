@@ -21,7 +21,7 @@ import { useUnreadNotificationCount } from "@/hooks/queries/notifications";
 import { useNotificationCapability } from "@/hooks/queries/notificationWebhooks";
 import { usePluginSettingsList } from "@/hooks/queries/pluginSettings";
 import { useRequestFeatureStatus } from "@/hooks/queries/useRequests";
-import { useLiveTVChannels } from "@/hooks/queries/useLiveTV";
+import { useLiveTVAccess } from "@/hooks/queries/useLiveTVAccess";
 import { useSidebarPins, useToggleSidebarPin } from "@/hooks/queries/sidebarPins";
 import { useViewTransitionNavigate } from "@/hooks/useViewTransition";
 import { SEARCH_SHORTCUT_LABEL } from "@/lib/keyboardShortcut";
@@ -205,10 +205,12 @@ export default function AppSidebar({ onNavigate, collapsed = false }: AppSidebar
   const { data: pluginSettings } = usePluginSettingsList();
   const requestStatus = useRequestFeatureStatus();
   const showRequestsNav = requestStatus.data?.requests_enabled === true;
-  const liveTVChannels = useLiveTVChannels();
+  const liveTVAccess = useLiveTVAccess();
   const showLiveTVNav =
-    location.pathname.startsWith("/livetv") ||
-    (liveTVChannels.data?.some((channel) => channel.enabled) ?? false);
+    !liveTVAccess.isError &&
+    liveTVAccess.data?.supported === true &&
+    liveTVAccess.data.allowed &&
+    liveTVAccess.data.available;
   // Optimistic while loading (the setting defaults to on, so hiding until the
   // capability resolves would flash); hidden when the admin kill switch is off
   // or the server has no notifications API (worker modes → query errors).

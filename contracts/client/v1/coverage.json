@@ -504,6 +504,46 @@
     {
       "type": "internal/subtitles.ProviderConfig",
       "reason": "Admin subtitle-provider configuration; the credential fields never serialise and the client surface is the registered subtitleProviderStatusResponse."
+    },
+    {
+      "type": "internal/livetv.AddTunerInput",
+      "reason": "Server-admin tuner or guide configuration; native viewer clients use the registered channel, guide and session projections."
+    },
+    {
+      "type": "internal/livetv.DiscoverTunersRequest",
+      "reason": "Server-admin tuner or guide configuration; native viewer clients use the registered channel, guide and session projections."
+    },
+    {
+      "type": "internal/livetv.DiscoverTunersResult",
+      "reason": "Server-admin tuner or guide configuration; native viewer clients use the registered channel, guide and session projections."
+    },
+    {
+      "type": "internal/livetv.DiscoveredTuner",
+      "reason": "Server-admin tuner or guide configuration; native viewer clients use the registered channel, guide and session projections."
+    },
+    {
+      "type": "internal/livetv.GuideSource",
+      "reason": "Server-admin tuner or guide configuration; native viewer clients use the registered channel, guide and session projections."
+    },
+    {
+      "type": "internal/livetv.SchedulesDirectLineupsRequest",
+      "reason": "Server-admin tuner or guide configuration; native viewer clients use the registered channel, guide and session projections."
+    },
+    {
+      "type": "internal/livetv.Tuner",
+      "reason": "Server-admin tuner or guide configuration; native viewer clients use the registered channel, guide and session projections."
+    },
+    {
+      "type": "internal/livetv.XMLSyncLineupsRequest",
+      "reason": "Server-admin tuner or guide configuration; native viewer clients use the registered channel, guide and session projections."
+    },
+    {
+      "type": "internal/livetv.Channel",
+      "reason": "Internal channel model with custom URL redaction; native clients receive the registered ChannelResponse projection."
+    },
+    {
+      "type": "internal/livetv.LiveSession",
+      "reason": "Internal session model with custom delivery URL serialization. Clients decode SessionStartResponse when tuning and consume only the status of session release."
     }
   ]
 }

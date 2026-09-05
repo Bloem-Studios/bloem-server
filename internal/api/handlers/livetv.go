@@ -26,12 +26,30 @@ import (
 
 // LiveTVHandler exposes Live TV / OTA / DVR APIs under /api/v1/livetv.
 type LiveTVHandler struct {
-	service *livetv.Service
+	service               *livetv.Service
+	PrimaryProfileChecker apimw.PrimaryProfileChecker
 	// JWTSecret signs the stream token appended to the returned HLS URL, so the
 	// native player fetching it carries a session-bound credential instead of the
 	// app's rotating access token. Empty disables minting (tests / minimal
 	// setups), which leaves the pre-existing bearer-in-the-query behavior.
 	JWTSecret string
+}
+
+// canManageOtherViewers keeps household profiles scoped to their own sessions
+// and DVR entries. An unresolved profile never receives an ownership override.
+func (h *LiveTVHandler) canManageOtherViewers(r *http.Request) bool {
+	if !apimw.IsAdmin(r.Context()) {
+		return false
+	}
+	profileID := apimw.ActiveProfileID(r)
+	if profileID == "" {
+		return true
+	}
+	if h.PrimaryProfileChecker == nil {
+		return false
+	}
+	primary, found, err := h.PrimaryProfileChecker(r.Context(), apimw.GetUserID(r.Context()), profileID)
+	return err == nil && found && primary
 }
 
 func NewLiveTVHandler(service *livetv.Service) *LiveTVHandler {
@@ -145,9 +163,11 @@ func (h *LiveTVHandler) HandleListChannels(w http.ResponseWriter, r *http.Reques
 	if channels == nil {
 		channels = []livetv.Channel{}
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Channels []livetv.Channel `json:"channels"`
-	}{Channels: channels})
+	publicChannels := make([]livetv.ChannelResponse, 0, len(channels))
+	for _, channel := range channels {
+		publicChannels = append(publicChannels, channel.ClientResponse())
+	}
+	writeJSON(w, http.StatusOK, livetv.ChannelsResponse{Channels: publicChannels})
 }
 
 func (h *LiveTVHandler) HandlePatchChannel(w http.ResponseWriter, r *http.Request) {
@@ -348,11 +368,7 @@ func (h *LiveTVHandler) HandleListGuide(w http.ResponseWriter, r *http.Request) 
 	if programs == nil {
 		programs = []livetv.Program{}
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Programs []livetv.Program `json:"programs"`
-		Start    time.Time        `json:"start"`
-		End      time.Time        `json:"end"`
-	}{Programs: programs, Start: start, End: end})
+	writeJSON(w, http.StatusOK, livetv.GuideResponse{Programs: programs, Start: start, End: end})
 }
 
 func (h *LiveTVHandler) HandleGetProgram(w http.ResponseWriter, r *http.Request) {
@@ -396,14 +412,7 @@ func (h *LiveTVHandler) HandleStartChannelSession(w http.ResponseWriter, r *http
 	if transport == "" {
 		transport = "mpegts"
 	}
-	writeJSON(w, http.StatusCreated, struct {
-		SessionID      string `json:"session_id"`
-		PlaybackTicket string `json:"playback_ticket"`
-		HLSURL         string `json:"hls_url"`
-		StreamURL      string `json:"stream_url"`
-		Transport      string `json:"transport,omitempty"`
-		Note           string `json:"note,omitempty"`
-	}{
+	writeJSON(w, http.StatusCreated, livetv.SessionStartResponse{
 		SessionID:      session.ID,
 		PlaybackTicket: ticket,
 		HLSURL:         hlsURL,
@@ -442,7 +451,7 @@ func (h *LiveTVHandler) HandleSessionStream(w http.ResponseWriter, r *http.Reque
 	sessionID := chi.URLParam(r, "sessionId")
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	session, err := h.service.GetSessionForViewer(r.Context(), sessionID, userID, profileID, enforceOwner)
 	if err != nil {
 		writeLiveTVError(w, err)
@@ -495,7 +504,7 @@ func (h *LiveTVHandler) HandleSessionHeartbeat(w http.ResponseWriter, r *http.Re
 	sessionID := chi.URLParam(r, "sessionId")
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	session, err := h.service.GetSessionForViewer(r.Context(), sessionID, userID, profileID, enforceOwner)
 	if err != nil {
 		writeLiveTVError(w, err)
@@ -517,7 +526,7 @@ func (h *LiveTVHandler) HandleReleaseSession(w http.ResponseWriter, r *http.Requ
 	profileID := apimw.GetProfileID(r.Context())
 	// Admins may release any session (tuner capacity recovery); everyone else
 	// may only release sessions they own.
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	session, err := h.service.ReleaseSession(
 		r.Context(),
 		chi.URLParam(r, "sessionId"),
@@ -535,7 +544,7 @@ func (h *LiveTVHandler) HandleReleaseSession(w http.ResponseWriter, r *http.Requ
 func (h *LiveTVHandler) HandleListRecordings(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	recordings, err := h.service.ListRecordings(
 		r.Context(), r.URL.Query().Get("status"), userID, profileID, enforceOwner,
 	)
@@ -546,19 +555,11 @@ func (h *LiveTVHandler) HandleListRecordings(w http.ResponseWriter, r *http.Requ
 	if recordings == nil {
 		recordings = []livetv.Recording{}
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Recordings []livetv.Recording `json:"recordings"`
-	}{Recordings: recordings})
+	writeJSON(w, http.StatusOK, livetv.RecordingsResponse{Recordings: recordings})
 }
 
 func (h *LiveTVHandler) HandleScheduleRecording(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		ProgramID string    `json:"program_id"`
-		ChannelID string    `json:"channel_id"`
-		Start     time.Time `json:"start"`
-		Stop      time.Time `json:"stop"`
-		Title     string    `json:"title"`
-	}
+	var body livetv.ScheduleRecordingRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "invalid JSON body")
 		return
@@ -582,7 +583,7 @@ func (h *LiveTVHandler) HandleScheduleRecording(w http.ResponseWriter, r *http.R
 func (h *LiveTVHandler) HandleCancelRecording(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	rec, err := h.service.CancelRecording(
 		r.Context(), chi.URLParam(r, "recordingId"), userID, profileID, enforceOwner,
 	)
@@ -596,7 +597,7 @@ func (h *LiveTVHandler) HandleCancelRecording(w http.ResponseWriter, r *http.Req
 func (h *LiveTVHandler) HandleListSeriesRules(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	rules, err := h.service.ListSeriesRules(r.Context(), userID, profileID, enforceOwner)
 	if err != nil {
 		writeLiveTVError(w, err)
@@ -605,20 +606,11 @@ func (h *LiveTVHandler) HandleListSeriesRules(w http.ResponseWriter, r *http.Req
 	if rules == nil {
 		rules = []livetv.SeriesRule{}
 	}
-	writeJSON(w, http.StatusOK, struct {
-		SeriesRules []livetv.SeriesRule `json:"series_rules"`
-	}{SeriesRules: rules})
+	writeJSON(w, http.StatusOK, livetv.SeriesRulesResponse{SeriesRules: rules})
 }
 
 func (h *LiveTVHandler) HandleCreateSeriesRule(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		SeriesID   string  `json:"series_id"`
-		ChannelID  *string `json:"channel_id"`
-		TitleMatch string  `json:"title_match"`
-		NewOnly    bool    `json:"new_only"`
-		KeepLast   int     `json:"keep_last"`
-		Enabled    *bool   `json:"enabled"`
-	}
+	var body livetv.CreateSeriesRuleRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "invalid JSON body")
 		return
@@ -647,7 +639,7 @@ func (h *LiveTVHandler) HandleCreateSeriesRule(w http.ResponseWriter, r *http.Re
 func (h *LiveTVHandler) HandleDeleteSeriesRule(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	if err := h.service.DeleteSeriesRule(
 		r.Context(), chi.URLParam(r, "ruleId"), userID, profileID, enforceOwner,
 	); err != nil {
@@ -674,7 +666,7 @@ func (h *LiveTVHandler) HandleLiveHLS(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	// A stream token carries no bearer identity on purpose, so an owner check
 	// against an absent user would reject every native-player fetch -- the exact
 	// 401 poll this migration removes. The token is the authorization instead, and

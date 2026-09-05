@@ -67,6 +67,7 @@ import { formatPlaybackQualityPreset } from "@/lib/playback-quality";
 import {
   PERMISSION_MARKER_EDIT,
   PERMISSION_METADATA_CURATION,
+  PERMISSION_WATCH_LIVE_TV,
   hasAssignedPermission,
   setAssignedPermission,
 } from "@/lib/permissions";
@@ -305,6 +306,10 @@ function OverviewTab({ user }: { user: AdminUser }) {
           <DetailRow
             label="Library Access"
             value={libraryNames + overridden(user.library_ids !== null)}
+          />
+          <DetailRow
+            label="Watch Live TV"
+            value={allowed(hasAssignedPermission(effective.permissions, PERMISSION_WATCH_LIVE_TV))}
           />
           <DetailRow
             label="Marker Editing"
@@ -1060,6 +1065,7 @@ function EditUserForm({ user, onClose }: { user: AdminUser; onClose: () => void 
   const roleSelectId = useId();
   const markerEditId = useId();
   const metadataCurationId = useId();
+  const liveTVId = useId();
   const updateMutation = useUpdateUser();
   const accessGroupValue = accessGroupID === null ? "none" : String(accessGroupID);
   // Hints come from the group selected right now, so they follow the picker
@@ -1198,6 +1204,24 @@ function EditUserForm({ user, onClose }: { user: AdminUser; onClose: () => void 
                 onCheckedChange={(checked) =>
                   setPermissions((current) =>
                     setAssignedPermission(current, PERMISSION_MARKER_EDIT, checked),
+                  )
+                }
+              />
+            </div>
+            <div className="border-border flex items-center justify-between rounded-md border px-3 py-2">
+              <div>
+                <Label htmlFor={liveTVId}>Watch Live TV</Label>
+                <p className="text-muted-foreground text-xs">
+                  Watch channels and manage recordings. Independent of library access; group
+                  restrictions still apply.
+                </p>
+              </div>
+              <Switch
+                id={liveTVId}
+                checked={hasAssignedPermission(permissions, PERMISSION_WATCH_LIVE_TV)}
+                onCheckedChange={(checked) =>
+                  setPermissions((current) =>
+                    setAssignedPermission(current, PERMISSION_WATCH_LIVE_TV, checked),
                   )
                 }
               />

@@ -6,6 +6,7 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/livetv"
 	"github.com/Silo-Server/silo-server/internal/music"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
@@ -35,6 +36,7 @@ type bloemClientSurface struct {
 	progress *handlers.ProgressHandler
 	persons  *handlers.PersonDetailHandler
 	music    *handlers.MusicHandler
+	liveTV   *handlers.LiveTVHandler
 
 	auth      *apimw.AuthMiddleware
 	tenant    *apimw.TenantMiddleware
@@ -82,6 +84,12 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	// is no document to compose. Search reuses the exact same reader — see
 	// CatalogWatchReader.Search — so a nil searchProvider only narrows what one
 	// method on it can do, never whether Watch mounts at all.
+	liveService := deps.LiveTV
+	if liveService == nil {
+		liveService = livetv.NewService(deps.DB)
+	}
+	surface.liveTV = handlers.NewLiveTVHandler(liveService)
+
 	if deps.FileRepo != nil {
 		// deps.PersonRepo is a concrete *catalog.PersonRepository, and it may be
 		// nil (people features disabled). Assigning a nil pointer straight into
@@ -165,7 +173,7 @@ func (s bloemClientSurface) mount(r chi.Router) {
 	if s.identity != nil {
 		r.Get("/server/identity", s.identity.HandleGetServerIdentity)
 	}
-	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.music == nil) {
+	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.music == nil && s.liveTV == nil) {
 		return
 	}
 
@@ -191,6 +199,9 @@ func (s bloemClientSurface) mount(r chi.Router) {
 		// would be a no-op here.
 		r.Use(apimw.RequireProfile)
 
+		if s.liveTV != nil {
+			r.Get("/livetv/capability", s.liveTV.HandleCapability)
+		}
 		if s.watch != nil {
 			r.Route("/watch", func(r chi.Router) {
 				r.Get("/home", s.watch.HandleWatchHome)

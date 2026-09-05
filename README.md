@@ -90,15 +90,92 @@ adds a focused set of its own capabilities alongside it:
 Unless called out above, the feature list below, deployment, and configuration
 remain Silo's own work, unchanged.
 
-## Highlights
+## Features
+
+Everything below is described in more depth in the
+[admin guide](docs/wiki/admin-guide.md) and the [user guide](docs/wiki/user-guide.md).
+
+**Libraries and metadata**
 
 - **Plays your media, your way** — direct play when the device supports it, remux or hardware-accelerated transcode (including NVENC) when it doesn't.
+- **Every kind of library** — movies, series, music, audiobooks, books and comics, each pointing at one or more folders; a first-run wizard creates the admin account and the first library.
+- **Plugin-driven metadata** — match and enrich your libraries with providers like TMDB and TVDB, installed as plugins; local `.nfo` sidecar files are honoured and merged with provider data; a wrong match is fixed with *Identify* and the fix survives rescans.
+- **Autoscan** — watch media folders and scan only what changed, per library, with a scan interval for network shares where folder watching does not fire.
+- **Collections and home sections** — manual collections, rule-based smart collections, and collection templates that sync from TMDB, Trakt or MDBList; the admin chooses which rows the home screen offers, viewers hide and reorder them.
+- **Search, calendar, people** — search across titles, people and descriptions (optionally backed by Meilisearch), a calendar of upcoming episodes and releases, and a page per actor, director or writer.
+- **Per-profile watchlist, favourites and history**, with the option to remove entries or mark something unwatched.
+
+**Playback**
+
+- **A full player on every device** — audio and subtitle track selection, subtitle appearance settings, subtitle search and machine translation where the operator enables it, an automatic quality ladder, chapters, skip intro, next-episode countdown and a sleep timer.
+- **Editions** — a title that exists in more than one version (theatrical and extended, two languages) lets the viewer choose which to play.
+- **Music, audiobooks and reading** — a music queue with shuffle and repeat; audiobooks with per-book position, speed control, chapters and a sleep timer, with lock-screen controls; an EPUB/PDF/comic reader whose position follows the reader across devices.
+- **Watch together** — several people on different devices watch the same thing in sync with a shared pause, across the web app and the phone and TV apps.
+- **Offline downloads** to phones and tablets when the operator allows it, per device, with separate controls for original and transcoded downloads.
+- **Hardware acceleration that probes itself** — set it to *auto* and Bloem checks what the container can actually reach, falling back to software; VA-API/Quick Sync and NVIDIA come as Compose overlays.
+
+**Households, accounts and access**
+
+- **Household profiles** — multiple profiles per account, with per-profile watch state and parental controls: a PIN per profile and a rating ceiling for children.
+- **Invitations and invite codes** — invite by email (no account exists until it is accepted) or hand out codes with a use limit and a policy.
+- **Access groups** — named permission sets (download, request media, Live TV) attached to users; deleting a group moves its members to the default group, never leaving anyone without a policy.
+- **Reusable access policy** — immutable entitlement-template revisions and organization policy cohorts make reviewed policy changes repeatable for one account or up to 10,000 snapshotted accounts, with separate controls for original downloads and transcoded downloads and either all libraries or an explicit library selection.
+- **Devices** — every signed-in phone, TV and browser, with remote sign-out, for the operator and for each viewer; TVs can sign in with a code from the phone app.
+
+**Requests, notifications and Live TV**
+
+- **Requests** — viewers ask for titles the library does not have; the operator approves, declines or fulfils from a queue, and the requester is notified when the item appears.
+- **Notifications** — an in-app inbox, email, Discord, and HMAC-signed generic webhooks whose receivers are disabled automatically when they keep failing; push notifications on the phone apps.
+- **Live TV, guide and DVR** — tune, record and show a programme guide from HDHomeRun tuners and Dispatcharr, discovered on the LAN or probed by address, with XMLTV guide sources and a Compose override for host networking. A separate, attributed adaptation of Prairie Server's subsystem (see above).
+
+**Compatibility and clients**
+
 - **Web app included** — a full-featured web client and admin interface ship with the server.
 - **Works with apps you already use** — a Jellyfin/Emby-compatible API supports clients such as VidHub, Findroid, and Infuse, and an Audiobookshelf-compatible API supports Audiobookshelf-protocol clients for audiobook/podcast playback, progress sync, bookmarks, and RSS feeds. Both are enabled by default and reachable on Bloem's own address — no extra ports to open. Both can be turned off in Admin > Settings, and an operator who wants a dedicated listener on a fixed port (`JF_PORT`/`ABS_PORT`, `8096`/`13378`) can still opt into one there.
-- **Household profiles** — multiple profiles per account, with per-profile watch state and parental controls.
-- **Reusable access policy** — immutable entitlement-template revisions and organization policy cohorts make reviewed policy changes repeatable for one account or up to 10,000 snapshotted accounts, with separate controls for original downloads and transcoded downloads and either all libraries or an explicit library selection.
-- **Plugin-driven metadata** — match and enrich your libraries with providers like TMDB and TVDB, installed as plugins.
+- **Native Bloem apps** for phone, tablet and TV, served by the native client API described above.
+- **Watch sync** to and from outside services, and optional **AI-assisted features** such as description translation, each with its own provider key.
+- **Themes and accessibility** — an operator-chosen default look, a theme editor for viewers on the web app, larger text, reduced motion and high contrast.
+
+**Operating it**
+
 - **Fast setup** — one `docker compose up -d` brings up the whole stack; everything else is configured in the admin UI.
+- **Server roles** — run everything on one machine (`integrated`) or split into `api`, `transcode` and `proxy` nodes sharing one database, with a Nodes page showing each worker's GPU, scratch disk and load.
+- **Object storage** for artwork and downloads on S3, MinIO or Cloudflare R2.
+- **Tasks, logs, diagnostics, maintenance and stats** — every background job with progress and history, a filterable server log, a one-click diagnostics bundle with credentials scrubbed, safe housekeeping tasks, and playback history that shows whether each play was direct or transcoded.
+- **Self-migrating updates and PostgreSQL auto-tuning** — the database migrates itself on start, a pinned image is one `SILO_IMAGE` line away, and the bundled PostgreSQL is tuned to the host (see Configuration below).
+- **Plugins are installed by the host operator**, not from the web app — a deliberate security boundary.
+
+## Quick start
+
+The shortest path to a running server, from the [admin guide](docs/wiki/admin-guide.md).
+You need Docker with Compose 2.24+, Git and OpenSSL, and a folder of media.
+
+```sh
+git clone https://github.com/bloem-studios/bloem-server.git
+cd bloem-server
+cp .env.example .env
+chmod 600 .env
+printf '\nPOSTGRES_PASSWORD=%s\nSECRET_KEY=%s\n' \
+  "$(openssl rand -hex 24)" "$(openssl rand -base64 48)" >> .env
+```
+
+Back up `SECRET_KEY` somewhere that is not the server; it encrypts every stored
+credential and a database backup does not contain it. Then open `.env` and set
+the absolute path to your media:
+
+```dotenv
+MEDIA_ROOT=/path/to/your/media
+```
+
+```sh
+docker compose up -d
+```
+
+Open **http://localhost:8090** (or `http://<server-ip>:8090` from another
+machine). The setup wizard creates the administrator account, confirms the
+server's address and adds the first library; scanning starts right after. For
+hardware transcoding, invite flows, reverse proxies and everything else, keep
+reading or go straight to the [admin guide](docs/wiki/admin-guide.md).
 
 ## Deploy with Docker (recommended)
 
@@ -349,6 +426,15 @@ If you prefer running Bloem without Docker:
    ```
 
    The server starts at `http://localhost:8080` by default. All other settings are configured through the admin UI.
+
+## Documentation
+
+- [Admin guide](docs/wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback and transcoding, access policy, Live TV, maintenance and troubleshooting.
+- [User guide](docs/wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests, notifications, and using Jellyfin/Emby/Audiobookshelf apps with a Bloem server.
+- [Wiki index](docs/wiki/index.md) — every operator- and viewer-facing page, including [Deploy Bloem with Docker](docs/wiki/deployment/docker.md), [Entitlement Templates](docs/wiki/admin/entitlement-templates.md), [Supported Media Folder Structures and Naming](docs/wiki/admin/media-folder-and-naming.md), [Collection Templates](docs/wiki/admin/collection-templates.md), [Local NFO Metadata](docs/wiki/admin/nfo-local-metadata.md) and [Monitoring Stream Nodes](docs/wiki/admin/monitoring-nodes.md).
+- [DEVELOPMENT.md](DEVELOPMENT.md) — building from source, tests, migrations and project layout; [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations.
+- [FORK.md](FORK.md) — provenance, deliberate divergence from upstream and the protected-remote setup; [TRADEMARK.md](TRADEMARK.md) and [LICENSE](LICENSE).
+- `docs/architecture/` and `docs/operations/` — design notes and operator runbooks, including the [v1 compatibility policy](docs/architecture/v1-scope.md), [entitlement-template operations](docs/operations/entitlement-templates.md), [bulk policy cohorts](docs/operations/bulk-policy-cohorts.md), [compatibility applications](docs/operations/compatibility-applications.md) and the [Canonical Settings API guide](docs/settings-api.md).
 
 ## Reporting Issues
 

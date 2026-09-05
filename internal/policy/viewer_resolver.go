@@ -185,6 +185,7 @@ func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)
 		MaxContentRating:          decision.MaxContentRating,
 		MaxPlaybackQuality:        decision.MaxPlaybackQuality,
 		PlaybackAllowed:           effective.PlaybackAllowed,
+		LiveTVAllowed:             access.LiveTVAllowed(user, profile, effective),
 		DownloadAllowed:           effective.DownloadAllowed,
 		PreferredMetadataLanguage: decision.PreferredMetadataLanguage,
 		MetadataLanguageOverrides: preferences.MetadataLanguageOverrides,

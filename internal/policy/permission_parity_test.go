@@ -8,6 +8,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/permissioncatalog"
 )
 
 func TestPermissionEffectivePermissionParity(t *testing.T) {
@@ -236,7 +237,7 @@ func permissionInputForUser(user *models.User, permission string) PermissionInpu
 func policyEffectivePermissions(t *testing.T, ctx context.Context, pdp *PDP, user *models.User) []string {
 	t.Helper()
 	var out []string
-	for _, permission := range []string{PermissionMarkerEdit, PermissionMetadataCuration} {
+	for _, permission := range permissioncatalog.Assignable() {
 		decision, _, err := pdp.CheckPermission(ctx, permissionInputForUser(user, permission))
 		if err != nil {
 			t.Fatalf("CheckPermission(%s) error: %v", permission, err)

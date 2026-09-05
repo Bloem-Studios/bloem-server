@@ -7,7 +7,11 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PERMISSION_MARKER_EDIT, PERMISSION_METADATA_CURATION } from "@/lib/permissions";
+import {
+  PERMISSION_MARKER_EDIT,
+  PERMISSION_METADATA_CURATION,
+  PERMISSION_WATCH_LIVE_TV,
+} from "@/lib/permissions";
 
 export interface EntitlementTemplateLibrary {
   id: number;
@@ -39,6 +43,7 @@ const DEFAULT_POLICY: EntitlementTemplatePolicy = {
 const ENTITLEMENT_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
   [PERMISSION_METADATA_CURATION, "Metadata curation"],
   [PERMISSION_MARKER_EDIT, "Marker editing"],
+  [PERMISSION_WATCH_LIVE_TV, "Watch Live TV"],
 ];
 
 function policyFor(template?: EntitlementTemplate): EntitlementTemplatePolicy {

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LiveTVAccessGate } from "@/components/livetv/LiveTVAccessGate";
 import { LiveTVGuideGrid } from "@/components/livetv/LiveTVGuideGrid";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
@@ -34,6 +35,14 @@ function normalizeTab(value: string | null): LiveTVTab {
 }
 
 export default function LiveTV() {
+  return (
+    <LiveTVAccessGate>
+      <LiveTVContent />
+    </LiveTVAccessGate>
+  );
+}
+
+function LiveTVContent() {
   useDocumentTitle("Live TV");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -134,8 +143,7 @@ export default function LiveTV() {
           <Badge variant="secondary">{channels.length} channels</Badge>
         </div>
         <p className="text-muted-foreground max-w-2xl text-sm leading-6">
-          Guide grid, channel lineup, and your recordings — play opens the same fullscreen player
-          used for movies and shows.
+          See what’s on now, browse upcoming programmes, and manage your recordings.
         </p>
       </header>
 

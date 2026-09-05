@@ -3421,6 +3421,7 @@ func main() {
 					)
 				}
 				compatDeps.AccessFilterFn = jellycompat.NewScopeAccessFilter(compatScopeResolver)
+				compatDeps.LiveTVAccessFn = jellycompat.NewScopeLiveTVAccess(compatScopeResolver)
 			}
 		}
 

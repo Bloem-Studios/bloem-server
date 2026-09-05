@@ -250,6 +250,7 @@ func newTestLiveTVHandler(store *livetvTestStore) *LiveTVHandler {
 	cfg.JellyfinCompat.ServerID = "test-server"
 	svc := livetv.NewServiceWithStore(store)
 	h := NewLiveTVHandler(svc, NewResourceIDCodec(), cfg)
+	h.access = func(context.Context, *Session) bool { return true }
 	h.now = func() time.Time { return time.Date(2026, 7, 25, 18, 30, 0, 0, time.UTC) }
 	return h
 }

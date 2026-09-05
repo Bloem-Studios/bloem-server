@@ -447,10 +447,28 @@ export async function api<T>(
  * headers cannot be replaced by the current session, and a stale snapshot is
  * rejected before fetch.
  */
-export async function apiWithProfileRequestContext<T>(
+export function apiWithProfileRequestContext<T>(
   path: string,
   snapshot: ProfileRequestContextSnapshot,
   options: RequestInit = {},
+): Promise<T> {
+  return apiForProfile<T>(path, snapshot, options, "/api/v1");
+}
+
+/** Native viewer routes use the same authentication, profile binding and refresh flow. */
+export function nativeApiWithProfileRequestContext<T>(
+  path: string,
+  snapshot: ProfileRequestContextSnapshot,
+  options: RequestInit = {},
+): Promise<T> {
+  return apiForProfile<T>(path, snapshot, options, "/api/bloem/v1");
+}
+
+async function apiForProfile<T>(
+  path: string,
+  snapshot: ProfileRequestContextSnapshot,
+  options: RequestInit,
+  prefix: "/api/v1" | "/api/bloem/v1",
 ): Promise<T> {
   if (!isProfileRequestContextCurrent(snapshot)) {
     throw new StaleApiRequestContextError();
@@ -459,7 +477,13 @@ export async function apiWithProfileRequestContext<T>(
   setHeader(headers, "Authorization", `Bearer ${snapshot.accessToken}`);
   setHeader(headers, "X-Profile-Id", snapshot.profileId);
   setHeader(headers, "X-Profile-Token", snapshot.profileToken ?? "");
-  const response = await apiResponseInternal(path, { ...options, headers }, "safe", snapshot);
+  const response = await apiResponseInternal(
+    path,
+    { ...options, headers },
+    "safe",
+    snapshot,
+    prefix,
+  );
   if (!isProfileRequestContextCurrent(snapshot)) {
     throw new StaleApiRequestContextError();
   }
@@ -487,6 +511,7 @@ async function apiResponseInternal(
   options: RequestInit,
   policy: RequestPolicy,
   snapshot?: ProfileRequestContextSnapshot,
+  prefix: "/api/v1" | "/api/bloem/v1" = "/api/v1",
 ): Promise<Response> {
   if (snapshot && !isProfileRequestContextCurrent(snapshot)) {
     throw new StaleApiRequestContextError();
@@ -507,7 +532,7 @@ async function apiResponseInternal(
   let res: Response;
   for (;;) {
     try {
-      res = await fetch(`/api/v1${path}`, { ...options, headers: requestHeaders });
+      res = await fetch(`${prefix}${path}`, { ...options, headers: requestHeaders });
     } catch (error) {
       if (!canRetryTransport(policy, retryableFailures, error)) throw error;
       retryableFailures += 1;

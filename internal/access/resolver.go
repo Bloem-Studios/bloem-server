@@ -91,6 +91,7 @@ func (r *Resolver) Resolve(ctx context.Context, input ResolveInput) (Scope, erro
 		LibrariesRestricted: effective.LibraryIDs != nil,
 		MaxPlaybackQuality:  NormalizePlaybackQuality(effective.MaxPlaybackQuality),
 		PlaybackAllowed:     effective.PlaybackAllowed,
+		LiveTVAllowed:       LiveTVAllowed(user, profile, effective),
 		DownloadAllowed:     effective.DownloadAllowed,
 		PolicyRevision:      user.AccessPolicyRevision,
 		ProfileVerified:     input.ProfileID == "",

@@ -5,11 +5,12 @@ package permissioncatalog
 import "slices"
 
 const (
+	WatchLiveTV      = "watch_live_tv"
 	MarkerEdit       = "marker_edit"
 	MetadataCuration = "metadata_curation"
 )
 
-var assignable = []string{MarkerEdit, MetadataCuration}
+var assignable = []string{MarkerEdit, MetadataCuration, WatchLiveTV}
 
 // Assignable returns the complete canonical permission set in stable order.
 func Assignable() []string {

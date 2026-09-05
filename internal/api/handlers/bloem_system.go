@@ -103,7 +103,7 @@ func buildBloemCapabilityTokens() []string {
 		}
 	}
 	add(playbackFeatures...)
-	add(featureDeclaredEventChannels)
+	add(featureDeclaredEventChannels, "live_tv_access_v1")
 	add(featureWatchDocumentV1, featureDevicePairingV1, featureProgressSyncV1, featureMusicCatalogV1)
 	return tokens
 }

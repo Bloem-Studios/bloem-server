@@ -30,6 +30,7 @@ var liveTVViewUUID = uuid.MustParse(liveTVViewID)
 
 // LiveTVHandler wraps *livetv.Service with Jellyfin Live TV HTTP endpoints.
 type LiveTVHandler struct {
+	access     LiveTVAccessResolver
 	service    *livetv.Service
 	codec      *ResourceIDCodec
 	serverID   string
@@ -164,6 +165,9 @@ func (h *LiveTVHandler) liveTVView() baseItemDTO {
 
 // HandleInfo serves GET /LiveTv/Info.
 func (h *LiveTVHandler) HandleInfo(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	tuners, err := h.service.ListTuners(r.Context())
 	if err != nil {
 		writeLiveTVCompatError(w, err)
@@ -195,6 +199,9 @@ func (h *LiveTVHandler) HandleInfo(w http.ResponseWriter, r *http.Request) {
 
 // HandleGuideInfo serves GET /LiveTv/GuideInfo.
 func (h *LiveTVHandler) HandleGuideInfo(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	now := h.now().UTC()
 	writeJSON(w, http.StatusOK, liveTVGuideInfoDTO{
 		StartDate: now.Add(-12 * time.Hour).Format(time.RFC3339Nano),
@@ -204,6 +211,9 @@ func (h *LiveTVHandler) HandleGuideInfo(w http.ResponseWriter, r *http.Request) 
 
 // HandleChannels serves GET /LiveTv/Channels.
 func (h *LiveTVHandler) HandleChannels(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	channels, err := h.service.ListChannels(r.Context(), "")
 	if err != nil {
 		writeLiveTVCompatError(w, err)
@@ -255,6 +265,9 @@ func (h *LiveTVHandler) HandleChannels(w http.ResponseWriter, r *http.Request) {
 
 // HandleChannel serves GET /LiveTv/Channels/{id}.
 func (h *LiveTVHandler) HandleChannel(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	channelID, err := h.decodeChannelID(chi.URLParam(r, "id"))
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NotFound", "Channel not found")
@@ -270,6 +283,9 @@ func (h *LiveTVHandler) HandleChannel(w http.ResponseWriter, r *http.Request) {
 
 // HandlePrograms serves GET|POST /LiveTv/Programs.
 func (h *LiveTVHandler) HandlePrograms(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	q := r.URL.Query()
 	if r.Method == http.MethodPost {
 		var body map[string]any
@@ -306,6 +322,9 @@ func (h *LiveTVHandler) HandlePrograms(w http.ResponseWriter, r *http.Request) {
 
 // HandleProgram serves GET /LiveTv/Programs/{id}.
 func (h *LiveTVHandler) HandleProgram(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	programID, err := h.decodeProgramID(chi.URLParam(r, "id"))
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NotFound", "Program not found")
@@ -321,6 +340,9 @@ func (h *LiveTVHandler) HandleProgram(w http.ResponseWriter, r *http.Request) {
 
 // HandleRecommendedPrograms serves GET /LiveTv/Programs/Recommended.
 func (h *LiveTVHandler) HandleRecommendedPrograms(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	now := h.now().UTC()
 	programs, err := h.service.ListGuide(r.Context(), nil, now.Add(-2*time.Hour), now.Add(6*time.Hour))
 	if err != nil {
@@ -356,6 +378,9 @@ func (h *LiveTVHandler) livetvOwner(w http.ResponseWriter, r *http.Request) (use
 
 // HandleTimers serves GET /LiveTv/Timers and POST /LiveTv/Timers.
 func (h *LiveTVHandler) HandleTimers(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	userID, profileID, ok := h.livetvOwner(w, r)
 	if !ok {
 		return
@@ -423,6 +448,9 @@ func (h *LiveTVHandler) HandleTimers(w http.ResponseWriter, r *http.Request) {
 
 // HandleTimer serves GET|POST|DELETE /LiveTv/Timers/{id}.
 func (h *LiveTVHandler) HandleTimer(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	userID, profileID, ok := h.livetvOwner(w, r)
 	if !ok {
 		return
@@ -471,6 +499,9 @@ func (h *LiveTVHandler) HandleTimer(w http.ResponseWriter, r *http.Request) {
 
 // HandleSeriesTimers serves GET /LiveTv/SeriesTimers and POST /LiveTv/SeriesTimers.
 func (h *LiveTVHandler) HandleSeriesTimers(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	userID, profileID, ok := h.livetvOwner(w, r)
 	if !ok {
 		return
@@ -532,6 +563,9 @@ func (h *LiveTVHandler) HandleSeriesTimers(w http.ResponseWriter, r *http.Reques
 
 // HandleSeriesTimer serves GET|POST|DELETE /LiveTv/SeriesTimers/{id}.
 func (h *LiveTVHandler) HandleSeriesTimer(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	userID, profileID, ok := h.livetvOwner(w, r)
 	if !ok {
 		return
@@ -567,6 +601,9 @@ func (h *LiveTVHandler) HandleSeriesTimer(w http.ResponseWriter, r *http.Request
 
 // HandleRecordings serves GET /LiveTv/Recordings.
 func (h *LiveTVHandler) HandleRecordings(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	userID, profileID, ok := h.livetvOwner(w, r)
 	if !ok {
 		return
@@ -603,6 +640,9 @@ func (h *LiveTVHandler) HandleRecordings(w http.ResponseWriter, r *http.Request)
 
 // HandleOpenLiveStream serves POST /LiveStreams/Open.
 func (h *LiveTVHandler) HandleOpenLiveStream(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	session := SessionFromContext(r.Context())
 	if session == nil {
 		writeError(w, http.StatusUnauthorized, "Unauthorized", "Missing authentication token")
@@ -660,6 +700,9 @@ func (h *LiveTVHandler) HandleCloseLiveStream(w http.ResponseWriter, r *http.Req
 
 // HandleLiveStreamFile serves GET /LiveTv/LiveStreamFiles/{id}/stream[.{container}].
 func (h *LiveTVHandler) HandleLiveStreamFile(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAccess(w, r) {
+		return
+	}
 	streamID := chi.URLParam(r, "id")
 	if streamID == "" {
 		streamID = chi.URLParam(r, "streamId")
@@ -728,6 +771,9 @@ func (h *LiveTVHandler) HandleLiveStreamFile(w http.ResponseWriter, r *http.Requ
 // AutoOpenLiveStream pattern) so RequiresOpening can be false and DirectStreamUrl
 // is immediately usable.
 func (h *LiveTVHandler) PlaybackMediaSource(ctx context.Context, session *Session, channelRouteID string, autoOpen bool, existingLiveStreamID string) (mediaSourceDTO, error) {
+	if !h.allowed(ctx, session) {
+		return mediaSourceDTO{}, errLiveTVForbidden
+	}
 	channelID, err := h.decodeChannelID(channelRouteID)
 	if err != nil {
 		return mediaSourceDTO{}, err
@@ -1127,6 +1173,8 @@ func parseFlexibleTime(raw string, fallback time.Time) time.Time {
 
 func writeLiveTVCompatError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, errLiveTVForbidden):
+		writeError(w, http.StatusForbidden, "Forbidden", err.Error())
 	case errors.Is(err, livetv.ErrNotFound):
 		writeError(w, http.StatusNotFound, "NotFound", err.Error())
 	case errors.Is(err, livetv.ErrInvalidArgument):

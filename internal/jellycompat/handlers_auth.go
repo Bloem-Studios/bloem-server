@@ -119,6 +119,7 @@ type AuthHandler struct {
 	loginResolver loginResolver
 	authenticator *Authenticator
 	liveTVEnabled bool
+	liveTVAccess  LiveTVAccessResolver
 }
 
 // SetLiveTVEnabled advertises Live TV access when the shared service is wired.
@@ -166,7 +167,7 @@ func (h *AuthHandler) HandleAuthenticateByName(w http.ResponseWriter, r *http.Re
 	writeJSON(w, http.StatusOK, authenticateByNameResponse{
 		AccessToken: session.Token,
 		ServerID:    h.cfg().JellyfinCompat.ServerID,
-		User:        h.userDTO(session),
+		User:        h.userDTO(r.Context(), session),
 		SessionInfo: h.sessionInfo(session),
 	})
 }
@@ -178,7 +179,7 @@ func (h *AuthHandler) HandleCurrentUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusUnauthorized, "Unauthorized", "Missing authentication token")
 		return
 	}
-	writeJSON(w, http.StatusOK, h.userDTO(session))
+	writeJSON(w, http.StatusOK, h.userDTO(r.Context(), session))
 }
 
 // HandleUsers serves GET /Users.
@@ -195,7 +196,7 @@ func (h *AuthHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "Unauthorized", "Missing authentication token")
 		return
 	}
-	writeJSON(w, http.StatusOK, []userDTOResponse{h.userDTO(session)})
+	writeJSON(w, http.StatusOK, []userDTOResponse{h.userDTO(r.Context(), session)})
 }
 
 // HandleUserByID serves GET /Users/{id}.
@@ -210,7 +211,7 @@ func (h *AuthHandler) HandleUserByID(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "NotFound", "User not found")
 		return
 	}
-	writeJSON(w, http.StatusOK, h.userDTO(session))
+	writeJSON(w, http.StatusOK, h.userDTO(r.Context(), session))
 }
 
 // HandleLogout serves POST /Sessions/Logout.
@@ -224,7 +225,8 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *AuthHandler) userDTO(session *Session) userDTOResponse {
+func (h *AuthHandler) userDTO(ctx context.Context, session *Session) userDTOResponse {
+	liveTVAllowed := h.liveTVEnabled && h.liveTVAccess != nil && h.liveTVAccess(ctx, session)
 	name := session.Username
 
 	return userDTOResponse{
@@ -246,7 +248,7 @@ func (h *AuthHandler) userDTO(session *Session) userDTOResponse {
 			EnableSharedDeviceControl:       false,
 			EnableRemoteAccess:              true,
 			EnableLiveTVManagement:          false,
-			EnableLiveTVAccess:              h.liveTVEnabled,
+			EnableLiveTVAccess:              liveTVAllowed,
 			EnableMediaPlayback:             true,
 			EnableAudioPlaybackTranscoding:  true,
 			EnableVideoPlaybackTranscoding:  true,
@@ -257,7 +259,7 @@ func (h *AuthHandler) userDTO(session *Session) userDTOResponse {
 			EnableSyncTranscoding:           false,
 			EnableMediaConversion:           false,
 			EnableAllDevices:                true,
-			EnableAllChannels:               h.liveTVEnabled,
+			EnableAllChannels:               liveTVAllowed,
 			EnableAllFolders:                true,
 			InvalidLoginAttemptCount:        0,
 			LoginAttemptsBeforeLockout:      0,
