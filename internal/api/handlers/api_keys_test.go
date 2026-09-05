@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -152,4 +153,27 @@ func (s *fakeAPIKeyStore) UpdateTierConditional(context.Context, int64, string, 
 }
 func (s *fakeAPIKeyStore) DeleteByAdminConditional(context.Context, int64, auth.APIKeyPrecondition) error {
 	return auth.ErrAPIKeyNotFound
+}
+
+func TestCreateAdminAPIKeyApplicationValidatesBeforeStorage(t *testing.T) {
+	for _, input := range []struct {
+		userID int
+		label  string
+		scopes []string
+	}{
+		{0, "new", nil},
+		{7, "", nil},
+		{7, "new", []string{"unknown"}},
+	} {
+		store := &fakeAPIKeyStore{}
+		_, err := NewAPIKeyHandler(store).CreateAdminAPIKey(t.Context(), input.userID, input.label, input.scopes)
+		if !errors.Is(err, ErrInvalidAPIKeyCreation) || store.created {
+			t.Fatalf("invalid input reached storage: %v", err)
+		}
+	}
+	store := &fakeAPIKeyStore{}
+	key, err := NewAPIKeyHandler(store).CreateAdminAPIKey(t.Context(), 7, "new", []string{auth.ScopeAdminUsers, auth.ScopeAdminUsers})
+	if err != nil || key.UserID != 7 || !slices.Equal(store.createdScopes, []string{auth.ScopeAdminUsers}) {
+		t.Fatalf("scope normalization failed: %v", err)
+	}
 }

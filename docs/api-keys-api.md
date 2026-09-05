@@ -184,3 +184,38 @@ DELETE /api/v1/admin/api-keys/{id}
 ```
 
 Returns `204`.
+
+## V2 admin lifecycle
+
+The v2 admin editor exposes the following operations under `/api/v2`:
+
+| Method | Path | Result |
+|---|---|---|
+| GET | `/admin/api-keys/capabilities` | Availability, supported scopes and tiers, and editor support |
+| GET | `/admin/api-keys` | Bounded metadata collection with opaque cursor continuation |
+| GET | `/admin/api-keys/{id}` | Canonical metadata and a strong `ETag` |
+| POST | `/admin/api-keys` | `201` creation response containing the full key and canonical `Location` |
+| PUT | `/admin/api-keys/{id}/tier` | Conditional tier update returning canonical metadata and `ETag` |
+| DELETE | `/admin/api-keys/{id}` | Conditional deletion returning `204` without a body |
+
+These operations preserve acting-admin and demo restrictions. Scoped API keys
+cannot access credential management; unscoped keys retain the owning account's
+access. Personal key management remains on v1.
+
+IDs use JSON strings. Canonical metadata excludes the full key, usage timestamps,
+and the owner's display name. The collection adds usage and owner display fields.
+Only the creation response contains the full credential. Save it then; creation
+must not be retried automatically after an uncertain response.
+
+The list accepts `limit` (1–200, default 50) and `cursor`. It orders by creation
+time descending, then ID descending. The cursor is bound to the acting account,
+profile, and page size. Continue using the returned cursor; a changed scope or
+invalid cursor requires a fresh first page. The list has no exact total.
+
+The tier update body is `{"rate_tier":"standard"}` or
+`{"rate_tier":"elevated"}`. Read the canonical resource before editing and send its captured tag in
+`If-Match`. A missing precondition returns `428`; a stale tag returns `412` with
+the current tag. `If-Match: *` explicitly permits changing the current resource.
+Canonical reads support conditional requests, including `304` for an unchanged
+`If-None-Match` tag. Authentication usage and no-op tier edits do not invalidate
+configuration tags. Successful deletion returns no validator.

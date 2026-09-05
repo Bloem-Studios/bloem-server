@@ -1442,7 +1442,8 @@ func fixtureCases() []fixtureCase {
 		fixtureCase{name: "get_admin_collection_template_job_completed", operationID: "getAdminCollectionJob", scenario: "Completed template jobs expose typed results with string library identifiers; internal reasons and payloads are omitted.", method: http.MethodGet, path: "/api/v2/admin/collection-jobs/collection-job", headers: bearer(adminToken), status: 200, assertHeaders: []string{"Content-Type", "ETag"}, schema: "#/components/schemas/AdminJob"},
 	)
 	cases = append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
-	return append(cases, personalHistoryImportFixtureCases()...)
+	cases = append(cases, personalHistoryImportFixtureCases()...)
+	return append(cases, adminAPIKeyFixtureCases()...)
 }
 
 // fixtureMultipartType is the multipart Content-Type of the avatar fixtures,
@@ -1495,6 +1496,7 @@ func fixtureDeps() Dependencies {
 	deps.Requests = fixtureRequests()
 	deps.AdminRequests = fixtureAdminRequests()
 	deps.AdminHistoryImports = fixtureAdminHistoryImports()
+	deps.AdminAPIKeys = fixtureAdminAPIKeys()
 	deps.HistoryImports = fixtureHistoryImports()
 	deps.WebhookSync = &fakeWebhookManagement{}
 	deps.Markers = &fakeMarkers{}

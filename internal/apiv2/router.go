@@ -178,6 +178,7 @@ type Dependencies struct {
 	WatchProviders      WatchProviderService
 	HistoryImports      HistoryImportService
 	AdminHistoryImports AdminHistoryImportService
+	AdminAPIKeys        AdminAPIKeyService
 	// PersonalCollections manages a profile's own collections and groups
 	// (*handlers.CollectionHandler).
 	PersonalCollections PersonalCollectionService

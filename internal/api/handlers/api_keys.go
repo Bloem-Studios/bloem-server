@@ -365,6 +365,19 @@ func (h *APIKeyHandler) HandleAdminCreateAPIKey(w http.ResponseWriter, r *http.R
 
 // These application methods are shared by the canonical admin editor. HTTP
 // authentication and precondition parsing stay at the transport boundary.
+var ErrInvalidAPIKeyCreation = errors.New("invalid API key creation input")
+
+func (h *APIKeyHandler) CreateAdminAPIKey(ctx context.Context, userID int, label string, scopes []string) (*models.APIKey, error) {
+	if userID <= 0 || label == "" {
+		return nil, ErrInvalidAPIKeyCreation
+	}
+	normalized, err := auth.NormalizeAPIKeyScopes(scopes)
+	if err != nil {
+		return nil, ErrInvalidAPIKeyCreation
+	}
+	return h.repo.Create(ctx, userID, label, normalized)
+}
+
 func (h *APIKeyHandler) GetAdminAPIKey(ctx context.Context, id int64) (*APIKeyConfiguration, error) {
 	key, err := h.repo.GetMetadataByID(ctx, id)
 	if err != nil {
