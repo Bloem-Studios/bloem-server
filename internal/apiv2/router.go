@@ -70,6 +70,7 @@ func init() {
 type Dependencies struct {
 	Markers               MarkerService
 	AdminSections         AdminSectionService
+	AdminPolicy           AdminPolicyService
 	AdminCollections      AdminCollectionService
 	AdminCollectionGroups AdminCollectionGroupService
 	WebhookSync           WebhookSyncService

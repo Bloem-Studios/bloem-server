@@ -420,6 +420,8 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST /api/v2/admin/sections/bulk", "POST /api/v2/admin/sections/preview", "GET /api/v2/admin/sections/capabilities",
 	)
 
+	observed = append(observed, "GET /api/v2/admin/policy/decisions", "GET /api/v2/admin/policy/decisions/{id}", "GET /api/v2/admin/policy/documents", "POST /api/v2/admin/policy/documents", "DELETE /api/v2/admin/policy/documents/{id}", "GET /api/v2/admin/policy/documents/{id}", "PATCH /api/v2/admin/policy/documents/{id}", "GET /api/v2/admin/policy/documents/{id}/versions", "POST /api/v2/admin/policy/documents/{id}/versions", "GET /api/v2/admin/policy/documents/{id}/versions/{version}", "PUT /api/v2/admin/policy/documents/{id}/active-version", "POST /api/v2/admin/policy/simulate", "POST /api/v2/admin/policy/validate", "GET /api/v2/admin/policy/vendor")
+
 	unaccounted, unserved, err := reconcileSpec(observed, contracts.OpenAPI, nil)
 	if err != nil || len(unaccounted) != 0 || len(unserved) != 0 {
 		t.Fatalf("baseline: %v %v %v", unaccounted, unserved, err)

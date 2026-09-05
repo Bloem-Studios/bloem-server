@@ -504,6 +504,7 @@ func registerAll(reg *Registry) {
 	registerPersonalCollections(reg)
 	registerAdminCollections(reg)
 	registerAdminSections(reg)
+	registerAdminPolicy(reg)
 	registerProfileSections(reg)
 	registerCatalogItems(reg)
 	registerMarkers(reg)

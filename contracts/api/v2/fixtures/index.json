@@ -276,6 +276,351 @@
       "body_file": null
     },
     {
+      "name": "admin_policy_activate_apply_failed",
+      "operation_id": "activateAdminPolicyVersion",
+      "scenario": "Activation reports persistence separately from local application; it is not an asynchronous job.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/admin/policy/documents/1/active-version",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "*"
+        },
+        "body": "{\"version_id\":\"2\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"90f5613bc4659499fc475e97.s2d99uz9dna2\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminPolicyApplyResult",
+      "body_file": "admin_policy_activate_apply_failed.json"
+    },
+    {
+      "name": "admin_policy_create",
+      "operation_id": "createAdminPolicyDocument",
+      "scenario": "A created document returns its saved identity, location, and validator.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/policy/documents",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"domain\":\"scope\",\"name\":\"Fixture scope\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"90f5613bc4659499fc475e97.s2d99uz9dna7\"",
+        "Location": "/api/v2/admin/policy/documents/1"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminPolicyDocument",
+      "body_file": "admin_policy_create.json"
+    },
+    {
+      "name": "admin_policy_decision",
+      "operation_id": "getAdminPolicyDecision",
+      "scenario": "A decision detail includes retained policy JSON samples.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/policy/decisions/3",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminPolicyDecision",
+      "body_file": "admin_policy_decision.json"
+    },
+    {
+      "name": "admin_policy_decisions",
+      "operation_id": "listAdminPolicyDecisions",
+      "scenario": "Empty decision pages carry items and terminal cursor state.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/policy/decisions",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminPolicyDecision",
+      "body_file": "admin_policy_decisions.json"
+    },
+    {
+      "name": "admin_policy_delete_stale",
+      "operation_id": "deleteAdminPolicyDocument",
+      "scenario": "A stale deletion fails before active-version constraints or persistence.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/admin/policy/documents/1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "\"stale\""
+        }
+      },
+      "expected_status": 412,
+      "response_headers": {
+        "Content-Type": "application/problem+json",
+        "ETag": "\"90f5613bc4659499fc475e97.s2d99uz9dna2\""
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_policy_delete_stale.json"
+    },
+    {
+      "name": "admin_policy_document",
+      "operation_id": "getAdminPolicyDocument",
+      "scenario": "Canonical document with a strong revision validator and string identifiers.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/policy/documents/1",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"90f5613bc4659499fc475e97.s2d99uz9dna7\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminPolicySnapshot",
+      "body_file": "admin_policy_document.json"
+    },
+    {
+      "name": "admin_policy_documents",
+      "operation_id": "listAdminPolicyDocuments",
+      "scenario": "Saved document identities use string identifiers and UTC millisecond timestamps.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/policy/documents",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminPolicyDocument",
+      "body_file": "admin_policy_documents.json"
+    },
+    {
+      "name": "admin_policy_enable_apply_failed",
+      "operation_id": "setAdminPolicyEnabled",
+      "scenario": "A committed enable write reports its persisted generation and failed local application and publication without inviting replay.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/admin/policy/documents/1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "*"
+        },
+        "body": "{\"enabled\":true}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"90f5613bc4659499fc475e97.s2d99uz9dna5\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminPolicyApplyResult",
+      "body_file": "admin_policy_enable_apply_failed.json"
+    },
+    {
+      "name": "admin_policy_invalid_draft_saved",
+      "operation_id": "createAdminPolicyVersion",
+      "scenario": "A draft that fails compilation is still saved; 201 returns its ID and diagnostics.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/policy/documents/1/versions",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"source\":\"invalid\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "Location": "/api/v2/admin/policy/documents/1/versions/3"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminPolicyVersion",
+      "body_file": "admin_policy_invalid_draft_saved.json"
+    },
+    {
+      "name": "admin_policy_missing_guard",
+      "operation_id": "setAdminPolicyEnabled",
+      "scenario": "The enabled mutation requires a captured canonical validator.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/admin/policy/documents/1",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"enabled\":false}"
+      },
+      "expected_status": 428,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_policy_missing_guard.json"
+    },
+    {
+      "name": "admin_policy_null_enabled",
+      "operation_id": "setAdminPolicyEnabled",
+      "scenario": "Explicit null cannot silently disable a policy document.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/admin/policy/documents/1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "*"
+        },
+        "body": "{\"enabled\":null}"
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_policy_null_enabled.json"
+    },
+    {
+      "name": "admin_policy_simulate",
+      "operation_id": "simulateAdminPolicy",
+      "scenario": "Simulation returns policy-owned JSON with evaluation time and observed generation.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/policy/simulate",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"domain\":\"permission\",\"input\":{\"resource\":\"fixture\"}}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminPolicySimulationResult",
+      "body_file": "admin_policy_simulate.json"
+    },
+    {
+      "name": "admin_policy_stale_guard",
+      "operation_id": "activateAdminPolicyVersion",
+      "scenario": "A stale activation is rejected before persistence and returns the current validator.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/admin/policy/documents/1/active-version",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "\"stale\""
+        },
+        "body": "{\"version_id\":\"2\"}"
+      },
+      "expected_status": 412,
+      "response_headers": {
+        "Content-Type": "application/problem+json",
+        "ETag": "\"90f5613bc4659499fc475e97.s2d99uz9dna2\""
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_policy_stale_guard.json"
+    },
+    {
+      "name": "admin_policy_validate",
+      "operation_id": "validateAdminPolicy",
+      "scenario": "Validation returns compile diagnostics without saving a version.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/policy/validate",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"domain\":\"scope\",\"source\":\"invalid\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminPolicyValidation",
+      "body_file": "admin_policy_validate.json"
+    },
+    {
+      "name": "admin_policy_vendor",
+      "operation_id": "listAdminPolicyVendor",
+      "scenario": "Vendor source modules use a named collection envelope.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/policy/vendor",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminPolicyVendor",
+      "body_file": "admin_policy_vendor.json"
+    },
+    {
+      "name": "admin_policy_version",
+      "operation_id": "getAdminPolicyVersion",
+      "scenario": "The version path names the saved version ID rather than its ordinal.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/policy/documents/1/versions/2",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminPolicyVersion",
+      "body_file": "admin_policy_version.json"
+    },
+    {
+      "name": "admin_policy_versions",
+      "operation_id": "listAdminPolicyVersions",
+      "scenario": "Immutable version metadata omits source bodies.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/policy/documents/1/versions",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminPolicyVersion",
+      "body_file": "admin_policy_versions.json"
+    },
+    {
       "name": "admin_request_integration_created",
       "operation_id": "createRequestIntegration",
       "scenario": "Acting administrator reads or configures requests with synthetic integration state.",

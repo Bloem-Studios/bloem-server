@@ -1451,7 +1451,8 @@ func fixtureCases() []fixtureCase {
 		fixtureCase{name: "admin_section_explicit_null_invalid", operationID: "createAdminSection", scenario: "Optional section definition fields must be omitted rather than explicitly null.", method: http.MethodPost, path: Prefix + "/admin/sections", headers: bearer(adminToken), body: `{"title":"Section","section_type":"recently_added","enabled":null}`, status: 422, assertHeaders: []string{"Content-Type"}, schema: problem},
 	)
 	cases = append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
-	return append(cases, personalHistoryImportFixtureCases()...)
+	cases = append(cases, personalHistoryImportFixtureCases()...)
+	return append(cases, adminPolicyFixtureCases()...)
 }
 
 // fixtureMultipartType is the multipart Content-Type of the avatar fixtures,
@@ -1490,6 +1491,9 @@ func fixtureDeps() Dependencies {
 	adminCollections.job = &models.AdminJob{ID: "collection-job", JobType: adminjob.JobTypeTemplateBundleApply, Status: adminjob.StatusQueued, RequestedAt: fixedTime()}
 	deps.AdminCollections = adminCollections
 	deps.AdminSections = newFakeAdminSections()
+	adminPolicy := newFakeAdminPolicy()
+	adminPolicy.applyFailed = true
+	deps.AdminPolicy = adminPolicy
 	deps.LibraryJobs = &fixtureAdminCollectionJobs{fakeLibraryJobs: *deps.LibraryJobs.(*fakeLibraryJobs)}
 	deps.LibrarySections = &fakeLibraryViews{}
 	deps.LibraryCollections = &fakeLibraryViews{}
