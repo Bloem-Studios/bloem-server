@@ -498,6 +498,9 @@ func registerCatalogItems(reg *Registry) {
 		"The seasons of a series with the viewer's rollups.")), reg.listSeriesSeasons)
 	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/series/{id}/seasons/{num}", "getSeriesSeason", "catalog",
 		"One season of a series by number.")), reg.getSeriesSeason)
+	Register(reg, viewer(humaOp(http.MethodGet, Prefix+"/catalog/series/{id}/seasons/{num}/episodes", "listSeasonEpisodes", "catalog",
+		"The episodes of one season of a series by number.")), reg.listSeasonEpisodes)
+	registerCatalogActions(reg)
 }
 
 // --- helpers ---
@@ -994,6 +997,22 @@ func (reg *Registry) getSeriesSeason(ctx context.Context, in *CatalogSeasonInput
 		return nil, serviceProblem(err)
 	}
 	return &SeasonOutput{Body: seasonOf(season)}, nil
+}
+
+func (reg *Registry) listSeasonEpisodes(ctx context.Context, in *CatalogSeasonInput) (*EpisodeCollectionOutput, error) {
+	svc, p := reg.catalogItems()
+	if p != nil {
+		return nil, p
+	}
+	viewer, p := reg.itemViewer(ctx, in.ImageSize, in.LibraryID, "")
+	if p != nil {
+		return nil, p
+	}
+	episodes, err := svc.SeasonEpisodes(ctx, viewer, in.ID, in.Number)
+	if err != nil {
+		return nil, serviceProblem(err)
+	}
+	return &EpisodeCollectionOutput{Body: EpisodeCollection{Collection: NewCollection(episodesOf(episodes))}}, nil
 }
 
 // --- renderers ---

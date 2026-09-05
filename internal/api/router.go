@@ -1916,6 +1916,18 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if catalogResourceHandler != nil {
 		v2deps.CatalogItems = catalogResourceHandler
 	}
+	if itemsHandler != nil {
+		v2deps.CatalogTrailers = itemsHandler
+	}
+	if metadataAIHandler != nil {
+		v2deps.MetadataAI = metadataAIHandler
+	}
+	if peopleHandler != nil {
+		v2deps.People = peopleHandler
+	}
+	if literaryWorkHandler != nil {
+		v2deps.LiteraryWorks = literaryWorkHandler
+	}
 	r.Handle("/api/v2/*", apiv2.NewHandler(v2deps))
 
 	r.Route("/api/v1", func(r chi.Router) {

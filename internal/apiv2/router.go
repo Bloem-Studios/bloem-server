@@ -21,6 +21,8 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	catalogpkg "github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/literaryworks"
+	"github.com/Silo-Server/silo-server/internal/metadata/translation"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/usercollections"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -113,6 +115,17 @@ type Dependencies struct {
 	// CatalogItems answers item, season, and episode reads
 	// (*handlers.CatalogResourceHandler).
 	CatalogItems CatalogItemService
+	// CatalogTrailers answers the trailer capability and refresh action
+	// (*handlers.ItemsHandler).
+	CatalogTrailers CatalogTrailerService
+	// MetadataAI answers the metadata AI capability and the on-view
+	// translation action (*handlers.MetadataAIHandler).
+	MetadataAI MetadataAIService
+	// People answers person search, detail, and refresh
+	// (*handlers.PeopleHandler).
+	People PeopleService
+	// LiteraryWorks answers literary works (*handlers.LiteraryWorkHandler).
+	LiteraryWorks LiteraryWorkService
 
 	// bodyReadTimeout overrides BodyReadTimeout; tests use it to exercise the
 	// 408 boundary without waiting for the production deadline.
@@ -479,6 +492,35 @@ type CatalogItemService interface {
 	ItemEpisodes(ctx context.Context, v handlers.ItemViewer, id string) ([]handlers.EpisodeView, error)
 	SeriesSeasons(ctx context.Context, v handlers.ItemViewer, id string) ([]handlers.SeasonView, error)
 	SeriesSeason(ctx context.Context, v handlers.ItemViewer, id string, num int) (handlers.SeasonView, error)
+	SeasonEpisodes(ctx context.Context, v handlers.ItemViewer, id string, num int) ([]handlers.EpisodeView, error)
+}
+
+// CatalogTrailerService is the slice of *handlers.ItemsHandler the trailer
+// capability and refresh action use.
+type CatalogTrailerService interface {
+	TrailerRefreshCapability() handlers.TrailerRefreshCapabilityView
+	RequestTrailersRefresh(ctx context.Context, userID int, contentID string, resolveAccess func() (catalogpkg.AccessFilter, error)) (handlers.TrailerRefreshView, error)
+}
+
+// MetadataAIService is the slice of *handlers.MetadataAIHandler the
+// capability and on-view translation use.
+type MetadataAIService interface {
+	Status() handlers.MetadataAIStatusView
+	TranslateOnView(ctx context.Context, filter catalogpkg.AccessFilter, contentID, targetLanguage string, requestedBy *int) (*translation.Job, error)
+}
+
+// PeopleService is the slice of *handlers.PeopleHandler the people
+// operations use.
+type PeopleService interface {
+	SearchPeople(ctx context.Context, query string, limit int) ([]handlers.PersonView, error)
+	Person(ctx context.Context, id int64) (handlers.PersonView, error)
+	RefreshPerson(ctx context.Context, userID int, id int64) error
+}
+
+// LiteraryWorkService is the slice of *handlers.LiteraryWorkHandler the work
+// read uses.
+type LiteraryWorkService interface {
+	Work(ctx context.Context, workID string, filter catalogpkg.AccessFilter) (*literaryworks.DetailResponse, error)
 }
 
 // unavailable is the fail-closed answer of an operation whose service is not
@@ -493,10 +535,14 @@ func unavailable(what string) *Problem {
 func serviceProblem(err error) *Problem {
 	var apiErr *handlers.APIError
 	if errors.As(err, &apiErr) {
-		if apiErr.Status >= 500 {
+		if apiErr.Status >= 500 && apiErr.Status != http.StatusServiceUnavailable {
 			return NewProblem(TypeInternalError, "An unexpected error occurred.")
 		}
-		return NewProblem(TypeForStatus(apiErr.Status), apiErr.Message)
+		p := NewProblem(TypeForStatus(apiErr.Status), apiErr.Message)
+		if apiErr.RetryAfter > 0 {
+			p = p.WithRetryAfter(apiErr.RetryAfter)
+		}
+		return p
 	}
 	return NewProblem(TypeInternalError, "An unexpected error occurred.")
 }

@@ -175,6 +175,16 @@ func (f *fakeCatalog) SeriesSeason(_ context.Context, _ handlers.ItemViewer, id 
 	return fakeSeason(), nil
 }
 
+func (f *fakeCatalog) SeasonEpisodes(_ context.Context, _ handlers.ItemViewer, id string, num int) ([]handlers.EpisodeView, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	if id != "series:severance" || num != 1 {
+		return nil, &handlers.APIError{Status: http.StatusNotFound, Code: "not_found", Message: "Season not found"}
+	}
+	return []handlers.EpisodeView{fakeEpisode(1), fakeEpisode(2)}, nil
+}
+
 func catalogDeps(t *testing.T) (Dependencies, *fakeCatalog) {
 	t.Helper()
 	deps := libraryViewDeps(t)
