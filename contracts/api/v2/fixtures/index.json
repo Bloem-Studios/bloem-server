@@ -83,6 +83,89 @@
       "body_file": "add_to_watchlist_profile_header_required.json"
     },
     {
+      "name": "admin_collection_explicit_null_invalid",
+      "operation_id": "createAdminCollection",
+      "scenario": "An optional definition member must be omitted instead of supplied as null.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/collections",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"title\":\"Collection\",\"library_id\":\"1\",\"description\":null}"
+      },
+      "expected_status": 422,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_collection_explicit_null_invalid.json"
+    },
+    {
+      "name": "admin_collection_precondition_required",
+      "operation_id": "updateAdminCollection",
+      "scenario": "An administrator definition update requires the validator observed before editing.",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/admin/collections/c1",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"title\":\"Edited\"}"
+      },
+      "expected_status": 428,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_collection_precondition_required.json"
+    },
+    {
+      "name": "admin_collection_stale",
+      "operation_id": "deleteAdminCollection",
+      "scenario": "A stale administrator deletion is rejected before mutation and returns the current validator.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/admin/collections/c1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "\"stale\""
+        }
+      },
+      "expected_status": 412,
+      "response_headers": {
+        "Content-Type": "application/problem+json",
+        "ETag": "\"faabd5e2d11a55980e701ee1.2gbju2epduq44\""
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_collection_stale.json"
+    },
+    {
+      "name": "admin_collection_template_job_accepted",
+      "operation_id": "startAdminCollectionTemplateBundleJob",
+      "scenario": "Queued template application returns a safe typed job and a dedicated collection-job monitor Location.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/collections/template-bundles/bundle/apply-job",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"library_ids\":[\"1\"]}"
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "Location": "/api/v2/admin/collection-jobs/collection-job",
+        "Retry-After": "5"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminJob",
+      "body_file": "admin_collection_template_job_accepted.json"
+    },
+    {
       "name": "authentication_required",
       "operation_id": null,
       "scenario": "An authenticated operation called without a credential.",
@@ -971,6 +1054,46 @@
       "response_media_type": "application/problem+json",
       "schema": "#/components/schemas/Problem",
       "body_file": "dismiss_home_item_profile_header_required.json"
+    },
+    {
+      "name": "get_admin_collection_ok",
+      "operation_id": "getAdminCollection",
+      "scenario": "Canonical administrator collection editor uses string library identifiers and a strong validator, without expiring artwork URLs.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/collections/c1",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"faabd5e2d11a55980e701ee1.2gbju2epduq44\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminCollection",
+      "body_file": "get_admin_collection_ok.json"
+    },
+    {
+      "name": "get_admin_collection_template_job_completed",
+      "operation_id": "getAdminCollectionJob",
+      "scenario": "Completed template jobs expose typed results with string library identifiers; internal reasons and payloads are omitted.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/collection-jobs/collection-job",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "ETag": "\"0b472a5bbc12bad513ee830425ec40802ff8f1fd7bb60b5b2f9d055490f0eb1a\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminJob",
+      "body_file": "get_admin_collection_template_job_completed.json"
     },
     {
       "name": "get_audio_preference_not_found",

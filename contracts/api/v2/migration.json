@@ -3619,7 +3619,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: PUT /api/v2/admin/collection-groups/{group_id}/collections/order (moveAndReorderAdminGroupCollections); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -3690,7 +3690,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: DELETE /api/v2/admin/collection-groups/{id} (deleteAdminCollectionGroup); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -3761,7 +3761,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: PATCH /api/v2/admin/collection-groups/{id} (updateAdminCollectionGroup); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -3832,7 +3832,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: GET /api/v2/admin/collections (listAdminCollections); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -3894,7 +3894,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: POST /api/v2/admin/collections (createAdminCollection); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -3956,7 +3956,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: POST /api/v2/admin/collections/import/mdblist (importAdminMDBList); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4018,7 +4018,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: POST /api/v2/admin/collections/import/tmdb (importAdminTMDB); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4080,7 +4080,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: POST /api/v2/admin/collections/import/trakt (importAdminTrakt); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4142,7 +4142,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: PUT /api/v2/admin/collections/order (reorderAdminCollections); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4204,7 +4204,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: POST /api/v2/admin/collections/preview (previewAdminCollection); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4266,7 +4266,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: GET /api/v2/admin/collections/template-bundles (listAdminCollectionTemplateBundles); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4328,7 +4328,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: POST /api/v2/admin/collections/template-bundles/{bundle_id}/apply (applyAdminCollectionTemplateBundle); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4390,7 +4390,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: POST /api/v2/admin/collections/template-bundles/{bundle_id}/apply-job (startAdminCollectionTemplateBundleJob); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4452,7 +4452,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: GET /api/v2/admin/collections/templates (listAdminCollectionTemplates); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4523,7 +4523,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: DELETE /api/v2/admin/collections/{id} (deleteAdminCollection); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4585,7 +4585,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: PATCH /api/v2/admin/collections/{id} (updateAdminCollection); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4647,7 +4647,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: DELETE /api/v2/admin/collections/{id}/image (deleteAdminCollectionImage); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4709,7 +4709,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: PUT /api/v2/admin/collections/{id}/items/order (reorderAdminCollectionItems); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4761,7 +4761,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: DELETE /api/v2/admin/collections/{id}/items/{item_id} (removeAdminCollectionItem); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4821,7 +4821,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: PUT /api/v2/admin/collections/{id}/items/{item_id} (addAdminCollectionItem); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -4883,7 +4883,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: POST /api/v2/admin/collections/{id}/sync (syncAdminCollection); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -8825,7 +8825,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: GET /api/v2/admin/libraries/{library_id}/collection-groups (listAdminCollectionGroups); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -8897,7 +8897,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented candidate: POST /api/v2/admin/libraries/{library_id}/collection-groups (createAdminCollectionGroup); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred."
     },
     {
       "listener": "api",
@@ -8969,7 +8969,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; libraryCollectionGroupHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "notes": "Implemented candidate: PUT /api/v2/admin/libraries/{library_id}/collection-groups/order (reorderAdminCollectionGroups); pending independent section review. Canonical editor/order GETs and split artwork PUTs are additional operations. The bundled web migration is in progress; legacy routes remain available. No existing Apple or Android administrator collection consumer was found. No owner or ratification is inferred.",
       "concurrency": "if_match"
     },
     {

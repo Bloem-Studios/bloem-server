@@ -227,6 +227,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range personalCollectionOperationIDs {
 		profileToken[id] = true
 	}
+	for _, id := range []string{"addAdminCollectionItem", "applyAdminCollectionTemplateBundle", "createAdminCollection", "createAdminCollectionGroup", "deleteAdminCollection", "deleteAdminCollectionGroup", "deleteAdminCollectionImage", "getAdminCollection", "getAdminCollectionCapabilities", "getAdminCollectionGroup", "getAdminCollectionGroupOrder", "getAdminCollectionItems", "getAdminCollectionItemsOrder", "getAdminCollectionJob", "getAdminCollectionOrder", "getAdminGroupCollectionOrder", "importAdminMDBList", "importAdminTMDB", "importAdminTrakt", "listAdminCollectionGroups", "listAdminCollectionTemplateBundles", "listAdminCollectionTemplates", "listAdminCollections", "moveAndReorderAdminGroupCollections", "previewAdminCollection", "removeAdminCollectionItem", "reorderAdminCollectionGroups", "reorderAdminCollectionItems", "reorderAdminCollections", "startAdminCollectionTemplateBundleJob", "syncAdminCollection", "updateAdminCollection", "updateAdminCollectionGroup", "uploadAdminCollectionBackdrop", "uploadAdminCollectionPoster"} {
+		profileToken[id] = true
+	}
 	expect["createCollection"] = map[int]bool{http.StatusCreated: true, http.StatusOK: false}
 	expect["createCollectionGroup"] = map[int]bool{http.StatusCreated: true, http.StatusOK: false}
 	expect["importMDBListCollection"] = map[int]bool{http.StatusCreated: true, http.StatusOK: false}

@@ -1791,3 +1791,57 @@ pagination shapes, canonical editor ETags, 412 recovery, capability flags, and t
 flow. Their existing v1 collection routes remain available during coordinated adoption.
 Jellyfin-protocol routes are unchanged; shared native storage fixes preserve chapter membership,
 and collection authorization checks remain enforced at the native service boundary.
+
+### Administrator collections v2
+
+The administrator collection surface uses `/api/v2/admin/collections` and
+`/api/v2/admin/collection-groups`. Operations require an acting administrator profile and retain
+the demo write guard. Library IDs are opaque strings at the boundary. JSON definition inputs
+exclude artwork source URLs; poster and backdrop changes each use a separate bounded multipart
+PUT with `image` or `source_url`. A definition can save successfully even if a later artwork
+request fails. Creation, provider imports, sync, template application, and artwork changes are
+non-retryable. The capability endpoint reports configured groups, imports, artwork, and item
+ordering support.
+
+Definition and group edits, deletes, and ordering require an observed `If-Match` validator.
+Canonical GETs return a strong ETag; collection editors omit presigned artwork URLs. Collection
+revisions protect definitions and manual item ordering. A library aggregate revision protects
+its group definitions, group ordering, and collection membership/order across groups, including
+the synthetic `ungrouped` group. Multi-library collections contribute to every affected library.
+Clients keep the validator loaded with an editor or captured when a drag or delete begins;
+a 412 preserves the draft and requires a fresh read. Partial manual item windows cannot be
+submitted as a complete reorder.
+
+The database applies guarded changes in serializable transactions. Each transaction checks its
+witness, writes targets, and consumes the witness. Membership changes lock collection parents
+before the complete sorted set of affected library revisions, including both old and new
+memberships. This order also applies to legacy writers. Serialization failures retry the whole
+database transaction; an exact validator is reported stale only after a committed reread proves
+it changed. Deadlocks and unrelated database errors retain their original identity.
+
+Collection deletion checks existing section references and commits the guarded database delete
+before best-effort artwork cleanup. Section references are stored in JSON without a foreign key.
+The inherited read-committed section writer can insert a reference concurrently with deletion;
+this migration does not claim to close that race. The admin-sections integrity audit must
+coordinate section reference writes with collection deletion before that guarantee can be made.
+
+Manual membership GETs return signed position/item continuation bound to the collection revision.
+Administrator pages include hidden catalog entries. Native membership writes recheck the manual
+collection type under the parent lock; additions also validate the item against current library
+memberships in the insertion statement. The guarded item reorder performs the same type check,
+including explicit wildcards. Repeated native additions preserve the existing position. The item-order editor returns at
+most 200 IDs and identifies partial results explicitly. Canonical collection ordering follows the
+saved order, including hidden collections, without promoting featured entries.
+
+Template bundles retain synchronous and dry-run application plus the asynchronous `apply-job`
+operation and existing featured-section effects. Accepted jobs supply a dedicated
+`/api/v2/admin/collection-jobs/{job_id}` Location. That poll endpoint accepts only template bundle
+application jobs, supports conditional polling, and projects a typed result without internal job
+payloads or operator failure details. It does not offer cancellation. The shared job listing
+remains a separate dependency for restoring previous jobs in the administrator UI.
+
+The 24 legacy administrator collection rows remain proposed until independent section review;
+legacy routes stay available. No existing Apple or Android administrator collection consumer was
+found in the client inventory. Jellyfin does not expose this administrator editing surface;
+shared catalog write invariants continue to apply to its collection reads. Administrator section
+route migration is separate from collection template application.

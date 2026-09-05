@@ -1180,6 +1180,14 @@ func fixtureCases() []fixtureCase {
 			method: http.MethodPost, path: "/api/v2/library-jobs/job-2/cancel", headers: bearer(adminToken), status: http.StatusAccepted, assertHeaders: []string{"Content-Type", "Cache-Control", "Location", "Retry-After", "ETag"}, schema: "#/components/schemas/AdminJob"},
 	}
 	cases = append(cases, requestLifecycleFixtureCases()...)
+	cases = append(cases,
+		fixtureCase{name: "get_admin_collection_ok", operationID: "getAdminCollection", scenario: "Canonical administrator collection editor uses string library identifiers and a strong validator, without expiring artwork URLs.", method: http.MethodGet, path: "/api/v2/admin/collections/c1", headers: bearer(adminToken), status: 200, assertHeaders: []string{"Content-Type", "ETag"}, schema: "#/components/schemas/AdminCollection"},
+		fixtureCase{name: "admin_collection_precondition_required", operationID: "updateAdminCollection", scenario: "An administrator definition update requires the validator observed before editing.", method: http.MethodPatch, path: "/api/v2/admin/collections/c1", headers: bearer(adminToken), body: `{"title":"Edited"}`, status: 428, assertHeaders: []string{"Content-Type"}, schema: problem},
+		fixtureCase{name: "admin_collection_stale", operationID: "deleteAdminCollection", scenario: "A stale administrator deletion is rejected before mutation and returns the current validator.", method: http.MethodDelete, path: "/api/v2/admin/collections/c1", headers: with(bearer(adminToken), "If-Match", `"stale"`), status: 412, assertHeaders: []string{"Content-Type", "ETag"}, schema: problem},
+		fixtureCase{name: "admin_collection_explicit_null_invalid", operationID: "createAdminCollection", scenario: "An optional definition member must be omitted instead of supplied as null.", method: http.MethodPost, path: "/api/v2/admin/collections", headers: bearer(adminToken), body: `{"title":"Collection","library_id":"1","description":null}`, status: 422, assertHeaders: []string{"Content-Type"}, schema: problem},
+		fixtureCase{name: "admin_collection_template_job_accepted", operationID: "startAdminCollectionTemplateBundleJob", scenario: "Queued template application returns a safe typed job and a dedicated collection-job monitor Location.", method: http.MethodPost, path: "/api/v2/admin/collections/template-bundles/bundle/apply-job", headers: bearer(adminToken), body: `{"library_ids":["1"]}`, status: 202, assertHeaders: []string{"Content-Type", "Location", "Retry-After"}, schema: "#/components/schemas/AdminJob"},
+		fixtureCase{name: "get_admin_collection_template_job_completed", operationID: "getAdminCollectionJob", scenario: "Completed template jobs expose typed results with string library identifiers; internal reasons and payloads are omitted.", method: http.MethodGet, path: "/api/v2/admin/collection-jobs/collection-job", headers: bearer(adminToken), status: 200, assertHeaders: []string{"Content-Type", "ETag"}, schema: "#/components/schemas/AdminJob"},
+	)
 	return append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
 }
 
@@ -1209,6 +1217,14 @@ func fixtureDeps() Dependencies {
 	deps.CollectionImports = &fakeCollectionImports{configured: true}
 	deps, _ = withLibraryAdmin(deps)
 	deps.LibraryJobs = &fakeLibraryJobs{job: &models.AdminJob{ID: "job-2", JobType: adminjob.JobTypeLibraryRefresh, Status: adminjob.StatusQueued, RequestedAt: fixedTime()}}
+
+	adminCollections := newFakeAdminCollections()
+	adminCollections.view.QueryDefinition = json.RawMessage(`{}`)
+	adminCollections.view.SortConfig = json.RawMessage(`{}`)
+	adminCollections.view.SourceConfig = json.RawMessage(`{}`)
+	adminCollections.job = &models.AdminJob{ID: "collection-job", JobType: adminjob.JobTypeTemplateBundleApply, Status: adminjob.StatusQueued, RequestedAt: fixedTime()}
+	deps.AdminCollections = adminCollections
+	deps.LibraryJobs = &fixtureAdminCollectionJobs{fakeLibraryJobs: *deps.LibraryJobs.(*fakeLibraryJobs)}
 	deps.LibrarySections = &fakeLibraryViews{}
 	deps.LibraryCollections = &fakeLibraryViews{}
 	home := &fakeHome{}
@@ -1432,4 +1448,15 @@ type fixturePersonalCollections struct{ fakePersonalCollections }
 
 func (f *fixturePersonalCollections) PersonalCollectionItemsPage(context.Context, int, string, string, catalogsvc.AccessFilter, userstore.CollectionItemsPageOptions, *catalogsvc.QueryCursor) (handlers.PersonalCollectionPageView, error) {
 	return handlers.PersonalCollectionPageView{Items: []handlers.PersonalCollectionItemView{{CollectionID: "c1", MediaItemID: "movie:heat-1995", Position: 0, AddedAt: "2026-01-02T03:04:05.000Z"}}, Revision: 1}, nil
+}
+
+// fixtureAdminCollectionJobs preserves the library-job fixture and adds a
+// deterministic completed template job on the separate kind-scoped monitor.
+type fixtureAdminCollectionJobs struct{ fakeLibraryJobs }
+
+func (f *fixtureAdminCollectionJobs) GetByID(ctx context.Context, id string) (*models.AdminJob, error) {
+	if id != "collection-job" {
+		return f.fakeLibraryJobs.GetByID(ctx, id)
+	}
+	return &models.AdminJob{ID: id, JobType: adminjob.JobTypeTemplateBundleApply, Status: adminjob.StatusCompleted, RequestedAt: fixedTime(), StartedAt: new(fixedTime()), CompletedAt: new(fixedTime()), ResultPayload: json.RawMessage(`{"bundle_id":"bundle","created":[{"template_id":"recent","template_title":"Recently added","library_id":1,"library_name":"Movies","collection_id":"c1"}],"skipped":[{"template_id":"existing","template_title":"Existing","library_id":1,"library_name":"Movies","reason":"Synthetic internal diagnostic"}]}`)}, nil
 }

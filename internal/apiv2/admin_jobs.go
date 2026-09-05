@@ -47,6 +47,7 @@ type LibraryDeletionJobResult struct {
 // request documents, operator messages, storage keys and diagnostics never leave
 // the job owner through this representation.
 type AdminJob struct {
+	TemplateResult *AdminTemplateResult      `json:"template_result,omitempty" nullable:"false"`
 	ID             string                    `json:"id"`
 	Kind           string                    `json:"kind"`
 	State          string                    `json:"state"`

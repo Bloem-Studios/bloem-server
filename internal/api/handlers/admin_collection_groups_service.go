@@ -50,11 +50,14 @@ func (h *LibraryCollectionGroupHandler) UpdateAdminCollectionGroup(ctx context.C
 	if id == "" {
 		return AdminCollectionGroupView{}, apiError(http.StatusBadRequest, "bad_request", "id required")
 	}
-	in := catalog.UpdateLibraryCollectionGroupInput{Name: req.Name, Slug: req.Slug}
+	in := catalog.UpdateLibraryCollectionGroupInput{Name: req.Name, Slug: req.Slug, ExpectedRevision: adminCollectionExpectedRevision(ctx)}
 	if req.DefaultSortMode != nil {
 		in.DefaultSortMode = new(models.GroupSortMode(*req.DefaultSortMode))
 	}
 	g, err := h.groupRepo.Update(ctx, id, in)
+	if errors.Is(err, catalog.ErrLibraryCollectionRevisionMismatch) {
+		return AdminCollectionGroupView{}, err
+	}
 	if errors.Is(err, catalog.ErrLibraryCollectionGroupNotFound) {
 		return AdminCollectionGroupView{}, apiError(http.StatusNotFound, "not_found", "Group not found")
 	}
@@ -68,7 +71,15 @@ func (h *LibraryCollectionGroupHandler) DeleteAdminCollectionGroup(ctx context.C
 	if id == "" {
 		return apiError(http.StatusBadRequest, "bad_request", "id required")
 	}
-	err := h.groupRepo.Delete(ctx, id)
+	var err error
+	if rev := adminCollectionExpectedRevision(ctx); rev != nil {
+		err = h.groupRepo.DeleteIfRevision(ctx, id, *rev)
+	} else {
+		err = h.groupRepo.Delete(ctx, id)
+	}
+	if errors.Is(err, catalog.ErrLibraryCollectionRevisionMismatch) {
+		return err
+	}
 	if errors.Is(err, catalog.ErrLibraryCollectionGroupNotFound) {
 		return apiError(http.StatusNotFound, "not_found", "Group not found")
 	}
