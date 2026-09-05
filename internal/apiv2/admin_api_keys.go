@@ -58,7 +58,8 @@ type AdminAPIKeyTierInput struct {
 	}
 }
 type AdminAPIKeyCreateInput struct {
-	Body struct {
+	RawBody []byte
+	Body    struct {
 		Label  string   `json:"label" minLength:"1"`
 		UserID ID       `json:"user_id,omitempty" pattern:"^[1-9][0-9]*$"`
 		Scopes []string `json:"scopes,omitempty"`
@@ -221,6 +222,9 @@ func registerAdminAPIKeys(reg *Registry) {
 	create := op(http.MethodPost, adminAPIKeyPath, "createAdminAPIKey", false)
 	create.DefaultStatus = http.StatusCreated
 	Register(reg, create, func(ctx context.Context, in *AdminAPIKeyCreateInput) (*AdminAPIKeyCreatedOutput, error) {
+		if p := rejectNonNullableNulls(in.RawBody, nil); p != nil {
+			return nil, p
+		}
 		svc, p := reg.adminAPIKeys()
 		if p != nil {
 			return nil, p

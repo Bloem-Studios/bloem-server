@@ -227,3 +227,31 @@ func TestAdminAPIKeyAuthenticationPolicy(t *testing.T) {
 		})
 	}
 }
+
+func TestAdminAPIKeyCreationRejectsExplicitNulls(t *testing.T) {
+	for _, body := range []string{
+		`{"label":"Review","user_id":null}`,
+		`{"label":"Review","scopes":null}`,
+		`{"label":"Review","scopes":[null]}`,
+	} {
+		t.Run(body, func(t *testing.T) {
+			f := fixtureAdminAPIKeys()
+			requireProblem(t, do(t, adminAPIKeyHandler(f), http.MethodPost, Prefix+adminAPIKeyPath, body, actingRequestAdmin), TypeValidationFailed)
+			if f.writes != 0 {
+				t.Fatal("explicit null reached creation service")
+			}
+		})
+	}
+	f := fixtureAdminAPIKeys()
+	response := do(t, adminAPIKeyHandler(f), http.MethodPost, Prefix+adminAPIKeyPath, `{"label":"Review"}`, actingRequestAdmin)
+	if response.Code != http.StatusCreated || f.writes != 1 || f.createUser != 2 {
+		t.Fatal("omission defaults changed", response.Code, response.Body.String())
+	}
+	var created AdminAPIKeyCreated
+	if err := json.Unmarshal(response.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.Scopes == nil || len(created.Scopes) != 0 {
+		t.Fatal("omitted scopes must produce an empty array")
+	}
+}
