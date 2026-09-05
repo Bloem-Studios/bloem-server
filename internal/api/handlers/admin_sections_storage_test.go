@@ -11,10 +11,12 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/userdb"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // A mixed provider must not inherit the PostgreSQL-only reset capability even
@@ -27,10 +29,12 @@ func (mixedSectionProvider) ForUser(context.Context, int) (userstore.UserStore, 
 
 func TestRestoreSectionDefaultsRejectsUnsupportedProfileResetBeforeWrites(t *testing.T) {
 	for name, provider := range map[string]userstore.UserStoreProvider{
-		"unavailable":  nil,
-		"sqlite":       userdb.NewSQLiteProvider(nil),
-		"mixed":        mixedSectionProvider{pgstore.NewPostgresProvider(nil)},
-		"nil postgres": (*pgstore.PostgresProvider)(nil),
+		"unavailable":    nil,
+		"sqlite":         userdb.NewSQLiteProvider(nil),
+		"mixed":          mixedSectionProvider{pgstore.NewPostgresProvider(nil)},
+		"wrapped sqlite": notifications.WrapUserStoreProvider(userdb.NewSQLiteProvider(nil), &notifications.System{}),
+		"wrapped mixed":  notifications.WrapUserStoreProvider(mixedSectionProvider{pgstore.NewPostgresProvider(nil)}, &notifications.System{}),
+		"nil postgres":   (*pgstore.PostgresProvider)(nil),
 	} {
 		t.Run(name, func(t *testing.T) {
 			// No repository is wired: an attempted definition read or write would panic.
@@ -91,7 +95,7 @@ func TestRestoreSectionDefaultsPostgresResetAndSQLiteDefinitionsDB(t *testing.T)
 			f.exec(t, `INSERT INTO user_settings(user_id,key,value) VALUES($1,$2,'[]') ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value`, f.account, key)
 			var provider userstore.UserStoreProvider = userdb.NewSQLiteProvider(nil)
 			if reset {
-				provider = pgstore.NewPostgresProvider(f.pool)
+				provider = notifications.WrapUserStoreProvider(pgstore.NewPostgresProvider(f.pool), &notifications.System{})
 			}
 			h := &SectionHandler{repo: repo, StoreProvider: provider}
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/sections/restore-defaults", strings.NewReader(fmt.Sprintf(`{"scope":"library","library_id":%d,"reset_profiles":%v}`, f.library, reset)))
@@ -109,6 +113,37 @@ func TestRestoreSectionDefaultsPostgresResetAndSQLiteDefinitionsDB(t *testing.T)
 			}
 			if (overrides == 0) != reset {
 				t.Fatalf("reset=%v remaining overrides=%d", reset, overrides)
+			}
+		})
+	}
+}
+
+func TestSectionProfileResetCapabilitySurvivesProductionDecorator(t *testing.T) {
+	pool := &pgxpool.Pool{}
+	pg := pgstore.NewPostgresProvider(pool)
+	sqlite := userdb.NewSQLiteProvider(nil)
+	wrap := func(p userstore.UserStoreProvider) userstore.UserStoreProvider {
+		return notifications.WrapUserStoreProvider(p, &notifications.System{})
+	}
+	for _, tc := range []struct {
+		name     string
+		provider userstore.UserStoreProvider
+		want     bool
+	}{
+		{"postgres", pg, true},
+		{"wrapped postgres", wrap(pg), true},
+		{"nested notification wrappers", wrap(wrap(pg)), true},
+		{"sqlite", sqlite, false},
+		{"wrapped sqlite", wrap(sqlite), false},
+		{"mixed", mixedSectionProvider{pg}, false},
+		{"wrapped mixed", wrap(mixedSectionProvider{pg}), false},
+		{"different pool", wrap(pgstore.NewPostgresProvider(&pgxpool.Pool{})), false},
+		{"wrapped typed nil", wrap((*pgstore.PostgresProvider)(nil)), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := &SectionHandler{repo: sections.NewRepository(pool), StoreProvider: tc.provider}
+			if got := h.canResetAllSectionProfileOverrides(); got != tc.want {
+				t.Fatalf("reset capability=%v, want %v", got, tc.want)
 			}
 		})
 	}

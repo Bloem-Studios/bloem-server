@@ -1950,9 +1950,11 @@ raw section ID. A guarded no-op consumes its witness; an exact serialization con
 stale validator only after a committed reread proves the revision changed.
 
 Replacing defaults and resetting all profile section overrides share one PostgreSQL transaction.
-The all-profile reset is unavailable for SQLite or mixed user-store providers and is rejected
-before any definition write. Global section definitions still use PostgreSQL with either user
-store; supporting them does not imply support for resetting every profile's overrides.
+The provider must guarantee that every account uses the section repository's PostgreSQL pool;
+notification decorators forward this capability. The all-profile reset is unavailable for SQLite
+or mixed user-store providers and is rejected before any definition write. Global section
+definitions still use PostgreSQL with either user store; supporting them does not imply support
+for resetting every profile's overrides.
 
 Manual membership GETs return signed position/item continuation bound to the collection revision.
 Administrator pages include hidden catalog entries. Native membership writes recheck the manual

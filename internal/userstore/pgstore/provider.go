@@ -31,3 +31,9 @@ func (p *PostgresProvider) ForUser(_ context.Context, userID int) (userstore.Use
 func (p *PostgresProvider) Close() error {
 	return nil
 }
+
+// SupportsAtomicSectionProfileReset requires the pool that owns all accounts'
+// overrides, so their reset can join the section-definition transaction.
+func (p *PostgresProvider) SupportsAtomicSectionProfileReset(pool *pgxpool.Pool) bool {
+	return p != nil && pool != nil && p.pool == pool
+}

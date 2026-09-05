@@ -21,7 +21,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/userstore"
-	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
 
 // SectionHandler handles section management and batch section endpoints.
@@ -1769,6 +1768,5 @@ func (h *SectionHandler) HandleRestoreDefaults(w http.ResponseWriter, r *http.Re
 // same transaction domain as page_sections. SQLite and mixed providers cannot
 // participate in the atomic all-profile reset.
 func (h *SectionHandler) canResetAllSectionProfileOverrides() bool {
-	provider, ok := h.StoreProvider.(*pgstore.PostgresProvider)
-	return ok && provider != nil
+	return h.repo.CanResetAllProfileOverrides(h.StoreProvider)
 }

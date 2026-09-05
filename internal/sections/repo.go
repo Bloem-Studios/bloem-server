@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/idgen"
+	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
 // ErrSectionNotFound is returned when a section cannot be found.
@@ -610,4 +611,11 @@ func (r *Repository) createMany(ctx context.Context, rows []*PageSection) error 
 		}
 	}
 	return nil
+}
+
+// CanResetAllProfileOverrides checks the whole-provider guarantee against the
+// pool used by the atomic definition and override reset.
+func (r *Repository) CanResetAllProfileOverrides(provider userstore.UserStoreProvider) bool {
+	capability, ok := provider.(userstore.SectionProfileResetProvider)
+	return r != nil && ok && capability.SupportsAtomicSectionProfileReset(r.pool)
 }
