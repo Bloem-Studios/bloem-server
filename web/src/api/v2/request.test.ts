@@ -14,6 +14,7 @@ import profileVerificationRequired from "../../../../contracts/api/v2/fixtures/p
 import type { AdminUser, User } from "../types";
 import {
   onProfileUnverified,
+  captureProfileRequestContext,
   setAccessToken,
   setProfileId,
   setProfileToken,
@@ -261,6 +262,27 @@ describe("v2 request boundary", () => {
       Accept: "application/json",
     });
     expect(localStorage.getItem("refresh_token")).toBe("refresh-2");
+  });
+
+  it("sends a captured nonretryable mutation only once on 401", async () => {
+    setAccessToken("expired");
+    setRefreshToken("refresh-1");
+    setProfileId("p-owner");
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      json(authenticationRequired, 401, PROBLEM_HEADERS),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const profileContext = captureProfileRequestContext()!;
+    await expect(
+      v2("POST /api/v2/admin/api-keys", {
+        body: { label: "Review" },
+        profileContext,
+        retryAuthentication: false,
+      }),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]![0])).toBe("/api/v2/admin/api-keys");
+    expect(localStorage.getItem("refresh_token")).toBe("refresh-1");
   });
 
   it("does not retry a 401 when there is no refresh token", async () => {
