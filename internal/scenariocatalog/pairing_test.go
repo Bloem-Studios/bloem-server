@@ -61,3 +61,48 @@ func TestPairingSchemaAndOperation(t *testing.T) {
 		})
 	}
 }
+
+func TestRequiredDevicePairingCannotShrink(t *testing.T) {
+	for _, id := range RequiredDeviceListScenarios {
+		for _, remove := range []bool{false, true} {
+			catalogs, err := Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			pilot, err := DeviceListAcceptance(catalogs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows := pilot[0].Rows[0].Scenarios
+			for i := range rows {
+				if rows[i].ID != id {
+					continue
+				}
+				if remove {
+					pilot[0].Rows[0].Scenarios = append(rows[:i], rows[i+1:]...)
+				} else {
+					rows[i].V2Expectation = nil
+				}
+				break
+			}
+			if _, err := DeviceListAcceptance(pilot); err == nil || !strings.Contains(err.Error(), id) {
+				t.Fatalf("missing %s accepted: %v", id, err)
+			}
+		}
+	}
+}
+
+func TestRequiredDevicePairingRejectsDuplicate(t *testing.T) {
+	catalogs, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pilot, err := DeviceListAcceptance(catalogs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pilot[0].Rows[0].Scenarios = append(pilot[0].Rows[0].Scenarios, pilot[0].Rows[0].Scenarios[0])
+	if _, err := DeviceListAcceptance(pilot); err == nil {
+		t.Fatal("duplicate accepted")
+	}
+}

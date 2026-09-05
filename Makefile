@@ -423,3 +423,8 @@ endif
 .PHONY: test-scenario-profile-pairing
 test-scenario-profile-pairing:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredProfileListAcceptance$$' ./internal/scenariocatalog/executor
+
+# Required paired device-list acceptance uses the same guarded scratch DB.
+.PHONY: test-scenario-device-pairing
+test-scenario-device-pairing:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceListAcceptance$$' ./internal/scenariocatalog/executor
