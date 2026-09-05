@@ -17,12 +17,13 @@ import (
 // fakeCatalog backs the catalog-items operations: it records the request
 // the seam received and answers a fixed page.
 type fakeCatalog struct {
-	err        error
-	lastReq    catalogpkg.CatalogRequest
-	lastViewer handlers.ItemViewer
-	lastGroup  bool
-	lastQuery  handlers.CatalogQueryRequest
-	lastGroups catalogpkg.AudiobookGroupsQuery
+	sourceOrder bool
+	err         error
+	lastReq     catalogpkg.CatalogRequest
+	lastViewer  handlers.ItemViewer
+	lastGroup   bool
+	lastQuery   handlers.CatalogQueryRequest
+	lastGroups  catalogpkg.AudiobookGroupsQuery
 }
 
 func (f *fakeCatalog) ContextAccessFilter(ctx context.Context, opts handlers.AccessFilterOptions) (catalogpkg.AccessFilter, error) {
@@ -40,6 +41,10 @@ func (f *fakeCatalog) Browse(_ context.Context, v handlers.ItemViewer, req catal
 	f.lastReq, f.lastViewer, f.lastGroup = req, v, grouped
 	view := handlers.CatalogBrowseView{Total: 3, TotalExact: true, Snapshot: "2026-01-02T03:04:05.678Z",
 		EffectiveSort: &handlers.EffectiveSortView{Field: "title", Order: "asc"}}
+	if f.sourceOrder {
+		view.EffectiveSort = nil
+		view.ResolvedSort = new(catalogpkg.QuerySort)
+	}
 	ids := []string{"movie:heat-1995", "movie:alien-1979", "movie:blade-runner-1982"}
 	for i := req.Offset; i < len(ids) && len(view.Items) < req.Limit; i++ {
 		view.Items = append(view.Items, fakeListingCard(ids[i]))
@@ -511,4 +516,29 @@ func TestSeriesSeasons(t *testing.T) {
 	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/catalog/series/series:severance/seasons/2", "", viewerHeaders()), TypeNotFound)
 	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/catalog/series/series:severance/seasons/one", "", viewerHeaders()), TypeValidationFailed)
 	requireProblem(t, do(t, h, http.MethodGet, "/api/v2/catalog/series/series:severance/seasons/-1", "", viewerHeaders()), TypeValidationFailed)
+}
+
+func TestListCatalogItemsPreservesResolvedSourceOrderCursors(t *testing.T) {
+	deps, fake := catalogDeps(t)
+	fake.sourceOrder = true
+	h := newTestHandler(t, deps)
+	path := "/api/v2/catalog?source=library_collection&collection_id=collection&limit=1"
+	first := do(t, h, http.MethodGet, path, "", viewerHeaders())
+	if first.Code != 200 {
+		t.Fatal(first.Code, first.Body.String())
+	}
+	var body struct {
+		Page         PageInfo `json:"page"`
+		WindowCursor string   `json:"window_cursor"`
+	}
+	decodeJSON(t, first.Body, &body)
+	for _, query := range []string{"&cursor=" + body.Page.NextCursor, "&cursor=" + body.WindowCursor + "&seek=1"} {
+		response := do(t, h, http.MethodGet, path+query, "", viewerHeaders())
+		if response.Code != 200 {
+			t.Fatal(response.Code, response.Body.String())
+		}
+		if fake.lastReq.ResolvedSort == nil || *fake.lastReq.ResolvedSort != (catalogpkg.QuerySort{}) {
+			t.Fatalf("source-order sentinel lost: %+v", fake.lastReq.ResolvedSort)
+		}
+	}
 }

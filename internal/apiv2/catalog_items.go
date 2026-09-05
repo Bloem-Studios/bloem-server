@@ -815,7 +815,9 @@ func (reg *Registry) listCatalogItems(ctx context.Context, cursors *Cursors, in 
 	if err != nil {
 		return nil, catalogProblem(err, "query.source")
 	}
-	if view.EffectiveSort != nil {
+	if view.ResolvedSort != nil {
+		req.ResolvedSort = view.ResolvedSort
+	} else if view.EffectiveSort != nil {
 		req.ResolvedSort = &catalogpkg.QuerySort{Field: view.EffectiveSort.Field, Order: view.EffectiveSort.Order}
 	}
 	next := ""

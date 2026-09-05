@@ -142,9 +142,7 @@ func catalogBrowseView(result *catalog.CatalogResult, items []itemListResponse) 
 	if !result.SnapshotAt.IsZero() {
 		snapshot = result.SnapshotAt.Format(time.RFC3339Nano)
 	}
-	// A non-empty Provider is the single gate: only the direct-search path sets
-	// it. Browse / preview / non-relevance-sort q= (which never run a provider)
-	// omit it when the resolver did not use a search provider.
+	// Search diagnostics are present only when the resolver used a search provider.
 	var diag *searchDiagnostics
 	if result.Provider != "" {
 		diag = &searchDiagnostics{Provider: result.Provider, Mode: result.Mode, SemanticUsed: result.SemanticUsed, FallbackReason: result.FallbackReason, IndexPendingUpdates: result.IndexPendingEvents, ResultWindowLimit: result.ResultWindowLimit, SessionExpiresAt: result.SessionExpiresAt}
@@ -153,7 +151,12 @@ func catalogBrowseView(result *catalog.CatalogResult, items []itemListResponse) 
 	if field := strings.TrimSpace(result.EffectiveSort.Field); field != "" {
 		effectiveSort = &effectiveSortResponse{Field: field, Order: result.EffectiveSort.Order}
 	}
+	var resolvedSort *catalog.QuerySort
+	if result.EffectiveSortResolved {
+		resolvedSort = new(result.EffectiveSort)
+	}
 	return CatalogBrowseView{
+		ResolvedSort:      resolvedSort,
 		Next:              result.Next,
 		CursorScope:       result.CursorScope,
 		Total:             result.Total,

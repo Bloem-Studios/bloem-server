@@ -46,6 +46,8 @@ type CatalogResult struct {
 	// sort precedence. An empty Field means source order. Clients use it to show
 	// which sort is active when the request carried none.
 	EffectiveSort QuerySort
+	// EffectiveSortResolved distinguishes source order from an unresolved sort.
+	EffectiveSortResolved bool
 }
 
 type CatalogFiltersResult struct {
@@ -403,6 +405,7 @@ func (r *CatalogResolver) resolveSectionSource(ctx context.Context, req CatalogR
 				Limit:        req.Limit,
 				Offset:       req.Offset,
 				CursorPaging: req.CursorPaging, GroupByWork: req.GroupByWork, After: req.After, Seek: req.Seek,
+				ResolvedSort:   req.ResolvedSort,
 				SkipTotal:      req.SkipTotal,
 				UseSourceOrder: true,
 			}, access)
@@ -417,6 +420,7 @@ func (r *CatalogResolver) resolveSectionSource(ctx context.Context, req CatalogR
 			Limit:        req.Limit,
 			Offset:       req.Offset,
 			CursorPaging: req.CursorPaging, GroupByWork: req.GroupByWork, After: req.After, Seek: req.Seek,
+			ResolvedSort:   req.ResolvedSort,
 			SkipTotal:      req.SkipTotal,
 			UseSourceOrder: true,
 		}, access)
@@ -450,6 +454,7 @@ func (r *CatalogResolver) resolveSectionSource(ctx context.Context, req CatalogR
 			Limit:        req.Limit,
 			Offset:       req.Offset,
 			CursorPaging: req.CursorPaging, GroupByWork: req.GroupByWork, After: req.After, Seek: req.Seek,
+			ResolvedSort:   req.ResolvedSort,
 			SkipTotal:      req.SkipTotal,
 			UseSourceOrder: useSourceOrder,
 		}, access)
@@ -766,6 +771,7 @@ func (r *CatalogResolver) resolveCollectionWithEffectiveSort(
 		return nil, err
 	}
 	result.EffectiveSort = req.Query.Sort
+	result.EffectiveSortResolved = true
 	return result, nil
 }
 
@@ -849,6 +855,7 @@ func (r *CatalogResolver) resolvePersonalSource(ctx context.Context, req Catalog
 	}
 	if req.Source == CatalogSourceFavorites || req.Source == CatalogSourceWatchlist {
 		result.EffectiveSort = req.Query.Sort
+		result.EffectiveSortResolved = true
 	}
 	return result, nil
 }

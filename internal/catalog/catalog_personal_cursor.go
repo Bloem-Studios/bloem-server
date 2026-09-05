@@ -71,6 +71,7 @@ func (r *CatalogResolver) resolvePersonalCursor(ctx context.Context, req Catalog
 	result, err := resolvePersonalExecutorCursor(ctx, executor, req, access, snapshot)
 	if err == nil && (req.Source == CatalogSourceFavorites || req.Source == CatalogSourceWatchlist) {
 		result.EffectiveSort = req.Query.Sort
+		result.EffectiveSortResolved = true
 	}
 	return result, err
 }

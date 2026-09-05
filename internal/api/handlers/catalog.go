@@ -54,6 +54,7 @@ func (h *CatalogHandler) SetWorkSummaryProvider(provider catalog.WorkSummaryProv
 }
 
 type catalogResponse struct {
+	ResolvedSort      *catalog.QuerySort   `json:"-"`
 	CursorScope       *catalog.QueryCursor `json:"-"`
 	Next              *catalog.QueryCursor `json:"-"`
 	Total             int                  `json:"total"`
