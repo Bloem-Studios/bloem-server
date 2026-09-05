@@ -119,7 +119,63 @@ the old locator. A locator alone grants no execution or serving permission.
 Worker reconstruction has an explicit current-recipe resolver seam, unwired by
 default. Bound reads check their signed namespace against the runtime. Legacy
 stop and progressive remux reject bound runtimes or tokens because they do not
-yet carry the required authority operations. Runtime grant expiry enforcement,
-production resolver integration, and replacement lifecycle activation remain
-required before these foundations can serve authority-owned playback. The plain
-playback-session metadata fast path does not itself establish executor authority.
+yet carry the required authority operations. Replacement lifecycle activation and production dependency configuration remain
+required before these foundations can serve authority-owned playback. Runtime
+enforcement and metadata checks are described below.
+
+
+## Runtime grant enforcement
+
+`RuntimeGrantV3` converts a database grant into a cancellable runtime lifetime.
+Its policy explicitly supplies maximum duration, safety margin, renewal lead,
+and watchdog interval. The watchdog interval must be shorter than both the
+safety margin and renewal lead. Invalid or missing configuration refuses bound work.
+The local deadline is acquisition request-start plus `NotAfter - IssuedAt`, less
+the safety margin. Charging the entire round trip avoids depending on matching
+worker and database wall clocks. Late replies, invalid bindings, excessive
+intervals, and deadlines beyond the returned owner lease are rejected.
+
+Elapsed time must include suspend. Linux uses `CLOCK_BOOTTIME`; Darwin uses
+`CLOCK_MONOTONIC_RAW`. Other platforms refuse configuration. Every guarded
+operation checks that clock; errors, backwards readings, and expiry permanently
+cancel the lifetime. Timers only schedule checks. Renewal is serialized and
+bounded, with an independent expiry watchdog while a request is blocked. A
+failed renewal or canceled lifetime cannot be revived by a delayed response.
+Execute grants admit preparing or active routes; serve grants require active.
+
+The configured margin must cover bounded clock-rate and dispatch uncertainty.
+This assumes the database clock does not jump forward beyond that bound during
+a live grant. Arbitrary clock steps or scheduling stalls cannot yield a strict
+real-time stop guarantee in userspace. On resume, reads recheck elapsed time;
+obsolete compute can briefly persist until cancellation is scheduled, but its
+output remains isolated. Bytes already accepted by the kernel before expiry
+cannot be recalled. Drain waits for the durable grant bound, not an indefinite
+exit acknowledgement from a dead worker.
+
+Bound `StartTranscode` acquires an execute grant before preflight or output
+claims, checks it again before launch, and parents FFmpeg to its context. Request
+cancellation controls admission; adopted execution outlives that request only
+while the grant remains valid. Process exit and failed startup close the grant.
+`Session.Executor` preserves the binding without a runtime. Metadata fastpaths
+require an exact reference and a fresh serve check; that check alone does not
+authorize a subsequent long response. Bound manager reconstruction requires an
+explicit authoritative recipe resolver and uses its returned immutable recipe.
+
+`planstore.ExecutorRuntime` supplies concrete grant and recipe callbacks using
+the configured node identity, PostgreSQL authority and locator, and immutable
+Redis recipe reads. The incarnation lookup has a unique index. Neither a lookup
+nor a recipe grants execution: issuance rechecks the live row under its lock.
+Constructing the adapter does not activate handlers or renew owner leases.
+
+Worker manifest, segment, and acknowledgement responses acquire separate serve
+grants. The response wrapper checks before headers and every body write, caps
+socket write deadlines by remaining validity, flushes under that deadline, and
+interrupts blocked writes on cancellation. Unsupported deadline writers refuse
+bound delivery. Disconnect closes the response grant independently of execution.
+
+Public v2 lifecycle and active takeover remain disabled. Central native media
+and compatibility direct/master/child HLS paths reject bound delivery until they
+have response-lifetime guards; unbound legacy behavior remains available. Bound
+worker stop and progressive remux remain disabled. Production callback wiring,
+owner-lease renewal, generation replacement, selected-store progress fencing,
+and deployment/suspend acceptance remain activation requirements.

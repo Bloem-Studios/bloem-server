@@ -18,6 +18,8 @@ import (
 
 // Session represents an active playback session.
 type Session struct {
+	// Executor is immutable authority identity, including for metadata-only hits.
+	Executor             *ExecutorNamespaceV3
 	ID                   string
 	UserID               int
 	ProfileID            string

@@ -22,6 +22,9 @@ func workerNamespace() *playback.ExecutorNamespaceV3 {
 }
 func workerBoundSession(t *testing.T, s *Server, ns *playback.ExecutorNamespaceV3) *playback.TranscodeSession {
 	t.Helper()
+	if s.executorGrants == nil {
+		s.WithExecutorGrantProvider(workerGrantProvider(t))
+	}
 	bin, err := exec.LookPath("true")
 	if err != nil {
 		t.Fatal(err)
@@ -30,7 +33,7 @@ func workerBoundSession(t *testing.T, s *Server, ns *playback.ExecutorNamespaceV
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := playback.StartTranscode(t.Context(), playback.TranscodeOpts{Executor: ns, OutputDir: dir, SessionID: "worker-session", InputPath: "/media/movie.mkv", FFmpegPath: bin, HWAccel: playback.HWAccelNone, TargetCodecVideo: "h264", SegmentDuration: 6})
+	session, err := playback.StartTranscode(t.Context(), playback.TranscodeOpts{Executor: ns, ExecuteGrants: s.executorGrants, OutputDir: dir, SessionID: "worker-session", InputPath: "/media/movie.mkv", FFmpegPath: bin, HWAccel: playback.HWAccelNone, TargetCodecVideo: "h264", SegmentDuration: 6})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,6 +165,7 @@ func TestWorkerExecutorReconstructionRequiresResolver(t *testing.T) {
 func TestWorkerExecutorResolvedReconstructionUsesOwnLeaf(t *testing.T) {
 	s := newTestServer(t)
 	s.tracker = &recordingSessionTracker{}
+	s.WithExecutorGrantProvider(workerGrantProvider(t))
 	bin, err := exec.LookPath("true")
 	if err != nil {
 		t.Fatal(err)
