@@ -310,15 +310,15 @@
       "AdminHistoryImportBulkOutputBody": {
         "additionalProperties": false,
         "properties": {
-          "Failed": {
-            "format": "int64",
-            "type": "integer"
-          },
           "accepted": {
             "format": "int64",
             "type": "integer"
           },
           "active": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "failed": {
             "format": "int64",
             "type": "integer"
           },
@@ -333,7 +333,7 @@
           "outcomes",
           "accepted",
           "active",
-          "Failed"
+          "failed"
         ],
         "type": "object"
       },

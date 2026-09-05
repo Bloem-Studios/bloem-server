@@ -50,7 +50,7 @@ type AdminHistoryImportBulkOutput struct {
 		Outcomes []AdminHistoryImportBulkOutcome `json:"outcomes"`
 		Accepted int                             `json:"accepted"`
 		Active   int                             `json:"active"`
-		Failed   int                             `json:historyimport.RunStatusFailed`
+		Failed   int                             `json:"failed"`
 	}
 }
 type AdminHistoryImportPlexLoginInput struct {

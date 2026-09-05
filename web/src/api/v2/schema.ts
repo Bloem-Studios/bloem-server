@@ -3024,7 +3024,7 @@ export interface components {
       /** Format: int64 */
       active: number;
       /** Format: int64 */
-      Failed: number;
+      failed: number;
       outcomes: components["schemas"]["AdminHistoryImportBulkOutcome"][];
     };
     AdminHistoryImportCapabilitiesOutputBody: {
