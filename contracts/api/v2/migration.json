@@ -6891,11 +6891,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/invitations",
+        "operation_id": "listAdminInvitations"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; invitationService != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
     },
     {
       "listener": "api",
@@ -6955,11 +6955,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/invitations",
+        "operation_id": "createAdminInvitation"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; invitationService != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
     },
     {
       "listener": "api",
@@ -7016,11 +7016,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/invitations/{id}",
+        "operation_id": "revokeAdminInvitation"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; invitationService != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: revokes a short-lived invitation; an accepted invitation is a domain 409, not a stale confirmation."
+      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
     },
     {
       "listener": "api",
@@ -7080,11 +7080,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/invitations/{id}/resend",
+        "operation_id": "resendAdminInvitation"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; invitationService != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
     },
     {
       "listener": "api",
@@ -29006,11 +29006,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/invitations/{token}",
+        "operation_id": "lookupInvitation"
       },
-      "notes": "Conditionally registered: authHandler != nil; invitationService != nil; !(deps.RateLimitMW != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
     },
     {
       "listener": "api",
@@ -29074,11 +29074,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/invitations/{token}",
+        "operation_id": "lookupInvitation"
       },
-      "notes": "Conditionally registered: authHandler != nil; invitationService != nil; deps.RateLimitMW != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
     },
     {
       "listener": "api",
@@ -29142,11 +29142,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/invitations/{token}/accept",
+        "operation_id": "acceptInvitation"
       },
-      "notes": "Conditionally registered: authHandler != nil; invitationService != nil; !(deps.RateLimitMW != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
     },
     {
       "listener": "api",
@@ -29212,11 +29212,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/invitations/{token}/accept",
+        "operation_id": "acceptInvitation"
       },
-      "notes": "Conditionally registered: authHandler != nil; invitationService != nil; deps.RateLimitMW != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Transactional email-invitation domain accepted; v2 transport and actual consumer adoption remain under review, so this row remains proposed. POSTs are non-retryable; acceptance distinguishes committed account from failed login and delivery distinguishes committed link from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities report the selected profile-store limitation."
     },
     {
       "listener": "api",
