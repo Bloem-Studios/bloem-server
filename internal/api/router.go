@@ -690,6 +690,9 @@ func NewRouter(deps Dependencies) chi.Router {
 		if liveTVHandler == nil {
 			liveTVHandler = handlers.NewLiveTVHandler(livetv.NewService(deps.DB))
 		}
+		if liveTVHandler != nil {
+			liveTVHandler.PrimaryProfileChecker = checkPrimaryProfile
+		}
 		if liveTVHandler != nil && deps.Config != nil {
 			liveTVHandler.JWTSecret = deps.Config.Auth.JWTSecret
 		}

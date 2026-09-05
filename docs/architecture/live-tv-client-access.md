@@ -40,11 +40,18 @@ adding a new channel response.
 
 ## Integration status
 
-This is the first server slice, not a deployment-ready completion of Live TV
-permissions across every protocol. The separate Jellyfin-compatible and internal
-compatibility gateway Live TV adapters need equivalent permission enforcement
-before deploying a server-wide access guarantee. The web viewer navigation and
-both v3 clients still need to consume the capability and use the generated DTOs.
-The native permission controls and app-facing routes can be tested independently
-while those integrations are completed. Do not infer adapter coverage from the
-shared service alone.
+The Jellyfin-compatible adapter resolves the same current account/profile scope
+for guide, channel, DVR, tuning, playback negotiation and stream delivery. Its
+user policy and synthetic Live TV library are viewer-specific. Missing resolver
+wiring and resolver failures deny access. Closing an owned stream remains
+available after revocation. Existing connections are not forcibly terminated.
+
+The internal compatibility gateway has no production Live TV service wired in
+this checkout; those routes remain unavailable. Any future service adapter must
+resolve the subject's effective Live TV grant before returning data or tuning.
+Do not infer adapter coverage from the shared service alone.
+
+The web viewer navigation and both v3 clients still need to consume the
+capability and use the generated DTOs. Native session/DVR ownership overrides
+require the primary admin profile; child, unknown and unresolvable profiles keep
+owner-only access. This work has not been deployed.

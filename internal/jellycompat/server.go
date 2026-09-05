@@ -104,6 +104,7 @@ type Dependencies struct {
 	WatchScrobbler         PlaybackWatchScrobbler
 	StableIdentityResolver watchsync.ScrobbleIdentityResolver
 	AccessFilterFn         AccessFilterResolver
+	LiveTVAccessFn         LiveTVAccessResolver
 	NodePlanner            nodepool.SessionPlanner
 	JWTSecret              string
 	Recommender            recommendations.Recommender

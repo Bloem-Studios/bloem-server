@@ -26,12 +26,30 @@ import (
 
 // LiveTVHandler exposes Live TV / OTA / DVR APIs under /api/v1/livetv.
 type LiveTVHandler struct {
-	service *livetv.Service
+	service               *livetv.Service
+	PrimaryProfileChecker apimw.PrimaryProfileChecker
 	// JWTSecret signs the stream token appended to the returned HLS URL, so the
 	// native player fetching it carries a session-bound credential instead of the
 	// app's rotating access token. Empty disables minting (tests / minimal
 	// setups), which leaves the pre-existing bearer-in-the-query behavior.
 	JWTSecret string
+}
+
+// canManageOtherViewers keeps household profiles scoped to their own sessions
+// and DVR entries. An unresolved profile never receives an ownership override.
+func (h *LiveTVHandler) canManageOtherViewers(r *http.Request) bool {
+	if !apimw.IsAdmin(r.Context()) {
+		return false
+	}
+	profileID := apimw.ActiveProfileID(r)
+	if profileID == "" {
+		return true
+	}
+	if h.PrimaryProfileChecker == nil {
+		return false
+	}
+	primary, found, err := h.PrimaryProfileChecker(r.Context(), apimw.GetUserID(r.Context()), profileID)
+	return err == nil && found && primary
 }
 
 func NewLiveTVHandler(service *livetv.Service) *LiveTVHandler {
@@ -433,7 +451,7 @@ func (h *LiveTVHandler) HandleSessionStream(w http.ResponseWriter, r *http.Reque
 	sessionID := chi.URLParam(r, "sessionId")
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	session, err := h.service.GetSessionForViewer(r.Context(), sessionID, userID, profileID, enforceOwner)
 	if err != nil {
 		writeLiveTVError(w, err)
@@ -486,7 +504,7 @@ func (h *LiveTVHandler) HandleSessionHeartbeat(w http.ResponseWriter, r *http.Re
 	sessionID := chi.URLParam(r, "sessionId")
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	session, err := h.service.GetSessionForViewer(r.Context(), sessionID, userID, profileID, enforceOwner)
 	if err != nil {
 		writeLiveTVError(w, err)
@@ -508,7 +526,7 @@ func (h *LiveTVHandler) HandleReleaseSession(w http.ResponseWriter, r *http.Requ
 	profileID := apimw.GetProfileID(r.Context())
 	// Admins may release any session (tuner capacity recovery); everyone else
 	// may only release sessions they own.
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	session, err := h.service.ReleaseSession(
 		r.Context(),
 		chi.URLParam(r, "sessionId"),
@@ -526,7 +544,7 @@ func (h *LiveTVHandler) HandleReleaseSession(w http.ResponseWriter, r *http.Requ
 func (h *LiveTVHandler) HandleListRecordings(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	recordings, err := h.service.ListRecordings(
 		r.Context(), r.URL.Query().Get("status"), userID, profileID, enforceOwner,
 	)
@@ -565,7 +583,7 @@ func (h *LiveTVHandler) HandleScheduleRecording(w http.ResponseWriter, r *http.R
 func (h *LiveTVHandler) HandleCancelRecording(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	rec, err := h.service.CancelRecording(
 		r.Context(), chi.URLParam(r, "recordingId"), userID, profileID, enforceOwner,
 	)
@@ -579,7 +597,7 @@ func (h *LiveTVHandler) HandleCancelRecording(w http.ResponseWriter, r *http.Req
 func (h *LiveTVHandler) HandleListSeriesRules(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	rules, err := h.service.ListSeriesRules(r.Context(), userID, profileID, enforceOwner)
 	if err != nil {
 		writeLiveTVError(w, err)
@@ -621,7 +639,7 @@ func (h *LiveTVHandler) HandleCreateSeriesRule(w http.ResponseWriter, r *http.Re
 func (h *LiveTVHandler) HandleDeleteSeriesRule(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	if err := h.service.DeleteSeriesRule(
 		r.Context(), chi.URLParam(r, "ruleId"), userID, profileID, enforceOwner,
 	); err != nil {
@@ -648,7 +666,7 @@ func (h *LiveTVHandler) HandleLiveHLS(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	enforceOwner := !apimw.IsAdmin(r.Context())
+	enforceOwner := !h.canManageOtherViewers(r)
 	// A stream token carries no bearer identity on purpose, so an owner check
 	// against an absent user would reject every native-player fetch -- the exact
 	// 401 poll this migration removes. The token is the authorization instead, and

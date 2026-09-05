@@ -265,6 +265,8 @@ func NewRouter(deps Dependencies) chi.Router {
 
 			if deps.LiveTV != nil {
 				liveTVHandler := NewLiveTVHandler(deps.LiveTV, deps.IDCodec, deps.Config)
+				liveTVHandler.access = deps.LiveTVAccessFn
+				authHandler.liveTVAccess = deps.LiveTVAccessFn
 				authHandler.SetLiveTVEnabled(true)
 				itemsHandler.SetLiveTV(liveTVHandler)
 				playbackHandler.SetLiveTV(liveTVHandler)

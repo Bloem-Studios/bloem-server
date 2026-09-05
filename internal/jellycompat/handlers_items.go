@@ -156,7 +156,7 @@ func (h *ItemsHandler) userViews(ctx context.Context, session *Session) ([]baseI
 		h.rememberLibraryImages(library, dto.ID)
 		items = append(items, dto)
 	}
-	if h.liveTVEnabled && h.liveTV != nil {
+	if h.liveTVEnabled && h.liveTV != nil && h.liveTV.allowed(ctx, session) {
 		items = append(items, h.liveTV.liveTVView())
 	}
 	return items, nil
@@ -338,6 +338,9 @@ func (h *ItemsHandler) HandleItem(w http.ResponseWriter, r *http.Request) {
 
 	rawID := chi.URLParam(r, "id")
 	if isLiveTVViewID(rawID) && h.liveTV != nil {
+		if !h.liveTV.requireAccess(w, r) {
+			return
+		}
 		writeJSON(w, http.StatusOK, h.liveTV.liveTVView())
 		return
 	}
