@@ -226,6 +226,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	expect["refreshLibraryMetadata"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: true, http.StatusAccepted: true}
 	expect["uploadLibraryPoster"] = map[int]bool{http.StatusNotFound: true, http.StatusRequestEntityTooLarge: true, http.StatusUnsupportedMediaType: true}
 	expect["getLibraryLayout"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}
+	for _, id := range []string{"listWebhookConnections", "createWebhookConnection", "updateWebhookConnection", "deleteWebhookConnection", "rotateWebhookConnection", "getWebhookMappings", "updateWebhookMappings", "listWebhookEvents"} {
+		profileToken[id] = true
+	}
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {
