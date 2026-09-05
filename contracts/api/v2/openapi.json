@@ -28151,6 +28151,19 @@
             }
           },
           {
+            "description": "The stable device identifier used to resolve playback preferences",
+            "in": "header",
+            "name": "X-Silo-Device-Id",
+            "schema": {
+              "description": "The stable device identifier used to resolve playback preferences",
+              "examples": [
+                "tv-1"
+              ],
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
             "description": "A movie, episode, audiobook or ebook; a series is not directly playable",
             "in": "path",
             "name": "id",

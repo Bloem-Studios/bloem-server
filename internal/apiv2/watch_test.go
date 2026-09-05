@@ -186,3 +186,19 @@ func TestMarkWatched(t *testing.T) {
 	off := newTestHandler(t, parityDeps(false))
 	requireProblem(t, do(t, off, http.MethodPost, "/api/v2/watched/movie:heat-1995", "", owner), TypeDependencyUnavailable)
 }
+
+func TestGetWatchStatePreservesDevicePreferenceContext(t *testing.T) {
+	watch := &fakeWatch{}
+	h := newTestHandler(t, watchDeps(watch))
+	owner := with(bearer(memberToken), "X-Profile-Id", "p-owner")
+	for _, device := range []string{"tv-1", " tablet-2 ", ""} {
+		rec := do(t, h, http.MethodGet, "/api/v2/watch/movie:heat-1995", "", with(owner, deviceIDHeader, device))
+		if rec.Code != http.StatusOK {
+			t.Fatal(rec.Body.String())
+		}
+		filter := watch.filters[len(watch.filters)-1]
+		if want := handlers.NewDeviceMetadata(device, "", "").DeviceID; filter.DeviceID != want {
+			t.Fatalf("device context = %q, want %q", filter.DeviceID, want)
+		}
+	}
+}

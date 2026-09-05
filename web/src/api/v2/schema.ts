@@ -18274,6 +18274,8 @@ export interface operations {
         "X-Profile-Id"?: string;
         /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
         "X-Profile-Token"?: string;
+        /** @description The stable device identifier used to resolve playback preferences */
+        "X-Silo-Device-Id"?: string;
       };
       path: {
         /** @description A movie, episode, audiobook or ebook; a series is not directly playable */
