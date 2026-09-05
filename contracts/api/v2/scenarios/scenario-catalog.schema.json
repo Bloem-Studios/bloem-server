@@ -249,6 +249,119 @@
         }
       }
     },
+    "responseBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "header": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pointer": {
+          "type": "string"
+        },
+        "request_header": {
+          "enum": [
+            "If-Match",
+            "If-None-Match"
+          ]
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "required": [
+                "header"
+              ],
+              "not": {
+                "required": [
+                  "pointer"
+                ]
+              }
+            },
+            {
+              "required": [
+                "pointer"
+              ],
+              "not": {
+                "required": [
+                  "header"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "required": [
+                "request_header"
+              ],
+              "not": {
+                "required": [
+                  "query"
+                ]
+              }
+            },
+            {
+              "required": [
+                "query"
+              ],
+              "not": {
+                "required": [
+                  "request_header"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "v2Step": {
+      "description": "One follow-up exchange run after the primary request in the same fixture state. The method is explicit because the step may target another row; the principal defaults to the scenario's.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "request",
+        "expect",
+        "operation_id"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "method": {
+          "$ref": "#/$defs/method"
+        },
+        "principal": {
+          "$ref": "#/$defs/principal"
+        },
+        "request": {
+          "$ref": "#/$defs/request"
+        },
+        "expect": {
+          "$ref": "#/$defs/expect"
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9]*$"
+        },
+        "from_previous": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/responseBinding"
+          }
+        }
+      }
+    },
     "thenStep": {
       "description": "One follow-up exchange run after the primary request in the same fixture state. The method is explicit because the step may target another row; the principal defaults to the scenario's.",
       "type": "object",
@@ -280,6 +393,7 @@
             "expect"
           ],
           "properties": {
+            "then": { "type": "array", "maxItems": 15, "items": { "$ref": "#/$defs/v2Step" } },
             "kind": {
               "enum": [
                 "same",

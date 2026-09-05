@@ -22,6 +22,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/scenariocatalog"
 )
 
+const publicPrincipal = "public"
+
 // Result is the outcome of one scenario.
 type Result struct {
 	ID          string
@@ -83,17 +85,31 @@ func (e *Env) Run(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.
 	}
 	run("v1", "", s.Method(), s)
 	if pair := s.V2Expectation; pair != nil {
-		paired := s
-		paired.Request, paired.Expect, paired.Then = pair.Request, pair.Expect, nil
-		if pair.Principal != nil {
-			paired.Principal = *pair.Principal
-		}
+		paired := v2Scenario(s)
 		run("v2", pair.OperationID, pair.Method, paired)
 	}
 }
 
+// Each transport owns its follow-ups; v1 steps and response values never supply
+// the v2 contract. V2 steps stay on the explicit V2Expectation.
+func v2Scenario(s scenariocatalog.Scenario) scenariocatalog.Scenario {
+	pair := s.V2Expectation
+	s.Request, s.Expect, s.Then = pair.Request, pair.Expect, nil
+	if pair.Principal != nil {
+		s.Principal = *pair.Principal
+	}
+	return s
+}
+
 func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.Row, s scenariocatalog.Scenario, transport, operationID, method string, record func(Result)) {
 	t.Helper()
+	if transport == "v2" {
+		if err := scenariocatalog.ValidateV2Sequence(s.V2Expectation); err != nil {
+			record(Result{Scenario: s.ID, Transport: transport, Failures: []string{err.Error()}})
+			t.Fatal(err)
+			return
+		}
+	}
 	res := Result{ID: s.ID + "/" + transport, Transport: transport, OperationID: operationID, Catalog: c.File, Row: row.Key().String(), Scenario: s.ID}
 	defer func() { record(res) }()
 	dbUnavailable := s.HasRequirement("database_unavailable")
@@ -109,6 +125,16 @@ func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenari
 		// The row is registered only with a user store / auth middleware
 		// present, so even its public cases need the live router.
 		needsDB = true
+	}
+	if transport == "v2" {
+		for _, step := range s.V2Expectation.Then {
+			if step.Principal != nil && step.Principal.Class != publicPrincipal {
+				needsDB = true
+			}
+			if !dbUnavailable && !e.OfflineHas(step.Method, step.Request.Path) {
+				needsDB = true
+			}
+		}
 	}
 	if needsDB && !e.HasDatabase() {
 		res.Skipped = DatabaseEnv + " is not set"
@@ -146,7 +172,7 @@ func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenari
 		e.resetRateLimits()
 	}
 
-	failures, fatal := e.exchange(server.URL, method, s.Request, s.Principal, s.Expect)
+	previous, failures, fatal := e.exchange(server.URL, method, s.Request, s.Principal, s.Expect, nil, nil, nil)
 	if fatal != nil {
 		res.Failures = []string{fatal.Error()}
 		t.Fatal(res.Failures[0])
@@ -161,7 +187,7 @@ func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenari
 		if step.Principal != nil {
 			principal = *step.Principal
 		}
-		stepFailures, fatal := e.exchange(server.URL, step.Method, step.Request, principal, step.Expect)
+		_, stepFailures, fatal := e.exchange(server.URL, step.Method, step.Request, principal, step.Expect, nil, nil, nil)
 		if fatal != nil {
 			res.Failures = append(res.Failures, fmt.Sprintf("then[%d]: %v", i, fatal))
 			t.Fatal(res.Failures[len(res.Failures)-1])
@@ -175,6 +201,28 @@ func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenari
 			res.Failures = append(res.Failures, label+": "+f)
 		}
 	}
+	if transport == "v2" && len(res.Failures) == 0 {
+		seenCursors := map[string]bool{}
+		for i, step := range s.V2Expectation.Then {
+			principal := s.Principal
+			if step.Principal != nil {
+				principal = *step.Principal
+			}
+			next, failures, err := e.exchange(server.URL, step.Method, step.Request, principal, step.Expect, &previous, step.FromPrevious, seenCursors)
+			if err != nil {
+				res.Failures = append(res.Failures, fmt.Sprintf("v2 then[%d]: %v", i, err))
+				break
+			}
+			for _, failure := range failures {
+				res.Failures = append(res.Failures, fmt.Sprintf("v2 then[%d]: %s", i, failure))
+			}
+			if len(failures) > 0 {
+				break
+			}
+			previous = next
+		}
+	}
+
 	if len(res.Failures) > 0 {
 		t.Errorf("%s\n  %s", s.Description, strings.Join(res.Failures, "\n  "))
 	}
@@ -184,7 +232,14 @@ func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenari
 // the final response, and returns the assertion failures with the response
 // summary attached. A non-nil error means the exchange could not be built
 // or sent at all.
-func (e *Env) exchange(base, method string, request scenariocatalog.Request, principal scenariocatalog.Principal, expect scenariocatalog.Expect) ([]string, error) {
+func (e *Env) exchange(base, method string, request scenariocatalog.Request, principal scenariocatalog.Principal, expect scenariocatalog.Expect, previous *response, bindings []scenariocatalog.ResponseBinding, seenCursors map[string]bool) (response, []string, error) {
+	if err := scenariocatalog.ValidateResponseBindings(request, bindings); err != nil {
+		return response{}, nil, err
+	}
+	if seenCursors == nil {
+		seenCursors = map[string]bool{}
+	}
+
 	repeat := request.Repeat
 	if repeat < 1 {
 		repeat = 1
@@ -193,16 +248,19 @@ func (e *Env) exchange(base, method string, request scenariocatalog.Request, pri
 	for i := 0; i < repeat; i++ {
 		req, err := e.buildRequest(base, method, request, principal)
 		if err != nil {
-			return nil, fmt.Errorf("build request: %w", err)
+			return response{}, nil, fmt.Errorf("build request: %w", err)
+		}
+		if err := applyResponseBindings(req, previous, bindings, seenCursors, i == 0); err != nil {
+			return response{}, nil, err
 		}
 		resp, err = send(req)
 		if err != nil {
-			return nil, fmt.Errorf("send request: %w", err)
+			return response{}, nil, fmt.Errorf("send request: %w", err)
 		}
 	}
 	exp, err := e.substituteExpect(expect)
 	if err != nil {
-		return nil, fmt.Errorf("expected values: %w", err)
+		return response{}, nil, fmt.Errorf("expected values: %w", err)
 	}
 	failures := check(exp, resp)
 	if len(failures) > 0 {
@@ -212,7 +270,7 @@ func (e *Env) exchange(base, method string, request scenariocatalog.Request, pri
 		}
 		failures = append(failures, fmt.Sprintf("response: %d %s", resp.Status, body))
 	}
-	return failures, nil
+	return resp, failures, nil
 }
 
 // rowRateLimited reports whether the ledger registers the row only behind

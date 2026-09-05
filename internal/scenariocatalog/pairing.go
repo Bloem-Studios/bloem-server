@@ -15,6 +15,13 @@ func ValidatePairing(pair *V2Expectation) error {
 	if pair == nil {
 		return fmt.Errorf("missing v2 expectation")
 	}
+	if err := ValidateV2Sequence(pair); err != nil {
+		return err
+	}
+	return validateOperation(pair.OperationID, pair.Method, pair.Request.Path)
+}
+
+func validateOperation(operationID, method, requestPath string) error {
 	var spec struct {
 		Paths map[string]map[string]struct {
 			OperationID string `json:"operationId"`
@@ -24,11 +31,11 @@ func ValidatePairing(pair *V2Expectation) error {
 		return err
 	}
 	for path, methods := range spec.Paths {
-		operation, ok := methods[strings.ToLower(pair.Method)]
-		if !ok || operation.OperationID != pair.OperationID {
+		operation, ok := methods[strings.ToLower(method)]
+		if !ok || operation.OperationID != operationID {
 			continue
 		}
-		want, got := strings.Split(path, "/"), strings.Split(pair.Request.Path, "/")
+		want, got := strings.Split(path, "/"), strings.Split(requestPath, "/")
 		if len(want) != len(got) {
 			continue
 		}
@@ -43,7 +50,7 @@ func ValidatePairing(pair *V2Expectation) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("v2 operation %q does not match %s %s", pair.OperationID, pair.Method, pair.Request.Path)
+	return fmt.Errorf("v2 operation %q does not match %s %s", operationID, method, requestPath)
 }
 
 // RequiredProfileListScenarios is deliberately fixed: deleting a pilot case or

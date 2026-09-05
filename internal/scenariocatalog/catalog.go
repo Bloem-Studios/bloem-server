@@ -125,6 +125,22 @@ type V2Expectation struct {
 	Request     Request    `json:"request"`
 	Principal   *Principal `json:"principal,omitempty"`
 	Expect      Expect     `json:"expect"`
+	Then        []V2Step   `json:"then,omitempty"`
+}
+
+// V2Step declares a separate operation against the preceding exchange's state.
+// Captures are deliberately limited to string header/query values from that response.
+type V2Step struct {
+	OperationID string `json:"operation_id"`
+	Step
+	FromPrevious []ResponseBinding `json:"from_previous,omitempty"`
+}
+
+type ResponseBinding struct {
+	Header        string  `json:"header,omitempty"`
+	Pointer       *string `json:"pointer,omitempty"`
+	RequestHeader string  `json:"request_header,omitempty"`
+	Query         string  `json:"query,omitempty"`
 }
 
 // Step is one follow-up exchange of a scenario's then list. It names its
