@@ -176,25 +176,29 @@ export function providerChainToV2(
 }
 
 export function adminJobFromV2(job: AdminJobV2): AdminJob {
+  const status =
+    job.state === "succeeded"
+      ? "completed"
+      : job.state === "canceled"
+        ? "cancelled"
+        : job.state === "canceling"
+          ? "running"
+          : job.state;
   return {
     id: job.id,
-    job_type: job.job_type,
-    status: job.status as AdminJob["status"],
-    created_by_user_id: Number(job.created_by_user_id),
-    request_payload: recordOrUndefined(job.request_payload) ?? {},
-    result_payload: recordOrUndefined(job.result_payload) ?? {},
-    message: job.message,
-    error_message: job.error_message,
-    progress_current: job.progress_current,
-    progress_total: job.progress_total,
-    artifact_size_bytes: job.artifact_size_bytes,
-    public_url: job.public_url,
-    requested_at: job.requested_at,
+    job_type: job.kind,
+    status: status as AdminJob["status"],
+    created_by_user_id: 0,
+    request_payload: {},
+    result_payload: job.refresh_result ?? job.deletion_result ?? {},
+    message: job.state === "canceling" ? "Cancellation requested" : "",
+    error_message: job.failure?.detail,
+    progress_current: job.progress?.current ?? 0,
+    progress_total: job.progress?.total ?? 0,
+    artifact_size_bytes: 0,
+    requested_at: job.created_at,
     started_at: job.started_at,
-    completed_at: job.completed_at,
-    heartbeat_at: job.heartbeat_at,
-    expires_at: job.expires_at,
-    published_at: job.published_at,
+    completed_at: job.finished_at,
   };
 }
 

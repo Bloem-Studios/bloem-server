@@ -153,7 +153,8 @@ describe("library admin hooks on the v2 contract", () => {
 
     expect(job.id).toBe(deleteLibraryAccepted.id);
     expect(job.job_type).toBe("delete_library");
-    expect(job.created_by_user_id).toBe(Number(deleteLibraryAccepted.created_by_user_id));
+    expect(job.status).toBe("queued");
+    expect(job.request_payload).toEqual({});
   });
 
   it("surfaces the 409 conflict problem when a deletion is already running", async () => {

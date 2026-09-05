@@ -196,6 +196,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"listHistory": true, "removeHistoryEntries": true,
 		"syncProgress":  true,
 		"getWatchState": true, "markWatched": true, "unmarkWatched": true,
+		"cancelLibraryJob": true,
 	}
 	for _, id := range libraryOperationIDs {
 		profileToken[id] = true
@@ -212,6 +213,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range recommendationOperationIDs {
 		profileToken[id] = true
 	}
+	expect["cancelLibraryJob"] = map[int]bool{http.StatusOK: true, http.StatusAccepted: true, http.StatusConflict: true, http.StatusNotFound: true}
 	expect["refreshLibraryMetadata"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: true, http.StatusAccepted: true}
 	expect["uploadLibraryPoster"] = map[int]bool{http.StatusNotFound: true, http.StatusRequestEntityTooLarge: true, http.StatusUnsupportedMediaType: true}
 	expect["getLibraryLayout"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}

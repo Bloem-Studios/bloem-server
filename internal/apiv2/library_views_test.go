@@ -287,14 +287,14 @@ func TestRefreshLibraryMetadata(t *testing.T) {
 	deps, fake := libraryDeps(t)
 	h := newTestHandler(t, deps)
 	rec := do(t, h, http.MethodPost, "/api/v2/libraries/1/refresh-metadata", "", bearer(adminToken))
-	if rec.Code != 202 || fake.lastRefreshMode != adminjob.LibraryRefreshModeQuick || fake.lastUserID != 2 || !strings.Contains(rec.Body.String(), `"job_type":"library_refresh"`) {
+	if rec.Code != 202 || fake.lastRefreshMode != adminjob.LibraryRefreshModeQuick || fake.lastUserID != 2 || !strings.Contains(rec.Body.String(), `"kind":"library_refresh"`) {
 		t.Fatal(rec.Code, rec.Body.String(), fake.lastRefreshMode)
 	}
 	rec = do(t, h, http.MethodPost, "/api/v2/libraries/1/refresh-metadata", `{"mode":"full"}`, bearer(adminToken))
 	if rec.Code != 202 || fake.lastRefreshMode != adminjob.LibraryRefreshModeFull {
 		t.Fatal(rec.Code, rec.Body.String())
 	}
-	if loc := rec.Header().Get("Location"); loc != "/api/v2/admin/jobs/job-2" {
+	if loc := rec.Header().Get("Location"); loc != "/api/v2/library-jobs/job-2" {
 		t.Fatalf("Location = %q, want the queued job's URI", loc)
 	}
 	p := requireProblem(t, do(t, h, http.MethodPost, "/api/v2/libraries/1/refresh-metadata", `{"mode":"deep"}`, bearer(adminToken)), TypeValidationFailed)

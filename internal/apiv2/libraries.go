@@ -112,8 +112,9 @@ type LibraryCollection struct {
 // the job resource and, per the lifecycle convention for accepted
 // asynchronous work, its canonical URI in Location.
 type AdminJobAcceptedOutput struct {
-	Location string `header:"Location" doc:"URI of the queued job"`
-	Body     AdminJob
+	Location   string `header:"Location" doc:"URI of the queued job"`
+	RetryAfter string `header:"Retry-After"`
+	Body       AdminJob
 }
 
 // LibraryMountCheckRoot is one root's reachability.
@@ -1094,9 +1095,8 @@ func (reg *Registry) updateLibrary(ctx context.Context, in *LibraryUpdateInput) 
 	return &LibraryOutput{Body: libraryOf(view)}, nil
 }
 
-// deleteLibrary answers 202 with the queued job, as v1 does. A deletion
-// already queued or running is a conflict problem; the job-monitor contract
-// that would carry the active job is a later foundation rule.
+// deleteLibrary answers 202 with the canonical library job. A deletion
+// already queued or running remains a conflict problem.
 func (reg *Registry) deleteLibrary(ctx context.Context, in *LibraryIDInput) (*AdminJobAcceptedOutput, error) {
 	svc, p := reg.libraryAdmin()
 	if p != nil {

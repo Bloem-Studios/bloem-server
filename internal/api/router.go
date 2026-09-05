@@ -1952,6 +1952,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if libraryHandler != nil {
 		v2deps.LibraryAdmin = libraryHandler
+		if deps.DB != nil {
+			v2deps.LibraryJobs = adminjob.NewRepository(deps.DB)
+		}
 	}
 	if sectionHandler != nil {
 		v2deps.LibrarySections = sectionHandler

@@ -131,6 +131,7 @@ type Dependencies struct {
 	// LibraryAdmin manages libraries for administrators
 	// (*handlers.LibraryHandler).
 	LibraryAdmin LibraryAdminService
+	LibraryJobs  LibraryJobService
 	// LibrarySections answers a library's sections to viewers
 	// (*handlers.SectionHandler).
 	LibrarySections LibrarySectionService

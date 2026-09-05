@@ -16,6 +16,8 @@ import (
 
 	chimw "github.com/go-chi/chi/v5/middleware"
 
+	"github.com/Silo-Server/silo-server/internal/adminjob"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/routeinventory"
 )
 
@@ -250,7 +252,7 @@ func fixtureCases() []fixtureCase {
 		{name: "delete_library_accepted", operationID: "deleteLibrary",
 			scenario: "Deletion is queued as an admin job: 202 with the job.",
 			method:   http.MethodDelete, path: "/api/v2/libraries/1", headers: bearer(adminToken),
-			status: http.StatusAccepted, assertHeaders: []string{"Content-Type", "Cache-Control", "Location"}, schema: "#/components/schemas/AdminJob"},
+			status: http.StatusAccepted, assertHeaders: []string{"Content-Type", "Cache-Control", "Location", "Retry-After"}, schema: "#/components/schemas/AdminJob"},
 		{name: "delete_library_conflict", operationID: "deleteLibrary",
 			scenario: "A deletion already queued or running for the library.",
 			method:   http.MethodDelete, path: "/api/v2/libraries/2", headers: bearer(adminToken),
@@ -342,7 +344,7 @@ func fixtureCases() []fixtureCase {
 		{name: "refresh_library_metadata_accepted", operationID: "refreshLibraryMetadata",
 			scenario: "A full refresh queued as an admin job: 202 with the job.",
 			method:   http.MethodPost, path: "/api/v2/libraries/1/refresh-metadata", headers: bearer(adminToken), body: `{"mode":"full"}`,
-			status: http.StatusAccepted, assertHeaders: []string{"Content-Type", "Cache-Control", "Location"}, schema: "#/components/schemas/AdminJob"},
+			status: http.StatusAccepted, assertHeaders: []string{"Content-Type", "Cache-Control", "Location", "Retry-After"}, schema: "#/components/schemas/AdminJob"},
 		{name: "refresh_library_metadata_invalid_mode", operationID: "refreshLibraryMetadata",
 			scenario: "A refresh mode outside the enum is a validation failure naming body.mode.",
 			method:   http.MethodPost, path: "/api/v2/libraries/1/refresh-metadata", headers: bearer(adminToken), body: `{"mode":"deep"}`,
@@ -1141,13 +1143,19 @@ func fixtureCases() []fixtureCase {
 			scenario: "A problem from a deprecated operation, here the auth gate's 401, carries Deprecation and Link too; this operation has no planned removal, so no Sunset.",
 			method:   http.MethodPost, path: "/api/v2/probe/deprecated-nosunset", body: validBody,
 			status: http.StatusUnauthorized, assertHeaders: []string{"Content-Type", "Cache-Control", "Deprecation", "Link"}, schema: problem},
-		// Last: one handler serves every case, and the cases above read
+		// Last probe: one handler serves every case, and the cases above read
 		// resource "a" at version 1.
 		{name: "guarded_delete_ok",
 			scenario: "A guarded DELETE whose If-Match names the current ETag: 204 with no body and no validator, since the representation is gone.",
 			method:   http.MethodDelete, path: "/api/v2/probe/guarded/a",
 			headers: map[string]string{"If-Match": RenderETag(guardedProbeScope, "a", 1).String()},
 			status:  http.StatusNoContent, assertHeaders: []string{"Cache-Control"}},
+		{name: "get_library_job_ok", operationID: "getLibraryJob", scenario: "An administrator polls a queued refresh with a deterministic whole-body validator.",
+			method: http.MethodGet, path: "/api/v2/library-jobs/job-2", headers: bearer(adminToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control", "ETag", "Retry-After"}, schema: "#/components/schemas/AdminJob"},
+		{name: "get_library_job_hidden", operationID: "getLibraryJob", scenario: "A nonadministrator cannot discover a library job.",
+			method: http.MethodGet, path: "/api/v2/library-jobs/job-2", headers: bearer(memberToken), status: http.StatusNotFound, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: problem},
+		{name: "cancel_library_job_accepted", operationID: "cancelLibraryJob", scenario: "Cancellation returns the canonical canceling job; completed metadata changes are retained.",
+			method: http.MethodPost, path: "/api/v2/library-jobs/job-2/cancel", headers: bearer(adminToken), status: http.StatusAccepted, assertHeaders: []string{"Content-Type", "Cache-Control", "Location", "Retry-After", "ETag"}, schema: "#/components/schemas/AdminJob"},
 	}
 }
 
@@ -1174,6 +1182,7 @@ func profileOwner() map[string]string { return with(bearer(memberToken), "X-Prof
 func fixtureDeps() Dependencies {
 	deps := pilotDeps(&fakeProgress{entries: progressRows()}, nil)
 	deps, _ = withLibraryAdmin(deps)
+	deps.LibraryJobs = &fakeLibraryJobs{job: &models.AdminJob{ID: "job-2", JobType: adminjob.JobTypeLibraryRefresh, Status: adminjob.StatusQueued, RequestedAt: fixedTime()}}
 	deps.LibrarySections = &fakeLibraryViews{}
 	deps.LibraryCollections = &fakeLibraryViews{}
 	home := &fakeHome{}

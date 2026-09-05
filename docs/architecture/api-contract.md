@@ -517,10 +517,14 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   middleware chain ahead of the class gate, so a gate denial or validation problem carries them
   as a 200 does. No v1 route and no v2 operation is deprecated yet; the only deprecated
   operations are test probes, recorded in the `deprecated_ok` and `deprecated_problem` fixtures.
-- **Not yet encoded.** These ratified wire rules from the plan have no foundation code or tests
-  yet. Each lands with the first v2 operation that needs it, before the first Phase 3 domain PR,
-  tracked on #882: the durable `202` job acceptance and its monitor/cancel shape, and the
-  atomic-versus-per-item bulk contract.
+- **Accepted library jobs.** Library refresh and deletion use the durable admin-job runner
+  with canonical `/api/v2/library-jobs/{job_id}` monitors, safe named results/failures,
+  conditional polling, and durable refresh cancellation. Worker progress and terminal writes
+  are fenced to their claim; terminal transitions cannot overwrite a finished job. Deletion
+  preparation and acceptance commit in one transaction. These guarantees cover the existing
+  library operations; other asynchronous domains still need their own safe projections and
+  cancellation policy. The atomic-versus-per-item bulk contract remains a separate foundation
+  checkpoint tracked on #882.
 
 ### Problem Details
 

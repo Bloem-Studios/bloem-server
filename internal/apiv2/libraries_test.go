@@ -436,8 +436,8 @@ func TestDeleteLibrary(t *testing.T) {
 	var body map[string]json.RawMessage
 	decodeJSON(t, rec.Body, &body)
 	for field, want := range map[string]string{
-		"id": `"job-1"`, "job_type": `"delete_library"`, "status": `"queued"`, "created_by_user_id": `"2"`,
-		"request_payload": `{"library_id":1}`, "result_payload": `{}`, "requested_at": `"2026-01-02T03:04:05.678Z"`,
+		"id": `"job-1"`, "kind": `"delete_library"`, "state": `"queued"`, "terminal": `false`,
+		"created_at": `"2026-01-02T03:04:05.678Z"`,
 	} {
 		if string(body[field]) != want {
 			t.Errorf("%s = %s, want %s", field, body[field], want)
@@ -446,7 +446,7 @@ func TestDeleteLibrary(t *testing.T) {
 	if _, has := body["started_at"]; has || fake.lastUserID != 2 {
 		t.Errorf("optional instant present or user %d: %s", fake.lastUserID, rec.Body.String())
 	}
-	if loc := rec.Header().Get("Location"); loc != "/api/v2/admin/jobs/job-1" {
+	if loc := rec.Header().Get("Location"); loc != "/api/v2/library-jobs/job-1" {
 		t.Errorf("Location = %q, want the queued job's URI", loc)
 	}
 	requireProblem(t, do(t, h, http.MethodDelete, "/api/v2/libraries/2", "", bearer(adminToken)), TypeConflict)
@@ -712,7 +712,7 @@ func TestListUnmatchedItems(t *testing.T) {
 func TestAdminJobOfInstants(t *testing.T) {
 	started := fixedTime().Add(time.Minute)
 	job := adminJobOf(&models.AdminJob{ID: "j", StartedAt: &started, RequestedAt: fixedTime()})
-	if job.StartedAt == nil || job.StartedAt.String() != "2026-01-02T03:05:05.678Z" || job.CompletedAt != nil || string(job.ResultPayload) != `{}` {
+	if job.StartedAt == nil || job.StartedAt.String() != "2026-01-02T03:05:05.678Z" || job.FinishedAt != nil || job.RefreshResult != nil {
 		t.Fatalf("job = %+v", job)
 	}
 }
