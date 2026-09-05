@@ -292,14 +292,8 @@ func (am *AuthMiddleware) checkSession(ctx context.Context, sessionID string) (b
 //  1. Authorization: Bearer <token> header
 //  2. ?token=<token> query parameter (for native media elements that can't set headers)
 func extractBearerToken(r *http.Request) (string, bool) {
-	// Try Authorization header first.
-	if header := r.Header.Get("Authorization"); header != "" {
-		parts := strings.SplitN(header, " ", 2)
-		if len(parts) == 2 && strings.EqualFold(parts[0], "bearer") {
-			if token := strings.TrimSpace(parts[1]); token != "" {
-				return token, true
-			}
-		}
+	if token, ok := parseBearerHeader(r.Header.Get("Authorization")); ok {
+		return token, true
 	}
 
 	// Fall back to query parameter (used by <video> / <audio> src URLs).
@@ -307,6 +301,18 @@ func extractBearerToken(r *http.Request) (string, bool) {
 		return token, true
 	}
 
+	return "", false
+}
+
+// parseBearerHeader parses only the captured Authorization header, without
+// accepting the media URL query-credential fallback.
+func parseBearerHeader(header string) (string, bool) {
+	parts := strings.SplitN(header, " ", 2)
+	if len(parts) == 2 && strings.EqualFold(parts[0], "bearer") {
+		if token := strings.TrimSpace(parts[1]); token != "" {
+			return token, true
+		}
+	}
 	return "", false
 }
 

@@ -60,6 +60,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/playback/planstore"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/policy"
+	"github.com/Silo-Server/silo-server/internal/progresssync"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
@@ -1937,6 +1938,15 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if progressHandler != nil {
 		v2deps.Progress = progressHandler
 	}
+	if deps.DB != nil && deps.UserStoreProvider != nil {
+		snapshotResolver, _ := viewerResolver.(*policy.ViewerResolver)
+		bootstrap := progresssync.NewService(deps.DB, deps.UserStoreProvider, settingsRepo, snapshotResolver)
+		v2deps.ProgressBootstrap = bootstrap
+		if deps.AppContext != nil {
+			go bootstrap.RunCleanup(deps.AppContext, func(error) { slog.Warn("progress bootstrap cleanup unavailable", "component", "progresssync") })
+		}
+	}
+
 	if personalDataHandler != nil {
 		v2deps.History = personalDataHandler
 	}

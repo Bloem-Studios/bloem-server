@@ -448,7 +448,17 @@ func (s *GroupStore) GetPolicyForUser(ctx context.Context, userID int) (*GroupPo
 		// "no access groups", not a failure.
 		return nil, nil
 	}
-	policy, err := scanGroupPolicy(s.pool.QueryRow(ctx, `
+	return groupPolicyForUser(ctx, s.pool, userID)
+}
+
+// GroupPolicyInTransaction reads group authority in the caller's snapshot.
+func GroupPolicyInTransaction(ctx context.Context, tx pgx.Tx, userID int) (*GroupPolicy, error) {
+	return groupPolicyForUser(ctx, tx, userID)
+}
+func groupPolicyForUser(ctx context.Context, db interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, userID int) (*GroupPolicy, error) {
+	policy, err := scanGroupPolicy(db.QueryRow(ctx, `
 		SELECT g.id, g.library_ids, g.max_playback_quality, g.download_allowed,
 			g.download_transcode_allowed, g.transcode_allowed, g.audio_transcode_allowed,
 			g.max_streams, g.max_transcodes,

@@ -227,8 +227,17 @@ func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInpu
 
 // GetByID retrieves a user by their numeric ID.
 func (r *UserRepository) GetByID(ctx context.Context, id int) (*models.User, error) {
-	query := `SELECT ` + allColumns + ` FROM users WHERE id = $1`
-	return scanUser(r.pool.QueryRow(ctx, query, id))
+	return userByID(ctx, r.pool, id)
+}
+
+// UserInTransaction reads account authority in an owning caller transaction.
+func UserInTransaction(ctx context.Context, tx pgx.Tx, id int) (*models.User, error) {
+	return userByID(ctx, tx, id)
+}
+func userByID(ctx context.Context, db interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, id int) (*models.User, error) {
+	return scanUser(db.QueryRow(ctx, `SELECT `+allColumns+` FROM users WHERE id=$1`, id))
 }
 
 // GetByUsername retrieves a user by their username (case-insensitive).

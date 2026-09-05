@@ -1,9 +1,10 @@
 # Progress bootstrap storage
 
 `internal/progresssync` stores immutable full-replacement progress snapshots in
-PostgreSQL. This foundation does not register HTTP routes, advertise a capability,
-start cleanup, change a selected backend, or change native sync behavior. SQLite
-and incremental delta delivery are outside this implementation.
+PostgreSQL. The typed API and production service expose full replacement and bounded cleanup.
+They do not change a selected backend, importer readiness, or native sync behavior.
+SQLite and incremental delta delivery are outside this implementation. See
+[the wire contract](../progress-api.md).
 
 A snapshot belongs to an account, resolved household profile, installation,
 generation, effective-access digest, and fixed page size. Its entries project the
@@ -39,12 +40,11 @@ progress entries are allowed. It checks empty snapshots too. Each page rechecks
 the digest and every returned item. A changed digest or lost item visibility
 requires replacement admission; it never silently edits a saved page.
 
-Production service wiring remains required. It must use the owning access policy,
-resolve the profile, and recheck current request and PIN authority before and after
-the storage call. A repeatable-read database view alone does not prove that a
+The production service uses the owning access policy, resolves the profile, and
+rechecks current request and PIN authority before and after the storage call. A repeatable-read database view alone does not prove that a
 request's session or PIN authority remained valid outside that transaction.
 `Position` is a domain continuation structure, not an authenticated public token.
-A future transport must sign its entire identity, installation, generation,
+The transport signs its entire identity, installation, generation,
 access digest, snapshot, page size and position with operation/mode binding.
 A legacy numeric `since` value is not accepted as a snapshot continuation.
 
@@ -71,8 +71,8 @@ not a latency or throughput promise.
 
 Snapshots expire after 15 minutes. Reads enforce expiry independently of cleanup.
 `Cleanup` removes expired payloads and retains admission metadata for another
-24 hours; it is idempotent across nodes. A future application lifecycle must call
-it regularly. The storage package does not start background workers itself.
+24 hours; it is idempotent across nodes. The application runs bounded startup and minute cleanup passes. The repository
+does not start background workers itself.
 
 ## Validation and remaining integration
 
@@ -82,8 +82,27 @@ admissions, immutable update/delete behavior, account/profile and installation
 binding, access changes, generation locks and rollback, expiration cleanup,
 cancellation rollback, and actual row/serialized-byte cap crossings.
 
-Remaining gates are the importer transaction/receipt integration, production
-visibility and current-request authority wiring, durable cleanup lifecycle,
-signed transport and capability contract, and coordinated Apple and Android
-replacement staging with offline-queue preservation. None is advertised as
-implemented by the storage checkpoint.
+Remaining activation gates are importer transaction/receipt integration and
+coordinated Apple and Android replacement staging with offline-queue preservation.
+The API does not advertise either as implemented by capability discovery.
+
+## Production service composition
+
+The service accepts only the selected account's explicit PostgreSQL snapshot
+source. Its pool and account ID must match the central authority database and
+request; notification decorators forward both values. SQLite remains unsupported.
+A generic PostgreSQL-looking wrapper or unrelated feature marker is insufficient.
+
+Account, group, profile, canonical preferences and catalog visibility use their
+owning query helpers on the snapshot transaction. The existing PDP and PIN rules
+evaluate those facts; custom policy is never replaced with a local approximation.
+The strict preference path propagates read failures rather than applying degraded
+visibility defaults. A final fresh transaction rechecks generation, authority and
+returned-item visibility, with mandatory current-credential/PIN callbacks around
+the operation. The transport supplies that callback from authenticated request state; a nil
+callback is rejected.
+
+Application lifecycle wiring starts RunCleanup with its cancellable context.
+It runs at startup and once per minute, bounds each pass to 30 seconds, and does
+not change provider selection or importer readiness. Cleanup errors must be logged
+without raw database error text, account IDs or source values.
