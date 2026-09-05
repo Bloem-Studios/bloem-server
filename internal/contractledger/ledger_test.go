@@ -794,7 +794,7 @@ func TestSchemaRejectsUnusedRowWithCallSites(t *testing.T) {
 }
 
 // TestConcurrencyMarkingIsRestricted pins where the curated concurrency
-// field may appear: tier-1 ported rows with a mutating method, and only the
+// field may appear: ported rows at either tier with a guardable method, and only the
 // if_match value.
 func TestConcurrencyMarkingIsRestricted(t *testing.T) {
 	ledger, err := Load()
@@ -807,7 +807,7 @@ func TestConcurrencyMarkingIsRestricted(t *testing.T) {
 			continue
 		}
 		marked++
-		if e.Concurrency != ConcurrencyIfMatch || e.Tier != 1 || e.Disposition != DispositionPorted || !isGuardableMethod(e.Method) {
+		if e.Concurrency != ConcurrencyIfMatch || e.Disposition != DispositionPorted || !isGuardableMethod(e.Method) {
 			t.Errorf("%s: concurrency %q on tier %d %s %s", e.key(), e.Concurrency, e.Tier, e.Disposition, e.Method)
 		}
 	}
@@ -823,23 +823,23 @@ func TestConcurrencyMarkingIsRestricted(t *testing.T) {
 		e := entryWhere(t, doc, isMarked)
 		e["disposition"] = DispositionCompatibilityOnly
 		e["disposition_rule"] = "maintainer_decision"
-		// Drop the retry classification too, so the concurrency review rule
+		// Drop the retry classification too, so the concurrency placement rule
 		// is what fails rather than the schema's retry_safety placement.
 		delete(e, "retry_safety")
 		delete(e, "retry_safety_note")
-	}), "only for tier-1 ported rows")
+	}), "concurrency")
 	expectFailure(t, mutatedFS(t, func(doc map[string]any) {
 		e := entryWhere(t, doc, func(e map[string]any) bool {
 			return notMarked(e) && e["method"] == "GET" && e["tier"] == float64(1) && e["disposition"] == "ported"
 		})
 		e["concurrency"] = ConcurrencyIfMatch
-	}), "only for a method a Guarded v2 operation may use")
+	}), "concurrency")
 	expectFailure(t, mutatedFS(t, func(doc map[string]any) {
 		e := entryWhere(t, doc, func(e map[string]any) bool {
 			return notMarked(e) && e["method"] == "POST" && e["tier"] == float64(1) && e["disposition"] == "ported"
 		})
 		e["concurrency"] = ConcurrencyIfMatch
-	}), "only for a method a Guarded v2 operation may use")
+	}), "concurrency")
 }
 
 // guardedWithoutLegacyRow names the guarded v2 operations that port no
@@ -850,9 +850,8 @@ var guardedWithoutLegacyRow = map[string]string{}
 
 // TestGuardedOperationsAreMarkedIfMatch reconciles the v2 registry with the
 // ledger: every operation registered Guarded must have each legacy row that
-// maps to it marked if_match. The Guarded set is empty until the first
-// section PR guards a resource; the test still runs against the real
-// registry so that PR cannot forget the marking.
+// maps to it marked if_match. The test runs against production registrations
+// so an implemented guarded operation cannot omit its ledger marking.
 func TestGuardedOperationsAreMarkedIfMatch(t *testing.T) {
 	ledger, err := Load()
 	if err != nil {
@@ -868,7 +867,7 @@ func TestGuardedOperationsAreMarkedIfMatch(t *testing.T) {
 }
 
 // TestConcurrencyMismatchesFire proves every reconcile branch with a
-// synthetic registry and ledger, since the live registry guards nothing yet.
+// synthetic registry and ledger, including mismatches absent from production.
 func TestConcurrencyMismatchesFire(t *testing.T) {
 	opID := func(s string) *string { return &s }
 	v2 := func(id string) V2Target {
@@ -971,7 +970,7 @@ func concurrencyMismatches(entries []Entry, declared []apiv2registry.Declared, e
 			continue
 		}
 		for _, e := range rows {
-			// Only a row eligible for the marking (tier-1 ported, guardable
+			// Only a row eligible for the marking (ported at either tier, guardable
 			// method) is required to carry it: a redesigned or replaced row
 			// may name a guarded v2 operation while the review rule keeps
 			// the concurrency field off it, and the two rules must not
@@ -1325,4 +1324,67 @@ func TestUnmappedExternalWebhookRemainsUnclassified(t *testing.T) {
 	if !found {
 		t.Fatal("external webhook ingress absent")
 	}
+}
+
+func TestTier2ConcurrencyPlacementAndAgreement(t *testing.T) {
+	fsys := mutatedFS(t, func(doc map[string]any) {
+		e := entryWhere(t, doc, func(e map[string]any) bool {
+			method, _ := e["method"].(string)
+			return e["tier"] == float64(2) && e["disposition"] == DispositionPorted && isGuardableMethod(method)
+		})
+		e["concurrency"] = ConcurrencyIfMatch
+	})
+	if err := verify(fsys); err != nil {
+		t.Fatalf("tier-2 ported concurrency refused: %v", err)
+	}
+	for _, method := range []string{http.MethodPut, http.MethodPatch, http.MethodDelete} {
+		t.Run(method, func(t *testing.T) {
+			e := Entry{copied: copied{Method: method, Path: "/api/v1/tier2/{id}"}, Tier: 2, Disposition: DispositionPorted, Concurrency: ConcurrencyIfMatch,
+				RetrySafety: RetrySafetyNaturalIdempotent, ReviewState: ReviewRatified,
+				V2: V2Target{OperationID: new("updateTier2"), Method: new(method), Path: new("/api/v2/tier2/{id}")}}
+			if got := reviewRules(e.key(), e, inventoryRoute{}); len(got) != 0 {
+				t.Fatalf("ported row without named owner refused: %v", got)
+			}
+			op := apiv2registry.Declared{Method: method, Path: *e.V2.Path, OperationID: *e.V2.OperationID, Guarded: true}
+			if got := concurrencyMismatches([]Entry{e}, []apiv2registry.Declared{op}, nil); len(got) != 0 {
+				t.Fatal(got)
+			}
+			unmarked := e
+			unmarked.Concurrency = ""
+			if got := concurrencyMismatches([]Entry{unmarked}, []apiv2registry.Declared{op}, nil); len(got) != 1 || !strings.Contains(got[0], "is not marked concurrency") {
+				t.Fatalf("missing tier-2 marking accepted: %v", got)
+			}
+			wrongMethod := op
+			wrongMethod.Method = http.MethodGet
+			if got := concurrencyMismatches([]Entry{e}, []apiv2registry.Declared{wrongMethod}, nil); len(got) != 1 || !strings.Contains(got[0], "disagree with the registry") {
+				t.Fatalf("tier-2 target method mismatch accepted: %v", got)
+			}
+			op.Guarded = false
+			if got := concurrencyMismatches([]Entry{e}, []apiv2registry.Declared{op}, nil); len(got) != 1 || !strings.Contains(got[0], "is not declared Guarded") {
+				t.Fatalf("unguarded tier-2 operation accepted: %v", got)
+			}
+		})
+	}
+	for _, method := range []string{http.MethodGet, http.MethodHead, http.MethodPost} {
+		t.Run("reject "+method, func(t *testing.T) {
+			e := Entry{copied: copied{Method: method}, Tier: 2, Disposition: DispositionPorted, Concurrency: ConcurrencyIfMatch}
+			if eligibleForConcurrency(e) {
+				t.Fatal("unguardable method eligible")
+			}
+			if got := reviewRules(e.key(), e, inventoryRoute{}); len(got) == 0 {
+				t.Fatal("unguardable method accepted")
+			}
+			expectFailure(t, mutatedFS(t, func(doc map[string]any) {
+				row := entryWhere(t, doc, func(e map[string]any) bool { return e["tier"] == float64(2) && e["disposition"] == DispositionPorted })
+				row["method"] = method
+				row["concurrency"] = ConcurrencyIfMatch
+				delete(row, "retry_safety")
+				delete(row, "retry_safety_note")
+			}), "concurrency")
+		})
+	}
+	expectFailure(t, mutatedFS(t, func(doc map[string]any) {
+		row := entryWhere(t, doc, func(e map[string]any) bool { return e["tier"] == float64(2) && e["disposition"] != DispositionPorted })
+		row["concurrency"] = ConcurrencyIfMatch
+	}), "concurrency")
 }
