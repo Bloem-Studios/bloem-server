@@ -517,10 +517,14 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   middleware chain ahead of the class gate, so a gate denial or validation problem carries them
   as a 200 does. No v1 route and no v2 operation is deprecated yet; the only deprecated
   operations are test probes, recorded in the `deprecated_ok` and `deprecated_problem` fixtures.
-- **Not yet encoded.** These ratified wire rules from the plan have no foundation code or tests
-  yet. Each lands with the first v2 operation that needs it, before the first Phase 3 domain PR,
-  tracked on #882: the durable `202` job acceptance and its monitor/cancel shape, and the
-  atomic-versus-per-item bulk contract.
+- **Accepted library jobs.** Library refresh and deletion use the durable admin-job runner
+  with canonical `/api/v2/library-jobs/{job_id}` monitors, safe named results/failures,
+  conditional polling, and durable refresh cancellation. Worker progress and terminal writes
+  are fenced to their claim; terminal transitions cannot overwrite a finished job. Deletion
+  preparation and acceptance commit in one transaction. These guarantees cover the existing
+  library operations; other asynchronous domains still need their own safe projections and
+  cancellation policy. The atomic-versus-per-item bulk contract remains a separate foundation
+  checkpoint tracked on #882.
 
 ### Problem Details
 
@@ -887,7 +891,10 @@ returns `202` with the canonical `canceling` job; repeated pending cancellation 
 same job; an already canceled job returns `200`; and an already succeeded or failed job returns the
 `409 job_not_cancelable` problem. Cancellation is best-effort and does not imply rollback. The
 owning operation documents whether partial effects remain, are compensated, or are transactional.
-Hidden jobs return `404`.
+Operation-level authentication and authorization gates run first and retain their documented
+`401`/`403` responses. For an authorized caller, a missing or hidden job returns `404` before
+conditional evaluation. In particular, library cancellation retains its acting-admin and
+primary-profile requirement even though the monitor is readable by administrator accounts.
 
 Jobs remain retrievable for at least 24 hours after reaching a terminal state; a domain may retain
 them longer for history or audit. After documented cleanup they may return `404`, so durable result

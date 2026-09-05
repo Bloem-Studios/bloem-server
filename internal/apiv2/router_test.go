@@ -313,6 +313,8 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"GET " + Prefix + "/recommendations/section/{kind}",
 		"GET " + Prefix + "/recommendations/similar/{item_id}",
 		"GET " + Prefix + "/recommendations/similar-users",
+		"GET " + Prefix + "/library-jobs/{job_id}",
+		"POST " + Prefix + "/library-jobs/{job_id}/cancel",
 		"GET " + Prefix + "/recommendations/taste-profile",
 		"GET " + Prefix + "/recommendations/taste-seed/items",
 		"POST " + Prefix + "/recommendations/taste-seed",

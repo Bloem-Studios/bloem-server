@@ -1023,6 +1023,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/library-jobs/{job_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Poll accepted library work. Terminal jobs remain available for at least 24 hours. */
+    get: operations["getLibraryJob"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/library-jobs/{job_id}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Request best-effort cancellation of metadata refresh. Completed metadata changes remain. Deletion cannot be canceled. */
+    post: operations["cancelLibraryJob"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/library-playback-prefs": {
     parameters: {
       query?: never;
@@ -2553,87 +2587,30 @@ export interface components {
       submit_label?: string;
     };
     AdminJob: {
-      /**
-       * Format: int64
-       * @description Size of the produced artifact; 0 when none
-       * @example 0
-       */
-      artifact_size_bytes: number;
-      /**
-       * Format: date-time
-       * @description Absent until the job finishes
-       */
-      completed_at?: string;
-      /**
-       * @description The account that queued the job
-       * @example 2
-       */
-      created_by_user_id: string;
-      /** @description Failure reason; absent unless the job failed */
-      error_message?: string;
-      /**
-       * Format: date-time
-       * @description When the artifact expires; absent when it never does
-       */
-      expires_at?: string;
-      /**
-       * Format: date-time
-       * @description Last worker heartbeat; absent before the first
-       */
-      heartbeat_at?: string;
-      /**
-       * @description Job identifier
-       * @example 01J9Z8C3W4R5T6Y7U8I9O0P1Q2
-       */
-      id: string;
-      /**
-       * @description What the job does; the request payload's shape follows it
-       * @example delete_library
-       */
-      job_type: string;
-      /**
-       * @description Operator-facing status line
-       * @example Queued library deletion
-       */
-      message: string;
-      /**
-       * Format: int64
-       * @example 0
-       */
-      progress_current: number;
-      /**
-       * Format: int64
-       * @description 0 when the job has no measurable progress
-       * @example 0
-       */
-      progress_total: number;
-      /** @description Public URL of a published artifact; absent until published */
-      public_url?: string;
-      /**
-       * Format: date-time
-       * @description Absent until the artifact is published
-       */
-      published_at?: string;
-      /** @description Job-type-specific request document; {} when the type carries none */
-      request_payload: unknown;
+      cancelable: boolean;
       /**
        * Format: date-time
        * @description RFC 3339 instant in UTC with millisecond precision
-       * @example 2026-01-02T03:04:05.678Z
        */
-      requested_at: string;
-      /** @description Job-type-specific result document; {} until the job completes */
-      result_payload: unknown;
+      created_at: string;
+      deletion_result?: components["schemas"]["LibraryDeletionJobResult"];
+      failure?: components["schemas"]["JobFailure"];
       /**
        * Format: date-time
-       * @description Absent until a worker picks the job up
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      finished_at?: string;
+      id: string;
+      kind: string;
+      progress?: components["schemas"]["JobProgress"];
+      refresh_result?: components["schemas"]["LibraryRefreshJobResult"];
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
        */
       started_at?: string;
-      /**
-       * @description Lifecycle state
-       * @example queued
-       */
-      status: string;
+      state: string;
+      terminal: boolean;
     };
     AdminUser: {
       /**
@@ -4302,6 +4279,19 @@ export interface components {
        */
       impersonator_username: string;
     };
+    JobFailure: {
+      detail: string;
+      retryable: boolean;
+      title: string;
+      type: string;
+    };
+    JobProgress: {
+      /** Format: int64 */
+      current: number;
+      /** Format: int64 */
+      total: number;
+      unit: string;
+    };
     Library: {
       /**
        * @description Translate descriptions when providers lack the language
@@ -4474,6 +4464,19 @@ export interface components {
        */
       type: string;
     };
+    LibraryDeletionJobResult: {
+      /** Format: int64 */
+      deleted_item_links: number;
+      /** Format: int64 */
+      deleted_media_files: number;
+      /** Format: int64 */
+      deleted_orphaned_items: number;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      library_id: string;
+    };
     LibraryMountCheck: {
       /**
        * Format: date-time
@@ -4617,6 +4620,17 @@ export interface components {
        * @enum {string}
        */
       mode?: "quick" | "full";
+    };
+    LibraryRefreshJobResult: {
+      /** Format: int64 */
+      failed: number;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      library_id: string;
+      /** Format: int64 */
+      refreshed: number;
     };
     LibraryReorder: {
       /** @description Libraries and their positions; libraries not named keep their order after the named ones */
@@ -15882,6 +15896,7 @@ export interface operations {
       202: {
         headers: {
           Location?: string;
+          "Retry-After"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -17198,6 +17213,7 @@ export interface operations {
       202: {
         headers: {
           Location?: string;
+          "Retry-After"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -18453,6 +18469,259 @@ export interface operations {
       };
       /** @description Not Acceptable */
       406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getLibraryJob: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          Location?: string;
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminJob"];
+        };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  cancelLibraryJob: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The job was already canceled. */
+      200: {
+        headers: {
+          ETag?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminJob"];
+        };
+      };
+      /** @description Accepted */
+      202: {
+        headers: {
+          ETag?: string;
+          Location?: string;
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminJob"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };

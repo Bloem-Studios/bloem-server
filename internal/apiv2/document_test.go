@@ -196,6 +196,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"listHistory": true, "removeHistoryEntries": true,
 		"syncProgress":  true,
 		"getWatchState": true, "markWatched": true, "unmarkWatched": true,
+		"cancelLibraryJob": true,
 	}
 	for _, id := range historyImportOperationIDs {
 		profileToken[id] = true
@@ -231,6 +232,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	expect["importMDBListCollection"] = map[int]bool{http.StatusCreated: true, http.StatusOK: false}
 	expect["reorderCollections"] = map[int]bool{http.StatusOK: true, http.StatusPreconditionRequired: true, http.StatusPreconditionFailed: true}
 	expect["deleteCollectionGroup"] = map[int]bool{http.StatusNoContent: true}
+	expect["cancelLibraryJob"] = map[int]bool{http.StatusOK: true, http.StatusAccepted: true, http.StatusConflict: true, http.StatusNotFound: true}
 	expect["refreshLibraryMetadata"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: true, http.StatusAccepted: true}
 	expect["uploadLibraryPoster"] = map[int]bool{http.StatusNotFound: true, http.StatusRequestEntityTooLarge: true, http.StatusUnsupportedMediaType: true}
 	expect["getLibraryLayout"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}

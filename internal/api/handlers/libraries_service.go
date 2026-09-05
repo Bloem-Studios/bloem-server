@@ -284,38 +284,18 @@ func (h *LibraryHandler) DeleteLibrary(ctx context.Context, id, userID int) (*mo
 		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to load library")
 	}
 
-	wasEnabled := folder.Enabled
-	if wasEnabled {
-		disabled := false
-		if err := h.folderRepo.Update(ctx, folder.ID, catalog.UpdateFolderInput{Enabled: &disabled}); err != nil {
-			slog.ErrorContext(ctx, "disabling library before delete", "component", "api", "library_id", folder.ID, "error", err)
-			return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to prepare library deletion")
-		}
-		folder.Enabled = false
-	}
-
-	job, err := h.JobRepo.Create(ctx, adminjob.CreateJobInput{
-		JobType:         adminjob.JobTypeDeleteLibrary,
-		CreatedByUserID: userID,
-		RequestPayload: adminjob.DeleteLibraryRequest{
-			LibraryID:   folder.ID,
-			LibraryName: folder.Name,
-		},
-		Message: "Queued library deletion",
+	creator, ok := h.JobRepo.(interface {
+		CreateLibraryDeletion(context.Context, int, adminjob.DeleteLibraryRequest) (*models.AdminJob, error)
 	})
+	if !ok {
+		return nil, apiError(http.StatusServiceUnavailable, "unavailable", "Atomic library deletion is not configured")
+	}
+	job, err := creator.CreateLibraryDeletion(ctx, userID, adminjob.DeleteLibraryRequest{LibraryID: folder.ID, LibraryName: folder.Name})
 	if err != nil {
-		if wasEnabled {
-			enabled := true
-			if revertErr := h.folderRepo.Update(ctx, folder.ID, catalog.UpdateFolderInput{Enabled: &enabled}); revertErr != nil {
-				slog.ErrorContext(ctx, "re-enabling library after failed delete queue", "component", "api",
-					"library_id", folder.ID,
-					"queue_error", err,
-					"revert_error", revertErr,
-				)
-			}
+		if errors.Is(err, adminjob.ErrJobNotFound) {
+			return nil, apiError(http.StatusNotFound, "not_found", "Library not found")
 		}
-		var conflict *adminjob.ActiveJobConflictError
-		if errors.As(err, &conflict) {
+		if conflict, ok := errors.AsType[*adminjob.ActiveJobConflictError](err); ok {
 			return nil, &APIError{Status: http.StatusConflict, Code: policyErrorConflict, Message: "A library deletion is already queued or running", cause: conflict}
 		}
 		slog.ErrorContext(ctx, "queuing library delete job", "component", "api", "library_id", id, "error", err)
