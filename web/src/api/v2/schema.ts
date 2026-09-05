@@ -1428,6 +1428,12 @@ export interface components {
       /** Format: double */
       duration_seconds?: number;
       ebook?: components["schemas"]["EbookDetailExtension"];
+      /** @description Whether forced subtitles show for this item under the viewer's preferences */
+      effective_show_forced_subtitles?: boolean;
+      /** @description The subtitle language the viewer's preferences resolve to for this item */
+      effective_subtitle_language?: string;
+      /** @description The subtitle mode the viewer's preferences resolve to for this item */
+      effective_subtitle_mode?: string;
       effective_subtitle_track_signature?: components["schemas"]["SubtitleTrackSignature"];
       effective_version_codec_video?: string;
       effective_version_edition_key?: string;

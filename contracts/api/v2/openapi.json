@@ -1305,6 +1305,18 @@
           "ebook": {
             "$ref": "#/components/schemas/EbookDetailExtension"
           },
+          "effective_show_forced_subtitles": {
+            "description": "Whether forced subtitles show for this item under the viewer's preferences",
+            "type": "boolean"
+          },
+          "effective_subtitle_language": {
+            "description": "The subtitle language the viewer's preferences resolve to for this item",
+            "type": "string"
+          },
+          "effective_subtitle_mode": {
+            "description": "The subtitle mode the viewer's preferences resolve to for this item",
+            "type": "string"
+          },
           "effective_subtitle_track_signature": {
             "$ref": "#/components/schemas/SubtitleTrackSignature"
           },

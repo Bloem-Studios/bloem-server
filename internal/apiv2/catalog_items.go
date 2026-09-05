@@ -348,6 +348,9 @@ type CatalogItemDetail struct {
 	Credits                         *catalogpkg.Marker                   `json:"credits,omitempty"`
 	Recap                           *catalogpkg.Marker                   `json:"recap,omitempty"`
 	Preview                         *catalogpkg.Marker                   `json:"preview,omitempty"`
+	EffectiveSubtitleLanguage       *string                              `json:"effective_subtitle_language,omitempty" doc:"The subtitle language the viewer's preferences resolve to for this item"`
+	EffectiveSubtitleMode           *string                              `json:"effective_subtitle_mode,omitempty" doc:"The subtitle mode the viewer's preferences resolve to for this item"`
+	EffectiveShowForcedSubtitles    *bool                                `json:"effective_show_forced_subtitles,omitempty" doc:"Whether forced subtitles show for this item under the viewer's preferences"`
 	EffectiveSubtitleTrackSignature *userstore.SubtitleTrackSignature    `json:"effective_subtitle_track_signature,omitempty"`
 	EffectiveVersionResolution      *string                              `json:"effective_version_resolution,omitempty"`
 	EffectiveVersionHDR             *bool                                `json:"effective_version_hdr,omitempty"`
@@ -1094,7 +1097,7 @@ func catalogItemDetailOf(d *catalogpkg.ItemDetail) CatalogItemDetail {
 	for _, f := range d.WorkFormats {
 		card.WorkFormats = append(card.WorkFormats, CatalogWorkFormat{Type: f.Type, ContentID: f.ContentID, LibraryID: idOfPositive(f.LibraryID)})
 	}
-	return CatalogItemDetail{
+	out := CatalogItemDetail{
 		CatalogItem: card,
 		SortTitle:   d.SortTitle, OriginalTitle: d.OriginalTitle, Tagline: d.Tagline, PendingTranslationLanguage: d.PendingTranslationLanguage,
 		ImdbID: d.ImdbID, TmdbID: d.TmdbID, TvdbID: d.TvdbID, Cast: NonNil(d.Cast), Crew: NonNil(d.Crew), Countries: d.Countries, LockedFields: d.LockedFields,
@@ -1106,6 +1109,16 @@ func catalogItemDetailOf(d *catalogpkg.ItemDetail) CatalogItemDetail {
 		EffectiveVersionHDR: d.EffectiveVersionHDR, EffectiveVersionCodecVideo: d.EffectiveVersionCodecVideo, EffectiveVersionEditionKey: d.EffectiveVersionEditionKey,
 		Audiobook: d.Audiobook, Ebook: d.Ebook, Manga: d.Manga,
 	}
+	if d.HasEffectiveSubtitleLang {
+		out.EffectiveSubtitleLanguage = &d.EffectiveSubtitleLanguage
+	}
+	if d.HasEffectiveSubtitleMode {
+		out.EffectiveSubtitleMode = &d.EffectiveSubtitleMode
+	}
+	if d.HasEffectiveShowForcedSubtitles {
+		out.EffectiveShowForcedSubtitles = &d.EffectiveShowForcedSubtitles
+	}
+	return out
 }
 
 // datePtr renders a stored YYYY-MM-DD string as an optional member.
