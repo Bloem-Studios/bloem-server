@@ -1840,8 +1840,8 @@ application jobs, supports conditional polling, and projects a typed result with
 payloads or operator failure details. It does not offer cancellation. The shared job listing
 remains a separate dependency for restoring previous jobs in the administrator UI.
 
-The 24 legacy administrator collection rows remain proposed until independent section review;
-legacy routes stay available. No existing Apple or Android administrator collection consumer was
+The 24 legacy administrator collection rows map to reviewed v2 operations; legacy routes stay
+available during adoption. No existing Apple or Android administrator collection consumer was
 found in the client inventory. Jellyfin does not expose this administrator editing surface;
 shared catalog write invariants continue to apply to its collection reads. Administrator section
 route migration is separate from collection template application.
