@@ -232,6 +232,9 @@ CREATE TABLE IF NOT EXISTS user_devices (
     PRIMARY KEY (profile_id, device_id)
 );
 
+CREATE INDEX IF NOT EXISTS user_devices_profile_recency_idx ON user_devices (profile_id, last_seen_at DESC, device_id);
+CREATE INDEX IF NOT EXISTS user_devices_household_recency_idx ON user_devices (last_seen_at DESC, profile_id, device_id);
+
 CREATE TABLE IF NOT EXISTS downloads (
     id TEXT PRIMARY KEY,
     profile_id TEXT NOT NULL,
