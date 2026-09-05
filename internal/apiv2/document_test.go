@@ -243,6 +243,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range []string{"listWebhookConnections", "createWebhookConnection", "updateWebhookConnection", "deleteWebhookConnection", "rotateWebhookConnection", "getWebhookMappings", "updateWebhookMappings", "listWebhookEvents"} {
 		profileToken[id] = true
 	}
+	for _, id := range []string{"getFileMarkers", "getItemMarkers", "setFileMarkers", "setItemMarkers", "clearFileMarkerSegment"} {
+		profileToken[id] = true
+	}
 	expect["refreshCatalogItemTrailers"] = map[int]bool{http.StatusOK: true, http.StatusAccepted: true, http.StatusConflict: true, http.StatusTooManyRequests: true}
 	expect["translateCatalogItemDescription"] = map[int]bool{http.StatusAccepted: true, http.StatusConflict: true}
 	expect["refreshPerson"] = map[int]bool{http.StatusAccepted: true, http.StatusTooManyRequests: true}

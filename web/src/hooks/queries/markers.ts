@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/api/client";
-import type { FileMarkersResponse, MarkerEditAuditResponse, SetMarkersRequest } from "@/api/types";
+import type { MarkerEditAuditResponse, SetMarkersRequest } from "@/api/types";
+import { getItemMarkers, setItemMarkers } from "@/api/v2/markers";
 import { adminKeys, itemKeys } from "@/hooks/queries/keys";
 
 /** Loads the markers + provenance for a catalog item's primary file. */
 export function useItemMarkers(itemId: string | undefined, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: itemKeys.markers(itemId ?? ""),
-    queryFn: () => api<FileMarkersResponse>(`/markers/items/${encodeURIComponent(itemId ?? "")}`),
+    queryFn: ({ signal }) => getItemMarkers(itemId ?? "", signal),
     enabled: Boolean(itemId) && (options?.enabled ?? true),
     staleTime: 30_000,
   });
@@ -18,11 +19,7 @@ export function useItemMarkers(itemId: string | undefined, options?: { enabled?:
 export function useSetItemMarkers(itemId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: SetMarkersRequest) =>
-      api<FileMarkersResponse>(`/markers/items/${encodeURIComponent(itemId ?? "")}`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
+    mutationFn: (body: SetMarkersRequest) => setItemMarkers(itemId ?? "", body),
     onSuccess: (data) => {
       toast.success("Markers saved");
       if (itemId) {

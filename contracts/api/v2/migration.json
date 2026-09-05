@@ -31510,13 +31510,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/markers/files/{file_id}",
+        "operation_id": "getFileMarkers"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; markersHandler != nil && markerEditAccess != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md. Independent source review completed for authorization, shared v1 writes, presence semantics, web consumers, and existing OpenAPI compatibility."
     },
     {
       "listener": "api",
@@ -31565,18 +31565,19 @@
       "section": "playback-control",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/markers/files/{file_id}",
+        "operation_id": "setFileMarkers"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; markersHandler != nil && markerEditAccess != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md. Independent source review completed for authorization, shared v1 writes, presence semantics, web consumers, and existing OpenAPI compatibility.",
+      "retry_safety_note": "Atomic database writes and contribution claims do not deduplicate every effect: realtime notifications may repeat, and provider acceptance followed by a lost response or receipt failure can be retried after claim release or expiry."
     },
     {
       "listener": "api",
@@ -31617,18 +31618,19 @@
       "section": "playback-control",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/markers/files/{file_id}/{segment}",
+        "operation_id": "clearFileMarkerSegment"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; markersHandler != nil && markerEditAccess != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md. Independent source review completed for authorization, shared v1 writes, presence semantics, web consumers, and existing OpenAPI compatibility.",
+      "retry_safety_note": "Atomic database writes and contribution claims do not deduplicate every effect: realtime notifications may repeat, and provider acceptance followed by a lost response or receipt failure can be retried after claim release or expiry."
     },
     {
       "listener": "api",
@@ -31682,13 +31684,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/markers/items/{item_id}",
+        "operation_id": "getItemMarkers"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; markersHandler != nil && markerEditAccess != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md. Independent source review completed for authorization, shared v1 writes, presence semantics, web consumers, and existing OpenAPI compatibility."
     },
     {
       "listener": "api",
@@ -31739,18 +31741,19 @@
       "section": "playback-control",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/markers/items/{item_id}",
+        "operation_id": "setItemMarkers"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; markersHandler != nil && markerEditAccess != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Marker checkpoint: typed service preserves file and parent access, optional profile context, and atomic manual updates with audit. String file_id; explicit start_seconds/end_seconds; absent provenance omitted. PUT distinguishes omitted, null, and object segments. Web consumers migrated; native marker call sites absent in the inventory. See docs/markers-api.md. Independent source review completed for authorization, shared v1 writes, presence semantics, web consumers, and existing OpenAPI compatibility.",
+      "retry_safety_note": "Atomic database writes and contribution claims do not deduplicate every effect: realtime notifications may repeat, and provider acceptance followed by a lost response or receipt failure can be retried after claim release or expiry."
     },
     {
       "listener": "api",

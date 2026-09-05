@@ -183,11 +183,10 @@ func (p Patch[T]) IsZero() bool { return !p.Present }
 
 // Schema describes the field as a nullable value of T.
 func (Patch[T]) Schema(r huma.Registry) *huma.Schema {
-	var v T
-	s := r.Schema(reflect.TypeOf(v), true, "")
-	if s.Ref != "" {
-		return &huma.Schema{OneOf: []*huma.Schema{s, {Type: string(jsonNull)}}}
-	}
+	// Inline the value schema so Huma validates nullable objects with the same
+	// rules as nullable scalars. Its validator does not enforce type "null"
+	// in a oneOf alternative. Copy before changing shared registry metadata.
+	s := r.Schema(reflect.TypeFor[T](), false, "")
 	out := *s
 	out.Nullable = true
 	return &out

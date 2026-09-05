@@ -1432,6 +1432,7 @@ func fixtureCases() []fixtureCase {
 		fixtureCase{name: "forget_device_missing", operationID: opForgetDevice, scenario: "Missing or already forgotten device.", method: http.MethodDelete, path: Prefix + "/devices/missing", headers: viewer, status: 404, assertHeaders: []string{"Content-Type"}, schema: problem},
 	)
 	cases = append(cases, adminHistoryImportFixtureCases()...)
+	cases = append(cases, markerFixtureCases()...)
 	return append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
 }
 
@@ -1479,6 +1480,7 @@ func fixtureDeps() Dependencies {
 	deps.AdminHistoryImports = fixtureAdminHistoryImports()
 	deps.HistoryImports = fixtureHistoryImports()
 	deps.WebhookSync = &fakeWebhookManagement{}
+	deps.Markers = &fakeMarkers{}
 	deps.RequestLifecycle = &fakeLifecycle{}
 	deps.WatchProviders = &fakeWatchLifecycle{}
 	catalog := &fakeCatalog{}
