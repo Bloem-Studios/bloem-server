@@ -1342,6 +1342,11 @@ carries the offset v1's `next_offset` did, minted under the same full-window rul
 retried submission converges on the same set and reports `added` 0. The command remains
 non-retryable because insertion and refresh dispatch are separate; its `item_ids` bounds
 (1..200) are schema validation (`422`, where v1 was `400`).
+Taste-seed submissions validate every selected catalog ID against the acting profile's
+access filter before inserting favorites. An unknown or inaccessible pick rejects the whole
+submission with `404`, so a rejected batch neither saves visible picks nor requests refresh.
+The shared v1 submission uses the same check.
+
 `WatchTonight` and `WatchTonightCardPage` embed the shared `CatalogItem` with a strict
 `watch_tonight_source` enum, `cards` is `items`, `mode` is a required enum, the `genres[]` /
 `exclude_ids[]` parameters are the exploded `genres` / `exclude_ids`, and an unknown genre is

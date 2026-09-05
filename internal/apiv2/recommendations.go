@@ -454,7 +454,7 @@ func (reg *Registry) createTasteSeed(ctx context.Context, in *TasteSeedSubmitInp
 				WithErrors(ProblemError{Location: locationBody + ".item_ids[" + strconv.Itoa(i) + "]", Code: codeInvalid, Detail: "empty identifier"})
 		}
 	}
-	added, err := svc.SubmitTasteSeed(ctx, userID, profileID, in.Body.ItemIDs)
+	added, err := svc.SubmitTasteSeed(ctx, userID, profileID, in.Body.ItemIDs, handlers.AccessFilterFromContext(ctx, ""))
 	if err != nil {
 		// The seam answers 503 when the user store is not wired, the
 		// same fail-closed dependency answer a missing service gets.

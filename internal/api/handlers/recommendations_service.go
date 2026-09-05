@@ -402,15 +402,34 @@ func (h *RecommendationsHandler) TasteSeedItems(ctx context.Context, userID int,
 }
 
 // SubmitTasteSeed favorites every picked item for the profile and, when
-// any was added, queues a taste-profile refresh. It answers how many picks
+// any was added, queues a taste-profile refresh. All picks must first be visible
+// in the acting profile's access-filtered catalog. It answers how many picks
 // were newly recorded; an item that fails to record is skipped, not fatal.
 // Favouriting is set membership, so a duplicate pick, an item the profile
 // already favorited, or a retried submission adds nothing: the store's
 // insert is a no-op that the count leaves out, and a submission that added
 // nothing queues no refresh.
-func (h *RecommendationsHandler) SubmitTasteSeed(ctx context.Context, userID int, profileID string, itemIDs []string) (int, error) {
+func (h *RecommendationsHandler) SubmitTasteSeed(ctx context.Context, userID int, profileID string, itemIDs []string, filter catalog.AccessFilter) (int, error) {
 	if h.storeProvider == nil {
 		return 0, apiError(http.StatusServiceUnavailable, "unavailable", "User store unavailable")
+	}
+	if h.Fetcher == nil {
+		return 0, recommendationsUnavailable("Catalog unavailable")
+	}
+	items, err := h.Fetcher.FetchItemsByContentIDs(ctx, itemIDs, filter)
+	if err != nil {
+		return 0, recommendationsUnavailable("Failed to validate taste-seed items")
+	}
+	visible := make(map[string]bool, len(items))
+	for _, item := range items {
+		visible[item.ContentID] = true
+	}
+	// Validate the whole submission before recording any favorite. Missing
+	// and inaccessible IDs share one answer so hidden catalog data is not exposed.
+	for _, id := range itemIDs {
+		if !visible[id] {
+			return 0, apiError(http.StatusNotFound, "not_found", "Item not found")
+		}
 	}
 	store, err := h.storeProvider.ForUser(ctx, userID)
 	if err != nil || store == nil {

@@ -121,7 +121,7 @@ func (f *fakeRecommendations) TasteSeedItems(_ context.Context, _ int, _ string,
 	return []handlers.SectionItemView{fakeCard()}, f.seedCandidates, nil
 }
 
-func (f *fakeRecommendations) SubmitTasteSeed(_ context.Context, _ int, _ string, itemIDs []string) (int, error) {
+func (f *fakeRecommendations) SubmitTasteSeed(_ context.Context, _ int, _ string, itemIDs []string, _ catalogpkg.AccessFilter) (int, error) {
 	if f.err != nil {
 		return 0, f.err
 	}
@@ -418,6 +418,8 @@ func TestRecommendationTasteSeed(t *testing.T) {
 	}
 	requireProblem(t, do(t, h, http.MethodPost, "/api/v2/recommendations/taste-seed", `{"item_ids":["movie:heat-1995"]}`, bearer(memberToken)), TypeValidationFailed)
 	requireProblem(t, do(t, h, http.MethodPost, "/api/v2/recommendations/taste-seed", `{"item_ids":["movie:heat-1995"]}`, nil), TypeAuthenticationRequired)
+	fake.err = &handlers.APIError{Status: http.StatusNotFound, Code: "not_found", Message: "Item not found"}
+	requireProblem(t, do(t, h, http.MethodPost, "/api/v2/recommendations/taste-seed", `{"item_ids":["movie:hidden"]}`, viewerHeaders()), TypeNotFound)
 	fake.err = &handlers.APIError{Status: http.StatusServiceUnavailable, Code: "unavailable", Message: "User store unavailable"}
 	requireProblem(t, do(t, h, http.MethodPost, "/api/v2/recommendations/taste-seed", `{"item_ids":["movie:heat-1995"]}`, viewerHeaders()), TypeDependencyUnavailable)
 	fake.err = &handlers.APIError{Status: http.StatusInternalServerError, Code: "internal_error", Message: "Failed to fetch taste seed candidates"}

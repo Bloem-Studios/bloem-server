@@ -72,7 +72,7 @@ func (h *RecommendationsHandler) HandleTasteSeed(w http.ResponseWriter, r *http.
 		return
 	}
 
-	added, err := h.SubmitTasteSeed(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), req.ItemIDs)
+	added, err := h.SubmitTasteSeed(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), req.ItemIDs, requestAccessFilter(r))
 	if err != nil {
 		writeAPIError(w, err)
 		return

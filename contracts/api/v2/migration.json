@@ -38275,7 +38275,7 @@
         "path": "/api/v2/recommendations/taste-seed",
         "operation_id": "createTasteSeed"
       },
-      "notes": "Section catalog-recommendations (profile_scoped). Command; {item_ids} with minItems 1 / maxItems 200 at the schema (422 with body.item_ids, where v1 answered 400); an empty identifier is 422 at body.item_ids[i] where v1 skipped it. Favorites converge as set membership and a retry reports added 0; the full command remains non-retryable because refresh dispatch is not durable. Answers {added} as v1; an unwired user store is 503 dependency_unavailable."
+      "notes": "Section catalog-recommendations (profile_scoped). Command; {item_ids} with minItems 1 / maxItems 200 at the schema (422 with body.item_ids, where v1 answered 400); an empty identifier is 422 at body.item_ids[i] where v1 skipped it. Favorites converge as set membership and a retry reports added 0; the full command remains non-retryable because refresh dispatch is not durable. Answers {added} as v1; an unwired user store is 503 dependency_unavailable. Every pick is validated against the acting profile's access-filtered catalog before any favorite is inserted; unknown and inaccessible picks both answer 404. This fixes the same missing-access-check defect in the shared v1 submission seam."
     },
     {
       "listener": "api",
