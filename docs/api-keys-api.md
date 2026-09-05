@@ -90,9 +90,8 @@ POST /api/v1/api-keys
 | `label` | string | yes | Human-readable name for the key. |
 | `scopes` | string[] | no | Scope names from the capability endpoint. Omitted, `null`, or `[]` creates an unscoped key. Duplicates are removed and the list is sorted; an unknown scope is a `400`. |
 
-Returns `201` with the key record. **The full `key` value is returned on every
-read of the owner's own keys, but treat the create response as the moment to
-store it.**
+Returns `201` with the key record. **The full `key` value is returned only on
+creation. Store it from this response; list endpoints cannot recover it.**
 
 ```json
 {
@@ -115,7 +114,13 @@ store it.**
 GET /api/v1/api-keys
 ```
 
-Returns an array of the same objects, newest first.
+Returns an array of metadata objects, newest first (creation time, then ID).
+Each object contains `id`, `user_id`, `label`, `key_prefix`, `rate_tier`,
+`scopes`, `created_at`, and `revision`, plus `last_used_at` when known.
+The `key` field is absent. `key_prefix` contains the first 11 characters of a
+key in the generated format, or an empty string for other legacy formats.
+`revision` advances when configuration changes; authentication activity does
+not change it. Existing credentials remain valid.
 
 ### Delete a key
 
@@ -137,13 +142,16 @@ These require an admin account.
 GET /api/v1/admin/api-keys
 ```
 
-Same fields as above plus `username` for the owning account.
+Same metadata fields as the personal list, plus `username` for the owning
+account. This response never includes the full credential.
 
 ### List one user's keys
 
 ```
 GET /api/v1/admin/users/{userId}/api-keys
 ```
+
+Returns the same metadata fields as the personal list, without `username`.
 
 ### Create a key for a user
 
@@ -156,6 +164,9 @@ POST /api/v1/admin/api-keys
 | `label` | string | yes | Human-readable name for the key. |
 | `user_id` | integer | no | Owning account; defaults to the calling admin. |
 | `scopes` | string[] | no | Same validation as the self-service endpoint. |
+
+Returns `201` with the full key record, using the same creation-only secret
+disclosure as the personal endpoint.
 
 ### Change a key's rate tier
 

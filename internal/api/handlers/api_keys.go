@@ -19,12 +19,16 @@ import (
 // so the handlers can be exercised without a database.
 type APIKeyStore interface {
 	Create(ctx context.Context, userID int, label string, scopes []string) (*models.APIKey, error)
-	ListByUser(ctx context.Context, userID int) ([]*models.APIKey, error)
-	ListByUserAdmin(ctx context.Context, userID int) ([]*models.APIKey, error)
-	ListAll(ctx context.Context) ([]*models.APIKeyWithUser, error)
+	ListByUser(ctx context.Context, userID int) ([]*models.APIKeyMetadataWithUsage, error)
+	ListByUserAdmin(ctx context.Context, userID int) ([]*models.APIKeyMetadataWithUsage, error)
+	ListAll(ctx context.Context) ([]*models.APIKeyMetadataWithUser, error)
 	Delete(ctx context.Context, id int64, userID int) error
 	DeleteByAdmin(ctx context.Context, id int64) error
 	UpdateTier(ctx context.Context, id int64, tier string) error
+	GetMetadataByID(ctx context.Context, id int64) (*models.APIKeyMetadata, error)
+	ListAllPage(ctx context.Context, after *auth.APIKeyPageKey, limit int) ([]*models.APIKeyMetadataWithUser, bool, error)
+	UpdateTierConditional(ctx context.Context, id int64, tier string, guard auth.APIKeyPrecondition) (*models.APIKeyMetadata, error)
+	DeleteByAdminConditional(ctx context.Context, id int64, guard auth.APIKeyPrecondition) error
 }
 
 // APIKeyHandler handles API key management endpoints.
@@ -78,16 +82,38 @@ func toAPIKeyResponse(k *models.APIKey) apiKeyResponse {
 	}
 }
 
-type adminApiKeyResponse struct {
-	ID         int64      `json:"id"`
-	UserID     int        `json:"user_id"`
-	Username   string     `json:"username"`
-	Label      string     `json:"label"`
-	Key        string     `json:"key"`
-	RateTier   string     `json:"rate_tier"`
-	Scopes     []string   `json:"scopes"`
-	CreatedAt  time.Time  `json:"created_at"`
+// APIKeyConfiguration is the canonical editor representation. Usage and owner
+// display names are separate list decorations, so they cannot invalidate edits.
+// A complete credential cannot be represented by this type.
+type APIKeyConfiguration struct {
+	ID        int64     `json:"id"`
+	UserID    int       `json:"user_id"`
+	Label     string    `json:"label"`
+	KeyPrefix string    `json:"key_prefix"`
+	RateTier  string    `json:"rate_tier"`
+	Scopes    []string  `json:"scopes"`
+	CreatedAt time.Time `json:"created_at"`
+	Revision  int64     `json:"revision"`
+}
+
+type APIKeyListItem struct {
+	APIKeyConfiguration
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+}
+
+type AdminAPIKeyListItem struct {
+	APIKeyListItem
+	Username string `json:"username"`
+}
+
+func apiKeyConfigurationOf(k *models.APIKeyMetadata) APIKeyConfiguration {
+	return APIKeyConfiguration{ID: k.ID, UserID: k.UserID, Label: k.Label, KeyPrefix: k.KeyPrefix, RateTier: k.RateTier, Scopes: apiKeyScopesOrEmpty(k.Scopes), CreatedAt: k.CreatedAt, Revision: k.Revision}
+}
+func apiKeyListItemOf(k *models.APIKeyMetadataWithUsage) APIKeyListItem {
+	return APIKeyListItem{APIKeyConfiguration: apiKeyConfigurationOf(&k.APIKeyMetadata), LastUsedAt: k.LastUsedAt}
+}
+func adminAPIKeyListItemOf(k *models.APIKeyMetadataWithUser) AdminAPIKeyListItem {
+	return AdminAPIKeyListItem{APIKeyListItem: apiKeyListItemOf(&k.APIKeyMetadataWithUsage), Username: k.Username}
 }
 
 type adminCreateAPIKeyRequest struct {
@@ -173,9 +199,9 @@ func (h *APIKeyHandler) HandleListAPIKeys(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	resp := make([]apiKeyResponse, 0, len(keys))
+	resp := make([]APIKeyListItem, 0, len(keys))
 	for _, k := range keys {
-		resp = append(resp, toAPIKeyResponse(k))
+		resp = append(resp, apiKeyListItemOf(k))
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -220,9 +246,9 @@ func (h *APIKeyHandler) HandleAdminListUserAPIKeys(w http.ResponseWriter, r *htt
 		return
 	}
 
-	resp := make([]apiKeyResponse, 0, len(keys))
+	resp := make([]APIKeyListItem, 0, len(keys))
 	for _, k := range keys {
-		resp = append(resp, toAPIKeyResponse(k))
+		resp = append(resp, apiKeyListItemOf(k))
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -256,19 +282,9 @@ func (h *APIKeyHandler) HandleAdminListAllAPIKeys(w http.ResponseWriter, r *http
 		return
 	}
 
-	resp := make([]adminApiKeyResponse, 0, len(keys))
+	resp := make([]AdminAPIKeyListItem, 0, len(keys))
 	for _, k := range keys {
-		resp = append(resp, adminApiKeyResponse{
-			ID:         k.ID,
-			UserID:     k.UserID,
-			Username:   k.Username,
-			Label:      k.Label,
-			Key:        k.Key,
-			RateTier:   k.RateTier,
-			Scopes:     apiKeyScopesOrEmpty(k.Scopes),
-			CreatedAt:  k.CreatedAt,
-			LastUsedAt: k.LastUsedAt,
-		})
+		resp = append(resp, adminAPIKeyListItemOf(k))
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -345,4 +361,37 @@ func (h *APIKeyHandler) HandleAdminCreateAPIKey(w http.ResponseWriter, r *http.R
 	}
 
 	writeJSON(w, http.StatusCreated, toAPIKeyResponse(key))
+}
+
+// These application methods are shared by the canonical admin editor. HTTP
+// authentication and precondition parsing stay at the transport boundary.
+func (h *APIKeyHandler) GetAdminAPIKey(ctx context.Context, id int64) (*APIKeyConfiguration, error) {
+	key, err := h.repo.GetMetadataByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	out := apiKeyConfigurationOf(key)
+	return &out, nil
+}
+func (h *APIKeyHandler) ListAdminAPIKeysPage(ctx context.Context, after *auth.APIKeyPageKey, limit int) ([]AdminAPIKeyListItem, bool, error) {
+	keys, more, err := h.repo.ListAllPage(ctx, after, limit)
+	if err != nil {
+		return nil, false, err
+	}
+	out := make([]AdminAPIKeyListItem, 0, len(keys))
+	for _, key := range keys {
+		out = append(out, adminAPIKeyListItemOf(key))
+	}
+	return out, more, nil
+}
+func (h *APIKeyHandler) UpdateAdminAPIKeyTier(ctx context.Context, id int64, tier string, guard auth.APIKeyPrecondition) (*APIKeyConfiguration, error) {
+	key, err := h.repo.UpdateTierConditional(ctx, id, tier, guard)
+	if err != nil {
+		return nil, err
+	}
+	out := apiKeyConfigurationOf(key)
+	return &out, nil
+}
+func (h *APIKeyHandler) DeleteAdminAPIKey(ctx context.Context, id int64, guard auth.APIKeyPrecondition) error {
+	return h.repo.DeleteByAdminConditional(ctx, id, guard)
 }

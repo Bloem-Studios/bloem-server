@@ -27,13 +27,15 @@ func (s *fakeAPIKeyStore) Create(_ context.Context, userID int, label string, sc
 	return &models.APIKey{ID: 1, UserID: userID, Label: label, Key: "sa_generated", RateTier: "standard", Scopes: scopes}, nil
 }
 
-func (s *fakeAPIKeyStore) ListByUser(context.Context, int) ([]*models.APIKey, error) { return nil, nil }
-
-func (s *fakeAPIKeyStore) ListByUserAdmin(context.Context, int) ([]*models.APIKey, error) {
+func (s *fakeAPIKeyStore) ListByUser(context.Context, int) ([]*models.APIKeyMetadataWithUsage, error) {
 	return nil, nil
 }
 
-func (s *fakeAPIKeyStore) ListAll(context.Context) ([]*models.APIKeyWithUser, error) {
+func (s *fakeAPIKeyStore) ListByUserAdmin(context.Context, int) ([]*models.APIKeyMetadataWithUsage, error) {
+	return nil, nil
+}
+
+func (s *fakeAPIKeyStore) ListAll(context.Context) ([]*models.APIKeyMetadataWithUser, error) {
 	return nil, nil
 }
 
@@ -137,4 +139,17 @@ func TestHandleListAPIKeyScopes(t *testing.T) {
 			}
 		}
 	})
+}
+
+func (s *fakeAPIKeyStore) GetMetadataByID(context.Context, int64) (*models.APIKeyMetadata, error) {
+	return nil, auth.ErrAPIKeyNotFound
+}
+func (s *fakeAPIKeyStore) ListAllPage(context.Context, *auth.APIKeyPageKey, int) ([]*models.APIKeyMetadataWithUser, bool, error) {
+	return nil, false, nil
+}
+func (s *fakeAPIKeyStore) UpdateTierConditional(context.Context, int64, string, auth.APIKeyPrecondition) (*models.APIKeyMetadata, error) {
+	return nil, auth.ErrAPIKeyNotFound
+}
+func (s *fakeAPIKeyStore) DeleteByAdminConditional(context.Context, int64, auth.APIKeyPrecondition) error {
+	return auth.ErrAPIKeyNotFound
 }
