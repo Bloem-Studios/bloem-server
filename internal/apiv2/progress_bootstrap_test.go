@@ -198,3 +198,49 @@ func TestBootstrapCurrentCredentialRevalidation(t *testing.T) {
 		t.Fatalf("deleted key=%v", err)
 	}
 }
+
+// The fake service invokes the production actor recheck after the router's
+// initial authentication, so accepted header spellings must pass both gates.
+func TestProgressBootstrapBearerHeaderRecheck(t *testing.T) {
+	deps := parityDeps(false)
+	deps.ProgressBootstrap = &fakeBootstrap{}
+	h := newTestHandler(t, deps)
+	for _, header := range []string{"Bearer " + memberToken, "bearer " + memberToken, "bEaReR " + memberToken, "Bearer   " + memberToken + " \t"} {
+		t.Run(header[:6], func(t *testing.T) {
+			owner := map[string]string{"Authorization": header, "X-Profile-Id": "p-owner"}
+			for _, request := range []struct {
+				method, path, body string
+				status             int
+			}{
+				{http.MethodGet, Prefix + "/sync/progress/capabilities", "", http.StatusOK},
+				{http.MethodPost, progressSnapshotPath, `{"request_id":"9a91f367-e3bc-4305-b2ba-133bb507ce2d","limit":1}`, http.StatusCreated},
+			} {
+				rec := do(t, h, request.method, request.path, request.body, owner)
+				if rec.Code != request.status {
+					t.Fatalf("%s = %d %s", request.method, rec.Code, rec.Body.String())
+				}
+				if request.method == http.MethodPost {
+					var page ProgressSnapshot
+					if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+						t.Fatal(err)
+					}
+					read := progressSnapshotPath + "/" + bootstrapFixtureID + "?cursor=" + url.QueryEscape(page.Page.NextCursor)
+					rec = do(t, h, http.MethodGet, read, "", owner)
+					if rec.Code != http.StatusOK {
+						t.Fatalf("page = %d %s", rec.Code, rec.Body.String())
+					}
+				}
+			}
+		})
+	}
+	for _, header := range []string{"bearer invalid", "bearer " + expiredToken, "Bearer   ", ""} {
+		rec := do(t, h, http.MethodGet, Prefix+"/sync/progress/capabilities", "", map[string]string{"Authorization": header, "X-Profile-Id": "p-owner"})
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("invalid credential = %d %s", rec.Code, rec.Body.String())
+		}
+	}
+	rec := do(t, h, http.MethodGet, Prefix+"/sync/progress/capabilities?token="+url.QueryEscape(memberToken), "", map[string]string{"X-Profile-Id": "p-owner"})
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("query-only credential = %d %s", rec.Code, rec.Body.String())
+	}
+}

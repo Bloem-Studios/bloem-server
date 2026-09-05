@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -17,10 +16,10 @@ var ErrCurrentCredentialForbidden = errors.New("current credential does not perm
 // RevalidateCurrent rechecks the exact credential after a bounded operation.
 // It neither replaces the captured identity nor updates API-key usage metadata.
 func (am *AuthMiddleware) RevalidateCurrent(ctx context.Context, bearer string, expected *auth.Claims, method, path string) error {
-	if am == nil || expected == nil || !strings.HasPrefix(bearer, "Bearer ") {
+	token, ok := parseBearerHeader(bearer)
+	if am == nil || expected == nil || !ok {
 		return ErrCurrentCredentialInvalid
 	}
-	token := strings.TrimPrefix(bearer, "Bearer ")
 	if expected.TokenType == auth.TokenTypeAPIKey {
 		if am.apiKeyValidator == nil {
 			return ErrCurrentCredentialInvalid
