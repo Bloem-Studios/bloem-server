@@ -39,8 +39,8 @@ func (r *CatalogResolver) resolvePersonalCursor(ctx context.Context, req Catalog
 		}
 		membership := fmt.Sprintf("FROM %s personal_source WHERE personal_source.user_id=$1 AND personal_source.profile_id=$2 AND personal_source.media_item_id=mi.content_id", table)
 		executor.SourceWhere = "EXISTS (SELECT 1 " + membership + ")"
-		if req.UseSourceOrder || req.Query.Sort.Field == "added_at" {
-			executor.SourceOrder = personalSourceOrder("(SELECT added_at "+membership+")", req.Query.Sort.Order != "asc")
+		if req.UseSourceOrder || req.Query.Sort.Field == defaultSortField {
+			executor.SourceOrder = personalSourceOrder("(SELECT added_at "+membership+")", req.Query.Sort.Order != querySortAsc)
 		}
 		if req.Source == CatalogSourceWatchlist {
 			hideWatched, err := store.RemoveWatchedFromWatchlist(ctx, access.ProfileID)
@@ -90,8 +90,8 @@ const watchlistVisibleSeriesPredicate = `(mi.type <> 'series' OR NOT EXISTS (
 
 func personalSourceOrder(timestamp string, descending bool) []queryCursorTerm {
 	return []queryCursorTerm{
-		{expression: timestamp, kind: "timestamp", descending: descending, nullsLast: true},
-		{expression: "mi.content_id", kind: "text", nullsLast: true},
+		{expression: timestamp, kind: cursorKindTimestamp, descending: descending, nullsLast: true},
+		{expression: cursorContentIDExpression, kind: cursorKindText, nullsLast: true},
 	}
 }
 
@@ -110,6 +110,7 @@ func (r *CatalogResolver) resolvePersonCursor(ctx context.Context, req CatalogRe
 }
 
 func resolvePersonalExecutorCursor(ctx context.Context, executor *QueryExecutor, req CatalogRequest, access AccessFilter, snapshot time.Time) (*CatalogResult, error) {
+	executor.GroupByWork = req.GroupByWork
 	applyCollectionSearchPredicate(executor, req.SearchQuery)
 	access.NamePrefix = strings.TrimSpace(req.NamePrefix)
 	after := req.After

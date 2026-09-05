@@ -2,12 +2,13 @@ package catalog
 
 import (
 	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestQueryCursorSortTerms(t *testing.T) {

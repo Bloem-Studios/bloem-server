@@ -208,7 +208,7 @@ func TestCatalogManualCollectionCursorDB(t *testing.T) {
 	t.Run("SQLite manual selected-store paging", func(t *testing.T) {
 		sqlitePool := userdb.NewUserDBPool(userdb.PoolConfig{DataDir: t.TempDir(), MaxOpen: 2})
 		provider := userdb.NewSQLiteProvider(sqlitePool)
-		defer provider.Close()
+		defer func() { _ = provider.Close() }()
 		store, err := provider.ForUser(ctx, 87654)
 		if err != nil {
 			t.Fatal(err)

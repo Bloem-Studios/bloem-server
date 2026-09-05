@@ -43,7 +43,7 @@ func (s *SQLiteUserStore) ListCollectionItemsPage(ctx context.Context, collectio
 	if err != nil {
 		return page, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var item userstore.CollectionItem
 		if err := rows.Scan(&item.CollectionID, &item.MediaItemID, &item.Position, &item.AddedAt); err != nil {

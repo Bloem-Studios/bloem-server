@@ -10,13 +10,28 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
+const (
+	cursorKindText            = "text"
+	cursorKindNumber          = "number"
+	cursorKindTimestamp       = "timestamp"
+	cursorKindDate            = "date"
+	cursorContentIDExpression = "mi.content_id"
+	cursorTruePredicate       = "TRUE"
+	querySortAsc              = "asc"
+	querySortReleaseDate      = "release_date"
+	querySortLastAirDate      = "last_air_date"
+	querySortBitrate          = "bitrate"
+	querySortRandom           = "random"
+)
+
 // QueryCursor carries the complete SQL ordering tuple. The API must bind it to
 // the normalized query and viewer scope in its signed cursor envelope.
 // Values retain PostgreSQL's text precision rather than passing through float64.
 type QueryCursor struct {
-	Collection *CollectionCursor  `json:"collection,omitempty"`
-	Keys       []QueryCursorValue `json:"keys"`
-	Consumed   int                `json:"consumed"`
+	Search     *CatalogSearchCursor `json:"search,omitempty"`
+	Collection *CollectionCursor    `json:"collection,omitempty"`
+	Keys       []QueryCursorValue   `json:"keys"`
+	Consumed   int                  `json:"consumed"`
 }
 type QueryCursorValue struct {
 	Kind  string  `json:"kind"`
@@ -38,7 +53,7 @@ type queryCursorTerm struct {
 
 func setCursorTermKinds(terms []queryCursorTerm, field string) {
 	for i := range terms {
-		terms[i].kind = "text"
+		terms[i].kind = cursorKindText
 		if !terms[i].descending {
 			terms[i].nullsLast = true
 		}
@@ -47,31 +62,31 @@ func setCursorTermKinds(terms []queryCursorTerm, field string) {
 		return
 	}
 	switch field {
-	case "last_air_date":
-		terms[0].kind = "date"
-	case "release_date":
+	case querySortLastAirDate:
+		terms[0].kind = cursorKindDate
+	case querySortReleaseDate:
 		if strings.HasSuffix(terms[0].expression, ".episode_air_date") {
-			terms[0].kind = "date"
+			terms[0].kind = cursorKindDate
 		}
-	case "added_at", "date_viewed", "latest_episode_added":
-		terms[0].kind = "timestamp"
-	case "year", "runtime", "rating_imdb", "rating_tmdb", "rating_rt_critic", "rating_rt_audience", "resolution", "bitrate", "progress", "plays", "content_rating":
-		terms[0].kind = "number"
-	case "series":
-		terms[1].kind = "number"
+	case defaultSortField, "date_viewed", "latest_episode_added":
+		terms[0].kind = cursorKindTimestamp
+	case "year", "runtime", "rating_imdb", "rating_tmdb", "rating_rt_critic", "rating_rt_audience", "resolution", querySortBitrate, "progress", "plays", "content_rating":
+		terms[0].kind = cursorKindNumber
+	case playableTypeSeries:
+		terms[1].kind = cursorKindNumber
 	}
 }
 
 func (t queryCursorTerm) cast() string {
 	switch t.kind {
-	case "date":
-		return "date"
-	case "number":
+	case cursorKindDate:
+		return cursorKindDate
+	case cursorKindNumber:
 		return "numeric"
-	case "timestamp":
+	case cursorKindTimestamp:
 		return "timestamptz"
 	default:
-		return "text"
+		return cursorKindText
 	}
 }
 
@@ -137,7 +152,7 @@ func (e *QueryExecutor) PreviewCursorPage(ctx context.Context, def QueryDefiniti
 			return QueryCursorPage{}, fmt.Errorf("invalid cursor consumed count")
 		}
 	}
-	if def.Limit != nil {
+	if def.Limit != nil && !e.GroupByWork {
 		if *def.Limit <= 0 {
 			return QueryCursorPage{}, fmt.Errorf("query limit must be positive")
 		}
@@ -150,7 +165,7 @@ func (e *QueryExecutor) PreviewCursorPage(ctx context.Context, def QueryDefiniti
 	if err != nil {
 		return QueryCursorPage{}, err
 	}
-	if def.Limit != nil {
+	if def.Limit != nil && !e.GroupByWork {
 		plan.maxResults = *def.Limit - consumed
 	}
 	sql, args, err := plan.cursorSQL(after)
@@ -186,7 +201,7 @@ func (e *QueryExecutor) PreviewCursorPage(ctx context.Context, def QueryDefiniti
 		}
 	}
 	if includeTotal {
-		if def.Limit != nil {
+		if def.Limit != nil && !e.GroupByWork {
 			plan.maxResults = *def.Limit
 		}
 		countSQL, countArgs := plan.countSQL()

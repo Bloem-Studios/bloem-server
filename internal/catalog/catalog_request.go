@@ -30,6 +30,7 @@ type CatalogRequest struct {
 	Limit          int
 	Offset         int
 	CursorPaging   bool
+	GroupByWork    bool
 	After          *QueryCursor
 	Seek           *int
 	UseSourceOrder bool

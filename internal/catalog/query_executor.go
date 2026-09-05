@@ -13,7 +13,13 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
+const (
+	cursorSQLAscending  = "ASC"
+	cursorSQLDescending = "DESC"
+)
+
 type QueryExecutor struct {
+	GroupByWork bool
 	// SourceWhere and SourceArgs are trusted internal source predicates. The
 	// predicate numbers its parameters from $1; the executor rebinds them.
 	SourceWhere string
@@ -47,7 +53,7 @@ func (e *QueryExecutor) PreviewPage(
 		return nil, 0, false, fmt.Errorf("query executor requires a database pool")
 	}
 
-	if e.SourceWhere == "" && len(e.SourceOrder) == 0 {
+	if !e.GroupByWork && e.SourceWhere == "" && len(e.SourceOrder) == 0 {
 		if items, total, hasMore, ok, err := e.tryEpisodeCatalogUserStatePreviewPage(
 			ctx,
 			def,
@@ -383,9 +389,9 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 		clauses := make([]string, len(terms))
 		for i := range terms {
 			terms[i].expression = rebindSQLPlaceholders(terms[i].expression, sourceArgShift)
-			direction := "ASC"
+			direction := cursorSQLAscending
 			if terms[i].descending {
-				direction = "DESC"
+				direction = cursorSQLDescending
 			}
 			nulls := "NULLS FIRST"
 			if terms[i].nullsLast {
@@ -424,7 +430,7 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 		limitArgIdx += cteShift
 	}
 
-	return previewPagePlan{
+	plan := previewPagePlan{
 		cursorTerms:     sortPlan.terms,
 		ctes:            ctes,
 		cteArgs:         cteArgs,
@@ -438,7 +444,11 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 		offset:          offset,
 		maxResults:      maxResults,
 		limitArgIdx:     limitArgIdx,
-	}, nil
+	}
+	if e.GroupByWork {
+		return plan.groupedByWork(), nil
+	}
+	return plan, nil
 }
 
 func normalizePreviewPageBounds(def QueryDefinition, limit int, offset int) (int, int, int) {

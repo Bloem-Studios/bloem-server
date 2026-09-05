@@ -127,6 +127,9 @@ func (r *CatalogResolver) resolveUserCollectionCursor(ctx context.Context, req C
 	result, err := r.resolveCollectionWithEffectiveSort(ctx, req, access, userstore.CollectionKindUser, collection.ID, []byte(collection.SortConfig), func(effective CatalogRequest) (*CatalogResult, error) {
 		sqlState := userstore.HasCatalogSQLState(store)
 		if !sqlState {
+			if effective.GroupByWork {
+				return nil, ErrCatalogStorageUnsupported
+			}
 			var display QueryDefinition
 			if collection.DisplayQueryDefinition != "" {
 				if err := json.Unmarshal([]byte(collection.DisplayQueryDefinition), &display); err != nil {
@@ -163,7 +166,7 @@ func (r *CatalogResolver) resolveSmartCollectionCursorWithDisplay(ctx context.Co
 	if req.Source == CatalogSourceLibraryCollection {
 		baseAccess = stripCatalogUserScope(access)
 		if err := def.ValidateWithOptions(false, false); err != nil {
-			return nil, fmt.Errorf("%w: library collection definition: %v", ErrInvalidCatalogRequest, err)
+			return nil, fmt.Errorf("%w: library collection definition: %w", ErrInvalidCatalogRequest, err)
 		}
 	} else if err := r.requireQueryStore(ctx, def, baseAccess); err != nil {
 		return nil, err
@@ -175,7 +178,7 @@ func (r *CatalogResolver) resolveSmartCollectionCursorWithDisplay(ctx context.Co
 		if after != nil && len(after.Keys) == 0 {
 			after = nil
 		}
-		return r.resolveQuerySource(ctx, CatalogRequest{Source: CatalogSourceQuery, Query: def, Limit: req.Limit, CursorPaging: true, After: after, Seek: req.Seek, SkipTotal: req.SkipTotal, SnapshotAt: req.SnapshotAt}, baseAccess)
+		return r.resolveQuerySource(ctx, CatalogRequest{Source: CatalogSourceQuery, Query: def, Limit: req.Limit, CursorPaging: true, GroupByWork: req.GroupByWork, After: after, Seek: req.Seek, SkipTotal: req.SkipTotal, SnapshotAt: req.SnapshotAt}, baseAccess)
 	}
 	base := r.queryExecutorForScope(def.MediaScope, req.SnapshotAt)
 	predicate, args, err := collectionDefinitionPredicate(base, def, baseAccess)
@@ -316,14 +319,15 @@ func (r *CatalogResolver) resolveLibraryMembershipQueryCursor(ctx context.Contex
 	executor.SourceArgs = []any{req.CollectionID}
 	if req.Query.Sort.Field == "" {
 		executor.SourceOrder = []queryCursorTerm{
-			{expression: "COALESCE((SELECT position FROM library_collection_items cursor_position WHERE cursor_position.collection_id=$1 AND cursor_position.media_item_id=mi.content_id),0)", kind: "number", nullsLast: true},
-			{expression: "mi.content_id", kind: "text", nullsLast: true},
+			{expression: "COALESCE((SELECT position FROM library_collection_items cursor_position WHERE cursor_position.collection_id=$1 AND cursor_position.media_item_id=mi.content_id),0)", kind: cursorKindNumber, nullsLast: true},
+			{expression: cursorContentIDExpression, kind: cursorKindText, nullsLast: true},
 		}
 	}
 	return resolveCollectionExecutorCursor(ctx, executor, req, req.Query, access)
 }
 
 func resolveCollectionExecutorCursor(ctx context.Context, executor *QueryExecutor, req CatalogRequest, def QueryDefinition, access AccessFilter) (*CatalogResult, error) {
+	executor.GroupByWork = req.GroupByWork
 	applyCollectionSearchPredicate(executor, req.SearchQuery)
 	access.NamePrefix = req.NamePrefix
 	after := req.After
@@ -419,8 +423,8 @@ func (r *CatalogResolver) resolvePersonalMembershipQueryCursor(ctx context.Conte
 	executor.SourceArgs = []any{access.UserID, req.CollectionID}
 	if req.Query.Sort.Field == "" {
 		executor.SourceOrder = []queryCursorTerm{
-			{expression: "COALESCE((SELECT position FROM user_personal_collection_items cursor_position WHERE cursor_position.user_id=$1 AND cursor_position.collection_id=$2 AND cursor_position.sub_item_id='' AND cursor_position.media_item_id=mi.content_id),0)", kind: "number", nullsLast: true},
-			{expression: "mi.content_id", kind: "text", nullsLast: true},
+			{expression: "COALESCE((SELECT position FROM user_personal_collection_items cursor_position WHERE cursor_position.user_id=$1 AND cursor_position.collection_id=$2 AND cursor_position.sub_item_id='' AND cursor_position.media_item_id=mi.content_id),0)", kind: cursorKindNumber, nullsLast: true},
+			{expression: cursorContentIDExpression, kind: cursorKindText, nullsLast: true},
 		}
 	}
 	if err := r.applyCollectionDisplayPredicate(ctx, executor, display, access); err != nil {
