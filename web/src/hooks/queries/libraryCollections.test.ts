@@ -91,20 +91,22 @@ describe("library viewer reads", () => {
     );
   });
 
-  it("reads collection items through v1 with the active profile", async () => {
+  it("reads a bounded v2 collection teaser with the active profile", async () => {
     const response = {
       items: [{ content_id: "movie:heat-1995", title: "Heat" }],
-      total: 1,
-      has_more: false,
+      page: { has_more: false, next_cursor: null },
     };
     const fetchMock = stubFetch(() => jsonResponse(response));
     const { result } = renderHook(() => useLibraryCollectionItems(1, "c1"), {
       wrapper: createWrapper(),
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/v1/library/1/collections/c1/items");
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "/api/v2/library/1/collections/c1/items?limit=50",
+    );
     expect(headersOf(fetchMock)["X-Profile-Id"]).toBe("p-owner");
-    expect(result.current.data).toEqual(response);
+    expect(result.current.data?.items[0]?.content_id).toBe("movie:heat-1995");
+    expect(result.current.data?.has_more).toBe(false);
   });
 
   it("loads the library layout and sections", async () => {

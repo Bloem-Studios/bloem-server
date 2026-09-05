@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { v2 } from "@/api/v2/request";
+import { previewToV2, previewFromV2 } from "@/api/personalCollections";
 import { api } from "@/api/client";
 import type {
   CollectionPreviewRequest,
@@ -42,13 +44,14 @@ function useCollectionPreview(scope: "user" | "admin", request?: CollectionPrevi
       ? collectionKeys.preview(scope, previewFingerprint(scope, normalized))
       : collectionKeys.preview(scope, "disabled"),
     queryFn: () =>
-      api<CollectionPreviewResponse>(
-        scope === "admin" ? "/admin/collections/preview" : "/collections/preview",
-        {
-          method: "POST",
-          body: JSON.stringify(normalized),
-        },
-      ),
+      scope === "user"
+        ? v2("POST /api/v2/collections/preview", { body: previewToV2(normalized!) }).then(
+            previewFromV2,
+          )
+        : api<CollectionPreviewResponse>("/admin/collections/preview", {
+            method: "POST",
+            body: JSON.stringify(normalized),
+          }),
     enabled: normalized !== null,
     staleTime: 30_000,
   });

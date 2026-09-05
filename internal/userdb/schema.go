@@ -377,6 +377,106 @@ CREATE TABLE IF NOT EXISTS user_setting_migration_rejects (
 
 CREATE INDEX IF NOT EXISTS user_setting_migration_rejects_source_idx
     ON user_setting_migration_rejects (source_table);
+-- Persist collection membership witnesses independently from wall-clock timestamps.
+CREATE TABLE IF NOT EXISTS personal_collection_revisions (
+    collection_id TEXT PRIMARY KEY,
+    revision INTEGER NOT NULL DEFAULT 1
+);
+INSERT OR IGNORE INTO personal_collection_revisions SELECT id, 1 FROM personal_collections;
+CREATE INDEX IF NOT EXISTS personal_collection_items_continuation_idx
+    ON personal_collection_items (collection_id, position, media_item_id);
+CREATE TRIGGER IF NOT EXISTS personal_collection_items_position_insert AFTER INSERT ON personal_collection_items
+WHEN NEW.position IS NULL
+BEGIN
+    UPDATE personal_collection_items SET position = 0 WHERE collection_id = NEW.collection_id AND media_item_id = NEW.media_item_id;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_items_position_update AFTER UPDATE OF position ON personal_collection_items
+WHEN NEW.position IS NULL
+BEGIN
+    UPDATE personal_collection_items SET position = 0 WHERE collection_id = NEW.collection_id AND media_item_id = NEW.media_item_id;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collections_revision_insert AFTER INSERT ON personal_collections
+BEGIN
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (NEW.id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collections_revision_update AFTER UPDATE ON personal_collections
+BEGIN
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (OLD.id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (NEW.id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collections_revision_delete AFTER DELETE ON personal_collections
+BEGIN
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (OLD.id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_items_revision_insert AFTER INSERT ON personal_collection_items
+BEGIN
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (NEW.collection_id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_items_revision_update AFTER UPDATE ON personal_collection_items
+BEGIN
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (OLD.collection_id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (NEW.collection_id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_items_revision_delete AFTER DELETE ON personal_collection_items
+BEGIN
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (OLD.collection_id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_profiles_revision_insert AFTER INSERT ON personal_collection_profiles
+BEGIN
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (NEW.collection_id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_profiles_revision_update AFTER UPDATE ON personal_collection_profiles
+BEGIN
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (OLD.collection_id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (NEW.collection_id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_profiles_revision_delete AFTER DELETE ON personal_collection_profiles
+BEGIN
+    INSERT INTO personal_collection_revisions (collection_id, revision) VALUES (OLD.collection_id, 1)
+    ON CONFLICT (collection_id) DO UPDATE SET revision = revision + 1;
+END;
+
+CREATE TABLE IF NOT EXISTS personal_collection_order_revision (
+ singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+ revision INTEGER NOT NULL DEFAULT 1
+);
+INSERT OR IGNORE INTO personal_collection_order_revision VALUES(1,1);
+CREATE TRIGGER IF NOT EXISTS personal_collections_order_revision_insert AFTER INSERT ON personal_collections
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collections_order_revision_update AFTER UPDATE ON personal_collections
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collections_order_revision_delete AFTER DELETE ON personal_collections
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_profiles_order_revision_insert AFTER INSERT ON personal_collection_profiles
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_profiles_order_revision_update AFTER UPDATE ON personal_collection_profiles
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+CREATE TRIGGER IF NOT EXISTS personal_collection_profiles_order_revision_delete AFTER DELETE ON personal_collection_profiles
+BEGIN
+ UPDATE personal_collection_order_revision SET revision=revision+1 WHERE singleton=1;
+END;
+
 `
 
 // InitSchema creates all tables in the given SQLite database.

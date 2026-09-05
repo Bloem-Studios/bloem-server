@@ -1270,9 +1270,12 @@ the long-running-work foundation rule; `uploadLibraryPoster` is the first multip
 wrapper, and
 `getLibraryCollections` has one shape whether or not collection groups are configured.
 
-The collection-item read remains on v1. Its v2 port is deferred until curated and smart
-collection orders support stable continuation under edits, synchronization, and query-result
-changes; an opaque offset alone does not satisfy that requirement.
+`getLibraryCollectionItems` pages manual membership by `(position, media_item_id)` and
+smart results by the executor's complete SQL sort tuple. Collection-specific durable revisions
+reject continuation after definition, membership, or collection-access changes. Membership and
+its revision are read in one database snapshot; authorization and catalog hydration are fenced
+by checks of that revision. Smart results are live keysets, not a frozen catalog snapshot.
+The pinned web carousel requests a bounded teaser and links to the full collection browse view.
 
 **Section catalog-home (Phase 4).** Eight profile-scoped operations under the `home` tag:
 `getCalendar`, `dismissHomeItem`, `undismissHomeItem`, `getHomeLayout`, `listHomeSections`,
@@ -1717,3 +1720,62 @@ connection row. The canonical settings read exists to keep that external metadat
 out of the guarded representation; a missing connection returns 404. The web reads
 metadata and settings under the same captured profile authority and merges only the
 settings fields after a successful patch.
+
+### Personal collections v2
+
+The personal collection section maps all 26 legacy lifecycle operations to typed profile-scoped
+v2 operations. It also separates canonical editor reads and poster upload from the legacy
+multipart create/update operations. Creation and provider imports mint server IDs and are
+non-retryable. Sync is synchronous and non-retryable: the existing scheduler guard is local to
+one process and does not provide cluster-wide coalescing or a durable request identity.
+
+Collection and group edits, deletes, and ordering require `If-Match`. Clients first load the
+canonical representation: `GET /collections/{id}`, `GET /collections/groups/{id}`,
+`GET /collections/order?group_id=...`, `GET /collections/groups/order`, or
+`GET /collections/{id}/items/order`. Paths in this section have the `/api/v2` prefix.
+Each response supplies a strong ETag bound to the representation, account, profile, and access
+scope. Canonical collection editors omit the volatile presigned poster URL; display listings
+continue to provide artwork. Ordering writes use PUT, group and collection partial edits use
+PATCH, and a successful delete returns 204 without an ETag. Storage compares the version and advances it in the transaction that applies the write. Missing preconditions return 428; stale
+preconditions return 412 with the current authorized validator. Clients must not automatically retry or implicitly
+replace the observed validator with a wildcard. Web editors retain the observed validator and preserve drafts
+when presenting a reload message.
+
+`GET /collections/{id}/items` returns bounded membership pages with string IDs and canonical
+instants. Manual continuation carries a signed position/item tuple and durable revision, never
+an offset. An empty access-filtered page can still have a next cursor: clients must follow
+`page.has_more`, not infer completion from the item count. Collection changes require restarting
+from the first page. Smart results use QueryExecutor tuple continuation and the configured query
+cap. For SQLite personal state plus PostgreSQL catalog hydration, revision checks bracket the
+separate reads; this detects collection changes and does not claim a distributed snapshot.
+The manual web editor keeps one 200-item window. It allows reordering only when it holds the
+complete, accessible manual order; the canonical item-order read never returns more than 200 IDs.
+
+Artwork changes use `PUT /collections/{id}/poster` with either a bounded multipart `poster` or
+`source_url`. Definition PATCH does not download artwork. The web saves the definition first,
+then changes the poster; artwork failure leaves the saved collection intact and is reported
+separately. Membership and artwork operations check creator ownership, and item additions also
+require catalog visibility. Adding an existing native member preserves its position; order changes
+use the explicit ordering operation. Shared viewers can read permitted collections but cannot mutate them.
+Native membership operations preserve audiobook chapter entries in the same storage table.
+
+Collection capabilities describe the acting account's selected user store:
+
+| Behavior | PostgreSQL | SQLite |
+| --- | --- | --- |
+| Existing manual create/read/update/delete and membership | Supported | Supported |
+| Stable bounded manual continuation | Supported | Supported |
+| Guarded definition update/delete | Supported | Supported |
+| Groups and collection/item ordering | Supported | Pre-existing unsupported behavior |
+| Imported collections and sync | Supported | Pre-existing unsupported behavior |
+| Collection artwork | Supported | Pre-existing unsupported behavior |
+
+The `groups`, `imports`, `artwork`, and `item_reorder` flags let the bundled web hide unsupported
+actions. Unsupported store features answer the structured 501 `capability_unsupported` problem;
+they are not silently accepted. This migration does not add those feature families to SQLite.
+
+Apple and Android still need to adopt these v2 collection operation mappings, ID/envelope and
+pagination shapes, canonical editor ETags, 412 recovery, capability flags, and the split poster
+flow. Their existing v1 collection routes remain available during coordinated adoption.
+Jellyfin-protocol routes are unchanged; shared native storage fixes preserve chapter membership,
+and collection authorization checks remain enforced at the native service boundary.

@@ -284,16 +284,21 @@ type CreateCollectionInput struct {
 }
 
 type UpdateCollectionInput struct {
-	ID                         string
-	RequestProfileID           string
-	Name                       *string
-	Description                *string
-	IsShared                   *bool
-	AllowedProfileIDs          *[]string
-	QueryDefinition            *string
-	SortConfig                 *string
-	SourceURL                  *string
-	SourceConfig               *string
+	// ExpectedRevision, when set, is atomically checked in the mutation transaction.
+	ExpectedRevision  *int64
+	ID                string
+	RequestProfileID  string
+	Name              *string
+	Description       *string
+	IsShared          *bool
+	AllowedProfileIDs *[]string
+	QueryDefinition   *string
+	SortConfig        *string
+	SourceURL         *string
+	SourceConfig      *string
+	// SourceConfigPatch atomically merges only present top-level source config members.
+	// Imported collections are supported only by the PostgreSQL store.
+	SourceConfigPatch          *string
 	SyncSchedule               *string
 	ClearSyncSchedule          bool
 	NextSyncAt                 *time.Time

@@ -882,6 +882,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var personalDataHandler *handlers.PersonalDataHandler
 	var progressHandler *handlers.ProgressHandler
 	var collectionHandler *handlers.CollectionHandler
+	var userImportHandler *handlers.UserCollectionImportHandler
 	var settingsHandler *handlers.SettingsHandler
 	var settingValuesHandler *handlers.SettingValuesHandler
 	// userPluginSettingsHandler is the plugin handler the user-scoped
@@ -933,6 +934,21 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if deps.S3Public != nil {
 			collectionHandler.S3GP = deps.S3Public
 			collectionHandler.PresignTTL = 4 * time.Hour
+		}
+		// The import handler is built beside the collection handler so the v1
+		// route group and the v2 operations share one instance; the v1 routes
+		// keep their userImportHandler != nil condition.
+		if deps.UserCollectionSync != nil {
+			userImportHandler = handlers.NewUserCollectionImportHandler(
+				deps.UserStoreProvider,
+				deps.UserCollectionSync,
+				deps.UserCollectionScheduler,
+				nil,
+				deps.MDBListClient,
+				deps.S3Public,
+				deps.FrontendFS,
+				4*time.Hour,
+			)
 		}
 		settingsHandler = handlers.NewSettingsHandler(deps.UserStoreProvider)
 		settingsHandler.EventsHub = deps.EventsHub
@@ -1998,6 +2014,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.Requests = requestHandler.Service()
 		v2deps.RequestLifecycle = requestHandler.Service()
 	}
+	if collectionHandler != nil {
+		v2deps.PersonalCollections = collectionHandler
+	}
+	if userImportHandler != nil {
+		v2deps.CollectionImports = userImportHandler
+	}
 	if deps.v2Wiring != nil {
 		deps.v2Wiring(v2deps)
 	}
@@ -2612,19 +2634,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 
 				// Collection routes (profile-scoped).
 				if collectionHandler != nil {
-					var userImportHandler *handlers.UserCollectionImportHandler
-					if deps.UserCollectionSync != nil {
-						userImportHandler = handlers.NewUserCollectionImportHandler(
-							deps.UserStoreProvider,
-							deps.UserCollectionSync,
-							deps.UserCollectionScheduler,
-							nil,
-							deps.MDBListClient,
-							deps.S3Public,
-							deps.FrontendFS,
-							4*time.Hour,
-						)
-					}
 					r.Route("/collections", func(r chi.Router) {
 						r.Use(apimw.RequireProfile)
 						r.Get("/", collectionHandler.HandleListCollections)

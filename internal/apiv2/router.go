@@ -169,6 +169,12 @@ type Dependencies struct {
 	RequestLifecycle RequestLifecycleService
 	WatchProviders   WatchProviderService
 	HistoryImports   HistoryImportService
+	// PersonalCollections manages a profile's own collections and groups
+	// (*handlers.CollectionHandler).
+	PersonalCollections PersonalCollectionService
+	// CollectionImports creates synced collections from external lists and
+	// searches MDBList (*handlers.UserCollectionImportHandler).
+	CollectionImports CollectionImportService
 
 	// bodyReadTimeout overrides BodyReadTimeout; tests use it to exercise the
 	// 408 boundary without waiting for the production deadline.

@@ -499,10 +499,10 @@ func TestLibraryCollections(t *testing.T) {
 	requireProblem(t, do(t, newTestHandler(t, deps), http.MethodGet, "/api/v2/library/1/collections", "", viewerHeaders()), TypeNotFound)
 }
 
-// Collection item paging is deferred until manual and smart orders have stable continuation.
-func TestLibraryCollectionItemsDeferred(t *testing.T) {
+// A configured v2 route reports unavailable when its paging service is absent.
+func TestLibraryCollectionItemsUnavailable(t *testing.T) {
 	rec := do(t, newTestHandler(t, libraryViewDeps(t)), http.MethodGet, "/api/v2/library/1/collections/c1/items", "", viewerHeaders())
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("deferred route status = %d, want 404", rec.Code)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("unconfigured route status = %d, want 503", rec.Code)
 	}
 }

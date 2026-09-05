@@ -1,3 +1,4 @@
+import { buildLibraryCollectionCatalogHref } from "./catalogSearchParams";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { HomeSectionItemsResponse, ResolvedSection } from "@/api/types";
@@ -332,10 +333,14 @@ function PinnedCollectionCarousel({
   const { cardPresentation } = useUICustomization();
   const posterWidthClasses = carouselCardWidthClasses(cardPresentation.poster_size);
 
-  if (items.length === 0 && !isLoading) return null;
+  if (items.length === 0 && !isLoading && !data?.has_more) return null;
 
   return (
-    <MediaCarousel title={name} loading={isLoading}>
+    <MediaCarousel
+      title={name}
+      titleHref={buildLibraryCollectionCatalogHref(collectionId, name, libraryId)}
+      loading={isLoading}
+    >
       {items.map((item) => (
         <div key={item.content_id} className={posterWidthClasses}>
           <ItemCard item={item} overlayPrefs={overlayPrefs} quickActionMode={quickActionMode} />
