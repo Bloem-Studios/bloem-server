@@ -176,9 +176,42 @@ bound delivery. Disconnect closes the response grant independently of execution.
 Public v2 lifecycle and active takeover remain disabled. Central response
 integration is limited to the guarded paths below; unbound legacy behavior
 remains available. Bound worker stop and progressive remux remain disabled.
-Production callback wiring, owner-lease renewal, generation replacement,
+Production callback wiring, owner-supervisor activation, generation replacement,
 selected-store progress fencing, and deployment/suspend acceptance remain
 activation requirements.
+
+## Isolated owner supervision
+
+`RuntimeOwnerLeaseV3` supervises one captured attempt ID, row incarnation,
+process-boot owner UUID, and epoch. `Postgres.RenewAttemptLease` renews that exact
+fence and returns the database time sampled after acquiring the row lock. A
+renewal that waits beyond the persisted lease expiry cannot revive the owner.
+The database keeps an existing longer lease, including outstanding grant bounds,
+and clamps extensions to attempt retention.
+
+The supervisor uses the same explicit timing policy and suspend-inclusive clock
+as runtime grants. Its local deadline is request-start elapsed time plus the
+smaller of the returned database lease interval and configured maximum, less
+the safety margin. This charges the entire database round trip and bounds local
+authority even when the persisted lease is longer. Failed or late renewal,
+expiry, cancellation, invalid identity, and clock failure permanently cancel
+the supervisor. An independent watchdog checks expiry during a blocked renewal.
+Reading a newer owner never changes the captured fence.
+
+This foundation has no public lifecycle wiring. Its context and validity check
+are inputs for future guarded preparation and publication; they do not write
+progress, install a selected-store fence, replace an executor, or authorize
+delivery. Those operations still require their own durable CAS or runtime grant.
+Production activation must define the relationship between owner lease and
+executor grant policies and satisfy the clock assumptions above.
+
+Executor-bound node tracking uses keys qualified by logical session and the
+complete executor namespace. Removal uses the retired runtime's captured
+namespace; refresh and shutdown cleanup retain those qualified keys. Delayed
+cleanup from an old process cannot remove or refresh a successor's record.
+Legacy removal addresses only the legacy key. These Redis records are
+diagnostic observations, not ownership proof: multiple generations may remain
+visible until cleanup or TTL expiry.
 
 ## Central response integration
 
@@ -199,6 +232,11 @@ Error paths cannot call unfenced legacy progress or stop finalizers. Progressive
 remux, video-copy HLS, and remote proxy chains remain refused until their complete
 execution, serving, and finalization paths are guarded. Bound subtitle and font
 requests remain refused until extraction and delivery are guarded.
+
+Native signed references bind the recipe and metadata profile, while native
+bearer delivery preserves the existing same-account authorization rule.
+Compatibility delivery additionally requires the authenticated selected profile
+to match. Owner supervision does not change either authorization rule.
 
 Compatibility master, playlist, and segment handlers can serve an existing
 local encoded-HLS runtime using the authenticated compatibility session's
