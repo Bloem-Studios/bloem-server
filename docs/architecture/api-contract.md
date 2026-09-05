@@ -1130,6 +1130,56 @@ server without an upload store answers `503`; section overrides drop the `/reset
 method, and read back in `snake_case` like the write (the Phase 1 catalogs flagged v1's GET/PUT
 casing mismatch). Every profile mutation in the section is demo-restricted on v2 (v1's demo guard lists none of them), and `createProfile`'s `Location` names the `PATCH`/`DELETE` resource; the created profile is read back through `listProfiles`.
 
+The first Phase 4 section, **settings-prefs** (`internal/apiv2/preferences.go`, tag
+`preferences`), ports the nine `profile_scoped` preference rows: `getAudioPreference`,
+`updateAudioPreference`, `deleteAudioPreference`, `getSubtitlePreference`,
+`updateSubtitlePreference`, `deleteSubtitlePreference` (per series, `series_id` a content id),
+and `listLibraryPlaybackPreferences`, `updateLibraryPlaybackPreference`,
+`deleteLibraryPlaybackPreference` (per library). Each v2 handler calls a seam extracted from the
+v1 handler (`GetAudioPreference`, `SetSubtitlePreference`, …), so the canonical-settings sync
+and the `user_settings.changed` events stay in one place and v1 is byte-identical. Deliberate
+v1 differences: the per-series `PUT`s keep v1's whole-replacement and `204` but require a
+zero-based `*_track_index` (`minimum: -1`, where `-1` is the "no track" / "subtitles off" sentinel
+v1 clients store; v1 accepted any negative) and refuse unknown members; the
+`AudioTrackSignature` and `SubtitleTrackSignature` schemas keep the store's member names with
+every member optional and are shared by the read and write bodies; the library list is the
+standard `{items: [...]}` collection without pagination instead of v1's `{preferences: [...]}`,
+with `library_id` as a string `ID`; the library `PUT` became a `PATCH` (omitted unchanged, `null`
+or `""` on a string member clears the override so it is absent from the list, clearing every
+override removes the row). The `PATCH` goes through its own seam entry point,
+`PatchLibraryPlaybackPreference`, which merges the present members onto the canonical
+`profile_library` setting rows — not the legacy composite row, which `PUT /settings/values` and
+the web library editor do not mirror into — inside one store transaction behind the per-user
+advisory lock, so an omitted member keeps a newer canonical write and concurrent patches of
+different members both land; v1 `PUT` keeps its whole-row replacement path unchanged. For the
+same reason the v2 list reads through its own seam entry point,
+`ListLibraryPlaybackPreferencesCanonical`, which assembles one entry per library from the
+canonical `profile_library` rows (the four keys the patch writes; `updated_at` is the newest of
+them) rather than the legacy table v1 `GET` still lists, so the list matches what playback
+resolves. A library whose overrides exist only in the legacy row is not listed: canonical is
+the source of truth, and every v1 `PUT` since the sync existed mirrors into canonical rows, so a
+legacy-only row is data written before the sync. The per-series `GET`s read through their
+own seam entry points too, `GetAudioPreferenceCanonical` and `GetSubtitlePreferenceCanonical`:
+the legacy row is the resource — it holds the track identity (index, external path, signature)
+nothing else stores, and a profile without one is `404` exactly as on v1 even when canonical
+rows exist — and the members playback resolves canonically (`audio_language`;
+`subtitle_language`, `subtitle_mode`, `show_forced_subtitles`) are overlaid from the
+`profile_series` rows: a present row replaces the legacy member, an absent row means the member
+is unset (empty string, or absent for `show_forced_subtitles`), and `updated_at` is the newest
+of the rows read. Older SQLite track preferences can have no recorded timestamp; when none
+of the rows supplies one, v2 emits `1970-01-01T00:00:00.000Z` as an unknown-time sentinel.
+A nonempty malformed output timestamp still fails validation; v1 reads remain unchanged.
+The library patch normalizes present values once and mirrors those same values into the
+legacy composite row, including clearing whitespace-only language overrides. This is the same rule the v2 subtitle `PUT` already applies to the forced
+override: `PUT`/`DELETE /settings/values` change the canonical rows without mirroring into the
+legacy row, so a v2 read of the legacy copy would contradict playback. And
+a member the seam rejects
+(`audio_language` on audio, any of the four on the library patch, a non-integer `library_id`)
+is a `422` naming it where v1 answered `400`. None of the nine registers `Guarded`, `Conditional` or `CreateOnly`: a
+per-profile playback preference is in the plan's "progress, playback" carve-out that keeps
+domain behavior rather than a row version, so the `PUT`s and `PATCH` are unconditional
+last-write-wins replacements, the reads carry no `ETag`, and the ledger rows say `Not if_match`.
+
 ## v1 lifecycle and release sequence
 
 1. Freeze v1 feature development. Critical fixes needed to keep the bridge usable may still land;

@@ -153,6 +153,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"listProfileSectionOverrides": true, "replaceProfileSectionOverrides": true, "resetProfileSectionOverrides": true,
 		"getProfileSectionSettings": true, "getProfileSectionFlags": true,
 		"deleteProfile": true, "deleteProfileAvatar": true, "uploadProfileAvatar": true, "verifyProfilePIN": true, "listHouseholdSessions": true,
+		"getAudioPreference": true, "updateAudioPreference": true, "deleteAudioPreference": true,
+		"listLibraryPlaybackPreferences": true, "deleteLibraryPlaybackPreference": true, "updateLibraryPlaybackPreference": true,
+		"getSubtitlePreference": true, "updateSubtitlePreference": true, "deleteSubtitlePreference": true,
 	}
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {

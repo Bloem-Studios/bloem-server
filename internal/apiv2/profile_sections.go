@@ -230,7 +230,7 @@ func overridesQuery(ctx context.Context, in SectionOverridesScopeInput) (handler
 		n, err := intOfID(in.LibraryID)
 		if err != nil || n <= 0 {
 			return q, nil, NewProblem(TypeValidationFailed, "The request did not pass validation; see errors.").
-				WithErrors(ProblemError{Location: locationLibraryID, Code: codeInvalid, Detail: "expected a library identifier"})
+				WithErrors(ProblemError{Location: locationLibraryID, Code: codeInvalid, Detail: detailLibraryIDInvalid})
 		}
 		libraryID = &n
 		q.LibraryID = strconv.Itoa(n)
