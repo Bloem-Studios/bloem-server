@@ -156,7 +156,7 @@ func (s *Postgres) getAttemptIdentity(ctx context.Context, predicate string, val
 	err := s.db.QueryRow(ctx, `
 		SELECT playback_attempt_id, COALESCE(session_id::text, ''), user_id, profile_id
 		FROM playback_v3_attempts
-		WHERE `+predicate+` AND expires_at > NOW()`, value).Scan(
+		WHERE `+predicate+` AND expires_at > NOW() AND control_state IN ('legacy', 'active', 'terminal')`, value).Scan(
 		&identity.PlaybackAttemptID, &identity.SessionID, &identity.UserID, &identity.ProfileID,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -168,16 +168,20 @@ func (s *Postgres) getAttemptIdentity(ctx context.Context, predicate string, val
 	return &identity, nil
 }
 
+const attemptSelect = `SELECT playback_attempt_id, COALESCE(session_id::text, ''), user_id, profile_id,
+ requested_media_file_id, effective_media_file_id,
+ current_plan_id, current_replan_request_id, current_plan, frozen_recipe,
+ normalized_request, start_response, request_digest, expires_at
+ FROM playback_v3_attempts`
+
 func (s *Postgres) getAttempt(ctx context.Context, predicate string, value any) (*playback.AttemptRecordV3, error) {
+	return scanAttempt(s.db.QueryRow(ctx, attemptSelect+` WHERE `+predicate+` AND expires_at > NOW() AND control_state IN ('legacy', 'active', 'terminal')`, value))
+}
+
+func scanAttempt(row pgx.Row) (*playback.AttemptRecordV3, error) {
 	var record playback.AttemptRecordV3
 	var planJSON, recipeJSON, requestJSON, responseJSON []byte
-	err := s.db.QueryRow(ctx, `
-		SELECT playback_attempt_id, COALESCE(session_id::text, ''), user_id, profile_id,
-		       requested_media_file_id, effective_media_file_id,
-		       current_plan_id, current_replan_request_id, current_plan, frozen_recipe,
-		       normalized_request, start_response, request_digest, expires_at
-		FROM playback_v3_attempts
-		WHERE `+predicate+` AND expires_at > NOW()`, value).Scan(
+	err := row.Scan(
 		&record.PlaybackAttemptID, &record.SessionID, &record.UserID, &record.ProfileID,
 		&record.RequestedMediaFileID, &record.EffectiveMediaFileID,
 		&record.CurrentPlanID, &record.CurrentReplanRequestID, &planJSON, &recipeJSON,
@@ -224,6 +228,16 @@ func (s *Postgres) beginReplanOnce(ctx context.Context, sessionID, requestID, di
 		return playback.ReplanLeaseV3{}, false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	var controlState string
+	if err := tx.QueryRow(ctx, `SELECT control_state FROM playback_v3_attempts WHERE session_id = $1::uuid`, sessionID).Scan(&controlState); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return playback.ReplanLeaseV3{}, false, playback.ErrSessionNotFound
+		}
+		return playback.ReplanLeaseV3{}, false, err
+	}
+	if controlState != "legacy" {
+		return playback.ReplanLeaseV3{}, false, playback.ErrStaleAttemptAuthorityV3
+	}
 	var existingDigest, existingBase, state string
 	var existingLease time.Time
 	var response []byte
@@ -319,7 +333,7 @@ func (s *Postgres) CompleteReplan(ctx context.Context, sessionID, requestID, lea
 			effective_media_file_id = $2, current_plan_id = $3,
 			current_replan_request_id = $4, current_plan = $5, frozen_recipe = $6,
 			normalized_request = $7, start_response = $8, expires_at = $9, updated_at = NOW()
-		WHERE session_id = $1::uuid AND current_replan_request_id = $10`,
+		WHERE session_id = $1::uuid AND current_replan_request_id = $10 AND control_state = 'legacy'`,
 		sessionID, record.EffectiveMediaFileID, record.CurrentPlanID, record.CurrentReplanRequestID, planJSON, recipeJSON, requestJSON, startResponseJSON, record.ExpiresAt, baseReplanRequestID)
 	if err != nil {
 		return err
@@ -377,7 +391,7 @@ func (s *Postgres) CleanupExpired(ctx context.Context, now time.Time) (int64, er
 	if _, err := s.db.Exec(ctx, `DELETE FROM playback_route_events WHERE received_at < $1`, now.Add(-30*24*time.Hour)); err != nil {
 		return 0, err
 	}
-	result, err := s.db.Exec(ctx, `DELETE FROM playback_v3_attempts WHERE expires_at <= $1`, now)
+	result, err := s.db.Exec(ctx, `DELETE FROM playback_v3_attempts WHERE (control_state = 'legacy' AND expires_at <= $1) OR (control_state <> 'legacy' AND expires_at <= clock_timestamp())`, now)
 	if err != nil {
 		return 0, err
 	}
