@@ -5,4 +5,3 @@
   "detail": "The request media type is not supported; send multipart/form-data.",
   "instance": "urn:silo:request:00000000000000000000004a"
 }
-

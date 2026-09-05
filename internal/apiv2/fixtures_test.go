@@ -1539,7 +1539,7 @@ func generateFixtures(t *testing.T) map[string][]byte {
 		} else {
 			mt := strings.TrimSpace(strings.Split(rec.Header().Get("Content-Type"), ";")[0])
 			var pretty bytes.Buffer
-			if err := json.Indent(&pretty, rec.Body.Bytes(), "", "  "); err != nil {
+			if err := json.Indent(&pretty, bytes.TrimSpace(rec.Body.Bytes()), "", "  "); err != nil {
 				t.Fatalf("%s: body is not JSON: %v", c.name, err)
 			}
 			pretty.WriteByte('\n')
