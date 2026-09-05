@@ -11,21 +11,31 @@ import (
 )
 
 const (
-	querySortTitle            = "title"
-	querySortDateViewed       = "date_viewed"
-	querySortContentRating    = "content_rating"
-	cursorContentIDColumn     = "content_id"
-	cursorKindText            = "text"
-	cursorKindNumber          = "number"
-	cursorKindTimestamp       = "timestamp"
-	cursorKindDate            = "date"
-	cursorContentIDExpression = "mi.content_id"
-	cursorTruePredicate       = "TRUE"
-	querySortAsc              = "asc"
-	querySortReleaseDate      = "release_date"
-	querySortLastAirDate      = "last_air_date"
-	querySortBitrate          = "bitrate"
-	querySortRandom           = "random"
+	querySortYear               = "year"
+	querySortRuntime            = "runtime"
+	querySortRatingIMDb         = "rating_imdb"
+	querySortRatingTMDb         = "rating_tmdb"
+	querySortRatingRTCritic     = "rating_rt_critic"
+	querySortRatingRTAudience   = "rating_rt_audience"
+	querySortResolution         = "resolution"
+	querySortProgress           = "progress"
+	querySortLatestEpisodeAdded = "latest_episode_added"
+	querySortPlays              = "plays"
+	querySortTitle              = "title"
+	querySortDateViewed         = "date_viewed"
+	querySortContentRating      = "content_rating"
+	cursorContentIDColumn       = "content_id"
+	cursorKindText              = "text"
+	cursorKindNumber            = "number"
+	cursorKindTimestamp         = "timestamp"
+	cursorKindDate              = "date"
+	cursorContentIDExpression   = "mi.content_id"
+	cursorTruePredicate         = "TRUE"
+	querySortAsc                = "asc"
+	querySortReleaseDate        = "release_date"
+	querySortLastAirDate        = "last_air_date"
+	querySortBitrate            = "bitrate"
+	querySortRandom             = "random"
 )
 
 // QueryCursor carries the complete SQL ordering tuple. The API must bind it to
@@ -72,9 +82,9 @@ func setCursorTermKinds(terms []queryCursorTerm, field string) {
 		if strings.HasSuffix(terms[0].expression, ".episode_air_date") {
 			terms[0].kind = cursorKindDate
 		}
-	case defaultSortField, querySortDateViewed, "latest_episode_added":
+	case defaultSortField, querySortDateViewed, querySortLatestEpisodeAdded:
 		terms[0].kind = cursorKindTimestamp
-	case "year", "runtime", "rating_imdb", "rating_tmdb", "rating_rt_critic", "rating_rt_audience", "resolution", querySortBitrate, "progress", "plays", querySortContentRating:
+	case querySortYear, querySortRuntime, querySortRatingIMDb, querySortRatingTMDb, querySortRatingRTCritic, querySortRatingRTAudience, querySortResolution, querySortBitrate, querySortProgress, querySortPlays, querySortContentRating:
 		terms[0].kind = cursorKindNumber
 	case playableTypeSeries:
 		terms[1].kind = cursorKindNumber
