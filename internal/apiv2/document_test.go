@@ -253,4 +253,6 @@ var libraryOperationIDs = []string{
 // catalog-libraries section registers.
 var libraryViewOperationIDs = []string{
 	"getLibraryLayout", "listLibrarySections", "getLibrarySectionItems", "getLibraryCollections", "getLibraryCollectionItems", "listLibraryUserCollections",
+	"listCatalogItems", "listAudiobookGroups", "getCatalogFilters", "searchCatalogFacet", "queryCatalogItems", "getCatalogItem",
+	"listCatalogItemEpisodes", "listCatalogItemMangaFiles", "listCatalogItemVersions", "listSeriesSeasons", "getSeriesSeason",
 }

@@ -33,6 +33,193 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/catalog": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Page the catalog, a section, a collection, a personal list, or a person's credits, filtered and sorted. */
+    get: operations["listCatalogItems"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/catalog/audiobook-groups": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Page the authors, narrators, or series of an audiobook library with aggregate stats and cover stacks. */
+    get: operations["listAudiobookGroups"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/catalog/filters": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The facet values available in a scope, for filter menus. */
+    get: operations["getCatalogFilters"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/catalog/filters/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Prefix typeahead over one facet of a scope. */
+    get: operations["searchCatalogFacet"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/catalog/items/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The detail page of one item, with the viewer's state. */
+    get: operations["getCatalogItem"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/catalog/items/{id}/episodes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The episodes of a season item. */
+    get: operations["listCatalogItemEpisodes"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/catalog/items/{id}/manga-files": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The chapter files of a manga series, as file descriptors. */
+    get: operations["listCatalogItemMangaFiles"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/catalog/items/{id}/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The playable file versions of an item. */
+    get: operations["listCatalogItemVersions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/catalog/query": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Page the catalog by a JSON rule-group query; the body form of the browse. */
+    post: operations["queryCatalogItems"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/catalog/series/{id}/seasons": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The seasons of a series with the viewer's rollups. */
+    get: operations["listSeriesSeasons"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/catalog/series/{id}/seasons/{num}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One season of a series by number. */
+    get: operations["getSeriesSeason"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/libraries": {
     parameters: {
       query?: never;
@@ -787,6 +974,157 @@ export interface components {
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
+    AudiobookDetailExtension: {
+      authors: components["schemas"]["AudiobookPerson"][];
+      narrators: components["schemas"]["AudiobookPerson"][];
+      other_narrations: components["schemas"]["AudiobookNarration"][];
+      publisher?: string;
+      related: components["schemas"]["AudiobookRelatedContent"];
+      series?: components["schemas"]["AudiobookSeriesGroup"];
+      /** Format: int64 */
+      total_duration_seconds: number;
+    };
+    AudiobookGroup: {
+      /** Format: int64 */
+      finished_count: number;
+      /**
+       * Format: int64
+       * @description The viewer's books in progress
+       */
+      in_progress_count: number;
+      /**
+       * Format: int64
+       * @example 6
+       */
+      item_count: number;
+      /** @example Frank Herbert */
+      name: string;
+      /** @description Up to four presigned covers for a stack; empty, never null */
+      poster_urls: string[];
+      /**
+       * Format: int64
+       * @example 302400
+       */
+      total_duration_seconds: number;
+    };
+    AudiobookGroupCollection: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["AudiobookGroup"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+      /**
+       * Format: int64
+       * @example 40
+       */
+      total: number;
+      /** @example true */
+      total_exact: boolean;
+    };
+    AudiobookNarration: {
+      content_id: string;
+      narrators: string[];
+      title: string;
+      /** Format: int64 */
+      year?: number;
+    };
+    AudiobookPerson: {
+      name: string;
+      person_id?: string;
+      photo_thumbhash?: string;
+      photo_url?: string;
+    };
+    AudiobookRelatedContent: {
+      also_by_author: components["schemas"]["AudiobookRelatedItem"][];
+      similar: components["schemas"]["AudiobookRelatedItem"][];
+    };
+    AudiobookRelatedItem: {
+      content_id: string;
+      poster_url?: string;
+      /** Format: int64 */
+      series_index?: number;
+      title: string;
+      /** Format: int64 */
+      year?: number;
+    };
+    AudiobookSeriesGroup: {
+      entries: components["schemas"]["AudiobookRelatedItem"][];
+      name?: string;
+    };
+    AudioTrack: {
+      /** Format: int64 */
+      bit_depth?: number;
+      /** Format: int64 */
+      bitrate?: number;
+      /** Format: int64 */
+      channels?: number;
+      codec?: string;
+      default: boolean;
+      embedded_title?: string;
+      language?: string;
+      layout?: string;
+      profile?: string;
+      /** Format: int64 */
+      sample_rate?: number;
+      title?: string;
+    };
+    CastCredit: {
+      character: string;
+      imdb_id?: string;
+      name: string;
+      /** Format: int64 */
+      order: number;
+      person_id?: string;
+      photo_thumbhash?: string;
+      photo_url?: string;
+      plex_guid?: string;
+      tmdb_id?: string;
+      tvdb_id?: string;
+    };
+    CatalogBrowseCollection: {
+      /** @description The saved or default order a collection or personal list resolved to */
+      effective_sort?: components["schemas"]["CatalogEffectiveSort"];
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["CatalogItem"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+      /** @description Present when a relevance-sorted search ran through a search provider */
+      search_diagnostics?: components["schemas"]["CatalogSearchDiagnostics"];
+      /**
+       * Format: int64
+       * @description Items in the whole result; an estimate unless total_exact
+       * @example 1240
+       */
+      total: number;
+      /** @example true */
+      total_exact: boolean;
+    };
+    CatalogEffectiveSort: {
+      /** @example title */
+      field: string;
+      /** @example asc */
+      order: string;
+    };
+    CatalogFacetMatches: {
+      /** @description Whether more values matched than limit */
+      has_more: boolean;
+      /** @description Empty, never null */
+      matches: string[];
+    };
+    CatalogFilters: {
+      /** @description First 1000 alphabetically; searchCatalogFacet pages the rest */
+      authors: string[];
+      content_ratings: string[];
+      countries: string[];
+      /** @description Empty, never null */
+      genres: string[];
+      narrators: string[];
+      networks: string[];
+      original_languages: string[];
+      series: string[];
+      studios: string[];
+      /** @description File-derived facets; absent when skip_technical=true */
+      technical?: components["schemas"]["CatalogTechnicalFilters"];
+    };
     CatalogItem: {
       /**
        * Format: date-time
@@ -905,6 +1243,169 @@ export interface components {
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
+    CatalogItemDetail: {
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      added_at?: string;
+      /** @description Calendar date, YYYY-MM-DD */
+      air_date?: string;
+      air_time?: string;
+      air_timezone?: string;
+      audiobook?: components["schemas"]["AudiobookDetailExtension"];
+      backdrop_thumbhash?: string;
+      /** @description Presigned, short-lived */
+      backdrop_url?: string;
+      /** @description Section-specific badges (new, returning, …) */
+      badges?: string[];
+      /** @description Empty, never null */
+      cast: components["schemas"]["CastCredit"][];
+      /**
+       * @description Deterministic catalog identifier
+       * @example movie:heat-1995
+       */
+      content_id: string;
+      /** @example R */
+      content_rating?: string;
+      countries?: string[];
+      credits?: components["schemas"]["Marker"];
+      /** @description Empty, never null */
+      crew: components["schemas"]["CrewCredit"][];
+      /** Format: double */
+      duration_seconds?: number;
+      ebook?: components["schemas"]["EbookDetailExtension"];
+      effective_subtitle_track_signature?: components["schemas"]["SubtitleTrackSignature"];
+      effective_version_codec_video?: string;
+      effective_version_edition_key?: string;
+      effective_version_hdr?: boolean;
+      effective_version_resolution?: string;
+      /** Format: int64 */
+      episode_count?: number;
+      /** Format: int64 */
+      episode_number?: number;
+      extras?: components["schemas"]["ItemExtraInfo"][];
+      /** @description Calendar date, YYYY-MM-DD */
+      first_air_date?: string;
+      /** @description Absent for viewers without file-path visibility */
+      folder_paths?: string[];
+      /** @description Empty, never null */
+      genres: string[];
+      imdb_id?: string;
+      intro?: components["schemas"]["Marker"];
+      is_specials?: boolean;
+      /** @description On a continue-watching card: in_progress or next_up */
+      item_source?: string;
+      /** @description Empty, never null */
+      keywords: string[];
+      /** @description Calendar date, YYYY-MM-DD */
+      last_air_date?: string;
+      /** @description Metadata fields an editor pinned */
+      locked_fields?: number[];
+      /** @description Presigned, short-lived */
+      logo_url?: string;
+      manga?: components["schemas"]["MangaDetailExtension"];
+      /** Format: int64 */
+      manga_chapter_count?: number;
+      /** Format: int64 */
+      manga_volume_count?: number;
+      networks?: string[];
+      /** @example en */
+      original_language?: string;
+      original_title?: string;
+      /** @description Technical badges of the best file */
+      overlay_summary?: components["schemas"]["CatalogItemOverlay"];
+      overview?: string;
+      /** @description A translation of the overview is queued for this language */
+      pending_translation_language?: string;
+      /** @description The item to play when the card is a series or season; absent when the item plays itself */
+      play_content_id?: string;
+      playback_variants?: components["schemas"]["PlaybackVariant"][];
+      /**
+       * Format: double
+       * @description Resume position on a continue-watching card
+       */
+      position_seconds?: number;
+      poster_thumbhash?: string;
+      /** @description Presigned, short-lived */
+      poster_url?: string;
+      preview?: components["schemas"]["Marker"];
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      progress_updated_at?: string;
+      /** Format: double */
+      rating_imdb?: number;
+      /** Format: int64 */
+      rating_rt_audience?: number;
+      /** Format: int64 */
+      rating_rt_critic?: number;
+      /** Format: double */
+      rating_tmdb?: number;
+      recap?: components["schemas"]["Marker"];
+      /**
+       * @description Calendar date, YYYY-MM-DD
+       * @example 1995-12-15
+       */
+      release_date?: string;
+      /**
+       * Format: int64
+       * @description Minutes
+       * @example 170
+       */
+      runtime?: number;
+      /** Format: int64 */
+      season_count?: number;
+      /** Format: int64 */
+      season_number?: number;
+      /** @description Owning series of an episode or season */
+      series_id?: string;
+      series_title?: string;
+      /** @description Airing state of a series */
+      show_status?: string;
+      /** @description The values the listing was sorted by */
+      sort_metrics?: components["schemas"]["CatalogItemSortMetrics"];
+      sort_title?: string;
+      /**
+       * @description Metadata match state of the item
+       * @example matched
+       */
+      status: string;
+      studios?: string[];
+      /** @description Empty, never null */
+      subtitles: components["schemas"]["SubtitleInfo"][];
+      tagline?: string;
+      /** @example Heat */
+      title: string;
+      tmdb_id?: string;
+      tvdb_id?: string;
+      /**
+       * @description movie, series, season, episode, audiobook, ebook, podcast, podcast_episode
+       * @example movie
+       */
+      type: string;
+      upcoming_event?: components["schemas"]["CatalogItemUpcomingEvent"];
+      user_data?: components["schemas"]["WatchRollup"];
+      /** Format: int64 */
+      user_rating?: number;
+      /** @description The viewer's flags; absent without a profile */
+      user_state?: components["schemas"]["CatalogItemUserState"];
+      /** @description Empty, never null */
+      versions: components["schemas"]["FileVersion"][];
+      /** @description Trailers and clips */
+      videos?: components["schemas"]["ItemVideoInfo"][];
+      /** @description Sibling editions of the same work */
+      work_formats?: components["schemas"]["CatalogWorkFormat"][];
+      /** @description The work (book) an audiobook or ebook edition belongs to */
+      work_id?: string;
+      work_title?: string;
+      /**
+       * Format: int64
+       * @example 1995
+       */
+      year?: number;
+    };
     CatalogItemOverlay: {
       /** @example 2.39:1 */
       aspect_ratio?: string;
@@ -975,6 +1476,73 @@ export interface components {
       /** @example false */
       played: boolean;
     };
+    CatalogQuery: {
+      /** @description Rule groups; empty matches everything */
+      groups?: components["schemas"]["CatalogQueryGroup"][];
+      /**
+       * @description Restrict to one library
+       * @example 1
+       */
+      library_id?: string;
+      /**
+       * Format: int64
+       * @description Page size; default 20, maximum 100
+       * @example 20
+       */
+      limit?: number;
+      /**
+       * @description How the groups combine; default all
+       * @enum {string}
+       */
+      match?: "all" | "any";
+      /**
+       * Format: int64
+       * @description Rows to skip
+       * @example 0
+       */
+      offset?: number;
+      /** @enum {string} */
+      order?: "asc" | "desc";
+      /**
+       * @description Sort field; default added date, newest first
+       * @example title
+       */
+      sort?: string;
+    };
+    CatalogQueryGroup: {
+      /** @enum {string} */
+      match: "all" | "any";
+      /** @description Empty, never null */
+      rules: components["schemas"]["CatalogQueryRule"][];
+    };
+    CatalogQueryRule: {
+      /** @example genre */
+      field: string;
+      /** @example contains */
+      op: string;
+      /** @description Scalar or array, as the operator requires */
+      value: unknown;
+    };
+    CatalogSearchDiagnostics: {
+      fallback_reason?: string;
+      /** Format: int64 */
+      index_pending_updates?: number;
+      /**
+       * @description keyword, semantic, or hybrid after any fallback
+       * @example keyword
+       */
+      mode: string;
+      /** @example postgres */
+      provider: string;
+      /** @example false */
+      semantic_used: boolean;
+    };
+    CatalogTechnicalFilters: {
+      audio_languages: string[];
+      /** @description Empty, never null */
+      resolutions: string[];
+      subtitle_languages: string[];
+    };
     CatalogWorkFormat: {
       /** @example audiobook:dune */
       content_id: string;
@@ -985,6 +1553,17 @@ export interface components {
       library_id?: string;
       /** @example audiobook */
       type: string;
+    };
+    CrewCredit: {
+      imdb_id?: string;
+      job: string;
+      name: string;
+      person_id?: string;
+      photo_thumbhash?: string;
+      photo_url?: string;
+      plex_guid?: string;
+      tmdb_id?: string;
+      tvdb_id?: string;
     };
     CuratedCollection: {
       backdrop_thumbhash?: string;
@@ -1066,6 +1645,12 @@ export interface components {
       /** @example visible */
       visibility: string;
     };
+    EbookDetailExtension: {
+      authors: components["schemas"]["AudiobookPerson"][];
+      publisher?: string;
+      related: components["schemas"]["AudiobookRelatedContent"];
+      series?: components["schemas"]["AudiobookSeriesGroup"];
+    };
     EffectivePolicy: {
       /** @example false */
       audio_transcode_allowed: boolean;
@@ -1116,6 +1701,121 @@ export interface components {
       /** @example ok */
       status: string;
     };
+    Episode: {
+      /** @description Calendar date, YYYY-MM-DD */
+      air_date?: string;
+      /** @example episode:severance-s01e01 */
+      content_id: string;
+      /** Format: int64 */
+      episode_number: number;
+      files?: components["schemas"]["EpisodeFile"][];
+      imdb_id?: string;
+      overlay_summary?: components["schemas"]["CatalogItemOverlay"];
+      overview?: string;
+      /**
+       * Format: int64
+       * @description Minutes
+       */
+      runtime: number;
+      /** Format: int64 */
+      season_number: number;
+      still_thumbhash?: string;
+      /** @description Presigned, short-lived */
+      still_url?: string;
+      title: string;
+      tmdb_id?: string;
+      tvdb_id?: string;
+      user_data?: components["schemas"]["WatchRollup"];
+    };
+    EpisodeCollection: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["Episode"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    EpisodeFile: {
+      /** Format: int64 */
+      audio_channels?: number;
+      codec_video?: string;
+      container?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      file_id: string;
+      /** Format: int64 */
+      file_size: number;
+      hdr: boolean;
+      resolution?: string;
+    };
+    FileVersion: {
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      added_at: string;
+      audio_tracks?: components["schemas"]["AudioTrack"][];
+      /**
+       * Format: int64
+       * @description Kilobits per second
+       */
+      bitrate: number;
+      chapters?: components["schemas"]["VersionChapter"][];
+      /** @example truehd */
+      codec_audio: string;
+      /** @example hevc */
+      codec_video: string;
+      /** @example mkv */
+      container: string;
+      credits?: components["schemas"]["Marker"];
+      /**
+       * Format: int64
+       * @description Seconds
+       */
+      duration: number;
+      edition_key?: string;
+      edition_raw?: string;
+      effective_audio_language?: string;
+      /** Format: int64 */
+      effective_audio_track_index?: number;
+      /**
+       * @description Opaque identifier
+       * @example 120
+       */
+      file_id: string;
+      file_name?: string;
+      /** @description Absent for viewers without file-path visibility */
+      file_path?: string;
+      /**
+       * Format: int64
+       * @description Bytes
+       */
+      file_size: number;
+      hdr: boolean;
+      intro?: components["schemas"]["Marker"];
+      /** Format: int64 */
+      multi_episode_end?: number;
+      /** Format: int64 */
+      multi_episode_start?: number;
+      presentation_group_key?: string;
+      presentation_kind?: string;
+      /** Format: int64 */
+      presentation_part_index?: number;
+      /** Format: int64 */
+      presentation_part_total?: number;
+      preview?: components["schemas"]["Marker"];
+      recap?: components["schemas"]["Marker"];
+      /** @example 2160p */
+      resolution: string;
+      subtitle_tracks?: components["schemas"]["VersionSubtitleTrack"][];
+      video_tracks?: components["schemas"]["VideoTrack"][];
+    };
+    FileVersionCollection: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["FileVersion"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
     FormFile: {
       ContentType: string;
       Filename: string;
@@ -1139,6 +1839,23 @@ export interface components {
        * @example alice
        */
       impersonator_username: string;
+    };
+    ItemExtraInfo: {
+      content_id: string;
+      /** Format: int64 */
+      duration_seconds?: number;
+      /** Format: int64 */
+      file_id?: number;
+      kind: string;
+      title?: string;
+    };
+    ItemVideoInfo: {
+      is_official: boolean;
+      kind: string;
+      language?: string;
+      name?: string;
+      site: string;
+      site_key: string;
     };
     Library: {
       /**
@@ -1502,6 +2219,47 @@ export interface components {
       /** @example movies */
       type?: string;
     };
+    MangaChapter: {
+      /** Format: double */
+      chapter_index?: number;
+      content_id: string;
+      poster_url?: string;
+      /** Format: double */
+      progress?: number;
+      read: boolean;
+      title: string;
+      volume?: string;
+    };
+    MangaChapterFile: {
+      /** Format: double */
+      chapter_index?: number;
+      container?: string;
+      content_id: string;
+      file_name: string;
+      /** @description Absent for viewers without file-path visibility */
+      file_path?: string;
+      /** Format: int64 */
+      file_size: number;
+      title: string;
+      volume?: string;
+    };
+    MangaDetailExtension: {
+      chapters: components["schemas"]["MangaChapter"][];
+    };
+    MangaFiles: {
+      /** @description Absent for viewers without file-path visibility */
+      folder_paths?: string[];
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["MangaChapterFile"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    Marker: {
+      /** Format: double */
+      end: number;
+      /** Format: double */
+      start: number;
+    };
     MetadataMatchQueueAction: {
       /**
        * @description Opaque identifier
@@ -1693,6 +2451,40 @@ export interface components {
        * @example eyJvZmZzZXQiOjUwfQ
        */
       next_cursor?: string;
+    };
+    PlaybackVariant: {
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      default_file_id?: string;
+      edition_key?: string;
+      edition_raw?: string;
+      /** Format: int64 */
+      part_count: number;
+      /** @description Empty, never null */
+      parts: components["schemas"]["PlaybackVariantPart"][];
+      presentation_group_key?: string;
+      presentation_kind?: string;
+      /**
+       * Format: int64
+       * @description Seconds
+       */
+      total_duration?: number;
+      variant_id: string;
+    };
+    PlaybackVariantPart: {
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      default_file_id?: string;
+      /** Format: int64 */
+      part_index: number;
+      /** Format: int64 */
+      total_duration?: number;
+      /** @description Empty, never null */
+      versions: components["schemas"]["FileVersion"][];
     };
     Problem: {
       /**
@@ -2081,6 +2873,32 @@ export interface components {
        */
       root_path: string;
     };
+    Season: {
+      /** @description Calendar date, YYYY-MM-DD */
+      air_date?: string;
+      /** @example series:severance-S01 */
+      content_id: string;
+      /** Format: int64 */
+      episode_count: number;
+      is_specials?: boolean;
+      overview?: string;
+      /** @description The episode to play next */
+      play_content_id?: string;
+      poster_thumbhash?: string;
+      /** @description Presigned, short-lived */
+      poster_url?: string;
+      /** Format: int64 */
+      season_number: number;
+      /** @example Season 1 */
+      title: string;
+      user_data?: components["schemas"]["WatchRollup"];
+    };
+    SeasonCollection: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["Season"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
     Section: {
       /** @example false */
       customized: boolean;
@@ -2286,6 +3104,22 @@ export interface components {
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
+    SubtitleInfo: {
+      codec?: string;
+      forced: boolean;
+      hearing_impaired: boolean;
+      language: string;
+      source: string;
+      title?: string;
+    };
+    SubtitleTrackSignature: {
+      codec?: string;
+      forced: boolean;
+      hearing_impaired: boolean;
+      label?: string;
+      language?: string;
+      source?: string;
+    };
     SystemInfo: {
       /**
        * Format: int64
@@ -2391,6 +3225,99 @@ export interface components {
       items: components["schemas"]["UserCollection"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
+    };
+    VersionChapter: {
+      /** Format: double */
+      end_seconds: number;
+      /** Format: int64 */
+      index: number;
+      source: string;
+      /** Format: double */
+      start_seconds: number;
+      thumbnail_thumbhash?: string;
+      thumbnail_url?: string;
+      title: string;
+    };
+    VersionSubtitleTrack: {
+      codec?: string;
+      default: boolean;
+      embedded_title?: string;
+      external: boolean;
+      file_name?: string;
+      forced: boolean;
+      hearing_impaired: boolean;
+      /** Format: int64 */
+      index?: number;
+      language?: string;
+      resolution?: string;
+      title?: string;
+    };
+    VideoTrack: {
+      aspect_ratio?: string;
+      /** Format: int64 */
+      bit_depth?: number;
+      /** Format: int64 */
+      bitrate?: number;
+      codec?: string;
+      color_primaries?: string;
+      color_range?: string;
+      color_space?: string;
+      color_transfer?: string;
+      dolby_vision?: string;
+      /** Format: int64 */
+      dv_bl_compat_id?: number;
+      dv_bl_compat_id_present: boolean;
+      dv_bl_present?: boolean;
+      dv_config_present: boolean;
+      dv_el_present?: boolean;
+      dv_enhancement_layer?: string;
+      /** Format: int64 */
+      dv_level?: number;
+      /** Format: int64 */
+      dv_profile?: number;
+      dv_rpu_present?: boolean;
+      frame_rate?: string;
+      hdr10_plus?: boolean;
+      /** Format: int64 */
+      height?: number;
+      interlaced: boolean;
+      /** Format: int64 */
+      level?: number;
+      pixel_format?: string;
+      profile?: string;
+      /** Format: int64 */
+      reference_frames?: number;
+      title?: string;
+      video_range?: string;
+      video_range_type?: string;
+      /** Format: int64 */
+      width?: number;
+    };
+    WatchRollup: {
+      /** Format: double */
+      duration_seconds?: number;
+      /** Format: int64 */
+      in_progress_count: number;
+      is_in_progress?: boolean;
+      last_codec_video?: string;
+      last_edition_key?: string;
+      /**
+       * @description The version last played
+       * @example 1
+       */
+      last_file_id?: string;
+      last_hdr?: boolean;
+      last_resolution?: string;
+      played: boolean;
+      /**
+       * Format: double
+       * @description Resume position of the leaf or of the next episode
+       */
+      position_seconds?: number;
+      /** Format: int64 */
+      unplayed_count: number;
+      /** Format: int64 */
+      watched_count: number;
     };
   };
   responses: never;
@@ -2510,6 +3437,1377 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AdminUserCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listCatalogItems: {
+    parameters: {
+      query?: {
+        /** @description For source=library_collection or user_collection */
+        collection_id?: string;
+        /** @description Repeat the key for several ratings */
+        content_rating?: string[];
+        /** @description Opaque cursor from page.next_cursor */
+        cursor?: string;
+        genre?: string;
+        /** @description group=work collapses editions of one book into one card */
+        group?: "work";
+        /** @description Artwork variant to presign */
+        image_size?: "small" | "medium" | "large" | "original";
+        /** @description Restrict to one library; required for library sections */
+        library_id?: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+        /** @description How the filters combine; default all */
+        match?: "all" | "any";
+        /** @description Alphabetical jump: only titles starting here */
+        name_prefix?: string;
+        /** @description For source=person */
+        person_id?: string;
+        /** @description Search text */
+        q?: string;
+        /** @description For source=section: which page the section is on; default library */
+        scope?: "home" | "library";
+        /** @description For source=section */
+        section_id?: string;
+        /** @description true skips the exact count; the total is then an estimate */
+        skip_total?: boolean;
+        /** @description sort=field or -field; one term. Fields: title, year, release_date, added_at, rating, runtime, random, … (see the filters document); absent applies the source's saved or default order */
+        sort?: string;
+        /** @description What to page; default query (the whole catalog) */
+        source?:
+          | "query"
+          | "section"
+          | "library_collection"
+          | "user_collection"
+          | "favorites"
+          | "watchlist"
+          | "history"
+          | "person";
+        /** @description Metadata match state */
+        status?: string;
+        /** @description Media scope: movie, series, episode, audiobook, ebook, podcast, video, … */
+        type?: string;
+        year_max?: number;
+        year_min?: number;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CatalogBrowseCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listAudiobookGroups: {
+    parameters: {
+      query: {
+        /** @description Opaque cursor from page.next_cursor */
+        cursor?: string;
+        group_by: "author" | "narrator" | "series";
+        image_size?: "small" | "medium" | "large" | "original";
+        /** @description The audiobook library */
+        library_id: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+        /** @description Case-insensitive prefix on the group name */
+        q?: string;
+        /** @description true skips the exact count; the total is then an estimate */
+        skip_total?: boolean;
+        /** @description Default name */
+        sort?: "name" | "count" | "duration";
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AudiobookGroupCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getCatalogFilters: {
+    parameters: {
+      query?: {
+        collection_id?: string;
+        /** @description Opaque identifier */
+        library_id?: string;
+        /** @description Opaque identifier */
+        person_id?: string;
+        scope?: "home" | "library";
+        section_id?: string;
+        /** @description true omits the file-derived facets (resolutions, audio and subtitle languages) */
+        skip_technical?: boolean;
+        /** @description What scope to list facets for; default query */
+        source?:
+          | "query"
+          | "section"
+          | "library_collection"
+          | "user_collection"
+          | "favorites"
+          | "watchlist"
+          | "history"
+          | "person";
+        type?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CatalogFilters"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  searchCatalogFacet: {
+    parameters: {
+      query: {
+        collection_id?: string;
+        /** @description The facet to search */
+        facet:
+          | "genre"
+          | "studio"
+          | "network"
+          | "country"
+          | "original_language"
+          | "content_rating"
+          | "author"
+          | "narrator"
+          | "series";
+        /** @description Opaque identifier */
+        library_id?: string;
+        /** @description Most matches to return; default 20, maximum 100 */
+        limit?: number;
+        /** @description Opaque identifier */
+        person_id?: string;
+        /** @description Case-insensitive prefix */
+        q?: string;
+        scope?: "home" | "library";
+        section_id?: string;
+        /** @description true omits the file-derived facets (resolutions, audio and subtitle languages) */
+        skip_technical?: boolean;
+        /** @description What scope to list facets for; default query */
+        source?:
+          | "query"
+          | "section"
+          | "library_collection"
+          | "user_collection"
+          | "favorites"
+          | "watchlist"
+          | "history"
+          | "person";
+        type?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CatalogFacetMatches"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getCatalogItem: {
+    parameters: {
+      query?: {
+        /** @description The version the viewer selected; affects the effective playback answer */
+        file_id?: string;
+        image_size?: "small" | "medium" | "large" | "original";
+        /** @description The library the item is being viewed in; picks its presentation when the item is in several */
+        library_id?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description Content id */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CatalogItemDetail"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listCatalogItemEpisodes: {
+    parameters: {
+      query?: {
+        /** @description The version the viewer selected; affects the effective playback answer */
+        file_id?: string;
+        image_size?: "small" | "medium" | "large" | "original";
+        /** @description The library the item is being viewed in; picks its presentation when the item is in several */
+        library_id?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description Content id */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EpisodeCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listCatalogItemMangaFiles: {
+    parameters: {
+      query?: {
+        /** @description The version the viewer selected; affects the effective playback answer */
+        file_id?: string;
+        image_size?: "small" | "medium" | "large" | "original";
+        /** @description The library the item is being viewed in; picks its presentation when the item is in several */
+        library_id?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description Content id */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MangaFiles"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listCatalogItemVersions: {
+    parameters: {
+      query?: {
+        /** @description The version the viewer selected; affects the effective playback answer */
+        file_id?: string;
+        image_size?: "small" | "medium" | "large" | "original";
+        /** @description The library the item is being viewed in; picks its presentation when the item is in several */
+        library_id?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description Content id */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FileVersionCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  queryCatalogItems: {
+    parameters: {
+      query?: {
+        image_size?: "small" | "medium" | "large" | "original";
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CatalogQuery"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CatalogBrowseCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listSeriesSeasons: {
+    parameters: {
+      query?: {
+        image_size?: "small" | "medium" | "large" | "original";
+        /** @description The library the series is being viewed in */
+        library_id?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description Series content id */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SeasonCollection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getSeriesSeason: {
+    parameters: {
+      query?: {
+        image_size?: "small" | "medium" | "large" | "original";
+        /** @description The library the series is being viewed in */
+        library_id?: string;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description Series content id */
+        id: string;
+        /** @description Season number; 0 is specials */
+        num: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Season"];
         };
       };
       /** @description Bad Request */

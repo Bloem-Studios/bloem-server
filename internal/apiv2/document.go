@@ -203,6 +203,7 @@ func registerAll(reg *Registry) {
 	registerAdminUsers(reg)
 	registerLibraries(reg)
 	registerLibraryViews(reg)
+	registerCatalogItems(reg)
 	registerProfiles(reg)
 	registerProgress(reg)
 	registerSystem(reg)

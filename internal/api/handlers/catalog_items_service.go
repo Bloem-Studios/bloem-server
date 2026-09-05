@@ -61,6 +61,9 @@ type EpisodeFileView = episodeFileResponse
 // SeasonView is one season row.
 type SeasonView = seasonResponse
 
+// specialsSeasonTitle names season 0.
+const specialsSeasonTitle = "Specials"
+
 // Browse answers one page of the catalog: the resolver's page enriched
 // into cards, grouped by work when asked.
 func (h *CatalogHandler) Browse(ctx context.Context, v ItemViewer, req catalog.CatalogRequest, groupedByWork bool) (CatalogBrowseView, error) {
@@ -468,7 +471,7 @@ func (h *CatalogResourceHandler) SeriesSeasons(ctx context.Context, v ItemViewer
 	for _, s := range summaries {
 		title := "Season " + strconv.Itoa(s.SeasonNumber)
 		if s.SeasonNumber == 0 {
-			title = "Specials"
+			title = specialsSeasonTitle
 		}
 		episodes, _ := h.items.episodeRepo.ListBySeason(ctx, id, s.SeasonNumber)
 		resp = append(resp, seasonResponse{
@@ -521,7 +524,7 @@ func (h *CatalogResourceHandler) SeriesSeason(ctx context.Context, v ItemViewer,
 	}
 	title := "Season " + strconv.Itoa(num)
 	if num == 0 {
-		title = "Specials"
+		title = specialsSeasonTitle
 	}
 	resp := seasonResponse{
 		ContentID:    fmt.Sprintf("%s-S%02d", id, num),

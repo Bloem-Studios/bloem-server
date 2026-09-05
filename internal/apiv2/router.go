@@ -105,6 +105,14 @@ type Dependencies struct {
 	// LibraryCollections answers a library's collections to viewers
 	// (*handlers.LibraryCollectionHandler).
 	LibraryCollections LibraryCollectionService
+	// CatalogAccess resolves a viewer's access filter (*handlers.ItemsHandler);
+	// every catalog read needs it alongside its own seam.
+	CatalogAccess CatalogAccessService
+	// CatalogBrowse pages and facets the catalog (*handlers.CatalogHandler).
+	CatalogBrowse CatalogBrowseService
+	// CatalogItems answers item, season, and episode reads
+	// (*handlers.CatalogResourceHandler).
+	CatalogItems CatalogItemService
 
 	// bodyReadTimeout overrides BodyReadTimeout; tests use it to exercise the
 	// 408 boundary without waiting for the production deadline.
@@ -444,6 +452,33 @@ type LibraryCollectionService interface {
 	LibraryCollectionsTab(ctx context.Context, libraryID, userID int, profileID string) (handlers.LibraryCollectionTabView, error)
 	LibraryUserCollections(ctx context.Context, libraryID, userID int, profileID string) ([]usercollections.ServerVisibleCollection, error)
 	LibraryCollectionItems(ctx context.Context, libraryID int, collectionID string, access catalogpkg.AccessFilter) ([]handlers.CollectionItemView, error)
+}
+
+// CatalogAccessService is the slice of *handlers.ItemsHandler every catalog
+// read uses to resolve the viewer's access filter.
+type CatalogAccessService interface {
+	AccessFilterFor(ctx context.Context, opts handlers.AccessFilterOptions) (catalogpkg.AccessFilter, error)
+}
+
+// CatalogBrowseService is the slice of *handlers.CatalogHandler the browse,
+// facet, and query operations use.
+type CatalogBrowseService interface {
+	Browse(ctx context.Context, v handlers.ItemViewer, req catalogpkg.CatalogRequest, groupedByWork bool) (handlers.CatalogBrowseView, error)
+	Filters(ctx context.Context, v handlers.ItemViewer, req catalogpkg.CatalogRequest, includeTechnical bool) (handlers.CatalogFiltersView, error)
+	SearchFacet(ctx context.Context, v handlers.ItemViewer, req catalogpkg.CatalogRequest, facet, prefix string, limit int) (handlers.CatalogFacetSearchView, error)
+	QueryItems(ctx context.Context, v handlers.ItemViewer, req handlers.CatalogQueryRequest) (handlers.CatalogQueryView, error)
+	AudiobookGroups(ctx context.Context, v handlers.ItemViewer, query catalogpkg.AudiobookGroupsQuery) (handlers.AudiobookGroupsView, error)
+}
+
+// CatalogItemService is the slice of *handlers.CatalogResourceHandler the
+// item, season, and episode reads use.
+type CatalogItemService interface {
+	ItemDetail(ctx context.Context, v handlers.ItemViewer, id string) (*catalogpkg.ItemDetail, error)
+	ItemVersions(ctx context.Context, v handlers.ItemViewer, id string) ([]catalogpkg.FileVersion, error)
+	MangaFiles(ctx context.Context, v handlers.ItemViewer, id string) (*catalogpkg.MangaSeriesFiles, error)
+	ItemEpisodes(ctx context.Context, v handlers.ItemViewer, id string) ([]handlers.EpisodeView, error)
+	SeriesSeasons(ctx context.Context, v handlers.ItemViewer, id string) ([]handlers.SeasonView, error)
+	SeriesSeason(ctx context.Context, v handlers.ItemViewer, id string, num int) (handlers.SeasonView, error)
 }
 
 // unavailable is the fail-closed answer of an operation whose service is not

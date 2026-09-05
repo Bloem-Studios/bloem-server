@@ -249,6 +249,15 @@ type LimitParam struct {
 	Limit int `query:"limit" minimum:"1" maximum:"200" default:"50" doc:"Page size; default 50, maximum 200" example:"50"`
 }
 
+// Cursor scope vocabulary shared by the offset-paged operations.
+const (
+	tiebreakerOffset     = "offset"
+	tiebreakerContentID  = "content_id"
+	sortTitle            = "title"
+	codeInvalidSortField = "invalid_sort_field"
+	locationQuerySort    = "query.sort"
+)
+
 // SortField is one parsed sort term.
 type SortField struct {
 	Field string
@@ -276,7 +285,7 @@ func ParseSort(raw string, allowed []string) ([]SortField, *Problem) {
 		}
 		if field == "" || !allow[field] || seen[field] {
 			return nil, NewProblem(TypeValidationFailed, "The request did not pass validation; see errors.").
-				WithErrors(ProblemError{Location: "query.sort", Code: "invalid_sort_field", Detail: "sort names a field this operation does not sort by, or names one twice"})
+				WithErrors(ProblemError{Location: locationQuerySort, Code: codeInvalidSortField, Detail: "sort names a field this operation does not sort by, or names one twice"})
 		}
 		seen[field] = true
 		out = append(out, SortField{Field: field, Desc: desc})
