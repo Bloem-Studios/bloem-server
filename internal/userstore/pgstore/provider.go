@@ -3,6 +3,7 @@ package pgstore
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -30,4 +31,10 @@ func (p *PostgresProvider) ForUser(_ context.Context, userID int) (userstore.Use
 // Close is a no-op for Postgres — the pool is managed externally.
 func (p *PostgresProvider) Close() error {
 	return nil
+}
+
+// CreateProfileInTransaction joins account provisioning's transaction so the
+// profile can reference the new user before the account and invite commit.
+func (p *PostgresProvider) CreateProfileInTransaction(ctx context.Context, tx pgx.Tx, userID int, profile userstore.Profile) error {
+	return createProfile(ctx, tx, userID, profile)
 }

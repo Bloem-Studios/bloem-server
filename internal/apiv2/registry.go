@@ -53,6 +53,7 @@ const (
 	metaDemoRestricted  = "silo.demo_restricted"
 	metaProfileOptional = "silo.profile_optional"
 	metaMaxBodyBytes    = "silo.max_body_bytes"
+	metaRateLimitBucket = "silo.rate_limit_bucket"
 	metaGuarded         = "silo.guarded"
 	metaConditional     = "silo.conditional"
 	metaCreateOnly      = "silo.create_only"
@@ -151,6 +152,14 @@ type Operation struct {
 	// operation: Register applies the framework's off-by-one convention and
 	// records the declared limit so the 413 names it.
 	MaxBodyBytes int64
+	// RateLimitBucket names the per-endpoint rate-limit budget the operation
+	// spends (the v1 AuthEndpointHandler bucket, for example "login" or
+	// "password_change"); it must match the ratelimit.auth.<bucket>.* settings
+	// key. Empty on ClassPublic means no limiter runs, as on v1's unlimited
+	// public routes; empty on a gated class means the generic authenticated
+	// limiter. A gated class naming a bucket runs that budget in the
+	// limiter's slot instead (gates.go, rateLimiter).
+	RateLimitBucket string
 	// ServiceBacked marks a handler that depends on a wired service and so
 	// answers 503 dependency_unavailable when the wiring lacks it. Every
 	// gated class already implies 503 (a missing gate fails closed); the
@@ -251,6 +260,7 @@ func Register[I, O any](reg *Registry, op Operation, handler func(context.Contex
 	op.Metadata[metaPermission] = op.Permission
 	op.Metadata[metaDemoRestricted] = op.DemoRestricted
 	op.Metadata[metaProfileOptional] = op.ProfileOptional
+	op.Metadata[metaRateLimitBucket] = op.RateLimitBucket
 	op.Metadata[metaGuarded] = op.Guarded
 	op.Metadata[metaConditional] = op.Conditional
 	op.Metadata[metaCreateOnly] = op.CreateOnly
