@@ -1998,3 +1998,26 @@ and bulk creation use POST, while the retained preview POST samples recipe resul
 requesting profile's access filter without saving a definition. Capabilities report whether the
 service, preview, and atomic profile reset are available. Clients do not automatically replay
 administrator section operations after a conflict or a partial multi-request flow.
+
+### Administrator policy document storage
+
+Policy documents have a per-document revision independent of `policy_generation`. The revision
+covers document updates and version-history changes, including appends and foreign-key updates
+to version metadata. Database triggers maintain it for legacy and guarded writers. Attributed
+version creation locks the author before the document. Before account deletion clears version
+authorship, a trigger locks all attributed documents in ID order, avoiding a child-to-parent lock
+inversion with document deletion. Creating a document or appending a version does not advance the
+runtime generation; activation and enabling
+retain their existing generation increments, including accepted no-op writes. Deleting a document
+with an active version remains forbidden.
+
+Canonical document snapshots read the document and active version in one repeatable-read
+transaction. Guarded activation, enablement, and deletion compare the original revision after
+locking the document and before checking a no-op or applying a change. Wildcards still require
+an existing document and all domain constraints. Compilation and evaluation-cost validation use
+the locked source; failed writes roll back both the document revision and runtime generation.
+
+`DocumentService` returns the committed document and generation separately from local reload and
+event-publication outcomes. Failure to apply or announce a committed change is not a mutation
+error and does not authorize replay. This is storage/domain groundwork; administrator policy
+transport mappings remain proposed until their API and consumer reviews finish.

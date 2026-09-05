@@ -454,7 +454,7 @@ func (h *PolicyHandler) HandleActivateVersion(w http.ResponseWriter, r *http.Req
 		h.writeEvalCostError(w, err)
 		return
 	}
-	generation, err := h.store.Activate(r.Context(), documentID, versionID)
+	generation, err := h.store.Activate(r.Context(), documentID, versionID, h.evalBudget())
 	if err != nil {
 		h.writeStoreError(w, err, "Failed to activate policy version")
 		return
@@ -504,7 +504,7 @@ func (h *PolicyHandler) HandleSetDocumentEnabled(w http.ResponseWriter, r *http.
 			}
 		}
 	}
-	generation, err := h.store.SetEnabled(r.Context(), documentID, req.Enabled)
+	generation, err := h.store.SetEnabled(r.Context(), documentID, req.Enabled, h.evalBudget())
 	if err != nil {
 		h.writeStoreError(w, err, "Failed to update policy document")
 		return
@@ -698,6 +698,8 @@ func applyStatusCode(status policyApplyStatus) int {
 
 func (h *PolicyHandler) writeStoreError(w http.ResponseWriter, err error, fallback string) {
 	switch {
+	case errors.Is(err, policy.ErrPolicySlowEval):
+		h.writeEvalCostError(w, err)
 	case errors.Is(err, policy.ErrDocumentNotFound):
 		writeError(w, http.StatusNotFound, policyErrorNotFound, policyDocumentNotFoundMessage)
 	case errors.Is(err, policy.ErrVersionNotFound):
