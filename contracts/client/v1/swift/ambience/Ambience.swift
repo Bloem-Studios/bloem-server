@@ -43,30 +43,42 @@ public enum Ambience {
     /// Wire type `internal/ambience.Window`. Direction: response. Dialect: bloem.
     public struct Window: Codable, Hashable, Sendable {
         public let startsAt: String
+        public let repeatYearly: Bool
+        public let timezone: String
         public let endsAt: String
 
         public enum CodingKeys: String, CodingKey {
             case startsAt = "starts_at"
+            case repeatYearly = "repeat_yearly"
+            case timezone = "timezone"
             case endsAt = "ends_at"
         }
 
         public init(
             startsAt: String = "",
+            repeatYearly: Bool = false,
+            timezone: String = "",
             endsAt: String = ""
         ) {
             self.startsAt = startsAt
+            self.repeatYearly = repeatYearly
+            self.timezone = timezone
             self.endsAt = endsAt
         }
 
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             self.startsAt = try container.decodeIfPresent(String.self, forKey: .startsAt) ?? ""
+            self.repeatYearly = try container.decodeIfPresent(Bool.self, forKey: .repeatYearly) ?? false
+            self.timezone = try container.decodeIfPresent(String.self, forKey: .timezone) ?? ""
             self.endsAt = try container.decodeIfPresent(String.self, forKey: .endsAt) ?? ""
         }
 
         public func encode(to encoder: any Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(self.startsAt, forKey: .startsAt)
+            try container.encode(self.repeatYearly, forKey: .repeatYearly)
+            try container.encode(self.timezone, forKey: .timezone)
             try container.encode(self.endsAt, forKey: .endsAt)
         }
     }

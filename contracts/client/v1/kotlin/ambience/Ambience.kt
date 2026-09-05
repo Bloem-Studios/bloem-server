@@ -24,6 +24,10 @@ public data class Assets(
 public data class Window(
     @SerialName("starts_at")
     public val startsAt: String = "",
+    @SerialName("repeat_yearly")
+    public val repeatYearly: Boolean = false,
+    @SerialName("timezone")
+    public val timezone: String = "",
     @SerialName("ends_at")
     public val endsAt: String = "",
 )

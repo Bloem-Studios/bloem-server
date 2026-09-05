@@ -434,25 +434,31 @@ public enum Handlers {
 
     /// Wire type `internal/api/handlers.capabilityPromotions`. Direction: response. Dialect: bloem.
     public struct capabilityPromotions: Codable, Hashable, Sendable {
+        public let playbackOverlay: Bool
         public let surfaces: [String]
 
         public enum CodingKeys: String, CodingKey {
+            case playbackOverlay = "playback_overlay"
             case surfaces = "surfaces"
         }
 
         public init(
+            playbackOverlay: Bool = false,
             surfaces: [String] = []
         ) {
+            self.playbackOverlay = playbackOverlay
             self.surfaces = surfaces
         }
 
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.playbackOverlay = try container.decodeIfPresent(Bool.self, forKey: .playbackOverlay) ?? false
             self.surfaces = try container.decodeIfPresent([String].self, forKey: .surfaces) ?? []
         }
 
         public func encode(to encoder: any Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.playbackOverlay, forKey: .playbackOverlay)
             try container.encode(self.surfaces, forKey: .surfaces)
         }
     }

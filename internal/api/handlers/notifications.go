@@ -429,7 +429,8 @@ type capabilityResponse struct {
 
 // capabilityPromotions advertises the S-2 delivery surfaces.
 type capabilityPromotions struct {
-	Surfaces []string `json:"surfaces"`
+	PlaybackOverlay bool     `json:"playback_overlay"`
+	Surfaces        []string `json:"surfaces"`
 }
 
 // SetPromotions advertises the S-2 promotions capability.
@@ -550,7 +551,7 @@ func (h *NotificationsHandler) HandleCapability(w http.ResponseWriter, r *http.R
 	}
 	var promotionsBlock *capabilityPromotions
 	if h.promotions {
-		promotionsBlock = &capabilityPromotions{Surfaces: promotions.Surfaces}
+		promotionsBlock = &capabilityPromotions{Surfaces: promotions.Surfaces, PlaybackOverlay: true}
 	}
 	writeJSON(w, http.StatusOK, capabilityResponse{
 		InApp:       capabilityInApp{Enabled: h.system.Settings.UIEnabled(r.Context())},

@@ -130,7 +130,7 @@ func TestCardWireShapeHasNoTimerFields(t *testing.T) {
 	if err := json.Unmarshal(raw, &keys); err != nil {
 		t.Fatal(err)
 	}
-	allowed := map[string]bool{"id": true, "kicker": true, "headline": true, "subtitle": true, "image_url": true, "deeplink": true, "cta": true, "dismissible": true}
+	allowed := map[string]bool{"id": true, "kicker": true, "headline": true, "subtitle": true, "image_url": true, "deeplink": true, "cta": true, "dismissible": true, "expires_at": true, "duration_seconds": true, "playback_style": true, "video_url": true}
 	for k := range keys {
 		if !allowed[k] {
 			t.Fatalf("unexpected card key %q in %s", k, raw)
@@ -148,5 +148,16 @@ func TestCardWireShapeHasNoTimerFields(t *testing.T) {
 func TestDismissalSurfaces(t *testing.T) {
 	if DismissalSurface("home") != "promo:home" || !IsDismissalSurface("promo:pre_playback") || IsDismissalSurface("promo:login") || IsDismissalSurface("home") {
 		t.Fatal("dismissal surface mapping")
+	}
+}
+
+func TestPlaybackCardExpiry(t *testing.T) {
+	end := time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)
+	card := (Promotion{EndsAt: end, Placement: Placement{PlaybackStyle: "card"}}).Card()
+	if !card.ExpiresAt.Equal(end) || card.PlaybackStyle != "card" {
+		t.Fatalf("missing featured delivery metadata: %+v", card)
+	}
+	if _, err := normalizePlacement(Placement{PlaybackStyle: "popup"}); err == nil {
+		t.Fatal("accepted unknown placement")
 	}
 }

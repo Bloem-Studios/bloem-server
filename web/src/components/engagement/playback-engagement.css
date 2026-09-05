@@ -1,0 +1,135 @@
+.playback-campaign {
+  position: absolute;
+  z-index: 8;
+  right: 3.75%;
+  bottom: 19%;
+  width: min(440px, 35%);
+  display: flex;
+  gap: 16px;
+  padding: 20px 22px;
+  color: #fff;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  overflow: visible;
+  pointer-events: auto;
+  font-family: inherit;
+}
+.playback-creative {
+  width: 64px;
+  box-shadow: 0 2px 14px #0003;
+  flex-shrink: 0;
+  align-self: flex-start;
+  border-radius: 7px;
+  overflow: hidden;
+  position: relative;
+}
+.playback-creative img,
+.playback-creative video {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  aspect-ratio: 16/9;
+}
+.playback-creative.pip {
+  width: 100%;
+}
+.playback-campaign:has(.pip) {
+  flex-direction: column;
+  width: min(360px, 30%);
+  gap: 12px;
+}
+.playback-creative span {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  background: #0009;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+.playback-campaign-copy {
+  min-width: 0;
+  text-shadow:
+    0 1px 5px #000,
+    0 2px 18px #0008;
+}
+.playback-campaign small {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ffffffa8;
+}
+.playback-campaign h3 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 6px 0;
+}
+.playback-campaign p {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #fffc;
+  margin: 0;
+}
+.playback-campaign-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.playback-campaign button {
+  background: #10182040;
+  border: 1px solid #ffffff38;
+  backdrop-filter: blur(8px);
+  text-shadow: 0 1px 4px #000;
+  color: white;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.playback-campaign button:focus-visible {
+  outline: 2px solid #edb59a;
+  outline-offset: 3px;
+  background: #ffffff32;
+}
+.playback-campaign [role="status"] {
+  font-size: 11px;
+  color: #ecd7c9;
+}
+.playback-campaign-timer {
+  height: 2px;
+  position: absolute;
+  bottom: 0;
+  left: 22px;
+  right: 22px;
+  opacity: 0.65;
+  background: #e4a280;
+  transform-origin: left;
+  transition: transform 0.1s linear;
+}
+@media (max-width: 700px) {
+  .playback-campaign {
+    width: 45%;
+    padding: 12px;
+    gap: 8px;
+    bottom: 23%;
+  }
+  .playback-campaign:has(.pip) {
+    width: 35%;
+  }
+  .playback-campaign h3 {
+    font-size: 14px;
+  }
+  .playback-campaign p {
+    display: none;
+  }
+  .playback-creative {
+    width: 40px;
+  }
+  .playback-campaign button {
+    padding: 7px;
+    font-size: 10px;
+  }
+}

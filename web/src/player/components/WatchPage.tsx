@@ -446,6 +446,7 @@ export function WatchPage({
 
   return (
     <VideoPlayer
+      contentId={contentId}
       title={title}
       year={year}
       streamUrl={session.streamUrl}

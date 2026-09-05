@@ -165,6 +165,8 @@ public data class capabilityInApp(
 /** Wire type `internal/api/handlers.capabilityPromotions`. Direction: response. Dialect: bloem. */
 @Serializable
 public data class capabilityPromotions(
+    @SerialName("playback_overlay")
+    public val playbackOverlay: Boolean = false,
     @SerialName("surfaces")
     public val surfaces: List<String> = emptyList(),
 )

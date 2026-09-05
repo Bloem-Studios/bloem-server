@@ -22,6 +22,14 @@ public data class CTA(
 /** Wire type `internal/promotions.Card`. Direction: response. Dialect: upstream-compat. Registered root. */
 @Serializable
 public data class Card(
+    @SerialName("duration_seconds")
+    public val durationSeconds: Int = 0,
+    @SerialName("video_url")
+    public val videoUrl: String = "",
+    @SerialName("playback_style")
+    public val playbackStyle: String = "",
+    @SerialName("expires_at")
+    public val expiresAt: String = "",
     @SerialName("id")
     public val id: String = "",
     @SerialName("kicker")

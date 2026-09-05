@@ -1,3 +1,4 @@
+import { PlaybackEngagement } from "@/components/engagement/PlaybackEngagement";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ParsedCue } from "../utils/parseVTT";
 import { resolveSubtitleAutoSelect } from "../utils/subtitleSort";
@@ -99,6 +100,7 @@ const LIVE_SUBTITLE_INDEX = 1_000_000;
 const TRANSLATION_RESUME_TIMEOUT_MS = 30_000;
 
 interface VideoPlayerProps {
+  contentId: string;
   title: string;
   year?: number;
   streamUrl: string;
@@ -234,6 +236,7 @@ function readStringPayload(
 }
 
 export function VideoPlayer({
+  contentId,
   title,
   year,
   streamUrl,
@@ -2908,6 +2911,8 @@ export function VideoPlayer({
         playsInline
         style={!isPlayerReady ? { visibility: "hidden" } : undefined}
       />
+
+      <PlaybackEngagement contentId={contentId} position={currentTime} playing={playing} seeking={videoRef.current?.seeking ?? true} blocked={controlsVisible || isDetached || displayMode !== "foreground" || isASSActive} chapters={chapters.map(c => c.start_seconds)} />
 
       {/* Subtitle overlay — suppressed when JASSUB (ASS) is rendering; bitmap
           tracks are burned into the video server-side and never reach here.

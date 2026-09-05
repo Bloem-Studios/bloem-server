@@ -85,7 +85,7 @@ func assertNoTimerFields(t *testing.T, raw json.RawMessage) {
 	if err := json.Unmarshal(raw, &keys); err != nil {
 		t.Fatal(err)
 	}
-	allowed := map[string]bool{"id": true, "kicker": true, "headline": true, "subtitle": true, "image_url": true, "deeplink": true, "cta": true, "dismissible": true}
+	allowed := map[string]bool{"id": true, "kicker": true, "headline": true, "subtitle": true, "image_url": true, "deeplink": true, "cta": true, "dismissible": true, "expires_at": true, "duration_seconds": true, "playback_style": true, "video_url": true}
 	for k := range keys {
 		if !allowed[k] {
 			t.Fatalf("unexpected card key %q", k)

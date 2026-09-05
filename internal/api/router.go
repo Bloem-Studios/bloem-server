@@ -2837,7 +2837,9 @@ func NewRouter(deps Dependencies) chi.Router {
 				}
 				if deps.Promotions != nil {
 					// S-2 detail / pre-playback delivery (docs/specs/client-engagement.md section B.3).
-					r.With(apimw.RequireProfile).Get("/promotions", handlers.NewPromotionsHandler(deps.Promotions).HandleList)
+					promotionHandler := handlers.NewPromotionsHandler(deps.Promotions, deps.Notifications)
+					r.With(apimw.RequireProfile).Get("/promotions", promotionHandler.HandleList)
+					r.With(apimw.RequireProfile).Post("/promotions/{id}/save", promotionHandler.HandleSave)
 				}
 
 				if watchProviderHandler != nil {

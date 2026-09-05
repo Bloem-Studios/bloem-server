@@ -34,6 +34,7 @@ const subtitleTimeline = vi.hoisted(() => ({
 const toastError = vi.hoisted(() => vi.fn());
 const hlsJS = vi.hoisted(() => ({ supported: false, constructed: vi.fn() }));
 
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null, profile: null }) }));
 vi.mock("sonner", () => ({ toast: { error: toastError, success: vi.fn(), message: vi.fn() } }));
 
 vi.mock("../hooks/usePlaybackRealtime", () => ({
@@ -132,6 +133,7 @@ const directPlan = fixturePlanV3({
 function playerProps(overrides: Partial<Parameters<typeof VideoPlayer>[0]> = {}) {
   return {
     title: "Test movie",
+    contentId: "episode-1",
     streamUrl: "/api/v1/stream/session-1?st=scoped-stream-token",
     plan: directPlan,
     planRevision: 1,
