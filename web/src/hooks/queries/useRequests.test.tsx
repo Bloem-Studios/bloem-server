@@ -27,7 +27,7 @@ vi.mock("@/api/v2/request", () => ({
   v2: (...args: unknown[]) => mocks.api(...args),
 }));
 
-import { useRequestSearch } from "./useRequests";
+import { useRequestFeatureStatus, useRequestSearch } from "./useRequests";
 
 function render(node: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -192,4 +192,18 @@ describe("viewer-scoped cache isolation", () => {
 
     expect(client.getQueryData(requestKeys.search("all", "dune", 1, "profile-2"))).toBeUndefined();
   });
+});
+
+function CallStatusHook() {
+  useRequestFeatureStatus();
+  return null;
+}
+
+it("reads request capabilities through v2", async () => {
+  mocks.useQuery.mockReset();
+  mocks.api.mockReset();
+  render(<CallStatusHook />);
+  const options = mocks.useQuery.mock.calls[0]![0] as { queryFn: () => Promise<unknown> };
+  await options.queryFn();
+  expect(mocks.api).toHaveBeenCalledWith("GET /api/v2/requests/status");
 });

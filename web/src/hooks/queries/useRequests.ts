@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, ApiClientError } from "@/api/client";
+import { v2 } from "@/api/v2/request";
 import {
   browseDiscoverV2,
   createMediaRequestV2,
@@ -20,7 +21,6 @@ import type {
   LoadRequestIntegrationOptionsRequest,
   MediaRequest,
   MediaRequestsListResponse,
-  RequestFeatureStatus,
   RequestIntegration,
   RequestIntegrationOptions,
   RequestIntegrationsResponse,
@@ -84,7 +84,7 @@ export function useRequestDiscovery() {
 export function useRequestFeatureStatus() {
   return useQuery({
     queryKey: requestKeys.status(),
-    queryFn: () => api<RequestFeatureStatus>("/requests/status"),
+    queryFn: () => v2("GET /api/v2/requests/status"),
     staleTime: REQUESTS_STALE_TIME,
   });
 }

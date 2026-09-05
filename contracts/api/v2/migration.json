@@ -39387,13 +39387,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/status",
+        "operation_id": "getRequestStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -39515,18 +39515,19 @@
       "section": "personal-requests",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/requests/{id}/cancel",
+        "operation_id": "cancelRequest"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee.",
+      "retry_safety_note": "Cancellation has no saved response or request replay identity. A repeated cancellation can reject the terminal request. Reconcile the request before retrying; durable replay storage is required for an automatic retry guarantee."
     },
     {
       "listener": "api",
@@ -43756,13 +43757,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/watch-providers",
+        "operation_id": "listWatchProviders"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -43814,18 +43815,18 @@
       "release_flow": "browse_search",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "For a plugin-backed provider the API-key exchange runs before persistConnection consults durable state, so a retry after a lost response performs the external exchange twice and the second result overwrites the first. The v2 port must claim the request durably before calling out.",
+      "retry_safety_note": "The external credential exchange and connection write have no durable request identity. Overlapping or stale retries can replace a newer connection. Add a durable operation identity and generation guard before automatic retry.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/watch-providers/{provider}/auth/api-key",
+        "operation_id": "connectWatchProviderAPIKey"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -43877,18 +43878,18 @@
       "release_flow": "browse_search",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "StartDeviceAuth calls the provider (a new device code) before any durable claim and stores the result under a new session id, so a retry after a lost response opens a second provider session and row. The v2 port must claim an active session durably before calling out.",
+      "retry_safety_note": "Each call starts a new external authorization exchange and session. No durable request identity covers the exchange. Reconcile or restart explicitly rather than retrying an uncertain response.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/watch-providers/{provider}/auth/device-code",
+        "operation_id": "startWatchProviderDeviceAuth"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -43939,19 +43940,19 @@
       "section": "personal-requests",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "domain_identity",
-      "retry_safety_note": "DEFECT: keyed by auth_session_id, but the completion check is a plain read and the plugin is polled before the session is marked complete, so two overlapping polls across API nodes both call out and can consume the authorization twice. The v2 port must claim the session durably before calling out.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "The completion check precedes the external poll without a durable claim. Overlapping API nodes may consume authorization twice. Add a durable session claim and saved completion response before automatic retry.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/watch-providers/{provider}/auth/poll",
+        "operation_id": "pollWatchProviderDeviceAuth"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -44001,18 +44002,18 @@
       "release_flow": "browse_search",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "DeleteConnection removes whatever row currently holds the provider/user/profile identity, so a delayed retry after the profile reconnected removes the new connection. The v2 port must bind the delete to a connection generation with If-Match.",
+      "retry_safety_note": "Deletion identifies the provider and profile without the connection generation. A delayed replay can delete a reconnection. Require a generation precondition before automatic retry.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/watch-providers/{provider}/connection",
+        "operation_id": "deleteWatchProviderConnection"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: disconnect converges on the absent state; the PATCH that edits the connection is guarded."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -44067,13 +44068,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/watch-providers/{provider}/connection",
+        "operation_id": "getWatchProviderConnection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -44124,19 +44125,20 @@
       "section": "personal-requests",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/watch-providers/{provider}/connection",
+        "operation_id": "updateWatchProviderConnection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee.",
+      "concurrency": "if_match",
+      "retry_safety_note": "The service reads, merges and writes connection preferences without a generation guard. A stale retry can overwrite intervening preferences. Add a durable generation precondition before automatic retry."
     },
     {
       "listener": "api",
@@ -44187,19 +44189,19 @@
       "section": "personal-requests",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "coalescing",
-      "retry_safety_note": "RequestManualSync returns the active sync run from the database and enforces a cooldown.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Active-run lookup, cooldown check and run creation are separate database calls, and dispatch is process-local. Concurrent API nodes can create multiple runs. Add an atomic durable reservation and recoverable dispatch before advertising coalescing or automatic retry.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/watch-providers/{provider}/sync",
+        "operation_id": "triggerWatchProviderSync"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",
@@ -44254,13 +44256,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/watch-providers/{provider}/sync-runs",
+        "operation_id": "listWatchProviderSyncRuns"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; watchProviderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 profile-scoped lifecycle; watch-provider sync runs use a bounded recent window (default 10, maximum 50), without continuation. External exchanges and mutations have no durable replay guarantee."
     },
     {
       "listener": "api",

@@ -217,7 +217,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range recommendationOperationIDs {
 		profileToken[id] = true
 	}
-	for _, id := range requestOperationIDs {
+	for _, id := range append(requestOperationIDs, requestLifecycleOperationIDs...) {
 		profileToken[id] = true
 	}
 	expect[opCreateRequest] = map[int]bool{http.StatusCreated: true, http.StatusConflict: true, http.StatusTooManyRequests: true, http.StatusNotFound: true}
