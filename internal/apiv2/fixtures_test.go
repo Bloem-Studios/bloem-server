@@ -1075,7 +1075,7 @@ func fixtureCases() []fixtureCase {
 			scenario: "A batch of two progress writes, one with an offline event time; one result per item in request order.",
 			method:   http.MethodPost, path: "/api/v2/sync/progress", headers: with(bearer(memberToken), "X-Profile-Id", "p-owner"),
 			body:   `{"items":[{"media_item_id":"movie-8f2c1a","position_ms":1325500,"duration_ms":5400000,"updated_at":"2026-01-02T03:04:05.250Z"},{"media_item_id":"episode-42","position_ms":0,"duration_ms":2600000,"force_overwrite":true}]}`,
-			status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/ProgressSyncOutputBody"},
+			status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/ProgressSyncBatchResult"},
 		{name: "sync_progress_profile_header_required", operationID: "syncProgress",
 			scenario: "A progress write without X-Profile-Id: a validation failure naming the header.",
 			method:   http.MethodPost, path: "/api/v2/sync/progress", headers: bearer(memberToken),

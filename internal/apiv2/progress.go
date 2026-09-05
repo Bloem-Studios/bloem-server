@@ -3,8 +3,11 @@ package apiv2
 import (
 	"context"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
+
+	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -58,6 +61,7 @@ type ProgressCollection struct {
 
 // ProgressSyncItem is one progress write of a sync batch.
 type ProgressSyncItem struct {
+	ClientRef      *string  `json:"client_ref,omitempty" minLength:"1" maxLength:"128"`
 	MediaItemID    ID       `json:"media_item_id" minLength:"1" doc:"The catalog item" example:"movie-8f2c1a"`
 	PositionMs     int64    `json:"position_ms" minimum:"0" doc:"Playback position in milliseconds" example:"1325500"`
 	DurationMs     int64    `json:"duration_ms" minimum:"0" doc:"Known runtime in milliseconds; 0 when unknown" example:"5400000"`
@@ -68,23 +72,46 @@ type ProgressSyncItem struct {
 // ProgressSyncInput is the syncProgress command.
 type ProgressSyncInput struct {
 	Body struct {
-		Items []ProgressSyncItem `json:"items" minItems:"1" doc:"Writes to apply, in order"`
+		Items []ProgressSyncItem `json:"items" minItems:"1" maxItems:"100" doc:"Writes to apply, in order"`
 	}
 }
 
-// ProgressSyncResult is the answer to one write of the batch.
+// ProgressSyncSuccess includes accepted writes and threshold/LWW no-ops.
+type ProgressSyncSuccess struct {
+	BulkCorrelation
+	MediaItemID ID     `json:"media_item_id"`
+	Status      string `json:"status" enum:"success"`
+}
+
+type ProgressSyncFailure struct {
+	BulkCorrelation
+	MediaItemID ID              `json:"media_item_id"`
+	Status      string          `json:"status" enum:"failure"`
+	Failure     BulkItemFailure `json:"failure"`
+}
+
+// ProgressSyncResult is one named, discriminated success or failure variant.
 type ProgressSyncResult struct {
-	MediaItemID ID     `json:"media_item_id" example:"movie-8f2c1a"`
-	Status      string `json:"status" enum:"ok,error" doc:"ok when the write was applied (or skipped as below a threshold); error when it was not" example:"ok"`
-	Error       string `json:"error,omitempty" doc:"Why the write was not applied" example:"failed to update progress"`
+	BulkCorrelation
+	MediaItemID ID               `json:"media_item_id"`
+	Status      string           `json:"status"`
+	Failure     *BulkItemFailure `json:"failure,omitempty"`
 }
 
-// ProgressSyncOutput is the syncProgress response.
-type ProgressSyncOutput struct {
-	Body struct {
-		Results []ProgressSyncResult `json:"results" doc:"One per item, in request order"`
-	}
+func (ProgressSyncResult) Schema(r huma.Registry) *huma.Schema {
+	return &huma.Schema{OneOf: []*huma.Schema{
+		r.Schema(reflect.TypeFor[ProgressSyncSuccess](), true, ""),
+		r.Schema(reflect.TypeFor[ProgressSyncFailure](), true, ""),
+	}}
 }
+
+type ProgressSyncBatchResult struct {
+	Items   []ProgressSyncResult `json:"items"`
+	Summary BulkSummary          `json:"summary"`
+}
+
+// ProgressSyncOutput is always HTTP 200 after a per-item batch completes.
+type ProgressSyncOutput struct{ Body ProgressSyncBatchResult }
 
 // opListProgress is the operation id; the cursor scope is bound to it.
 const opListProgress = "listProgress"
@@ -118,10 +145,14 @@ func (reg *Registry) syncProgress(ctx context.Context, in *ProgressSyncInput) (*
 	if p != nil {
 		return nil, p
 	}
+	if p := validateBulkIdentity(in.Body.Items, func(item ProgressSyncItem) (string, *string) { return string(item.MediaItemID), item.ClientRef }, "media_item_id"); p != nil {
+		return nil, p
+	}
 	updates := make([]handlers.ProgressSyncUpdate, 0, len(in.Body.Items))
 	for _, item := range in.Body.Items {
 		update := handlers.ProgressSyncUpdate{
 			MediaItemID:    string(item.MediaItemID),
+			CheckAccess:    true,
 			Position:       float64(item.PositionMs) / 1000,
 			Duration:       float64(item.DurationMs) / 1000,
 			ForceOverwrite: item.ForceOverwrite,
@@ -136,10 +167,26 @@ func (reg *Registry) syncProgress(ctx context.Context, in *ProgressSyncInput) (*
 	if err != nil {
 		return nil, serviceProblem(err)
 	}
-	out := &ProgressSyncOutput{}
-	out.Body.Results = make([]ProgressSyncResult, 0, len(results))
-	for _, r := range results {
-		out.Body.Results = append(out.Body.Results, ProgressSyncResult{MediaItemID: ID(r.MediaItemID), Status: r.Status, Error: r.Error})
+	if len(results) != len(in.Body.Items) {
+		return nil, NewProblem(TypeInternalError, "Progress results were incomplete.")
+	}
+	out := &ProgressSyncOutput{Body: ProgressSyncBatchResult{Items: make([]ProgressSyncResult, 0, len(results)), Summary: BulkSummary{Total: len(results)}}}
+	for i, r := range results {
+		item := ProgressSyncResult{BulkCorrelation: BulkCorrelation{Index: i, ClientRef: in.Body.Items[i].ClientRef}, MediaItemID: in.Body.Items[i].MediaItemID, Status: "success"}
+		if r.Status == "ok" {
+			out.Body.Summary.Succeeded++
+		} else {
+			item.Status = "failure"
+			kind := TypeInternalError
+			detail := "Progress could not be updated."
+			if r.FailureStatus == http.StatusNotFound {
+				kind = TypeNotFound
+				detail = "Catalog item not found."
+			}
+			item.Failure = bulkFailure(kind, detail)
+			out.Body.Summary.Failed++
+		}
+		out.Body.Items = append(out.Body.Items, item)
 	}
 	return out, nil
 }

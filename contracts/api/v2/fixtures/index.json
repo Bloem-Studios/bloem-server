@@ -4540,7 +4540,7 @@
         "Content-Type": "application/json"
       },
       "response_media_type": "application/json",
-      "schema": "#/components/schemas/ProgressSyncOutputBody",
+      "schema": "#/components/schemas/ProgressSyncBatchResult",
       "body_file": "sync_progress_ok.json"
     },
     {

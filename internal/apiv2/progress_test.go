@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -352,25 +353,19 @@ func TestSyncProgress(t *testing.T) {
 	h := newTestHandler(t, pilotDeps(progress, nil))
 	owner := with(bearer(memberToken), "X-Profile-Id", "p-owner")
 
-	body := `{"items":[{"media_item_id":"movie-8f2c1a","position_ms":1325500,"duration_ms":5400000,"updated_at":"2026-01-02T03:04:05.250Z"},{"media_item_id":"movie-broken","position_ms":10,"duration_ms":0,"force_overwrite":true}]}`
+	body := `{"items":[{"media_item_id":"movie-8f2c1a","position_ms":1325500,"duration_ms":5400000,"updated_at":"2026-01-02T03:04:05.250Z"},{"media_item_id":"movie-broken","client_ref":"second","position_ms":10,"duration_ms":0,"force_overwrite":true}]}`
 	rec := do(t, h, http.MethodPost, "/api/v2/sync/progress", body, owner)
 	if rec.Code != 200 {
 		t.Fatal(rec.Body.String())
 	}
-	var out struct {
-		Results []struct {
-			MediaItemID string `json:"media_item_id"`
-			Status      string `json:"status"`
-			Error       string `json:"error"`
-		} `json:"results"`
-	}
+	var out ProgressSyncBatchResult
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Results) != 2 || out.Results[0].Status != "ok" || out.Results[0].Error != "" ||
-		out.Results[1].MediaItemID != "movie-broken" || out.Results[1].Status != "error" || out.Results[1].Error != "failed to update progress" {
-		t.Fatalf("results = %+v", out.Results)
+	if len(out.Items) != 2 || out.Items[0].Status != "success" || out.Items[0].Failure != nil || out.Items[1].Status != "failure" || out.Items[1].Failure.Status != 500 || out.Items[1].Index != 1 || out.Items[1].ClientRef == nil || *out.Items[1].ClientRef != "second" || out.Summary != (BulkSummary{Total: 2, Succeeded: 1, Failed: 1}) {
+		t.Fatalf("result=%+v", out)
 	}
+
 	// Milliseconds on the wire became the seconds the store keeps; the
 	// instant reached the seam in UTC.
 	if len(progress.synced) != 1 || len(progress.synced[0]) != 2 {
@@ -405,4 +400,52 @@ func TestSyncProgressRejectsBadInput(t *testing.T) {
 
 	off := newTestHandler(t, parityDeps(false))
 	requireProblem(t, do(t, off, http.MethodPost, "/api/v2/sync/progress", `{"items":[{"media_item_id":"m","position_ms":5,"duration_ms":10}]}`, owner), TypeDependencyUnavailable)
+}
+
+func TestSyncProgressEnvelopeBeforeEffects(t *testing.T) {
+	p := &fakeProgress{}
+	h := newTestHandler(t, pilotDeps(p, nil))
+	owner := with(bearer(memberToken), "X-Profile-Id", "p-owner")
+	item := ProgressSyncItem{MediaItemID: "a", PositionMs: 100, DurationMs: 1000}
+	for _, tc := range []struct {
+		name  string
+		items []ProgressSyncItem
+	}{
+		{"duplicate target", []ProgressSyncItem{item, item}},
+		{"duplicate reference", []ProgressSyncItem{{MediaItemID: "a", ClientRef: new("ref")}, {MediaItemID: "b", ClientRef: new("ref")}}},
+		{"blank target", []ProgressSyncItem{{MediaItemID: "  "}}},
+		{"blank reference", []ProgressSyncItem{{MediaItemID: "a", ClientRef: new(" ")}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body, _ := json.Marshal(map[string]any{"items": tc.items})
+			requireProblem(t, do(t, h, http.MethodPost, "/api/v2/sync/progress", string(body), owner), TypeValidationFailed)
+		})
+	}
+	items := make([]ProgressSyncItem, 101)
+	for i := range items {
+		items[i] = ProgressSyncItem{MediaItemID: ID(strconv.Itoa(i))}
+	}
+	body, _ := json.Marshal(map[string]any{"items": items})
+	requireProblem(t, do(t, h, http.MethodPost, "/api/v2/sync/progress", string(body), owner), TypeValidationFailed)
+	if len(p.synced) != 0 {
+		t.Fatalf("rejected envelope reached store: %+v", p.synced)
+	}
+	body, _ = json.Marshal(map[string]any{"items": items[:100]})
+	rec := do(t, h, http.MethodPost, "/api/v2/sync/progress", string(body), owner)
+	if rec.Code != 200 || len(p.synced) != 1 || len(p.synced[0]) != 100 {
+		t.Fatalf("100 boundary: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestSyncProgressAllFailedRemains200(t *testing.T) {
+	progress := &fakeProgress{failID: "broken"}
+	h := newTestHandler(t, pilotDeps(progress, nil))
+	rec := do(t, h, http.MethodPost, "/api/v2/sync/progress", `{"items":[{"media_item_id":"broken","position_ms":100,"duration_ms":1000}]}`, with(bearer(memberToken), "X-Profile-Id", "p-owner"))
+	var out ProgressSyncBatchResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK || out.Summary != (BulkSummary{Total: 1, Failed: 1}) || len(out.Items) != 1 || out.Items[0].Failure.Type != TypeInternalError.URI() {
+		t.Fatalf("%d %+v", rec.Code, out)
+	}
 }

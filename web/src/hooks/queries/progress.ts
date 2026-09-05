@@ -78,13 +78,13 @@ interface ReportMediaProgressVars {
 export function useReportMediaProgress() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       contentId,
       positionSeconds,
       durationSeconds,
       forceOverwrite = true,
-    }: ReportMediaProgressVars) =>
-      v2("POST /api/v2/sync/progress", {
+    }: ReportMediaProgressVars) => {
+      const result = await v2("POST /api/v2/sync/progress", {
         body: {
           items: [
             {
@@ -95,7 +95,11 @@ export function useReportMediaProgress() {
             },
           ],
         },
-      }),
+      });
+      const failed = result.items.find((item) => item.status === "failure");
+      if (failed?.status === "failure") throw new Error(failed.failure.detail);
+      return result;
+    },
     onSuccess: (_data, variables) => {
       // Progress genuinely changed → refresh progress-derived surfaces
       // (continue-watching etc.). Scope the catalog invalidation to THIS item's

@@ -18,6 +18,8 @@ import (
 // progress event time may sit before it is clamped to "now".
 const progressClockSkew = 2 * time.Minute
 
+const syncProgressStatusError = "error"
+
 // parseClientEventTime parses an RFC3339 client event time. Malformed values
 // are an error the caller must reject: treating them as "now" would let a
 // stale offline event win LWW as a fresh server-time write.
@@ -106,9 +108,10 @@ type syncProgressRequest struct {
 }
 
 type syncProgressResultItem struct {
-	MediaItemID string `json:"media_item_id"`
-	Status      string `json:"status"`
-	Error       string `json:"error,omitempty"`
+	FailureStatus int    `json:"-"`
+	MediaItemID   string `json:"media_item_id"`
+	Status        string `json:"status"`
+	Error         string `json:"error,omitempty"`
 }
 
 type syncProgressResponse struct {
@@ -395,6 +398,8 @@ func (h *ProgressHandler) HandleSyncProgress(w http.ResponseWriter, r *http.Requ
 
 // ProgressSyncUpdate is one progress write of a sync batch.
 type ProgressSyncUpdate struct {
+	// CheckAccess enables the native v2 per-item visibility gate; v1 keeps its frozen behavior.
+	CheckAccess    bool
 	MediaItemID    string
 	Position       float64
 	Duration       float64
@@ -420,6 +425,27 @@ func (h *ProgressHandler) SyncProgress(ctx context.Context, userID int, profileI
 		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")
 	}
 
+	// Resolve visibility before writes using the same viewer scope as progress reads.
+	var checkedIDs []string
+	for _, item := range updates {
+		if item.CheckAccess {
+			checkedIDs = append(checkedIDs, item.MediaItemID)
+		}
+	}
+	var accessible map[string]bool
+	if len(checkedIDs) > 0 {
+		if h.LibraryLookup == nil {
+			return nil, apiError(http.StatusServiceUnavailable, "unavailable", "Catalog access is unavailable")
+		}
+		scope, ok := access.GetScope(ctx)
+		if !ok {
+			return nil, apiError(http.StatusServiceUnavailable, "unavailable", "Viewer access is unavailable")
+		}
+		accessible, err = h.LibraryLookup.FilterAccessibleContentIDs(ctx, checkedIDs, scope.AllowedLibraryIDs, scope.DisabledLibraryIDs, scope.MaxContentRating)
+		if err != nil {
+			return nil, apiError(http.StatusServiceUnavailable, "unavailable", "Catalog access is unavailable")
+		}
+	}
 	var thresholds userstore.ProgressThresholds
 	if h.SettingsRepo != nil {
 		if v, _ := h.SettingsRepo.Get(ctx, "playback.watched_threshold"); v != "" {
@@ -442,14 +468,21 @@ func (h *ProgressHandler) SyncProgress(ctx context.Context, userID int, profileI
 			MediaItemID: item.MediaItemID,
 		}
 
+		if item.CheckAccess && !accessible[item.MediaItemID] {
+			result.Status = syncProgressStatusError
+			result.Error = "catalog item not found"
+			result.FailureStatus = http.StatusNotFound
+			results = append(results, result)
+			continue
+		}
 		if item.MediaItemID == "" {
-			result.Status = "error"
+			result.Status = syncProgressStatusError
 			result.Error = "media_item_id is required"
 			results = append(results, result)
 			continue
 		}
 		if item.invalidUpdatedAt {
-			result.Status = "error"
+			result.Status = syncProgressStatusError
 			result.Error = "updated_at must be RFC3339"
 			results = append(results, result)
 			continue
@@ -480,7 +513,7 @@ func (h *ProgressHandler) SyncProgress(ctx context.Context, userID int, profileI
 		}
 
 		if updateErr != nil {
-			result.Status = "error"
+			result.Status = syncProgressStatusError
 			result.Error = "failed to update progress"
 		} else {
 			result.Status = "ok"
@@ -492,7 +525,10 @@ func (h *ProgressHandler) SyncProgress(ctx context.Context, userID int, profileI
 
 	if hadSuccessfulUpdate {
 		triggerProfileRefresh(ctx, h.profileStaler, h.profileRefreshRequester, userID, profileID)
-		for _, item := range updates {
+		for i, item := range updates {
+			if item.CheckAccess && results[i].Status != "ok" {
+				continue
+			}
 			if item.MediaItemID == "" {
 				continue
 			}

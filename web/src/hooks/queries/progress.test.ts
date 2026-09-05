@@ -102,7 +102,30 @@ describe("useReportMediaProgress", () => {
       },
     });
     expect(result).toEqual(syncProgressOk);
-    expect(syncProgressOk.results[0]?.status).toBe("ok");
+    expect(syncProgressOk.items[0]?.status).toBe("success");
+  });
+
+  it("rejects an item failure inside a successful HTTP batch", async () => {
+    mocks.v2.mockResolvedValue({
+      items: [
+        {
+          index: 0,
+          media_item_id: "hidden",
+          status: "failure",
+          failure: {
+            type: "https://siloserver.org/docs/api/v2/problems/not_found",
+            title: "Not found",
+            status: 404,
+            detail: "Catalog item not found.",
+          },
+        },
+      ],
+      summary: { total: 1, succeeded: 0, failed: 1 },
+    });
+    const options = useReportMediaProgress() as unknown as ReportOptions;
+    await expect(
+      options.mutationFn({ contentId: "hidden", positionSeconds: 1, durationSeconds: 10 }),
+    ).rejects.toThrow("Catalog item not found.");
   });
 
   it("scopes the post-sync invalidation to progress and the reported item", async () => {

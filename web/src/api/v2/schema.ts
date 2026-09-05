@@ -2429,6 +2429,23 @@ export interface components {
        */
       title?: string;
     };
+    BulkItemFailure: {
+      detail: string;
+      errors?: components["schemas"]["ProblemError"][];
+      /** Format: int64 */
+      status: number;
+      title: string;
+      /** Format: uri */
+      type: string;
+    };
+    BulkSummary: {
+      /** Format: int64 */
+      failed: number;
+      /** Format: int64 */
+      succeeded: number;
+      /** Format: int64 */
+      total: number;
+    };
     Calendar: {
       /** @description Empty, never null */
       events: components["schemas"]["CalendarDay"][];
@@ -5405,11 +5422,32 @@ export interface components {
        */
       updated_at: string;
     };
+    ProgressSyncBatchResult: {
+      items: (
+        | components["schemas"]["ProgressSyncSuccess"]
+        | components["schemas"]["ProgressSyncFailure"]
+      )[];
+      summary: components["schemas"]["BulkSummary"];
+    };
+    ProgressSyncFailure: {
+      client_ref?: string;
+      failure: components["schemas"]["BulkItemFailure"];
+      /** Format: int64 */
+      index: number;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      media_item_id: string;
+      /** @enum {string} */
+      status: "failure";
+    };
     ProgressSyncInputBody: {
       /** @description Writes to apply, in order */
       items: components["schemas"]["ProgressSyncItem"][];
     };
     ProgressSyncItem: {
+      client_ref?: string;
       /**
        * Format: int64
        * @description Known runtime in milliseconds; 0 when unknown
@@ -5439,27 +5477,17 @@ export interface components {
        */
       updated_at?: string;
     };
-    ProgressSyncOutputBody: {
-      /** @description One per item, in request order */
-      results: components["schemas"]["ProgressSyncResult"][];
-    };
-    ProgressSyncResult: {
-      /**
-       * @description Why the write was not applied
-       * @example failed to update progress
-       */
-      error?: string;
+    ProgressSyncSuccess: {
+      client_ref?: string;
+      /** Format: int64 */
+      index: number;
       /**
        * @description Opaque identifier
-       * @example movie-8f2c1a
+       * @example 1
        */
       media_item_id: string;
-      /**
-       * @description ok when the write was applied (or skipped as below a threshold); error when it was not
-       * @example ok
-       * @enum {string}
-       */
-      status: "ok" | "error";
+      /** @enum {string} */
+      status: "success";
     };
     ProviderChainEntry: {
       /** @example tmdb */
@@ -22482,7 +22510,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProgressSyncOutputBody"];
+          "application/json": components["schemas"]["ProgressSyncBatchResult"];
         };
       };
       /** @description Bad Request */

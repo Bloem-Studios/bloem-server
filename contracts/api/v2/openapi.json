@@ -812,6 +812,66 @@
         },
         "type": "object"
       },
+      "BulkItemFailure": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ProblemError"
+            },
+            "type": "array"
+          },
+          "status": {
+            "format": "int64",
+            "maximum": 599,
+            "minimum": 400,
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail"
+        ],
+        "type": "object"
+      },
+      "BulkSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "failed": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "succeeded": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "succeeded",
+          "failed"
+        ],
+        "type": "object"
+      },
       "Calendar": {
         "additionalProperties": false,
         "properties": {
@@ -7225,6 +7285,71 @@
         ],
         "type": "object"
       },
+      "ProgressSyncBatchResult": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ProgressSyncSuccess"
+                },
+                {
+                  "$ref": "#/components/schemas/ProgressSyncFailure"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/BulkSummary"
+          }
+        },
+        "required": [
+          "items",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "ProgressSyncFailure": {
+        "additionalProperties": false,
+        "properties": {
+          "client_ref": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "failure": {
+            "$ref": "#/components/schemas/BulkItemFailure"
+          },
+          "index": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "media_item_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "failure"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_item_id",
+          "status",
+          "failure",
+          "index"
+        ],
+        "type": "object"
+      },
       "ProgressSyncInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -7233,6 +7358,7 @@
             "items": {
               "$ref": "#/components/schemas/ProgressSyncItem"
             },
+            "maxItems": 100,
             "minItems": 1,
             "type": "array"
           }
@@ -7245,6 +7371,11 @@
       "ProgressSyncItem": {
         "additionalProperties": false,
         "properties": {
+          "client_ref": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
           "duration_ms": {
             "description": "Known runtime in milliseconds; 0 when unknown",
             "examples": [
@@ -7296,55 +7427,38 @@
         ],
         "type": "object"
       },
-      "ProgressSyncOutputBody": {
+      "ProgressSyncSuccess": {
         "additionalProperties": false,
         "properties": {
-          "results": {
-            "description": "One per item, in request order",
-            "items": {
-              "$ref": "#/components/schemas/ProgressSyncResult"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "results"
-        ],
-        "type": "object"
-      },
-      "ProgressSyncResult": {
-        "additionalProperties": false,
-        "properties": {
-          "error": {
-            "description": "Why the write was not applied",
-            "examples": [
-              "failed to update progress"
-            ],
+          "client_ref": {
+            "maxLength": 128,
+            "minLength": 1,
             "type": "string"
+          },
+          "index": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
           },
           "media_item_id": {
             "description": "Opaque identifier",
             "examples": [
-              "movie-8f2c1a"
+              "1"
             ],
             "minLength": 1,
             "type": "string"
           },
           "status": {
-            "description": "ok when the write was applied (or skipped as below a threshold); error when it was not",
             "enum": [
-              "ok",
-              "error"
-            ],
-            "examples": [
-              "ok"
+              "success"
             ],
             "type": "string"
           }
         },
         "required": [
           "media_item_id",
-          "status"
+          "status",
+          "index"
         ],
         "type": "object"
       },
@@ -34675,7 +34789,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProgressSyncOutputBody"
+                  "$ref": "#/components/schemas/ProgressSyncBatchResult"
                 }
               }
             },
