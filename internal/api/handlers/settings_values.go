@@ -224,6 +224,13 @@ type explicitSettingValueResponse struct {
 	UpdatedAt    string          `json:"updated_at,omitempty"`
 }
 
+// effectiveSettingValuesResponse names the existing effective-values envelope
+// so the client DTO generator can publish its exact wire shape.
+type effectiveSettingValuesResponse struct {
+	Settings []effectiveSettingValueResponse `json:"settings"`
+	Revision int                             `json:"revision"`
+}
+
 // effectiveSettingValueResponse is one resolved value plus where it came from.
 type effectiveSettingValueResponse struct {
 	Key    string          `json:"key"`
@@ -1316,10 +1323,7 @@ func (h *SettingValuesHandler) HandleGetEffective(w http.ResponseWriter, r *http
 	}
 
 	out := h.effectiveResponses(r, resolved)
-	writeJSON(w, http.StatusOK, map[string]any{
-		"settings":    out,
-		fieldRevision: h.contract.Revision,
-	})
+	writeJSON(w, http.StatusOK, effectiveSettingValuesResponse{Settings: out, Revision: h.contract.Revision})
 }
 
 type effectiveContextRequest struct {

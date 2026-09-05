@@ -652,6 +652,10 @@
         {
           "type": "watchTogetherPongFrame",
           "direction": "response"
+        },
+        {
+          "type": "effectiveSettingValuesResponse",
+          "direction": "response"
         }
       ]
     },
