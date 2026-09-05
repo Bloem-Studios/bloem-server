@@ -197,12 +197,24 @@ func (s *SQLiteUserStore) ListFavorites(_ context.Context, profileID string, lim
 	return ListFavorites(s.db, profileID, limit, offset)
 }
 
+func (s *SQLiteUserStore) ListFavoritesPage(_ context.Context, profileID string, after *userstore.ListKey, limit int) ([]userstore.Favorite, error) {
+	return ListFavoritesPage(s.db, profileID, after, limit)
+}
+
 func (s *SQLiteUserStore) ListFavoritesByMediaItems(_ context.Context, profileID string, mediaItemIDs []string) (map[string]bool, error) {
 	return ListFavoritesByMediaItems(s.db, profileID, mediaItemIDs)
 }
 
 func (s *SQLiteUserStore) IsFavorite(_ context.Context, profileID, mediaItemID string) (bool, error) {
 	return IsFavorite(s.db, profileID, mediaItemID)
+}
+
+func (s *SQLiteUserStore) GetFavorite(_ context.Context, profileID, mediaItemID string) (*userstore.Favorite, error) {
+	return GetFavorite(s.db, profileID, mediaItemID)
+}
+
+func (s *SQLiteUserStore) GetWatchlistEntry(_ context.Context, profileID, mediaItemID string) (*userstore.WatchlistEntry, error) {
+	return GetWatchlistEntry(s.db, profileID, mediaItemID)
 }
 
 func (s *SQLiteUserStore) AddToWatchlist(_ context.Context, profileID, mediaItemID string) error {
@@ -223,6 +235,10 @@ func (s *SQLiteUserStore) ReplaceWatchlistOrder(_ context.Context, profileID str
 
 func (s *SQLiteUserStore) ListWatchlist(_ context.Context, profileID string, limit, offset int) ([]userstore.WatchlistEntry, error) {
 	return ListWatchlist(s.db, profileID, limit, offset)
+}
+
+func (s *SQLiteUserStore) ListWatchlistPage(_ context.Context, profileID string, after *userstore.ListKey, limit int) ([]userstore.WatchlistEntry, error) {
+	return ListWatchlistPage(s.db, profileID, after, limit)
 }
 
 func (s *SQLiteUserStore) ListWatchlistByMediaItems(_ context.Context, profileID string, mediaItemIDs []string) (map[string]bool, error) {

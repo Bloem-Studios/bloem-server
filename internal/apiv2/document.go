@@ -495,13 +495,16 @@ func registerAll(reg *Registry) {
 	registerAdminUsers(reg)
 	registerPreferences(reg)
 	registerHome(reg)
+	registerFavorites(reg)
 	registerLibraries(reg)
 	registerLibraryViews(reg)
 	registerProfileSections(reg)
 	registerProfiles(reg)
 	registerProgress(reg)
 	registerSettings(reg)
+	registerRatings(reg)
 	registerSystem(reg)
+	registerWatchlist(reg)
 	registerOpenAPIDocument(reg)
 }
 

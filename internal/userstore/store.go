@@ -111,8 +111,15 @@ type UserStore interface {
 	AddFavoriteAt(ctx context.Context, profileID, mediaItemID string, addedAt time.Time) (bool, error)
 	RemoveFavorite(ctx context.Context, profileID, mediaItemID string) error
 	ListFavorites(ctx context.Context, profileID string, limit, offset int) ([]Favorite, error)
+	// ListFavoritesPage is the keyset form of ListFavorites: ordered by
+	// (added_at DESC, media_item_id DESC), returning at most limit rows
+	// strictly after the key in that order (nil = from the newest row).
+	ListFavoritesPage(ctx context.Context, profileID string, after *ListKey, limit int) ([]Favorite, error)
 	ListFavoritesByMediaItems(ctx context.Context, profileID string, mediaItemIDs []string) (map[string]bool, error)
 	IsFavorite(ctx context.Context, profileID, mediaItemID string) (bool, error)
+	// GetFavorite answers the profile's favorite entry for the item, nil when
+	// the item is not a favorite.
+	GetFavorite(ctx context.Context, profileID, mediaItemID string) (*Favorite, error)
 	AddToWatchlist(ctx context.Context, profileID, mediaItemID string) error
 	AddToWatchlistAt(ctx context.Context, profileID, mediaItemID string, addedAt time.Time) (bool, error)
 	RemoveFromWatchlist(ctx context.Context, profileID, mediaItemID string) error
@@ -120,8 +127,16 @@ type UserStore interface {
 	// get sort_index 0..N-1 in order; all other rows reset to added_at ordering.
 	ReplaceWatchlistOrder(ctx context.Context, profileID string, orderedMediaItemIDs []string) error
 	ListWatchlist(ctx context.Context, profileID string, limit, offset int) ([]WatchlistEntry, error)
+	// ListWatchlistPage is the keyset form of ListWatchlist ordered by
+	// (added_at DESC, media_item_id DESC) only: a synced sort_index does not
+	// take part, so the page is newest entry first, returning at most limit
+	// rows strictly after the key in that order (nil = from the newest row).
+	ListWatchlistPage(ctx context.Context, profileID string, after *ListKey, limit int) ([]WatchlistEntry, error)
 	ListWatchlistByMediaItems(ctx context.Context, profileID string, mediaItemIDs []string) (map[string]bool, error)
 	InWatchlist(ctx context.Context, profileID, mediaItemID string) (bool, error)
+	// GetWatchlistEntry answers the profile's watchlist entry for the item,
+	// nil when the item is not on the watchlist.
+	GetWatchlistEntry(ctx context.Context, profileID, mediaItemID string) (*WatchlistEntry, error)
 	// RemoveWatchedFromWatchlist reports the profile's preference for pruning
 	// fully-watched entries from the watchlist (defaults true): movies are
 	// removed outright on completion, while fully-watched series are only

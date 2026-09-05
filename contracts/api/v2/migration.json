@@ -27443,13 +27443,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/favorites",
+        "operation_id": "listFavorites"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). Offset paging became limit+opaque keyset cursor: the cursor is the (added_at, item_id) of the last entry emitted and the next page resumes strictly after it in (added_at DESC, item_id DESC) order, so an entry added or removed between pages neither repeats nor skips a row and equal timestamps are ordered by the unique item id; page.has_more is decided from the raw store rows, so a hidden or catalog-missing entry never hides the rows behind it; v1 has_more dropped; cards are the shared CatalogItem; image_size is a strict enum answered 422. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -27523,19 +27523,19 @@
       "section": "personal-lists",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "durable_dispatch",
-      "retry_safety_note": "DEFECT: the row converges (ON CONFLICT DO NOTHING / delete-if-present) but the handler dispatches the watch-provider list event and recommendation refresh unconditionally, so a retry repeats the external call. The v2 port must dispatch only when the store reports a change, behind a durable claim.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "DEFECT: the shared v1/v2 seam dispatches watch-provider list events and recommendation refresh even when membership did not change. Automatic retries remain disabled until the personal-lists section dispatches only for changed rows through a durable claim.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/favorites/{item_id}",
+        "operation_id": "deleteFavorite"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). Not demo-restricted: v1's demo guard only blocks its listed routes, so this write passes in demo mode and v2 matches. Media kind resolved from the handler: no request body (request kind none) and a bodiless 204 answer; the inventory's unknown/json is heuristic. Naturally idempotent remove: 204 whether or not the entry existed, with no access check so a profile can drop an item that left its scope. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -27600,13 +27600,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/favorites/{item_id}",
+        "operation_id": "getFavorite"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). v1's bodiless 204/404 became a 200 {item_id, added_at} entry (added_at a UTC ms instant) or a 404 not_found problem, for an item that is not a favorite and for one the viewer may not see alike. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -27680,19 +27680,19 @@
       "section": "personal-lists",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "durable_dispatch",
-      "retry_safety_note": "DEFECT: the row converges (ON CONFLICT DO NOTHING / delete-if-present) but the handler dispatches the watch-provider list event and recommendation refresh unconditionally, so a retry repeats the external call. The v2 port must dispatch only when the store reports a change, behind a durable claim.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "DEFECT: the shared v1/v2 seam dispatches watch-provider list events and recommendation refresh even when membership did not change. Automatic retries remain disabled until the personal-lists section dispatches only for changed rows through a durable claim.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/favorites/{item_id}",
+        "operation_id": "addFavorite"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). Not demo-restricted: v1's demo guard only blocks its listed routes, so this write passes in demo mode and v2 matches. Media kind resolved from the handler: no request body (request kind none) and a bodiless 204 answer; the inventory's unknown/json is heuristic. Naturally idempotent add: a repeated PUT converges on the item being a favorite. An item the viewer may not see is 404. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -37233,13 +37233,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/ratings",
+        "operation_id": "listRatings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil; ratingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). {ratings:[...]} with offset paging became {items:[...]} with limit+opaque keyset cursor: the cursor is the (rated_at, item_id) of the last entry emitted and the next page resumes strictly after it in (rated_at DESC, item_id DESC) order, so a rating set or removed between pages neither repeats nor skips a row and equal timestamps are ordered by the unique item id (page.next_cursor, page.has_more from a limit+1 probe); media_item_id renamed item_id as a string ID; rated_at is a UTC ms instant. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil; ratingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -37299,19 +37299,19 @@
       "section": "personal-lists",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "durable_dispatch",
-      "retry_safety_note": "DEFECT: the row converges, but Set rewrites rated_at to now() when the rating is unchanged and the handler marks the profile stale and requests a recommendation refresh unconditionally, so a retry repeats the work per API node. The v2 port must make an unchanged rating a no-op and gate the refresh.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "DEFECT: the shared v1/v2 seam requests recommendation refresh on every call, and Set rewrites rated_at even for an unchanged rating. Automatic retries remain disabled until the personal-lists section makes unchanged writes no-ops and gates refresh through a durable claim.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/ratings/{item_id}",
+        "operation_id": "deleteRating"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil; ratingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). Not demo-restricted: v1's demo guard only blocks its listed routes, so this write passes in demo mode and v2 matches. Media kind resolved from the handler: no request body (request kind none) and a bodiless 204 answer; the inventory's unknown/json is heuristic. Naturally idempotent remove: 204 whether or not a rating existed. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil; ratingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -37367,13 +37367,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/ratings/{item_id}",
+        "operation_id": "getRating"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil; ratingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). The bare {rating, rated_at} body became {item_id, rating, rated_at} (rated_at a UTC ms instant); a rating that does not exist is a 404 not_found problem, as in v1. No access check, as in v1. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil; ratingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -37433,19 +37433,19 @@
       "section": "personal-lists",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "durable_dispatch",
-      "retry_safety_note": "DEFECT: the row converges, but Set rewrites rated_at to now() when the rating is unchanged and the handler marks the profile stale and requests a recommendation refresh unconditionally, so a retry repeats the work per API node. The v2 port must make an unchanged rating a no-op and gate the refresh.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "DEFECT: the shared v1/v2 seam requests recommendation refresh on every call, and Set rewrites rated_at even for an unchanged rating. Automatic retries remain disabled until the personal-lists section makes unchanged writes no-ops and gates refresh through a durable claim.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/ratings/{item_id}",
+        "operation_id": "setRating"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil; ratingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). Not demo-restricted: v1's demo guard only blocks its listed routes, so this write passes in demo mode and v2 matches. Media kind confirmed from the handler: JSON request body {rating} and a bodiless 204 answer. The 1..5 range and unknown members are typed validation answered 422 instead of v1's 400; an item the viewer may not see is 404. A repeated PUT converges on the same rating. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil; ratingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -45529,13 +45529,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/watchlist",
+        "operation_id": "listWatchlist"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). Offset paging became limit+opaque keyset cursor: the cursor is the (added_at, item_id) of the last entry emitted and the next page resumes strictly after it in (added_at DESC, item_id DESC) order (a provider-synced sort_index does not take part), so an entry added or removed between pages neither repeats nor skips a row and equal timestamps are ordered by the unique item id; page.has_more is decided from the raw store rows, so a fully-watched series, a hidden or a catalog-missing entry never hides the rows behind it; v1 has_more dropped; cards are the shared CatalogItem; image_size is a strict enum answered 422. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -45609,19 +45609,19 @@
       "section": "personal-lists",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "durable_dispatch",
-      "retry_safety_note": "DEFECT: the row converges (ON CONFLICT DO NOTHING / delete-if-present) but the handler dispatches the watch-provider list event and recommendation refresh unconditionally, so a retry repeats the external call. The v2 port must dispatch only when the store reports a change, behind a durable claim.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "DEFECT: the shared v1/v2 seam dispatches watch-provider list events and recommendation refresh even when membership did not change. Automatic retries remain disabled until the personal-lists section dispatches only for changed rows through a durable claim.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/watchlist/{item_id}",
+        "operation_id": "deleteWatchlistEntry"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). Not demo-restricted: v1's demo guard only blocks its listed routes, so this write passes in demo mode and v2 matches. Media kind resolved from the handler: no request body (request kind none) and a bodiless 204 answer; the inventory's unknown/json is heuristic. Naturally idempotent remove: 204 whether or not the entry existed, with no access check so a profile can drop an item that left its scope. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -45686,13 +45686,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/watchlist/{item_id}",
+        "operation_id": "getWatchlistEntry"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). v1's bodiless 204/404 became a 200 {item_id, added_at} entry (added_at a UTC ms instant) or a 404 not_found problem, for an item that is not on the watchlist and for one the viewer may not see alike. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",
@@ -45766,19 +45766,19 @@
       "section": "personal-lists",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "durable_dispatch",
-      "retry_safety_note": "DEFECT: the row converges (ON CONFLICT DO NOTHING / delete-if-present) but the handler dispatches the watch-provider list event and recommendation refresh unconditionally, so a retry repeats the external call. The v2 port must dispatch only when the store reports a change, behind a durable claim.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "DEFECT: the shared v1/v2 seam dispatches watch-provider list events and recommendation refresh even when membership did not change. Automatic retries remain disabled until the personal-lists section dispatches only for changed rows through a durable claim.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/watchlist/{item_id}",
+        "operation_id": "addToWatchlist"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-lists (profile_scoped). Not demo-restricted: v1's demo guard only blocks its listed routes, so this write passes in demo mode and v2 matches. Media kind resolved from the handler: no request body (request kind none) and a bodiless 204 answer; the inventory's unknown/json is heuristic. Naturally idempotent add: a repeated PUT converges on the item being on the watchlist. An item the viewer may not see is 404. Conditionally registered: authMiddleware != nil; personalDataHandler != nil && itemsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
     {
       "listener": "api",

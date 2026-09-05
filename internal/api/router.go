@@ -1966,6 +1966,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.HomeSections = sectionHandler
 	}
 	v2deps.Recipes = &handlers.RecipeHandler{}
+	if personalDataHandler != nil && itemsHandler != nil {
+		v2deps.PersonalLists = personalDataHandler
+	}
+	if ratingsHandler != nil {
+		v2deps.Ratings = ratingsHandler
+	}
 	if sectionHandler != nil {
 		v2deps.ProfileSections = sectionHandler
 	}

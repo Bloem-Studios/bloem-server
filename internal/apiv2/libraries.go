@@ -538,6 +538,10 @@ type offsetPosition struct {
 	Offset int `json:"o"`
 }
 
+// sortStore is the CursorScope sort and tiebreaker of an offset-paged
+// listing: the store's own order, which the cursor cannot re-express.
+const sortStore = "store"
+
 const (
 	opUpdateLibrary            = "updateLibrary"
 	opRematchStaleId           = "rematchStaleId"
@@ -1241,8 +1245,8 @@ func (reg *Registry) listLibraryRoots(ctx context.Context, cursors *Cursors, in 
 		OperationID: opListLibraryRoots,
 		Security:    strconv.Itoa(userID),
 		Filter:      url.Values{"library_id": {strconv.Itoa(libID)}, "state": {state}, "q": {search}}.Encode(),
-		Sort:        "store",
-		Tiebreaker:  "store",
+		Sort:        sortStore,
+		Tiebreaker:  sortStore,
 	}
 	offset, p := decodeOffset(cursors, scope, in.Cursor)
 	if p != nil {

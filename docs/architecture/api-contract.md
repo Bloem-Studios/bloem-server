@@ -433,8 +433,8 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   the durable replay store land together with the first operation the inventory proves
   needs them, and the field is never advertised unimplemented. Inventory answer: all 225
   tier-1 ported mutation rows (219 distinct operations) are classified (106
-  `natural_idempotent`, 25 `unique_constraint`, 14 `domain_identity`, 9 `coalescing`, 10
-  `durable_dispatch`, 55 `non_retryable`, 0 `idempotency_key`, counted per distinct
+  `natural_idempotent`, 25 `unique_constraint`, 14 `domain_identity`, 9 `coalescing`, 4
+  `durable_dispatch`, 61 `non_retryable`, 0 `idempotency_key`, counted per distinct
   operation) and no residual group justifies a shared generic-key implementation. The `non_retryable` rows are a
   one-shot display or a secret shown once (invite-code top-up, admin session message,
   webhook rotate-secret, webhook test), a destructive command whose retry can hit state the
@@ -465,8 +465,7 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   delete, Discord unlink, collection item add and remove, profile section overrides
   replace and reset, device forget and device-settings reset), so each stays `non_retryable`
   until its owning section guards the resource with a generation precondition or ordering rule; each note says what the v2 port needs before clients may retry. The `durable_dispatch` rows
-  (email-address verification; favorites, watchlist, and rating add and remove; taste seed;
-  account and node deletion) name the durable dispatch or cleanup the v2 port must add before
+  (email-address verification; taste seed; account and node deletion) name the durable dispatch or cleanup the v2 port must add before
   their retry is safe. The existing v2 profile creation and deletion operations remain
   `non_retryable` until their durable identity and cleanup defects are fixed. Library creation,
   settings updates, stale-ID rematch, and provider-chain replacement also remain
@@ -1114,6 +1113,37 @@ inferred set; the profile read model documents canonical values without constrai
 stored ones, every string member of a profile is always emitted, ids are string `ID`s, and instants
 are UTC milliseconds. The pilot fixtures live under `contracts/api/v2/fixtures/` as
 `<operation>_<scenario>.json` and are listed in `index.json` with their `operation_id`.
+
+**Section personal-lists (Phase 4).** One pattern applied to the favorites, watchlist and
+ratings families under the `favorites`, `watchlist` and `ratings` tags: a profile-scoped list
+paged with `limit` plus an opaque cursor whose cards are the shared `CatalogItem` (ratings list
+`{item_id, rating, rated_at}` entries instead), a membership read that answers the entry
+(`{item_id, added_at}`, or `{item_id, rating, rated_at}`) or `404`, a bodiless `PUT` add
+(ratings take `{rating}`) answering `204`, and a `DELETE` answering `204` whether or not
+the entry existed. All six mutations are `non_retryable`: the shared seams dispatch provider
+list events and recommendation refresh without change gating, and rating updates replace
+`rated_at` even when unchanged. Their ledger `DEFECT` notes retain the durable-dispatch work
+required before clients can retry automatically. The mutations are not demo-restricted: v1's demo
+guard only blocks its listed routes, so these writes pass in demo mode and v2 matches. The three
+lists page by keyset, not offset: the cursor is the (`added_at`, `item_id`) — for ratings
+(`rated_at`, `item_id`) — of the last entry emitted, and the next page resumes strictly after it
+in `(added_at DESC, item_id DESC)` order through dedicated `ListFavoritesPage`/`ListWatchlistPage`
+(`userstore.ListKey`) and `RatingsRepo.ListPage` (`catalog.RatingKey`) store queries, so an entry
+added or removed between pages neither repeats nor skips a row and equal timestamps are ordered by
+the unique item id. PostgreSQL keeps full stored timestamp precision in the cursor and
+orders by the raw `added_at` column so the existing profile/time indexes can supply ordered
+rows; visible API instants remain UTC milliseconds. The v1 offset queries are untouched. `has_more` is
+decided from the raw store rows, so an entry the catalog no longer has or the viewer may not
+see never hides the rows behind it. The v1 handlers call the same seams
+(`PersonalDataHandler.ListFavorites`/`GetFavorite`/`AddFavorite`/`RemoveFavorite` and their
+watchlist twins, `RatingsHandler.ListRatings`/`GetRating`/`SetRating`/`DeleteRating`), so both
+surfaces read and write one store. Operation ids: `listFavorites`, `getFavorite`, `addFavorite`,
+`deleteFavorite`, `listRatings`, `getRating`, `setRating`, `deleteRating`, `listWatchlist`,
+`getWatchlistEntry`, `addToWatchlist`, `deleteWatchlistEntry`. Deliberate v1 differences: the
+membership reads answer a body instead of a bare `204`; `setRating` answers `422` (typed
+`out_of_range`) where v1 answered `400`; the list responses carry `page` instead of `has_more`;
+the watchlist list still hides fully-watched series as v1 does; and the v2 access filter carries
+no device id because the v2 listener reads no device header.
 
 The `profiles` section (Phase 4) ports the rest of the household surface around the pilot's
 `updateProfile`: `listProfiles`, `createProfile`, `deleteProfile`, `listHouseholdSessions`,

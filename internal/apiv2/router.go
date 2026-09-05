@@ -140,6 +140,11 @@ type Dependencies struct {
 	HomeSections HomeSectionService
 	// Recipes answers the section recipe gallery (*handlers.RecipeHandler).
 	Recipes RecipeService
+	// PersonalLists reads and edits a profile's favorites
+	// (*handlers.PersonalDataHandler).
+	PersonalLists PersonalListService
+	// Ratings reads and edits a profile's ratings (*handlers.RatingsHandler).
+	Ratings RatingService
 	// ProfileSections reads and writes a profile's home-row overrides
 	// (*handlers.SectionHandler).
 	ProfileSections ProfileSectionService
@@ -653,6 +658,48 @@ type HomeSectionService interface {
 type RecipeService interface {
 	Recipes() []handlers.RecipeCategoryView
 	RecipeCandidates(ctx context.Context, recipeType string) ([]handlers.Candidate, error)
+}
+
+// PersonalListService is the slice of *handlers.PersonalDataHandler the
+// favorites and watchlist operations use. Every method acts as the viewer's profile and
+// returns an *handlers.APIError on failure.
+type PersonalListService interface {
+	// ListFavoritesPage answers at most limit entries of the profile's
+	// favorites ordered by (added_at DESC, media_item_id DESC) strictly after
+	// the key (nil = from the newest), and the cards of the entries the
+	// viewer may see, in the same order.
+	ListFavoritesPage(ctx context.Context, viewer handlers.PersonalListViewer, after *userstore.ListKey, limit int) ([]userstore.Favorite, []handlers.CollectionItemView, error)
+	// GetFavorite answers the entry of an item the viewer may see; found is
+	// false when the item is not a favorite.
+	GetFavorite(ctx context.Context, viewer handlers.PersonalListViewer, itemID string) (entry userstore.Favorite, found bool, err error)
+	AddFavorite(ctx context.Context, viewer handlers.PersonalListViewer, itemID string) error
+	RemoveFavorite(ctx context.Context, viewer handlers.PersonalListViewer, itemID string) error
+	// ListWatchlistPage answers at most limit entries of the profile's
+	// watchlist ordered by (added_at DESC, media_item_id DESC) strictly after
+	// the key (nil = from the newest), and the cards of the entries the
+	// viewer may see (fully-watched series hidden), in the same order.
+	ListWatchlistPage(ctx context.Context, viewer handlers.PersonalListViewer, after *userstore.ListKey, limit int) ([]userstore.WatchlistEntry, []handlers.CollectionItemView, error)
+	// GetWatchlistEntry answers the entry of an item the viewer may see;
+	// found is false when the item is not on the watchlist.
+	GetWatchlistEntry(ctx context.Context, viewer handlers.PersonalListViewer, itemID string) (entry userstore.WatchlistEntry, found bool, err error)
+	AddToWatchlist(ctx context.Context, viewer handlers.PersonalListViewer, itemID string) error
+	RemoveFromWatchlist(ctx context.Context, viewer handlers.PersonalListViewer, itemID string) error
+}
+
+// RatingService is the slice of *handlers.RatingsHandler the ratings
+// operations use.
+type RatingService interface {
+	// ListRatingsPage answers at most limit of the profile's ratings ordered
+	// by (rated_at DESC, media_item_id DESC) strictly after the key (nil =
+	// from the most recently rated).
+	ListRatingsPage(ctx context.Context, userID int, profileID string, after *mediacatalog.RatingKey, limit int) ([]mediacatalog.UserRating, error)
+	// GetRating answers the profile's rating of the item; found is false
+	// when the profile has not rated it.
+	GetRating(ctx context.Context, userID int, profileID, itemID string) (rating mediacatalog.UserRating, found bool, err error)
+	// SetRating records a validated rating of an item the access filter
+	// admits; an item outside it is a 404 error.
+	SetRating(ctx context.Context, userID int, profileID, itemID string, access mediacatalog.AccessFilter, rating int) error
+	DeleteRating(ctx context.Context, userID int, profileID, itemID string) error
 }
 
 // unavailable is the fail-closed answer of an operation whose service is not

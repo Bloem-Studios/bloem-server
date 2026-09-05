@@ -203,6 +203,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range homeOperationIDs {
 		profileToken[id] = true
 	}
+	for _, id := range []string{"listFavorites", "getFavorite", "addFavorite", "deleteFavorite", "listRatings", "getRating", "setRating", "deleteRating", "listWatchlist", "getWatchlistEntry", "addToWatchlist", "deleteWatchlistEntry"} {
+		profileToken[id] = true
+	}
 	expect["refreshLibraryMetadata"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: true, http.StatusAccepted: true}
 	expect["uploadLibraryPoster"] = map[int]bool{http.StatusNotFound: true, http.StatusRequestEntityTooLarge: true, http.StatusUnsupportedMediaType: true}
 	expect["getLibraryLayout"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}
@@ -996,6 +999,18 @@ func TestProfileSectionMutationsDoNotAdvertiseAutomaticRetry(t *testing.T) {
 		op := path[method].(map[string]any)
 		if got := op[extRetrySafety]; got != string(RetrySafetyNonRetryable) {
 			t.Errorf("%s retry safety = %v, want non_retryable", method, got)
+		}
+	}
+}
+
+func TestPersonalListMutationsDoNotAdvertiseAutomaticRetry(t *testing.T) {
+	paths := generatedDocument(t)["paths"].(map[string]any)
+	for _, path := range []string{"/favorites/{item_id}", "/watchlist/{item_id}", "/ratings/{item_id}"} {
+		item := paths[Prefix+path].(map[string]any)
+		for _, method := range []string{"put", "delete"} {
+			if got := item[method].(map[string]any)[extRetrySafety]; got != string(RetrySafetyNonRetryable) {
+				t.Errorf("%s %s retry safety=%v, want non_retryable", method, path, got)
+			}
 		}
 	}
 }
