@@ -45,7 +45,7 @@ const (
 
 	// ConcurrencyIfMatch is the one concurrency marking the ledger knows: the
 	// row's v2 operation requires If-Match (apiv2.Operation.Guarded). It may
-	// appear only on a tier-1 ported row with a mutating method.
+	// appear only on a ported row at either tier with a guardable method.
 	ConcurrencyIfMatch = "if_match"
 
 	// RetrySafety values (migration.schema.json entry.retry_safety), one per
@@ -496,8 +496,8 @@ func reviewRules(k Key, e Entry, r inventoryRoute) []string {
 		switch {
 		case e.Concurrency != ConcurrencyIfMatch:
 			out = append(out, fmt.Sprintf("unknown concurrency marking %q: %s", e.Concurrency, k))
-		case e.Tier != 1 || e.Disposition != DispositionPorted:
-			out = append(out, fmt.Sprintf("concurrency %s is only for tier-1 ported rows; row is tier %d %s: %s", e.Concurrency, e.Tier, e.Disposition, k))
+		case e.Disposition != DispositionPorted:
+			out = append(out, fmt.Sprintf("concurrency %s is only for ported rows; row is tier %d %s: %s", e.Concurrency, e.Tier, e.Disposition, k))
 		case !isGuardableMethod(e.Method):
 			out = append(out, fmt.Sprintf("concurrency %s is only for a method a Guarded v2 operation may use (PUT, PATCH, DELETE), not %s: %s", e.Concurrency, e.Method, k))
 		}
@@ -534,12 +534,12 @@ func retrySafetyRules(k Key, e Entry) []string {
 }
 
 // eligibleForConcurrency reports whether the review rule above allows a row
-// to carry concurrency=if_match: tier-1, ported, and a method a Guarded v2
+// to carry concurrency=if_match: ported at either tier, and a method a Guarded v2
 // operation may use. The reconcile against the registry requires the
 // marking only on such rows, so a redesigned or replaced row that names a
 // guarded v2 operation is not caught between the two rules.
 func eligibleForConcurrency(e Entry) bool {
-	return e.Tier == 1 && e.Disposition == DispositionPorted && isGuardableMethod(e.Method)
+	return e.Disposition == DispositionPorted && isGuardableMethod(e.Method)
 }
 
 // isGuardableMethod mirrors apiv2.checkOperation: only PUT, PATCH and DELETE

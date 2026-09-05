@@ -380,7 +380,7 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   handler that loses its write evaluates `If-None-Match` again against the latest state and
   retries while the condition holds, so only a state that falsifies the condition is `412`. `TestGuardedOperationsAreMarkedIfMatch`
   reconciles both directions, requires the marking only on a row eligible to carry it
-  (tier-1, ported, PUT/PATCH/DELETE, so a redesigned or replaced row that names a guarded
+  (ported at either tier, PUT/PATCH/DELETE, so a redesigned or replaced row that names a guarded
   operation is not caught between two rules), and refuses a guarded operation that maps to
   no legacy row unless `guardedWithoutLegacyRow` names it with a reason. A
   guarded operation documents `412` and `428`, a required `If-Match` parameter, an optional
@@ -410,9 +410,14 @@ The foundation is `internal/apiv2`. These facts about it are not derivable from 
   for `304`, `EvaluateCreateOnly` for `If-None-Match: *`, and the `ErrStaleVersion` sentinel a
   storage compare-and-update returns, mapped by `StaleVersionProblem`. The handler loads
   first (`404` before any precondition), evaluates, then writes. The ledger's optional
-  `concurrency: if_match` field names the rows that will register `Guarded`; the gate limits
-  it to tier-1 ported mutation rows and reconciles every guarded registration against it. No
-  production resource is guarded yet; the first section that guards one adds its row version.
+  `concurrency: if_match` field names ported PUT/PATCH/DELETE rows at either test tier
+  whose operation registers `Guarded`; schema and ledger gates reject the marking on reads,
+  POSTs, and non-ported rows. Registry reconciliation enforces agreement in both directions.
+  Production guarded operations now include watch-provider connection updates. Test tier
+  determines required coverage, not whether an implemented operation may declare its concurrency
+  contract. Review and owner gates remain independent: naming an implemented operation requires
+  a ratified row; ordinary ported rows do not require a named owner, while ratified removals,
+  redesigns, and replacements still do.
 - **Mutation retry safety is encoded.** The ledger's curated `retry_safety` field classifies
   every tier-1 ported mutation row (POST, PUT, PATCH, DELETE) by one of the seven strategies
   above, spelled `natural_idempotent`, `unique_constraint`, `domain_identity`, `coalescing`,
