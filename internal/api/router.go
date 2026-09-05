@@ -1886,6 +1886,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if deps.EventsHub != nil {
 			historyImportSvc.AddObserver(evt.NewHistoryImportObserver(deps.EventsHub))
 		}
+		historyImportSvc.StartBackgroundWork()
 		historyImportHandler = handlers.NewHistoryImportHandler(historyImportSvc)
 		if deps.UserStoreProvider != nil {
 			webhookSyncSvc := webhooksync.NewService(webhooksync.NewRepository(deps.DB, deps.SecretCipher), historyRepo, deps.UserStoreProvider)
@@ -2038,6 +2039,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if historyImportHandler != nil {
 		v2deps.HistoryImports = historyImportHandler
+		v2deps.AdminHistoryImports = historyImportHandler.Service()
 	}
 	v2deps.WatchProviders = deps.WatchProviderService
 	if requestHandler != nil {

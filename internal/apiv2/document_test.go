@@ -246,6 +246,10 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	expect["refreshCatalogItemTrailers"] = map[int]bool{http.StatusOK: true, http.StatusAccepted: true, http.StatusConflict: true, http.StatusTooManyRequests: true}
 	expect["translateCatalogItemDescription"] = map[int]bool{http.StatusAccepted: true, http.StatusConflict: true}
 	expect["refreshPerson"] = map[int]bool{http.StatusAccepted: true, http.StatusTooManyRequests: true}
+	for _, id := range []string{"listAdminHistoryImportSources", "createAdminHistoryImportSource", "deleteAdminHistoryImportSource", "getAdminHistoryImportSource", "updateAdminHistoryImportSource", "getAdminHistoryImportCapabilities", "listAdminHistoryImportMappings", "createAdminHistoryImportMapping", "deleteAdminHistoryImportMapping", "getAdminHistoryImportMapping", "updateAdminHistoryImportMapping", "createAdminHistoryImportRun", "loginAdminHistoryImportPlex", "listAdminHistoryImportRuns", "getAdminHistoryImportRun", "cancelAdminHistoryImportRun", "bulkCreateAdminHistoryImportRuns", "clearAdminHistoryImportToken", "setAdminHistoryImportToken", "listAdminHistoryImportExternalUsers"} {
+		profileToken[id] = true
+	}
+
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {

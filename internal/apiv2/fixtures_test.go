@@ -1431,6 +1431,7 @@ func fixtureCases() []fixtureCase {
 		fixtureCase{name: "clear_device_settings_ok", operationID: opClearDeviceSettings, scenario: "Clear device overrides while retaining its registry entry.", method: http.MethodDelete, path: Prefix + "/devices/d-1/settings", headers: viewer, status: 204},
 		fixtureCase{name: "forget_device_missing", operationID: opForgetDevice, scenario: "Missing or already forgotten device.", method: http.MethodDelete, path: Prefix + "/devices/missing", headers: viewer, status: 404, assertHeaders: []string{"Content-Type"}, schema: problem},
 	)
+	cases = append(cases, adminHistoryImportFixtureCases()...)
 	return append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
 }
 
@@ -1475,6 +1476,7 @@ func fixtureDeps() Dependencies {
 	deps.Recommendations = &fakeRecommendations{seedCandidates: 1, cardsHasMore: true}
 	deps.Requests = fixtureRequests()
 	deps.AdminRequests = fixtureAdminRequests()
+	deps.AdminHistoryImports = fixtureAdminHistoryImports()
 	deps.HistoryImports = fixtureHistoryImports()
 	deps.WebhookSync = &fakeWebhookManagement{}
 	deps.RequestLifecycle = &fakeLifecycle{}

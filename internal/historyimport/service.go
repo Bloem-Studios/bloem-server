@@ -33,7 +33,9 @@ type Service struct {
 	bgContext  context.Context
 
 	// runSemaphore limits concurrent run goroutines to maxConcurrentRuns.
-	runSemaphore chan struct{}
+	runSemaphore   chan struct{}
+	queueWake      chan struct{}
+	backgroundOnce sync.Once
 
 	// runCancels allows in-process cancellation of running import goroutines.
 	runCancels   map[string]context.CancelFunc
@@ -55,10 +57,16 @@ func NewService(bgContext context.Context, repo *Repository, storeProvider users
 		stores:       storeProvider,
 		bgContext:    bgContext,
 		runSemaphore: make(chan struct{}, maxConcurrentRuns),
+		queueWake:    make(chan struct{}, 1),
 		runCancels:   make(map[string]context.CancelFunc),
 	}
-	service.startStaleRunMonitor()
 	return service
+}
+
+// StartBackgroundWork activates recovery and dispatch after the resolver and
+// observers have been configured. Construction must not consume persisted jobs.
+func (s *Service) StartBackgroundWork() {
+	s.backgroundOnce.Do(func() { s.startStaleRunMonitor(); s.startAdminQueue() })
 }
 
 func (s *Service) SetStableIdentityResolver(identity *watchstate.StableIdentityResolver) {
@@ -438,32 +446,48 @@ func (s *Service) addFavorite(ctx context.Context, userID int, profileID, mediaI
 }
 
 func (s *Service) executeRun(run *Run, provider Provider) {
-	ctx, cancel := newRunContext(s.bgContext)
-	s.registerRunCancel(run.ID, cancel)
+	s.executeRunWithClaim(run, provider, RunClaim{RunID: run.ID}, false)
+}
+
+func (s *Service) executeRunWithClaim(run *Run, provider Provider, claim RunClaim, capacityHeld bool) {
+	parent := s.bgContext
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithCancelCause(parent)
+	s.registerRunCancel(run.ID, func() { cancel(ErrRunCancellationRequested) })
 	defer s.deregisterRunCancel(run.ID)
-	defer cancel()
+	defer cancel(nil)
 
 	// Wait for a concurrency slot. The run stays in "queued" status until
 	// a slot opens. If the context is cancelled (server shutdown or admin
 	// cancel), the goroutine exits without executing.
-	select {
-	case s.runSemaphore <- struct{}{}:
-		defer func() { <-s.runSemaphore }()
-	case <-ctx.Done():
-		slog.Info("history import: run cancelled while queued", "run_id", run.ID)
-		return
-	}
+	if !capacityHeld {
+		select {
+		case s.runSemaphore <- struct{}{}:
+			defer func() { <-s.runSemaphore }()
+		case <-ctx.Done():
+			slog.Info("history import: run canceled while queued", "run_id", run.ID)
+			return
+		}
 
+	}
 	summary := ExecutionSummary{
 		Warnings:         []string{},
 		UnmatchedSamples: []UnmatchedSample{},
 	}
-	if err := s.repo.MarkRunStarted(ctx, run.ID); err != nil {
-		slog.Error("history import: failed to mark run started", "run_id", run.ID, "error", err)
+	if claim.Generation == 0 {
+		if err := s.repo.MarkRunStarted(ctx, run.ID); err != nil {
+			slog.Error("history import: failed to mark run started", "run_id", run.ID, "error", err)
+			return
+		}
+	}
+	if err := s.repo.validateRunClaim(ctx, claim); err != nil {
+		s.failClaim(ctx, claim, summary, err)
 		return
 	}
 	s.notifyRunByID(ctx, run.ID)
-	stopHeartbeat := s.startRunHeartbeat(ctx, run.ID)
+	stopHeartbeat := s.startClaimHeartbeat(ctx, claim, cancel)
 	defer stopHeartbeat()
 	slog.Info(
 		"history import: started",
@@ -477,7 +501,10 @@ func (s *Service) executeRun(run *Run, provider Provider) {
 	records, warnings, err := provider.Fetch(ctx)
 	if err != nil {
 		summary.Warnings = append(summary.Warnings, warnings...)
-		s.failRun(ctx, run.ID, summary, err)
+		if cause := context.Cause(ctx); cause != nil {
+			err = cause
+		}
+		s.failClaim(ctx, claim, summary, err)
 		return
 	}
 	summary.Warnings = append(summary.Warnings, warnings...)
@@ -487,13 +514,17 @@ func (s *Service) executeRun(run *Run, provider Provider) {
 		"run_id", run.ID,
 		"count", len(records),
 	)
-	s.persistProgress(ctx, run.ID, summary)
+	s.persistClaimProgress(ctx, claim, summary)
 
 	for i, record := range records {
+		if err := s.repo.validateRunClaim(ctx, claim); err != nil {
+			s.failClaim(ctx, claim, summary, err)
+			return
+		}
 		match, reason, err := s.matcher.Match(ctx, record)
 		if err != nil {
 			summary.Warnings = append(summary.Warnings, err.Error())
-			s.persistProgressMaybe(ctx, run.ID, summary, i+1, len(records))
+			s.persistClaimProgressMaybe(ctx, claim, summary, i+1, len(records))
 			continue
 		}
 		if match == nil {
@@ -515,12 +546,16 @@ func (s *Service) executeRun(run *Run, provider Provider) {
 			if summary.Unmatched <= maxUnmatchedLogSamples {
 				s.logUnmatched(run.ID, i+1, len(records), record, reason)
 			}
-			s.persistProgressMaybe(ctx, run.ID, summary, i+1, len(records))
+			s.persistClaimProgressMaybe(ctx, claim, summary, i+1, len(records))
 			continue
 		}
 		summary.Matched++
 
 		if record.Favorite {
+			if err := s.repo.validateRunClaim(ctx, claim); err != nil {
+				s.failClaim(ctx, claim, summary, err)
+				return
+			}
 			inserted, err := s.addFavorite(ctx, run.UserID, run.ProfileID, match.MediaItemID)
 			if err != nil {
 				summary.Warnings = append(summary.Warnings, err.Error())
@@ -531,20 +566,28 @@ func (s *Service) executeRun(run *Run, provider Provider) {
 		// Watchlist entries carry no watch state: the matched item joins the
 		// importing profile's watchlist and the progress pipeline is skipped.
 		if record.Watchlisted {
+			if err := s.repo.validateRunClaim(ctx, claim); err != nil {
+				s.failClaim(ctx, claim, summary, err)
+				return
+			}
 			inserted, err := s.addToWatchlist(ctx, run.UserID, run.ProfileID, match.MediaItemID, record.UpdatedAt)
 			if err != nil {
 				summary.Warnings = append(summary.Warnings, err.Error())
 			} else if inserted {
 				summary.WatchlistAdded++
 			}
-			s.persistProgressMaybe(ctx, run.ID, summary, i+1, len(records))
+			s.persistClaimProgressMaybe(ctx, claim, summary, i+1, len(records))
 			continue
 		}
 		if record.FavoriteOnly {
-			s.persistProgressMaybe(ctx, run.ID, summary, i+1, len(records))
+			s.persistClaimProgressMaybe(ctx, claim, summary, i+1, len(records))
 			continue
 		}
 
+		if err := s.repo.validateRunClaim(ctx, claim); err != nil {
+			s.failClaim(ctx, claim, summary, err)
+			return
+		}
 		updated, created, err := s.applyImportedWatch(ctx, run.UserID, run.ProfileID, match.MediaItemID, record)
 		if err != nil {
 			summary.Warnings = append(summary.Warnings, err.Error())
@@ -559,10 +602,15 @@ func (s *Service) executeRun(run *Run, provider Provider) {
 			}
 		}
 
-		s.persistProgressMaybe(ctx, run.ID, summary, i+1, len(records))
+		s.persistClaimProgressMaybe(ctx, claim, summary, i+1, len(records))
 	}
 
-	if err := s.repo.CompleteRun(ctx, run.ID, summary); err != nil {
+	if err := s.repo.validateRunClaim(ctx, claim); err != nil {
+		s.failClaim(ctx, claim, summary, err)
+		return
+	}
+	if err := s.repo.completeRun(ctx, claim, summary); err != nil {
+		s.failClaim(ctx, claim, summary, err)
 		slog.Error("history import: failed to complete run", "run_id", run.ID, "error", err)
 		return
 	}
@@ -580,8 +628,14 @@ func (s *Service) executeRun(run *Run, provider Provider) {
 		"warnings", len(summary.Warnings),
 	)
 
-	// Update the mapping's last_imported_at timestamp for admin-initiated runs.
-	if run.MappingID != nil {
+	// Only the completed claim may update the unchanged mapping snapshot.
+	if claim.Generation > 0 {
+		if err := s.repo.touchCompletedMapping(ctx, claim); err != nil {
+			slog.WarnContext(ctx, "history import: mapping timestamp update failed", "run_id", run.ID, "error", err)
+		}
+	}
+	// Update the mapping's last_imported_at timestamp for legacy executions.
+	if run.MappingID != nil && claim.Generation == 0 {
 		if err := s.repo.TouchMappingLastImported(s.bgContext, *run.MappingID); err != nil {
 			slog.Warn("history import: failed to touch mapping last_imported_at", "mapping_id", *run.MappingID, "error", err)
 		}
@@ -606,27 +660,6 @@ func (s *Service) applyImportedWatch(ctx context.Context, userID int, profileID,
 	}
 	created, err := s.watchState.RecordImportedHistory(ctx, userID, profileID, itemID, record.DurationSeconds, record.Played, record.LastPlayedAt)
 	return updated, created, err
-}
-
-func (s *Service) failRun(ctx context.Context, runID string, summary ExecutionSummary, err error) {
-	message := userFacingRunError(summary, err)
-	if updateErr := s.repo.FailRun(ctx, runID, summary, message); updateErr != nil {
-		slog.ErrorContext(ctx, "history import: failed to mark run failed", "component", "historyimport", "run_id", runID, "error", updateErr, "root_error", err)
-		return
-	}
-	s.notifyRunByID(ctx, runID)
-	slog.ErrorContext(ctx,
-		"history import: failed", "component", "historyimport",
-		"run_id", runID,
-		"error", message,
-		"root_error", err,
-		"fetched", summary.Fetched,
-		"matched", summary.Matched,
-		"unmatched", summary.Unmatched,
-		"progress_updated", summary.ProgressUpdated,
-		"history_created", summary.HistoryCreated,
-		"skipped", summary.Skipped,
-	)
 }
 
 func userFacingRunError(summary ExecutionSummary, err error) string {
@@ -671,13 +704,8 @@ func (s *Service) ListAdminSources(ctx context.Context) ([]Source, error) {
 }
 
 func (s *Service) CreateSource(ctx context.Context, input CreateSourceInput) (*Source, error) {
-	if input.Name == "" || input.BaseURL == "" {
-		return nil, fmt.Errorf("name and base_url are required")
-	}
-	switch input.SourceType {
-	case SourceTypeEmby, SourceTypeJellyfin, SourceTypePlex:
-	default:
-		return nil, fmt.Errorf("source_type must be emby, jellyfin, or plex")
+	if err := validateSource(Source{Name: input.Name, BaseURL: input.BaseURL, SourceType: input.SourceType}); err != nil {
+		return nil, err
 	}
 	return s.repo.CreateSource(ctx, input)
 }
@@ -774,27 +802,14 @@ func toConnectServerResponses(servers []ConnectServer) []ConnectServerResponse {
 	return resp
 }
 
-func (s *Service) persistProgress(ctx context.Context, runID string, summary ExecutionSummary) {
-	if err := s.repo.UpdateRunProgress(ctx, runID, summary); err != nil && !errors.Is(err, ErrRunNotFound) {
-		slog.WarnContext(ctx, "history import: failed to persist progress", "component", "historyimport", "run_id", runID, "error", err)
+func (s *Service) persistClaimProgress(ctx context.Context, claim RunClaim, summary ExecutionSummary) {
+	if err := s.repo.updateRunProgress(ctx, claim, summary); err != nil {
 		return
 	}
-	s.notifyRunByID(ctx, runID)
+	s.notifyRunByID(ctx, claim.RunID)
 }
-
-func (s *Service) persistProgressMaybe(ctx context.Context, runID string, summary ExecutionSummary, processed, total int) {
+func (s *Service) persistClaimProgressMaybe(ctx context.Context, claim RunClaim, summary ExecutionSummary, processed, total int) {
 	if processed == total || processed%25 == 0 {
-		s.persistProgress(ctx, runID, summary)
-		slog.InfoContext(ctx,
-			"history import: progress", "component", "historyimport",
-			"run_id", runID,
-			"processed", processed,
-			"total", total,
-			"matched", summary.Matched,
-			"unmatched", summary.Unmatched,
-			"progress_updated", summary.ProgressUpdated,
-			"history_created", summary.HistoryCreated,
-			"skipped", summary.Skipped,
-		)
+		s.persistClaimProgress(ctx, claim, summary)
 	}
 }

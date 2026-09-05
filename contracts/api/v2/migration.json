@@ -5771,11 +5771,11 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/history-import-sources",
+        "operation_id": "listAdminHistoryImportSources"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -5833,13 +5833,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-import-sources",
+        "operation_id": "createAdminHistoryImportSource"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -5893,13 +5895,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/history-import-sources/{id}",
+        "operation_id": "deleteAdminHistoryImportSource"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -5955,13 +5960,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/history-import-sources/{id}",
+        "operation_id": "updateAdminHistoryImportSource"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6017,11 +6025,11 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/history-imports/mappings",
+        "operation_id": "listAdminHistoryImportMappings"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -6079,13 +6087,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-imports/mappings",
+        "operation_id": "createAdminHistoryImportMapping"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6139,13 +6149,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/history-imports/mappings/{id}",
+        "operation_id": "deleteAdminHistoryImportMapping"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6201,13 +6214,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/history-imports/mappings/{id}",
+        "operation_id": "updateAdminHistoryImportMapping"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6263,13 +6279,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-imports/mappings/{id}/run",
+        "operation_id": "createAdminHistoryImportRun"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6325,13 +6343,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-imports/plex/login",
+        "operation_id": "loginAdminHistoryImportPlex"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6387,11 +6407,11 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/history-imports/runs",
+        "operation_id": "listAdminHistoryImportRuns"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -6449,11 +6469,11 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/history-imports/runs/{id}",
+        "operation_id": "getAdminHistoryImportRun"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -6509,13 +6529,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-imports/runs/{id}/cancel",
+        "operation_id": "cancelAdminHistoryImportRun"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6571,13 +6593,15 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/history-imports/sources/{id}/bulk-run",
+        "operation_id": "bulkCreateAdminHistoryImportRuns"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6631,13 +6655,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/history-imports/sources/{id}/token",
+        "operation_id": "clearAdminHistoryImportToken"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6691,13 +6718,16 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/history-imports/sources/{id}/token",
+        "operation_id": "setAdminHistoryImportToken"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "concurrency": "if_match",
+      "retry_safety_note": "No durable request identity is accepted. After an uncertain response, read the canonical resource or run before explicitly choosing another mutation; do not automatically replay the request."
     },
     {
       "listener": "api",
@@ -6753,11 +6783,11 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/history-imports/sources/{id}/users",
+        "operation_id": "listAdminHistoryImportExternalUsers"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -18919,7 +18949,7 @@
         "path": "/api/v2/audio-prefs/{series_id}",
         "operation_id": "getAudioPreference"
       },
-      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; default is emitted as a bool; instants are UTC ms. The read goes through its own seam entry point, GetAudioPreferenceCanonical: the legacy user_audio_preferences row is the resource (a profile without one is 404 even when a canonical language row exists) and supplies the track identity, and audio_language is overlaid from the canonical profile_series row playback resolves \u2014 a present row replaces the legacy member, an absent row means no language (empty) \u2014 since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newer of the two rows."
+      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; default is emitted as a bool; instants are UTC ms. The read goes through its own seam entry point, GetAudioPreferenceCanonical: the legacy user_audio_preferences row is the resource (a profile without one is 404 even when a canonical language row exists) and supplies the track identity, and audio_language is overlaid from the canonical profile_series row playback resolves — a present row replaces the legacy member, an absent row means no language (empty) — since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newer of the two rows."
     },
     {
       "listener": "api",
@@ -39856,7 +39886,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40212,7 +40242,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40283,7 +40313,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40352,7 +40382,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -40423,7 +40453,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41362,7 +41392,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41432,7 +41462,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -41500,7 +41530,7 @@
       "tier": 2,
       "disposition": "removed",
       "disposition_rule": "v1_scope_removals_table",
-      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings\u2026\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
+      "disposition_rationale": "Listed in docs/architecture/v1-scope.md removals (\"String GET/PUT/DELETE /api/v1/settings…\"); still registered on the bridge surface, retired by the tombstone. Successor: the typed settings contract (/api/v1/settings/values*).",
       "owner": "pending:#135/execution-input-1",
       "review_state": "proposed",
       "v2": {
@@ -42095,7 +42125,7 @@
         "path": "/api/v2/subtitle-prefs/{series_id}",
         "operation_id": "getSubtitlePreference"
       },
-      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; forced and hearing_impaired are emitted as bools; show_forced_subtitles is absent when the profile has no override; instants are UTC ms. The read goes through its own seam entry point, GetSubtitlePreferenceCanonical: the legacy user_subtitle_preferences row is the resource (a profile without one is 404 even when canonical rows exist) and supplies the track identity (index, external path, signature), and subtitle_language, subtitle_mode and show_forced_subtitles are overlaid from the canonical profile_series rows playback resolves \u2014 a present row replaces the legacy member, an absent row means the member is unset (empty language or mode, show_forced_subtitles absent) \u2014 since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newest of the legacy row and the canonical rows."
+      "notes": "Section settings-prefs. series_id is the series content id; answers 200 with the preference or 404 not_found; track_signature keeps the store's member names, every member optional; forced and hearing_impaired are emitted as bools; show_forced_subtitles is absent when the profile has no override; instants are UTC ms. The read goes through its own seam entry point, GetSubtitlePreferenceCanonical: the legacy user_subtitle_preferences row is the resource (a profile without one is 404 even when canonical rows exist) and supplies the track identity (index, external path, signature), and subtitle_language, subtitle_mode and show_forced_subtitles are overlaid from the canonical profile_series rows playback resolves — a present row replaces the legacy member, an absent row means the member is unset (empty language or mode, show_forced_subtitles absent) — since PUT and DELETE /settings/values never reach the legacy row v1 GET still reads; updated_at is the newest of the legacy row and the canonical rows."
     },
     {
       "listener": "api",
@@ -43354,7 +43384,7 @@
         "path": "/api/v2/sync/progress",
         "operation_id": "syncProgress"
       },
-      "notes": "Section personal-progress (profile_scoped). Fixed per-item bulk contract: 1\u2013100 unique media_item_id targets, optional unique client_ref (1\u2013128 characters), request-wide preflight before effects, then HTTP 200 ProgressSyncBatchResult with ordered indexed success/failure items and exact summary. Hidden catalog items are item-level 404; store failures are safe typed item failures. Millisecond positions and optional UTC event times preserve the selected store and existing threshold/LWW semantics. Retry safety remains non_retryable: optional event time and repeated side effects do not provide a durable batch receipt. V1 remains unchanged. See docs/architecture/progress-bulk.md."
+      "notes": "Section personal-progress (profile_scoped). Fixed per-item bulk contract: 1–100 unique media_item_id targets, optional unique client_ref (1–128 characters), request-wide preflight before effects, then HTTP 200 ProgressSyncBatchResult with ordered indexed success/failure items and exact summary. Hidden catalog items are item-level 404; store failures are safe typed item failures. Millisecond positions and optional UTC event times preserve the selected store and existing threshold/LWW semantics. Retry safety remains non_retryable: optional event time and repeated side effects do not provide a durable batch receipt. V1 remains unchanged. See docs/architecture/progress-bulk.md."
     },
     {
       "listener": "api",
