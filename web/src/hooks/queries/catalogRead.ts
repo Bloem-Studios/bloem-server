@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
-import { api } from "@/api/client";
 import type {
   EpisodesResponse,
   FileVersion,
@@ -10,73 +9,102 @@ import type {
   SeasonDetailResponse,
   SeasonsResponse,
 } from "@/api/types";
+import {
+  catalogItemDetailFromV2,
+  episodeFromV2,
+  fileVersionFromV2,
+  mangaFilesFromV2,
+  seasonFromV2,
+} from "@/api/v2/catalog";
+import { v2 } from "@/api/v2/request";
 import { catalogKeys } from "./keys";
 
-function catalogPathID(id: string): string {
-  return encodeURIComponent(id);
+type ReadOptions = Pick<RequestInit, "signal"> | undefined;
+
+function signalOf(options: ReadOptions): AbortSignal | undefined {
+  return options?.signal ?? undefined;
+}
+
+function libraryQuery(libraryId?: number): { library_id?: string } {
+  return libraryId ? { library_id: String(libraryId) } : {};
 }
 
 export async function fetchCatalogItemDetail(
   id: string,
   libraryId?: number,
-  options?: RequestInit,
+  options?: ReadOptions,
 ): Promise<ItemDetail> {
-  const query = libraryId ? `?library_id=${libraryId}` : "";
-  return api<ItemDetail>(`/catalog/items/${catalogPathID(id)}${query}`, options);
+  const detail = await v2("GET /api/v2/catalog/items/{id}", {
+    path: { id },
+    query: libraryQuery(libraryId),
+    signal: signalOf(options),
+  });
+  return catalogItemDetailFromV2(detail);
 }
 
 export async function fetchCatalogItemVersions(
   id: string,
-  options?: RequestInit,
+  options?: ReadOptions,
 ): Promise<FileVersion[]> {
-  return api<FileVersion[]>(`/catalog/items/${catalogPathID(id)}/versions`, options);
+  const versions = await v2("GET /api/v2/catalog/items/{id}/versions", {
+    path: { id },
+    signal: signalOf(options),
+  });
+  return versions.items.map(fileVersionFromV2);
 }
 
 export async function fetchCatalogItemEpisodes(
   id: string,
   libraryId?: number,
-  options?: RequestInit,
+  options?: ReadOptions,
 ): Promise<EpisodesResponse> {
-  const query = libraryId ? `?library_id=${libraryId}` : "";
-  return api<EpisodesResponse>(`/catalog/items/${catalogPathID(id)}/episodes${query}`, options);
+  const episodes = await v2("GET /api/v2/catalog/items/{id}/episodes", {
+    path: { id },
+    query: libraryQuery(libraryId),
+    signal: signalOf(options),
+  });
+  return { episodes: episodes.items.map(episodeFromV2) };
 }
 
 export async function fetchCatalogSeriesSeasons(
   seriesId: string,
   libraryId?: number,
-  options?: RequestInit,
+  options?: ReadOptions,
 ): Promise<SeasonsResponse> {
-  const query = libraryId ? `?library_id=${libraryId}` : "";
-  return api<SeasonsResponse>(
-    `/catalog/series/${catalogPathID(seriesId)}/seasons${query}`,
-    options,
-  );
+  const seasons = await v2("GET /api/v2/catalog/series/{id}/seasons", {
+    path: { id: seriesId },
+    query: libraryQuery(libraryId),
+    signal: signalOf(options),
+  });
+  return { seasons: seasons.items.map(seasonFromV2) };
 }
 
 export async function fetchCatalogSeasonDetail(
   seriesId: string,
   seasonNum: number,
   libraryId?: number,
-  options?: RequestInit,
+  options?: ReadOptions,
 ): Promise<SeasonDetailResponse> {
-  const query = libraryId ? `?library_id=${libraryId}` : "";
-  return api<SeasonDetailResponse>(
-    `/catalog/series/${catalogPathID(seriesId)}/seasons/${seasonNum}${query}`,
-    options,
-  );
+  const season = await v2("GET /api/v2/catalog/series/{id}/seasons/{num}", {
+    path: { id: seriesId, num: seasonNum },
+    query: libraryQuery(libraryId),
+    signal: signalOf(options),
+  });
+  return { season: seasonFromV2(season) };
 }
 
 export async function fetchCatalogSeasonEpisodes(
   seriesId: string,
   seasonNum: number,
   libraryId?: number,
-  options?: RequestInit,
+  options?: ReadOptions,
 ): Promise<EpisodesResponse> {
-  const query = libraryId ? `?library_id=${libraryId}` : "";
-  return api<EpisodesResponse>(
-    `/catalog/series/${catalogPathID(seriesId)}/seasons/${seasonNum}/episodes${query}`,
-    options,
-  );
+  const episodes = await v2("GET /api/v2/catalog/series/{id}/seasons/{num}/episodes", {
+    path: { id: seriesId, num: seasonNum },
+    query: libraryQuery(libraryId),
+    signal: signalOf(options),
+  });
+  return { episodes: episodes.items.map(episodeFromV2) };
 }
 
 export function useCatalogItemDetail(id: string | undefined, libraryId?: number) {
@@ -97,9 +125,13 @@ export function useCatalogItemVersions(id: string | undefined) {
 
 export async function fetchMangaSeriesFiles(
   id: string,
-  options?: RequestInit,
+  options?: ReadOptions,
 ): Promise<MangaSeriesFiles> {
-  return api<MangaSeriesFiles>(`/catalog/items/${catalogPathID(id)}/manga-files`, options);
+  const files = await v2("GET /api/v2/catalog/items/{id}/manga-files", {
+    path: { id },
+    signal: signalOf(options),
+  });
+  return mangaFilesFromV2(files);
 }
 
 // useMangaSeriesFiles backs the series "View Details" dialog; enabled defers
