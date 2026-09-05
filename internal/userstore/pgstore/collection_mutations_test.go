@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -168,5 +169,75 @@ func TestCollectionCASOrderScopePostgres(t *testing.T) {
 	}
 	if err := store.ReorderCollectionsIfRevision(ctx, "owner", nil, []string{visible.ID}, version); err != nil {
 		t.Fatalf("correct visible permutation rejected: %v", err)
+	}
+}
+
+func TestCollectionMutationRetryClassification(t *testing.T) {
+	s := &PostgresUserStore{}
+	deadlock := &pgconn.PgError{Code: "40P01", Message: "deadlock"}
+	calls := 0
+	err := s.runCollectionMutation(t.Context(), "", -1, func() error { calls++; return deadlock })
+	if err != deadlock || calls != 1 || errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
+		t.Fatalf("deadlock reclassified/retried: %v calls=%d", err, calls)
+	}
+	serial := &pgconn.PgError{Code: "40001", Message: "serialization failure"}
+	calls = 0
+	err = s.runCollectionMutation(t.Context(), "", -1, func() error { calls++; return serial })
+	if err != serial || calls != 3 || errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
+		t.Fatalf("wildcard serialization reclassified/unbounded: %v calls=%d", err, calls)
+	}
+	canceled, cancel := context.WithCancel(t.Context())
+	cancel()
+	calls = 0
+	err = s.runCollectionMutation(canceled, "", -1, func() error { calls++; return nil })
+	if !errors.Is(err, context.Canceled) || calls != 0 {
+		t.Fatalf("cancellation: %v calls=%d", err, calls)
+	}
+}
+
+func TestCollectionUnchangedSerializationAndNoopPostgres(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	ctx := t.Context()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	var uid int
+	if err := pool.QueryRow(ctx, `INSERT INTO users(username,role) VALUES($1,'user') RETURNING id`, fmt.Sprintf("collection-cas-noop-%d", time.Now().UnixNano())).Scan(&uid); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, uid)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM user_collection_revisions WHERE user_id=$1`, uid)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM user_collection_order_revisions WHERE user_id=$1`, uid)
+	}()
+	s := newStore(pool, uid)
+	c, err := s.CreateCollection(ctx, userstore.CreateCollectionInput{CreatorProfileID: "owner", Name: "noop"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	revision, err := s.CollectionRevision(ctx, c.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	serial := &pgconn.PgError{Code: "40001", Message: "unrelated serialization"}
+	calls := 0
+	err = s.runCollectionMutation(ctx, c.ID, revision, func() error { calls++; return serial })
+	if err != serial || calls != 3 || errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
+		t.Fatalf("unchanged exact witness misreported: %v calls=%d", err, calls)
+	}
+	if err := s.UpdateCollection(ctx, userstore.UpdateCollectionInput{ID: c.ID, RequestProfileID: "owner", ExpectedRevision: &revision}); err != nil {
+		t.Fatalf("guarded noop: %v", err)
+	}
+	after, err := s.CollectionRevision(ctx, c.ID)
+	if err != nil || after <= revision {
+		t.Fatalf("noop did not consume witness: %d -> %d (%v)", revision, after, err)
+	}
+	if err := s.UpdateCollection(ctx, userstore.UpdateCollectionInput{ID: c.ID, RequestProfileID: "owner", ExpectedRevision: &revision}); !errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
+		t.Fatalf("noop witness reused: %v", err)
 	}
 }
