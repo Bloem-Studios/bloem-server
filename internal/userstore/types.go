@@ -284,6 +284,8 @@ type CreateCollectionInput struct {
 }
 
 type UpdateCollectionInput struct {
+	// ExpectedRevision, when set, is atomically checked in the mutation transaction.
+	ExpectedRevision  *int64
 	ID                string
 	RequestProfileID  string
 	Name              *string

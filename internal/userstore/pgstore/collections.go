@@ -217,8 +217,18 @@ func (s *PostgresUserStore) ListCollections(ctx context.Context, profileID strin
 // caller asked to change. Avoids the previous N-statements-per-edit pattern
 // where each conditional re-touched updated_at on its own.
 func (s *PostgresUserStore) UpdateCollection(ctx context.Context, input userstore.UpdateCollectionInput) error {
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning collection update: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := s.checkCollectionRevision(ctx, tx, input.ID, input.ExpectedRevision); err != nil {
+		return err
+	}
+
 	var creatorProfileID string
-	if err := s.pool.QueryRow(ctx,
+	if err := tx.QueryRow(ctx,
 		`SELECT creator_profile_id FROM user_personal_collections WHERE user_id = $1 AND id = $2`,
 		s.userID, input.ID,
 	).Scan(&creatorProfileID); err != nil {
@@ -227,12 +237,6 @@ func (s *PostgresUserStore) UpdateCollection(ctx context.Context, input userstor
 	if creatorProfileID != input.RequestProfileID {
 		return fmt.Errorf("only the creator can update this collection")
 	}
-
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("beginning collection update: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
 
 	now := nowUTC()
 	sets := []string{}
@@ -362,11 +366,20 @@ func (s *PostgresUserStore) UpdateCollection(ctx context.Context, input userstor
 }
 
 func (s *PostgresUserStore) DeleteCollection(ctx context.Context, id string) error {
+	return s.deleteCollection(ctx, id, nil)
+}
+func (s *PostgresUserStore) DeleteCollectionIfRevision(ctx context.Context, id string, expected int64) error {
+	return s.deleteCollection(ctx, id, &expected)
+}
+func (s *PostgresUserStore) deleteCollection(ctx context.Context, id string, expected *int64) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("beginning transaction for collection delete: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := s.checkCollectionRevision(ctx, tx, id, expected); err != nil {
+		return err
+	}
 
 	if _, err := tx.Exec(ctx, `DELETE FROM user_personal_collection_items WHERE user_id = $1 AND collection_id = $2`, s.userID, id); err != nil {
 		return fmt.Errorf("deleting collection items: %w", err)
@@ -398,6 +411,12 @@ func (s *PostgresUserStore) AddCollectionItem(ctx context.Context, collectionID,
 // supplied list. The list must be a permutation of the existing membership;
 // concurrent edits that would silently drop or duplicate items are rejected.
 func (s *PostgresUserStore) ReorderCollectionItems(ctx context.Context, collectionID string, orderedMediaItemIDs []string) error {
+	return s.reorderCollectionItems(ctx, collectionID, orderedMediaItemIDs, nil)
+}
+func (s *PostgresUserStore) ReorderCollectionItemsIfRevision(ctx context.Context, collectionID string, orderedMediaItemIDs []string, expected int64) error {
+	return s.reorderCollectionItems(ctx, collectionID, orderedMediaItemIDs, &expected)
+}
+func (s *PostgresUserStore) reorderCollectionItems(ctx context.Context, collectionID string, orderedMediaItemIDs []string, expected *int64) error {
 	if collectionutil.HasDuplicateOrderedIDs(orderedMediaItemIDs) {
 		return fmt.Errorf("ordered_ids contains duplicates")
 	}
@@ -407,6 +426,9 @@ func (s *PostgresUserStore) ReorderCollectionItems(ctx context.Context, collecti
 		return fmt.Errorf("beginning collection item reorder: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := s.checkCollectionRevision(ctx, tx, collectionID, expected); err != nil {
+		return err
+	}
 
 	var updated, total int
 	if err := tx.QueryRow(ctx, `
@@ -445,6 +467,12 @@ func (s *PostgresUserStore) ReorderCollectionItems(ctx context.Context, collecti
 // supplied list. The list must be a permutation of the user's collections in
 // the supplied group. A nil groupID targets the implicit Ungrouped bucket.
 func (s *PostgresUserStore) ReorderCollections(ctx context.Context, profileID string, groupID *string, orderedIDs []string) error {
+	return s.reorderCollections(ctx, profileID, groupID, orderedIDs, nil)
+}
+func (s *PostgresUserStore) ReorderCollectionsIfRevision(ctx context.Context, profileID string, groupID *string, orderedIDs []string, expected int64) error {
+	return s.reorderCollections(ctx, profileID, groupID, orderedIDs, &expected)
+}
+func (s *PostgresUserStore) reorderCollections(ctx context.Context, profileID string, groupID *string, orderedIDs []string, expected *int64) error {
 	if collectionutil.HasDuplicateOrderedIDs(orderedIDs) {
 		return fmt.Errorf("ordered_ids contains duplicates")
 	}
@@ -454,6 +482,9 @@ func (s *PostgresUserStore) ReorderCollections(ctx context.Context, profileID st
 		return fmt.Errorf("beginning collection reorder: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := s.checkCollectionOrderRevision(ctx, tx, expected); err != nil {
+		return err
+	}
 
 	var updated, total int
 	if err := tx.QueryRow(ctx, `
@@ -593,6 +624,12 @@ func (s *PostgresUserStore) CreateCollectionGroup(ctx context.Context, name, slu
 }
 
 func (s *PostgresUserStore) UpdateCollectionGroup(ctx context.Context, id string, name *string, slug *string, defaultSortMode *userstore.GroupSortMode) (*userstore.CollectionGroup, error) {
+	return s.updateCollectionGroup(ctx, id, name, slug, defaultSortMode, nil)
+}
+func (s *PostgresUserStore) UpdateCollectionGroupIfRevision(ctx context.Context, id string, name *string, slug *string, defaultSortMode *userstore.GroupSortMode, expected int64) (*userstore.CollectionGroup, error) {
+	return s.updateCollectionGroup(ctx, id, name, slug, defaultSortMode, &expected)
+}
+func (s *PostgresUserStore) updateCollectionGroup(ctx context.Context, id string, name *string, slug *string, defaultSortMode *userstore.GroupSortMode, expected *int64) (*userstore.CollectionGroup, error) {
 	sets := []string{}
 	args := []any{s.userID, id}
 	add := func(column string, value any) {
@@ -610,8 +647,16 @@ func (s *PostgresUserStore) UpdateCollectionGroup(ctx context.Context, id string
 	if defaultSortMode != nil {
 		add("default_sort_mode", *defaultSortMode)
 	}
-	if len(sets) == 0 {
+	if len(sets) == 0 && expected == nil {
 		return s.getCollectionGroup(ctx, id)
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	if err := s.checkCollectionOrderRevision(ctx, tx, expected); err != nil {
+		return nil, err
 	}
 	add("updated_at", nowUTC())
 	query := fmt.Sprintf(`
@@ -622,7 +667,7 @@ func (s *PostgresUserStore) UpdateCollectionGroup(ctx context.Context, id string
 	`, strings.Join(sets, ", "))
 	var g userstore.CollectionGroup
 	var createdAt, updatedAt time.Time
-	err := s.pool.QueryRow(ctx, query, args...).Scan(&g.ID, &g.Name, &g.Slug, &g.DefaultSortMode, &g.SortOrder, &createdAt, &updatedAt)
+	err = tx.QueryRow(ctx, query, args...).Scan(&g.ID, &g.Name, &g.Slug, &g.DefaultSortMode, &g.SortOrder, &createdAt, &updatedAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, fmt.Errorf("user collection group not found")
@@ -631,15 +676,27 @@ func (s *PostgresUserStore) UpdateCollectionGroup(ctx context.Context, id string
 	}
 	g.CreatedAt = timeToString(createdAt)
 	g.UpdatedAt = timeToString(updatedAt)
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
 	return &g, nil
 }
 
 func (s *PostgresUserStore) DeleteCollectionGroup(ctx context.Context, id string) error {
+	return s.deleteCollectionGroup(ctx, id, nil)
+}
+func (s *PostgresUserStore) DeleteCollectionGroupIfRevision(ctx context.Context, id string, expected int64) error {
+	return s.deleteCollectionGroup(ctx, id, &expected)
+}
+func (s *PostgresUserStore) deleteCollectionGroup(ctx context.Context, id string, expected *int64) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("beginning user collection group delete: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := s.checkCollectionOrderRevision(ctx, tx, expected); err != nil {
+		return err
+	}
 
 	if _, err := tx.Exec(ctx, `
 		UPDATE user_personal_collections
@@ -661,6 +718,12 @@ func (s *PostgresUserStore) DeleteCollectionGroup(ctx context.Context, id string
 }
 
 func (s *PostgresUserStore) ReorderCollectionGroups(ctx context.Context, orderedIDs []string) error {
+	return s.reorderCollectionGroups(ctx, orderedIDs, nil)
+}
+func (s *PostgresUserStore) ReorderCollectionGroupsIfRevision(ctx context.Context, orderedIDs []string, expected int64) error {
+	return s.reorderCollectionGroups(ctx, orderedIDs, &expected)
+}
+func (s *PostgresUserStore) reorderCollectionGroups(ctx context.Context, orderedIDs []string, expected *int64) error {
 	if collectionutil.HasDuplicateOrderedIDs(orderedIDs) {
 		return fmt.Errorf("ordered_ids contains duplicates")
 	}
@@ -670,6 +733,9 @@ func (s *PostgresUserStore) ReorderCollectionGroups(ctx context.Context, ordered
 		return fmt.Errorf("beginning user collection groups reorder: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := s.checkCollectionOrderRevision(ctx, tx, expected); err != nil {
+		return err
+	}
 
 	var updated, total int
 	if err := tx.QueryRow(ctx, `
