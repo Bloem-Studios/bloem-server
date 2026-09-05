@@ -97,7 +97,8 @@ type Dependencies struct {
 	Progress ProgressService
 	// History lists and removes watch history
 	// (*handlers.PersonalDataHandler).
-	History HistoryService
+	History        HistoryService
+	DeviceSettings DeviceSettingsService
 	// Watch answers watch detail and marks items watched
 	// (*handlers.ItemsHandler).
 	Watch WatchService

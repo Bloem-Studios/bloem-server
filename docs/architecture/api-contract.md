@@ -1791,3 +1791,31 @@ pagination shapes, canonical editor ETags, 412 recovery, capability flags, and t
 flow. Their existing v1 collection routes remain available during coordinated adoption.
 Jellyfin-protocol routes are unchanged; shared native storage fixes preserve chapter membership,
 and collection authorization checks remain enforced at the native service boundary.
+
+### Self-service device settings
+
+`GET /api/v2/devices` lists the acting profile's registered settings devices.
+`scope=household` explicitly requests all profiles on that account and requires
+household management authority: the primary profile (with PIN verification when
+configured) or a server admin. The collection uses bounded keyset pages ordered by
+`last_seen_at DESC, profile_id, device_id`; continuation retains the store timestamp's
+full precision. A device observed again can move ahead of the continuation point;
+this is a live registry, not a historical snapshot. Cursors bind the account,
+acting profile, viewer policy and requested scope. Counts represent logical
+canonical setting keys, so compatibility aliases do not double-count a preference.
+
+`DELETE /api/v2/devices/{device_id}/settings` clears canonical and legacy device
+settings. `DELETE /api/v2/devices/{device_id}` additionally forgets the registry
+entry. Both operations commit the complete cleanup in the owning store transaction
+and publish invalidation for the canonical keys actually deleted after commit.
+They preserve other profiles' entries for the same device identifier. A named
+`profile_id` requires household management authority before checking that the
+profile belongs to the caller's account. Missing devices, including repeated
+forget requests, return `404`; successful commands return `204`. Both commands are
+non-retryable because a later retry can remove settings written in the meantime.
+Neither operation revokes login sessions or changes push registrations.
+
+The web device-settings screen uses these operations. The Apple and Android native
+clients have no callers for this settings-device lifecycle; Apple's push registration
+belongs to the separate notification contract. Jellyfin has no corresponding
+settings-device operation.

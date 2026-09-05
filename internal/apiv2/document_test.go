@@ -197,6 +197,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"syncProgress":  true,
 		"getWatchState": true, "markWatched": true, "unmarkWatched": true,
 		"cancelLibraryJob": true,
+		"listDevices":      true, "forgetDevice": true, "clearDeviceSettings": true,
 	}
 	for _, id := range historyImportOperationIDs {
 		profileToken[id] = true

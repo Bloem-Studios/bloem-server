@@ -63,7 +63,7 @@ func (s *PostgresUserStore) RemoveDeviceSettings(ctx context.Context, profileID,
 		return nil, err
 	}
 	var owned bool
-	err = tx.QueryRow(ctx, `SELECT true FROM user_devices WHERE user_id=$1 AND profile_id=$2 AND device_id=$3 FOR UPDATE`, s.userID, profileID, deviceID).Scan(&owned)
+	err = tx.QueryRow(ctx, `SELECT true FROM user_devices WHERE user_id=$1 AND profile_id=$2 AND device_id=$3`, s.userID, profileID, deviceID).Scan(&owned)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
