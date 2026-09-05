@@ -13892,11 +13892,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/request-integrations",
+        "operation_id": "listRequestIntegrations"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged."
     },
     {
       "listener": "api",
@@ -13954,11 +13954,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/request-integrations",
+        "operation_id": "createRequestIntegration"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
     {
       "listener": "api",
@@ -14016,11 +14018,14 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/request-integrations/{id}",
+        "operation_id": "deleteRequestIntegration"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity.",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -14078,11 +14083,14 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/request-integrations/{id}",
+        "operation_id": "updateRequestIntegration"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity.",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -14140,11 +14148,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/request-integrations/{id}/options",
+        "operation_id": "loadRequestIntegrationOptions"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
     {
       "listener": "api",
@@ -14202,11 +14212,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/request-settings",
+        "operation_id": "getAdminRequestSettings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged."
     },
     {
       "listener": "api",
@@ -14264,11 +14274,14 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/request-settings",
+        "operation_id": "updateAdminRequestSettings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity.",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -14326,11 +14339,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/request-users/{user_id}/limit",
+        "operation_id": "getAdminRequestUserLimit"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged."
     },
     {
       "listener": "api",
@@ -14388,11 +14401,14 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/request-users/{user_id}/limit",
+        "operation_id": "updateAdminRequestUserLimit"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged. Canonical reads issue actor-scoped ETags backed by PostgreSQL revision triggers covering legacy and background writers; storage checks revisions atomically. Missing guards return 428; stale edits return 412 without replacing the draft.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity.",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -14450,11 +14466,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/requests",
+        "operation_id": "listAdminRequests"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged."
     },
     {
       "listener": "api",
@@ -14512,11 +14528,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/requests/{id}/approve",
+        "operation_id": "adminApproveRequest"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
     {
       "listener": "api",
@@ -14564,11 +14582,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/requests/{id}/cancel",
+        "operation_id": "adminCancelRequest"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
     {
       "listener": "api",
@@ -14626,11 +14646,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/requests/{id}/decline",
+        "operation_id": "adminDeclineRequest"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
     {
       "listener": "api",
@@ -14688,11 +14710,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/requests/{id}/retry",
+        "operation_id": "adminRetryRequest"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Native v2 acting-admin request management preserves domain authorization and demo restrictions. Canonical integration GET and administration capabilities are additional native operations. Review ownership and ratification remain unchanged.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic retry after an uncertain response: configuration may conflict with later edits; moderation and plugin validation/options can invoke external services without durable replay identity."
     },
     {
       "listener": "api",
