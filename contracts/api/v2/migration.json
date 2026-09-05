@@ -27903,7 +27903,7 @@
         "path": "/api/v2/history-imports/emby-connect/login",
         "operation_id": "loginEmbyConnect"
       },
-      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Credential exchange, naturally idempotent (a repeat mints another short-lived connect session). Runs under the shared authenticated-route limiter; v1 mounts no dedicated bucket on it. username and password required at the schema (422); Emby Connect refusing the credentials is 422 at body (v1 401 unauthorized, which v2 reserves for the Silo session); Emby Connect unreachable 503 dependency_unavailable with Retry-After. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Credential exchange; each repeat may mint another short-lived connect session and must not be retried automatically after an uncertain response. Runs under the shared authenticated-route limiter; v1 mounts no dedicated bucket on it. username and password required at the schema (422); Emby Connect refusing the credentials is 422 at body (v1 401 unauthorized, which v2 reserves for the Silo session); Emby Connect unreachable 503 dependency_unavailable with Retry-After. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No durable client request identity or claimed external authorization exchange. An uncertain response must not trigger automatic retries."
     },
@@ -27965,7 +27965,7 @@
         "path": "/api/v2/history-imports/plex/auth/check",
         "operation_id": "checkPlexPin"
       },
-      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Naturally idempotent poll of the sign-in; servers never null; session_id required at the schema (422); unknown session 404; expired or consumed session 422 at body (v1 400). Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Sign-in exchange poll is not automatically retryable; servers never null; session_id required at the schema (422); unknown session 404; expired session 422 at body; consumed session 409 (v1 400). Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "No durable client request identity or claimed external authorization exchange. An uncertain response must not trigger automatic retries."
     },
@@ -28089,7 +28089,7 @@
         "path": "/api/v2/history-imports/runs",
         "operation_id": "listHistoryImportRuns"
       },
-      "notes": "Section personal-imports (profile_scoped, ProfileOptional). v1 ?limit= (10, max 50) replaced by limit+opaque keyset cursor (created_at, id of the last emitted run; default 50, max 200); offset rejected (422). user_id and mapping_id are string ids; warnings and unmatched_samples never null. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (account-owned, ProfileOptional). Bounded keyset pagination uses created_at and id, default 50 and maximum 200; offset is rejected. Run identifiers are strings; warnings and unmatched_samples are never null. Safe summaries include terminal and cancelable=false; administrator-requested cancellation appears as nonterminal canceling. No private credential or dispatch metadata is returned."
     },
     {
       "listener": "api",
@@ -28149,9 +28149,9 @@
         "path": "/api/v2/history-imports/runs",
         "operation_id": "createHistoryImportRun"
       },
-      "notes": "Section personal-imports (profile_scoped, ProfileOptional). A run is a job: 202 with the run resource, Location /api/v2/history-imports/runs/{id}, Retry-After 2 (v1 answered 201). Retry safety: durable run identity plus the active-run coalescing check (409 conflict while one is active), no generic mutation id. source is a closed enum (422 invalid_enum), profile_id required at the schema, source_id an opaque string id; the service member rules (v1 400 bad_request) are 422 at body; profile/session not found 404; a source server refusing the credentials is 422 at body, a source server that cannot answer 503 dependency_unavailable with Retry-After. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "notes": "Section personal-imports (account-owned, ProfileOptional). Acceptance is 202 after atomic persistence of immutable account/profile intent, encrypted run-scoped credentials, and any login-session consumption. Location identifies the run monitor; Retry-After is 2 seconds. Newly accepted personal work resumes from durable version-2 intent after restart. There is no request coalescing or replay identity: uncertain acceptance must not be retried automatically. Invalid source/member input is 422; missing profile/session is 404; consumed or changed session/source is 409. Uncertain commit is a fixed 503 advisory without a retry hint. No credentials or raw storage causes are returned. Conditional handler availability is represented by capability state.",
       "retry_safety": "non_retryable",
-      "retry_safety_note": "No durable client request identity or claimed external authorization exchange. An uncertain response must not trigger automatic retries."
+      "retry_safety_note": "Durable execution intent does not deduplicate a repeated create request. On an uncertain response, inspect the run collection before explicitly submitting again."
     },
     {
       "listener": "api",
@@ -28211,7 +28211,7 @@
         "path": "/api/v2/history-imports/runs/{id}",
         "operation_id": "getHistoryImportRun"
       },
-      "notes": "Section personal-imports (profile_scoped, ProfileOptional). Another account's run is 404. Same run shape as listHistoryImportRuns. Conditionally registered: authMiddleware != nil; historyImportHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-imports (account-owned, ProfileOptional). Ownership is checked before read preconditions; another account's run is 404. Strong ETag, If-Match and If-None-Match support bodyless 304 responses. Location is canonical; Retry-After appears only while nonterminal. Safe run summaries expose terminal and cancelable=false; no personal cancellation endpoint is provided."
     },
     {
       "listener": "api",
