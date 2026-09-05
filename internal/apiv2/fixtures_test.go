@@ -48,6 +48,15 @@ func fixtureCases() []fixtureCase {
 	problem := "#/components/schemas/Problem"
 	validBody := `{"name":"fixture","cleared":null}`
 	return []fixtureCase{
+		{name: "list_my_requests_ok", operationID: opListMyRequests,
+			scenario: "Account requests have stable creation order and string identifiers.",
+			method:   http.MethodGet, path: "/api/v2/requests/mine", headers: viewer,
+			status: http.StatusOK, schema: "#/components/schemas/MediaRequestCollection"},
+		{name: "create_request_ok", operationID: opCreateRequest,
+			scenario: "A new request is created; an uncertain response must not be automatically retried.",
+			method:   http.MethodPost, path: "/api/v2/requests", headers: viewer, body: `{"media_type":"movie","tmdb_id":12345,"title":"Example"}`,
+			status: http.StatusCreated, schema: "#/components/schemas/MediaRequest"},
+
 		{name: "get_system_info_ok", operationID: "getSystemInfo",
 			scenario: "Discovery before login: a public operation answered with the contract identity.",
 			method:   http.MethodGet, path: "/api/v2/system/info",
@@ -1186,6 +1195,7 @@ func fixtureDeps() Dependencies {
 	deps.History = newFakeHistory()
 	deps.Watch = &fakeWatch{}
 	deps.Recommendations = &fakeRecommendations{seedCandidates: 1, cardsHasMore: true}
+	deps.Requests = fixtureRequests()
 	deps.CursorSecret = []byte("fixture-cursor-key")
 	deps.SettingValues.(*fakeSettingValuesSeam).contendedLabel = "Contended"
 	prefs := preferenceDeps(nil, nil)

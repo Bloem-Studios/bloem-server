@@ -23,8 +23,8 @@ vi.mock("@/hooks/useCurrentProfile", () => ({
   useCurrentProfile: () => mocks.useCurrentProfile(),
 }));
 
-vi.mock("@/api/client", () => ({
-  api: (...args: unknown[]) => mocks.api(...args),
+vi.mock("@/api/v2/request", () => ({
+  v2: (...args: unknown[]) => mocks.api(...args),
 }));
 
 import { useRequestSearch } from "./useRequests";
@@ -62,7 +62,7 @@ describe("useRequestSearch", () => {
     expect(options.queryKey).toEqual(["requests", "search", "anon", "movie", "dune", 1]);
   });
 
-  it("forwards the react-query signal to api()", async () => {
+  it("forwards the react-query signal to v2()", async () => {
     mocks.api.mockResolvedValue({ page: 1, total_pages: 0, total_results: 0, results: [] });
     mocks.useCurrentProfile.mockReturnValue({ profile: { id: "profile-1" } });
     render(<CallHook mediaType="all" q="dune" />);
@@ -75,9 +75,10 @@ describe("useRequestSearch", () => {
 
     expect(mocks.api).toHaveBeenCalledTimes(1);
     const apiCall = mocks.api.mock.calls[0]!;
-    expect(apiCall[0]).toContain("/requests/search?");
-    const init = apiCall[1] as RequestInit;
+    expect(apiCall[0]).toBe("GET /api/v2/requests/search");
+    const init = apiCall[1] as { signal?: AbortSignal; query: { q: string } };
     expect(init.signal).toBe(controller.signal);
+    expect(init.query.q).toBe("dune");
   });
 
   it("keeps the existing Requests page staleTime by default", () => {

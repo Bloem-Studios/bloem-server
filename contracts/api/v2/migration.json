@@ -38531,19 +38531,19 @@
       "section": "personal-requests",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "unique_constraint",
+      "retry_safety": "non_retryable",
       "retry_safety_note": "DEFECT: idx_media_requests_active_tmdb is partial (outcome active, not completed), so once the first request reaches a terminal state a retry deletes the failed row, mints a fresh id, and re-notifies and re-submits. The v2 port must key on an immutable client request identity across terminal states.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/requests",
+        "operation_id": "createRequest"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "201 creates a request; strict movie/series enum and positive TMDB identity. Not safe to retry after an uncertain response: active-request uniqueness ends at terminal state, allowing another submission and notification. A durable client request identity is required before automatic retries can be supported."
     },
     {
       "listener": "api",
@@ -38618,13 +38618,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/detail/{media_type}/{tmdb_id}",
+        "operation_id": "getRequestMediaDetail"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). media_type strict path enum movie|series, tmdb_id integer >= 1 (422 otherwise, v1 answered 400). TMDB ids stay integers (external ids, not Silo IDs). genres, production_companies, networks, cast, creators, recommendations are empty, never null."
     },
     {
       "listener": "api",
@@ -38699,13 +38699,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover",
+        "operation_id": "listDiscoverSections"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). {sections:[...]} became {items:[...]} (bounded, no page). Section bodies as v1 incl. next_page. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -38760,13 +38760,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/browse/genre/{slug}",
+        "operation_id": "browseDiscoverGenre"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). media_type query required, strict enum movie|series (422, v1 answered 400); sort strict enum popularity|vote_average|release_date (default popularity); page is the provider page number; unknown slug 404. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -38821,13 +38821,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/browse/network/{slug}",
+        "operation_id": "browseDiscoverNetwork"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). sort strict enum popularity|vote_average|release_date (default popularity); page is the provider page number; unknown slug 404. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -38882,13 +38882,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/browse/studio/{slug}",
+        "operation_id": "browseDiscoverStudio"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). sort strict enum popularity|vote_average|release_date (default popularity); page is the provider page number; unknown slug 404. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -38943,13 +38943,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/genres",
+        "operation_id": "listDiscoverGenres"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). {genres:[...]} became {items:[...]} (bounded, no page); logo_url nullable. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -39004,13 +39004,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/networks",
+        "operation_id": "listDiscoverNetworks"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). {networks:[...]} became {items:[...]} (bounded, no page); logo_url nullable. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -39065,13 +39065,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/studios",
+        "operation_id": "listDiscoverStudios"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). {studios:[...]} became {items:[...]} (bounded, no page); logo_url nullable. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -39136,13 +39136,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/discover/{section}",
+        "operation_id": "getDiscoverSection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). section is a strict path enum of the six discovery rows (422, v1 answered 400); page is the provider page number. TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -39217,13 +39217,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/mine",
+        "operation_id": "listMyRequests"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). {requests:[...]} became {items:[...], page}; limit+offset became limit+opaque cursor over the store's created_at DESC order (limit maximum 50, the service caps at 100); status and outcome filters are strict enums. TMDB ids stay integers (external ids, not Silo IDs). Request ids string IDs, instants UTC ms."
     },
     {
       "listener": "api",
@@ -39298,13 +39298,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/search",
+        "operation_id": "searchRequestMedia"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). q required (422 when absent or blank); media_type strict enum movie|series|all (default all); page is the provider page number, not a Silo cursor (the provider owns the ordering). TMDB ids stay integers (external ids, not Silo IDs)."
     },
     {
       "listener": "api",
@@ -39440,13 +39440,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/requests/{id}",
+        "operation_id": "getRequest"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; requestHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Section personal-requests (profile_scoped). Same body as createRequest. Another account's request is 403 permission_denied to a member, readable by an admin; unknown id 404."
     },
     {
       "listener": "api",

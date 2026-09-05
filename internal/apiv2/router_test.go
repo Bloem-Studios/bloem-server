@@ -308,6 +308,19 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST " + Prefix + "/recommendations/taste-seed",
 		"GET " + Prefix + "/recommendations/watch-tonight",
 		"GET " + Prefix + "/recommendations/watch-tonight/cards",
+		"POST " + Prefix + "/requests",
+		"GET " + Prefix + "/requests/mine",
+		"GET " + Prefix + "/requests/{id}",
+		"GET " + Prefix + "/requests/search",
+		"GET " + Prefix + "/requests/detail/{media_type}/{tmdb_id}",
+		"GET " + Prefix + "/requests/discover",
+		"GET " + Prefix + "/requests/discover/{section}",
+		"GET " + Prefix + "/requests/discover/genres",
+		"GET " + Prefix + "/requests/discover/networks",
+		"GET " + Prefix + "/requests/discover/studios",
+		"GET " + Prefix + "/requests/discover/browse/genre/{slug}",
+		"GET " + Prefix + "/requests/discover/browse/network/{slug}",
+		"GET " + Prefix + "/requests/discover/browse/studio/{slug}",
 	}
 
 	unaccounted, unserved, err := reconcileSpec(observed, contracts.OpenAPI, nil)

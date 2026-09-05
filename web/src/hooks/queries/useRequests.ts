@@ -1,26 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, ApiClientError } from "@/api/client";
+import {
+  browseDiscoverV2,
+  createMediaRequestV2,
+  getDiscoverSectionV2,
+  getRequestMediaDetailV2,
+  listDiscoverGenresV2,
+  listDiscoverNetworksV2,
+  listDiscoverSectionsV2,
+  listDiscoverStudiosV2,
+  listMyMediaRequestsV2,
+  searchRequestMediaV2,
+} from "@/api/v2/requests";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 import type {
   CreateMediaRequestInput,
   DiscoverBrowseKind,
-  DiscoverBrowseResponse,
-  DiscoverGenresResponse,
-  DiscoverNetworksResponse,
-  DiscoverStudiosResponse,
   LoadRequestIntegrationOptionsRequest,
   MediaRequest,
   MediaRequestsListResponse,
-  RequestDiscoveryResponse,
-  RequestDiscoverySection,
   RequestFeatureStatus,
   RequestIntegration,
   RequestIntegrationOptions,
   RequestIntegrationsResponse,
   RequestListParams,
-  RequestMediaDetail,
-  RequestMediaPage,
   RequestSearchMediaType,
   RequestMediaType,
   RequestSettings,
@@ -72,8 +76,7 @@ function invalidateRequestSurfaces(queryClient: ReturnType<typeof useQueryClient
 export function useRequestDiscovery() {
   return useQuery({
     queryKey: requestKeys.discovery(),
-    queryFn: () =>
-      api<RequestDiscoveryResponse>("/requests/discover").then((data) => data.sections ?? []),
+    queryFn: listDiscoverSectionsV2,
     staleTime: REQUESTS_STALE_TIME,
   });
 }
@@ -89,10 +92,7 @@ export function useRequestFeatureStatus() {
 export function useRequestDiscoverySection(section: string, page = 1) {
   return useQuery({
     queryKey: requestKeys.discoverySection(section, page),
-    queryFn: () =>
-      api<RequestDiscoverySection>(
-        `/requests/discover/${encodeURIComponent(section)}?page=${page}`,
-      ),
+    queryFn: () => getDiscoverSectionV2(section, page),
     enabled: section.trim().length > 0,
     staleTime: REQUESTS_STALE_TIME,
   });
@@ -101,8 +101,7 @@ export function useRequestDiscoverySection(section: string, page = 1) {
 export function useDiscoverStudios() {
   return useQuery({
     queryKey: requestKeys.discoverStudios(),
-    queryFn: () =>
-      api<DiscoverStudiosResponse>("/requests/discover/studios").then((data) => data.studios ?? []),
+    queryFn: listDiscoverStudiosV2,
     staleTime: DISCOVER_BRAND_STALE_TIME,
   });
 }
@@ -110,10 +109,7 @@ export function useDiscoverStudios() {
 export function useDiscoverNetworks() {
   return useQuery({
     queryKey: requestKeys.discoverNetworks(),
-    queryFn: () =>
-      api<DiscoverNetworksResponse>("/requests/discover/networks").then(
-        (data) => data.networks ?? [],
-      ),
+    queryFn: listDiscoverNetworksV2,
     staleTime: DISCOVER_BRAND_STALE_TIME,
   });
 }
@@ -121,8 +117,7 @@ export function useDiscoverNetworks() {
 export function useDiscoverGenres() {
   return useQuery({
     queryKey: requestKeys.discoverGenres(),
-    queryFn: () =>
-      api<DiscoverGenresResponse>("/requests/discover/genres").then((data) => data.genres ?? []),
+    queryFn: listDiscoverGenresV2,
     staleTime: DISCOVER_BRAND_STALE_TIME,
   });
 }
@@ -138,13 +133,7 @@ export interface UseRequestBrowseArgs {
 export function useRequestBrowse({ kind, slug, mediaType, sort, page }: UseRequestBrowseArgs) {
   return useQuery({
     queryKey: requestKeys.discoverBrowse(kind, slug, mediaType, sort, page),
-    queryFn: () => {
-      const params = new URLSearchParams({ sort, page: String(page) });
-      if (mediaType) params.set("media_type", mediaType);
-      return api<DiscoverBrowseResponse>(
-        `/requests/discover/browse/${kind}/${encodeURIComponent(slug)}?${params}`,
-      );
-    },
+    queryFn: () => browseDiscoverV2({ kind, slug, mediaType, sort, page }),
     enabled: slug.trim().length > 0 && (kind !== "genre" || Boolean(mediaType)),
     staleTime: BROWSE_STALE_TIME,
   });
@@ -153,10 +142,7 @@ export function useRequestBrowse({ kind, slug, mediaType, sort, page }: UseReque
 export function useRequestMediaDetail(mediaType: RequestMediaType, tmdbID: number) {
   return useQuery({
     queryKey: requestKeys.detail(mediaType, tmdbID),
-    queryFn: () =>
-      api<RequestMediaDetail>(
-        `/requests/detail/${encodeURIComponent(mediaType)}/${encodeURIComponent(String(tmdbID))}`,
-      ),
+    queryFn: () => getRequestMediaDetailV2(mediaType, tmdbID),
     enabled: tmdbID > 0,
     staleTime: REQUESTS_STALE_TIME,
   });
@@ -193,14 +179,7 @@ export function useRequestSearch(
 
   return useQuery({
     queryKey: requestKeys.search(mediaType, normalizedQuery, page, viewerKey),
-    queryFn: ({ signal }) => {
-      const params = new URLSearchParams({
-        q: normalizedQuery,
-        media_type: mediaType,
-        page: String(page),
-      });
-      return api<RequestMediaPage>(`/requests/search?${params}`, { signal });
-    },
+    queryFn: ({ signal }) => searchRequestMediaV2(mediaType, normalizedQuery, page, signal),
     enabled:
       enabledOverride && normalizedQuery.length > 1 && (!requireProfile || Boolean(profile?.id)),
     staleTime: options.staleTime ?? REQUESTS_STALE_TIME,
@@ -212,11 +191,8 @@ export function useRequestSearch(
 export function useCreateMediaRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: CreateMediaRequestInput) =>
-      api<MediaRequest>("/requests/", {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
+    retry: false,
+    mutationFn: (body: CreateMediaRequestInput) => createMediaRequestV2(body),
     onSuccess: () => {
       toast.success("Request submitted");
       invalidateRequestSurfaces(queryClient);
@@ -231,10 +207,7 @@ export function useMyMediaRequests(params: RequestListParams = {}) {
   const key = listParamsKey(params);
   return useQuery({
     queryKey: requestKeys.mine(key),
-    queryFn: () =>
-      api<MediaRequestsListResponse>(`/requests/mine${buildListQuery(params)}`).then(
-        (data) => data.requests ?? [],
-      ),
+    queryFn: () => listMyMediaRequestsV2(params),
     staleTime: REQUESTS_STALE_TIME,
   });
 }

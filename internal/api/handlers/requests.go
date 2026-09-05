@@ -56,6 +56,10 @@ func NewRequestsHandler(service RequestService) *RequestsHandler {
 	return &RequestsHandler{service: service}
 }
 
+// Service is the request service this handler routes to; the v2 listener
+// calls the same value so both surfaces share one store and one policy.
+func (h *RequestsHandler) Service() RequestService { return h.service }
+
 func (h *RequestsHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
 	viewer, ok := requestViewer(w, r, true)
 	if !ok {

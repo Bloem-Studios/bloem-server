@@ -1601,3 +1601,21 @@ demonstrated the contract it consumes.
 The cost is a coordinated multi-repository release and a temporarily larger server. Keeping the
 bridge bounded, sharing domain services, and making each migration slice include its consumers are
 what prevent that temporary cost from becoming permanent architecture.
+
+### Personal requests
+
+The bundled web client reads discovery and creates media requests through v2.
+`GET /api/v2/requests/mine` returns at most 50 requests per page, ordered by
+creation time and unique request ID descending. Its signed cursor binds the account,
+profile, filters and ordering; deleting an emitted request or inserting a newer one
+does not shift continuation. Request lists belong to the account; profile gates still
+apply to every call. Provider discovery retains the provider's page numbers.
+
+`POST /api/v2/requests` is non-retryable after an uncertain response. The database
+prevents concurrent active requests for the same media, but terminal requests no
+longer hold that uniqueness key. Safe automatic retries require a durable client
+request identity across terminal states. The web mutation disables retries.
+
+Native Apple and Android request consumers still require coordinated v2 adoption;
+their v1 routes remain available. Jellyfin compatibility does not expose this request
+management surface and keeps its existing behavior.

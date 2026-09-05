@@ -212,6 +212,12 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range recommendationOperationIDs {
 		profileToken[id] = true
 	}
+	for _, id := range requestOperationIDs {
+		profileToken[id] = true
+	}
+	expect[opCreateRequest] = map[int]bool{http.StatusCreated: true, http.StatusConflict: true, http.StatusTooManyRequests: true, http.StatusNotFound: true}
+	expect[opListMyRequests] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}
+	expect[opGetRequestMediaDetail] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: true}
 	expect["refreshLibraryMetadata"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: true, http.StatusAccepted: true}
 	expect["uploadLibraryPoster"] = map[int]bool{http.StatusNotFound: true, http.StatusRequestEntityTooLarge: true, http.StatusUnsupportedMediaType: true}
 	expect["getLibraryLayout"] = map[int]bool{http.StatusNotFound: true, http.StatusConflict: false}

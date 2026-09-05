@@ -1987,6 +1987,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if sectionSettingsHandler != nil {
 		v2deps.SectionFlags = sectionSettingsHandler
 	}
+	if requestHandler != nil {
+		v2deps.Requests = requestHandler.Service()
+	}
 	if deps.v2Wiring != nil {
 		deps.v2Wiring(v2deps)
 	}

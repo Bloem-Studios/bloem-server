@@ -736,6 +736,10 @@ func buildRequestListSQL(baseCondition string, baseArgs []any, filter ListFilter
 		args = append(args, filter.Outcome)
 		conditions = append(conditions, "outcome = $"+strconv.Itoa(len(args)))
 	}
+	if filter.Before != nil {
+		args = append(args, filter.Before.CreatedAt, filter.Before.ID)
+		conditions = append(conditions, "(created_at, id) < ($"+strconv.Itoa(len(args)-1)+", $"+strconv.Itoa(len(args))+")")
+	}
 	limit := filter.Limit
 	if limit <= 0 || limit > 100 {
 		limit = 50
@@ -747,7 +751,7 @@ func buildRequestListSQL(baseCondition string, baseArgs []any, filter ListFilter
 	args = append(args, limit, offset)
 	return requestSelectSQL() + `
 		WHERE ` + strings.Join(conditions, " AND ") + `
-		ORDER BY created_at DESC
+		ORDER BY created_at DESC, id DESC
 		LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args)), args
 }
 
