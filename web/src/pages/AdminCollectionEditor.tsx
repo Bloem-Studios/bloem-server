@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ArrowLeft } from "lucide-react";
 
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CollectionTemplateGallery } from "@/components/CollectionTemplateGallery";
 import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
-import { useAdminCollections } from "@/hooks/queries/admin/collections";
+import { useAdminCollections, useAdminCollectionSnapshot } from "@/hooks/queries/admin/collections";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 import {
@@ -41,10 +41,20 @@ export default function AdminCollectionEditor() {
   const isCreate = !id;
   const { data: libraries = [] } = useAdminLibraries();
   const { data: collections = [], isLoading } = useAdminCollections();
-  const collection = useMemo(
-    () => collections.find((entry) => entry.id === id) ?? null,
-    [collections, id],
-  );
+  const snapshot = useAdminCollectionSnapshot(id);
+  const [frozen, setFrozen] = useState<typeof snapshot.data>(undefined);
+  if (snapshot.data && !isLoading && frozen?.collection.id !== id) {
+    const listed = collections.find((entry) => entry.id === id);
+    setFrozen({
+      ...snapshot.data,
+      collection: {
+        ...snapshot.data.collection,
+        poster_url: listed?.poster_url ?? "",
+        backdrop_url: listed?.backdrop_url ?? "",
+      },
+    });
+  }
+  const collection = frozen && frozen.collection.id === id ? frozen.collection : null;
   const [sourceType, setSourceType] = useState<CollectionSourceType | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
 
@@ -70,7 +80,7 @@ export default function AdminCollectionEditor() {
 
   useDocumentTitle(title);
 
-  if (isLoading && libraries.length === 0) {
+  if ((!isCreate && (snapshot.isLoading || isLoading)) || (isLoading && libraries.length === 0)) {
     return <div className="page-shell py-8">Loading collection editor...</div>;
   }
 
@@ -102,6 +112,7 @@ export default function AdminCollectionEditor() {
     return (
       <SmartCollectionWizard
         mode="admin"
+        etag={frozen?.etag}
         collection={collection}
         libraries={libraries}
         initialLibraryId={initialLibraryId}
@@ -174,6 +185,7 @@ export default function AdminCollectionEditor() {
           <CollectionEditForm
             libraries={libraries}
             collection={collection}
+            etag={frozen?.etag}
             initialLibraryId={initialLibraryId}
             onClose={() => navigate(returnPath)}
           />
@@ -181,6 +193,7 @@ export default function AdminCollectionEditor() {
           <CollectionForm
             libraries={libraries}
             collection={collection}
+            etag={frozen?.etag}
             initialLibraryId={initialLibraryId}
             onClose={() => navigate(returnPath)}
           />

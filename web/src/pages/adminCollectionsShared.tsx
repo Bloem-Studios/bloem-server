@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { ComponentProps, FormEvent, ReactNode } from "react";
 import type { CreateLibraryCollectionRequest, Library, LibraryCollection } from "@/api/types";
 import { normalizeQueryDefinition } from "@/api/types";
 import {
@@ -8,6 +8,7 @@ import {
   type LibraryEligibility,
 } from "@/lib/collectionTemplates";
 import {
+  useAdminCollectionCapabilities,
   useCreateAdminCollection,
   useDeleteCollectionImage,
   useImportMDBListCollection,
@@ -459,11 +460,13 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 }
 
 export function CollectionForm({
+  etag,
   libraries,
   collection,
   initialLibraryId,
   onClose,
 }: {
+  etag?: string;
   libraries: Library[];
   collection: LibraryCollection | null;
   initialLibraryId: number | null;
@@ -512,7 +515,7 @@ export function CollectionForm({
         };
         if (collection) {
           updateMutation.mutate(
-            { id: collection.id, body, poster: posterFile, backdrop: backdropFile },
+            { id: collection.id, etag: etag!, body, poster: posterFile, backdrop: backdropFile },
             { onSuccess: onClose },
           );
           return;
@@ -559,7 +562,7 @@ export function CollectionForm({
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Poster"
             currentUrl={collection?.poster_url}
             file={posterFile}
@@ -577,7 +580,7 @@ export function CollectionForm({
                 : undefined
             }
           />
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Backdrop"
             currentUrl={collection?.backdrop_url}
             file={backdropFile}
@@ -603,6 +606,11 @@ export function CollectionForm({
 
 export type CollectionSourcePick = CollectionSourceType | "templates";
 
+export function AdminCollectionArtworkField(props: ComponentProps<typeof ImageUploadField>) {
+  const { data: capabilities } = useAdminCollectionCapabilities();
+  return capabilities?.artwork ? <ImageUploadField {...props} /> : null;
+}
+
 export function SourceTypeSelector({
   onSelect,
   showTemplates = false,
@@ -610,6 +618,7 @@ export function SourceTypeSelector({
   onSelect: (type: CollectionSourcePick) => void;
   showTemplates?: boolean;
 }) {
+  const { data: capabilities } = useAdminCollectionCapabilities();
   const options: {
     type: CollectionSourcePick;
     icon: typeof ListPlus;
@@ -642,27 +651,29 @@ export function SourceTypeSelector({
 
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {options.map((opt) => (
-        <button
-          key={opt.type}
-          type="button"
-          onClick={() => onSelect(opt.type)}
-          className={
-            "flex flex-col items-start gap-3 rounded-2xl border p-5 text-left transition-colors " +
-            (opt.highlight
-              ? "border-primary/60 bg-primary/5 hover:border-primary hover:bg-primary/10"
-              : "border-border hover:border-primary hover:bg-accent")
-          }
-        >
-          <opt.icon
-            className={opt.highlight ? "text-primary h-8 w-8" : "text-muted-foreground h-8 w-8"}
-          />
-          <div>
-            <p className="text-sm font-medium">{opt.label}</p>
-            <p className="text-muted-foreground mt-1 text-xs">{opt.subtitle}</p>
-          </div>
-        </button>
-      ))}
+      {options
+        .filter((opt) => opt.type === "manual" || capabilities?.imports)
+        .map((opt) => (
+          <button
+            key={opt.type}
+            type="button"
+            onClick={() => onSelect(opt.type)}
+            className={
+              "flex flex-col items-start gap-3 rounded-2xl border p-5 text-left transition-colors " +
+              (opt.highlight
+                ? "border-primary/60 bg-primary/5 hover:border-primary hover:bg-primary/10"
+                : "border-border hover:border-primary hover:bg-accent")
+            }
+          >
+            <opt.icon
+              className={opt.highlight ? "text-primary h-8 w-8" : "text-muted-foreground h-8 w-8"}
+            />
+            <div>
+              <p className="text-sm font-medium">{opt.label}</p>
+              <p className="text-muted-foreground mt-1 text-xs">{opt.subtitle}</p>
+            </div>
+          </button>
+        ))}
     </div>
   );
 }
@@ -893,14 +904,14 @@ export function TMDBPresetForm({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Poster"
             file={posterFile}
             onFileChange={setPosterFile}
             sourceUrl={posterSourceUrl}
             onSourceUrlChange={setPosterSourceUrl}
           />
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Backdrop"
             file={backdropFile}
             onFileChange={setBackdropFile}
@@ -1172,14 +1183,14 @@ export function TraktPresetForm({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Poster"
             file={posterFile}
             onFileChange={setPosterFile}
             sourceUrl={posterSourceUrl}
             onSourceUrlChange={setPosterSourceUrl}
           />
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Backdrop"
             file={backdropFile}
             onFileChange={setBackdropFile}
@@ -1352,14 +1363,14 @@ export function MDBListImportForm({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Poster"
             file={posterFile}
             onFileChange={setPosterFile}
             sourceUrl={posterSourceUrl}
             onSourceUrlChange={setPosterSourceUrl}
           />
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Backdrop"
             file={backdropFile}
             onFileChange={setBackdropFile}
@@ -1399,11 +1410,13 @@ export function MDBListImportForm({
 }
 
 export function CollectionEditForm({
+  etag,
   libraries,
   collection,
   initialLibraryId,
   onClose,
 }: {
+  etag?: string;
   libraries: Library[];
   collection: LibraryCollection;
   initialLibraryId: number | null;
@@ -1543,7 +1556,7 @@ export function CollectionEditForm({
     };
 
     updateMutation.mutate(
-      { id: collection.id, body, poster: posterFile, backdrop: backdropFile },
+      { id: collection.id, etag: etag!, body, poster: posterFile, backdrop: backdropFile },
       { onSuccess: onClose },
     );
   }
@@ -1551,6 +1564,7 @@ export function CollectionEditForm({
   if (!isMDBListCollection && !isTMDBCollection && !isTraktCollection) {
     return (
       <CollectionForm
+        etag={etag}
         libraries={libraries}
         collection={collection}
         initialLibraryId={initialLibraryId}
@@ -1618,7 +1632,7 @@ export function CollectionEditForm({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Poster"
             currentUrl={collection.poster_url}
             file={posterFile}
@@ -1633,7 +1647,7 @@ export function CollectionEditForm({
               })
             }
           />
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Backdrop"
             currentUrl={collection.backdrop_url}
             file={backdropFile}

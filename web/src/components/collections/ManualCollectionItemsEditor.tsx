@@ -1,3 +1,4 @@
+import { useAdminCollectionCapabilities } from "@/hooks/queries/admin/collections";
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { GripVertical, Loader2, Plus, Search, Trash2 } from "lucide-react";
@@ -148,12 +149,15 @@ export function ManualCollectionItemsEditor({
 }: ManualCollectionItemsEditorProps) {
   const [page, setPage] = useState({ collectionId, cursor: "" });
   const cursor = page.collectionId === collectionId ? page.cursor : "";
-  const { data, isLoading, error, refetch } = useCollectionItems(collectionId, cursor);
+  const { data, isLoading, error, refetch } = useCollectionItems(collectionId, cursor, source);
   const items = useMemo(() => data?.items ?? [], [data]);
-  const { data: capabilities } = useCollectionCapabilities();
+  const personalCapabilities = useCollectionCapabilities();
+  const adminCapabilities = useAdminCollectionCapabilities(source === "library");
+  const capabilities = source === "user" ? personalCapabilities.data : adminCapabilities.data;
   const { data: orderSnapshot } = useCollectionItemOrderSnapshot(
     collectionId,
     capabilities?.item_reorder === true,
+    source,
   );
   const dragOrder = useRef<typeof orderSnapshot>(undefined);
   const sameOrder =
@@ -168,8 +172,8 @@ export function ManualCollectionItemsEditor({
     !cursor &&
     data?.page?.has_more === false;
   const restart = () => setPage({ collectionId, cursor: "" });
-  const reorderMutation = useReorderCollectionItems(collectionId);
-  const removeMutation = useRemoveCollectionItem(collectionId);
+  const reorderMutation = useReorderCollectionItems(collectionId, source);
+  const removeMutation = useRemoveCollectionItem(collectionId, source);
   const existingIds = useMemo(() => new Set(items.map((i) => i.media_item_id)), [items]);
 
   const { sensors, collisionDetection, handleDragEnd } = useSortableList(
@@ -274,7 +278,7 @@ function SortableItemRow({
   canReorder,
   onRemove,
 }: {
-  item: CollectionItem;
+  item: Pick<CollectionItem, "collection_id" | "media_item_id" | "position">;
   index: number;
   readOnly: boolean;
   canReorder: boolean;

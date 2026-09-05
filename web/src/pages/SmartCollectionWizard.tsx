@@ -55,7 +55,11 @@ import {
   toUpdateCollectionBody,
   toUserCollectionBuilderValue,
 } from "./userCollectionsShared";
-import { toAdminCollectionBuilderValue, toAdminCollectionRequest } from "./adminCollectionsShared";
+import {
+  AdminCollectionArtworkField,
+  toAdminCollectionBuilderValue,
+  toAdminCollectionRequest,
+} from "./adminCollectionsShared";
 import type { CatalogSearchState } from "./catalogSearchParams";
 
 type WizardStep = 1 | 2;
@@ -69,6 +73,7 @@ type UserModeProps = {
 
 type AdminModeProps = {
   mode: "admin";
+  etag?: string;
   collection: LibraryCollection | null;
   libraries: Library[];
   initialLibraryId: number | null;
@@ -528,7 +533,7 @@ function Step2AdminMetadata({
     };
     if (collection) {
       updateMutation.mutate(
-        { id: collection.id, body, poster: posterFile, backdrop: backdropFile },
+        { id: collection.id, etag: wizard.etag!, body, poster: posterFile, backdrop: backdropFile },
         { onSuccess: wizard.onClose },
       );
     } else {
@@ -599,7 +604,7 @@ function Step2AdminMetadata({
         </div>
 
         <div className="space-y-4">
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Poster"
             currentUrl={collection?.poster_url}
             file={posterFile}
@@ -617,7 +622,7 @@ function Step2AdminMetadata({
                 : undefined
             }
           />
-          <ImageUploadField
+          <AdminCollectionArtworkField
             label="Backdrop"
             currentUrl={collection?.backdrop_url}
             file={backdropFile}
