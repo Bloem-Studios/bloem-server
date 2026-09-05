@@ -303,6 +303,10 @@ owner to remain current, and both lease and retention to remain live. An
 unchanged source reference alone is insufficient after admission is withdrawn.
 Publication freezes the response and transitions the same attempt to active.
 An exact retry compares the persisted decision; it does not allocate work.
+Bound route staging and execution grants require acknowledged installation;
+serve grants additionally require active control state. Begin refuses to adopt
+an unbound attempt that has already issued any execution grant, including an
+expired grant. This preserves installation-before-execution across every caller.
 
 `InitialActivationReceiptV3` is an opaque, immutable observation read from a
 trusted exact source handle. Its factory verifies source/account, scope and

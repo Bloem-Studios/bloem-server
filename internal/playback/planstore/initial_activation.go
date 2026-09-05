@@ -120,6 +120,11 @@ func (s *Postgres) BeginInitialActivation(ctx context.Context, binding playback.
 			}
 			return *row.activation, nil
 		}
+		// An unbound execution must not be adopted into an initial intent whose
+		// source installation has not yet been acknowledged.
+		if row.grantNotAfter != nil {
+			return zero, playback.ErrInitialActivationConflictV3
+		}
 		if row.sessionID != "" && row.sessionID != binding.Scope.SessionID {
 			return zero, playback.ErrInitialActivationConflictV3
 		}

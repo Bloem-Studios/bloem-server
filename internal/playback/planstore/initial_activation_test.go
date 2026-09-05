@@ -217,19 +217,21 @@ func TestInitialActivationExpiredAbortRetainsGrantBoundAndReceipt(t *testing.T) 
 	for _, installed := range []bool{false, true} {
 		t.Run(map[bool]string{false: "pending", true: "installed"}[installed], func(t *testing.T) {
 			f := newInitialActivationFixture(t)
-			f.stage(t)
+			f.begin(t)
 			request := f.request
 			request.Duration = 300 * time.Millisecond
-			grant, err := f.store.IssueAttemptGrant(t.Context(), f.authority, request)
-			if err != nil {
-				t.Fatal(err)
-			}
-			f.begin(t)
+			var grant playback.AttemptGrantV3
 			if installed {
 				f.acknowledge(t)
+				f.stage(t)
+				var err error
+				grant, err = f.store.IssueAttemptGrant(t.Context(), f.authority, request)
+				if err != nil {
+					t.Fatal(err)
+				}
+				waitInitialDatabaseTime(t, f, grant.NotAfter)
 			}
-			waitInitialDatabaseTime(t, f, grant.NotAfter)
-			if _, err := f.pool.Exec(t.Context(), `UPDATE playback_v3_attempts SET expires_at=control_grant_not_after,control_lease_expires_at=clock_timestamp()-interval '1 hour' WHERE playback_attempt_id=$1`, f.authority.PlaybackAttemptID); err != nil {
+			if _, err := f.pool.Exec(t.Context(), `UPDATE playback_v3_attempts SET expires_at=COALESCE(control_grant_not_after,clock_timestamp()-interval '1 hour'),control_lease_expires_at=clock_timestamp()-interval '1 hour' WHERE playback_attempt_id=$1`, f.authority.PlaybackAttemptID); err != nil {
 				t.Fatal(err)
 			}
 			abortID := uuid.NewString()
@@ -446,6 +448,7 @@ func waitInitialDatabaseTime(t *testing.T, f *initialActivationFixture, deadline
 
 func TestInitialActivationAbortWaitsForIssuedGrant(t *testing.T) {
 	f := newInitialActivationFixture(t)
+	f.acknowledge(t)
 	f.stage(t)
 	request := f.request
 	request.Duration = time.Second
@@ -453,7 +456,6 @@ func TestInitialActivationAbortWaitsForIssuedGrant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.begin(t)
 	if _, err := f.pool.Exec(t.Context(), "UPDATE playback_source_registrations SET admission_state='retiring' WHERE user_id=$1", f.userID); err != nil {
 		t.Fatal(err)
 	}
@@ -531,5 +533,107 @@ func TestInitialActivationPublicationRechecksLeaseAfterLockWait(t *testing.T) {
 	}
 	if err := <-done; err == nil {
 		t.Fatal("publication used pre-lock live lease")
+	}
+}
+
+func TestInitialActivationExecutionRequiresInstalledReceipt(t *testing.T) {
+	for _, prestaged := range []bool{false, true} {
+		t.Run(map[bool]string{false: "unstaged", true: "prestaged"}[prestaged], func(t *testing.T) {
+			f := newInitialActivationFixture(t)
+			if prestaged {
+				f.stage(t)
+			}
+			f.begin(t)
+			if err := f.store.StageAttemptRoute(t.Context(), f.authority, f.record, f.route); err == nil {
+				t.Fatal("pending source staged execution")
+			}
+			if _, err := f.store.IssueAttemptGrant(t.Context(), f.authority, f.request); err == nil {
+				t.Fatal("pending source issued execution grant")
+			}
+			f.acknowledge(t)
+			f.stage(t)
+			if _, err := f.store.IssueAttemptGrant(t.Context(), f.authority, f.request); err != nil {
+				t.Fatalf("installed execution rejected: %v", err)
+			}
+			serve := f.request
+			serve.Purpose = playback.AttemptGrantServeV3
+			serve.NodeID = f.route.EgressNodeID
+			if _, err := f.store.IssueAttemptGrant(t.Context(), f.authority, serve); err == nil {
+				t.Fatal("installed unpublished source served")
+			}
+			if _, err := f.store.PublishInitialActivation(t.Context(), f.binding, f.record); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := f.store.IssueAttemptGrant(t.Context(), f.authority, serve); err != nil {
+				t.Fatalf("activated serve rejected: %v", err)
+			}
+		})
+	}
+}
+
+func TestInitialActivationRejectsPreviouslyIssuedUnboundGrant(t *testing.T) {
+	f := newInitialActivationFixture(t)
+	f.stage(t)
+	request := f.request
+	request.Duration = 100 * time.Millisecond
+	grant, err := f.store.IssueAttemptGrant(t.Context(), f.authority, request)
+	if err != nil {
+		t.Fatalf("legacy unbound execution changed: %v", err)
+	}
+	if _, err := f.store.BeginInitialActivation(t.Context(), f.binding); err == nil {
+		t.Fatal("live unbound grant adopted")
+	}
+	waitInitialDatabaseTime(t, f, grant.NotAfter)
+	if _, err := f.store.BeginInitialActivation(t.Context(), f.binding); err == nil {
+		t.Fatal("elapsed unbound grant adopted")
+	}
+	var activation []byte
+	if err := f.pool.QueryRow(t.Context(), "SELECT control_activation FROM playback_v3_attempts WHERE playback_attempt_id=$1", f.authority.PlaybackAttemptID).Scan(&activation); err != nil || len(activation) != 0 {
+		t.Fatalf("rejected begin persisted intent: %s %v", activation, err)
+	}
+}
+
+func TestInitialActivationBeginAndUnboundIssueSerialize(t *testing.T) {
+	for _, beginFirst := range []bool{false, true} {
+		t.Run(map[bool]string{false: "issue queued first", true: "begin queued first"}[beginFirst], func(t *testing.T) {
+			f := newInitialActivationFixture(t)
+			f.stage(t)
+			beginPeer, beginName := authorityPeer(t, f.planstoreFixture)
+			issuePeer, issueName := authorityPeer(t, f.planstoreFixture)
+			issuePeer.grantMaxDuration = time.Second
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer cancel()
+			tx, err := f.pool.Begin(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer tx.Rollback(context.Background()) //nolint:errcheck
+			if _, err := tx.Exec(ctx, "SELECT 1 FROM playback_v3_attempts WHERE playback_attempt_id=$1 FOR UPDATE", f.authority.PlaybackAttemptID); err != nil {
+				t.Fatal(err)
+			}
+			beginDone, issueDone := make(chan error, 1), make(chan error, 1)
+			begin := func() {
+				go func() { _, err := beginPeer.BeginInitialActivation(ctx, f.binding); beginDone <- err }()
+				waitInitialLock(t, f, ctx, beginName)
+			}
+			issue := func() {
+				go func() { _, err := issuePeer.IssueAttemptGrant(ctx, f.authority, f.request); issueDone <- err }()
+				waitInitialLock(t, f, ctx, issueName)
+			}
+			if beginFirst {
+				begin()
+				issue()
+			} else {
+				issue()
+				begin()
+			}
+			if err := tx.Commit(ctx); err != nil {
+				t.Fatal(err)
+			}
+			beginErr, issueErr := <-beginDone, <-issueDone
+			if (beginErr == nil) == (issueErr == nil) {
+				t.Fatalf("begin and issue must have one winner: begin=%v issue=%v", beginErr, issueErr)
+			}
+		})
 	}
 }

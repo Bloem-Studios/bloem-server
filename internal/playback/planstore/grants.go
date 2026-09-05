@@ -65,7 +65,7 @@ func (s *Postgres) StageAttemptRoute(ctx context.Context, authority playback.Att
 				return err
 			}
 			binding := activation.Binding
-			if binding.Authority().PlaybackAttemptID != authority.PlaybackAttemptID || binding.Fence.Incarnation != authority.Incarnation || binding.Fence.OwnerID != authority.OwnerID || binding.Fence.Epoch != authority.Epoch || binding.Source.AccountID != record.UserID || binding.Scope.ProfileID != record.ProfileID || binding.Scope.SessionID != record.SessionID || (activation.Phase != playback.InitialActivationPendingV3 && activation.Phase != playback.InitialActivationInstalledV3) {
+			if binding.Authority().PlaybackAttemptID != authority.PlaybackAttemptID || binding.Fence.Incarnation != authority.Incarnation || binding.Fence.OwnerID != authority.OwnerID || binding.Fence.Epoch != authority.Epoch || binding.Source.AccountID != record.UserID || binding.Scope.ProfileID != record.ProfileID || binding.Scope.SessionID != record.SessionID || activation.Phase != playback.InitialActivationInstalledV3 {
 				return playback.ErrStaleAttemptAuthorityV3
 			}
 		}
@@ -115,6 +115,7 @@ func (s *Postgres) IssueAttemptGrant(ctx context.Context, authority playback.Att
 		 FROM timing
 		 WHERE playback_attempt_id = $1 AND control_incarnation = NULLIF($2, '')::uuid AND control_owner = $3::uuid AND control_epoch = $4
 		 AND control_lease_expires_at > timing.now AND expires_at > timing.now
+		 AND (control_activation IS NULL OR control_activation->>'phase' IN ('installed', 'activated'))
 		 AND control_route->'executor' = $11::jsonb
 		 AND session_id = NULLIF($6, '')::uuid AND current_plan_id = $7 AND control_route->>'transport_id' = $8
 		 AND (($9 = 'execute' AND control_state IN ('preparing', 'active') AND (control_route->>'execution_node_id')::bigint = $10)
