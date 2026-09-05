@@ -10,6 +10,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
+const collectionItemTiebreaker = "media_item_id"
+
 type PersonalCollectionItemsInput struct {
 	ID ID `path:"id"`
 	LimitParam
@@ -46,7 +48,7 @@ func registerCollectionPaging(reg *Registry) {
 	})
 }
 func collectionPageScope(ctx context.Context, operation, filter string) CursorScope {
-	return CursorScope{OperationID: operation, Security: strconv.Itoa(claimsFrom(ctx).UserID) + ":" + profileFrom(ctx) + ":" + viewerScopeDigest(ctx), Filter: filter, Sort: "position", Tiebreaker: "media_item_id"}
+	return CursorScope{OperationID: operation, Security: strconv.Itoa(claimsFrom(ctx).UserID) + ":" + profileFrom(ctx) + ":" + viewerScopeDigest(ctx), Filter: filter, Sort: "position", Tiebreaker: collectionItemTiebreaker}
 }
 func collectionPageOptions(c *Cursors, s CursorScope, cursor string, limit int) (userstore.CollectionItemsPageOptions, *Problem) {
 	o := userstore.CollectionItemsPageOptions{Limit: limit}

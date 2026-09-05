@@ -348,10 +348,6 @@ func (h *UserCollectionImportHandler) storeBundledTemplatePoster(
 	return nil
 }
 
-func (h *UserCollectionImportHandler) toCollectionResponse(r *http.Request, c userstore.Collection) PersonalCollectionView {
-	return h.collectionView(r.Context(), c)
-}
-
 // collectionView renders a stored collection with its poster presigned.
 func (h *UserCollectionImportHandler) collectionView(ctx context.Context, c userstore.Collection) PersonalCollectionView {
 	resp := toCollectionResponse(c)

@@ -177,13 +177,13 @@ func TestCollectionMutationRetryClassification(t *testing.T) {
 	deadlock := &pgconn.PgError{Code: "40P01", Message: "deadlock"}
 	calls := 0
 	err := s.runCollectionMutation(t.Context(), "", -1, func() error { calls++; return deadlock })
-	if err != deadlock || calls != 1 || errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
+	if !errors.Is(err, deadlock) || calls != 1 || errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
 		t.Fatalf("deadlock reclassified/retried: %v calls=%d", err, calls)
 	}
 	serial := &pgconn.PgError{Code: "40001", Message: "serialization failure"}
 	calls = 0
 	err = s.runCollectionMutation(t.Context(), "", -1, func() error { calls++; return serial })
-	if err != serial || calls != 3 || errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
+	if !errors.Is(err, serial) || calls != 3 || errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
 		t.Fatalf("wildcard serialization reclassified/unbounded: %v calls=%d", err, calls)
 	}
 	canceled, cancel := context.WithCancel(t.Context())
@@ -227,7 +227,7 @@ func TestCollectionUnchangedSerializationAndNoopPostgres(t *testing.T) {
 	serial := &pgconn.PgError{Code: "40001", Message: "unrelated serialization"}
 	calls := 0
 	err = s.runCollectionMutation(ctx, c.ID, revision, func() error { calls++; return serial })
-	if err != serial || calls != 3 || errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
+	if !errors.Is(err, serial) || calls != 3 || errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
 		t.Fatalf("unchanged exact witness misreported: %v calls=%d", err, calls)
 	}
 	if err := s.UpdateCollection(ctx, userstore.UpdateCollectionInput{ID: c.ID, RequestProfileID: "owner", ExpectedRevision: &revision}); err != nil {

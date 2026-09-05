@@ -579,13 +579,5 @@ func (h *CollectionHandler) presignUserCollectionPoster(ctx context.Context, pat
 	return url
 }
 
-// toCollectionResponse mirrors the package-level helper but presigns artwork
-// URLs using the handler's S3 client. Use this method when serving HTTP
-// responses; the package-level function is reserved for callers without a
-// presign capability.
-func (h *CollectionHandler) toCollectionResponse(r *http.Request, c userstore.Collection) PersonalCollectionView {
-	return h.collectionView(r.Context(), c)
-}
-
 // previewCollectionRequest is shared with the library collection bridge handler.
 type previewCollectionRequest = PersonalCollectionPreviewRequest

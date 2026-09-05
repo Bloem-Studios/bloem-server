@@ -327,6 +327,13 @@ type CollectionImportService interface {
 	TopMDBList(ctx context.Context) (handlers.MDBListDiscoveryView, error)
 }
 
+const (
+	opReorderCollections      = "reorderCollections"
+	opReorderCollectionGroups = "reorderCollectionGroups"
+	opUpdateCollectionGroup   = "updateCollectionGroup"
+	opDeleteCollectionGroup   = "deleteCollectionGroup"
+)
+
 func registerPersonalCollections(reg *Registry) {
 	registerPersonalCollectionLifecycle(reg)
 	registerCollectionPaging(reg)
@@ -338,7 +345,7 @@ func registerPersonalCollections(reg *Registry) {
 		return Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true}
 	}
 	write := func(op huma.Operation) Operation {
-		return Operation{Operation: op, Class: ClassProfileScoped, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable, Guarded: op.OperationID == "reorderCollections" || op.OperationID == "reorderCollectionGroups" || op.OperationID == "updateCollectionGroup" || op.OperationID == "deleteCollectionGroup"}
+		return Operation{Operation: op, Class: ClassProfileScoped, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable, Guarded: op.OperationID == opReorderCollections || op.OperationID == opReorderCollectionGroups || op.OperationID == opUpdateCollectionGroup || op.OperationID == opDeleteCollectionGroup}
 	}
 
 	Register(reg, read(humaOp(http.MethodGet, Prefix+"/collections", "listCollections", "collections",
@@ -352,7 +359,7 @@ func registerPersonalCollections(reg *Registry) {
 	Register(reg, read(humaOp(http.MethodGet, Prefix+"/collections/capabilities", "getCollectionCapabilities", "collections",
 		"The collection features this server supports.")), reg.getCollectionCapabilities)
 
-	order := humaOp(http.MethodPut, Prefix+"/collections/order", "reorderCollections", "collections",
+	order := humaOp(http.MethodPut, Prefix+"/collections/order", opReorderCollections, "collections",
 		"Replace the order of the collections in one group (or the ungrouped section). Retries are not safe after an intervening mutation.")
 	order.DefaultStatus = http.StatusOK
 	Register(reg, write(order), reg.reorderCollections)
@@ -362,15 +369,15 @@ func registerPersonalCollections(reg *Registry) {
 	createGroup.DefaultStatus = http.StatusCreated
 	Register(reg, write(createGroup), reg.createCollectionGroup)
 
-	groupOrder := humaOp(http.MethodPut, Prefix+"/collections/groups/order", "reorderCollectionGroups", "collections",
+	groupOrder := humaOp(http.MethodPut, Prefix+"/collections/groups/order", opReorderCollectionGroups, "collections",
 		"Replace the order of the account's collection groups. Retries are not safe after an intervening mutation.")
 	groupOrder.DefaultStatus = http.StatusOK
 	Register(reg, write(groupOrder), reg.reorderCollectionGroups)
 
-	Register(reg, write(humaOp(http.MethodPatch, Prefix+"/collections/groups/{id}", "updateCollectionGroup", "collections",
+	Register(reg, write(humaOp(http.MethodPatch, Prefix+"/collections/groups/{id}", opUpdateCollectionGroup, "collections",
 		"Update a collection group; omitted members are unchanged. Retries are not safe after an intervening mutation.")), reg.updateCollectionGroup)
 
-	deleteGroup := humaOp(http.MethodDelete, Prefix+"/collections/groups/{id}", "deleteCollectionGroup", "collections",
+	deleteGroup := humaOp(http.MethodDelete, Prefix+"/collections/groups/{id}", opDeleteCollectionGroup, "collections",
 		"Delete a collection group; its collections become ungrouped.")
 	deleteGroup.DefaultStatus = http.StatusNoContent
 	Register(reg, write(deleteGroup), reg.deleteCollectionGroup)

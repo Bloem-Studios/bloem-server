@@ -164,7 +164,7 @@ func (h *CollectionHandler) PersonalCollectionItemsOrderEditor(ctx context.Conte
 	if err != nil {
 		return out, err
 	}
-	if c.CollectionType != "manual" {
+	if c.CollectionType != collectionManagementModeManual {
 		return out, apiError(400, "bad_request", "Only manual collections have an editable item order")
 	}
 	pager, ok := store.(userstore.CollectionItemsPager)

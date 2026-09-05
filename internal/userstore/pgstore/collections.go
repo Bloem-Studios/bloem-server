@@ -409,12 +409,14 @@ func (s *PostgresUserStore) deleteCollection(ctx context.Context, id string, exp
 	return tx.Commit(ctx)
 }
 
+// AddCollectionItem preserves existing membership, including its position and
+// added timestamp. Changing existing positions requires an explicit reorder.
 func (s *PostgresUserStore) AddCollectionItem(ctx context.Context, collectionID, mediaItemID string, position int) error {
 	_, err := s.pool.Exec(ctx,
 		`INSERT INTO user_personal_collection_items (user_id, collection_id, media_item_id, position, added_at)
 		 VALUES ($1, $2, $3, $4, $5)
 		 ON CONFLICT (user_id, collection_id, media_item_id, sub_item_id)
-		   DO UPDATE SET position = EXCLUDED.position`,
+		   DO NOTHING`,
 		s.userID, collectionID, mediaItemID, position, nowUTC(),
 	)
 	return err
@@ -679,7 +681,7 @@ func (s *PostgresUserStore) updateCollectionGroup(ctx context.Context, id string
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	if err := s.checkCollectionOrderRevision(ctx, tx, expected); err != nil {
 		return nil, err
 	}

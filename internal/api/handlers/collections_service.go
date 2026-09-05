@@ -30,6 +30,15 @@ type PersonalCollectionCreateCommand struct {
 	PosterFile func() ([]byte, error)
 }
 
+const (
+	collectionTypeMDBList  = "mdblist"
+	collectionTypeSmart    = "smart"
+	collectionImagePoster  = "poster"
+	collectionFilterType   = "type"
+	collectionFilterAll    = "all"
+	collectionFilterSeries = "series"
+)
+
 // ListPersonalCollections answers the profile's visible collections and the
 // account's groups, as v1 GET /collections does.
 func (h *CollectionHandler) ListPersonalCollections(ctx context.Context, userID int, profileID string) (PersonalCollectionListView, error) {
@@ -80,10 +89,10 @@ func (h *CollectionHandler) ListPersonalCollections(ctx context.Context, userID 
 // Capabilities is the additive feature support collection clients detect.
 func (h *CollectionHandler) Capabilities() CollectionCapabilitiesView {
 	return CollectionCapabilitiesView{
-		DisplayFilterFields: []string{"type", "watched"},
+		DisplayFilterFields: []string{collectionFilterType, "watched"},
 		DisplayFilterPresets: CollectionDisplayFilterPresetsView{
-			Watched: []string{"all", "watched", "unwatched"},
-			Media:   []string{"all", "movie", "series"},
+			Watched: []string{collectionFilterAll, "watched", "unwatched"},
+			Media:   []string{collectionFilterAll, itemTypeMovie, collectionFilterSeries},
 		},
 		CollectionDefaultSort:     true,
 		CollectionSortPreferences: true,
@@ -113,7 +122,7 @@ func (h *CollectionHandler) CreatePersonalCollection(ctx context.Context, cmd Pe
 	}
 	queryDefinitionJSON := defaultJSON(req.QueryDefinition)
 	collectionType := firstNonEmptyCollection(req.CollectionType, "manual")
-	if collectionType == "smart" {
+	if collectionType == collectionTypeSmart {
 		queryDefinitionJSON, err = normalizeSmartCollectionQueryDefinitionJSON(queryDefinitionJSON, true, true)
 		if err != nil {
 			return none, fieldError("query_definition", "Invalid query_definition")
@@ -309,7 +318,7 @@ func posterFileReader(r *http.Request) func() ([]byte, error) {
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
 		return nil
 	}
-	return func() ([]byte, error) { return readCollectionImageMultipart(r, "poster") }
+	return func() ([]byte, error) { return readCollectionImageMultipart(r, collectionImagePoster) }
 }
 
 // PersonalCollectionFeatures describes the acting account's storage support.

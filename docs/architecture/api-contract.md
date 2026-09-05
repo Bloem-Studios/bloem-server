@@ -1642,7 +1642,8 @@ Artwork changes use `PUT /collections/{id}/poster` with either a bounded multipa
 `source_url`. Definition PATCH does not download artwork. The web saves the definition first,
 then changes the poster; artwork failure leaves the saved collection intact and is reported
 separately. Membership and artwork operations check creator ownership, and item additions also
-require catalog visibility. Shared viewers can read permitted collections but cannot mutate them.
+require catalog visibility. Adding an existing native member preserves its position; order changes
+use the explicit ordering operation. Shared viewers can read permitted collections but cannot mutate them.
 Native membership operations preserve audiobook chapter entries in the same storage table.
 
 Collection capabilities describe the acting account's selected user store:

@@ -71,7 +71,7 @@ func TestCollectionMixedWriterLockOrderPostgres(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer gate.Rollback(context.Background())
+			defer func() { _ = gate.Rollback(context.Background()) }()
 			key := int64(830000000000) + int64(uid)
 			if _, err := gate.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, key); err != nil {
 				t.Fatal(err)

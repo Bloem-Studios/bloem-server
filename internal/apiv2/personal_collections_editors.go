@@ -60,12 +60,6 @@ func collectionGuard(ctx context.Context, headers CollectionPreconditions, tag E
 	}
 	return handlers.WithCollectionExpectedRevision(ctx, revision), nil
 }
-func collectionMutationProblem(err error, current EntityTag) *Problem {
-	if errors.Is(err, userstore.ErrCollectionRevisionMismatch) {
-		return StaleVersionProblem(current)
-	}
-	return collectionProblem(err)
-}
 func registerCollectionEditors(reg *Registry) {
 	op := func(path, id string) Operation {
 		return Operation{Operation: humaOp(http.MethodGet, Prefix+path, id, "collections", "Read the canonical collection editor state and its strong validator."), Class: ClassProfileScoped, ServiceBacked: true}

@@ -123,7 +123,7 @@ func (h *CollectionHandler) UpdatePersonalCollection(ctx context.Context, cmd Pe
 			}
 		}
 		if req.SourceURL != nil {
-			if existing.CollectionType != "mdblist" {
+			if existing.CollectionType != collectionTypeMDBList {
 				return none, fieldError("source_url", "source_url can only be edited for MDBList collections")
 			}
 			normalized, err := usercollections.CanonicalMDBListURL(*req.SourceURL)
@@ -269,7 +269,7 @@ func (h *CollectionHandler) AddPersonalCollectionItem(ctx context.Context, userI
 		return err
 	}
 
-	if collection.CollectionType != "manual" {
+	if collection.CollectionType != collectionManagementModeManual {
 		return apiError(http.StatusConflict, "collection_not_manual", "Only manual collection membership can be edited")
 	}
 	if err := h.requireVisibleCollectionItem(ctx, itemID); err != nil {
@@ -294,7 +294,7 @@ func (h *CollectionHandler) ReorderPersonalCollectionItems(ctx context.Context, 
 		return err
 	}
 
-	if collection.CollectionType != "manual" {
+	if collection.CollectionType != collectionManagementModeManual {
 		return apiError(http.StatusConflict, "collection_not_manual", "Only manual collection membership can be edited")
 	}
 
@@ -319,7 +319,7 @@ func (h *CollectionHandler) RemovePersonalCollectionItem(ctx context.Context, us
 		return err
 	}
 
-	if collection.CollectionType != "manual" {
+	if collection.CollectionType != collectionManagementModeManual {
 		return apiError(http.StatusConflict, "collection_not_manual", "Only manual collection membership can be edited")
 	}
 
@@ -334,7 +334,7 @@ func (h *CollectionHandler) DeletePersonalCollectionImage(ctx context.Context, u
 	if collectionID == "" {
 		return apiError(http.StatusBadRequest, "bad_request", "Collection ID is required")
 	}
-	if imageType != "poster" {
+	if imageType != collectionImagePoster {
 		return apiError(http.StatusBadRequest, "bad_request", `type must be "poster"`)
 	}
 
