@@ -51,7 +51,14 @@ this checkout; those routes remain unavailable. Any future service adapter must
 resolve the subject's effective Live TV grant before returning data or tuning.
 Do not infer adapter coverage from the shared service alone.
 
-The web viewer navigation and both v3 clients still need to consume the
-capability and use the generated DTOs. Native session/DVR ownership overrides
-require the primary admin profile; child, unknown and unresolvable profiles keep
-owner-only access. This work has not been deployed.
+The web viewer consumes the native capability for its sidebar and guide/watch
+route gates. Profile-bound requests discard late results after a profile switch.
+The live watch route negotiates browser codecs, renews the tuner lease, and
+releases it on navigation, page teardown, lost access or fatal playback errors.
+Tune requests are never automatically retried; late tune responses are released
+even if the viewer has already left. The existing browser Live TV player is
+used; native HLS-only browser support remains a separate player limitation.
+
+Both v3 clients still need capability integration and the generated DTOs.
+Native session/DVR ownership overrides require the primary admin profile;
+child, unknown and unresolvable profiles keep owner-only access. This work has not been deployed.

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   api,
+  nativeApiWithProfileRequestContext,
   apiBlob,
   apiWithProfileRequestContext,
   bootstrapAccessToken,
@@ -745,5 +746,44 @@ describe("api", () => {
       api("/webhook-sync/connections/abc/webhook/rotate", { method: "POST" }),
     ).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("native profile requests", () => {
+  it("keeps the native route and selected profile through token refresh", async () => {
+    setAccessToken("expired");
+    setRefreshToken("refresh-token");
+    setProfileId("viewer-a");
+    setProfileToken("pin-a");
+    const snapshot = captureProfileRequestContext()!;
+    const calls: Array<{ url: string; headers: Record<string, string> }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (input, init) => {
+        const url = String(input);
+        const headers = init?.headers as Record<string, string>;
+        calls.push({ url, headers });
+        if (url === "/api/v1/auth/refresh") {
+          return Response.json({ access_token: "fresh", refresh_token: "rotated", expires_in: 60 });
+        }
+        if (headers.Authorization === "Bearer expired") {
+          setProfileId("viewer-b");
+          setProfileToken("pin-b");
+          return Response.json({ error: "unauthorized" }, { status: 401 });
+        }
+        return Response.json({ allowed: true });
+      }),
+    );
+    await expect(
+      nativeApiWithProfileRequestContext("/livetv/capability", snapshot),
+    ).resolves.toEqual({ allowed: true });
+    expect(calls.map((call) => call.url)).toEqual([
+      "/api/bloem/v1/livetv/capability",
+      "/api/v1/auth/refresh",
+      "/api/bloem/v1/livetv/capability",
+    ]);
+    expect(calls[2]!.headers["X-Profile-Id"]).toBe("viewer-a");
+    expect(calls[2]!.headers["X-Profile-Token"]).toBe("pin-a");
+    expect(calls[2]!.headers.Authorization).toBe("Bearer fresh");
   });
 });

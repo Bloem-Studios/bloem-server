@@ -170,6 +170,7 @@ const AccountSettings = lazy(() => import("@/pages/settings/AccountSettings"));
 const WatchTogetherJoin = lazy(() => import("@/pages/WatchTogetherJoin"));
 const WatchTogetherRoomPage = lazy(() => import("@/pages/WatchTogetherRoomPage"));
 const WatchRoute = lazy(() => import("@/pages/WatchRoute"));
+const LiveTVWatch = lazy(() => import("@/pages/LiveTVWatch"));
 const ProfileCustomizeHome = lazy(() => import("@/pages/ProfileCustomizeHome"));
 
 /**
@@ -556,6 +557,14 @@ function AppRoutes() {
                   element={
                     <RequireProfile>
                       <TasteSeed />
+                    </RequireProfile>
+                  }
+                />
+                <Route
+                  path="/watch/live/:channelId"
+                  element={
+                    <RequireProfile>
+                      <LiveTVWatch />
                     </RequireProfile>
                   }
                 />
