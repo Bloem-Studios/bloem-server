@@ -67,7 +67,7 @@ func TestQueueStartupWaitsForConfiguredIdentityAndObservers(t *testing.T) {
 	}
 	store := startupHistoryStore{entries: make(chan userstore.WatchHistoryEntry, 1)}
 	service := NewService(ctx, repo, importStoreProvider{store})
-	service.wakeAdminQueue()
+	service.wakeImportQueue()
 	before, err := repo.GetRunByID(ctx, run.ID)
 	if err != nil || before.Status != RunStatusQueued || calls.Load() != 0 {
 		t.Fatalf("construction consumed queued work: %+v %v calls=%d", before, err, calls.Load())

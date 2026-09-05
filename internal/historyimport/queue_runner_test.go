@@ -209,13 +209,13 @@ func TestQueuePersistedIntentRestartAndCapacity(t *testing.T) {
 	}
 	service := &Service{repo: repo, bgContext: ctx, emby: NewEmbyClient(), runSemaphore: make(chan struct{}, 1), queueWake: make(chan struct{}, 1), runCancels: make(map[string]context.CancelFunc)}
 	service.runSemaphore <- struct{}{}
-	service.dispatchAdminRuns()
+	service.dispatchQueuedRuns()
 	got, err := repo.GetRunByID(ctx, run.ID)
 	if err != nil || got.Status != RunStatusQueued || fetched.Load() != 0 {
 		t.Fatalf("capacity claimed=%+v %v fetches=%d", got, err, fetched.Load())
 	}
 	<-service.runSemaphore
-	service.dispatchAdminRuns()
+	service.dispatchQueuedRuns()
 	deadline, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	for {

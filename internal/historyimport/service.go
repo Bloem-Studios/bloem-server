@@ -66,7 +66,7 @@ func NewService(bgContext context.Context, repo *Repository, storeProvider users
 // StartBackgroundWork activates recovery and dispatch after the resolver and
 // observers have been configured. Construction must not consume persisted jobs.
 func (s *Service) StartBackgroundWork() {
-	s.backgroundOnce.Do(func() { s.startStaleRunMonitor(); s.startAdminQueue() })
+	s.backgroundOnce.Do(func() { s.startStaleRunMonitor(); s.startImportQueue() })
 }
 
 func (s *Service) SetStableIdentityResolver(identity *watchstate.StableIdentityResolver) {
@@ -231,185 +231,21 @@ func (s *Service) CreateRun(ctx context.Context, userID int, input CreateRunInpu
 		return nil, ErrProfileNotFound
 	}
 
-	var sourceType, connectionMode string
-	var provider Provider
-
-	switch input.Source {
-	case SourceTypeEmby:
-		mode, err := resolveConnectionMode(input)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.repo.DeleteExpiredConnectSessions(ctx); err != nil {
-			return nil, err
-		}
-		auth, err := s.resolveAuth(ctx, userID, mode, input)
-		if err != nil {
-			return nil, err
-		}
-		sourceType = SourceTypeEmby
-		connectionMode = mode
-		provider = NewEmbyProvider(s.emby, *auth)
-
-	case SourceTypeJellyfin:
-		if input.JellyfinBaseURL == "" || input.JellyfinUsername == "" || input.JellyfinPassword == "" {
-			return nil, fmt.Errorf("jellyfin_base_url, jellyfin_username, and jellyfin_password are required")
-		}
-		auth, err := s.jellyfin.AuthenticateServerUser(ctx, input.JellyfinBaseURL, input.JellyfinUsername, input.JellyfinPassword)
-		if err != nil {
-			return nil, err
-		}
-		sourceType = SourceTypeJellyfin
-		connectionMode = ConnectionModeCustom
-		provider = NewJellyfinProvider(s.jellyfin, *auth)
-
-	case SourceTypePlex:
-		auth, mode, err := s.resolvePlexAuth(ctx, userID, input)
-		if err != nil {
-			return nil, err
-		}
-		sourceType = SourceTypePlex
-		connectionMode = mode
-		provider = NewPlexServerProvider(s.plex, auth.BaseURL, auth.Token).WithAccountToken(auth.AccountToken)
-
-	default:
-		return nil, fmt.Errorf("unsupported source type")
+	// Reject an unavailable durable store before exchanging any credentials.
+	if s.repo.cipher == nil {
+		return nil, ErrPersonalCredentialsUnavailable
 	}
-
-	run := Run{
-		ID:               uuid.NewString(),
-		UserID:           userID,
-		ProfileID:        input.ProfileID,
-		SourceType:       sourceType,
-		ConnectionMode:   connectionMode,
-		Status:           RunStatusQueued,
-		Warnings:         []string{},
-		UnmatchedSamples: []UnmatchedSample{},
+	admission, err := s.preparePersonalRun(ctx, userID, input)
+	if err != nil {
+		return nil, err
 	}
-	created, err := s.repo.CreateRun(ctx, run)
+	created, err := s.repo.enqueuePersonalRun(ctx, admission)
 	if err != nil {
 		return nil, err
 	}
 	s.notifyRun(created)
-
-	go s.executeRun(created, provider)
+	s.wakeImportQueue()
 	return created, nil
-}
-
-func (s *Service) resolveAuth(ctx context.Context, userID int, connectionMode string, input CreateRunInput) (*embyLocalAuth, error) {
-	switch connectionMode {
-	case ConnectionModeConnect:
-		session, err := s.repo.GetConnectSession(ctx, userID, input.ConnectSessionID)
-		if err != nil {
-			return nil, err
-		}
-		var server *ConnectServer
-		for i := range session.Servers {
-			if session.Servers[i].ID == input.ServerID {
-				server = &session.Servers[i]
-				break
-			}
-		}
-		if server == nil {
-			return nil, fmt.Errorf("selected server not found in connect session")
-		}
-		baseURL := firstNonEmpty(server.URL, server.LocalAddress)
-		if baseURL == "" {
-			return nil, fmt.Errorf("selected server does not expose a usable address")
-		}
-		auth, err := s.emby.ConnectExchange(ctx, baseURL, session.ConnectUserID, server.AccessKey)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.repo.ConsumeConnectSession(ctx, session.ID); err != nil {
-			return nil, err
-		}
-		return auth, nil
-	case ConnectionModePredefined:
-		if input.SourceID <= 0 {
-			return nil, fmt.Errorf("source_id is required")
-		}
-		if input.Username == "" || input.Password == "" {
-			return nil, fmt.Errorf("username and password are required")
-		}
-		source, err := s.repo.GetSourceByID(ctx, input.SourceID)
-		if err != nil {
-			return nil, err
-		}
-		if !source.Enabled {
-			return nil, fmt.Errorf("selected source is disabled")
-		}
-		return s.emby.AuthenticateServerUser(ctx, source.BaseURL, input.Username, input.Password)
-	default:
-		return nil, fmt.Errorf("invalid connection mode")
-	}
-}
-
-func (s *Service) resolvePlexAuth(ctx context.Context, userID int, input CreateRunInput) (*plexAuth, string, error) {
-	if err := s.repo.DeleteExpiredPlexSessions(ctx); err != nil {
-		return nil, "", err
-	}
-
-	if input.PlexSessionID != "" {
-		session, err := s.repo.GetPlexSession(ctx, userID, input.PlexSessionID)
-		if err != nil {
-			return nil, "", err
-		}
-		if session.AuthToken == "" {
-			return nil, "", fmt.Errorf("plex OAuth not completed yet")
-		}
-		var server *PlexServer
-		for i := range session.Servers {
-			if session.Servers[i].ClientIdentifier == input.PlexServerID {
-				server = &session.Servers[i]
-				break
-			}
-		}
-		if server == nil {
-			return nil, "", fmt.Errorf("selected Plex server not found in session")
-		}
-		baseURL := firstNonEmpty(server.RemoteURL, server.LocalURL)
-		if baseURL == "" {
-			return nil, "", fmt.Errorf("selected Plex server has no usable address")
-		}
-		if err := s.repo.ConsumePlexSession(ctx, session.ID); err != nil {
-			return nil, "", err
-		}
-		return &plexAuth{BaseURL: baseURL, Token: server.AccessToken, AccountToken: session.AuthToken}, ConnectionModePlexOAuth, nil
-	}
-
-	if input.PlexBaseURL != "" {
-		if input.PlexToken == "" {
-			return nil, "", fmt.Errorf("plex_token is required for browser Plex imports")
-		}
-		// Prefer the explicit account token: in the browser OAuth flow
-		// PlexToken is a PMS access token, which account-level APIs (the
-		// watchlist) reject. Falling back to PlexToken keeps manually pasted
-		// plex.tv account tokens working.
-		return &plexAuth{BaseURL: input.PlexBaseURL, Token: input.PlexToken, AccountToken: firstNonEmpty(input.PlexAccountToken, input.PlexToken)}, ConnectionModePlexOAuth, nil
-	}
-	if input.PlexToken != "" {
-		return nil, "", fmt.Errorf("plex_base_url is required for browser Plex imports")
-	}
-
-	if input.SourceID > 0 {
-		source, err := s.repo.GetSourceByID(ctx, input.SourceID)
-		if err != nil {
-			return nil, "", err
-		}
-		if !source.Enabled {
-			return nil, "", fmt.Errorf("selected source is disabled")
-		}
-		if source.SourceType != SourceTypePlex {
-			return nil, "", fmt.Errorf("source is not a Plex server")
-		}
-		if input.PlexToken == "" {
-			return nil, "", fmt.Errorf("plex_token is required for predefined Plex sources")
-		}
-		return &plexAuth{BaseURL: source.BaseURL, Token: input.PlexToken, AccountToken: firstNonEmpty(input.PlexAccountToken, input.PlexToken)}, ConnectionModePredefined, nil
-	}
-
-	return nil, "", fmt.Errorf("plex_session_id, plex_base_url, or source_id is required for Plex imports")
 }
 
 // addToWatchlist puts a matched watchlist import onto the importing
