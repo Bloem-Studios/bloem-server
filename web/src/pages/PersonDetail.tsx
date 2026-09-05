@@ -3,7 +3,7 @@ import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Pencil, RefreshCw } from "lucide-react";
 
-import { getPerson } from "@/api/client";
+import { getPerson } from "@/api/v2/people";
 import { createEmptyQueryDefinition, type Person } from "@/api/types";
 import type { CatalogSearchState } from "@/pages/catalogSearchParams";
 import EditPersonDialog from "@/components/EditPersonDialog";
