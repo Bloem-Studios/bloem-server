@@ -48,8 +48,10 @@ var (
 
 // Window is the inclusive-start, exclusive-end UTC interval a pack is active.
 type Window struct {
-	StartsAt time.Time `json:"starts_at"`
-	EndsAt   time.Time `json:"ends_at"`
+	StartsAt     time.Time `json:"starts_at"`
+	RepeatYearly bool      `json:"repeat_yearly,omitempty"`
+	Timezone     string    `json:"timezone,omitempty"`
+	EndsAt       time.Time `json:"ends_at"`
 }
 
 // Contains reports whether now falls inside the window (starts_at <= now < ends_at).
@@ -96,7 +98,7 @@ func (p Pack) Wire() Wire {
 	if surfaces == nil {
 		surfaces = []string{}
 	}
-	return Wire{ID: p.ID, EffectID: p.EffectID, Window: p.Window, Intensity: p.Intensity, Surfaces: surfaces, Assets: p.Assets}
+	return Wire{ID: p.ID, EffectID: p.EffectID, Window: Window{StartsAt: p.Window.StartsAt, EndsAt: p.Window.EndsAt}, Intensity: p.Intensity, Surfaces: surfaces, Assets: p.Assets}
 }
 
 // Input is the admin create/update body. Intensity defaults to 1.0 and
@@ -146,7 +148,19 @@ func Normalize(in Input) (Normalized, error) {
 	if !in.Window.StartsAt.Before(in.Window.EndsAt) {
 		return out, invalid("window.starts_at must be before window.ends_at")
 	}
-	out.Window = Window{StartsAt: in.Window.StartsAt.UTC(), EndsAt: in.Window.EndsAt.UTC()}
+	out.Window = in.Window
+	out.Window.StartsAt = in.Window.StartsAt.UTC()
+	out.Window.EndsAt = in.Window.EndsAt.UTC()
+	if out.Window.Timezone == "" {
+		out.Window.Timezone = "UTC"
+	}
+	location, err := time.LoadLocation(out.Window.Timezone)
+	if err != nil {
+		return out, invalid("window.timezone must name an IANA timezone")
+	}
+	if out.Window.RepeatYearly && !out.Window.EndsAt.Before(out.Window.StartsAt.In(location).AddDate(1, 0, 0)) {
+		return out, invalid("a yearly window must be shorter than one year")
+	}
 
 	out.Intensity = 1.0
 	if in.Intensity != nil {

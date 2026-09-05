@@ -43,6 +43,7 @@ import { useEventChannel } from "@/components/realtimeEventsContext";
 import { useSettingValuesRealtime } from "@/hooks/queries/settingValues";
 import Layout from "@/components/Layout";
 import Home from "@/pages/Home";
+import SeasonalLayer from "@/components/seasonal/SeasonalLayer";
 import Login from "@/pages/Login";
 import Catalog from "@/pages/Catalog";
 import AdminLiveTV from "@/pages/AdminLiveTV";
@@ -907,6 +908,7 @@ function AppShell() {
                         <RouteAnnouncer />
                         <QueryCacheManager />
                         <AppChrome />
+                        <SeasonalLayer />
                         <Suspense fallback={<RouteLoading />}>
                           <Outlet />
                         </Suspense>

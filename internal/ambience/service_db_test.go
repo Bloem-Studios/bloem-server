@@ -407,3 +407,42 @@ func pngBytesSized(t *testing.T, n int) []byte {
 	}
 	return buf.Bytes()
 }
+
+func TestAnnualRegistryPersistsAndExpires(t *testing.T) {
+	pool := newMigratedTestPool(t)
+	ctx := context.Background()
+	owner := seedAccount(t, pool, "seasonal-owner")
+	svc := NewService(pool, recipes.FixedClock(instant("2029-12-15T00:00:00Z")), nil)
+	in := Input{EffectID: "snow", Window: Window{StartsAt: instant("2026-11-30T23:00:00Z"), EndsAt: instant("2026-12-31T23:00:00Z"), RepeatYearly: true, Timezone: "Europe/Amsterdam"}}
+	created, err := svc.Create(ctx, owner, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := svc.Get(ctx, created.ID)
+	if err != nil || !saved.Window.RepeatYearly || saved.Window.Timezone != "Europe/Amsterdam" {
+		t.Fatalf("stored schedule: %+v %v", saved, err)
+	}
+	active, err := svc.ActivePublic(ctx)
+	if err != nil || len(active) != 1 {
+		t.Fatalf("active: %+v %v", active, err)
+	}
+	if active[0].Window.StartsAt != instant("2029-11-30T23:00:00Z") || active[0].Window.RepeatYearly || active[0].Window.Timezone != "" {
+		t.Fatal("client must receive only this occurrence", active[0])
+	}
+	svc.clock = recipes.FixedClock(instant("2029-12-31T23:00:00Z"))
+	active, err = svc.ActivePublic(ctx)
+	if err != nil || len(active) != 0 {
+		t.Fatalf("expired: %+v %v", active, err)
+	}
+	in.Window.RepeatYearly = false
+	if _, err = svc.Update(ctx, created.ID, in); err != nil {
+		t.Fatal(err)
+	}
+	saved, err = svc.Get(ctx, created.ID)
+	if err != nil || saved.Window.RepeatYearly {
+		t.Fatalf("updated schedule: %+v %v", saved, err)
+	}
+	if err = svc.Delete(ctx, created.ID); err != nil {
+		t.Fatal(err)
+	}
+}

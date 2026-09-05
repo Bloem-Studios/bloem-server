@@ -93,7 +93,7 @@ func (h *AmbienceHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	if packs == nil {
 		packs = []ambience.Pack{}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"packs": packs, "storage_available": h.registry.HasStorage()})
+	writeJSON(w, http.StatusOK, map[string]any{"packs": packs, "storage_available": h.registry.HasStorage(), "yearly_scheduling": true})
 }
 
 // HandleCreate handles POST /admin/ambience.

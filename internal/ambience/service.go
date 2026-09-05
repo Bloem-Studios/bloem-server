@@ -38,7 +38,7 @@ func NewService(pool *pgxpool.Pool, clock recipes.Clock, store AssetStore) *Serv
 // Now exposes the evaluation instant (the injected seasonal clock).
 func (s *Service) Now() time.Time { return s.clock.Now().UTC() }
 
-const packColumns = `id, effect_id, starts_at, ends_at, intensity, surfaces, assets, organization_id, created_by, created_at, updated_at`
+const packColumns = `id, effect_id, starts_at, ends_at, intensity, surfaces, assets, organization_id, created_by, created_at, updated_at, repeat_yearly, timezone`
 
 func scanPack(row pgx.Row) (*Pack, error) {
 	var (
@@ -47,7 +47,7 @@ func scanPack(row pgx.Row) (*Pack, error) {
 		createdBy *int
 		orgID     *uuid.UUID
 	)
-	if err := row.Scan(&p.ID, &p.EffectID, &p.Window.StartsAt, &p.Window.EndsAt, &p.Intensity, &p.Surfaces, &assets, &orgID, &createdBy, &p.CreatedAt, &p.UpdatedAt); err != nil {
+	if err := row.Scan(&p.ID, &p.EffectID, &p.Window.StartsAt, &p.Window.EndsAt, &p.Intensity, &p.Surfaces, &assets, &orgID, &createdBy, &p.CreatedAt, &p.UpdatedAt, &p.Window.RepeatYearly, &p.Window.Timezone); err != nil {
 		return nil, err
 	}
 	if len(assets) > 0 {
@@ -92,10 +92,10 @@ func (s *Service) Create(ctx context.Context, createdBy int, in Input) (*Pack, e
 	}
 	assets, _ := json.Marshal(n.Assets)
 	row := s.pool.QueryRow(ctx, `
-		INSERT INTO ambience_packs (id, effect_id, starts_at, ends_at, intensity, surfaces, assets, organization_id, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO ambience_packs (id, effect_id, starts_at, ends_at, intensity, surfaces, assets, organization_id, created_by, repeat_yearly, timezone)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING `+packColumns,
-		ulid.Make().String(), n.EffectID, n.Window.StartsAt, n.Window.EndsAt, n.Intensity, n.Surfaces, assets, n.OrganizationID, createdBy)
+		ulid.Make().String(), n.EffectID, n.Window.StartsAt, n.Window.EndsAt, n.Intensity, n.Surfaces, assets, n.OrganizationID, createdBy, n.Window.RepeatYearly, n.Window.Timezone)
 	p, err := scanPack(row)
 	if err != nil {
 		return nil, wrapWriteError("create", err)
@@ -112,10 +112,10 @@ func (s *Service) Update(ctx context.Context, id string, in Input) (*Pack, error
 	assets, _ := json.Marshal(n.Assets)
 	row := s.pool.QueryRow(ctx, `
 		UPDATE ambience_packs
-		SET effect_id = $2, starts_at = $3, ends_at = $4, intensity = $5, surfaces = $6, assets = $7, organization_id = $8, updated_at = now()
+		SET effect_id = $2, starts_at = $3, ends_at = $4, intensity = $5, surfaces = $6, assets = $7, organization_id = $8, repeat_yearly = $9, timezone = $10, updated_at = now()
 		WHERE id = $1
 		RETURNING `+packColumns,
-		id, n.EffectID, n.Window.StartsAt, n.Window.EndsAt, n.Intensity, n.Surfaces, assets, n.OrganizationID)
+		id, n.EffectID, n.Window.StartsAt, n.Window.EndsAt, n.Intensity, n.Surfaces, assets, n.OrganizationID, n.Window.RepeatYearly, n.Window.Timezone)
 	p, err := scanPack(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -162,9 +162,9 @@ func (s *Service) List(ctx context.Context) ([]Pack, error) {
 func (s *Service) ActivePublic(ctx context.Context) ([]Wire, error) {
 	packs, err := s.queryPacks(ctx, `
 		SELECT `+packColumns+` FROM ambience_packs
-		WHERE organization_id IS NULL AND starts_at <= $1 AND $1 < ends_at
+		WHERE organization_id IS NULL AND starts_at <= $1 AND ($1 < ends_at OR repeat_yearly)
 		ORDER BY starts_at, id`, s.Now())
-	return wire(packs), err
+	return activeWire(packs, s.Now()), err
 }
 
 // ActiveForAccount returns the active deployment-wide packs plus the active
@@ -172,14 +172,14 @@ func (s *Service) ActivePublic(ctx context.Context) ([]Wire, error) {
 func (s *Service) ActiveForAccount(ctx context.Context, accountID int) ([]Wire, error) {
 	packs, err := s.queryPacks(ctx, `
 		SELECT `+packColumns+` FROM ambience_packs
-		WHERE starts_at <= $1 AND $1 < ends_at
+		WHERE starts_at <= $1 AND ($1 < ends_at OR repeat_yearly)
 		  AND (organization_id IS NULL OR organization_id IN (
 		        SELECT m.organization_id
 		        FROM organization_memberships m
 		        JOIN organizations o ON o.id = m.organization_id
 		        WHERE m.account_id = $2 AND m.status = 'active' AND o.status = 'active'))
 		ORDER BY starts_at, id`, s.Now(), accountID)
-	return wire(packs), err
+	return activeWire(packs, s.Now()), err
 }
 
 // wrapWriteError maps a foreign-key violation on organization_id to a
