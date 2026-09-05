@@ -14,8 +14,13 @@ import (
 )
 
 type QueryExecutor struct {
-	Pool  *pgxpool.Pool
-	Scope string
+	// SourceWhere and SourceArgs are trusted internal source predicates. The
+	// predicate numbers its parameters from $1; the executor rebinds them.
+	SourceWhere string
+	SourceArgs  []any
+	SourceOrder []queryCursorTerm
+	Pool        *pgxpool.Pool
+	Scope       string
 	// BaseRelationSQL, when set, replaces the default "media_items mi" source.
 	// The relation must already be aliased as "mi".
 	BaseRelationSQL string
@@ -42,26 +47,29 @@ func (e *QueryExecutor) PreviewPage(
 		return nil, 0, false, fmt.Errorf("query executor requires a database pool")
 	}
 
-	if items, total, hasMore, ok, err := e.tryEpisodeCatalogUserStatePreviewPage(
-		ctx,
-		def,
-		access,
-		limit,
-		offset,
-		includeTotal,
-	); ok || err != nil {
-		return items, total, hasMore, err
-	}
+	if e.SourceWhere == "" && len(e.SourceOrder) == 0 {
+		if items, total, hasMore, ok, err := e.tryEpisodeCatalogUserStatePreviewPage(
+			ctx,
+			def,
+			access,
+			limit,
+			offset,
+			includeTotal,
+		); ok || err != nil {
+			return items, total, hasMore, err
+		}
 
-	if items, total, hasMore, ok, err := e.tryEpisodeCatalogEntriesPreviewPage(
-		ctx,
-		def,
-		access,
-		limit,
-		offset,
-		includeTotal,
-	); ok || err != nil {
-		return items, total, hasMore, err
+		if items, total, hasMore, ok, err := e.tryEpisodeCatalogEntriesPreviewPage(
+			ctx,
+			def,
+			access,
+			limit,
+			offset,
+			includeTotal,
+		); ok || err != nil {
+			return items, total, hasMore, err
+		}
+
 	}
 
 	build, err := e.buildPreviewPagePlan(def, access, limit, offset)
@@ -281,6 +289,12 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 	args := append(append([]any{}, baseArgs...), filterArgs...)
 	argIdx := builder.ArgIdx() + filterArgOffset
 
+	sourceArgShift := argIdx - 1
+	if e.SourceWhere != "" {
+		conditions = append(conditions, "("+rebindSQLPlaceholders(e.SourceWhere, argIdx-1)+")")
+		args = append(args, e.SourceArgs...)
+		argIdx += len(e.SourceArgs)
+	}
 	if filterWhere != "" {
 		// QueryBuilder.Build returns a parenthesized expression, so AND-ing
 		// access, library, and other outer constraints onto it cannot let a
@@ -363,6 +377,23 @@ func (e *QueryExecutor) buildPreviewPagePlan(
 	sortPlan, err := builder.WithArgIdx(argIdx).BuildSortPlan(def.Sort)
 	if err != nil {
 		return previewPagePlan{}, err
+	}
+	if len(e.SourceOrder) > 0 {
+		terms := append([]queryCursorTerm(nil), e.SourceOrder...)
+		clauses := make([]string, len(terms))
+		for i := range terms {
+			terms[i].expression = rebindSQLPlaceholders(terms[i].expression, sourceArgShift)
+			direction := "ASC"
+			if terms[i].descending {
+				direction = "DESC"
+			}
+			nulls := "NULLS FIRST"
+			if terms[i].nullsLast {
+				nulls = "NULLS LAST"
+			}
+			clauses[i] = terms[i].expression + " " + direction + " " + nulls
+		}
+		sortPlan = QuerySortPlan{OrderBy: "ORDER BY " + strings.Join(clauses, ", "), terms: terms}
 	}
 	fromClausePaged := fromClauseBase
 	if len(sortPlan.Joins) > 0 {

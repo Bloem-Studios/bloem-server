@@ -14,8 +14,9 @@ import (
 // the normalized query and viewer scope in its signed cursor envelope.
 // Values retain PostgreSQL's text precision rather than passing through float64.
 type QueryCursor struct {
-	Keys     []QueryCursorValue `json:"keys"`
-	Consumed int                `json:"consumed"`
+	Collection *CollectionCursor  `json:"collection,omitempty"`
+	Keys       []QueryCursorValue `json:"keys"`
+	Consumed   int                `json:"consumed"`
 }
 type QueryCursorValue struct {
 	Kind  string  `json:"kind"`
@@ -256,8 +257,8 @@ func (r *cursorRows) Scan(dest ...any) error {
 // position. Only explicit jumps use OFFSET; continuations always use the tuple.
 // The caller still binds the resulting cursor to its query and viewer scope.
 func (e *QueryExecutor) SeekCursor(ctx context.Context, def QueryDefinition, access AccessFilter, index int) (*QueryCursor, error) {
-	if index < 0 || index > 10000 {
-		return nil, fmt.Errorf("jump index must be between 0 and 10000")
+	if index < 0 || index > 10000000 {
+		return nil, fmt.Errorf("jump index must be between 0 and 10000000")
 	}
 	if index == 0 {
 		return nil, nil
