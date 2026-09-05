@@ -57,11 +57,21 @@ type QueryOf<Op> =
       : Q
     : never;
 
+type SessionHeader = "authorization" | "x-profile-id" | "x-profile-token" | "x-device-id";
+type CallerHeaders<H extends object> = {
+  [Key in keyof H as Key extends string
+    ? Lowercase<Key> extends SessionHeader
+      ? never
+      : Key
+    : Key]: H[Key];
+};
 type HeadersOf<Op> =
   ParamsOf<Op> extends { header?: infer H extends object }
     ? [H] extends [never]
       ? never
-      : Omit<H, "Authorization" | "X-Profile-Id" | "X-Profile-Token" | "X-Device-Id">
+      : keyof CallerHeaders<H> extends never
+        ? never
+        : CallerHeaders<H>
     : never;
 
 type BodyOf<Op> = Op extends { requestBody: { content: { "application/json": infer B } } }
@@ -325,6 +335,13 @@ export async function v2<K extends V2OperationKey>(
     ...V2_CLIENT_HEADERS,
   };
   for (const [name, value] of Object.entries(options.headers ?? {})) {
+    if (
+      ["authorization", "x-profile-id", "x-profile-token", "x-device-id"].includes(
+        name.toLowerCase(),
+      )
+    ) {
+      throw new TypeError(`Session header ${name} must be supplied through the session client.`);
+    }
     if (value !== undefined) headers[name] = String(value);
   }
   const init: RequestInit = { method, headers, signal: options.signal };
