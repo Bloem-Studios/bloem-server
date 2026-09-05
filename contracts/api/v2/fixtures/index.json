@@ -5742,6 +5742,92 @@
       "body_file": "profile_verification_required.json"
     },
     {
+      "name": "progress_bootstrap_capabilities",
+      "operation_id": "getProgressBootstrapCapabilities",
+      "scenario": "Full replacement is available without an incremental sync promise.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/sync/progress/capabilities",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/ProgressBootstrapCapabilities",
+      "body_file": "progress_bootstrap_capabilities.json"
+    },
+    {
+      "name": "progress_bootstrap_complete",
+      "operation_id": "getProgressBootstrapSnapshot",
+      "scenario": "The terminal page carries a completion receipt rather than a next cursor.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/sync/progress/snapshots/5e6af827-e7fc-4ebc-84f3-597c888b77ae?cursor=eyJ2IjoxLCJwIjp7InBvc2l0aW9uIjp7IlNuYXBzaG90SUQiOiI1ZTZhZjgyNy1lN2ZjLTRlYmMtODRmMy01OTdjODg4Yjc3YWUiLCJJbnN0YWxsYXRpb25JRCI6Imluc3RhbGxhdGlvbiIsIkdlbmVyYXRpb24iOiJnZW5lcmF0aW9uIiwiQWNjZXNzRGlnZXN0IjoiYWNjZXNzIiwiVXNlcklEIjoxLCJQcm9maWxlSUQiOiJwLW93bmVyIiwiUGFnZVNpemUiOjEsIkFmdGVyIjoxfSwiZXhwaXJlc19hdCI6IjIwOTktMDEtMDFUMDA6MTU6MDBaIiwibW9kZSI6ImZ1bGxfcmVwbGFjZSJ9fQ.JS1JpM-ywrw37v_3pXbPdhLINTnY_SNig69-nNEQIIo",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/ProgressSnapshot",
+      "body_file": "progress_bootstrap_complete.json"
+    },
+    {
+      "name": "progress_bootstrap_created",
+      "operation_id": "createProgressBootstrapSnapshot",
+      "scenario": "An admission identity captures the first immutable page and canonical snapshot location.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/sync/progress/snapshots",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"request_id\":\"9a91f367-e3bc-4305-b2ba-133bb507ce2d\",\"limit\":1}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "Location": "/api/v2/sync/progress/snapshots/5e6af827-e7fc-4ebc-84f3-597c888b77ae"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/ProgressSnapshot",
+      "body_file": "progress_bootstrap_created.json"
+    },
+    {
+      "name": "progress_bootstrap_invalid_cursor",
+      "operation_id": "getProgressBootstrapSnapshot",
+      "scenario": "A legacy numeric progress sequence cannot continue a replacement snapshot.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/sync/progress/snapshots/5e6af827-e7fc-4ebc-84f3-597c888b77ae?cursor=12345",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 400,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "progress_bootstrap_invalid_cursor.json"
+    },
+    {
       "name": "query_catalog_items_limit_out_of_range",
       "operation_id": "queryCatalogItems",
       "scenario": "A page size over the maximum is refused rather than clamped.",
