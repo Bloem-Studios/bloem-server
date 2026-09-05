@@ -90,6 +90,7 @@ type Viewer struct {
 }
 
 type Settings struct {
+	Revision                  int64     `json:"-"`
 	RequestsEnabled           bool      `json:"requests_enabled"`
 	GlobalMaxRequests         int       `json:"global_max_requests"`
 	GlobalWindowDays          int       `json:"global_window_days"`
@@ -108,6 +109,7 @@ type FeatureStatus struct {
 }
 
 type UserLimit struct {
+	Revision     int64        `json:"-"`
 	UserID       int          `json:"user_id"`
 	LimitMode    LimitMode    `json:"limit_mode"`
 	MaxRequests  *int         `json:"max_requests,omitempty"`
@@ -272,6 +274,7 @@ type ListFilter struct {
 }
 
 type Integration struct {
+	Revision            int64          `json:"-"`
 	ID                  string         `json:"id"`
 	Name                string         `json:"name"`
 	Enabled             bool           `json:"enabled"`

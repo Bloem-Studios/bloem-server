@@ -1973,6 +1973,8 @@ export interface RequestFeatureStatus {
 }
 
 export interface RequestSettings {
+  /** Validator captured when this editor representation was loaded. */
+  etag?: string;
   requests_enabled: boolean;
   global_max_requests: number;
   global_window_days: number;
@@ -1982,6 +1984,8 @@ export interface RequestSettings {
 }
 
 export interface RequestUserLimit {
+  /** Validator captured when this editor representation was loaded. */
+  etag?: string;
   user_id: number;
   limit_mode: RequestLimitMode;
   max_requests?: number | null;
@@ -1991,6 +1995,8 @@ export interface RequestUserLimit {
 }
 
 export interface RequestIntegration {
+  /** Validator captured when this editor representation was loaded. */
+  etag?: string;
   id: string;
   name: string;
   enabled: boolean;

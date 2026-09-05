@@ -5,4 +5,3 @@
   "detail": "The resource changed while the request was being applied; fetch it again and retry against the current ETag.",
   "instance": "urn:silo:request:0000000000000000000000ff"
 }
-

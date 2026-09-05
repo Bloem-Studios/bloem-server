@@ -5,4 +5,3 @@
   "detail": "Too many requests; retry after the Retry-After delay.",
   "instance": "urn:silo:request:00000000000000000000000b"
 }
-

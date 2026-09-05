@@ -166,6 +166,7 @@ type Dependencies struct {
 	SectionFlags SectionFlagService
 	// Requests serves media requests and the discovery surface
 	// (*requests.Service, the value *handlers.RequestsHandler wraps).
+	AdminRequests    handlers.RequestService
 	Requests         MediaRequestService
 	RequestLifecycle RequestLifecycleService
 	WatchProviders   WatchProviderService

@@ -5,4 +5,3 @@
   "detail": "The request media type is not supported; send application/json.",
   "instance": "urn:silo:request:000000000000000000000005"
 }
-

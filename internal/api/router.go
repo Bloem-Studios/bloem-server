@@ -2016,6 +2016,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if requestHandler != nil {
 		v2deps.Requests = requestHandler.Service()
 		v2deps.RequestLifecycle = requestHandler.Service()
+		v2deps.AdminRequests = requestHandler.Service()
 	}
 	if collectionHandler != nil {
 		v2deps.PersonalCollections = collectionHandler

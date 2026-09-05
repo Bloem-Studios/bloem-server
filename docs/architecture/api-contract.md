@@ -1791,3 +1791,40 @@ pagination shapes, canonical editor ETags, 412 recovery, capability flags, and t
 flow. Their existing v1 collection routes remain available during coordinated adoption.
 Jellyfin-protocol routes are unchanged; shared native storage fixes preserve chapter membership,
 and collection authorization checks remain enforced at the native service boundary.
+### Request administration
+
+The v2 administration surface ports the fourteen request moderation, settings,
+account-limit and integration-management operations. Two additional reads support
+those workflows: `GET /admin/requests/capabilities` reports whether administration
+and guarded configuration are available, and `GET /admin/request-integrations/{id}`
+returns one canonical integration with its validator. All operations require the
+acting administrator gate and preserve demo restrictions. Native Apple and Android
+have no request-administration consumers; the bundled web migrates these workflows.
+Jellyfin compatibility has no corresponding administration contract.
+
+Moderation uses signed `(created_at, id)` cursors scoped to the administrator,
+profile and filters. Integration lists return bounded ID-ordered pages over the
+configured integrations. The service currently loads that small configuration set
+before slicing a page; it does not claim database-bounded enumeration.
+
+Settings, account limits and integrations require `If-Match` for replacement and
+integration deletion. A shared PostgreSQL sequence assigns a new revision on every
+insert or update, including legacy and background writers, and distinguishes a
+recreated integration from its deleted predecessor. A missing settings or account
+limit row has a version-zero default representation; a nonexistent target account
+returns 404. Row locks and conditional upserts arbitrate concurrent writers. Explicit
+wildcards overwrite atomically; first-party clients never supply them automatically.
+
+Settings and limits expose only their editable fields (plus the target account ID
+for limits), without volatile metadata. Integration reads include persisted public
+configuration and check status, all covered by the row revision, and a credential
+presence flag. API credentials are write-only. A blank update preserves the saved
+credential and retains the existing requirement to re-enter it when changing the
+base URL. Plugin validation happens before the storage transaction; an intervening
+edit still fails the final comparison instead of overwriting it. A failed plugin
+validation uses structured v2 problem errors for the web's inline field messages.
+
+All mutations remain non-retryable after an uncertain response. Approve, retry and
+option loading retain their owning service behavior and may invoke a plugin; they
+have no new accepted-job or durable-dispatch guarantee. Configuration guards prevent
+lost updates but do not make external validation or whole moderation flows atomic.

@@ -1180,6 +1180,7 @@ func fixtureCases() []fixtureCase {
 			method: http.MethodPost, path: "/api/v2/library-jobs/job-2/cancel", headers: bearer(adminToken), status: http.StatusAccepted, assertHeaders: []string{"Content-Type", "Cache-Control", "Location", "Retry-After", "ETag"}, schema: "#/components/schemas/AdminJob"},
 	}
 	cases = append(cases, requestLifecycleFixtureCases()...)
+	cases = append(cases, adminRequestFixtureCases()...)
 	return append(cases, fixtureCase{name: "list_webhook_connections_ok", operationID: "listWebhookConnections", scenario: "Account webhook management exposes receiver URLs without access tokens.", method: http.MethodGet, path: Prefix + "/webhook-sync/connections", headers: bearer(memberToken), status: http.StatusOK, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: "#/components/schemas/WebhookConnectionCollection"})
 }
 
@@ -1222,6 +1223,7 @@ func fixtureDeps() Dependencies {
 	deps.Watch = &fakeWatch{}
 	deps.Recommendations = &fakeRecommendations{seedCandidates: 1, cardsHasMore: true}
 	deps.Requests = fixtureRequests()
+	deps.AdminRequests = fixtureAdminRequests()
 	deps.HistoryImports = fixtureHistoryImports()
 	deps.WebhookSync = &fakeWebhookManagement{}
 	deps.RequestLifecycle = &fakeLifecycle{}
@@ -1330,7 +1332,7 @@ func generateFixtures(t *testing.T) map[string][]byte {
 		} else {
 			mt := strings.TrimSpace(strings.Split(rec.Header().Get("Content-Type"), ";")[0])
 			var pretty bytes.Buffer
-			if err := json.Indent(&pretty, rec.Body.Bytes(), "", "  "); err != nil {
+			if err := json.Indent(&pretty, bytes.TrimSpace(rec.Body.Bytes()), "", "  "); err != nil {
 				t.Fatalf("%s: body is not JSON: %v", c.name, err)
 			}
 			pretty.WriteByte('\n')
