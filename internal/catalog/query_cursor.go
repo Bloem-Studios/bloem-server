@@ -46,6 +46,12 @@ func setCursorTermKinds(terms []queryCursorTerm, field string) {
 		return
 	}
 	switch field {
+	case "last_air_date":
+		terms[0].kind = "date"
+	case "release_date":
+		if strings.HasSuffix(terms[0].expression, ".episode_air_date") {
+			terms[0].kind = "date"
+		}
 	case "added_at", "date_viewed", "latest_episode_added":
 		terms[0].kind = "timestamp"
 	case "year", "runtime", "rating_imdb", "rating_tmdb", "rating_rt_critic", "rating_rt_audience", "resolution", "bitrate", "progress", "plays", "content_rating":
@@ -57,6 +63,8 @@ func setCursorTermKinds(terms []queryCursorTerm, field string) {
 
 func (t queryCursorTerm) cast() string {
 	switch t.kind {
+	case "date":
+		return "date"
 	case "number":
 		return "numeric"
 	case "timestamp":

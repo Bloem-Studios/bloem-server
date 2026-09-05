@@ -63,7 +63,7 @@ func TestQueryCursorPostgresBoundaries(t *testing.T) {
 		if i < 5 {
 			rating = float64(i / 2)
 		}
-		_, err = pool.Exec(ctx, `INSERT INTO media_items(content_id,type,title,rating_imdb,genres,status) VALUES($1,'movie',$2,$3,'{}','released')`, id, fmt.Sprintf("Title %d", i/2), rating)
+		_, err = pool.Exec(ctx, `INSERT INTO media_items(content_id,type,title,rating_imdb,genres,status,last_air_date_at) VALUES($1,'movie',$2,$3,'{}','released', CASE WHEN $3::double precision IS NULL THEN NULL ELSE DATE '2020-01-01' + $3::double precision::int END)`, id, fmt.Sprintf("Title %d", i/2), rating)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,7 +71,7 @@ func TestQueryCursorPostgresBoundaries(t *testing.T) {
 	defer func() { _, _ = pool.Exec(ctx, `DELETE FROM media_items WHERE content_id LIKE $1`, prefix+"%") }()
 	access := AccessFilter{AllowedContentIDs: ids}
 	executor := QueryExecutor{Pool: pool}
-	for _, field := range []string{"title", "rating_imdb", "added_at", "year", "runtime", "content_rating"} {
+	for _, field := range []string{"title", "rating_imdb", "added_at", "year", "runtime", "content_rating", "last_air_date"} {
 		for _, order := range []string{"asc", "desc"} {
 			t.Run(field+order, func(t *testing.T) {
 				def := QueryDefinition{Sort: QuerySort{Field: field, Order: order}}
