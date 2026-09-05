@@ -30,7 +30,7 @@ func (s *SQLiteUserStore) ListDeviceSettingsPage(ctx context.Context, opts users
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	entries := []userstore.DeviceSettingsEntry{}
 	for rows.Next() {
 		var entry userstore.DeviceSettingsEntry
@@ -67,12 +67,14 @@ func (s *SQLiteUserStore) RemoveDeviceSettings(ctx context.Context, profileID, d
 		for rows.Next() {
 			var key string
 			if err := rows.Scan(&key); err != nil {
-				rows.Close()
+				_ = rows.Close()
 				return err
 			}
 			keys = append(keys, key)
 		}
-		rows.Close()
+		if err := rows.Close(); err != nil {
+			return err
+		}
 		if err := rows.Err(); err != nil {
 			return err
 		}

@@ -44,25 +44,26 @@ func (p *interestTrackingProvider) ForUser(ctx context.Context, userID int) (use
 	// send callers down a fast path that can only fail.
 	registry, hasDevices := store.(userstore.DeviceRegistry)
 	rollup, hasRollup := store.(userstore.SeriesEpisodeRollupStore)
+	var wrapped userstore.UserStore = tracked
 	switch {
 	case hasDevices && hasRollup:
-		return &interestTrackingStoreWithDevicesAndRollup{
+		wrapped = &interestTrackingStoreWithDevicesAndRollup{
 			interestTrackingStore:    tracked,
 			DeviceRegistry:           registry,
 			SeriesEpisodeRollupStore: rollup,
-		}, nil
+		}
 	case hasDevices:
-		return &interestTrackingStoreWithDevices{
+		wrapped = &interestTrackingStoreWithDevices{
 			interestTrackingStore: tracked,
 			DeviceRegistry:        registry,
-		}, nil
+		}
 	case hasRollup:
-		return &interestTrackingStoreWithRollup{
+		wrapped = &interestTrackingStoreWithRollup{
 			interestTrackingStore:    tracked,
 			SeriesEpisodeRollupStore: rollup,
-		}, nil
+		}
 	}
-	return tracked, nil
+	return preserveDeviceSettings(wrapped, store), nil
 }
 
 func (p *interestTrackingProvider) Close() error {
@@ -462,4 +463,38 @@ func (s *interestTrackingStore) DeleteProfile(ctx context.Context, id string) er
 		}
 	}
 	return err
+}
+
+// Preserve the optional device settings capability without claiming support
+// on backends that cannot page or atomically clear devices. Keep the existing
+// concrete decorator so its other optional capabilities survive as well.
+func preserveDeviceSettings(wrapped, inner userstore.UserStore) userstore.UserStore {
+	devices, ok := inner.(userstore.DeviceSettingsStore)
+	if !ok {
+		return wrapped
+	}
+	switch w := wrapped.(type) {
+	case *interestTrackingStoreWithDevicesAndRollup:
+		return &struct {
+			*interestTrackingStoreWithDevicesAndRollup
+			userstore.DeviceSettingsStore
+		}{w, devices}
+	case *interestTrackingStoreWithDevices:
+		return &struct {
+			*interestTrackingStoreWithDevices
+			userstore.DeviceSettingsStore
+		}{w, devices}
+	case *interestTrackingStoreWithRollup:
+		return &struct {
+			*interestTrackingStoreWithRollup
+			userstore.DeviceSettingsStore
+		}{w, devices}
+	case *interestTrackingStore:
+		return &struct {
+			*interestTrackingStore
+			userstore.DeviceSettingsStore
+		}{w, devices}
+	default:
+		return wrapped
+	}
 }

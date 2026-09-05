@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/settingskeys"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
@@ -61,5 +62,24 @@ func TestDeviceSettingsLogicalCounts(t *testing.T) {
 	page, err := h.DeviceSettingsPage(ctx, DeviceSettingsActor{UserID: 1, ProfileID: "profile-1"}, false, userstore.DevicePageOptions{Limit: 10})
 	if err != nil || len(page) != 1 || page[0].ChangedCount != 1 {
 		t.Fatalf("logical aliases: %+v %v", page, err)
+	}
+}
+
+func TestDeviceSettingsProductionWrapper(t *testing.T) {
+	_, store := newDevicesTestHandler(t)
+	seedDevice(t, store, "profile-1", "d", "device")
+	provider := notifications.WrapUserStoreProvider(testUserStoreProvider{store: store}, &notifications.System{})
+	h := NewDeviceHandler(provider)
+	actor := DeviceSettingsActor{UserID: 1, ProfileID: "profile-1"}
+	ctx := devicesRequest(http.MethodGet, "/devices", "profile-1").Context()
+	page, err := h.DeviceSettingsPage(ctx, actor, false, userstore.DevicePageOptions{Limit: 10})
+	if err != nil || len(page) != 1 {
+		t.Fatalf("wrapped list: %+v %v", page, err)
+	}
+	if err := h.RemoveDeviceSettings(ctx, actor, "", "d", false); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RemoveDeviceSettings(ctx, actor, "", "d", true); err != nil {
+		t.Fatal(err)
 	}
 }

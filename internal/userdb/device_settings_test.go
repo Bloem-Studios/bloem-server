@@ -15,7 +15,7 @@ func TestDeviceSettingsTiesAndRollback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	db.SetMaxOpenConns(1)
 	if err := InitSchema(db); err != nil {
 		t.Fatal(err)
@@ -61,7 +61,7 @@ func TestDeviceSettingsConcurrentWAL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	db.SetMaxOpenConns(8)
 	if err := InitSchema(db); err != nil {
 		t.Fatal(err)

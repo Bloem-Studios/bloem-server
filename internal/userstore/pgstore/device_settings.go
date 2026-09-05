@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
+
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
 	"github.com/Silo-Server/silo-server/internal/userstore"
-	"github.com/jackc/pgx/v5"
 )
 
 var _ userstore.DeviceSettingsStore = (*PostgresUserStore)(nil)

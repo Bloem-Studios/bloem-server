@@ -9,6 +9,12 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
+const (
+	opListDevices         = "listDevices"
+	opClearDeviceSettings = "clearDeviceSettings"
+	opForgetDevice        = "forgetDevice"
+)
+
 type DeviceSettingsService interface {
 	DeviceSettingsPage(context.Context, handlers.DeviceSettingsActor, bool, userstore.DevicePageOptions) ([]userstore.DeviceSettingsEntry, error)
 	RemoveDeviceSettings(context.Context, handlers.DeviceSettingsActor, string, string, bool) error
@@ -41,13 +47,13 @@ type DeviceSettingsRemoveInput struct {
 
 func registerDeviceSettings(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
-	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/devices", "listDevices", "devices", "List settings devices for the acting profile, or explicitly authorized household."), Class: ClassProfileScoped, ServiceBacked: true}, func(ctx context.Context, in *DeviceSettingsListInput) (*DeviceSettingsListOutput, error) {
+	Register(reg, Operation{Operation: humaOp(http.MethodGet, Prefix+"/devices", opListDevices, "devices", "List settings devices for the acting profile, or explicitly authorized household."), Class: ClassProfileScoped, ServiceBacked: true}, func(ctx context.Context, in *DeviceSettingsListInput) (*DeviceSettingsListOutput, error) {
 		return reg.listDevices(ctx, cursors, in)
 	})
 	for _, command := range []struct {
 		path, id string
 		forget   bool
-	}{{"/devices/{device_id}", "forgetDevice", true}, {"/devices/{device_id}/settings", "clearDeviceSettings", false}} {
+	}{{"/devices/{device_id}", opForgetDevice, true}, {"/devices/{device_id}/settings", opClearDeviceSettings, false}} {
 		op := humaOp(http.MethodDelete, Prefix+command.path, command.id, "devices", "Clear device settings; forgetting additionally removes its registry entry. Login sessions remain active.")
 		op.DefaultStatus = http.StatusNoContent
 		Register(reg, Operation{Operation: op, Class: ClassProfileScoped, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}, func(ctx context.Context, in *DeviceSettingsRemoveInput) (*struct{}, error) {
@@ -79,7 +85,7 @@ func (reg *Registry) listDevices(ctx context.Context, cursors *Cursors, in *Devi
 	if p != nil {
 		return nil, p
 	}
-	scope := CursorScope{OperationID: "listDevices", Security: strconv.Itoa(actor.UserID) + "/" + actor.ProfileID + "/" + viewerScopeDigest(ctx), Filter: in.Scope, Sort: "-last_seen_at,profile_id,device_id", Tiebreaker: "profile_id,device_id"}
+	scope := CursorScope{OperationID: opListDevices, Security: strconv.Itoa(actor.UserID) + "/" + actor.ProfileID + "/" + viewerScopeDigest(ctx), Filter: in.Scope, Sort: "-last_seen_at,profile_id,device_id", Tiebreaker: "profile_id,device_id"}
 	var after *userstore.DevicePosition
 	if in.Cursor != "" {
 		after = new(userstore.DevicePosition)

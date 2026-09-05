@@ -13,8 +13,14 @@ import (
 
 func RunDeviceSettings(t *testing.T, newStore func(*testing.T) userstore.UserStore) {
 	store := newStore(t)
-	devices := store.(userstore.DeviceSettingsStore)
-	registry := store.(userstore.DeviceRegistry)
+	devices, ok := store.(userstore.DeviceSettingsStore)
+	if !ok {
+		t.Fatal("missing device settings implementation")
+	}
+	registry, ok := store.(userstore.DeviceRegistry)
+	if !ok {
+		t.Fatal("missing device registry implementation")
+	}
 	ctx := t.Context()
 	for _, profile := range []string{"a", "b"} {
 		if err := store.CreateProfile(ctx, userstore.Profile{ID: profile, Name: profile}); err != nil {
