@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -331,6 +332,11 @@ func NewPlaybackHandler(sessionMgr SessionManagerInterface, opts ...FilePathReso
 		h.maybeStartThrottler(ctx, ts)
 	}
 	h.tm.OnFFmpegCrash = func(ctx context.Context, sessionID string, dead *playback.TranscodeSession) {
+		if dead != nil && dead.ExecutorNamespace() != nil {
+			// Grant cancellation owns execution teardown, never legacy progress.
+			h.tm.CloseTranscodeSessionIf(sessionID, dead, "")
+			return
+		}
 		// ffmpeg crash — tear the session down; a client holding a valid stream
 		// token can reconstruct it on the next request.
 		//
@@ -530,6 +536,10 @@ func (h *PlaybackHandler) signStreamClaims(claims streamtoken.Claims) string {
 // caller's own reconstruct branch consumes.
 func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID string, requestedSegment int) (*playback.Session, playback.SessionLoadStatus, *playback.RecipeCard, *streamtoken.Claims, error) {
 	requestUserID := apimw.GetUserID(r.Context())
+	if guarded, ok := r.Context().Value(nativeExecutorResponseKey{}).(*nativeExecutorResponse); ok {
+		session, _, status, err := h.tm.LoadOrReconstructTranscodeWithError(r.Context(), h.sessionMgr.GetSession, sessionID, requestUserID, requestedSegment, guarded.card)
+		return session, status, guarded.card, guarded.claims, err
+	}
 	session, err := h.sessionMgr.GetSession(sessionID)
 	if err == nil {
 		// This legacy origin has no response-lifetime grant guard yet.
@@ -626,6 +636,119 @@ func verifiedStreamCardFromToken(tokenStr, sessionID, secret string) (*playback.
 	}
 	card := playback.RecipeCardFromClaims(claims)
 	return &card, claims
+}
+
+type nativeExecutorResponseKey struct{}
+type nativeExecutorResponse struct {
+	card   *playback.RecipeCard
+	claims *streamtoken.Claims
+}
+
+func nativeSessionExecutorBound(manager *playback.TranscodeManager, session *playback.Session) bool {
+	if session == nil {
+		return false
+	}
+	if session.Executor != nil {
+		return true
+	}
+	if manager != nil {
+		if runtime := manager.GetTranscodeSession(session.ID); runtime != nil {
+			return runtime.ExecutorNamespace() != nil
+		}
+	}
+	return false
+}
+
+// guardNativeExecutorResponse owns the entire bound response, including cold
+// reconstruction. Unguarded native paths retain their explicit refusal.
+func guardNativeExecutorResponse(w http.ResponseWriter, r *http.Request, manager *playback.TranscodeManager, getSession func(string) (*playback.Session, error), sessionID, secret string) (http.ResponseWriter, *http.Request, func(), bool) {
+	card, claims := verifiedStreamCardFromToken(r.URL.Query().Get(streamTokenParam), sessionID, secret)
+	session, sessionErr := getSession(sessionID)
+	var actual *playback.ExecutorNamespaceV3
+	if sessionErr == nil && session != nil {
+		actual = session.Executor
+	}
+	if manager != nil {
+		if runtime := manager.GetTranscodeSession(sessionID); runtime != nil && runtime.ExecutorNamespace() != nil {
+			actual = runtime.ExecutorNamespace()
+		}
+	}
+	if actual == nil && (card == nil || card.Executor == nil) {
+		return w, r, func() {}, true
+	}
+	refuse := func() (http.ResponseWriter, *http.Request, func(), bool) {
+		writeNativeRouteStatusV3(w, http.StatusServiceUnavailable)
+		return nil, nil, nil, false
+	}
+	if card == nil || card.Executor == nil || manager == nil || manager.ResolveExecutorRecipe == nil {
+		return refuse()
+	}
+	if sessionErr == nil && (session == nil || playback.MatchExecutorNamespace(session.Executor, card.Executor) != nil) {
+		return refuse()
+	}
+	if sessionErr != nil && !errors.Is(sessionErr, playback.ErrSessionNotFound) {
+		return refuse()
+	}
+	if actual != nil && playback.MatchExecutorNamespace(actual, card.Executor) != nil {
+		return refuse()
+	}
+	transportID := cmp.Or(card.TranscodeTransportID, sessionID)
+	resolved, err := manager.ResolveExecutorRecipe(r.Context(), transportID, *card.Executor)
+	if err != nil || resolved == nil || resolved.SessionID != sessionID || resolved.UserID != card.UserID || resolved.ProfileID != card.ProfileID || playback.MatchExecutorNamespace(resolved.Executor, card.Executor) != nil {
+		return refuse()
+	}
+	resolvedTransport := cmp.Or(resolved.TranscodeTransportID, resolved.SessionID)
+	// Progressive remux has no execute grant, and the central-to-worker proxy
+	// chain is not enabled until both serving roles are integrated.
+	if resolvedTransport != transportID || resolved.TranscodeNodeURL != "" || resolved.VideoStreamCopy() ||
+		!nativeBoundLocalRoute(resolved.PlayMethod, resolved.RoutingWorkload, resolved.RoutingExecution, resolved.RoutingEgress) {
+		return refuse()
+	}
+	if session != nil && (session.ID != resolved.SessionID || session.UserID != resolved.UserID || session.ProfileID != resolved.ProfileID || session.MediaFileID != resolved.MediaFileID || session.PlayMethod != resolved.PlayMethod ||
+		cmp.Or(session.TranscodeTransportID, session.ID) != resolvedTransport || session.TranscodeNodeURL != "" ||
+		!nativeBoundLocalRoute(session.PlayMethod, session.RoutingWorkload, session.RoutingExecution, session.RoutingEgress)) {
+		return refuse()
+	}
+	guardedWriter, guardedRequest, cleanup, err := playback.GuardExecutorResponseV3(w, r, manager.ExecuteGrants, transportID, resolved.Executor)
+	if err != nil {
+		return refuse()
+	}
+	ctx := context.WithValue(guardedRequest.Context(), nativeExecutorResponseKey{}, &nativeExecutorResponse{card: resolved, claims: claims})
+	return guardedWriter, guardedRequest.WithContext(ctx), cleanup, true
+}
+
+func writeNativeAuthorityUnavailable(w http.ResponseWriter) {
+	writeError(w, http.StatusServiceUnavailable, "unavailable", "Playback authority is temporarily unavailable")
+}
+
+func nativeBoundLocalRoute(method playback.PlayMethod, workload, execution, egress string) bool {
+	if egress != string(noderouting.EgressAPI) {
+		return false
+	}
+	switch method {
+	case playback.PlayDirect:
+		return workload == string(noderouting.WorkloadDirectPlay) && execution == string(noderouting.ExecutionNone)
+	case playback.PlayTranscode:
+		return workload == string(noderouting.WorkloadVideoTranscode) && execution == string(noderouting.ExecutionAPI)
+	default:
+		return false
+	}
+}
+
+func requireNativeGuardedSessionAPIEgressV3(w http.ResponseWriter, r *http.Request, session *playback.Session) bool {
+	if session != nil && session.Executor != nil {
+		guarded, ok := r.Context().Value(nativeExecutorResponseKey{}).(*nativeExecutorResponse)
+		if !ok || playback.MatchExecutorNamespace(session.Executor, guarded.card.Executor) != nil || session.TranscodeNodeURL != "" ||
+			session.ID != guarded.card.SessionID || session.UserID != guarded.card.UserID || session.ProfileID != guarded.card.ProfileID ||
+			session.MediaFileID != guarded.card.MediaFileID || session.PlayMethod != guarded.card.PlayMethod ||
+			cmp.Or(session.TranscodeTransportID, session.ID) != cmp.Or(guarded.card.TranscodeTransportID, guarded.card.SessionID) ||
+			!nativeBoundLocalRoute(session.PlayMethod, session.RoutingWorkload, session.RoutingExecution, session.RoutingEgress) {
+			writeNativeRouteStatusV3(w, http.StatusServiceUnavailable)
+			return false
+		}
+		return requireNativeAPIEgressV3(w, session.RoutingWorkload, session.RoutingExecution, session.RoutingEgress)
+	}
+	return requireNativeSessionAPIEgressV3(w, session)
 }
 
 // requireNativeAPIEgressV3 enforces the origin frozen into a v3 playback
@@ -960,6 +1083,9 @@ func resolvedPlaybackAudioLanguage(ctx context.Context, store userstore.UserStor
 // It resolves the mediaFileID to a mediaItemID via the file resolver.
 // Errors are logged but do not fail the HTTP request.
 func (h *PlaybackHandler) persistProgress(ctx context.Context, session *playback.Session) {
+	if session != nil && nativeSessionExecutorBound(h.tm, session) {
+		return
+	}
 	if h.StoreProvider == nil || h.fileResolver == nil {
 		return
 	}
@@ -1008,6 +1134,9 @@ func (h *PlaybackHandler) persistProgress(ctx context.Context, session *playback
 // when a playback session is stopped. Errors are logged but do not fail the
 // HTTP request.
 func (h *PlaybackHandler) persistStopAndHistory(ctx context.Context, session *playback.Session) watchstate.PlaybackStopResult {
+	if session != nil && nativeSessionExecutorBound(h.tm, session) {
+		return watchstate.PlaybackStopResult{}
+	}
 	if h.StoreProvider == nil || h.fileResolver == nil {
 		return watchstate.PlaybackStopResult{}
 	}
@@ -1165,7 +1294,7 @@ func (h *PlaybackHandler) touchSessionActivity(sessionID string) {
 }
 
 func (h *PlaybackHandler) finalizeSessionStop(ctx context.Context, session *playback.Session, syncNow bool, syncReason string, userInitiated bool) {
-	if h == nil || session == nil || session.ID == "" {
+	if h == nil || session == nil || session.ID == "" || nativeSessionExecutorBound(h.tm, session) {
 		return
 	}
 	if ctx == nil {
@@ -1215,7 +1344,7 @@ func (h *PlaybackHandler) finalizeSessionStop(ctx context.Context, session *play
 }
 
 func (h *PlaybackHandler) finalizeSessionAbort(ctx context.Context, session *playback.Session, syncNow bool, syncReason string) {
-	if h == nil || session == nil || session.ID == "" {
+	if h == nil || session == nil || session.ID == "" || nativeSessionExecutorBound(h.tm, session) {
 		return
 	}
 	if ctx == nil {
@@ -1259,7 +1388,7 @@ func (h *PlaybackHandler) finalizeSessionAbort(ctx context.Context, session *pla
 }
 
 func (h *PlaybackHandler) handleExpiredSession(session *playback.Session) {
-	if h == nil || session == nil {
+	if h == nil || session == nil || nativeSessionExecutorBound(h.tm, session) {
 		return
 	}
 	sessionCopy := *session
@@ -1414,6 +1543,10 @@ func (h *PlaybackHandler) HandleUpdateProgress(w http.ResponseWriter, r *http.Re
 		return
 	}
 	wasPaused := session.IsPaused
+	if nativeSessionExecutorBound(h.tm, session) {
+		writeNativeAuthorityUnavailable(w)
+		return
+	}
 
 	var req progressRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1484,6 +1617,10 @@ func (h *PlaybackHandler) HandleStopPlayback(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	if nativeSessionExecutorBound(h.tm, session) {
+		writeNativeAuthorityUnavailable(w)
+		return
+	}
 	err = h.stopPlaybackSession(r.Context(), session, true)
 	if err != nil {
 		if errors.Is(err, playback.ErrSessionNotFound) {
@@ -1608,12 +1745,21 @@ func alignedSeekSeconds(seekSeconds float64, segmentDuration int, targetVideoCod
 // mapping is a separate surface and unchanged.
 func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "session_id")
+	w, r, cleanup, ok := guardNativeExecutorResponse(w, r, h.tm, h.sessionMgr.GetSession, sessionID, h.JWTSecret)
+	if !ok {
+		return
+	}
+	defer cleanup()
 	session, status, card, claims, reconstructErr := h.loadTranscodeServeSession(r, sessionID, -1)
 	switch status {
 	case playback.SessionMissing:
 		writePlaybackSessionNotFound(w)
 		return
 	case playback.SessionLoadFailed:
+		if r.Context().Value(nativeExecutorResponseKey{}) != nil {
+			writeNativeAuthorityUnavailable(w)
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load playback session")
 		return
 	case playback.SessionForbidden:
@@ -1623,6 +1769,10 @@ func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	case playback.SessionUnavailable:
+		if r.Context().Value(nativeExecutorResponseKey{}) != nil {
+			writeNativeAuthorityUnavailable(w)
+			return
+		}
 		if writeNativeRouteBindingErrorV3(w, reconstructErr) {
 			return
 		}
@@ -1640,7 +1790,7 @@ func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Transcode session is temporarily unavailable")
 		return
 	}
-	if !requireNativeSessionAPIEgressV3(w, session) {
+	if !requireNativeGuardedSessionAPIEgressV3(w, r, session) {
 		return
 	}
 	attachPlaybackSession(r.Context(), session, claims)
@@ -1716,6 +1866,11 @@ func writePlaybackToneMapExecutionError(w http.ResponseWriter, err error) bool {
 // and unchanged.
 func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "session_id")
+	w, r, cleanup, ok := guardNativeExecutorResponse(w, r, h.tm, h.sessionMgr.GetSession, sessionID, h.JWTSecret)
+	if !ok {
+		return
+	}
+	defer cleanup()
 	requestedSegment := -1
 	if segNum, parseErr := playback.ParseSegmentNumber(chi.URLParam(r, "name")); parseErr == nil {
 		requestedSegment = segNum
@@ -1726,6 +1881,10 @@ func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht
 		writePlaybackSessionNotFound(w)
 		return
 	case playback.SessionLoadFailed:
+		if r.Context().Value(nativeExecutorResponseKey{}) != nil {
+			writeNativeAuthorityUnavailable(w)
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load playback session")
 		return
 	case playback.SessionForbidden:
@@ -1735,6 +1894,10 @@ func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	case playback.SessionUnavailable:
+		if r.Context().Value(nativeExecutorResponseKey{}) != nil {
+			writeNativeAuthorityUnavailable(w)
+			return
+		}
 		if writeNativeRouteBindingErrorV3(w, reconstructErr) {
 			return
 		}
@@ -1752,7 +1915,7 @@ func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Transcode session is temporarily unavailable")
 		return
 	}
-	if !requireNativeSessionAPIEgressV3(w, session) {
+	if !requireNativeGuardedSessionAPIEgressV3(w, r, session) {
 		return
 	}
 	attachPlaybackSession(r.Context(), session, claims)

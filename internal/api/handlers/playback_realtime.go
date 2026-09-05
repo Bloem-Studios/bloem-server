@@ -22,6 +22,9 @@ func (h *PlaybackHandler) stopPlaybackSession(ctx context.Context, session *play
 	if h == nil || session == nil || session.ID == "" {
 		return playback.ErrSessionNotFound
 	}
+	if nativeSessionExecutorBound(h.tm, session) {
+		return playback.ErrStaleAttemptAuthorityV3
+	}
 	// Replacement preparation holds this lifecycle lock until its new live
 	// session state and durable plan are committed (or rolled back). Wait for
 	// that boundary, then reload the route: callers commonly hold a copy taken
@@ -34,6 +37,9 @@ func (h *PlaybackHandler) stopPlaybackSession(ctx context.Context, session *play
 		return err
 	}
 	session = current
+	if nativeSessionExecutorBound(h.tm, session) {
+		return playback.ErrStaleAttemptAuthorityV3
+	}
 	if userInitiated {
 		if err := h.deleteRequiredProgressiveRemuxAuthorityV3(ctx, session); err != nil {
 			return fmt.Errorf("persist progressive remux stop: %w", err)
@@ -66,6 +72,9 @@ func (h *PlaybackHandler) stopPlaybackSessionByID(ctx context.Context, sessionID
 func (h *PlaybackHandler) abortPlaybackSession(ctx context.Context, session *playback.Session) error {
 	if h == nil || session == nil || session.ID == "" {
 		return playback.ErrSessionNotFound
+	}
+	if nativeSessionExecutorBound(h.tm, session) {
+		return playback.ErrStaleAttemptAuthorityV3
 	}
 
 	if err := h.sessionMgr.StopSession(session.ID); err != nil {
