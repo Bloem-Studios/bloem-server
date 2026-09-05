@@ -109,8 +109,9 @@ func TestWriteCatalogResponse_NoProviderOmitsDiagnostics(t *testing.T) {
 	}
 }
 
-func TestWriteCatalogResponse_GroupedByWorkOmitsDiagnostics(t *testing.T) {
-	// group=work builds a fresh CatalogResult with an empty Provider.
+func TestWriteCatalogResponse_GroupedByWorkPreservesExactCount(t *testing.T) {
+	// SQL grouping can count representatives exactly. The response preserves
+	// that result and omits diagnostics when no search provider was used.
 	body := decodeCatalogResponse(t, &catalog.CatalogResult{
 		Total:      2,
 		TotalExact: true,
@@ -119,9 +120,8 @@ func TestWriteCatalogResponse_GroupedByWorkOmitsDiagnostics(t *testing.T) {
 	if _, ok := body["search_diagnostics"]; ok {
 		t.Fatalf("grouped response should omit search_diagnostics: %v", body)
 	}
-	// Grouped responses force total_exact false regardless of result.TotalExact.
-	if body["total_exact"].(bool) != false {
-		t.Fatalf("grouped total_exact = %v, want false", body["total_exact"])
+	if body["total_exact"].(bool) != true {
+		t.Fatalf("grouped total_exact = %v, want true", body["total_exact"])
 	}
 }
 
