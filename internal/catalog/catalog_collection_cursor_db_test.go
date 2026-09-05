@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/Silo-Server/silo-server/internal/userdb"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"os"
-	"testing"
-	"time"
 )
 
 func TestCatalogManualCollectionCursorDB(t *testing.T) {
