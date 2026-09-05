@@ -45,7 +45,7 @@ func validateSourceSchema(ctx context.Context, tx *sql.Tx) error {
 		for _, column := range sourceColumns[mapping.Source] {
 			expected[column.Name] = column
 		}
-		columns, err := tx.QueryContext(ctx, "SELECT name, type, [notnull], pk FROM pragma_table_info(?) ORDER BY cid", mapping.Source)
+		columns, err := tx.QueryContext(ctx, "SELECT name, type, [notnull], pk, hidden FROM pragma_table_xinfo(?) ORDER BY cid", mapping.Source)
 		if err != nil {
 			return errors.New("cannot inspect source columns")
 		}
@@ -53,13 +53,13 @@ func validateSourceSchema(ctx context.Context, tx *sql.Tx) error {
 		for columns.Next() {
 			var name, declared string
 			var required bool
-			var pk int
-			if err := columns.Scan(&name, &declared, &required, &pk); err != nil {
+			var pk, hidden int
+			if err := columns.Scan(&name, &declared, &required, &pk, &hidden); err != nil {
 				_ = columns.Close()
 				return errors.New("cannot inspect source columns")
 			}
 			column, known := expected[name]
-			if !known || strings.ToUpper(declared) != column.SQLiteType || required != column.NotNull || pk != column.PrimaryKey {
+			if hidden != 0 || !known || strings.ToUpper(declared) != column.SQLiteType || required != column.NotNull || pk != column.PrimaryKey {
 				_ = columns.Close()
 				return fmt.Errorf("unsupported source columns in %s", mapping.Source)
 			}

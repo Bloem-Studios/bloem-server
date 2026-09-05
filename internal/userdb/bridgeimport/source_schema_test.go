@@ -33,11 +33,12 @@ func TestImportSchemaAccountsForEveryCurrentColumn(t *testing.T) {
 
 func TestImportSchemaRefusesUnclassifiedState(t *testing.T) {
 	for name, statement := range map[string]string{
-		"extra column":   "ALTER TABLE favorites ADD COLUMN private_extra TEXT",
-		"extra table":    "CREATE TABLE private_extra(value TEXT)",
-		"missing table":  "DROP TABLE favorites",
-		"legacy rows":    "INSERT INTO playback_sessions VALUES('s','p',1,'direct',0,0,'2026-01-01','2026-01-01')",
-		"future version": "PRAGMA user_version=23",
+		"generated column": "ALTER TABLE favorites ADD COLUMN private_generated TEXT GENERATED ALWAYS AS (media_item_id) VIRTUAL",
+		"extra column":     "ALTER TABLE favorites ADD COLUMN private_extra TEXT",
+		"extra table":      "CREATE TABLE private_extra(value TEXT)",
+		"missing table":    "DROP TABLE favorites",
+		"legacy rows":      "INSERT INTO playback_sessions VALUES('s','p',1,'direct',0,0,'2026-01-01','2026-01-01')",
+		"future version":   "PRAGMA user_version=23",
 	} {
 		t.Run(name, func(t *testing.T) {
 			source, err := userdb.NewUserDB(filepath.Join(t.TempDir(), "7.db"), 7)
