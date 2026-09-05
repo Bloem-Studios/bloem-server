@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -193,6 +194,53 @@ func lockLibraryCollectionParents(ctx context.Context, tx pgx.Tx, libraryID int)
 	// include more than the submitted IDs. Lock the library's parents in one
 	// stable order, without materializing item IDs.
 	rows, err := tx.Query(ctx, `SELECT c.id FROM library_collections c JOIN library_collection_libraries l ON l.collection_id=c.id WHERE l.library_id=$1 ORDER BY c.id FOR NO KEY UPDATE OF c`, libraryID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+	}
+	return rows.Err()
+}
+
+// Membership replacement can remove one library before adding another. Lock the
+// entire old/new scope before the first statement; trigger-local sorting cannot
+// prevent opposite swaps from retaining opposite first counters.
+func lockLibraryCollectionMembershipOrders(ctx context.Context, tx pgx.Tx, collectionID string, requested []int) error {
+	rows, err := tx.Query(ctx, `SELECT library_id FROM library_collection_libraries WHERE collection_id=$1`, collectionID)
+	if err != nil {
+		return err
+	}
+	affected := slices.Clone(requested)
+	for rows.Next() {
+		var libraryID int
+		if err := rows.Scan(&libraryID); err != nil {
+			rows.Close()
+			return err
+		}
+		affected = append(affected, libraryID)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	return lockLibraryCollectionOrderRevisions(ctx, tx, affected)
+}
+
+// Call only after acquiring the transaction's collection parents. Sorting this
+// lock set preserves submitted library order (including the legacy primary
+// library), while establishing one transaction-wide order for aggregate locks.
+func lockLibraryCollectionOrderRevisions(ctx context.Context, tx pgx.Tx, libraryIDs []int) error {
+	ordered := slices.Clone(libraryIDs)
+	slices.Sort(ordered)
+	ordered = slices.Compact(ordered)
+	if len(ordered) == 0 {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO library_collection_order_revisions(library_id,revision) SELECT id,1 FROM unnest($1::int[]) ids(id) ORDER BY id ON CONFLICT(library_id) DO NOTHING`, ordered); err != nil {
+		return err
+	}
+	rows, err := tx.Query(ctx, `SELECT library_id FROM library_collection_order_revisions WHERE library_id=ANY($1::int[]) ORDER BY library_id FOR UPDATE`, ordered)
 	if err != nil {
 		return err
 	}

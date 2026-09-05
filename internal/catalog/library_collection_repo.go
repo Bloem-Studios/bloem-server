@@ -297,6 +297,10 @@ func (r *LibraryCollectionRepository) Create(ctx context.Context, input CreateLi
 		groupLibraryID = &libraryID
 	}
 
+	if err := lockLibraryCollectionOrderRevisions(ctx, tx, input.LibraryIDs); err != nil {
+		return nil, err
+	}
+
 	groupMatchedLibrary := input.GroupID == nil
 	for _, libraryID := range input.LibraryIDs {
 		var membershipGroupID *string
@@ -583,6 +587,16 @@ func (r *LibraryCollectionRepository) Update(ctx context.Context, input UpdateLi
 	return (libraryCollectionMutation{pool: r.pool, collectionID: input.ID}).run(ctx, input.ExpectedRevision, func(tx pgx.Tx) error {
 		if err := lockLibraryCollectionParent(ctx, tx, input.ID); err != nil {
 			return err
+		}
+
+		if input.LibraryIDs != nil || input.SetGroupID != nil {
+			var requested []int
+			if input.LibraryIDs != nil {
+				requested = normalizeCollectionLibraryIDs(0, *input.LibraryIDs)
+			}
+			if err := lockLibraryCollectionMembershipOrders(ctx, tx, input.ID, requested); err != nil {
+				return err
+			}
 		}
 
 		if len(sets) > 0 {
