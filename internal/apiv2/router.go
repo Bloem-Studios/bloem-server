@@ -84,6 +84,7 @@ type Dependencies struct {
 	AdminDashboardInsights     AdminDashboardInsightsService
 	AdminNodesRead             AdminNodesReadService
 	AdminServerStatus          AdminServerStatusService
+	AdminEmailTests            AdminEmailTestService
 	AdminDiagnosticDeletes     AdminDiagnosticDeleteService
 	AdminPluginCatalogSettings AdminPluginCatalogSettingsService
 	AdminRecommendations       AdminRecommendationsService

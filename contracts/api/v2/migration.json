@@ -5603,11 +5603,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/email/test",
+        "operation_id": "sendAdminTestEmail"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; settingsRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Synchronous single SMTP test-send with no durable replay identity. Repeated requests can send another message; automatic/authentication retries are disabled in the actual web row. V2 delivery failures retain ok:false but exclude provider error text. Shared message construction preserves bridge behavior. Independent scope review pending.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "One synchronous SMTP send; delivery can succeed before a response is lost. No durable replay identity or automatic retry."
     },
     {
       "listener": "api",

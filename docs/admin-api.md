@@ -1412,3 +1412,19 @@ Failure to read settings does not hide the dependency-health response. A missing
 administrator status service returns 503.
 
 No native client or Jellyfin-protocol consumer calls this administrator read.
+
+## V2 SMTP configuration test
+
+`POST /api/v2/admin/email/test` (`sendAdminTestEmail`) accepts `{ "to": "recipient@example.test" }`
+and synchronously submits one test message through the saved SMTP settings.
+It requires acting-administrator access. A 200 response contains `ok`,
+`duration_ms`, and an optional safe explanation when the mail server did not
+confirm the send. Invalid recipients return 422; an unavailable sender returns
+503. V2 excludes provider error text from the response. The bridge keeps its
+existing response behavior and shares the message construction and send call.
+
+This operation is non-retryable: a lost response does not prove the message was
+not sent. There is no durable job or replay identity. The web captures the
+recipient and profile when the administrator submits, prevents another dispatch
+while pending, and disables authentication replay. A profile change suppresses
+late result presentation. No native or Jellyfin caller consumes this operation.

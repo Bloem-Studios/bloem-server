@@ -340,6 +340,7 @@ export const v2Operations = {
   "POST /api/v2/admin/collections/template-bundles/{bundle_id}/apply-job":
     "startAdminCollectionTemplateBundleJob",
   "POST /api/v2/admin/collections/{id}/sync": "syncAdminCollection",
+  "POST /api/v2/admin/email/test": "sendAdminTestEmail",
   "POST /api/v2/admin/history-import-sources": "createAdminHistoryImportSource",
   "POST /api/v2/admin/history-imports/mappings": "createAdminHistoryImportMapping",
   "POST /api/v2/admin/history-imports/mappings/{id}/run": "createAdminHistoryImportRun",

@@ -17,7 +17,6 @@ import {
   MonitorSmartphone,
   RadioTower,
   Rss,
-  Send,
   TriangleAlert,
   Webhook,
   Workflow,
@@ -37,6 +36,7 @@ import {
   clearNotificationRelay,
   type NotificationRelayRegistration,
 } from "@/api/v2/notificationRelay";
+import { TestEmailRow } from "@/components/admin/EmailTestRow";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -48,7 +48,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { AdvancedSection } from "@/components/settings/AdvancedSection";
@@ -146,11 +145,7 @@ const KEYS = [
   ...DISCORD_APP_KEYS,
 ];
 
-interface EmailTestResult {
-  ok: boolean;
-  duration_ms: number;
-  message?: string;
-}
+
 
 const DEFAULT_PUSH_RELAY_URL = "https://push.siloserver.org";
 
@@ -313,68 +308,6 @@ function ChannelCard({
           {children}
         </div>
       )}
-    </div>
-  );
-}
-
-/** Sends a real message through the saved SMTP settings. */
-function TestEmailRow() {
-  const [recipient, setRecipient] = useState("");
-  const [pending, setPending] = useState(false);
-  const [result, setResult] = useState<EmailTestResult | null>(null);
-
-  const sendTest = async () => {
-    setPending(true);
-    setResult(null);
-    try {
-      const response = await api<EmailTestResult>("/admin/email/test", {
-        method: "POST",
-        body: JSON.stringify({ to: recipient.trim() }),
-      });
-      setResult(response);
-      if (response.ok) {
-        toast.success("Test email sent");
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Test request failed");
-    } finally {
-      setPending(false);
-    }
-  };
-
-  return (
-    <div className="space-y-2 py-3">
-      <div className="flex max-w-md gap-2">
-        <Input
-          type="email"
-          aria-label="Test email recipient"
-          placeholder="you@example.com"
-          value={recipient}
-          onChange={(event) => setRecipient(event.target.value)}
-        />
-        <Button
-          variant="outline"
-          disabled={pending || !recipient.trim()}
-          onClick={() => void sendTest()}
-        >
-          {pending ? (
-            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="mr-1.5 h-4 w-4" />
-          )}
-          Send test
-        </Button>
-      </div>
-      {result && (
-        <p className={`text-xs ${result.ok ? "text-emerald-500" : "text-amber-500"}`}>
-          {result.ok
-            ? `Delivered to the mail server in ${result.duration_ms}ms.`
-            : result.message || "Test failed."}
-        </p>
-      )}
-      <p className="text-muted-foreground text-xs">
-        Save your changes first; the test uses the saved settings.
-      </p>
     </div>
   );
 }

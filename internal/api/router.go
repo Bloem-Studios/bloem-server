@@ -2118,6 +2118,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 		nodeHandler = handlers.NewNodeHandler(deps.NodeRepo, deps.ProxyPool, deps.TranscodePool, deps.NodeRepo, deps.EventBus, deps.RedisClient, jwtSecret)
 		v2deps.AdminNodesRead = nodeHandler
 	}
+	var emailHandler *handlers.EmailHandler
+	if settingsRepo != nil {
+		emailHandler = handlers.NewEmailHandler(mail.NewSMTPSender(settingsRepo))
+		v2deps.AdminEmailTests = emailHandler
+	}
 	v2deps.AdminResourceSampler = deps.ResourceSampler
 	v2deps.AdminCatalogSearch = adminHandler
 	v2deps.AdminItemMetadata = adminHandler
@@ -3409,7 +3414,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 								r.Delete("/branding/assets/{kind}", brandingHandler.HandleDeleteAsset)
 							}
 							if settingsRepo != nil {
-								emailHandler := handlers.NewEmailHandler(mail.NewSMTPSender(settingsRepo))
 								r.Post("/email/test", emailHandler.HandleTest)
 							}
 							if discordNotificationsHandler != nil {
