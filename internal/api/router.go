@@ -2136,6 +2136,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	v2deps.AdminResourceSampler = deps.ResourceSampler
 	v2deps.AdminCatalogSearch = adminHandler
 	v2deps.AdminItemMetadata = adminHandler
+	if adminIntroHandler != nil {
+		v2deps.AdminEpisodeMarkers = adminIntroHandler
+	}
 	if deps.RecWorker != nil {
 		v2deps.AdminRecommendations = deps.RecWorker
 	}

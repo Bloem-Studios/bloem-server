@@ -211,20 +211,19 @@ export function useRefreshItemMetadata() {
   });
 }
 
-export interface RedetectEpisodeIntroResponse {
-  status: string;
-}
-
+export type RedetectEpisodeIntroResponse = V2Result<"POST /api/v2/admin/items/{id}/redetect-intro">;
 export async function redetectEpisodeIntro(
   episodeId: string,
 ): Promise<RedetectEpisodeIntroResponse> {
-  return api<RedetectEpisodeIntroResponse>(`/admin/items/${itemPathID(episodeId)}/redetect-intro`, {
-    method: "POST",
+  return v2("POST /api/v2/admin/items/{id}/redetect-intro", {
+    path: { id: episodeId },
+    retryAuthentication: false,
   });
 }
 
 export function useRedetectEpisodeIntro() {
   return useMutation({
+    retry: false,
     mutationFn: redetectEpisodeIntro,
     onSuccess: (response) => {
       toast.success(

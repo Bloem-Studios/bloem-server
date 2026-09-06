@@ -8135,11 +8135,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/items/{id}/redetect-intro",
+        "operation_id": "redetectAdminEpisodeIntro"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminIntroHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared frozen-v1 marker analysis service with unchanged mode/eligibility checks and local background lifecycle; independent review pending. Typed202 queued/already_running is not persisted job acceptance. Existing web re-detection adopted; no native administrator callers or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "An in-process in-flight map coalesces active work only; no durable receipt, cluster-wide lease, or persisted job. Web disables mutation and authentication retries."
     },
     {
       "listener": "api",
@@ -8187,11 +8189,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/items/{id}/refresh-markers",
+        "operation_id": "refreshAdminEpisodeMarkers"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminIntroHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared frozen-v1 marker analysis service with unchanged mode/eligibility checks and local background lifecycle; independent review pending. Typed202 queued/already_running is not persisted job acceptance. Existing web re-detection adopted; no native administrator callers or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "An in-process in-flight map coalesces active work only; no durable receipt, cluster-wide lease, or persisted job. Web disables mutation and authentication retries."
     },
     {
       "listener": "api",

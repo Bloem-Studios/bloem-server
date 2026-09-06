@@ -181,6 +181,8 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	// Every operation the viewer-access gate fronts documents the header;
 	// the acting-admin class resolves the declared profile the same way.
 	profileToken := map[string]bool{
+		"refreshAdminEpisodeMarkers": true,
+		"redetectAdminEpisodeIntro":  true,
 		"listDownloadSubscriptions":  true,
 		"getDownloadSubscription":    true,
 		"getDownloadManifest":        true,
