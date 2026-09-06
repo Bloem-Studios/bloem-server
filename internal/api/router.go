@@ -2407,6 +2407,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		authenticated, admin := resolveOptionalPluginAccess(r, jwtService, sessionRepo)
 		return plugins.ContentAccess{Authenticated: authenticated, Admin: admin}
 	})
+	if deps.BrandingService != nil {
+		v2deps.AdminBrandingAssets = handlers.NewBrandingHandler(deps.BrandingService)
+	}
 	if deps.v2Wiring != nil {
 		deps.v2Wiring(v2deps)
 	}

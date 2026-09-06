@@ -44,6 +44,8 @@ POST /api/v2/admin/autoscan/sources/{id}/webhook	non-media
 POST /api/v2/admin/autoscan/sources/{id}/webhook/rotate	non-media
 GET /api/v2/admin/autoscan/status	non-media
 POST /api/v2/admin/autoscan/trigger	non-media
+DELETE /api/v2/admin/branding/assets/{kind}	non-media
+POST /api/v2/admin/branding/assets/{kind}	non-media
 POST /api/v2/admin/catalog/export	non-media
 POST /api/v2/admin/catalog/export-jobs	non-media
 POST /api/v2/admin/catalog/export-jobs/{id}/publish	non-media
@@ -1111,6 +1113,8 @@ POST /api/v2/admin/autoscan/sources/{id}/webhook	non-media
 POST /api/v2/admin/autoscan/sources/{id}/webhook/rotate	non-media
 GET /api/v2/admin/autoscan/status	non-media
 POST /api/v2/admin/autoscan/trigger	non-media
+DELETE /api/v2/admin/branding/assets/{kind}	non-media
+POST /api/v2/admin/branding/assets/{kind}	non-media
 POST /api/v2/admin/catalog/export	non-media
 POST /api/v2/admin/catalog/export-jobs	non-media
 POST /api/v2/admin/catalog/export-jobs/{id}/publish	non-media

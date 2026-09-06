@@ -164,6 +164,7 @@ type Dependencies struct {
 	AdminNodeReload                 AdminNodeReloadService
 	AdminNodeConfiguration          AdminNodeConfigurationService
 	AdminServerStatus               AdminServerStatusService
+	AdminBrandingAssets             AdminBrandingAssetService
 	AdminEmailTests                 AdminEmailTestService
 	AdminSourceWebhookLifecycle     AdminAutoscanWebhookLifecycleService
 	AdminAutoscanSettingsUpdates    AdminAutoscanSettingsUpdateService

@@ -3043,11 +3043,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/branding/assets/{kind}",
+        "operation_id": "deleteAdminBrandingAsset"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; brandingHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; brandingHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Clears the slot unconditionally; a delayed retry also clears an image uploaded after the first success. No validator on branding yet; never automatically replay."
     },
     {
       "listener": "api",
@@ -3105,11 +3107,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/branding/assets/{kind}",
+        "operation_id": "uploadAdminBrandingAsset"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; brandingHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; brandingHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Stores content-addressed bytes then assigns the slot unconditionally; a delayed retry of an older upload replaces an image the admin chose in between. No validator on branding yet; never automatically replay."
     },
     {
       "listener": "api",
