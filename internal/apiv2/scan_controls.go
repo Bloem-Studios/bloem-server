@@ -54,7 +54,7 @@ func registerScanControls(reg *Registry) {
 	})
 	start := Operation{Operation: humaOp(http.MethodPost, Prefix+"/scan", "startLibraryScan", "scan", "Resolve and dispatch a library, subtree or file scan through the configured execution path."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
 	start.DefaultStatus = http.StatusAccepted
-	start.Errors = []int{400, 404, 500}
+	start.Errors = []int{400, 404, 409, 500}
 	Register(reg, start, func(ctx context.Context, in *ScanStartInput) (*ScanStartOutput, error) {
 		if reg.deps.ScanControls == nil {
 			return nil, unavailable("scanner")
