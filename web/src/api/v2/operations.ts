@@ -193,6 +193,7 @@ export const v2Operations = {
   "GET /api/v2/markers/files/{file_id}": "getFileMarkers",
   "GET /api/v2/markers/items/{item_id}": "getItemMarkers",
   "GET /api/v2/openapi.json": "getOpenAPIDocument",
+  "GET /api/v2/policy/capability": "getPolicyCapability",
   "GET /api/v2/profile/sections": "listProfileSectionOverrides",
   "GET /api/v2/profile/sections/flags": "getProfileSectionFlags",
   "GET /api/v2/profile/sections/settings": "getProfileSectionSettings",

@@ -36,7 +36,7 @@ func TestPolicyCapabilityShape(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
-	var response policyCapabilityResponse
+	var response PolicyCapabilityView
 	decodePolicyHandlerResponse(t, rec, &response)
 	if !response.Enabled || !response.EditorAvailable {
 		t.Fatalf("capability = %#v, want enabled editor", response)

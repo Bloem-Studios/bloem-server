@@ -1,7 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
-import type { PolicyCapability } from "@/api/types";
 import { v2, type V2Query } from "@/api/v2/request";
 import {
   fetchPolicySnapshot,
@@ -33,11 +31,10 @@ function invalidatePolicyDocuments(client: QueryClient, id?: string) {
     void client.invalidateQueries({ queryKey: adminKeys.policyVersions(id) });
   }
 }
-// This shared discovery route remains owned by auth-core.
 export function usePolicyCapability() {
   return useQuery({
     queryKey: adminKeys.policyCapability(),
-    queryFn: () => api<PolicyCapability>("/policy/capability"),
+    queryFn: () => v2("GET /api/v2/policy/capability"),
     staleTime: 30_000,
   });
 }

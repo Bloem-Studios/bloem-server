@@ -2065,6 +2065,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if policyHandler != nil {
 		v2deps.AdminPolicy = policyHandler
+		v2deps.PolicyCapability = policyHandler
 	}
 	if sectionHandler != nil {
 		v2deps.LibrarySections = sectionHandler

@@ -115,3 +115,17 @@ Apple and Android still use v1 auth and device-pairing routes. Their coordinated
 adoption, including persisted credential replacement, refresh concurrency, and
 device handoff, is required before v1 retirement. This additive server/web
 checkpoint does not enable retirement or claim native cutover.
+
+
+## V2 policy discovery
+
+`GET /api/v2/policy/capability` reports `enabled`, `editor_available`,
+`decision_types`, `generation`, `degraded`, optional `degraded_reason` and
+`degraded_domains`, and `eval_timeouts`. An absent policy system returns `200`
+with `enabled: false` and the supported decision types. This is discovery, so it
+does not require policy-editor authorization.
+
+The route requires authentication and preserves the demo restriction. A profile
+is optional; when supplied it must pass viewer verification. The bundled web
+policy query uses this endpoint. There are no Apple or Android callers to migrate.
+The frozen v1 capability route retains its previous unavailable-system response.

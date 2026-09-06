@@ -536,6 +536,7 @@ func registerAll(reg *Registry) {
 	registerAdminHistoryImports(reg)
 	registerAdminAPIKeys(reg)
 	registerPersonalAPIKeys(reg)
+	registerPolicyCapability(reg)
 	registerInvitations(reg)
 	registerWebhookSync(reg)
 	registerSystem(reg)
