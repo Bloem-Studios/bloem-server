@@ -4203,7 +4203,41 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve household authority with canonical collection/Problems. Quality maps original STANDARD alias to declared v2 1080p while both store 1080p; original request unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/household_authority_pairing_test.go",
+            "operation_id": "updateProfile",
+            "method": "PATCH",
+            "request": {
+              "path": "/api/v2/profiles/${profile_secondary}",
+              "body": {
+                "max_playback_quality": "1080p"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/max_playback_quality",
+                  "op": "equals",
+                  "value": "1080p"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "profiles_update.shape",
@@ -8721,7 +8755,45 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve household authority with canonical collection/Problems. Quality maps original STANDARD alias to declared v2 1080p while both store 1080p; original request unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/household_authority_pairing_test.go",
+            "operation_id": "listHouseholdSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles/household/sessions"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 0
+                }
+              ]
+            }
+          }
         },
         {
           "id": "household.empty",
@@ -8742,7 +8814,45 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve household authority with canonical collection/Problems. Quality maps original STANDARD alias to declared v2 1080p while both store 1080p; original request unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/household_authority_pairing_test.go",
+            "operation_id": "listHouseholdSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles/household/sessions"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 0
+                }
+              ]
+            }
+          }
         },
         {
           "id": "household.shape",
@@ -8765,7 +8875,45 @@
             ]
           },
           "notes": "Bare-array top level unlike the wrapped {profiles:[]} sibling; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve household authority with canonical collection/Problems. Quality maps original STANDARD alias to declared v2 1080p while both store 1080p; original request unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/household_authority_pairing_test.go",
+            "operation_id": "listHouseholdSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles/household/sessions"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 0
+                }
+              ]
+            }
+          }
         },
         {
           "id": "household.secondary_forbidden",
@@ -8812,7 +8960,43 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve household authority with canonical collection/Problems. Quality maps original STANDARD alias to declared v2 1080p while both store 1080p; original request unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/household_authority_pairing_test.go",
+            "operation_id": "listHouseholdSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles/household/sessions"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "household.admin",
@@ -8827,7 +9011,45 @@
           "expect": {
             "status": 200
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve household authority with canonical collection/Problems. Quality maps original STANDARD alias to declared v2 1080p while both store 1080p; original request unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/household_authority_pairing_test.go",
+            "operation_id": "listHouseholdSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles/household/sessions"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 0
+                }
+              ]
+            }
+          }
         },
         {
           "id": "household.other_account_profile",
@@ -8881,7 +9103,43 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve household authority with canonical collection/Problems. Quality maps original STANDARD alias to declared v2 1080p while both store 1080p; original request unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/household_authority_pairing_test.go",
+            "operation_id": "listHouseholdSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles/household/sessions"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "household.no_token",
@@ -8933,7 +9191,43 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve household authority with canonical collection/Problems. Quality maps original STANDARD alias to declared v2 1080p while both store 1080p; original request unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/household_authority_pairing_test.go",
+            "operation_id": "listHouseholdSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles/household/sessions"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "household.error_shape",
@@ -8968,7 +9262,43 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve household authority with canonical collection/Problems. Quality maps original STANDARD alias to declared v2 1080p while both store 1080p; original request unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/household_authority_pairing_test.go",
+            "operation_id": "listHouseholdSessions",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profiles/household/sessions"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                }
+              ]
+            }
+          }
         }
       ]
     }
