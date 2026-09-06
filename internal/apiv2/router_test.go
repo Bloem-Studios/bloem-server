@@ -196,6 +196,28 @@ func TestCommittedArtifactMatchesRouter(t *testing.T) {
 func TestReconcileSpecSeeded(t *testing.T) {
 	ws := RawHandshake{Method: http.MethodGet, Path: Prefix + "/probe/ws", Protocol: "websocket", Reason: "test-only raw handshake"}
 	observed := []string{
+		"POST /api/v2/subtitles/ai/jobs/{job_id}/cancel",
+		"CONNECT /api/v2/plugin-content/plugins/{installation_id}",
+		"CONNECT /api/v2/plugin-content/plugins/{installation_id}/*",
+		"DELETE /api/v2/plugin-content/plugins/{installation_id}",
+		"DELETE /api/v2/plugin-content/plugins/{installation_id}/*",
+		"GET /api/v2/plugin-content/plugins/{installation_id}",
+		"GET /api/v2/plugin-content/plugins/{installation_id}/*",
+		"HEAD /api/v2/plugin-content/plugins/{installation_id}",
+		"HEAD /api/v2/plugin-content/plugins/{installation_id}/*",
+		"OPTIONS /api/v2/plugin-content/plugins/{installation_id}",
+		"OPTIONS /api/v2/plugin-content/plugins/{installation_id}/*",
+		"PATCH /api/v2/plugin-content/plugins/{installation_id}",
+		"PATCH /api/v2/plugin-content/plugins/{installation_id}/*",
+		"POST /api/v2/plugin-content/plugins/{installation_id}",
+		"POST /api/v2/plugin-content/plugins/{installation_id}/*",
+		"PUT /api/v2/plugin-content/plugins/{installation_id}",
+		"PUT /api/v2/plugin-content/plugins/{installation_id}/*",
+		"TRACE /api/v2/plugin-content/plugins/{installation_id}",
+		"TRACE /api/v2/plugin-content/plugins/{installation_id}/*",
+		"GET /api/v2/plugin-content/plugin-assets/{installation_id}",
+		"GET /api/v2/plugin-content/plugin-assets/{installation_id}/*",
+
 		"GET " + Prefix + "/admin/subtitles",
 		"DELETE " + Prefix + "/watch-together/rooms/{room_id}/suggestions/{suggestion_id}",
 		"GET " + Prefix + "/plugin-content/capabilities",
