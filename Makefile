@@ -699,3 +699,7 @@ test-scenario-invite-code-topup-input:
 .PHONY: test-scenario-login-input
 test-scenario-login-input:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredLoginInputAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-invite-code-delete-input
+test-scenario-invite-code-delete-input:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeDeleteInputAcceptance$$' ./internal/scenariocatalog/executor

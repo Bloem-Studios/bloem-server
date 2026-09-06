@@ -1011,3 +1011,10 @@ unchanged, and responses must omit token pairs. Required DSN, pre-setup scratch
 and API-key occupancy guards and fixed-selector checks fail closed. This scope
 does not exercise valid credentials, provider calls, enrollment or outages.
 These three original frozen pairs remain separate from NEW acceptance.
+
+`make test-scenario-invite-code-delete-input` selects only
+`codes_delete.bad_id`. The original administrator request and v1 400 assertions
+remain unchanged; v2 returns a 422 validation Problem. Two HTTP refusals use
+independent transport reseeds and four full eight-table snapshots (32 observations),
+with no exemptions or successful deletion. Required DSN, pre-constructor
+occupancy and exact selector guards remain mandatory.
