@@ -1139,3 +1139,17 @@ Both failed insert attempts allocate one invite-code sequence value; four sequen
 observations explicitly require that effect. No successful creation or retry
 acceptance is claimed. Required DSN, pre-constructor occupancy and exact selector
 guards remain mandatory.
+
+### Frozen signup invite-code refusals
+
+`make test-scenario-signup-codes` selects `signup.bad_code`,
+`signup.exhausted_code` and `signup.disabled_code`, preserving original requests,
+principals, requirements and 400 assertions. V2 returns 422 validation_failed
+with the exact invite-code field and refusal detail, without credentials.
+Six requests reseed independently; twelve full snapshots cover users, profiles,
+API keys, settings, login sessions, device requests, invitations and invite codes
+(96 table observations), with no exemptions. Code redemption refuses before
+account insertion; no code use is consumed. Required DSN, pre-constructor
+occupancy and fixed-selector guards remain enforced. No successful signup,
+enrollment, external provider or outage is exercised. These three original
+frozen pairs remain separate from NEW acceptance.

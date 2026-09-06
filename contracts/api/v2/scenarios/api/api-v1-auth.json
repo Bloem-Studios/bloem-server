@@ -4390,7 +4390,80 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports the unchanged invalid, exhausted or disabled invite code as a field validation Problem. No code use, account, profile or session is created.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_codes_pairing_test.go",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "fixture-newcomer",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "NOPE0000",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/errors/0/location",
+                  "op": "equals",
+                  "value": "body.invite_code"
+                },
+                {
+                  "pointer": "/errors/0/detail",
+                  "op": "equals",
+                  "value": "Invalid invite code"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup.exhausted_code",
@@ -4452,7 +4525,80 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports the unchanged invalid, exhausted or disabled invite code as a field validation Problem. No code use, account, profile or session is created.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_codes_pairing_test.go",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "fixture-newcomer",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code_exhausted}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/errors/0/location",
+                  "op": "equals",
+                  "value": "body.invite_code"
+                },
+                {
+                  "pointer": "/errors/0/detail",
+                  "op": "equals",
+                  "value": "This invite code has reached its maximum uses"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup.disabled_code",
@@ -4514,7 +4660,80 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports the unchanged invalid, exhausted or disabled invite code as a field validation Problem. No code use, account, profile or session is created.",
+            "recorded_in": "internal/scenariocatalog/executor/signup_codes_pairing_test.go",
+            "operation_id": "signup",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/signup",
+              "body": {
+                "username": "fixture-newcomer",
+                "email": "fixture-newcomer@silo.example.test",
+                "password": "fixture-newcomer-password",
+                "invite_code": "${invite_code_disabled}",
+                "create_default_profile": true
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/errors/0/location",
+                  "op": "equals",
+                  "value": "body.invite_code"
+                },
+                {
+                  "pointer": "/errors/0/detail",
+                  "op": "equals",
+                  "value": "This invite code is no longer active"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "signup.missing_fields",

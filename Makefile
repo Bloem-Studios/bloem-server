@@ -751,3 +751,7 @@ test-scenario-admin-invitation-resend-targets:
 .PHONY: test-scenario-invite-code-duplicate
 test-scenario-invite-code-duplicate:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeDuplicateAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-signup-codes
+test-scenario-signup-codes:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSignupCodesAcceptance$$' ./internal/scenariocatalog/executor
