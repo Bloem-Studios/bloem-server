@@ -1338,3 +1338,33 @@ Already committed history effects are retained. Historical personal jobs without
 metadata are left unchanged by the migration. See
 [History import execution](architecture/history-import-execution.md) for transaction,
 claim, cleanup, and failure boundaries.
+
+## V2 dashboard aggregate reads
+
+The dashboard uses four acting-administrator operations under `/api/v2/admin/stats`:
+
+| Path | Operation ID | Query bounds |
+| --- | --- | --- |
+| `/timeseries` | `getAdminDashboardTimeseries` | `hours`: 1–744, default 24 |
+| `/playback-activity` | `getAdminDashboardPlaybackActivity` | `hours`: 1–744, default 24 |
+| `/top-activity` | `getAdminDashboardTopActivity` | `days`: 1–30, default 7; `limit`: 1–25, default 10 |
+| `/downloads` | `getAdminDashboardDownloadsStats` | `limit`: 1–25, default 10 |
+
+All accept `refresh=true` to invalidate the provider cache before reading.
+Out-of-range v2 inputs return a validation Problem; the bridge continues its
+existing clamping behavior. Missing data services return 503. The web normalizes
+its window before choosing a query cache key and retains its existing page-owned
+refresh cadence.
+
+Both transports use the same providers, invalidation, and aggregate queries.
+The database clock still determines windows and bucket boundaries; sampled gaps
+remain gaps, and `oldest_sample_at: null` means no samples exist yet. V2 timestamps
+use UTC with millisecond precision. Account IDs cross v2 as opaque strings.
+Top activity still ranks household profiles, while download totals rank accounts
+and preserve the existing managed-device versus transient-web definitions.
+These endpoints report existing aggregates; they do not infer missing playback
+start telemetry or promise instantaneous device state.
+
+The native clients and Jellyfin compatibility do not consume these dashboard
+administrator aggregates. The web discards responses decoded after the selected
+profile authority changes.

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -172,16 +173,8 @@ func (h *AdminHandler) HandleGetTopActivity(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var activity *AdminTopActivity
-	switch {
-	case h.TopActivitySource != nil:
-		if isTruthyQuery(r.URL.Query().Get("refresh")) {
-			h.TopActivitySource.Invalidate()
-		}
-		activity, err = h.TopActivitySource.Get(r.Context(), days, limit)
-	case h.pool != nil:
-		activity, err = queryAdminTopActivity(r.Context(), h.pool, days, limit)
-	default:
+	activity, err := h.ReadAdminTopActivity(r.Context(), days, limit, isTruthyQuery(r.URL.Query().Get("refresh")))
+	if errors.Is(err, ErrAdminDashboardUnavailable) {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Database not configured")
 		return
 	}

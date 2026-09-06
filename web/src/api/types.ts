@@ -4494,7 +4494,7 @@ export interface AdminTopTitle {
 }
 
 export interface AdminTopProfile {
-  user_id: number;
+  user_id: string | number; // v2 IDs are opaque strings; bridge fixtures retain numbers.
   username: string;
   profile_id: string;
   profile_name: string;
@@ -4543,7 +4543,7 @@ export interface AdminTimeseries {
 // include one-shot web downloads. All zeros with an empty top_users on a
 // deployment where nobody downloads — the widget's empty state, not an error.
 export interface AdminDownloadsUser {
-  user_id: number;
+  user_id: string | number; // v2 IDs are opaque strings; bridge fixtures retain numbers.
   username: string;
   downloads: number;
   total_bytes: number;

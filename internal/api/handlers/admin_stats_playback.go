@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -203,16 +204,8 @@ func (h *AdminHandler) HandleGetPlaybackActivity(w http.ResponseWriter, r *http.
 		return
 	}
 
-	var activity *AdminPlaybackActivity
-	switch {
-	case h.PlaybackActivitySource != nil:
-		if isTruthyQuery(r.URL.Query().Get("refresh")) {
-			h.PlaybackActivitySource.Invalidate()
-		}
-		activity, err = h.PlaybackActivitySource.Get(r.Context(), hours)
-	case h.pool != nil:
-		activity, err = queryAdminPlaybackActivity(r.Context(), h.pool, hours)
-	default:
+	activity, err := h.ReadAdminPlaybackActivity(r.Context(), hours, isTruthyQuery(r.URL.Query().Get("refresh")))
+	if errors.Is(err, ErrAdminDashboardUnavailable) {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Database not configured")
 		return
 	}

@@ -16641,11 +16641,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/stats/downloads",
+        "operation_id": "getAdminDashboardDownloadsStats"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing dashboard aggregate provider, cache invalidation and SQL semantics shared with bridge. V2 bounds window/top-list inputs, emits opaque account IDs and UTC millisecond timestamps, and preserves missing-sample null/empty arrays. Existing web widget queries migrated. Independent scope review pending."
     },
     {
       "listener": "api",
@@ -16702,11 +16702,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/stats/playback-activity",
+        "operation_id": "getAdminDashboardPlaybackActivity"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing dashboard aggregate provider, cache invalidation and SQL semantics shared with bridge. V2 bounds window/top-list inputs, emits opaque account IDs and UTC millisecond timestamps, and preserves missing-sample null/empty arrays. Existing web widget queries migrated. Independent scope review pending."
     },
     {
       "listener": "api",
@@ -16763,11 +16763,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/stats/timeseries",
+        "operation_id": "getAdminDashboardTimeseries"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing dashboard aggregate provider, cache invalidation and SQL semantics shared with bridge. V2 bounds window/top-list inputs, emits opaque account IDs and UTC millisecond timestamps, and preserves missing-sample null/empty arrays. Existing web widget queries migrated. Independent scope review pending."
     },
     {
       "listener": "api",
@@ -16824,11 +16824,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/stats/top-activity",
+        "operation_id": "getAdminDashboardTopActivity"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Existing dashboard aggregate provider, cache invalidation and SQL semantics shared with bridge. V2 bounds window/top-list inputs, emits opaque account IDs and UTC millisecond timestamps, and preserves missing-sample null/empty arrays. Existing web widget queries migrated. Independent scope review pending."
     },
     {
       "listener": "api",
