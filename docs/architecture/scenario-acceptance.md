@@ -467,3 +467,22 @@ secret sentinels test omission, not encryption or delivery. Required DSN, cleanu
 and process exit must pass alongside `SILO_SCENARIO_REPORT`. These cases remain
 outside the frozen 598-scenario oracle. No sends, mutation, concurrent snapshot,
 native or browser behavior is claimed.
+
+### NEW administrator device-read scenarios
+
+`make test-scenario-new-admin-device-reads` runs five **new** scenarios through
+real router, account fanout and PostgreSQL stores. Eleven GET requests and ten
+snapshots of all registration, legacy and canonical override rows verify merged
+logical override counts, profile metadata, the same device ID under separate
+accounts, cursor traversal/binding, missing identities and administrator enforcement.
+Canonical-only overrides affect counts while detail retains only the legacy
+compatibility settings array. Existing canonical-store metadata has whole-second
+precision, represented as UTC milliseconds at the v2 boundary. Reads preserve every
+stored row.
+
+Before setup, the fixture refuses existing override rows and registrations outside
+its known household seed. Each case reseeds that household and adds one synthetic
+registration plus four override rows. Required DSN, cleanup and process exit must
+pass alongside `SILO_SCENARIO_REPORT`. These cases remain outside the frozen
+598-scenario oracle. No device enrollment endpoint, preference mutation endpoint,
+playback command, concurrent snapshot, native or browser behavior is exercised.
