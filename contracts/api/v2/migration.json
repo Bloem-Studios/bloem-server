@@ -27425,13 +27425,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/events/capabilities",
+        "operation_id": "getEventsCapabilities"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; deps.EventsHub != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared subscription capability read independently reviewed. Authenticated account, no profile required; absent event hub fails closed. Native/web no-caller inventory closed. This mapping does not ratify ticket issuance, socket authentication or socket availability."
     },
     {
       "listener": "api",
