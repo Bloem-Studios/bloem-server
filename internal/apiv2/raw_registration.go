@@ -40,7 +40,22 @@ func RawImpliedStatuses(class Class, serviceBacked bool) []int {
 	return statuses
 }
 
-// RegisterRaw registers a GET/HEAD byte-stream handshake and its actual wire
+// RawSuccessStatus identifies a completed raw HTTP exchange. A redirect or a
+// WebSocket upgrade does not need a fabricated 2xx response in its contract.
+func RawSuccessStatus(method, protocol string, status int) bool {
+	if status >= 200 && status < 300 {
+		return true
+	}
+	switch status {
+	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+		return true
+	case http.StatusSwitchingProtocols:
+		return method == http.MethodGet && protocol == "websocket"
+	}
+	return false
+}
+
+// RegisterRaw registers a GET/HEAD/POST raw handshake and its actual wire
 // documentation. No Huma JSON validation, negotiation, encoding, or buffering
 // runs here. Missing authorization dependencies still fail closed.
 func RegisterRaw(reg *Registry, raw RawOperation, handler http.Handler) {
@@ -52,8 +67,8 @@ func RegisterRaw(reg *Registry, raw RawOperation, handler http.Handler) {
 	if handler == nil {
 		fail("raw handler is required")
 	}
-	if op.Method != http.MethodGet && op.Method != http.MethodHead {
-		fail("raw registration currently supports GET and HEAD handshakes")
+	if op.Method != http.MethodGet && op.Method != http.MethodHead && op.Method != http.MethodPost {
+		fail("raw registration currently supports GET, HEAD and POST handshakes")
 	}
 	if strings.TrimSpace(raw.Protocol) == "" || strings.TrimSpace(raw.Reason) == "" {
 		fail("raw protocol and exclusion reason are required")
@@ -64,22 +79,38 @@ func RegisterRaw(reg *Registry, raw RawOperation, handler http.Handler) {
 	if len(op.Responses) == 0 {
 		fail("raw response statuses and media types are required")
 	}
+	if raw.Protocol == "websocket" && (op.Method != http.MethodGet || op.Responses["101"] == nil) {
+		fail("websocket requires GET with an explicit 101 response")
+	}
 	success := false
 	for status, response := range op.Responses {
 		code, err := strconv.Atoi(status)
 		if err != nil || code < 100 || code > 599 || response == nil || response.Description == "" {
 			fail("raw responses require explicit statuses and descriptions")
 		}
-		if code >= 200 && code < 300 {
+		if code == http.StatusSwitchingProtocols {
+			if op.Method != http.MethodGet || raw.Protocol != "websocket" || len(response.Content) != 0 {
+				fail("101 requires a bodyless GET websocket handshake")
+			}
+			for _, name := range []string{"Connection", "Upgrade", "Sec-WebSocket-Accept"} {
+				if !rawResponseHeader(response, name) {
+					fail("websocket response must document header " + name)
+				}
+			}
+		}
+		if RawSuccessStatus(op.Method, raw.Protocol, code) {
 			success = true
+			if code >= 300 && !rawResponseHeader(response, "Location") {
+				fail("redirect response must document Location")
+			}
 			for media := range response.Content {
 				media = strings.ToLower(strings.TrimSpace(strings.SplitN(media, ";", 2)[0]))
 				if media == mediaTypeJSON || strings.HasSuffix(media, "+json") {
 					fail("JSON success responses must use Huma Register")
 				}
 			}
-			if op.Method == http.MethodGet && code != http.StatusNoContent && len(response.Content) == 0 {
-				fail("raw GET success requires its media type")
+			if op.Method != http.MethodHead && code >= 200 && code < 300 && code != http.StatusNoContent && len(response.Content) == 0 {
+				fail("raw response body requires its media type")
 			}
 		}
 	}
@@ -111,6 +142,7 @@ func RegisterRaw(reg *Registry, raw RawOperation, handler http.Handler) {
 	op.Metadata[metaDemoRestricted] = op.DemoRestricted
 	op.Metadata[metaProfileOptional] = op.ProfileOptional
 	op.Metadata[metaRateLimitBucket] = op.RateLimitBucket
+	op.Metadata[metaRetrySafety] = string(op.RetrySafety)
 	if op.Extensions == nil {
 		op.Extensions = map[string]any{}
 	}
@@ -126,6 +158,9 @@ func RegisterRaw(reg *Registry, raw RawOperation, handler http.Handler) {
 	}
 	op.Extensions["x-silo-raw-protocol"] = raw.Protocol
 	op.Extensions["x-silo-raw-reason"] = raw.Reason
+	if op.RetrySafety != "" {
+		op.Extensions[extRetrySafety] = string(op.RetrySafety)
+	}
 	if op.Class != ClassPublic {
 		op.Security = []map[string][]string{{securitySchemeBearer: {}}}
 	}
@@ -157,4 +192,13 @@ func RegisterRaw(reg *Registry, raw RawOperation, handler http.Handler) {
 		serve = func(ctx huma.Context) { middleware(ctx, next) }
 	}
 	reg.api.Adapter().Handle(&op.Operation, serve)
+}
+
+func rawResponseHeader(response *huma.Response, name string) bool {
+	for key, header := range response.Headers {
+		if strings.EqualFold(key, name) && header != nil && header.Schema != nil {
+			return true
+		}
+	}
+	return false
 }

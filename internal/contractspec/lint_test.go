@@ -216,3 +216,65 @@ func TestRawHandshakeLintKeepsAuthorizationAndJSONGates(t *testing.T) {
 		})
 	}
 }
+
+func TestRawProtocolExtensionLint(t *testing.T) {
+	const path = "/api/v2/system/info"
+	fixture := func(doc map[string]any, protocol string) map[string]any {
+		operation := op(doc, path, "get")
+		operation["x-silo-raw-protocol"] = protocol
+		operation["x-silo-raw-reason"] = "Retain the actual callback or upgrade protocol."
+		headers := func(names ...string) map[string]any {
+			out := map[string]any{}
+			for _, name := range names {
+				out[name] = map[string]any{"schema": map[string]any{"type": "string"}}
+			}
+			return out
+		}
+		switch protocol {
+		case "html-callback":
+			operation["x-silo-retry-safety"] = "non_retryable"
+			operation["responses"] = map[string]any{"200": map[string]any{"description": "HTML page", "content": map[string]any{"text/html": map[string]any{"schema": map[string]any{"type": "string"}}}}}
+			item := doc["paths"].(map[string]any)[path].(map[string]any)
+			delete(item, "get")
+			item["post"] = operation
+		case "redirect":
+			operation["responses"] = map[string]any{"302": map[string]any{"description": "Redirect", "headers": headers("Location")}}
+		case "websocket":
+			operation["responses"] = map[string]any{"101": map[string]any{"description": "Upgrade", "headers": headers("Connection", "Upgrade", "Sec-WebSocket-Accept")}}
+		}
+		return operation
+	}
+	for _, protocol := range []string{"html-callback", "redirect", "websocket"} {
+		t.Run(protocol, func(t *testing.T) {
+			if findings := Lint(mutate(t, func(d map[string]any) { fixture(d, protocol) })); len(findings) != 0 {
+				t.Fatal(findings)
+			}
+		})
+	}
+	for name, tc := range map[string]struct {
+		protocol string
+		change   func(map[string]any)
+		want     string
+	}{
+		"retry":    {"html-callback", func(o map[string]any) { delete(o, "x-silo-retry-safety") }, "raw POST must declare retry safety"},
+		"location": {"redirect", func(o map[string]any) { delete(o["responses"].(map[string]any)["302"].(map[string]any), "headers") }, "redirect response must document Location"},
+		"upgrade_header": {"websocket", func(o map[string]any) {
+			delete(o["responses"].(map[string]any)["101"].(map[string]any)["headers"].(map[string]any), "Upgrade")
+		}, "websocket response must document header Upgrade"},
+		"upgrade_body": {"websocket", func(o map[string]any) {
+			o["responses"].(map[string]any)["101"].(map[string]any)["content"] = map[string]any{"text/plain": map[string]any{"schema": map[string]any{"type": "string"}}}
+		}, "bodyless GET websocket handshake"},
+		"upgrade_protocol": {"websocket", func(o map[string]any) { o["x-silo-raw-protocol"] = "other" }, "bodyless GET websocket handshake"},
+		"json_redirect": {"redirect", func(o map[string]any) {
+			o["responses"].(map[string]any)["302"].(map[string]any)["content"] = map[string]any{"application/example+json": map[string]any{"schema": map[string]any{"type": "string"}}}
+		}, "cannot replace a structured JSON operation"},
+		"native_redirect": {"redirect", func(o map[string]any) { delete(o, "x-silo-raw-protocol") }, "no success status is documented"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			data := mutate(t, func(d map[string]any) { tc.change(fixture(d, tc.protocol)) })
+			if findings := strings.Join(Lint(data), "\n"); !strings.Contains(findings, tc.want) {
+				t.Fatalf("want %s; got %s", tc.want, findings)
+			}
+		})
+	}
+}

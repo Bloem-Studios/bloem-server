@@ -1,6 +1,6 @@
 # Native raw HTTP handshakes
 
-`apiv2.RegisterRaw` registers finite GET/HEAD byte-stream handshakes alongside
+`apiv2.RegisterRaw` registers finite GET/HEAD/POST raw HTTP handshakes alongside
 Huma operations in the same native OpenAPI document. Each declaration supplies
 its protocol, reason for raw handling, path parameters, response statuses, and
 media types. Binary payloads use their actual media type and a binary string
@@ -21,11 +21,29 @@ content encoding, redirects, and failures after headers are committed. They do
 not inherit JSON Accept negotiation or Huma input validation. Shared request IDs,
 operation observation, authorization gates, and method/Allow registration remain.
 
-This initial registration API covers GET and HEAD delivery. Structured body,
-concurrency, and deprecation options are rejected: protocols document and enforce
-their own controls. Mutation handshakes and WebSocket upgrades require their own
-concrete extension and protocol tests. Dynamic plugin schemas and root operator
-probes remain explicit exclusions; neither becomes a fabricated JSON operation.
+POST callbacks declare `Operation.RetrySafety` explicitly; the registry validates
+and publishes that classification but never retries a request. HTML responses use
+`text/html`. Tokenized callbacks retain their own proof validation and input/body
+limits; a public authorization class does not validate callback tokens. The
+registration accepts form-compatible requests without applying JSON media rules.
+Structured request-body, concurrency, and deprecation options remain rejected.
+
+A redirect-only operation declares its actual `301`, `302`, `303`, `307`, or `308`
+response and a `Location` header schema. It does not add a synthetic `200`.
+`304` alone is not a successful exchange. JSON success responses, including JSON
+at a redirect status, still require the structured transport.
+
+A WebSocket declaration uses `Protocol: "websocket"`, GET, and a bodyless `101`
+response with schemas for `Connection`, `Upgrade`, and `Sec-WebSocket-Accept`.
+The handler owns upgrade validation, Origin/subprotocol policy, frame handling,
+and connection lifetime. Account/profile gates run before the upgrade, and the
+authorized context reaches the handler. The writer forwards `http.Hijacker` for
+Gorilla as well as `http.ResponseController` access. Bytes written directly to a
+hijacked connection bypass HTTP status observation; such requests are labeled
+`hijacked` instead of `abandoned`, without inventing an observed HTTP status.
+
+Dynamic plugin schemas and root operator probes remain explicit exclusions;
+neither becomes a fabricated JSON operation.
 
 The legacy `RawHandshakes` exclusion list remains separate. A finite raw operation
 already described in OpenAPI must not be added to that list, because reconciliation

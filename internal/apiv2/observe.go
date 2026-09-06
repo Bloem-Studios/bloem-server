@@ -1,8 +1,10 @@
 package apiv2
 
 import (
+	"bufio"
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -123,7 +125,7 @@ func observe(next http.Handler) http.Handler {
 		r = r.WithContext(context.WithValue(r.Context(), observationKey{}, o))
 		sw := &statusRecorder{ResponseWriter: w}
 		next.ServeHTTP(sw, r)
-		report(r, o, sw.status, time.Since(start))
+		report(r, o, sw.status, sw.hijacked, time.Since(start))
 	})
 }
 
@@ -131,7 +133,8 @@ func observe(next http.Handler) http.Handler {
 // http.ResponseController reach streaming capabilities on the original writer.
 type statusRecorder struct {
 	http.ResponseWriter
-	status int
+	status   int
+	hijacked bool
 }
 
 func (s *statusRecorder) WriteHeader(status int) {
@@ -150,11 +153,27 @@ func (s *statusRecorder) Write(p []byte) (int, error) {
 
 func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter }
 
-func report(r *http.Request, o *observation, status int, elapsed time.Duration) {
+// Hijack preserves the legacy http.Hijacker interface used by Gorilla's
+// WebSocket upgrader. ResponseController also traverses Unwrap-only writers.
+// A hijack alone does not prove which bytes the handler sent on the connection,
+// so it must not fabricate an observed HTTP status.
+func (s *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	conn, rw, err := http.NewResponseController(s.ResponseWriter).Hijack()
+	if err == nil {
+		s.hijacked = true
+	}
+	return conn, rw, err
+}
+
+func report(r *http.Request, o *observation, status int, hijacked bool, elapsed time.Duration) {
 	name, version := clientIdentity(r)
 	major := strconv.Itoa(APIMajor)
 	method := methodLabel(r.Method)
-	requestsTotal.WithLabelValues(major, o.operationID, method, statusClass(status), o.errorCode, o.authClass, clientLabel(name)).Inc()
+	class := statusClass(status)
+	if status == 0 && hijacked {
+		class = "hijacked"
+	}
+	requestsTotal.WithLabelValues(major, o.operationID, method, class, o.errorCode, o.authClass, clientLabel(name)).Inc()
 	requestDuration.WithLabelValues(major, o.operationID, method).Observe(elapsed.Seconds())
 	if o.errorCode == TypeValidationFailed.ID {
 		validationFailures.WithLabelValues(o.operationID).Inc()
@@ -168,7 +187,7 @@ func report(r *http.Request, o *observation, status int, elapsed time.Duration) 
 		labelMethod, method,
 		"path_pattern", o.pathPattern,
 		"status", status,
-		labelStatusClass, statusClass(status),
+		labelStatusClass, class,
 		labelErrorCode, o.errorCode,
 		labelAuthClass, o.authClass,
 		"duration_ms", elapsed.Milliseconds(),

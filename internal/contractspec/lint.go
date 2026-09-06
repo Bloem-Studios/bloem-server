@@ -106,9 +106,10 @@ func lintStatuses(fail func(string, ...any), where, path, method string, op oper
 	guarded, _ := op.Extensions[extGuarded].(bool)
 	conditional, _ := op.Extensions[extConditional].(bool)
 	createOnly, _ := op.Extensions[extCreateOnly].(bool)
+	protocol := stringExt(op.Extensions, "x-silo-raw-protocol")
 	success := false
 	for status := range op.Responses {
-		if code, err := strconv.Atoi(status); err == nil && code >= 200 && code < 300 {
+		if code, err := strconv.Atoi(status); err == nil && ((code >= 200 && code < 300) || (protocol != "" && apiv2.RawSuccessStatus(strings.ToUpper(method), protocol, code))) {
 			success = true
 		}
 	}
@@ -116,18 +117,44 @@ func lintStatuses(fail func(string, ...any), where, path, method string, op oper
 		fail("%s: no success status is documented", where)
 	}
 	implied := apiv2.ImpliedStatuses(class, demo, serviceBacked, op.RequestBody != nil, strings.Contains(path, "{"), guarded, conditional, createOnly)
-	if protocol := stringExt(op.Extensions, "x-silo-raw-protocol"); protocol != "" {
+	if protocol != "" {
 		if strings.TrimSpace(stringExt(op.Extensions, "x-silo-raw-reason")) == "" {
 			fail("%s: raw protocol requires its exclusion reason", where)
 		}
-		if method != "get" && method != "head" {
-			fail("%s: raw registration supports only GET and HEAD", where)
+		if method != "get" && method != "head" && method != "post" {
+			fail("%s: raw registration supports only GET, HEAD and POST", where)
+		}
+		if method == "post" && stringExt(op.Extensions, "x-silo-retry-safety") == "" {
+			fail("%s: raw POST must declare retry safety", where)
+		}
+		if _, upgrade := op.Responses["101"]; protocol == "websocket" && (method != "get" || !upgrade) {
+			fail("%s: websocket requires GET with an explicit 101 response", where)
 		}
 		if op.RequestBody != nil || guarded || conditional || createOnly {
 			fail("%s: raw handshake advertises unsupported structured controls", where)
 		}
 		for status, response := range op.Responses {
-			if code, err := strconv.Atoi(status); err == nil && code >= 200 && code < 300 {
+			code, err := strconv.Atoi(status)
+			if err != nil {
+				continue
+			}
+			if code == 101 {
+				if method != "get" || protocol != "websocket" || len(response.Content) != 0 {
+					fail("%s: 101 requires a bodyless GET websocket handshake", where)
+				}
+				for _, header := range []string{"Connection", "Upgrade", "Sec-WebSocket-Accept"} {
+					if !response.hasHeader(header) {
+						fail("%s: websocket response must document header %s", where, header)
+					}
+				}
+			}
+			if apiv2.RawSuccessStatus(strings.ToUpper(method), protocol, code) {
+				if code >= 300 && !response.hasHeader("Location") {
+					fail("%s: redirect response must document Location", where)
+				}
+				if method != "head" && code >= 200 && code < 300 && code != 204 && len(response.Content) == 0 {
+					fail("%s: raw response body requires its media type", where)
+				}
 				for media := range response.Content {
 					media = strings.ToLower(strings.TrimSpace(strings.SplitN(media, ";", 2)[0]))
 					if media == "application/json" || strings.HasSuffix(media, "+json") {
@@ -311,6 +338,16 @@ type requestBody struct {
 
 type response struct {
 	Content map[string]mediaType `json:"content"`
+	Headers map[string]mediaType `json:"headers"`
+}
+
+func (r response) hasHeader(name string) bool {
+	for key, header := range r.Headers {
+		if strings.EqualFold(key, name) && header.Schema != nil {
+			return true
+		}
+	}
+	return false
 }
 
 type mediaType struct {
