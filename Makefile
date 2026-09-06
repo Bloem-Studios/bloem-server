@@ -558,3 +558,8 @@ test-scenario-account-capability:
 .PHONY: test-scenario-auth-providers
 test-scenario-auth-providers:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAuthProvidersAcceptance$$' ./internal/scenariocatalog/executor
+
+# Two frozen account authentication refusals with complete table preservation.
+.PHONY: test-scenario-account-me-refusals
+test-scenario-account-me-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -v -run '^TestRequiredAccountMeRefusalAcceptance$$' ./internal/scenariocatalog/executor

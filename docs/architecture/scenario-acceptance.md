@@ -596,3 +596,30 @@ profiles and API-key tables (60 table observations), with every row unchanged.
 Required DSN, pre-setup scratch/API-key occupancy and fixed-selector gates fail
 closed. No login, plugin installation or external provider call is exercised.
 These five frozen pairs remain separate from NEW acceptance.
+
+### Frozen account authentication refusal pairs
+
+`make test-scenario-account-me-refusals` requires exactly `me.no_token` and
+`me.bad_token`, original GET `/api/v1/auth/me` registration 0. Both retain their
+public principal and original request, including `Bearer not-a-jwt`. Their
+explicit v2 pair calls `getCurrentUser` at GET `/api/v2/account/me` and requires
+401 Problem Details: `authentication_required` or `invalid_token`, respectively.
+No successful account read, login or provider operation is part of this cohort.
+
+Prerequisites are the accepted current-user contract, the paired executor and
+its synthetic household/auth wiring, PostgreSQL with the migration-required
+`vector` extension available, and an exclusively reserved **new** scratch
+database supplied through `SILO_SCENARIO_DATABASE_URL`. Missing DSN fails before
+construction; scratch-data and API-key guards run before `New`, migrations or
+reseeding. Never point this destructive fixture executor at an existing database.
+The exact selector refuses missing, duplicate or unpaired IDs, altered authority,
+request or operation, and unsupported effects or follow-up exchanges.
+
+Each transport reseeds before and after its one HTTP exchange. Complete ordered
+`users`, `user_profiles` and `api_keys` snapshots must remain byte-identical,
+without timestamp, password, usage or revision exemptions. The required report
+contains four unique passing transport results and the runner requires four HTTP
+exchanges, eight combined snapshots and 24 table observations. Table mismatches
+never print row contents. This adds two original pair declarations, not NEW cases
+or download/ebook scenario coverage. Acceptance requires separate retained live
+and guard evidence plus independent review; declarations alone are not a pass.
