@@ -270,7 +270,8 @@ export interface paths {
     };
     /** Read desired autoscan configuration independently of scheduler state. */
     get: operations["getAdminAutoscanSettings"];
-    put?: never;
+    /** Persist desired settings, then attempt optional poll-task rescheduling. Reschedule failure is non-fatal. No automatic retry, revision precondition or durable runtime acknowledgement. */
+    put: operations["updateAdminAutoscanSettings"];
     post?: never;
     delete?: never;
     options?: never;
@@ -9341,6 +9342,21 @@ export interface components {
       /** Format: int64 */
       default_poll_interval_seconds: number;
       enabled: boolean;
+    };
+    AdminAutoscanSettingsUpdateBody: {
+      /** Format: int64 */
+      debounce_seconds: number;
+      /** Format: int64 */
+      default_poll_interval_seconds: number;
+      enabled: boolean;
+    };
+    AdminAutoscanSettingsUpdateResult: {
+      /**
+       * @description Result of this process's optional reschedule call, not a durable or cluster-wide ordering guarantee.
+       * @enum {string}
+       */
+      reschedule_state: "applied" | "failed" | "not_configured";
+      settings: components["schemas"]["AdminAutoscanSettings"];
     };
     AdminAutoscanSource: {
       capability_id: string;
@@ -25724,6 +25740,143 @@ export interface operations {
         headers: {
           /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
           ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  updateAdminAutoscanSettings: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminAutoscanSettingsUpdateBody"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminAutoscanSettingsUpdateResult"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
           [name: string]: unknown;
         };
         content: {

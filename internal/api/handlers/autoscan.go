@@ -1370,3 +1370,38 @@ func (h *AutoscanHandler) ReadAdminAutoscanEvents(ctx context.Context, filter au
 	total, err := h.repo.CountEvents(ctx, filter)
 	return rows, total, err
 }
+
+var ErrAdminAutoscanSettingsWriteUnavailable = errors.New("autoscan settings writer unavailable")
+var ErrAdminAutoscanSettingsWriteInvalid = errors.New("invalid autoscan settings")
+
+const (
+	autoscanRescheduleNotConfigured = "not_configured"
+	autoscanRescheduleApplied       = "applied"
+	autoscanRescheduleFailed        = "failed"
+)
+
+type AdminAutoscanSettingsWriteView struct {
+	Settings        autoscan.Settings
+	RescheduleState string
+}
+
+func (h *AutoscanHandler) UpdateAdminAutoscanSettings(ctx context.Context, input autoscan.Settings) (AdminAutoscanSettingsWriteView, error) {
+	if h == nil || h.repo == nil {
+		return AdminAutoscanSettingsWriteView{}, ErrAdminAutoscanSettingsWriteUnavailable
+	}
+	if input.DefaultPollIntervalSeconds <= 0 || input.DefaultPollIntervalSeconds > 2147483647 || input.DebounceSeconds < 0 || input.DebounceSeconds > 2147483647 {
+		return AdminAutoscanSettingsWriteView{}, ErrAdminAutoscanSettingsWriteInvalid
+	}
+	updated, err := h.repo.UpdateSettings(ctx, input)
+	if err != nil {
+		return AdminAutoscanSettingsWriteView{}, err
+	}
+	out := AdminAutoscanSettingsWriteView{Settings: updated, RescheduleState: autoscanRescheduleNotConfigured}
+	if h.triggers != nil {
+		out.RescheduleState = autoscanRescheduleApplied
+		if err := h.triggers.UpdateTriggers(autoscanPollTaskKey, []taskmanager.TriggerConfig{{Type: taskmanager.TriggerTypeInterval, IntervalMs: int64(updated.DefaultPollIntervalSeconds) * 1000}}); err != nil {
+			out.RescheduleState = autoscanRescheduleFailed
+		}
+	}
+	return out, nil
+}

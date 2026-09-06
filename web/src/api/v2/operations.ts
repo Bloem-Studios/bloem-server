@@ -597,6 +597,7 @@ export const v2Operations = {
   "PUT /api/v2/admin/access-groups/{id}": "updateAdminAccessGroup",
   "PUT /api/v2/admin/api-keys/{id}/tier": "updateAdminAPIKeyTier",
   "PUT /api/v2/admin/autoscan/connections/{id}": "updateAdminAutoscanConnection",
+  "PUT /api/v2/admin/autoscan/settings": "updateAdminAutoscanSettings",
   "PUT /api/v2/admin/collection-groups/{group_id}/collections/order":
     "moveAndReorderAdminGroupCollections",
   "PUT /api/v2/admin/collections/order": "reorderAdminCollections",

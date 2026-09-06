@@ -1993,3 +1993,22 @@ The Activity panel keeps polling and numbered pages through at most100 cursor
 reads per requested page. Captured authority/PIN cache identity, stale-response
 checks and no previous-page placeholders isolate authority transitions. Unsupported
 states, unsafe numeric IDs and invalid continuation fail without partial success.
+
+### Write autoscan settings (v2)
+
+`PUT /api/v2/admin/autoscan/settings` (`updateAdminAutoscanSettings`) requires an
+acting administrator. The required enabled, default_poll_interval_seconds (1 to
+2147483647) and debounce_seconds (0 to2147483647) fields replace desired settings.
+The existing UPSERT completes before the optional poll-task reschedule call. A200
+response contains settings and reschedule_state: applied, failed or not_configured.
+Applied describes that call only, not durable cluster-wide application or ordering
+against concurrent writers. Failed/not_configured still means settings persisted;
+no retry is performed. Missing writer503, invalid422 and masked uncertain500 remain
+separate. There is no revision precondition or replay identity. Reload and reconcile
+uncertain persistence before another explicit submission.
+
+The web enable switch and advanced form capture body and authority, disable retry
+and authentication replay, and invalidate the canonical reader only for the active
+authority. Reschedule warnings distinguish stored settings from runtime outcome.
+The advanced form uses explicit Save and preserves newer edits after acknowledgement;
+missing configuration is not replaced by default values for submission.

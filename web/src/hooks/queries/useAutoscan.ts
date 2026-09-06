@@ -43,6 +43,7 @@ export function useAutoscanSettings() {
       profileContext?.serverOrigin,
       profileContext?.authContextVersion,
       profileContext?.profileId,
+      profileContext?.profileTokenGeneration,
     ],
     enabled: profileContext !== null,
     queryFn: () => {
@@ -53,22 +54,80 @@ export function useAutoscanSettings() {
   });
 }
 
+type AutoscanSettingsWriteIntent = {
+  body: AutoscanSettings;
+  profileContext: ProfileRequestContextSnapshot;
+};
+function captureAutoscanSettingsWrite(body: AutoscanSettings): AutoscanSettingsWriteIntent {
+  const profileContext = captureProfileRequestContext();
+  if (!profileContext) throw new StaleApiRequestContextError();
+  return { body: { ...body }, profileContext };
+}
 export function useUpdateAutoscanSettings() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: AutoscanSettings) =>
-      api<AutoscanSettings>("/admin/autoscan/settings", {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    mutationFn: async ({
+      body,
+      profileContext,
+    }: AutoscanSettingsWriteIntent): Promise<AutoscanSettings> => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const result = await v2("PUT /api/v2/admin/autoscan/settings", {
+        body,
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      if (result.reschedule_state === "failed")
+        toast.warning(
+          "Settings saved, but poll-task rescheduling failed. Runtime may retain its previous schedule until restart.",
+        );
+      else if (result.reschedule_state === "not_configured")
+        toast.warning("Settings saved; no poll-task rescheduler is configured on this server.");
+      return result.settings;
+    },
+    retry: false,
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Autoscan settings saved");
       queryClient.invalidateQueries({ queryKey: adminKeys.autoscanSettings() });
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to save autoscan settings");
+    onError: (_error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        "Settings persistence could not be confirmed. Reload settings before submitting again.",
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (
+      body: AutoscanSettings,
+      options?: {
+        onSuccess?: (result: AutoscanSettings) => void;
+        onError?: (error: Error) => void;
+      },
+    ) => {
+      let intent: AutoscanSettingsWriteIntent;
+      try {
+        intent = captureAutoscanSettingsWrite(body);
+      } catch {
+        options?.onError?.(new StaleApiRequestContextError());
+        return;
+      }
+      mutation.mutate(intent, {
+        onSuccess: (result) => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onSuccess?.(result);
+        },
+        onError: (error) => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onError?.(error);
+        },
+      });
+    },
+    mutateAsync: (body: AutoscanSettings) =>
+      mutation.mutateAsync(captureAutoscanSettingsWrite(body)),
+  };
 }
 
 // --- Connections ---

@@ -2345,11 +2345,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/autoscan/settings",
+        "operation_id": "updateAdminAutoscanSettings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Settings persistence precedes optional nonfatal rescheduling; no replay identity or durable runtime acknowledgement. Reconcile uncertain errors explicitly, without automatic retry."
     },
     {
       "listener": "api",
