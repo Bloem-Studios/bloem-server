@@ -1264,6 +1264,26 @@ de-duplicated; a single value behaves exactly as before. The same parsing
 applies to the log-stream WebSocket, so a stream filtered on two levels
 delivers both.
 
+## API v2 playback history
+
+`GET /api/v2/admin/playback-history` (`listAdminPlaybackHistory`) ports
+`GET /api/v1/admin/playback-history`: the finalized playback log across every account and
+profile, newest ended first, for acting administrators. It keeps the v1 filters
+(`user_id`, `profile_id`, `media_item_id`, `completed` as `all`, `true` or `false`) and
+replaces offset paging with `limit` (default 50, maximum 200) plus an opaque `cursor` bound
+to the operation, acting account and profile, filters and limit; `offset` is refused with
+422. Each page is one consistent read ordered by `ended_at` then `session_id`; later pages
+read the live log. Account and file identifiers are strings, instants are RFC 3339, and
+`duration_seconds` is null when the media duration was never recorded. A deleted account
+lists with an empty `username`; an item no longer in the catalog lists with an empty
+`media_title` and `media_type`. The stored client address is not part of this projection,
+matching v1. A missing database returns 503; storage errors are masked as 500.
+
+The administrator history page and the user detail watch-history tab read this route
+under the authority captured when the query was created, keyed by an opaque authority
+generation, and refuse a page whose account, server, profile or PIN authority changed while
+it was in flight. Both views keep their single-page reading at the v2 page ceiling.
+
 ## API v2 history imports
 
 The administrative history-import surface uses `/api/v2/admin/history-import-sources`

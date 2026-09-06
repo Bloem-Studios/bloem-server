@@ -263,6 +263,8 @@ type Dependencies struct {
 	AdminAccountActivity AdminAccountActivityService
 	AdminAccountSettings AdminAccountSettingsService
 	AdminAccessGroups    AdminAccessGroupService
+	// AdminPlaybackHistory pages the finalized playback log for administrators (*handlers.AdminHandler).
+	AdminPlaybackHistory AdminPlaybackHistoryService
 	// SettingsContract answers the settings capability document
 	// (*handlers.SettingValuesHandler).
 	SettingsContract SettingsContractService

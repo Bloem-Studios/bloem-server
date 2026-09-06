@@ -7983,6 +7983,124 @@
         },
         "type": "object"
       },
+      "AdminPlaybackHistoryCollection": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "description": "The page's items; empty, never null",
+            "items": {
+              "$ref": "#/components/schemas/AdminPlaybackHistoryEntry"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo",
+            "description": "Cursor state; absent for bounded unpaginated collections"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "AdminPlaybackHistoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "completed": {
+            "type": "boolean"
+          },
+          "duration_seconds": {
+            "description": "Media duration when known",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ended_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "media_file_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "media_item_id": {
+            "description": "Catalog content id; empty when the attempt was not attributed to an item",
+            "type": "string"
+          },
+          "media_title": {
+            "description": "Episode or item title; empty when the item is no longer in the catalog",
+            "type": "string"
+          },
+          "media_type": {
+            "description": "episode, or the catalog item type; empty when unknown",
+            "type": "string"
+          },
+          "play_method": {
+            "type": "string"
+          },
+          "profile_id": {
+            "type": "string"
+          },
+          "profile_name": {
+            "description": "Profile display name at the time of playback; the profile id when none was recorded",
+            "type": "string"
+          },
+          "session_id": {
+            "description": "Playback session identifier; unique per attempt",
+            "type": "string"
+          },
+          "started_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "user_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "username": {
+            "description": "Empty when the account no longer exists",
+            "type": "string"
+          },
+          "watched_seconds": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "session_id",
+          "user_id",
+          "username",
+          "profile_id",
+          "profile_name",
+          "media_item_id",
+          "media_file_id",
+          "media_title",
+          "media_type",
+          "play_method",
+          "started_at",
+          "ended_at",
+          "watched_seconds",
+          "duration_seconds",
+          "completed"
+        ],
+        "type": "object"
+      },
       "AdminPlaybackReliability": {
         "additionalProperties": false,
         "properties": {
@@ -70420,6 +70538,229 @@
         "x-silo-class": "acting_admin",
         "x-silo-demo-restricted": true,
         "x-silo-retry-safety": "non_retryable",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/playback-history": {
+      "get": {
+        "operationId": "listAdminPlaybackHistory",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size; default 50, maximum 200",
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "description": "Page size; default 50, maximum 200",
+              "examples": [
+                50
+              ],
+              "format": "int64",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor from page.next_cursor",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "description": "Opaque cursor from page.next_cursor",
+              "maxLength": 8192,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only attempts by this login account",
+            "explode": false,
+            "in": "query",
+            "name": "user_id",
+            "schema": {
+              "description": "Only attempts by this login account",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only attempts by this household profile",
+            "explode": false,
+            "in": "query",
+            "name": "profile_id",
+            "schema": {
+              "description": "Only attempts by this household profile",
+              "maxLength": 1024,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only attempts of this catalog item",
+            "explode": false,
+            "in": "query",
+            "name": "media_item_id",
+            "schema": {
+              "description": "Only attempts of this catalog item",
+              "maxLength": 1024,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Completion filter; all returns every finalized attempt",
+            "explode": false,
+            "in": "query",
+            "name": "completed",
+            "schema": {
+              "default": "all",
+              "description": "Completion filter; all returns every finalized attempt",
+              "enum": [
+                "all",
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPlaybackHistoryCollection"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List finalized playback attempts across every account and profile, newest ended first. Each page is one consistent read; later pages read the live log.",
+        "tags": [
+          "admin"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-demo-restricted": true,
         "x-silo-service-backed": true
       }
     },

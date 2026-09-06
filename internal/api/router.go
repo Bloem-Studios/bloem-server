@@ -2103,6 +2103,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if adminHandler != nil {
 		v2deps.AdminUsers = adminHandler
+		v2deps.AdminPlaybackHistory = adminHandler
 		v2deps.AdminAccounts = adminHandler
 		v2deps.AdminDevices = adminHandler
 		v2deps.AdminPlaybackSessions = adminHandler

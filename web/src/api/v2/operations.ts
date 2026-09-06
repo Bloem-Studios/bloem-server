@@ -151,6 +151,7 @@ export const v2Operations = {
   "GET /api/v2/admin/node-sessions": "listAdminNodeSessions",
   "GET /api/v2/admin/nodes": "listAdminNodes",
   "GET /api/v2/admin/notifications/server-channels": "listAdminNotificationServerChannels",
+  "GET /api/v2/admin/playback-history": "listAdminPlaybackHistory",
   "GET /api/v2/admin/playback-routing/capabilities": "getAdminPlaybackRoutingCapabilities",
   "GET /api/v2/admin/plugins/catalog-settings": "getAdminPluginCatalogSettings",
   "GET /api/v2/admin/plugins/catalog-status": "getAdminPluginCatalogStatus",

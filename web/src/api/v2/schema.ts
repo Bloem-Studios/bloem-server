@@ -2437,6 +2437,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/playback-history": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List finalized playback attempts across every account and profile, newest ended first. Each page is one consistent read; later pages read the live log. */
+    get: operations["listAdminPlaybackHistory"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/playback-routing/capabilities": {
     parameters: {
       query?: never;
@@ -11885,6 +11902,56 @@ export interface components {
       name?: string | null;
       tmdb_id?: string | null;
       tvdb_id?: string | null;
+    };
+    AdminPlaybackHistoryCollection: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["AdminPlaybackHistoryEntry"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    AdminPlaybackHistoryEntry: {
+      completed: boolean;
+      /**
+       * Format: double
+       * @description Media duration when known
+       */
+      duration_seconds: number | null;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      ended_at: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      media_file_id: string;
+      /** @description Catalog content id; empty when the attempt was not attributed to an item */
+      media_item_id: string;
+      /** @description Episode or item title; empty when the item is no longer in the catalog */
+      media_title: string;
+      /** @description episode, or the catalog item type; empty when unknown */
+      media_type: string;
+      play_method: string;
+      profile_id: string;
+      /** @description Profile display name at the time of playback; the profile id when none was recorded */
+      profile_name: string;
+      /** @description Playback session identifier; unique per attempt */
+      session_id: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      started_at: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      user_id: string;
+      /** @description Empty when the account no longer exists */
+      username: string;
+      /** Format: double */
+      watched_seconds: number;
     };
     AdminPlaybackReliability: {
       /** Format: int64 */
@@ -46033,6 +46100,125 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["Person"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listAdminPlaybackHistory: {
+    parameters: {
+      query?: {
+        /** @description Completion filter; all returns every finalized attempt */
+        completed?: "all" | "true" | "false";
+        /** @description Opaque cursor from page.next_cursor */
+        cursor?: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+        /** @description Only attempts of this catalog item */
+        media_item_id?: string;
+        /** @description Only attempts by this household profile */
+        profile_id?: string;
+        /** @description Only attempts by this login account */
+        user_id?: string;
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminPlaybackHistoryCollection"];
         };
       };
       /** @description Bad Request */
