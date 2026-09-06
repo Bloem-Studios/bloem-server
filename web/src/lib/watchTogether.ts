@@ -1,3 +1,4 @@
+import { joinRoom } from "@/api/v2/watchTogetherJoin";
 import { updateRoomPolicy } from "@/api/v2/watchTogetherPolicy";
 import { readRoom } from "@/api/v2/watchTogetherRoomRead";
 import { deleteRoomSuggestion } from "@/api/v2/watchTogetherSuggestionDelete";
@@ -121,11 +122,11 @@ export async function createWatchTogetherRoom(input: CreateWatchTogetherRoomInpu
   });
 }
 
-export async function joinWatchTogetherRoom(input: JoinWatchTogetherRoomInput) {
-  return api<WatchTogetherRoomResponse>("/watch-together/join", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+export async function joinWatchTogetherRoom(
+  input: JoinWatchTogetherRoomInput,
+  authority = captureProfileRequestContext(),
+) {
+  return joinRoom({ ...input }, authority);
 }
 
 export async function getWatchTogetherRoom(

@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { ApiClientError } from "@/api/client";
+import {
+  ApiClientError,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -16,7 +21,7 @@ function describeJoinError(error: unknown) {
     if (error.status === 404) {
       return "Room not found.";
     }
-    if (error.status === 410) {
+    if (error.status === 410 || error.status === 409) {
       return "That room is no longer active.";
     }
     return error.message;
@@ -81,22 +86,39 @@ export default function WatchTogetherJoin() {
     [],
   );
 
+  const joinRun = useRef(0);
+  const invalidateJoin = useCallback(() => {
+    joinRun.current++;
+  }, []);
+  useLayoutEffect(() => {
+    invalidateJoin();
+    return invalidateJoin;
+  }, [token, invalidateJoin]);
   const joinRoom = useCallback(
     async (input: { code?: string; join_token?: string }) => {
+      const joinAuthority = captureProfileRequestContext();
+      const run = ++joinRun.current;
+      const active = () =>
+        run === joinRun.current &&
+        !!joinAuthority &&
+        isCapturedProfileAuthorityActive(joinAuthority);
+      if (!active()) return;
       setJoining(true);
       setError(null);
       try {
-        const response = await joinWatchTogetherRoom(input);
-        if (!response.room_access_token) {
+        const response = await joinWatchTogetherRoom({ ...input }, joinAuthority);
+        if (!active()) return;
+        if (!response.room_access_token)
           throw new Error("Room access token was missing from the join response.");
-        }
-        navigate(`/rooms/${response.room.room_id}?room_token=${response.room_access_token}`, {
-          replace: true,
-        });
+        navigate(
+          `/rooms/${encodeURIComponent(response.room.room_id)}?room_token=${encodeURIComponent(response.room_access_token)}`,
+          { replace: true },
+        );
       } catch (joinError) {
+        if (!active() || joinError instanceof StaleApiRequestContextError) return;
         setError(describeJoinError(joinError));
       } finally {
-        setJoining(false);
+        if (active()) setJoining(false);
       }
     },
     [navigate],
