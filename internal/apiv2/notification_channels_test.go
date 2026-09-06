@@ -115,3 +115,31 @@ func TestNotificationDiscordUnlink(t *testing.T) {
 	deps.NotificationChannels = nil
 	requireProblem(t, do(t, NewHandler(deps), http.MethodDelete, path, "", bearer(memberToken)), TypeDependencyUnavailable)
 }
+
+func (f *fakeNotificationChannels) ClearEmailAddress(_ context.Context, user int, profile string) error {
+	f.user, f.profile = user, profile
+	f.writes++
+	return f.err
+}
+func TestNotificationEmailClearAddress(t *testing.T) {
+	f := new(fakeNotificationChannels)
+	deps := pilotDeps(nil, nil)
+	deps.NotificationChannels = f
+	h := NewHandler(deps)
+	path := Prefix + "/notifications/email-preferences/address"
+	rec := do(t, h, http.MethodDelete, path, "", profileOwner())
+	if rec.Code != 200 || f.user != 1 || f.profile != "p-owner" || f.writes != 1 {
+		t.Fatalf("%d %s %+v", rec.Code, rec.Body.String(), f)
+	}
+	requireProblem(t, do(t, h, http.MethodDelete, path, "", nil), TypeAuthenticationRequired)
+	requireProblem(t, do(t, h, http.MethodDelete, path, "", bearer(memberToken)), TypeValidationFailed)
+	if f.writes != 1 {
+		t.Fatal("unauthorized dispatch")
+	}
+	f.err = notifications.ErrEmailChildProfile
+	requireProblem(t, do(t, h, http.MethodDelete, path, "", profileOwner()), TypePermissionDenied)
+	f.err = fmt.Errorf("storage failure")
+	requireProblem(t, do(t, h, http.MethodDelete, path, "", profileOwner()), TypeInternalError)
+	deps.NotificationChannels = nil
+	requireProblem(t, do(t, NewHandler(deps), http.MethodDelete, path, "", profileOwner()), TypeDependencyUnavailable)
+}

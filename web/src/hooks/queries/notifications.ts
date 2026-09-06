@@ -19,6 +19,7 @@ import {
 } from "@/api/v2/notifications";
 import {
   getNotificationEmailPreferences,
+  clearNotificationEmailAddress,
   updateNotificationEmailPreferences,
   getNotificationDiscordPreferences,
   updateNotificationDiscordPreferences,
@@ -207,10 +208,10 @@ export function useClearEmailNotificationAddress() {
   const context = captureProfileRequestContext();
   return useMutation({
     retry: false,
-    mutationFn: () =>
-      api<NotificationEmailPreferences>("/notifications/email-preferences/address", {
-        method: "DELETE",
-      }),
+    mutationFn: () => {
+      if (!context) throw new StaleApiRequestContextError();
+      return clearNotificationEmailAddress(context);
+    },
     onSuccess: (prefs) => {
       if (!context) return;
       requireNotificationAuthority(context);

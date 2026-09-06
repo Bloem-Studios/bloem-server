@@ -9,6 +9,7 @@ import (
 )
 
 type NotificationChannelService interface {
+	ClearEmailAddress(context.Context, int, string) error
 	UnlinkDiscord(context.Context, int) error
 	EmailPreferences(context.Context, int, string) (notifications.EmailPreferencesState, error)
 	SetEmailMode(context.Context, int, string, string) error
@@ -62,6 +63,23 @@ func (reg *Registry) notificationDiscordState(ctx context.Context) (*Notificatio
 }
 
 func registerNotificationChannels(reg *Registry) {
+	clearAddress := notificationOperation(http.MethodDelete, "/email-preferences/address", "clearNotificationEmailAddress")
+	clearAddress.RetrySafety = RetrySafetyNonRetryable
+	clearAddress.Summary = "Clear the profile's verified and pending notification address and turn email delivery off. Send once; replay may clear a newer address."
+	Register(reg, clearAddress, func(ctx context.Context, _ *struct{}) (*NotificationEmailPreferencesOutput, error) {
+		svc := reg.deps.NotificationChannels
+		if svc == nil {
+			return nil, unavailable("notification channels")
+		}
+		if err := svc.ClearEmailAddress(ctx, claimsFrom(ctx).UserID, profileFrom(ctx)); err != nil {
+			if errors.Is(err, notifications.ErrEmailChildProfile) {
+				return nil, NewProblem(TypePermissionDenied, "Child profiles cannot change the notification address.")
+			}
+			return nil, serviceProblem(err)
+		}
+		return reg.notificationEmailState(ctx)
+	})
+
 	unlink := notificationOperation(http.MethodDelete, "/discord-link", "unlinkNotificationDiscord")
 	unlink.ProfileOptional = true
 	unlink.DefaultStatus = http.StatusNoContent

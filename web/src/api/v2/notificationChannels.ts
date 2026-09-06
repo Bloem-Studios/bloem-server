@@ -44,3 +44,13 @@ export async function updateNotificationDiscordPreferences(
   requireNotificationAuthority(profileContext);
   return result;
 }
+
+export async function clearNotificationEmailAddress(profileContext: ProfileRequestContextSnapshot) {
+  requireNotificationAuthority(profileContext);
+  const result = await v2("DELETE /api/v2/notifications/email-preferences/address", {
+    profileContext,
+    retryAuthentication: false,
+  });
+  requireNotificationAuthority(profileContext);
+  return result;
+}
