@@ -257,6 +257,7 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"GET " + Prefix + "/subtitles/ai/status",
 		"GET " + Prefix + "/subtitles/{media_file_id}",
 		"POST " + Prefix + "/subtitles/search",
+		"POST " + Prefix + "/subtitles/download",
 		"GET " + Prefix + "/account/me",
 		"GET " + Prefix + "/admin/users",
 		"GET " + Prefix + "/openapi.json",

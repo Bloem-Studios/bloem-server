@@ -77,7 +77,7 @@ func registerSubtitleReads(reg *Registry) {
 		}
 		out := StoredSubtitles{Subtitles: make([]StoredSubtitle, 0, len(rows))}
 		for _, row := range rows {
-			out.Subtitles = append(out.Subtitles, StoredSubtitle{ID: ID(strconv.Itoa(row.ID)), MediaFileID: ID(strconv.Itoa(row.MediaFileID)), Provider: row.Provider, Language: row.Language, Format: string(row.Format), ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt)})
+			out.Subtitles = append(out.Subtitles, storedSubtitleView(row))
 		}
 		return &StoredSubtitlesOutput{Body: out}, nil
 	})
@@ -125,4 +125,8 @@ func (reg *Registry) subtitleReadAccess(ctx context.Context) (catalogpkg.AccessF
 		return catalogpkg.AccessFilter{}, catalogProblem(err, "body")
 	}
 	return access, nil
+}
+
+func storedSubtitleView(row subtitles.DownloadedSubtitle) StoredSubtitle {
+	return StoredSubtitle{ID: ID(strconv.Itoa(row.ID)), MediaFileID: ID(strconv.Itoa(row.MediaFileID)), Provider: row.Provider, Language: row.Language, Format: string(row.Format), ReleaseName: row.ReleaseName, Score: row.Score, HearingImpaired: row.HearingImpaired, CreatedAt: NewInstant(row.CreatedAt)}
 }

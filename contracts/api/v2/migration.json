@@ -43052,19 +43052,19 @@
       "section": "playback-subtitles",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "unique_constraint",
-      "retry_safety_note": "DEFECT: UNIQUE (s3_key) resolves a retry to the existing row, but two overlapping calls across API nodes both see no row, both write the same key, and the insert that loses the race runs DeleteObject on the object the winning row references. The v2 port must claim the key durably before writing.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Each request contacts the provider before full-content deduplication. No durable replay record exists; an uncertain response must not be retried automatically. Unique publication objects protect stored bytes but do not suppress repeated upstream requests.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/subtitles/download",
+        "operation_id": "downloadSubtitle"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed provider download implemented with file/parent authorization before provider access, authenticated account attribution and public string-ID projection. Web callers send once with captured authority; native adoption and independent review pending. Storage foundation must be deployed to all subtitle writers before relying on publication safety; orphan cleanup remains best effort."
     },
     {
       "listener": "api",

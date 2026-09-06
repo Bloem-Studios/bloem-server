@@ -83,5 +83,36 @@ results with a generic warning; their raw error details are not part of v2.
 The web detail dialog and player search use typed v2 requests. The existing web
 track selector still needs numeric stored IDs; its adapter rejects IDs that it
 cannot represent safely. Native consumers need the string-ID models and new
-paths. Upload, download, delete, and AI-job mutations remain separate migration
-scopes; their existing retry limitations still apply.
+paths. Provider download is described below. Upload, delete, and AI-job mutations
+remain separate migration scopes; their existing retry limitations still apply.
+
+## Provider download
+
+`POST /api/v2/subtitles/download` downloads a selected provider search result for
+an accessible media file. It requires account authentication and applies the
+current profile's file and parent-item access rules before contacting the
+provider. Demo mode refuses the mutation. Provider availability is exposed by
+`GET /api/v2/subtitles/providers/status`.
+
+The JSON body contains `media_file_id`, `provider`, `subtitle_id`, `language`,
+`release_name`, `score`, and `hearing_impaired`. Media-file IDs and opaque provider
+result IDs are strings. The provider determines the downloaded format; clients
+do not supply it. Uploader attribution comes from the authenticated account.
+
+Success returns `200` with `subtitle`, using the same public stored-track fields
+as `GET /api/v2/subtitles/{media_file_id}`. Stored IDs are strings and timestamps
+are canonical instants. Object keys, uploader identity, and upstream failure
+diagnostics are not returned. Failures use the standard native Problem Details
+contract.
+
+This operation is `non_retryable`. Each request contacts the provider before
+stored-content deduplication. Deduplication can reuse identical content but does
+not replay a provider response or suppress repeated upstream requests. An
+uncertain response must not trigger automatic retry or authentication replay.
+The immutable object publication rules and best-effort cleanup limits are
+specified in [subtitle storage](architecture/subtitle-storage.md).
+
+The bridge download retains its existing request and response contract. This
+operation does not change Jellyfin subtitle delivery. Both native clients must
+adopt the new download operation separately; AI creation/cancellation and user
+multipart uploads remain separate migration scopes.

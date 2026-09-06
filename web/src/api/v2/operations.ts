@@ -526,6 +526,7 @@ export const v2Operations = {
   "POST /api/v2/scan": "startLibraryScan",
   "POST /api/v2/scan/cancel": "cancelLibraryScans",
   "POST /api/v2/settings/values/effective": "resolveEffectiveSettings",
+  "POST /api/v2/subtitles/download": "downloadSubtitle",
   "POST /api/v2/subtitles/search": "searchSubtitles",
   "POST /api/v2/sync/progress": "syncProgress",
   "POST /api/v2/sync/progress/snapshots": "createProgressBootstrapSnapshot",

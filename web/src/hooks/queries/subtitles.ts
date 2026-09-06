@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { api } from "@/api/client";
+import {
+  api,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
 import { v2 } from "@/api/v2/request";
 import {
   SERIES_SUBTITLE_SETTING_KEYS,
@@ -87,11 +92,35 @@ export async function downloadSubtitle(
   request: SubtitleDownloadRequest,
   options?: RequestInit,
 ): Promise<DownloadSubtitleResponse> {
-  return api<DownloadSubtitleResponse>("/subtitles/download", {
-    ...options,
-    method: "POST",
-    body: JSON.stringify(request),
+  const snapshot = captureProfileRequestContext();
+  if (!snapshot) throw new StaleApiRequestContextError();
+  const response = await v2("POST /api/v2/subtitles/download", {
+    body: {
+      media_file_id: String(request.media_file_id),
+      provider: request.provider,
+      subtitle_id: request.subtitle_id,
+      language: request.language,
+      release_name: request.release_name,
+      score: request.score,
+      hearing_impaired: request.hearing_impaired,
+    },
+    signal: options?.signal ?? undefined,
+    profileContext: snapshot,
+    retryAuthentication: false,
   });
+  if (!isCapturedProfileAuthorityActive(snapshot)) throw new StaleApiRequestContextError();
+  const id = Number(response.subtitle.id);
+  const fileId = Number(response.subtitle.media_file_id);
+  if (
+    !Number.isSafeInteger(id) ||
+    id <= 0 ||
+    String(id) !== response.subtitle.id ||
+    fileId !== request.media_file_id ||
+    String(fileId) !== response.subtitle.media_file_id
+  ) {
+    throw new Error("Unsupported subtitle identifier");
+  }
+  return { subtitle: { ...response.subtitle, id, media_file_id: fileId } };
 }
 
 export async function uploadSubtitle(
@@ -232,6 +261,8 @@ export function useDownloadSubtitle() {
 
   return useMutation({
     mutationFn: (request: SubtitleDownloadRequest) => downloadSubtitle(request),
+    retry: false,
+    networkMode: "always",
     onSuccess: async (_response, request) => {
       toast.success("Subtitle downloaded");
       await queryClient.invalidateQueries({
@@ -239,7 +270,8 @@ export function useDownloadSubtitle() {
       });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to download subtitle");
+      if (!(err instanceof StaleApiRequestContextError))
+        toast.error(err instanceof Error ? err.message : "Failed to download subtitle");
     },
   });
 }

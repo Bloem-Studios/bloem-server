@@ -1,9 +1,14 @@
 import { afterEach, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ v2: vi.fn() }));
+const mocks = vi.hoisted(() => ({ v2: vi.fn(), capture: vi.fn(), active: vi.fn() }));
 vi.mock("@/api/v2/request", () => ({ v2: mocks.v2 }));
 
-import { fetchDownloadedSubtitles, searchSubtitles } from "./subtitles";
+vi.mock("@/api/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/client")>()),
+  captureProfileRequestContext: mocks.capture,
+  isCapturedProfileAuthorityActive: mocks.active,
+}));
+import { downloadSubtitle, fetchDownloadedSubtitles, searchSubtitles } from "./subtitles";
 
 afterEach(() => mocks.v2.mockReset());
 
@@ -38,3 +43,46 @@ it.each(["not-numeric", "9007199254740993", "0", "-1"])(
     await expect(fetchDownloadedSubtitles(42)).rejects.toThrow("Unsupported subtitle identifier");
   },
 );
+
+const selected = {
+  media_file_id: 42,
+  provider: "example",
+  subtitle_id: "opaque",
+  language: "en",
+  release_name: "Synthetic",
+  format: "srt",
+  score: 80,
+  hearing_impaired: false,
+};
+it("downloads once with captured authority and refuses stale decoded completion", async () => {
+  const snapshot = { profileId: "p-owner", accessToken: "synthetic" };
+  mocks.capture.mockReturnValue(snapshot);
+  mocks.active.mockReturnValue(true);
+  mocks.v2.mockResolvedValue({ subtitle: { id: "7", media_file_id: "42" } });
+  expect(await downloadSubtitle(selected)).toEqual({ subtitle: { id: 7, media_file_id: 42 } });
+  expect(mocks.v2).toHaveBeenCalledWith("POST /api/v2/subtitles/download", {
+    body: {
+      media_file_id: "42",
+      provider: "example",
+      subtitle_id: "opaque",
+      language: "en",
+      release_name: "Synthetic",
+      score: 80,
+      hearing_impaired: false,
+    },
+    profileContext: snapshot,
+    retryAuthentication: false,
+    signal: undefined,
+  });
+  mocks.active.mockReturnValue(false);
+  await expect(downloadSubtitle(selected)).rejects.toThrow();
+});
+it("does not repeat an uncertain download or coerce a different returned file", async () => {
+  mocks.capture.mockReturnValue({ profileId: "p-owner" });
+  mocks.active.mockReturnValue(true);
+  mocks.v2.mockRejectedValue(new Error("lost response"));
+  await expect(downloadSubtitle(selected)).rejects.toThrow("lost response");
+  expect(mocks.v2).toHaveBeenCalledTimes(1);
+  mocks.v2.mockResolvedValue({ subtitle: { id: "7", media_file_id: "43" } });
+  await expect(downloadSubtitle(selected)).rejects.toThrow("Unsupported subtitle identifier");
+});

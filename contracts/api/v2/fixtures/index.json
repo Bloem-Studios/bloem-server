@@ -11056,6 +11056,28 @@
       "body_file": "subtitle_ai_quota.json"
     },
     {
+      "name": "subtitle_download",
+      "operation_id": "downloadSubtitle",
+      "scenario": "Single provider download returns public stored metadata and exact string IDs without object or uploader details.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/subtitles/download",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"media_file_id\":\"42\",\"provider\":\"example\",\"subtitle_id\":\"opaque-provider-result\",\"language\":\"en\",\"release_name\":\"Synthetic\",\"score\":80,\"hearing_impaired\":false}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/SubtitleDownloadResult",
+      "body_file": "subtitle_download.json"
+    },
+    {
       "name": "subtitle_providers_disabled",
       "operation_id": "getSubtitleProviderStatus",
       "scenario": "Missing providers remain discoverable as disabled with an empty list.",

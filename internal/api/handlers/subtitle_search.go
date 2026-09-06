@@ -230,7 +230,7 @@ func (h *SubtitleSearchHandler) HandleDownload(w http.ResponseWriter, r *http.Re
 
 	userID := apimw.GetUserID(r.Context())
 
-	sub, err := h.manager.Download(r.Context(), subtitles.DownloadRequest{
+	sub, err := h.downloadAuthorizedSubtitle(r.Context(), subtitles.DownloadRequest{
 		ProviderName:    req.Provider,
 		SubtitleID:      req.SubtitleID,
 		MediaFileID:     req.MediaFileID,
@@ -241,7 +241,6 @@ func (h *SubtitleSearchHandler) HandleDownload(w http.ResponseWriter, r *http.Re
 		HearingImpaired: req.HearingImpaired,
 	})
 	if err != nil {
-		slog.ErrorContext(r.Context(), "subtitle download failed", "component", "api", "provider", req.Provider, "subtitle_id", req.SubtitleID, "error", err)
 		writeError(w, http.StatusInternalServerError, "download_error", "Failed to download subtitle")
 		return
 	}
