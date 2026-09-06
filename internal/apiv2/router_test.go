@@ -540,6 +540,13 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"GET /api/v2/admin/server/status",
 		"POST /api/v2/admin/email/test",
 	)
+	observed = append(observed,
+		"POST /api/v2/notifications/webhooks/{id}/test",
+		"POST /api/v2/admin/notifications/server-channels/{id}/test",
+		"GET /api/v2/notifications/email/verify",
+		"GET /api/v2/notifications/email/unsubscribe",
+		"POST /api/v2/notifications/email/unsubscribe",
+	)
 	unaccounted, unserved, err := reconcileSpec(observed, contracts.OpenAPI, nil)
 	if err != nil || len(unaccounted) != 0 || len(unserved) != 0 {
 		t.Fatalf("baseline: %v %v %v", unaccounted, unserved, err)

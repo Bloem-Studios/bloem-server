@@ -365,6 +365,8 @@ export const v2Operations = {
   "POST /api/v2/admin/notifications/push/apple/test": "testAdminApplePushNotification",
   "POST /api/v2/admin/notifications/push/fcm/test": "testAdminAndroidPushNotification",
   "POST /api/v2/admin/notifications/push/relay/register": "registerAdminNotificationRelay",
+  "POST /api/v2/admin/notifications/server-channels/{id}/test":
+    "testAdminNotificationServerChannel",
   "POST /api/v2/admin/people/{id}/refresh": "refreshAdminPerson",
   "POST /api/v2/admin/policy/documents": "createAdminPolicyDocument",
   "POST /api/v2/admin/policy/documents/{id}/versions": "createAdminPolicyVersion",
@@ -432,6 +434,7 @@ export const v2Operations = {
   "POST /api/v2/library-jobs/{job_id}/cancel": "cancelLibraryJob",
   "POST /api/v2/notifications/email/unsubscribe": "unsubscribeNotificationEmailOneClick",
   "POST /api/v2/notifications/read-all": "markNotificationsRead",
+  "POST /api/v2/notifications/webhooks/{id}/test": "testNotificationWebhook",
   "POST /api/v2/notifications/{id}/read": "markNotificationRead",
   "POST /api/v2/profiles": "createProfile",
   "POST /api/v2/profiles/{id}/verify-pin": "verifyProfilePIN",
