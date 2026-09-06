@@ -1,4 +1,4 @@
-import { setAccessToken } from "@/api/client";
+import { setAccessToken, setProfileId, setProfileToken } from "@/api/client";
 import type { ReactNode } from "react";
 import { useRealtimeEvents } from "./realtimeEventsContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -25,13 +25,14 @@ const mockState = vi.hoisted(() => ({
     canPollDashboard: true,
     canApplyRealtimeUpdates: true,
   },
+  profile: null as { id: string; has_pin: boolean } | null,
   pathname: "/",
 }));
 
 vi.mock("@/hooks/useAuth", () => {
   const useAuth = () => ({
     user: mockState.user,
-    profile: null,
+    profile: mockState.profile,
   });
   return { useAuth, useOptionalAuth: useAuth };
 });
@@ -180,6 +181,9 @@ describe("invalidateCatalogState", () => {
 describe("RealtimeEventsProvider", () => {
   beforeEach(() => {
     setAccessToken("session-access");
+    setProfileId(null);
+    setProfileToken(null);
+    mockState.profile = null;
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation(
@@ -293,6 +297,68 @@ describe("RealtimeEventsProvider", () => {
     });
 
     expect(FakeWebSocket.instances).toHaveLength(2);
+  });
+
+  it("reconnects on same-profile PIN replacement and rejects old socket frames", async () => {
+    setProfileId("profile-1");
+    mockState.profile = { id: "profile-1", has_pin: false };
+    const queryClient = new QueryClient();
+    const detailKey = catalogKeys.itemDetail("movie-1");
+    queryClient.setQueryData(detailKey, { content_id: "movie-1", type: "movie" });
+    const provider = () => (
+      <QueryClientProvider client={queryClient}>
+        <RealtimeEventsProvider>
+          <div />
+        </RealtimeEventsProvider>
+      </QueryClientProvider>
+    );
+    const view = render(provider());
+    await act(async () => {});
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    const oldSocket = FakeWebSocket.instances[0]!;
+    // Preserve a queued callback even after cleanup removes the socket handler.
+    const oldMessage = oldSocket.onmessage!;
+    await act(async () => {
+      setProfileToken("replacement-pin-proof");
+      mockState.profile = { id: "profile-1", has_pin: true };
+      view.rerender(provider());
+    });
+    expect(oldSocket.readyState).toBe(FakeWebSocket.CLOSED);
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    const mintCalls = vi
+      .mocked(fetch)
+      .mock.calls.filter(([url]) => String(url).endsWith("/api/v2/events/ws-ticket"));
+    expect(mintCalls).toHaveLength(2);
+    expect(new Headers(mintCalls[1]![1]?.headers).get("X-Profile-Token")).toBe(
+      "replacement-pin-proof",
+    );
+    const event = {
+      type: "event",
+      channel: "user_state",
+      event: "favorite.updated",
+      data: {
+        profile_id: "profile-1",
+        content_id: "movie-1",
+        change: "favorite",
+        is_favorite: true,
+      },
+    };
+    await act(async () => {
+      oldMessage({ data: JSON.stringify(event) } as MessageEvent);
+      oldSocket.emitClose();
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(queryClient.getQueryData(detailKey)).not.toHaveProperty("user_state");
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    await act(async () => {
+      FakeWebSocket.instances[1]!.emitMessage(event);
+    });
+    expect(queryClient.getQueryData(detailKey)).toMatchObject({
+      user_state: { is_favorite: true },
+    });
+    view.unmount();
+    setProfileId(null);
+    setProfileToken(null);
   });
 
   it("defers broad catch-up refetches until foreground playback exits", async () => {

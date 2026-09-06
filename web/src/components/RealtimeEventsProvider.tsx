@@ -450,6 +450,7 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
   const pageActivity = usePageActivity();
   const location = useLocation();
   const authenticatedUserID = user?.id ?? null;
+  const renderedAuthority = captureEventsAuthority();
   const isForegroundPlaybackRoute = location.pathname.startsWith("/watch/");
   const isDashboardRoute = location.pathname === "/admin" || location.pathname === "/admin/";
   const allowDashboardRealtimeUpdates = !isDashboardRoute || pageActivity.canPollDashboard;
@@ -939,12 +940,15 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
         socket.close();
       }
     };
-    // profile?.id is a dependency on purpose: the websocket binds to the
-    // active profile via the handshake ticket, so a profile switch must
-    // reconnect (and resubscribe) under the new identity.
+    // Rebind on authority changes, including a replacement PIN proof for the
+    // same profile. Ordinary access-token refresh preserves this authority.
   }, [
     authenticatedUserID,
     profile?.id,
+    renderedAuthority?.authContextVersion,
+    renderedAuthority?.serverOrigin,
+    renderedAuthority?.profileId,
+    renderedAuthority?.profileToken,
     pageActivity.canApplyRealtimeUpdates,
     queryClient,
     sendSubscribe,
