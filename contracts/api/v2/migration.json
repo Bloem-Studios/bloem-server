@@ -34386,6 +34386,7 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
+      "concurrency": "if_match",
       "review_state": "ratified",
       "v2": {
         "method": "PUT",
