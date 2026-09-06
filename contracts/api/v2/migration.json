@@ -16923,11 +16923,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/subtitle-providers",
+        "operation_id": "listAdminSubtitleProviders"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSubtitleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSubtitleHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Typed provider inspection implemented: no secrets, unknown update time omitted, failed test diagnostics redacted. Test sends one bounded upstream search without saving supplied credentials; explicitly non-retryable. Review and consumer verification pending; not ratified."
     },
     {
       "listener": "api",
@@ -17047,11 +17047,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/subtitle-providers/{provider}/test",
+        "operation_id": "testAdminSubtitleProvider"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSubtitleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSubtitleHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Typed provider inspection implemented: no secrets, unknown update time omitted, failed test diagnostics redacted. Test sends one bounded upstream search without saving supplied credentials; explicitly non-retryable. Review and consumer verification pending; not ratified."
     },
     {
       "listener": "api",

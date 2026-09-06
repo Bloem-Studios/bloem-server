@@ -1,14 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, apiDownload } from "@/api/client";
+import { v2 } from "@/api/v2/request";
 import type {
   AdminDownloadedSubtitle,
   AdminDownloadedSubtitlesFilters,
   AdminDownloadedSubtitlesResponse,
   AdminUpdateDownloadedSubtitleRequest,
-  SubtitleProviderConfig,
   SubtitleProviderUpdateRequest,
   SubtitleProviderTestRequest,
-  SubtitleProviderTestResponse,
 } from "@/api/types";
 import { adminKeys } from "../keys";
 import { toast } from "sonner";
@@ -83,7 +82,7 @@ export async function downloadAdminSubtitle(subtitle: AdminDownloadedSubtitle): 
 export function useSubtitleProviders() {
   return useQuery({
     queryKey: adminKeys.subtitleProviders(),
-    queryFn: () => api<{ providers: SubtitleProviderConfig[] }>("/admin/subtitle-providers"),
+    queryFn: () => v2("GET /api/v2/admin/subtitle-providers"),
     staleTime: ADMIN_STALE_TIME,
   });
 }
@@ -117,9 +116,15 @@ export function useUpdateSubtitleProvider() {
 export function useTestSubtitleProvider() {
   return useMutation({
     mutationFn: ({ provider, config }: { provider: string; config: SubtitleProviderTestRequest }) =>
-      api<SubtitleProviderTestResponse>(`/admin/subtitle-providers/${provider}/test`, {
-        method: "POST",
-        body: JSON.stringify(config),
-      }),
+      testSubtitleProvider(provider, config),
+    retry: false,
+  });
+}
+
+export function testSubtitleProvider(provider: string, config: SubtitleProviderTestRequest) {
+  return v2("POST /api/v2/admin/subtitle-providers/{provider}/test", {
+    path: { provider },
+    body: config,
+    retryAuthentication: false,
   });
 }

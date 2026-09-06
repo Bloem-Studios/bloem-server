@@ -2010,6 +2010,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if oauthHandler != nil {
 		v2deps.OAuth = oauthHandler
 	}
+	if adminSubtitleHandler != nil {
+		v2deps.AdminSubtitleInspection = adminSubtitleHandler
+	}
 	if progressHandler != nil {
 		v2deps.Progress = progressHandler
 	}

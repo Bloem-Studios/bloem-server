@@ -1639,6 +1639,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminRecommendationsFixtureCases()...)
 	cases = append(cases, invitationFixtureCases()...)
 	cases = append(cases, adminAccountFixtureCases()...)
+	cases = append(cases, adminSubtitleInspectionFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1723,6 +1724,7 @@ func fixtureDeps() Dependencies {
 	deps.HistoryImports = fixtureHistoryImports()
 	deps.WebhookSync = &fakeWebhookManagement{}
 	deps.Markers = &fakeMarkers{}
+	deps.AdminSubtitleInspection = &fakeAdminSubtitleInspection{}
 	deps.RequestLifecycle = &fakeLifecycle{}
 	deps.WatchProviders = &fakeWatchLifecycle{}
 	catalog := &fakeCatalog{}

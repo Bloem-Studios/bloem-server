@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 
-import type { SubtitleProviderConfig } from "@/api/types";
+import type { components } from "@/api/v2/schema";
+type SubtitleProviderConfig = components["schemas"]["AdminSubtitleProvider"];
 import {
   ProviderPanelActions,
   ProviderTile,

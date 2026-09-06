@@ -549,6 +549,7 @@ func registerAll(reg *Registry) {
 	registerRequestLifecycle(reg, reg.deps.RequestLifecycle, reg.deps.WatchProviders)
 	registerHistoryImports(reg)
 	registerAdminHistoryImports(reg)
+	registerAdminSubtitleInspection(reg)
 	registerAdminAPIKeys(reg)
 	registerPersonalAPIKeys(reg)
 	registerPolicyCapability(reg)

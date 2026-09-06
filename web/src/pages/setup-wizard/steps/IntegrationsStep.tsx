@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { SubtitleProviderConfig } from "@/api/types";
+import type { components } from "@/api/v2/schema";
+type SubtitleProviderConfig = components["schemas"]["AdminSubtitleProvider"];
 import {
   useSubtitleProviders,
   useUpdateSubtitleProvider,
