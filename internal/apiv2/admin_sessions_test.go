@@ -1,9 +1,11 @@
 package apiv2
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -16,13 +18,21 @@ import (
 type fakeAdminPlaybackSessions struct{ calls int }
 
 func (*fakeAdminPlaybackSessions) AdminPlaybackSessionsAvailable() bool { return true }
-func (f *fakeAdminPlaybackSessions) ReadAdminPlaybackSessions(context.Context) ([]handlers.AdminPlaybackSessionView, error) {
+func (f *fakeAdminPlaybackSessions) ReadAdminPlaybackSessions(_ context.Context, after string, limit int) ([]handlers.AdminPlaybackSessionView, error) {
 	f.calls++
 	at := time.Date(2026, 1, 2, 3, 4, 5, 123456789, time.FixedZone("offset", 3600))
-	return []handlers.AdminPlaybackSessionView{
+	rows := []handlers.AdminPlaybackSessionView{
 		{SessionID: "b", UserID: 7, ProfileID: "child", MediaFileID: 42, RequestedMediaFileID: 41, StartedAt: at, UpdatedAt: at, RoutingExecutionNodeID: new(9), TargetAudioChannels: new(2), SourceAudioChannels: new(8), EffectivePlayMethod: "transcode", IsJellyfinClient: true, HasPlaybackControl: true},
 		{SessionID: "a", UserID: 7, ProfileID: "primary", MediaFileID: 44, RequestedMediaFileID: 44, StartedAt: at, UpdatedAt: at},
-	}, nil
+	}
+	slices.SortFunc(rows, func(a, b handlers.AdminPlaybackSessionView) int { return cmp.Compare(a.SessionID, b.SessionID) })
+	out := []handlers.AdminPlaybackSessionView{}
+	for _, row := range rows {
+		if row.SessionID > after {
+			out = append(out, row)
+		}
+	}
+	return out[:min(len(out), limit+1)], nil
 }
 
 type fakeAdminNodeSessions struct{ calls, node int }

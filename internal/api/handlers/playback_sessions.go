@@ -220,6 +220,19 @@ func (l *PlaybackSessionsLoader) Load(
 	ctx context.Context,
 	query PlaybackSessionsQuery,
 ) ([]playbackSessionRow, error) {
+	return l.load(ctx, query, "", 0)
+}
+
+// LoadPage bounds native observation work in SQL. The extra row identifies
+// continuation; Load retains the frozen bridge's newest-200 behavior.
+func (l *PlaybackSessionsLoader) LoadPage(ctx context.Context, after string, limit int) ([]AdminPlaybackSessionView, error) {
+	if limit < 1 || limit > 100 {
+		return nil, errors.New("session page limit must be between 1 and 100")
+	}
+	return l.load(ctx, PlaybackSessionsQuery{}, after, limit)
+}
+
+func (l *PlaybackSessionsLoader) load(ctx context.Context, query PlaybackSessionsQuery, after string, limit int) ([]playbackSessionRow, error) {
 	if l == nil || l.pool == nil {
 		return nil, errors.New("database not configured")
 	}
@@ -299,7 +312,14 @@ func (l *PlaybackSessionsLoader) Load(
 		sql += " WHERE s.user_id = $1"
 		args = append(args, query.UserID)
 	}
-	sql += " ORDER BY s.started_at DESC LIMIT 200"
+	if limit > 0 {
+		// Native pages are account-wide and use immutable session identity, not
+		// update timestamps that can move while the client drains the list.
+		sql += " WHERE s.session_id > $1 ORDER BY s.session_id ASC LIMIT $2"
+		args = []any{after, limit + 1}
+	} else {
+		sql += " ORDER BY s.started_at DESC LIMIT 200"
+	}
 
 	rows, err := l.pool.Query(ctx, sql, args...)
 	if err != nil {
@@ -823,10 +843,10 @@ func (h *AdminHandler) AdminPlaybackSessionsAvailable() bool {
 	return h != nil && (h.SessionsLoader != nil || h.pool != nil)
 }
 
-func (h *AdminHandler) ReadAdminPlaybackSessions(ctx context.Context) ([]AdminPlaybackSessionView, error) {
+func (h *AdminHandler) ReadAdminPlaybackSessions(ctx context.Context, after string, limit int) ([]AdminPlaybackSessionView, error) {
 	loader, err := resolvePlaybackSessionsLoader(h.SessionsLoader, h.pool, h.storeProv, h.DetailSvc)
 	if err != nil {
 		return nil, err
 	}
-	return loader.Load(ctx, PlaybackSessionsQuery{})
+	return loader.LoadPage(ctx, after, limit)
 }

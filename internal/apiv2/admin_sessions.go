@@ -1,9 +1,7 @@
 package apiv2
 
 import (
-	"cmp"
 	"context"
-	"slices"
 	"strconv"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
@@ -11,7 +9,7 @@ import (
 
 type AdminPlaybackSessionService interface {
 	AdminPlaybackSessionsAvailable() bool
-	ReadAdminPlaybackSessions(context.Context) ([]handlers.AdminPlaybackSessionView, error)
+	ReadAdminPlaybackSessions(context.Context, string, int) ([]handlers.AdminPlaybackSessionView, error)
 }
 
 // AdminPlaybackSession is an observation, not a sequenced control receipt.
@@ -186,7 +184,7 @@ const opListAdminPlaybackSessions = "listAdminPlaybackSessions"
 func registerAdminPlaybackSessions(reg *Registry) {
 	cursors := NewCursors(reg.deps.CursorSecret)
 	op := func(path, id string) Operation {
-		return Operation{Operation: humaOp("GET", Prefix+"/admin/sessions"+path, id, "admin", "Read live playback observations; these do not confer control authority. Pagination bounds the response, while the shared loader enumerates current sessions on each request."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
+		return Operation{Operation: humaOp("GET", Prefix+"/admin/sessions"+path, id, "admin", "Read live playback observations; these do not confer control authority. Pagination bounds the SQL source and response using session identity."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true}
 	}
 	Register(reg, op("/capabilities", "getAdminPlaybackSessionCapabilities"), func(_ context.Context, _ *struct{}) (*AdminPlaybackSessionCapabilitiesOutput, error) {
 		out := new(AdminPlaybackSessionCapabilitiesOutput)
@@ -216,18 +214,14 @@ func registerAdminPlaybackSessions(reg *Registry) {
 				return nil, p
 			}
 		}
-		rows, err := reg.deps.AdminPlaybackSessions.ReadAdminPlaybackSessions(ctx)
+		rows, err := reg.deps.AdminPlaybackSessions.ReadAdminPlaybackSessions(ctx, after, in.Limit)
 		if err != nil {
 			return nil, serviceProblem(err)
 		}
-		rows = slices.Clone(rows)
-		slices.SortFunc(rows, func(a, b handlers.AdminPlaybackSessionView) int { return cmp.Compare(a.SessionID, b.SessionID) })
+
 		items := make([]AdminPlaybackSession, 0, in.Limit)
 		next := ""
 		for _, row := range rows {
-			if row.SessionID <= after {
-				continue
-			}
 			if len(items) == in.Limit {
 				next, err = cursors.Encode(scope, items[len(items)-1].SessionID)
 				if err != nil {

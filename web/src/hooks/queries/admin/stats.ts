@@ -4,7 +4,9 @@ import type { AdminStats } from "@/api/types";
 import { adminKeys } from "../keys";
 
 import { listAdminPlaybackSessions } from "@/api/v2/adminSessions";
-import { adminUserScope, captureAdminUserAuthority } from "@/api/v2/adminUsers";
+import { captureAdminUserAuthority } from "@/api/v2/adminUsers";
+
+import { adminSessionsKey } from "@/api/v2/adminSessionsCache";
 
 const ADMIN_STALE_TIME = 30_000;
 
@@ -23,7 +25,7 @@ export function useAdminStats() {
 export function useAdminSessions() {
   const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: [...adminKeys.sessions(), adminUserScope(context)],
+    queryKey: adminSessionsKey(context),
     queryFn: () => listAdminPlaybackSessions(context ?? captureAdminUserAuthority()),
     enabled: context !== null,
     staleTime: ADMIN_STALE_TIME,

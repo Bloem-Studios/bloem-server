@@ -1568,8 +1568,10 @@ executor epochs are decimal strings. Unknown numeric ownership keys remain
 the account when reported. The frozen v1 raw-record response is unchanged.
 
 Both lists accept `limit` (default 50, maximum 100) and an opaque `cursor` bound to
-the acting account/profile, filter and page size. Pagination bounds response
-size, not source enumeration: each page rereads live state. The node reader
+the acting account/profile, filter and page size. The playback list applies its session-ID keyset and limit in SQL, fetching one
+extra row to determine continuation. The frozen v1 loader retains its newest-200
+cap. The node list bounds response size but rereads the live source on each
+page. The node reader
 refuses a truncated 50,000-record enumeration with 503 instead of claiming a
 complete list. Expired keys and failed GETs can be absent under the existing
 best-effort reader semantics. Redis observations may include multiple executor
