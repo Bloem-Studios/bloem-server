@@ -728,3 +728,16 @@ row unchanged, including stored expiry status. Required DSN, pre-setup scratch/
 API-key occupancy and fixed-selector gates fail closed. No pairing mutation,
 token collection, enrollment or outage substitution is exercised. These three
 frozen pairs remain separate from NEW acceptance.
+
+### Frozen setup refusal pairs
+
+`make test-scenario-setup-refusals` requires `setup.already_complete`,
+`setup.missing_fields` and `setup.malformed_json`. Original public requests,
+database requirements and assertions remain unchanged. Against the populated
+fixture, v2 returns completed-setup 409, missing-fields 422 and malformed-JSON
+400 Problems. Six transport requests reseed independently; 12 combined snapshots
+cover complete users, profiles, API-key, settings, login-session and device-request
+tables (72 observations), with every row unchanged. Required DSN, pre-setup
+scratch/API-key occupancy and fixed-selector gates fail closed. No successful
+setup, enrollment or outage substitution is exercised. These three frozen pairs
+remain separate from NEW acceptance.
