@@ -33197,17 +33197,17 @@
       "section": "notifications",
       "release_flow": "notifications",
       "tier": 1,
-      "retry_safety": "unique_constraint",
-      "retry_safety_note": "DEFECT: the device uniqueness resolves a retry to the same row, but the update writes the request token, mode, and enabled state unconditionally, so a delayed older retry restores an expired token over a newer one. The v2 port must carry a registration sequence applied only if newer.",
+      "retry_safety": "domain_identity",
+      "retry_safety_note": "Persistent installation key and increasing generation bind the captured account/profile and exact intent. Latest exact replay has no effects; stale/conflicting generations fail409. Removal keeps a tombstone; replacements rotate row identity to fence late outcomes.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/notifications/push/devices",
+        "operation_id": "registerPushDevice"
       },
       "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -33260,19 +33260,19 @@
       "section": "notifications",
       "release_flow": "notifications",
       "tier": 1,
-      "retry_safety": "non_retryable",
+      "retry_safety": "domain_identity",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/notifications/push/devices/{device_id}",
+        "operation_id": "unregisterPushDevice"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "retry_safety_note": "Stale retry hazard: a delayed retry deletes a registration the app re-created for the same device (DeleteByProfileDevice ignores creation time). The notifications section adds a registration-generation precondition before clients may retry."
+      "retry_safety_note": "Persistent installation key and increasing generation bind the captured account/profile and exact intent. Latest exact replay has no effects; stale/conflicting generations fail409. Removal keeps a tombstone; replacements rotate row identity to fence late outcomes."
     },
     {
       "listener": "api",

@@ -130,6 +130,8 @@ func (h *NotificationsHandler) HandleRegisterPushDevice(w http.ResponseWriter, r
 	})
 	if err != nil {
 		switch {
+		case errors.Is(err, notifications.ErrPushLegacyWriter):
+			writeError(w, http.StatusConflict, "push_registration_upgrade_required", "This installation requires ordered push registration")
 		case errors.Is(err, notifications.ErrPushDeviceInvalid):
 			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		case errors.Is(err, notifications.ErrPushDeviceUnsupported):
@@ -160,6 +162,8 @@ func (h *NotificationsHandler) HandleUnregisterPushDevice(w http.ResponseWriter,
 	err := service.Unregister(r.Context(), apimw.GetProfileID(r.Context()), chi.URLParam(r, "device_id"))
 	if err != nil {
 		switch {
+		case errors.Is(err, notifications.ErrPushLegacyWriter):
+			writeError(w, http.StatusConflict, "push_registration_upgrade_required", "This installation requires ordered push registration")
 		case errors.Is(err, notifications.ErrPushDeviceInvalid):
 			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		case errors.Is(err, notifications.ErrPushDeviceUnavailable):

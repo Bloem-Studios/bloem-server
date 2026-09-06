@@ -101,6 +101,67 @@ Authentication rules for this route only:
 authenticated profile. The route is rate-limited like other authenticated
 routes.
 
+## Ordered Android registration in v2
+
+`GET /api/v2/notifications/push/devices/capabilities` describes the
+`ordered_android_v1` registration contract and whether local registration storage
+is configured. It requires the acting login/profile. `registration_available`
+is independent of relay delivery availability; use notification capabilities
+for delivery configuration. Apple registration and browser web push remain
+separate contracts.
+
+`POST /api/v2/notifications/push/devices` takes `device_id`, `platform: "android"`,
+`token`, and optional `push_mode` (`private_push` by default, `in_app_only`, or
+`off`). Both POST and `DELETE /api/v2/notifications/push/devices/{device_id}`
+require these headers in addition to captured login/profile credentials:
+
+- `X-Push-Installation-Key`: a cryptographically random 32-byte secret encoded as
+  unpadded base64url (43 characters). Persist privately for this server and device
+  installation. Keep it across account/profile switches; never put it in a URL,
+  log, settings sync, or receipt.
+- `X-Push-Generation`: a positive canonical decimal int64 string. Persist a
+  strictly increasing generation for each new registration/removal intent across
+  account/profile switches. Serialize allocation before dispatch and retain the
+  exact generation, payload and captured authority through uncertainty. Never
+  allocate a new generation merely to retry a request.
+
+POST returns `200` with string `generation`, `registration_id`, `server_device_id`
+and the accepted `push_mode`. This acknowledges registration storage, not provider
+acceptance or successful delivery. DELETE returns bodyless `204`. The latest
+exact command may replay with the same receipt and no device rewrite, re-enable,
+last-seen refresh, or provider request. A lower generation or same generation with
+a different account/profile/token/mode/verb returns `409`. A newer registration
+may transfer this installation to another authenticated account/profile using
+its existing installation key. Removal must still belong to the current
+account/profile; stale removal cannot delete a later registration. Invalid
+installation proof returns `403`; malformed fields/generation return `422`.
+
+Bootstrap may bind an unclaimed installation or one whose legacy Android rows
+belong to the acting account. It cannot take over a legacy row belonging to a
+different account. Initial removal additionally requires the existing profile.
+Bind while the existing account is selected; do not resolve a conflict by
+silently changing ownership or replaying under another account. Losing the
+installation secret, resetting the generation counter, or exhausting int64 has
+no automatic recovery/rebinding path in this contract. Native persistence must
+handle that state explicitly without sending guessed replacement credentials.
+
+The installation authority, last intent and generation survive device-row and
+profile deletion. Removal keeps a tombstone. Changed registrations receive new
+device-row identities and retire old pending/retry attempts transactionally.
+Provider results update only their original device-row ID, so a delayed terminal
+failure cannot disable its replacement. Existing sender retry/delivery behavior
+for a current registration is unchanged. A provider call already in flight cannot
+be unsent; this contract does not guarantee immediate remote-delivery revocation.
+
+Once an installation adopts v2, bridge Android registration and generic device
+removal for that installation return `409 push_registration_upgrade_required`.
+Unadopted installations keep their existing bridge behavior. Deploy the migration
+and guarded writer code to every API node before activating ordered native
+registration; older binaries that do not acquire the installation lock are not
+safe concurrent writers. No existing installation is enrolled by the migration.
+Native consumer adoption and its independent review remain required before the
+two existing registration/removal mappings can be ratified.
+
 ### Remove a browser subscription by row ID
 
 `DELETE /api/v2/notifications/web-push/subscriptions/{id}` (`deleteNotificationWebPushSubscription`) requires authenticated profile authority and removes only the matching profile's server registration. It returns bodyless `204`, including for absent or foreign-profile IDs. Repeating deletion naturally converges; a concurrent subscription is an opposing write, with no generation-order guarantee. Missing web-push storage returns `503`.
