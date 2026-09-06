@@ -618,6 +618,7 @@ func registerAll(reg *Registry) {
 	registerAdminHistoryImports(reg)
 	registerAdminSubtitleInspection(reg)
 	registerAdminSubtitleList(reg)
+	registerAdminSubtitleMetadata(reg)
 	registerAdminAPIKeys(reg)
 	registerPersonalAPIKeys(reg)
 	registerAdminDevices(reg)

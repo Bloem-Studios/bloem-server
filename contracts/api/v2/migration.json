@@ -17282,11 +17282,14 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/admin/subtitles/{id}",
+        "operation_id": "updateAdminSubtitleMetadata"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSubtitleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Canonical GET /api/v2/admin/subtitles/{id} supplies the strong metadata validator. PATCH preserves omitted fields and immutable object identity; stale validators fail 412, duplicate-language content conflicts fail 409. Bundled edit sheet retains original authority/validator and preserves failed drafts. Independent review and native metadata-edit inventory remain required.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Guarded metadata merge uses the captured strong validator and durable row revision at UPDATE. An uncertain save is not a replay receipt; reconcile explicitly without automatic resubmission or adopting a newer validator.",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",

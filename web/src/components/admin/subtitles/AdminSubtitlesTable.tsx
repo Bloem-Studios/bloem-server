@@ -1,3 +1,7 @@
+import {
+  captureAdminSubtitleEditIntent,
+  type AdminSubtitleEditIntent,
+} from "@/api/v2/adminSubtitleMetadata";
 import { useState } from "react";
 import { Link } from "react-router";
 import type { AdminStoredSubtitle as AdminDownloadedSubtitle } from "@/api/v2/adminSubtitles";
@@ -30,6 +34,7 @@ import { formatRelativeTime } from "@/lib/date";
 
 interface AdminSubtitlesTableProps {
   subtitles: AdminDownloadedSubtitle[];
+  authorityScope: string;
   hasActiveFilters: boolean;
   onResetFilters: () => void;
   onDelete: (subtitle: AdminDownloadedSubtitle) => void;
@@ -42,12 +47,13 @@ function formatRelative(value: string): string {
 
 export default function AdminSubtitlesTable({
   subtitles,
+  authorityScope,
   hasActiveFilters,
   onResetFilters,
   onDelete,
   isDeleting,
 }: AdminSubtitlesTableProps) {
-  const [editTarget, setEditTarget] = useState<AdminDownloadedSubtitle | null>(null);
+  const [editTarget, setEditTarget] = useState<AdminSubtitleEditIntent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminDownloadedSubtitle | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
@@ -192,7 +198,17 @@ export default function AdminSubtitlesTable({
                       size="icon"
                       className="h-8 w-8"
                       aria-label={`Edit subtitle ${subtitle.id}`}
-                      onClick={() => setEditTarget(subtitle)}
+                      onClick={() => {
+                        try {
+                          setEditTarget(captureAdminSubtitleEditIntent(subtitle, authorityScope));
+                        } catch (error) {
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : "Reload subtitles before editing.",
+                          );
+                        }
+                      }}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -230,7 +246,7 @@ export default function AdminSubtitlesTable({
       </div>
 
       <AdminSubtitleEditSheet
-        subtitle={editTarget}
+        intent={editTarget}
         open={editTarget != null}
         onOpenChange={(open) => {
           if (!open) setEditTarget(null);

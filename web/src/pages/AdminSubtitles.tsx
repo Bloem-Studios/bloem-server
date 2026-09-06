@@ -150,6 +150,7 @@ export default function AdminSubtitles() {
       )}
 
       <AdminSubtitlesTable
+        authorityScope={adminSubtitleListScope()}
         subtitles={subtitles}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={resetFilters}

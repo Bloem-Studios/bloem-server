@@ -1,3 +1,8 @@
+import {
+  updateAdminSubtitleMetadata,
+  type AdminSubtitleEditor,
+  type AdminSubtitlePatch,
+} from "@/api/v2/adminSubtitleMetadata";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, apiDownload } from "@/api/client";
 import {
@@ -7,12 +12,7 @@ import {
   type AdminStoredSubtitle,
 } from "@/api/v2/adminSubtitles";
 import { v2 } from "@/api/v2/request";
-import type {
-  AdminDownloadedSubtitle,
-  AdminUpdateDownloadedSubtitleRequest,
-  SubtitleProviderUpdateRequest,
-  SubtitleProviderTestRequest,
-} from "@/api/types";
+import type { SubtitleProviderUpdateRequest, SubtitleProviderTestRequest } from "@/api/types";
 import { adminKeys } from "../keys";
 import { toast } from "sonner";
 
@@ -31,17 +31,16 @@ export function useAdminDownloadedSubtitles(filters: AdminSubtitleListQuery) {
 export function useAdminUpdateDownloadedSubtitle() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: AdminUpdateDownloadedSubtitleRequest }) =>
-      api<{ subtitle: AdminDownloadedSubtitle }>(`/admin/subtitles/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(patch),
-      }),
-    onSuccess: () => {
+    mutationFn: ({ editor, patch }: { editor: AdminSubtitleEditor; patch: AdminSubtitlePatch }) =>
+      updateAdminSubtitleMetadata(editor, patch),
+    retry: false,
+    gcTime: 0,
+    onSuccess: (_updated, { editor }) => {
+      if (adminSubtitleListScope() !== editor.intent.scope) return;
       toast.success("Subtitle updated");
-      queryClient.invalidateQueries({ queryKey: ["admin", "downloadedSubtitles"] });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to update subtitle");
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "downloadedSubtitles", editor.intent.scope],
+      });
     },
   });
 }

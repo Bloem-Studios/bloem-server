@@ -1679,6 +1679,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, subtitleCapabilityFixtureCases()...)
 	cases = append(cases, subtitleReadFixtureCases()...)
 	cases = append(cases, adminSubtitleListFixtureCases()...)
+	cases = append(cases, adminSubtitleMetadataFixtureCases()...)
 	cases = append(cases, subtitleAICancelFixtureCases()...)
 	cases = append(cases, subtitleAICreateFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
@@ -1803,6 +1804,7 @@ func fixtureDeps() Dependencies {
 	deps.AdminSubtitleInspection = &fakeAdminSubtitleInspection{}
 	deps.SubtitleReads = &fakeSubtitleReads{}
 	deps.AdminSubtitleList = &fakeAdminSubtitleList{}
+	deps.AdminSubtitleMetadata = fixtureAdminSubtitleMetadata()
 	deps.SubtitleAICancel = &fakeSubtitleAICancel{}
 	deps.SubtitleAICreate = &fakeSubtitleAICreate{}
 	deps.RequestLifecycle = &fakeLifecycle{}

@@ -284,6 +284,7 @@ type Dependencies struct {
 	HistoryImports          HistoryImportService
 	AdminHistoryImports     AdminHistoryImportService
 	AdminSubtitleList       AdminSubtitleListService
+	AdminSubtitleMetadata   AdminSubtitleMetadataService
 	AdminAPIKeys            AdminAPIKeyService
 	PersonalAPIKeys         PersonalAPIKeyService
 	PolicyCapability        PolicyCapabilityService

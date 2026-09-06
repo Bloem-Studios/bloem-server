@@ -251,3 +251,38 @@ Apple and Android must adopt the explicit kind, string file ID, single-send
 semantics and returned job projection before this ordinary row can be ratified.
 There is no Jellyfin AI creation counterpart. Production activation and account
 enrollment are unchanged.
+
+## V2 administrator subtitle metadata edits
+
+`GET /api/v2/admin/subtitles/{id}` returns canonical metadata and a strong `ETag`.
+It requires acting-admin/demo policy, supports conditional reads, and exposes
+string IDs and canonical instants without storage object keys or content hashes.
+The validator binds the administrator, declared profile, subtitle and durable
+revision. The collection list is not the canonical edit document.
+
+`PATCH /api/v2/admin/subtitles/{id}` requires `If-Match` and accepts only optional
+`language`, `release_name` and `hearing_impaired` fields. At least one field must
+be supplied; explicit null is rejected. Omission preserves a field; empty release
+name clears it and false clears the hearing-impaired flag. Language is normalized
+through the existing subtitle service and release names are trimmed. Content is
+immutable: changing a language label never moves the object. A legacy record
+without a content digest may read its existing bytes to backfill that identity.
+
+The captured revision is checked again in the database update. Missing validators
+return `428`; stale validators return `412` with the current ETag. Identical
+content conflicting at the target language returns `409`. An explicit
+`If-Match: *` requests an existence-only update; the bundled editor always sends
+its captured strong validator. Successful writes return canonical metadata and
+its updated ETag. Service unavailability returns `503`; unexpected failures are
+redacted. A lost successful reply remains uncertain: the operation is declared
+non-retryable, with no durable request receipt or automatic rebase/replay.
+
+The existing edit sheet captures authority at the edit gesture, loads canonical
+metadata before editing, and sends only changed fields. It retains the original
+validator through save. A failed or uncertain save leaves the draft visible and
+blocks another submission until the user closes and reopens to review current
+metadata. A late result cannot close a replacement editor or publish across an
+authority change. Delete, provider configuration and byte download transports
+remain separate scopes. Both native clients' actual metadata-edit caller
+inventories remain required before this ordinary row can be ratified; no native
+administration UI or Jellyfin metadata endpoint is introduced here.

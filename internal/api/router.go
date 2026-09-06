@@ -2057,6 +2057,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if adminSubtitleHandler != nil {
 		v2deps.AdminSubtitleInspection = adminSubtitleHandler
 		v2deps.AdminSubtitleList = adminSubtitleHandler
+		v2deps.AdminSubtitleMetadata = adminSubtitleHandler
 	}
 	if progressHandler != nil {
 		v2deps.Progress = progressHandler
