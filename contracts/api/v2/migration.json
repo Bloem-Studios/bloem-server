@@ -9105,13 +9105,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/literary-works/items/{content_id}/candidates",
         "operation_id": "listAdminLiteraryCandidates"
       },
-      "notes": "Typed acting-administrator transport over the existing literary work service; independent review pending. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged."
+      "notes": "Typed acting-administrator transport over the existing literary work service; independently reviewed and ratified. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged."
     },
     {
       "listener": "api",
@@ -9157,13 +9157,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/literary-works/link",
         "operation_id": "linkAdminLiteraryItems"
       },
-      "notes": "Typed acting-administrator transport over the existing literary work service; independent review pending. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
+      "notes": "Typed acting-administrator transport over the existing literary work service; independently reviewed and ratified. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Existing literary mutations have no durable request replay receipt; confirmation may link items before decision persistence. Clients must not automatically retry."
     },
@@ -9211,13 +9211,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/literary-works/matches/confirm",
         "operation_id": "confirmAdminLiteraryMatch"
       },
-      "notes": "Typed acting-administrator transport over the existing literary work service; independent review pending. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
+      "notes": "Typed acting-administrator transport over the existing literary work service; independently reviewed and ratified. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Existing literary mutations have no durable request replay receipt; confirmation may link items before decision persistence. Clients must not automatically retry."
     },
@@ -9265,13 +9265,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/admin/literary-works/matches/ignore",
         "operation_id": "ignoreAdminLiteraryMatch"
       },
-      "notes": "Typed acting-administrator transport over the existing literary work service; independent review pending. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
+      "notes": "Typed acting-administrator transport over the existing literary work service; independently reviewed and ratified. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Existing literary mutations have no durable request replay receipt; confirmation may link items before decision persistence. Clients must not automatically retry."
     },
@@ -9319,13 +9319,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "DELETE",
         "path": "/api/v2/admin/literary-works/{work_id}/items/{content_id}",
         "operation_id": "unlinkAdminLiteraryItem"
       },
-      "notes": "Typed acting-administrator transport over the existing literary work service; independent review pending. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
+      "notes": "Typed acting-administrator transport over the existing literary work service; independently reviewed and ratified. Candidate ranking is bounded, mutations preserve account attribution and synchronous service completion. Confirmation links before separately recording its decision; no atomic whole-operation or durable replay guarantee. No web, Apple, Android, or Jellyfin administrator callers found. Frozen v1 handlers unchanged.",
       "retry_safety": "non_retryable",
       "retry_safety_note": "Existing literary mutations have no durable request replay receipt; confirmation may link items before decision persistence. Clients must not automatically retry."
     },
