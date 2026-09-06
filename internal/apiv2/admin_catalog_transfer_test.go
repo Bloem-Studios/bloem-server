@@ -3,6 +3,7 @@ package apiv2
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
@@ -99,5 +100,21 @@ func TestCatalogImportRejectsInvalidSourcesBeforeExecution(t *testing.T) {
 	queued := do(t, h, "POST", Prefix+"/admin/catalog/import-jobs", body, bearer(adminToken))
 	if queued.Code != 202 || queued.Header().Get("Location") != Prefix+"/admin/jobs/catalog-job" || f.source.LocalPath != "/seed.json.gz" {
 		t.Fatalf("queued import: %d %s", queued.Code, queued.Body)
+	}
+}
+
+func TestCatalogPublishInvalidJobRetainsV2Conflict(t *testing.T) {
+	f := &fakeAdminCatalogTransfer{err: &handlers.APIError{Status: http.StatusConflict, Code: "conflict", Message: "A completed catalog export artifact is required"}}
+	h := catalogTransferHandler(t, f)
+	rec := do(t, h, http.MethodPost, Prefix+"/admin/catalog/export-jobs/catalog-job/publish", "", bearer(adminToken))
+	var body struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusConflict || rec.Header().Get("Content-Type") != problemContentType || body.Type != TypeConflict.URI() || body.Status != http.StatusConflict || f.calls != 1 {
+		t.Fatalf("v2 publish = %d %v %s; calls=%d", rec.Code, rec.Header(), rec.Body, f.calls)
 	}
 }

@@ -428,10 +428,12 @@ func parseCatalogImportOptions(r *http.Request) (catalogseed.ImportOptions, erro
 func writeCatalogTransferFailure(w http.ResponseWriter, err error, message string) {
 	if apiErr, ok := errors.AsType[*APIError](err); ok {
 		status := apiErr.Status
+		code := apiErr.Code
 		if status == http.StatusConflict {
 			status = http.StatusBadRequest
+			code = "bad_request"
 		}
-		writeError(w, status, apiErr.Code, apiErr.Message)
+		writeError(w, status, code, apiErr.Message)
 		return
 	}
 	writeError(w, http.StatusInternalServerError, "internal_error", message)

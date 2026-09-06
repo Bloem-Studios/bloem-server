@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,6 +16,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/s3client"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -143,5 +146,51 @@ func TestCatalogTransferSynchronousImportCommitsBeforeReturning(t *testing.T) {
 	}
 	if result.LibrariesCreated != 1 || count != 1 {
 		t.Fatalf("import returned before persistence: %#v count=%d", result, count)
+	}
+}
+
+func TestCatalogPublishInvalidJobPreservesV1BadRequest(t *testing.T) {
+	pool := catalogTransferPool(t)
+	repo := adminjob.NewRepository(pool)
+	store := &catalogTransferStore{}
+	h := NewCatalogSeedHandler(nil, repo, store)
+	job, err := h.CreateCatalogExportJob(t.Context(), 1, catalogseed.ExportOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM admin_jobs WHERE id=$1`, job.ID) })
+	router := chi.NewRouter()
+	router.Post("/api/v1/admin/catalog/export-jobs/{id}/publish", h.HandlePublishExportJob)
+	for _, tc := range []struct{ name, kind, status, bucket, key string }{
+		{"incomplete", adminjob.JobTypeCatalogExport, adminjob.StatusQueued, "fixture", "seed.json.gz"},
+		{"non-export", adminjob.JobTypeCatalogImport, adminjob.StatusCompleted, "fixture", "seed.json.gz"},
+		{"missing-bucket", adminjob.JobTypeCatalogExport, adminjob.StatusCompleted, "", "seed.json.gz"},
+		{"missing-key", adminjob.JobTypeCatalogExport, adminjob.StatusCompleted, "fixture", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := pool.Exec(t.Context(), `UPDATE admin_jobs SET job_type=$2,status=$3,artifact_bucket=$4,artifact_key=$5 WHERE id=$1`, job.ID, tc.kind, tc.status, tc.bucket, tc.key); err != nil {
+				t.Fatal(err)
+			}
+			_, err := h.PublishCatalogExportJob(t.Context(), job.ID)
+			apiErr, ok := errors.AsType[*APIError](err)
+			if !ok || apiErr.Status != http.StatusConflict || apiErr.Code != "conflict" {
+				t.Fatalf("shared service error = %#v", err)
+			}
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/catalog/export-jobs/"+job.ID+"/publish", nil)
+			router.ServeHTTP(rec, req)
+			var body struct {
+				Error string `json:"error"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if rec.Code != http.StatusBadRequest || body.Error != "bad_request" {
+				t.Fatalf("v1 publish = %d %s", rec.Code, rec.Body)
+			}
+			if store.signed != 0 {
+				t.Fatal("invalid job reached signing")
+			}
+		})
 	}
 }
