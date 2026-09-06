@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { captureProfileRequestContext, isCapturedProfileAuthorityActive } from "@/api/client";
 import type { AdminDashboardLayoutDocument } from "@/api/types";
 import {
   useAdminDashboardLayout,
@@ -241,6 +242,7 @@ export function useDashboardLayout(): DashboardLayout {
 
   const saveMutate = saveLayout.mutate;
   const resetMutate = resetRemoteLayout.mutate;
+  const resetAuthority = captureProfileRequestContext();
 
   // The server response is adopted at most once per mount, and never over an
   // edit the admin already made in this session.
@@ -457,6 +459,7 @@ export function useDashboardLayout(): DashboardLayout {
   );
 
   const resetLayout = useCallback(() => {
+    if (!resetAuthority || !isCapturedProfileAuthorityActive(resetAuthority)) return;
     // Drop the queued write first: saving the arrangement the admin just threw
     // away would resurrect it on the next load. A save already in flight cannot
     // be cancelled here — the shared mutation scope in
@@ -467,7 +470,7 @@ export function useDashboardLayout(): DashboardLayout {
     settledRef.current = true;
     setEntries([...DEFAULT_LAYOUT]);
     resetMutate();
-  }, [cancelPendingSave, resetMutate, userId]);
+  }, [cancelPendingSave, resetMutate, userId, resetAuthority]);
 
   const hiddenWidgets = useMemo(() => {
     const visible = new Set(entries.map((entry) => entry.id));

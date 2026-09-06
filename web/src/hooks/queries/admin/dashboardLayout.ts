@@ -6,6 +6,7 @@ import {
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
+  type ProfileRequestContextSnapshot,
 } from "@/api/client";
 import { v2 } from "@/api/v2/request";
 import type { AdminDashboardLayoutDocument, AdminDashboardLayoutResponse } from "@/api/types";
@@ -74,14 +75,46 @@ export function useSaveAdminDashboardLayout() {
   });
 }
 
+function captureLayoutReset(): ProfileRequestContextSnapshot {
+  const authority = captureProfileRequestContext();
+  if (!authority) throw new StaleApiRequestContextError();
+  return authority;
+}
 export function useResetAdminDashboardLayout() {
   const queryClient = useQueryClient();
-  return useMutation({
+  const mutation = useMutation({
     scope: LAYOUT_MUTATION_SCOPE,
-    mutationFn: () => api<void>(DASHBOARD_LAYOUT_PATH, { method: "DELETE" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.dashboardLayout() }),
-    onError: () => {
-      toast.error("Failed to reset the dashboard layout on the server", { id: RESET_TOAST_ID });
+    retry: false,
+    mutationFn: async (authority: ProfileRequestContextSnapshot) => {
+      if (!isCapturedProfileAuthorityActive(authority)) throw new StaleApiRequestContextError();
+      await v2("DELETE /api/v2/admin/dashboard/layout", {
+        profileContext: authority,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(authority)) throw new StaleApiRequestContextError();
+    },
+    onSuccess: (_result, authority) => {
+      if (isCapturedProfileAuthorityActive(authority))
+        return queryClient.invalidateQueries({ queryKey: adminKeys.dashboardLayout() });
+    },
+    onError: (_error, authority) => {
+      if (isCapturedProfileAuthorityActive(authority))
+        toast.error("Server layout reset could not be confirmed. Reload before submitting again.", {
+          id: RESET_TOAST_ID,
+        });
     },
   });
+  return {
+    ...mutation,
+    mutate: () => {
+      try {
+        mutation.mutate(captureLayoutReset());
+      } catch {
+        toast.error("Select an administrator profile before resetting the server layout.", {
+          id: RESET_TOAST_ID,
+        });
+      }
+    },
+    mutateAsync: () => mutation.mutateAsync(captureLayoutReset()),
+  };
 }

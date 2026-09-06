@@ -239,3 +239,14 @@ func (h *AdminHandler) ReadAdminDashboardLayout(ctx context.Context, userID int)
 	view.UpdatedAt = &updatedAt
 	return view, nil
 }
+
+func (h *AdminHandler) ResetAdminDashboardLayout(ctx context.Context, userID int) error {
+	if h == nil || h.pool == nil {
+		return &APIError{Status: http.StatusServiceUnavailable, Message: "Dashboard layout storage unavailable"}
+	}
+	if userID <= 0 {
+		return &APIError{Status: http.StatusUnauthorized, Message: "Authentication required"}
+	}
+	_, err := h.pool.Exec(ctx, `DELETE FROM admin_dashboard_layouts WHERE user_id = $1`, userID)
+	return err
+}

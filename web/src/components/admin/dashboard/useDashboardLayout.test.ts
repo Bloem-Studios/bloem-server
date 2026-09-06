@@ -3,6 +3,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { setAccessToken, setProfileId, setProfileToken } from "@/api/client";
 import type { AdminDashboardLayoutResponse } from "@/api/types";
 import { DASHBOARD_WIDGETS, DEFAULT_LAYOUT } from "./registry";
 import {
@@ -559,6 +560,9 @@ describe("useDashboardLayout", () => {
   });
 
   it("resetLayout restores the defaults and clears storage", () => {
+    setAccessToken("synthetic-admin");
+    setProfileId("profile-a");
+    setProfileToken("pin-a");
     const { result } = renderHook(() => useDashboardLayout());
 
     act(() => {
@@ -757,7 +761,25 @@ describe("useDashboardLayout server persistence", () => {
     });
   });
 
+  it("resetLayout refuses an obsolete authority callback before local reset", () => {
+    setAccessToken("synthetic-admin");
+    setProfileId("profile-a");
+    setProfileToken("pin-a");
+    writeStored([{ id: "users", span: 5, rows: 4 }]);
+    const { result } = renderHook(() => useDashboardLayout());
+    const prior = result.current.entries;
+    const reset = result.current.resetLayout;
+    act(() => setProfileToken("pin-b"));
+    act(() => reset());
+    expect(mocks.reset).not.toHaveBeenCalled();
+    expect(result.current.entries).toEqual(prior);
+    expect(window.localStorage.getItem(storageKey())).not.toBeNull();
+  });
+
   it("resetLayout deletes the server layout and drops the queued save", () => {
+    setAccessToken("synthetic-admin");
+    setProfileId("profile-a");
+    setProfileToken("pin-a");
     vi.useFakeTimers();
     writeStored([{ id: "users", span: 5, rows: 4 }]);
     const { result } = renderHook(() => useDashboardLayout());

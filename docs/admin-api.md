@@ -2012,3 +2012,19 @@ and authentication replay, and invalidate the canonical reader only for the acti
 authority. Reschedule warnings distinguish stored settings from runtime outcome.
 The advanced form uses explicit Save and preserves newer edits after acknowledgement;
 missing configuration is not replaced by default values for submission.
+
+### Reset the administrator dashboard layout (v2)
+
+`DELETE /api/v2/admin/dashboard/layout` (`resetAdminDashboardLayout`) requires an
+acting administrator and resets the authenticated account's stored layout. The
+single DELETE succeeds with empty204 even when already absent. Missing storage
+returns503; private storage errors are masked. It provides no write revision or
+durable receipt. Although deletion is naturally idempotent, clients must not
+replay automatically across an intervening save.
+
+The actual Reset layout action checks its rendered authority before changing local
+state, drops its unsent debounced save, and queues the captured reset behind any
+in-flight save in the existing mutation scope. The reset disables retries and
+authentication replay and fences late invalidation. Cross-tab/server write ordering
+is unchanged. PUT remains a separate migration and server_layouts stays false until
+the full lifecycle is accepted.

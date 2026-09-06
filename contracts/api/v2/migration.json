@@ -5050,17 +5050,17 @@
       "section": "admin-observability",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "non_retryable",
-      "retry_safety_note": "Stale retry hazard: the reset deletes the current per-user dashboard layout, including a replacement saved after the first success. The admin-observability section must guard the layout generation before clients may retry.",
+      "retry_safety": "natural_idempotent",
+      "retry_safety_note": "Account layout deletion succeeds when absent. Clients disable automatic replay to avoid deleting an intervening save; no revision or durable receipt.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/dashboard/layout",
+        "operation_id": "resetAdminDashboardLayout"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: resets the layout to defaults; the outcome does not depend on the version being replaced."
     },

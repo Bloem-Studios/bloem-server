@@ -12,6 +12,7 @@ export const v2Operations = {
   "DELETE /api/v2/admin/collections/{id}": "deleteAdminCollection",
   "DELETE /api/v2/admin/collections/{id}/image": "deleteAdminCollectionImage",
   "DELETE /api/v2/admin/collections/{id}/items/{item_id}": "removeAdminCollectionItem",
+  "DELETE /api/v2/admin/dashboard/layout": "resetAdminDashboardLayout",
   "DELETE /api/v2/admin/diagnostics/reports/{id}": "deleteAdminDiagnosticReport",
   "DELETE /api/v2/admin/history-import-sources/{id}": "deleteAdminHistoryImportSource",
   "DELETE /api/v2/admin/history-imports/mappings/{id}": "deleteAdminHistoryImportMapping",

@@ -2206,6 +2206,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminDashboardInsights = adminHandler
 		v2deps.AdminDashboardStats = adminHandler
 		v2deps.AdminDashboardLayout = adminHandler
+		v2deps.AdminDashboardLayoutResets = adminHandler
 		v2deps.AdminServerStatus = adminHandler
 	}
 	var nodeHandler *handlers.NodeHandler

@@ -93,6 +93,7 @@ type Dependencies struct {
 	AdminDashboardStats             AdminDashboardStatsService
 	AdminHardwareAcceleration       AdminHardwareAccelerationService
 	AdminDashboardLayout            AdminDashboardLayoutService
+	AdminDashboardLayoutResets      AdminDashboardLayoutResetService
 	ScanControls                    ScanControlService
 	AuthProviderIconPublic          AuthProviderIconPublic
 	AdminPlaybackSessions           AdminPlaybackSessionService
