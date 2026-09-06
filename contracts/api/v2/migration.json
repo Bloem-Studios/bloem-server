@@ -27114,13 +27114,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/ebooks/{content_id}/progress",
         "operation_id": "getEbookProgress"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 progress uses string file IDs and a named optional progress document; account/profile and current catalog/file access remain enforced. Implementation awaits independent review and client adoption."
+      "notes": "Backend and web reader progress/config independently reviewed, including required not-found correction. Android reader adoption a80f7882 independently reviewed by acceptance; original event time, account/profile authority, queued receipt retention and guarded configuration verified. No Apple reader caller or corresponding Jellyfin reader surface requires adoption. Binary reader files and annotations are separate scopes."
     },
     {
       "listener": "api",
@@ -27194,13 +27194,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/ebooks/{content_id}/progress",
         "operation_id": "saveEbookProgress"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 progress uses string file IDs and a named optional progress document; account/profile and current catalog/file access remain enforced. Implementation awaits independent review and client adoption."
+      "notes": "Backend and web reader progress/config independently reviewed, including required not-found correction. Android reader adoption a80f7882 independently reviewed by acceptance; original event time, account/profile authority, queued receipt retention and guarded configuration verified. No Apple reader caller or corresponding Jellyfin reader surface requires adoption. Binary reader files and annotations are separate scopes."
     },
     {
       "listener": "api",
@@ -27265,13 +27265,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/ebooks/{content_id}/reader-config",
         "operation_id": "getEbookReaderConfig"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 guards configuration replacement with If-Match against the scoped current configuration; concurrent first writes and legacy upserts serialize on the existing row. Independent review and client adoption remain pending."
+      "notes": "Backend and web reader progress/config independently reviewed, including required not-found correction. Android reader adoption a80f7882 independently reviewed by acceptance; original event time, account/profile authority, queued receipt retention and guarded configuration verified. No Apple reader caller or corresponding Jellyfin reader surface requires adoption. Binary reader files and annotations are separate scopes."
     },
     {
       "listener": "api",
@@ -27344,13 +27344,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "PUT",
         "path": "/api/v2/ebooks/{content_id}/reader-config",
         "operation_id": "saveEbookReaderConfig"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 guards configuration replacement with If-Match against the scoped current configuration; concurrent first writes and legacy upserts serialize on the existing row. Independent review and client adoption remain pending.",
+      "notes": "Backend and web reader progress/config independently reviewed, including required not-found correction. Android reader adoption a80f7882 independently reviewed by acceptance; original event time, account/profile authority, queued receipt retention and guarded configuration verified. No Apple reader caller or corresponding Jellyfin reader surface requires adoption. Binary reader files and annotations are separate scopes.",
       "concurrency": "if_match"
     },
     {
