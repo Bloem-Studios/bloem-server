@@ -2206,6 +2206,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/plugins/repositories": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read stored repository configuration without remote catalog fetches. Every page enumerates the full stored list; continuation is live, not a snapshot. */
+    get: operations["listAdminPluginRepositories"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/policy/decisions": {
     parameters: {
       query?: never;
@@ -3065,6 +3082,23 @@ export interface paths {
     };
     /** Read bounded title and household-profile leaderboards from existing watch history aggregates. */
     get: operations["getAdminDashboardTopActivity"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/admin/stream-telemetry/parity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Compare cached telemetry and bounded legacy session reads. Disabled, missing, incomplete or capped sources are not evidence of parity or cutover readiness. */
+    get: operations["getAdminStreamTelemetryParity"];
     put?: never;
     post?: never;
     delete?: never;
@@ -11199,6 +11233,29 @@ export interface components {
       /** Format: int64 */
       migrated_plugin_count: number;
     };
+    AdminPluginRepository: {
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      created_at: string;
+      display_name: string;
+      enabled: boolean;
+      id: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      last_fetched_at?: string;
+      managed: boolean;
+      source_kind: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      updated_at: string;
+      url: string;
+    };
     AdminPolicyActivation: {
       /**
        * @description Opaque identifier
@@ -12325,6 +12382,49 @@ export interface components {
       time_of_day?: string;
       /** @enum {string} */
       type: "interval" | "daily" | "weekly" | "startup";
+    };
+    AdminTelemetryParity: {
+      enabled: boolean;
+      reason?: string;
+      sources: components["schemas"]["AdminTelemetryParitySource"][];
+      view: components["schemas"]["AdminTelemetryParityView"];
+    };
+    AdminTelemetryParitySource: {
+      available: boolean;
+      error?: string;
+      legacy_may_be_truncated: boolean;
+      /** Format: int64 */
+      legacy_scan_limit: number;
+      notes: string[];
+      report?: components["schemas"]["ParityReport"];
+      source: string;
+    };
+    AdminTelemetryParityView: {
+      /** Format: int64 */
+      age_ms: number;
+      available: boolean;
+      /** Format: int64 */
+      build_took_ms: number;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      built_at?: string;
+      clock_skew_suspected: boolean;
+      complete: boolean;
+      /** Format: int64 */
+      failures: number;
+      incomplete_reasons: string[];
+      last_error?: string;
+      missing_publishers: string[];
+      publishers: string[];
+      /** Format: int64 */
+      refreshes: number;
+      /** Format: int64 */
+      session_count: number;
+      stale: boolean;
+      /** Format: int64 */
+      transfer_count: number;
     };
     AdminTemplateApply: {
       delete_existing?: boolean;
@@ -13765,6 +13865,12 @@ export interface components {
     CollectionAdminPlaybackSession: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["AdminPlaybackSession"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    CollectionAdminPluginRepository: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["AdminPluginRepository"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
@@ -17786,6 +17892,34 @@ export interface components {
        * @example eyJvZmZzZXQiOjUwfQ
        */
       next_cursor?: string;
+    };
+    ParityMismatch: {
+      field: string;
+      legacy: string;
+      session_id: string;
+      telemetry: string;
+    };
+    ParityReport: {
+      agrees: boolean;
+      fields_absent?: {
+        [key: string]: number;
+      };
+      /** Format: int64 */
+      in_both: number;
+      /** Format: int64 */
+      legacy_count: number;
+      legacy_only: string[];
+      /** Format: int64 */
+      legacy_only_truncated: number;
+      mismatches: components["schemas"]["ParityMismatch"][];
+      /** Format: int64 */
+      mismatches_truncated: number;
+      source: string;
+      /** Format: int64 */
+      telemetry_count: number;
+      telemetry_only: string[];
+      /** Format: int64 */
+      telemetry_only_truncated: number;
     };
     PathRewrite: {
       from: string;
@@ -42143,6 +42277,116 @@ export interface operations {
       };
     };
   };
+  listAdminPluginRepositories: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CollectionAdminPluginRepository"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   listAdminPolicyDecisions: {
     parameters: {
       query?: {
@@ -50555,6 +50799,112 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AdminDashboardTopActivity"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getAdminStreamTelemetryParity: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminTelemetryParity"];
         };
       };
       /** @description Bad Request */
