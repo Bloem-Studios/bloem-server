@@ -32262,13 +32262,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/discord-preferences",
+        "operation_id": "getNotificationDiscordPreferences"
       },
-      "notes": "Implemented preference transport and web consumers; independent scope review pending. Email remains profile-scoped, Discord account-scoped with optional declared-profile validation. No callback/address/link migration or ratification claimed."
+      "notes": "Preference transport and existing web consumers independently reviewed. Email is profile-scoped; Discord is account-scoped with optional declared-profile validation. Mode setters retain backoff/watermark effects and are non-retryable. No native preference callers. Address/link/callback migration remains separate."
     },
     {
       "listener": "api",
@@ -32324,13 +32324,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/notifications/discord-preferences",
+        "operation_id": "updateNotificationDiscordPreferences"
       },
-      "notes": "Implemented preference transport and web consumers; independent scope review pending. Email remains profile-scoped, Discord account-scoped with optional declared-profile validation. No callback/address/link migration or ratification claimed.",
+      "notes": "Preference transport and existing web consumers independently reviewed. Email is profile-scoped; Discord is account-scoped with optional declared-profile validation. Mode setters retain backoff/watermark effects and are non-retryable. No native preference callers. Address/link/callback migration remains separate.",
       "retry_safety_note": "Existing mode setters reset delivery backoff and can advance watermarks. The v2 adapter invokes the unchanged setter once; web disables automatic retry and authentication replay."
     },
     {
@@ -32502,13 +32502,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/email-preferences",
+        "operation_id": "getNotificationEmailPreferences"
       },
-      "notes": "Implemented preference transport and web consumers; independent scope review pending. Email remains profile-scoped, Discord account-scoped with optional declared-profile validation. No callback/address/link migration or ratification claimed."
+      "notes": "Preference transport and existing web consumers independently reviewed. Email is profile-scoped; Discord is account-scoped with optional declared-profile validation. Mode setters retain backoff/watermark effects and are non-retryable. No native preference callers. Address/link/callback migration remains separate."
     },
     {
       "listener": "api",
@@ -32564,13 +32564,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/notifications/email-preferences",
+        "operation_id": "updateNotificationEmailPreferences"
       },
-      "notes": "Implemented preference transport and web consumers; independent scope review pending. Email remains profile-scoped, Discord account-scoped with optional declared-profile validation. No callback/address/link migration or ratification claimed.",
+      "notes": "Preference transport and existing web consumers independently reviewed. Email is profile-scoped; Discord is account-scoped with optional declared-profile validation. Mode setters retain backoff/watermark effects and are non-retryable. No native preference callers. Address/link/callback migration remains separate.",
       "retry_safety_note": "Existing mode setters reset delivery backoff and can advance watermarks. The v2 adapter invokes the unchanged setter once; web disables automatic retry and authentication replay."
     },
     {
