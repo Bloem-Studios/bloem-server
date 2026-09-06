@@ -1,7 +1,9 @@
+import { V2ProblemError } from "@/api/v2/request";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiClientError,
   captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
   getAccessToken,
   getProfileToken,
 } from "@/api/client";
@@ -64,7 +66,7 @@ const pingIntervalMs = 15_000;
  * transient errors (network, 5xx) so the reconnect loop keeps retrying.
  */
 function closedReasonFromRoomFetchError(error: unknown): string | null {
-  if (!(error instanceof ApiClientError)) {
+  if (!(error instanceof ApiClientError) && !(error instanceof V2ProblemError)) {
     return null;
   }
   switch (error.status) {
@@ -72,6 +74,10 @@ function closedReasonFromRoomFetchError(error: unknown): string | null {
       return "not_found";
     case 410:
       return "ended";
+    case 409:
+      return error instanceof V2ProblemError && error.operationId === "getWatchTogetherRoom"
+        ? "ended"
+        : null;
     case 403:
       return "forbidden";
     default:
@@ -165,19 +171,21 @@ export function useWatchTogetherRoomConnection({
         setClosedReason(null);
       }
     }, 0);
-    void getWatchTogetherRoom(roomId, roomToken)
+    const readAuthority = captureProfileRequestContext();
+    void getWatchTogetherRoom(roomId, roomToken, readAuthority)
       .then((response) => {
-        if (cancelled) {
+        if (cancelled || !readAuthority || !isCapturedProfileAuthorityActive(readAuthority)) {
           return;
         }
         setRoom(response.room);
       })
       .catch((error: unknown) => {
-        if (cancelled) {
+        if (cancelled || !readAuthority || !isCapturedProfileAuthorityActive(readAuthority)) {
           return;
         }
         const reason = closedReasonFromRoomFetchError(error);
         if (reason) {
+          window.clearTimeout(resetClosedReasonTimer);
           markClosed(reason);
         }
       });

@@ -384,6 +384,7 @@ export const v2Operations = {
   "GET /api/v2/watch-providers/{provider}/connection": "getWatchProviderConnection",
   "GET /api/v2/watch-providers/{provider}/connection/settings": "getWatchProviderSettings",
   "GET /api/v2/watch-providers/{provider}/sync-runs": "listWatchProviderSyncRuns",
+  "GET /api/v2/watch-together/rooms/{room_id}": "getWatchTogetherRoom",
   "GET /api/v2/watch-together/rooms/{room_id}/suggestions": "listWatchTogetherSuggestions",
   "GET /api/v2/watch/{id}": "getWatchState",
   "GET /api/v2/watchlist": "listWatchlist",

@@ -34566,6 +34566,207 @@
         ],
         "type": "object"
       },
+      "WatchTogetherRoomMember": {
+        "additionalProperties": false,
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "is_host": {
+            "type": "boolean"
+          },
+          "is_self": {
+            "type": "boolean"
+          },
+          "profile_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "profile_id",
+          "display_name",
+          "is_host",
+          "is_self",
+          "connected"
+        ],
+        "type": "object"
+      },
+      "WatchTogetherRoomReadOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "room": {
+            "$ref": "#/components/schemas/WatchTogetherRoomSnapshot"
+          },
+          "room_access_token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room",
+          "room_access_token"
+        ],
+        "type": "object"
+      },
+      "WatchTogetherRoomSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "anchor_position_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "anchor_updated_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "attached_session_id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "generation": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "guest_control_policy": {
+            "enum": [
+              "host_only",
+              "guest_play_pause"
+            ],
+            "type": "string"
+          },
+          "host_connected": {
+            "type": "boolean"
+          },
+          "invite_path": {
+            "type": "string"
+          },
+          "is_paused": {
+            "type": "boolean"
+          },
+          "member_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/WatchTogetherRoomMember"
+            },
+            "type": "array"
+          },
+          "phase": {
+            "enum": [
+              "lobby",
+              "playing",
+              "ended"
+            ],
+            "type": "string"
+          },
+          "playback_state": {
+            "enum": [
+              "idle",
+              "waiting",
+              "paused",
+              "playing"
+            ],
+            "type": "string"
+          },
+          "room_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "selected_content_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "selected_file_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "selected_library_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "selection_mode": {
+            "enum": [
+              "host_pick",
+              "vote"
+            ],
+            "type": "string"
+          },
+          "selection_revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "self_can_control_transport": {
+            "type": "boolean"
+          },
+          "self_can_manage_room": {
+            "type": "boolean"
+          },
+          "self_ignore_wait": {
+            "type": "boolean"
+          },
+          "self_role": {
+            "enum": [
+              "host",
+              "guest"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "phase",
+          "playback_state",
+          "selection_mode",
+          "selection_revision",
+          "code",
+          "guest_control_policy",
+          "is_paused",
+          "anchor_position_seconds",
+          "anchor_updated_at",
+          "generation",
+          "member_count",
+          "host_connected",
+          "self_role",
+          "self_can_control_transport",
+          "self_can_manage_room",
+          "self_ignore_wait"
+        ],
+        "type": "object"
+      },
       "WatchTogetherSuggestion": {
         "additionalProperties": false,
         "properties": {
@@ -144144,6 +144345,174 @@
         "x-silo-class": "profile_scoped",
         "x-silo-demo-restricted": true,
         "x-silo-retry-safety": "natural_idempotent",
+        "x-silo-service-backed": true
+      },
+      "get": {
+        "operationId": "getWatchTogetherRoom",
+        "parameters": [
+          {
+            "description": "The household profile acting for this request; it must belong to the authenticated account.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Room-Token",
+            "schema": {
+              "maxLength": 4096,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchTogetherRoomReadOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read the room snapshot and renew existing room proof. This proof is not a session-bound socket credential.",
+        "tags": [
+          "realtime"
+        ],
+        "x-silo-class": "profile_scoped",
+        "x-silo-demo-restricted": true,
         "x-silo-service-backed": true
       }
     },

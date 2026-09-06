@@ -76,6 +76,7 @@ type Dependencies struct {
 	OrderedAndroidPush            OrderedAndroidPushService
 	WatchTogetherSuggestionDelete WatchTogetherSuggestionDeleteService
 	WatchTogetherClose            WatchTogetherCloseService
+	WatchTogetherRoomRead         WatchTogetherRoomReadService
 	WatchTogetherSuggestions      WatchTogetherSuggestionService
 	AdminSectionSettingsWrite     AdminSectionSettingsWriteService
 	AdminDashboardStats           AdminDashboardStatsService

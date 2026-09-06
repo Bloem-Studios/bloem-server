@@ -1,3 +1,4 @@
+import { readRoom } from "@/api/v2/watchTogetherRoomRead";
 import { deleteRoomSuggestion } from "@/api/v2/watchTogetherSuggestionDelete";
 import { listRoomSuggestions, setRoomSuggestionVote } from "@/api/v2/watchTogetherSuggestions";
 import {
@@ -126,9 +127,12 @@ export async function joinWatchTogetherRoom(input: JoinWatchTogetherRoomInput) {
   });
 }
 
-export async function getWatchTogetherRoom(roomId: string, roomToken: string) {
-  const params = new URLSearchParams({ room_token: roomToken });
-  return api<WatchTogetherRoomResponse>(`/watch-together/rooms/${roomId}?${params.toString()}`);
+export async function getWatchTogetherRoom(
+  roomId: string,
+  roomToken: string,
+  authority = captureProfileRequestContext(),
+) {
+  return readRoom(roomId, roomToken, authority);
 }
 
 export async function updateWatchTogetherRoomPolicy(

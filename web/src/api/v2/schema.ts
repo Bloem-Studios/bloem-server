@@ -8369,7 +8369,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** Read the room snapshot and renew existing room proof. This proof is not a session-bound socket credential. */
+    get: operations["getWatchTogetherRoom"];
     put?: never;
     post?: never;
     /** End the room as its host account and profile. Already-ended rooms return conflict; closing does not cancel already-dispatched playback. */
@@ -21883,6 +21884,76 @@ export interface components {
       language?: string;
       resolution?: string;
       title?: string;
+    };
+    WatchTogetherRoomMember: {
+      connected: boolean;
+      display_name: string;
+      is_host: boolean;
+      is_self: boolean;
+      profile_id: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      user_id: string;
+    };
+    WatchTogetherRoomReadOutputBody: {
+      room: components["schemas"]["WatchTogetherRoomSnapshot"];
+      room_access_token: string;
+    };
+    WatchTogetherRoomSnapshot: {
+      /** Format: double */
+      anchor_position_seconds: number;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      anchor_updated_at: string;
+      attached_session_id?: string;
+      code: string;
+      /** Format: int64 */
+      generation: number;
+      /** @enum {string} */
+      guest_control_policy: "host_only" | "guest_play_pause";
+      host_connected: boolean;
+      invite_path?: string;
+      is_paused: boolean;
+      /** Format: int64 */
+      member_count: number;
+      members?: components["schemas"]["WatchTogetherRoomMember"][];
+      /** @enum {string} */
+      phase: "lobby" | "playing" | "ended";
+      /** @enum {string} */
+      playback_state: "idle" | "waiting" | "paused" | "playing";
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      room_id: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      selected_content_id?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      selected_file_id?: string;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      selected_library_id?: string;
+      /** @enum {string} */
+      selection_mode: "host_pick" | "vote";
+      /** Format: int64 */
+      selection_revision: number;
+      self_can_control_transport: boolean;
+      self_can_manage_room: boolean;
+      self_ignore_wait: boolean;
+      /** @enum {string} */
+      self_role: "host" | "guest";
     };
     WatchTogetherSuggestion: {
       /**
@@ -95094,6 +95165,124 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["CollectionWatchProviderSyncRun"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getWatchTogetherRoom: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Room-Token"?: string;
+      };
+      path: {
+        room_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WatchTogetherRoomReadOutputBody"];
         };
       };
       /** @description Bad Request */
