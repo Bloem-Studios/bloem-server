@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, getAccessToken } from "@/api/client";
+import { api } from "@/api/client";
 import { fetchDownloadCapability, deleteDownloadEntry } from "@/api/v2/downloadRegistry";
 import { downloadKeys } from "./keys";
 import { toast } from "sonner";
