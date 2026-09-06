@@ -4838,6 +4838,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/events/ws": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Connect using one session-bound ticket in Sec-WebSocket-Protocol. */
+    get: operations["connectEventsSocket"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/events/ws-ticket": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Delegate the current login session for one realtime handshake. */
+    post: operations["createEventsSocketTicket"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/favorites": {
     parameters: {
       query?: never;
@@ -13707,6 +13741,14 @@ export interface components {
       subscribe_frame: boolean;
       /** Format: int64 */
       subscribe_grace_period_seconds: number;
+    };
+    EventsSocketTicket: {
+      /** Format: int64 */
+      expires_in: number;
+      /** Format: int64 */
+      max_connection_seconds: number;
+      protocol: string;
+      ticket: string;
     };
     ExplicitSettingValue: {
       /**
@@ -64259,6 +64301,182 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  connectEventsSocket: {
+    parameters: {
+      query?: {
+        /** @description Optional comma-separated declared channel selection. */
+        channels?: string;
+      };
+      header: {
+        /** @description Browser origin must match the configured public origin. */
+        Origin?: string;
+        /** @description Offer silo.events.v2 followed by silo.ticket.<single-use-ticket>. */
+        "Sec-WebSocket-Protocol": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Realtime connection established. */
+      101: {
+        headers: {
+          /** @description WebSocket handshake header. */
+          Connection?: string;
+          /** @description WebSocket handshake header. */
+          "Sec-WebSocket-Accept"?: string;
+          /** @description WebSocket handshake header. */
+          "Sec-WebSocket-Protocol"?: string;
+          /** @description WebSocket handshake header. */
+          Upgrade?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Handshake refused. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Handshake refused. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Handshake refused. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Handshake refused. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+    };
+  };
+  createEventsSocketTicket: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name a profile of the authenticated account. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EventsSocketTicket"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

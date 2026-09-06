@@ -78,6 +78,7 @@ type Dependencies struct {
 	DownloadSubscriptionSync      DownloadSubscriptionSyncService
 	DiagnosticsChunks             DiagnosticsChunksService
 	DiagnosticsIngress            DiagnosticsIngressService
+	EventsSocket                  EventsSocketService
 	EventsCapability              EventsCapabilityService
 	NotificationDestinationCreate NotificationDestinationCreateService
 	AdminUnmatchedFiles           AdminUnmatchedFilesService

@@ -1,3 +1,4 @@
+import { setAccessToken } from "@/api/client";
 import type { ReactNode } from "react";
 import { useRealtimeEvents } from "./realtimeEventsContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -55,7 +56,10 @@ class FakeWebSocket {
   onclose: (() => void) | null = null;
   readyState = FakeWebSocket.CONNECTING;
 
-  constructor(public url: string) {
+  constructor(
+    public url: string,
+    public protocols?: string[],
+  ) {
     FakeWebSocket.instances.push(this);
   }
 
@@ -76,22 +80,22 @@ class FakeWebSocket {
 }
 
 describe("buildEventsUrl", () => {
-  it("includes auth token and websocket scheme", () => {
+  it("uses the websocket scheme without URL credentials", () => {
     expect(
-      buildEventsUrl("token-123", {
+      buildEventsUrl({
         protocol: "https:",
         host: "example.com",
       }),
-    ).toBe("wss://example.com/api/v1/events/ws?token=token-123");
+    ).toBe("wss://example.com/api/v2/events/ws");
   });
 
   it("omits the query string when no token is available", () => {
     expect(
-      buildEventsUrl(null, {
+      buildEventsUrl({
         protocol: "http:",
         host: "localhost:5173",
       }),
-    ).toBe("ws://localhost:5173/api/v1/events/ws");
+    ).toBe("ws://localhost:5173/api/v2/events/ws");
   });
 });
 
@@ -175,6 +179,22 @@ describe("invalidateCatalogState", () => {
 
 describe("RealtimeEventsProvider", () => {
   beforeEach(() => {
+    setAccessToken("session-access");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(
+        async () =>
+          new Response(
+            JSON.stringify({
+              ticket: "a".repeat(43),
+              protocol: "silo.events.v2",
+              expires_in: 30,
+              max_connection_seconds: 300,
+            }),
+            { headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
     FakeWebSocket.instances = [];
     vi.useFakeTimers();
     vi.stubGlobal("WebSocket", FakeWebSocket);
@@ -214,7 +234,7 @@ describe("RealtimeEventsProvider", () => {
     });
   });
 
-  it("ignores stale close events from intentionally closed sockets", () => {
+  it("ignores stale close events from intentionally closed sockets", async () => {
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -229,10 +249,15 @@ describe("RealtimeEventsProvider", () => {
       </QueryClientProvider>,
     );
 
+    await act(async () => {});
     expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(FakeWebSocket.instances[0]?.protocols).toEqual([
+      "silo.events.v2",
+      `silo.ticket.${"a".repeat(43)}`,
+    ]);
     const firstSocket = FakeWebSocket.instances[0];
 
-    act(() => {
+    await act(async () => {
       mockState.pageActivity = {
         ...mockState.pageActivity,
         canApplyRealtimeUpdates: false,
@@ -246,7 +271,7 @@ describe("RealtimeEventsProvider", () => {
       );
     });
 
-    act(() => {
+    await act(async () => {
       mockState.pageActivity = {
         ...mockState.pageActivity,
         canApplyRealtimeUpdates: true,
@@ -262,7 +287,7 @@ describe("RealtimeEventsProvider", () => {
 
     expect(FakeWebSocket.instances).toHaveLength(2);
 
-    act(() => {
+    await act(async () => {
       firstSocket?.emitClose();
       vi.advanceTimersByTime(1_000);
     });
@@ -270,7 +295,7 @@ describe("RealtimeEventsProvider", () => {
     expect(FakeWebSocket.instances).toHaveLength(2);
   });
 
-  it("defers broad catch-up refetches until foreground playback exits", () => {
+  it("defers broad catch-up refetches until foreground playback exits", async () => {
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -289,7 +314,7 @@ describe("RealtimeEventsProvider", () => {
 
     const view = render(provider());
 
-    act(() => {
+    await act(async () => {
       mockState.pageActivity = {
         ...mockState.pageActivity,
         isVisible: false,
@@ -298,7 +323,7 @@ describe("RealtimeEventsProvider", () => {
       view.rerender(provider());
     });
 
-    act(() => {
+    await act(async () => {
       mockState.pageActivity = {
         ...mockState.pageActivity,
         isVisible: true,
@@ -309,7 +334,7 @@ describe("RealtimeEventsProvider", () => {
 
     expect(refetchQueries).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(async () => {
       mockState.pathname = "/item/movie-1";
       view.rerender(provider());
     });
@@ -321,7 +346,7 @@ describe("RealtimeEventsProvider", () => {
     });
   });
 
-  it("preserves cached watched state when a favorite-only event arrives", () => {
+  it("preserves cached watched state when a favorite-only event arrives", async () => {
     const queryClient = new QueryClient();
     const detailKey = catalogKeys.itemDetail("movie-1");
     queryClient.setQueryData<ItemDetail>(detailKey, {
@@ -338,7 +363,8 @@ describe("RealtimeEventsProvider", () => {
       </QueryClientProvider>,
     );
 
-    act(() => {
+    await act(async () => {});
+    await act(async () => {
       FakeWebSocket.instances[0]?.emitMessage({
         type: "event",
         channel: "user_state",

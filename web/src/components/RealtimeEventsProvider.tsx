@@ -1,3 +1,4 @@
+import { jellyfinCompatStatusKey } from "@/api/v2/jellyfinStatusCache";
 import { fetchAdminTaskJob } from "@/api/v2/adminTasks";
 import type { QueryClient } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,14 +17,12 @@ import type {
   ScanRun,
   TaskInfo,
 } from "@/api/types";
+import { isCapturedProfileAuthorityActive, type ProfileRequestContextSnapshot } from "@/api/client";
 import {
-  api,
-  getAccessToken,
-  captureProfileRequestContext,
-  isCapturedProfileAuthorityActive,
-  type ProfileRequestContextSnapshot,
-} from "@/api/client";
-import { jellyfinCompatStatusKey } from "@/api/v2/jellyfinStatusCache";
+  mintEventsSocketTicket,
+  captureEventsAuthority,
+  isEventsAuthorityActive,
+} from "@/api/v2/eventsSocket";
 import {
   applyNotificationCreated,
   applyNotificationRead,
@@ -84,45 +83,9 @@ const DASHBOARD_QUERY_KEYS = [
   adminKeys.users(),
 ] as const;
 
-function buildEventsUrl(
-  token: string | null,
-  location: Pick<Location, "protocol" | "host">,
-  ticket?: string | null,
-) {
+function buildEventsUrl(location: Pick<Location, "protocol" | "host">) {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  const search = new URLSearchParams();
-  if (token) {
-    search.set("token", token);
-  }
-  if (ticket) {
-    search.set("ticket", ticket);
-  }
-  return `${protocol}//${location.host}/api/v1/events/ws${search.toString() ? `?${search.toString()}` : ""}`;
-}
-
-/**
- * Mints a short-lived single-use websocket ticket binding the connection to
- * the active profile (required for the notifications channel). Returns null
- * when no profile is active or the mint fails — the connection then proceeds
- * unbound, and the subscribed-message handler retries the binding with
- * backoff when the notifications subscription is rejected.
- */
-async function mintEventsTicket(hasProfile: boolean): Promise<string | null> {
-  if (!hasProfile) {
-    return null;
-  }
-  try {
-    const response = await api<{ ticket: string }>("/events/ws-ticket", {
-      method: "POST",
-      // A hung mint must settle: connect() awaits this before any socket
-      // exists, so without a timeout no onclose fires and no reconnect is
-      // ever scheduled — realtime would stay "connecting" forever.
-      signal: AbortSignal.timeout(10_000),
-    });
-    return response.ticket || null;
-  } catch {
-    return null;
-  }
+  return `${protocol}//${location.host}/api/v2/events/ws`;
 }
 
 function parseEventsMessage(value: unknown): EventsStreamMessage | null {
@@ -804,7 +767,12 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const realtimeAuthority = captureProfileRequestContext();
+    const authority = captureEventsAuthority();
+    if (!authority) {
+      setConnectionState("disconnected");
+      return;
+    }
+    const authorityActive = () => isEventsAuthorityActive(authority);
     let closedByEffect = false;
     let activeSocket: WebSocket | null = null;
 
@@ -839,25 +807,26 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
       setConnectionState("connecting");
       helloReceivedRef.current = false;
 
-      // The ticket binds the connection to the active profile so the server
-      // can authorize the notifications channel. Failure degrades gracefully
-      // to an unbound connection; without a profile we connect synchronously.
-      if (!activeProfileIDRef.current) {
-        openSocket(null);
-        return;
-      }
-      void mintEventsTicket(true).then((ticket) => {
-        if (closedByEffect) {
-          return;
-        }
-        openSocket(ticket);
-      });
+      void mintEventsSocketTicket(authority)
+        .then((ticket) => {
+          if (closedByEffect || !authorityActive()) return;
+          openSocket(ticket.ticket);
+        })
+        .catch(() => {
+          if (closedByEffect || !authorityActive()) return;
+          setConnectionState("disconnected");
+          scheduleReconnect();
+        });
     };
 
-    const openSocket = (ticket: string | null) => {
+    const openSocket = (ticket: string) => {
       let socket: WebSocket;
       try {
-        socket = new WebSocket(buildEventsUrl(getAccessToken(), window.location, ticket));
+        if (!authorityActive()) return;
+        socket = new WebSocket(buildEventsUrl(window.location), [
+          "silo.events.v2",
+          `silo.ticket.${ticket}`,
+        ]);
       } catch {
         setConnectionState("disconnected");
         scheduleReconnect();
@@ -868,14 +837,14 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
       socketRef.current = socket;
 
       socket.onopen = () => {
-        if (closedByEffect || socketRef.current !== socket) {
+        if (closedByEffect || socketRef.current !== socket || !authorityActive()) {
           return;
         }
         setConnectionState("live");
       };
 
       socket.onmessage = (event) => {
-        if (closedByEffect || socketRef.current !== socket) {
+        if (closedByEffect || socketRef.current !== socket || !authorityActive()) {
           return;
         }
         if (!canApplyRealtimeUpdatesRef.current) {
@@ -920,7 +889,7 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
             handleSnapshot(message);
             return;
           case "event":
-            handleEvent(message, realtimeAuthority);
+            handleEvent(message, authority);
             return;
           case "error":
             return;
@@ -928,7 +897,7 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
       };
 
       socket.onerror = () => {
-        if (closedByEffect || socketRef.current !== socket) {
+        if (closedByEffect || socketRef.current !== socket || !authorityActive()) {
           return;
         }
         setConnectionState("disconnected");

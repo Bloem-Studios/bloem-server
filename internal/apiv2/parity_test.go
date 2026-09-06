@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -14,6 +15,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // The fakes below stand in for the stores the real gates read; the gates
@@ -105,6 +107,7 @@ func (f fakeAPIKeys) UpdateLastUsed(context.Context, int64) error { return nil }
 
 func fakeAuth(users map[int]*models.User) *apimw.AuthMiddleware {
 	claims := map[string]*auth.Claims{
+		"tok-events":      {UserID: 1, Role: "user", SessionID: "s1", TokenType: auth.TokenTypeAccess, RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC))}},
 		memberToken:       {UserID: 1, Role: "user", SessionID: "s1", TokenType: auth.TokenTypeAccess},
 		adminToken:        {UserID: 2, Role: "admin", SessionID: "s2", TokenType: auth.TokenTypeAccess},
 		otherAdminToken:   {UserID: 3, Role: "admin", SessionID: "s3", TokenType: auth.TokenTypeAccess},

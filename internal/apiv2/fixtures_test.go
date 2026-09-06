@@ -1640,6 +1640,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, notificationDestinationTestFixtureCases()...)
 	cases = append(cases, notificationDestinationCreateFixtureCases()...)
 	cases = append(cases, eventsCapabilityFixtureCases()...)
+	cases = append(cases, eventsSocketFixtureCases()...)
 	cases = append(cases, notificationDiscordLinkFixtureCases()...)
 	cases = append(cases, notificationRelayFixtureCases()...)
 	cases = append(cases, notificationChannelFixtureCases()...)
@@ -1774,6 +1775,7 @@ func fixtureDeps() Dependencies {
 	deps.NotificationDestinationTests = new(fakeNotificationDestinationTests)
 	deps.NotificationDestinationCreate = new(fakeNotificationDestinationCreate)
 	deps.EventsCapability = &handlers.EventsHandler{}
+	deps.EventsSocket = new(fakeEventsSocket)
 	deps.NotificationDiscordLinks = new(fakeNotificationDiscordLinks)
 	deps.NotificationRelay = new(fakeNotificationRelay)
 	deps.NotificationChannels = new(fakeNotificationChannels)

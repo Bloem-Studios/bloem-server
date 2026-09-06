@@ -4633,6 +4633,26 @@
       "body_file": "events_capabilities.json"
     },
     {
+      "name": "events_socket_ticket",
+      "operation_id": "createEventsSocketTicket",
+      "scenario": "An account delegates its expiring login session to an opaque single-use realtime handshake credential.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/events/ws-ticket",
+        "headers": {
+          "Authorization": "Bearer tok-events"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/EventsSocketTicket",
+      "body_file": "events_socket_ticket.json"
+    },
+    {
       "name": "forget_device_missing",
       "operation_id": "forgetDevice",
       "scenario": "Missing or already forgotten device.",

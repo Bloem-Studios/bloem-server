@@ -2078,7 +2078,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminSettingsChecks = adminHandler
 	}
 	if deps.EventsHub != nil {
-		v2deps.EventsCapability = handlers.NewEventsHandler(deps.EventsHub, adminJobsHandler, adminHandler, deps.TaskManager, deps.ScanRegistry, deps.LibraryScanQueue, historyImportSvc)
+		events := handlers.NewEventsHandler(deps.EventsHub, adminJobsHandler, adminHandler, deps.TaskManager, deps.ScanRegistry, deps.LibraryScanQueue, historyImportSvc)
+		events.SetNotificationsSystem(deps.Notifications)
+		v2deps.EventsCapability = events
+		if sessionRepo != nil && userRepo != nil {
+			v2deps.EventsSocket = handlers.NewEventsSocketV2(events, evt.NewSocketTicketStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, checkPrimaryProfile, deps.PublicURL)
+		}
 	}
 	if deps.Notifications != nil {
 		inbox := handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub)

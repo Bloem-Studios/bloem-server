@@ -223,6 +223,8 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST " + Prefix + "/notifications/webhooks",
 		"POST " + Prefix + "/admin/notifications/server-channels",
 		"GET " + Prefix + "/events/capabilities",
+		"GET " + Prefix + "/events/ws",
+		"POST " + Prefix + "/events/ws-ticket",
 		"GET " + Prefix + "/admin/items/{id}/files",
 		"POST " + Prefix + "/admin/items/{id}/merge",
 		"POST " + Prefix + "/admin/items/{id}/split",
