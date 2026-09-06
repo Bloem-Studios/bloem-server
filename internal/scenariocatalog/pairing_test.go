@@ -1674,3 +1674,43 @@ func TestRequiredAccountReadsPairingCannotShrink(t *testing.T) {
 		}
 	}
 }
+
+func TestRequiredLogoutSuccessPairingCannotShrink(t *testing.T) {
+	for _, id := range RequiredLogoutSuccessScenarios {
+		for _, failure := range []string{"missing case", "missing pair", "unsupported requirements"} {
+			t.Run(id+"/"+failure, func(t *testing.T) {
+				catalogs, err := Load()
+				if err != nil {
+					t.Fatal(err)
+				}
+				selected, err := LogoutSuccessAcceptance(catalogs)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, c := range selected {
+					for ri := range c.Rows {
+						row := &c.Rows[ri]
+						for i := range row.Scenarios {
+							s := &row.Scenarios[i]
+							if s.ID != id {
+								continue
+							}
+							switch failure {
+							case "missing case":
+								row.Scenarios = append(row.Scenarios[:i], row.Scenarios[i+1:]...)
+							case "missing pair":
+								s.V2Expectation = nil
+							case "unsupported requirements":
+								s.Requires = []string{"unhandled"}
+							}
+							break
+						}
+					}
+				}
+				if _, err := LogoutSuccessAcceptance(selected); err == nil || !strings.Contains(err.Error(), id) {
+					t.Fatalf("accepted %s: %v", failure, err)
+				}
+			})
+		}
+	}
+}

@@ -783,3 +783,7 @@ test-scenario-admin-invitation-revoke-targets:
 .PHONY: test-scenario-account-reads
 test-scenario-account-reads:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAccountReadsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-logout-success
+test-scenario-logout-success:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredLogoutSuccessAcceptance$$' ./internal/scenariocatalog/executor

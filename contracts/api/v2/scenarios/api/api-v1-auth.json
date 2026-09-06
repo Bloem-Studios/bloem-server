@@ -8660,7 +8660,22 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports return an empty 204 and revoke only the caller login session. Revocation time is bounded by the database request window; all other stored fields remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/logout_success_pairing_test.go",
+            "operation_id": "logout",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/logout"
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "logout.session_gone",
@@ -8737,7 +8752,27 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports return an empty 204 and revoke only the caller login session. Revocation time is bounded by the database request window; all other stored fields remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/logout_success_pairing_test.go",
+            "operation_id": "logout",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/logout"
+            },
+            "expect": {
+              "status": 204,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "absent"
+                }
+              ],
+              "body_kind": "empty",
+              "body": []
+            }
+          }
         },
         {
           "id": "logout.api_key",

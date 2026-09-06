@@ -1225,3 +1225,17 @@ settings, login sessions, device requests, invitations and invite codes
 occupancy and fixed-selector guards remain enforced. No API-key usage,
 impersonation, enrollment, external provider or outage is exercised. These two
 original frozen pairs remain separate from NEW acceptance.
+
+### Frozen successful logout
+
+`make test-scenario-logout-success` selects `logout.ok` and `logout.shape`,
+retaining original requests, authenticated principals, fresh-state requirements
+and empty 204 assertions. Four requests independently reseed before and after
+execution. Eight full snapshots cover users, profiles, API keys, settings, login
+sessions, device requests, invitations and invite codes (64 table observations).
+Only the caller's login session may change: revoked_at must move from null to a
+timestamp within database clock readings around the request. Every other column
+and row remains unchanged. Required DSN, pre-constructor occupancy and
+fixed-selector guards remain enforced. This scope does not cover repeated
+logout, API-key usage, enrollment, external providers or outages. These two
+original frozen pairs remain separate from NEW acceptance.
