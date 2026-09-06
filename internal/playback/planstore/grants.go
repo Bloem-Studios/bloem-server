@@ -49,6 +49,26 @@ func (s *Postgres) StageAttemptRoute(ctx context.Context, authority playback.Att
 		return err
 	}
 	return s.withAuthorityLock(ctx, authority.PlaybackAttemptID, func(tx pgx.Tx) error {
+		var activationJSON []byte
+		if err := tx.QueryRow(ctx, `SELECT control_activation FROM playback_v3_attempts WHERE playback_attempt_id=$1`, authority.PlaybackAttemptID).Scan(&activationJSON); err != nil {
+			return err
+		}
+		if len(activationJSON) > initialActivationDocumentLimit {
+			return playback.ErrInitialActivationInvalidV3
+		}
+		if len(activationJSON) > 0 {
+			var activation playback.InitialActivationV3
+			if err := json.Unmarshal(activationJSON, &activation); err != nil {
+				return err
+			}
+			if err := validateStoredInitialActivation(activation); err != nil {
+				return err
+			}
+			binding := activation.Binding
+			if binding.Authority().PlaybackAttemptID != authority.PlaybackAttemptID || binding.Fence.Incarnation != authority.Incarnation || binding.Fence.OwnerID != authority.OwnerID || binding.Fence.Epoch != authority.Epoch || binding.Source.AccountID != record.UserID || binding.Scope.ProfileID != record.ProfileID || binding.Scope.SessionID != record.SessionID || activation.Phase != playback.InitialActivationInstalledV3 {
+				return playback.ErrStaleAttemptAuthorityV3
+			}
+		}
 		tag, err := tx.Exec(ctx, `UPDATE playback_v3_attempts SET
 		 session_id = $5::uuid, effective_media_file_id = $6, current_plan_id = $7,
 		 current_plan = $8, frozen_recipe = $9, control_route = $10, updated_at = clock_timestamp()
@@ -95,6 +115,7 @@ func (s *Postgres) IssueAttemptGrant(ctx context.Context, authority playback.Att
 		 FROM timing
 		 WHERE playback_attempt_id = $1 AND control_incarnation = NULLIF($2, '')::uuid AND control_owner = $3::uuid AND control_epoch = $4
 		 AND control_lease_expires_at > timing.now AND expires_at > timing.now
+		 AND (control_activation IS NULL OR control_activation->>'phase' IN ('installed', 'activated'))
 		 AND control_route->'executor' = $11::jsonb
 		 AND session_id = NULLIF($6, '')::uuid AND current_plan_id = $7 AND control_route->>'transport_id' = $8
 		 AND (($9 = 'execute' AND control_state IN ('preparing', 'active') AND (control_route->>'execution_node_id')::bigint = $10)
@@ -133,7 +154,7 @@ func (s *Postgres) CompleteAttemptDrain(ctx context.Context, authority playback.
 	return s.withAuthorityLock(ctx, authority.PlaybackAttemptID, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, `UPDATE playback_v3_attempts SET control_state = 'stopped', updated_at = clock_timestamp()
 		 WHERE playback_attempt_id = $1 AND control_incarnation = NULLIF($2, '')::uuid AND control_owner = $3::uuid AND control_epoch = $4
-		 AND control_state IN ('draining', 'stopped') AND control_drain_not_before <= clock_timestamp()`,
+		 AND control_activation IS NULL AND control_state IN ('draining', 'stopped') AND control_drain_not_before <= clock_timestamp()`,
 			authority.PlaybackAttemptID, authority.Incarnation, authority.OwnerID, authority.Epoch)
 		if err != nil {
 			return err

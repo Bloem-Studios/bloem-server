@@ -55,13 +55,14 @@ func (s *Postgres) ReserveAttempt(ctx context.Context, request playback.AttemptR
 	var profileID, digest string
 	var expiresAt time.Time
 	var grantNotAfter *time.Time
+	var activation []byte
 	err = tx.QueryRow(ctx, `
 		SELECT user_id, profile_id, requested_media_file_id, request_digest,
 		 control_state, COALESCE(control_owner::text, ''), COALESCE(control_incarnation::text, ''), control_epoch, COALESCE(control_lease_expires_at, 'epoch'::timestamptz),
-		 expires_at, control_grant_not_after
+		 expires_at, control_grant_not_after, control_activation
 		FROM playback_v3_attempts WHERE playback_attempt_id = $1 FOR UPDATE`, request.PlaybackAttemptID).Scan(
 		&userID, &profileID, &fileID, &digest, &result.Authority.State, &result.Authority.OwnerID, &result.Authority.Incarnation,
-		&result.Authority.Epoch, &result.Authority.LeaseExpiresAt, &expiresAt, &grantNotAfter)
+		&result.Authority.Epoch, &result.Authority.LeaseExpiresAt, &expiresAt, &grantNotAfter, &activation)
 	if err != nil {
 		return result, err
 	}
@@ -80,7 +81,7 @@ func (s *Postgres) ReserveAttempt(ctx context.Context, request playback.AttemptR
 		return playback.AttemptReservationV3{}, playback.ErrSessionNotFound
 	}
 	result.Owned = inserted.RowsAffected() == 1
-	if !result.Owned && result.Authority.State == playback.AttemptPreparingV3 && !result.Authority.LeaseExpiresAt.After(dbNow) && grantNotAfter == nil {
+	if !result.Owned && result.Authority.State == playback.AttemptPreparingV3 && !result.Authority.LeaseExpiresAt.After(dbNow) && grantNotAfter == nil && len(activation) == 0 {
 		err = tx.QueryRow(ctx, `UPDATE playback_v3_attempts SET
 		 control_owner = $2::uuid, control_epoch = control_epoch + 1,
 		 session_id = NULL, effective_media_file_id = requested_media_file_id, current_plan_id = '',
@@ -177,7 +178,7 @@ func (s *Postgres) PublishAttempt(ctx context.Context, authority playback.Attemp
 	 session_id = NULLIF($4, '')::uuid, effective_media_file_id = $5, current_plan_id = $6,
 	 current_plan = $7, frozen_recipe = $8, start_response = $9, control_state = $10, updated_at = clock_timestamp()
 	 WHERE control_incarnation = NULLIF($15, '')::uuid AND playback_attempt_id = $1 AND control_owner = $2::uuid AND control_epoch = $3
-	 AND control_state = 'preparing' AND control_lease_expires_at > clock_timestamp() AND expires_at > clock_timestamp()
+	 AND control_activation IS NULL AND control_state = 'preparing' AND control_lease_expires_at > clock_timestamp() AND expires_at > clock_timestamp()
 	 AND user_id = $11 AND profile_id = $12 AND requested_media_file_id = $13 AND request_digest = $14
 	 AND (control_route IS NULL OR (session_id = NULLIF($4, '')::uuid AND effective_media_file_id = $5 AND current_plan_id = $6
 	 AND current_plan = $7::jsonb AND frozen_recipe = $8::jsonb AND $10 = 'active'))`,
@@ -199,7 +200,7 @@ func (s *Postgres) StopAttempt(ctx context.Context, authority playback.AttemptAu
 	return s.withAuthorityLock(ctx, authority.PlaybackAttemptID, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, `UPDATE playback_v3_attempts SET control_state = 'stopped', updated_at = clock_timestamp()
 	 WHERE control_incarnation = NULLIF($4, '')::uuid AND playback_attempt_id = $1 AND control_owner = $2::uuid AND control_epoch = $3
-	 AND control_state IN ('preparing', 'active', 'stopped')
+	 AND control_activation IS NULL AND control_state IN ('preparing', 'active', 'stopped')
 	 AND (control_grant_not_after IS NULL OR control_grant_not_after <= clock_timestamp())
 	 AND control_lease_expires_at > clock_timestamp() AND expires_at > clock_timestamp()`, authority.PlaybackAttemptID, authority.OwnerID, authority.Epoch, authority.Incarnation)
 		if err != nil {
