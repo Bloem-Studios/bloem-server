@@ -1988,6 +1988,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminAutoscanConnections = autoscanHandler
 		v2deps.AdminAutoscanConnectionTests = autoscanHandler
 		v2deps.AdminAutoscanConnectionCreation = autoscanHandler
+		v2deps.AdminAutoscanConnectionUpdate = autoscanHandler
 		v2deps.AdminAutoscanAvailableSources = autoscanHandler
 		v2deps.AdminAutoscanRewrites = autoscanHandler
 		v2deps.AdminAutoscanInspection = autoscanHandler

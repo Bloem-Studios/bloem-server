@@ -2031,11 +2031,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/autoscan/connections/{id}",
+        "operation_id": "updateAdminAutoscanConnection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Single stored update without replay identity; an error may follow commit. Reconcile explicitly before resubmitting; no automatic retry."
     },
     {
       "listener": "api",

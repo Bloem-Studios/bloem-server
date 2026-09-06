@@ -259,7 +259,14 @@ export default function ConnectionsPanel() {
     }
 
     if (dialog.editing) {
-      updateConnection.mutate({ id: dialog.editing.id, body }, { onSuccess: closeDialog });
+      updateConnection.mutate(
+        { id: dialog.editing.id, body },
+        {
+          onSuccess: () => {
+            if (activeDialog.current === dialog) closeDialog();
+          },
+        },
+      );
     } else {
       createConnection.mutate(body, {
         onSuccess: () => {

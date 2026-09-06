@@ -167,22 +167,74 @@ export function useCreateAutoscanConnection() {
   };
 }
 
+type AutoscanConnectionUpdateIntent = AutoscanConnectionCreationIntent & { id: string };
+function captureConnectionUpdate(input: {
+  id: string;
+  body: AutoscanConnectionInput;
+}): AutoscanConnectionUpdateIntent {
+  return { ...captureConnectionCreation(input.body), id: input.id };
+}
 export function useUpdateAutoscanConnection() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: AutoscanConnectionInput }) =>
-      api<AutoscanConnection>(`/admin/autoscan/connections/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    mutationFn: async ({
+      id,
+      body,
+      profileContext,
+    }: AutoscanConnectionUpdateIntent): Promise<AutoscanConnection> => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const result = await v2("PUT /api/v2/admin/autoscan/connections/{id}", {
+        path: { id },
+        body: { ...body, request_integration_id: body.request_integration_id ?? undefined },
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return result;
+    },
+    retry: false,
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Autoscan connection updated");
       queryClient.invalidateQueries({ queryKey: adminKeys.autoscanConnections() });
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to update autoscan connection");
+    onError: (_error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        "Connection update could not be confirmed. Refresh connections before submitting again.",
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (
+      input: { id: string; body: AutoscanConnectionInput },
+      options?: {
+        onSuccess?: (result: AutoscanConnection) => void;
+        onError?: (error: Error) => void;
+      },
+    ) => {
+      let intent: AutoscanConnectionUpdateIntent;
+      try {
+        intent = captureConnectionUpdate(input);
+      } catch {
+        options?.onError?.(new StaleApiRequestContextError());
+        return;
+      }
+      mutation.mutate(intent, {
+        onSuccess: (result) => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onSuccess?.(result);
+        },
+        onError: (error) => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onError?.(error);
+        },
+      });
+    },
+    mutateAsync: (input: { id: string; body: AutoscanConnectionInput }) =>
+      mutation.mutateAsync(captureConnectionUpdate(input)),
+  };
 }
 
 export function useDeleteAutoscanConnection() {

@@ -1900,3 +1900,19 @@ and reconcile before submitting again. Both dialogs capture copied body/authorit
 before queueing, disable retries/auth replay and reject stale completion. A late
 result cannot close a newer connection draft or select the created ID in a changed
 inline source draft. Update/delete and source writes remain separate migrations.
+
+### Update an autoscan connection (v2)
+
+`PUT /api/v2/admin/autoscan/connections/{id}` (`updateAdminAutoscanConnection`)
+requires an acting administrator and is unavailable in demo mode. The required
+name and kind plus optional base_url, write-only api_key_ref and
+request_integration_id use the creation input shape. A name and either a base URL
+or Requests integration are required. Blank API key input preserves the encrypted
+stored key; blank integration input clears that link. The existing single stored
+update returns a credential-free connection with has_api_key (200), or missing
+connection (404), invalid input (422), unavailable service (503), or masked error
+(500). There is no revision precondition, replay identity or durable job. An error
+can follow a committed update: refresh and reconcile explicitly before another
+submission. No automatic retry, authentication replay or provider update occurs.
+The web edit submission captures identity and input before queueing and refuses
+late completion from another authority or a newer dialog draft.

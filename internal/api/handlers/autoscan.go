@@ -1313,3 +1313,23 @@ func (h *AutoscanHandler) CreateAdminAutoscanConnection(ctx context.Context, in 
 	}
 	return connectionResponse(created), nil
 }
+
+// AdminAutoscanConnectionUpdateInput retains the existing write-only credential input.
+type AdminAutoscanConnectionUpdateInput = autoscanConnectionInput
+
+var ErrAdminAutoscanConnectionUpdateUnavailable = errors.New("autoscan connection update unavailable")
+var ErrAdminAutoscanConnectionUpdateInvalid = errors.New("autoscan connection name and URL or integration are required")
+
+func (h *AutoscanHandler) UpdateAdminAutoscanConnection(ctx context.Context, id string, in AdminAutoscanConnectionUpdateInput) (AdminAutoscanConnectionView, error) {
+	if h == nil || h.repo == nil {
+		return AdminAutoscanConnectionView{}, ErrAdminAutoscanConnectionUpdateUnavailable
+	}
+	if strings.TrimSpace(in.Name) == "" || validateConnectionInput(in) != nil {
+		return AdminAutoscanConnectionView{}, ErrAdminAutoscanConnectionUpdateInvalid
+	}
+	created, err := h.repo.UpdateConnection(ctx, autoscan.Connection{ID: strings.TrimSpace(id), Name: strings.TrimSpace(in.Name), Kind: strings.TrimSpace(in.Kind), BaseURL: strings.TrimSpace(in.BaseURL), APIKeyRef: strings.TrimSpace(in.APIKeyRef), RequestIntegrationID: normalizeRequestIntegrationID(in.RequestIntegrationID)})
+	if err != nil {
+		return AdminAutoscanConnectionView{}, err
+	}
+	return connectionResponse(created), nil
+}
