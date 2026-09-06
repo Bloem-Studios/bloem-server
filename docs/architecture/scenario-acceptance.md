@@ -982,3 +982,11 @@ is not isolated proof of the maximum-use check. Malformed JSON remains 400.
 Four HTTP refusals use independent transport reseeds and eight full eight-table
 snapshots (64 observations), without exemptions or successful creation.
 Required DSN, pre-constructor occupancy and exact selector guards remain mandatory.
+
+`make test-scenario-invite-code-update-input` selects only
+`codes_update.bad_id` and `codes_update.malformed`. Original administrator
+requests and v1 400 assertions remain unchanged. V2 returns 422 for invalid
+path input and 400 for malformed JSON. Four HTTP refusals use independent
+transport reseeds and eight full eight-table snapshots (64 observations), with
+no exemptions or successful update. Required DSN, pre-constructor occupancy
+and exact selector guards remain mandatory.
