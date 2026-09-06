@@ -43693,13 +43693,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/theme/catalog",
         "operation_id": "getThemeCatalog"
       },
-      "notes": "Implemented shared theme upstream/cache application methods and typed portable document envelopes; independent review pending. Frozen v1 bytes, status/error codes, size caps and cache/stale headers retained. V2 validates document shape and rejects cap-sized possibly truncated reads. Approved HTTPS initial/redirect targets unchanged. Account-authenticated reads and acting-admin synchronous per-node refresh. Bundled web uses v2 and retains parser/CSS sanitization; no native or Jellyfin theme-catalog/download consumer. Capability GET /api/v2/theme/catalog/capabilities."
+      "notes": "Implemented shared theme upstream/cache application methods and typed portable document envelopes; independently reviewed and accepted. Frozen v1 bytes, status/error codes, size caps and cache/stale headers retained. V2 validates document shape and rejects cap-sized possibly truncated reads. Approved HTTPS initial/redirect targets unchanged. Account-authenticated reads and acting-admin synchronous per-node refresh. Bundled web uses v2 and retains parser/CSS sanitization; no native or Jellyfin theme-catalog/download consumer. Capability GET /api/v2/theme/catalog/capabilities."
     },
     {
       "listener": "api",
@@ -43753,13 +43753,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/theme/catalog/refresh",
         "operation_id": "refreshThemeCatalog"
       },
-      "notes": "Implemented shared theme upstream/cache application methods and typed portable document envelopes; independent review pending. Frozen v1 bytes, status/error codes, size caps and cache/stale headers retained. V2 validates document shape and rejects cap-sized possibly truncated reads. Approved HTTPS initial/redirect targets unchanged. Account-authenticated reads and acting-admin synchronous per-node refresh. Bundled web uses v2 and retains parser/CSS sanitization; no native or Jellyfin theme-catalog/download consumer. Capability GET /api/v2/theme/catalog/capabilities."
+      "notes": "Implemented shared theme upstream/cache application methods and typed portable document envelopes; independently reviewed and accepted. Frozen v1 bytes, status/error codes, size caps and cache/stale headers retained. V2 validates document shape and rejects cap-sized possibly truncated reads. Approved HTTPS initial/redirect targets unchanged. Account-authenticated reads and acting-admin synchronous per-node refresh. Bundled web uses v2 and retains parser/CSS sanitization; no native or Jellyfin theme-catalog/download consumer. Capability GET /api/v2/theme/catalog/capabilities."
     },
     {
       "listener": "api",
@@ -43808,13 +43808,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/theme/download",
         "operation_id": "downloadThemeFile"
       },
-      "notes": "Implemented shared theme upstream/cache application methods and typed portable document envelopes; independent review pending. Frozen v1 bytes, status/error codes, size caps and cache/stale headers retained. V2 validates document shape and rejects cap-sized possibly truncated reads. Approved HTTPS initial/redirect targets unchanged. Account-authenticated reads and acting-admin synchronous per-node refresh. Bundled web uses v2 and retains parser/CSS sanitization; no native or Jellyfin theme-catalog/download consumer. Capability GET /api/v2/theme/catalog/capabilities."
+      "notes": "Implemented shared theme upstream/cache application methods and typed portable document envelopes; independently reviewed and accepted. Frozen v1 bytes, status/error codes, size caps and cache/stale headers retained. V2 validates document shape and rejects cap-sized possibly truncated reads. Approved HTTPS initial/redirect targets unchanged. Account-authenticated reads and acting-admin synchronous per-node refresh. Bundled web uses v2 and retains parser/CSS sanitization; no native or Jellyfin theme-catalog/download consumer. Capability GET /api/v2/theme/catalog/capabilities."
     },
     {
       "listener": "api",
