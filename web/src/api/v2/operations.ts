@@ -103,6 +103,8 @@ export const v2Operations = {
   "GET /api/v2/admin/sections/capabilities": "getAdminSectionCapabilities",
   "GET /api/v2/admin/sections/order": "getAdminSectionOrder",
   "GET /api/v2/admin/sections/{id}": "getAdminSection",
+  "GET /api/v2/admin/system/build": "getAdminBuildInfo",
+  "GET /api/v2/admin/system/resources": "getAdminSystemResources",
   "GET /api/v2/admin/tasks": "listAdminTasks",
   "GET /api/v2/admin/tasks/{key}": "getAdminTask",
   "GET /api/v2/admin/tasks/{key}/history": "listAdminTaskHistory",

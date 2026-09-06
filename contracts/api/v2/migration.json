@@ -17317,11 +17317,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/system/build",
+        "operation_id": "getAdminBuildInfo"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented with typed Huma output and migrated web system hooks; independent review pending. Build and sample timestamps use UTC milliseconds; absent build timestamps are omitted and empty resource collections are arrays."
     },
     {
       "listener": "api",
@@ -17439,11 +17439,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/system/resources",
+        "operation_id": "getAdminSystemResources"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented with typed Huma output and migrated web system hooks; independent review pending. Build and sample timestamps use UTC milliseconds; absent build timestamps are omitted and empty resource collections are arrays."
     },
     {
       "listener": "api",

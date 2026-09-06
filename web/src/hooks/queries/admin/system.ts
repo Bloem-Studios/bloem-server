@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import type { SystemResources } from "@/api/types";
+import { v2 } from "@/api/v2/request";
 import { adminKeys } from "../keys";
 
 /**
@@ -49,7 +49,10 @@ export interface HWAccelInfo {
 export function useBuildInfo() {
   return useQuery({
     queryKey: adminKeys.buildInfo(),
-    queryFn: () => api<BuildInfo>("/admin/system/build"),
+    queryFn: async (): Promise<BuildInfo> => {
+      const info = await v2("GET /api/v2/admin/system/build");
+      return { ...info, vcs_time: info.vcs_time ?? "" };
+    },
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
@@ -63,7 +66,7 @@ export function useBuildInfo() {
 export function useSystemResources(enabled = true) {
   return useQuery({
     queryKey: adminKeys.systemResources(),
-    queryFn: () => api<SystemResources>("/admin/system/resources"),
+    queryFn: () => v2("GET /api/v2/admin/system/resources"),
     refetchInterval: SYSTEM_RESOURCES_REFRESH_MS,
     staleTime: SYSTEM_RESOURCES_REFRESH_MS,
     retry: false,
