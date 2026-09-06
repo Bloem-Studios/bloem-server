@@ -59,5 +59,6 @@ it("sends a connection check once even when global mutation retries are enabled"
   expect(mocks.v2).toHaveBeenCalledWith("POST /api/v2/admin/settings/check/{kind}", {
     path: { kind: "redis" },
     body: { values: {}, dirty_keys: [] },
+    retryAuthentication: false,
   });
 });

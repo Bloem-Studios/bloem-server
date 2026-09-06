@@ -181,6 +181,7 @@ export function useCheckAdminSettingsConnection() {
       v2("POST /api/v2/admin/settings/check/{kind}", {
         path: { kind },
         body,
+        retryAuthentication: false,
       }),
     retry: false,
   });
