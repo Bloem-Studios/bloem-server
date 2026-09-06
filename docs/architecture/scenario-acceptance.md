@@ -1163,3 +1163,11 @@ Four HTTP refusals use independent reseeds and eight full snapshots of users,
 user_profiles, api_keys, server_settings, auth_sessions, device_login_requests,
 invitations and invite_codes (64 table observations), without exemptions. Required
 DSN and pre-constructor occupancy guards run before setup. No creation or send succeeds.
+
+`make test-scenario-invite-code-empty-update` selects only `codes_update.partial`.
+The original administrator request, empty object and 204 empty-body oracle remain
+unchanged. Both transports check the seeded code exists without changing fields
+or timestamps. Two HTTP exchanges use independent transport reseeds and four
+full eight-table snapshots (32 observations), without exemptions. This does not
+cover updates that supply fields. Required DSN, pre-constructor occupancy and
+exact selector guards remain mandatory.

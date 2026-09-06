@@ -759,3 +759,7 @@ test-scenario-signup-codes:
 .PHONY: test-scenario-admin-invitation-role-refusals
 test-scenario-admin-invitation-role-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationRoleRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-invite-code-empty-update
+test-scenario-invite-code-empty-update:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeEmptyUpdateAcceptance$$' ./internal/scenariocatalog/executor

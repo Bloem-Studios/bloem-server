@@ -1764,7 +1764,23 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses the administrator invite-code route and preserves the original existing-code empty update as a 204 no-op; all rows and timestamps remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_empty_update_pairing_test.go",
+            "operation_id": "updateAdminInviteCode",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_id}",
+              "body": {}
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "codes_update.disable",
