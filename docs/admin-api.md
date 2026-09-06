@@ -1428,3 +1428,20 @@ not sent. There is no durable job or replay identity. The web captures the
 recipient and profile when the administrator submits, prevents another dispatch
 while pending, and disables authentication replay. A profile change suppresses
 late result presentation. No native or Jellyfin caller consumes this operation.
+
+### Rate-limit configuration reads
+
+`GET /api/v2/admin/rate-limits/config` returns desired rate-limit settings with a
+strong, administrator/profile-bound ETag and conditional read support. It includes
+API-key tiers and authentication endpoint budgets. Map entries remain extensible.
+`GET /api/v2/admin/rate-limits/status` returns process-local `active`, optional
+`active_backend`, and `redis_available`. The latter reflects valid persisted or
+bootstrap Redis configuration, not a successful reachability probe. Both reads
+require acting-administrator authority and report missing dependencies as 503.
+
+Runtime observations are separate from the canonical configuration validator.
+The web reads both under captured account/profile authority and discards results
+after an authority change. The two reads are not an atomic runtime snapshot;
+backend changes may require a restart. The frozen bridge retains its combined
+response and existing save path. This read slice adds no write, reload, job, or
+cross-replica convergence guarantee.

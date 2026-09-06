@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -30,7 +31,9 @@ func NewRateLimitHandler(store ratelimit.SettingsStore, mw *ratelimit.Middleware
 	}
 }
 
-type rateLimitConfigResponse struct {
+type rateLimitConfigResponse = AdminRateLimitConfigView
+
+type AdminRateLimitConfigView struct {
 	Enabled            bool                                  `json:"enabled"`
 	Backend            string                                `json:"backend"`
 	GlobalReqPerSecond float64                               `json:"global_requests_per_second"`
@@ -88,13 +91,22 @@ type authEndpointConfigRequest struct {
 
 // HandleGetConfig handles GET /admin/rate-limits/config.
 func (h *RateLimitHandler) HandleGetConfig(w http.ResponseWriter, r *http.Request) {
+	resp, err := h.ReadAdminRateLimitConfig(r.Context())
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// ReadAdminRateLimitConfig reads desired settings once and adds process observations.
+func (h *RateLimitHandler) ReadAdminRateLimitConfig(ctx context.Context) (AdminRateLimitConfigView, error) {
 	// One read serves the rate values, the stored backend, and the
 	// Redis-availability bit, so no field of the response can straddle two
 	// snapshots of the settings table.
-	values, err := h.store.GetAll(r.Context())
+	values, err := h.store.GetAll(ctx)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load rate limit config")
-		return
+		return rateLimitConfigResponse{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to load rate limit config")
 	}
 	cfg := ratelimit.ConfigFromSettings(values)
 
@@ -132,8 +144,7 @@ func (h *RateLimitHandler) HandleGetConfig(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	return resp, nil
 }
 
 // HandleUpdateConfig handles PUT /admin/rate-limits/config.

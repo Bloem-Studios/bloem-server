@@ -546,6 +546,7 @@ func registerAll(reg *Registry) {
 	registerAdminNodesRead(reg)
 	registerAdminServerStatus(reg)
 	registerAdminEmailTest(reg)
+	registerAdminRateLimitReads(reg)
 	registerAdminTaskJobs(reg)
 	registerAdminCatalogSources(reg)
 	registerAdminCatalogTransfer(reg)

@@ -1,15 +1,38 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import {
+  api,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
 import type { RateLimitConfig, RateLimitUpdateResponse } from "@/api/types";
 import { adminKeys } from "../keys";
 import { toast } from "sonner";
 
+import { v2 } from "@/api/v2/request";
+
 const ADMIN_STALE_TIME = 30_000;
 
 export function useRateLimitConfig() {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.rateLimitConfig(),
-    queryFn: () => api<RateLimitConfig>("/admin/rate-limits/config"),
+    queryKey: [
+      ...adminKeys.rateLimitConfig(),
+      context?.serverOrigin,
+      context?.authContextVersion,
+      context?.profileId,
+    ],
+    enabled: context !== null,
+    queryFn: async (): Promise<RateLimitConfig> => {
+      if (!context || !isCapturedProfileAuthorityActive(context))
+        throw new StaleApiRequestContextError();
+      const [config, status] = await Promise.all([
+        v2("GET /api/v2/admin/rate-limits/config", { profileContext: context }),
+        v2("GET /api/v2/admin/rate-limits/status", { profileContext: context }),
+      ]);
+      if (!isCapturedProfileAuthorityActive(context)) throw new StaleApiRequestContextError();
+      return { ...config, ...status };
+    },
     staleTime: ADMIN_STALE_TIME,
   });
 }

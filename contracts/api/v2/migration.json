@@ -13616,11 +13616,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/rate-limits/config",
+        "operation_id": "getAdminRateLimitConfig"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; settingsRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Canonical desired rate-limit configuration read with principal-bound validator. Separate status read preserves process-local active backend and configured Redis availability, not reachability. Shared bridge read and actual web consumer; independent scope review pending. Mutation remains a separate unimplemented row."
     },
     {
       "listener": "api",

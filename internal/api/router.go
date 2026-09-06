@@ -2145,6 +2145,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 		nodeHandler = handlers.NewNodeHandler(deps.NodeRepo, deps.ProxyPool, deps.TranscodePool, deps.NodeRepo, deps.EventBus, deps.RedisClient, jwtSecret)
 		v2deps.AdminNodesRead = nodeHandler
 	}
+	var rateLimitHandler *handlers.RateLimitHandler
+	if settingsRepo != nil {
+		rateLimitHandler = handlers.NewRateLimitHandler(settingsRepo, deps.RateLimitMW, deps.EventBus, restartStatus, deps.RedisBootstrapAvailable)
+		v2deps.AdminRateLimits = rateLimitHandler
+	}
 	var emailHandler *handlers.EmailHandler
 	if settingsRepo != nil {
 		emailHandler = handlers.NewEmailHandler(mail.NewSMTPSender(settingsRepo))
@@ -3766,9 +3771,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 							// config; otherwise disabling rate limiting and restarting would
 							// lock the settings page out of re-enabling it.
 							if settingsRepo != nil {
-								rateLimitHandler := handlers.NewRateLimitHandler(
-									settingsRepo, deps.RateLimitMW, deps.EventBus, restartStatus, deps.RedisBootstrapAvailable,
-								)
 								r.Route("/rate-limits", func(r chi.Router) {
 									r.Get("/config", rateLimitHandler.HandleGetConfig)
 									r.Put("/config", rateLimitHandler.HandleUpdateConfig)
