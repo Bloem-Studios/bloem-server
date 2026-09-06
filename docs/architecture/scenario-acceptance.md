@@ -803,3 +803,16 @@ Six HTTP requests require 12 combined snapshots (96 full-table observations).
 Required DSN and scratch/API-key occupancy guards run before construction.
 No successful list, invitation creation, send, redemption or account action is
 exercised. These three original pairs remain separate from NEW acceptance.
+
+### Frozen administrator invitation revocation refusals
+
+`make test-scenario-admin-invitation-revoke-refusals` requires exactly
+`adm_inv_revoke.admin_secondary_profile`, `adm_inv_revoke.non_admin` and
+`adm_inv_revoke.no_token`. Original DELETE requests, principals and assertions
+remain unchanged; v2 preserves 403/403/401 with Problem Details. The target
+invitation and every row in the eight tables listed above remain byte-identical.
+Six independently reseeded transports require 12 snapshots and 96 full-table
+observations. Required DSN and scratch/API-key guards run before construction.
+This exercises authorization refusals, not successful revocation, invitation
+sending, redemption or account creation. These original pairs are separate from
+NEW acceptance.
