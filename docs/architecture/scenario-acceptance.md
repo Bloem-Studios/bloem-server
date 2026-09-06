@@ -651,3 +651,15 @@ with every row unchanged. Required DSN, pre-setup scratch/API-key occupancy
 and fixed-selector gates fail closed. No setup POST, account creation,
 unavailable-database case or enrollment is exercised. These three frozen pairs
 remain separate from NEW acceptance.
+
+### Frozen administrator build metadata pairs
+
+`make test-scenario-build-info` requires exactly `build.ok`, `build.meaning`,
+`build.shape` and `build.no_token`. Original requests and assertions remain
+unchanged. The runner compares build metadata from the same binary across both
+transports: only absent timestamp omission and UTC-millisecond formatting differ.
+Unauthorized v2 responses use Problem Details. Eight transport requests use
+independent reseeding and sixteen combined snapshots of the full users, profiles
+and API-key tables (48 table observations), without field exemptions. Required
+DSN, pre-setup occupancy and fixed-selector checks fail closed. No hardware,
+provider, media-catalog or previously completed scenario is exercised.

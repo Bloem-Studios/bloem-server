@@ -571,3 +571,8 @@ test-scenario-signup-status:
 .PHONY: test-scenario-setup-status
 test-scenario-setup-status:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSetupStatusAcceptance$$' ./internal/scenariocatalog/executor
+
+# Four frozen administrator build metadata reads.
+.PHONY: test-scenario-build-info
+test-scenario-build-info:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredBuildInfoAcceptance$$' ./internal/scenariocatalog/executor

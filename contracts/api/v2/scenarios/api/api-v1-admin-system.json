@@ -52,7 +52,53 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Build values retain the original binary metadata; absent timestamps are omitted and present timestamps use UTC milliseconds. Unauthenticated refusal uses Problem Details. The focused runner compares exact projected fields and unchanged full account tables.",
+            "recorded_in": "internal/scenariocatalog/executor/build_info_pairing_test.go",
+            "operation_id": "getAdminBuildInfo",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/build"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/display",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/dirty",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/build_number",
+                  "op": "type",
+                  "value": "integer"
+                },
+                {
+                  "pointer": "/available",
+                  "op": "type",
+                  "value": "boolean"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "build.meaning",
@@ -84,7 +130,53 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Build values retain the original binary metadata; absent timestamps are omitted and present timestamps use UTC milliseconds. Unauthenticated refusal uses Problem Details. The focused runner compares exact projected fields and unchanged full account tables.",
+            "recorded_in": "internal/scenariocatalog/executor/build_info_pairing_test.go",
+            "operation_id": "getAdminBuildInfo",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/build"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/display",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/dirty",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/build_number",
+                  "op": "type",
+                  "value": "integer"
+                },
+                {
+                  "pointer": "/available",
+                  "op": "type",
+                  "value": "boolean"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "build.shape",
@@ -111,7 +203,53 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Build values retain the original binary metadata; absent timestamps are omitted and present timestamps use UTC milliseconds. Unauthenticated refusal uses Problem Details. The focused runner compares exact projected fields and unchanged full account tables.",
+            "recorded_in": "internal/scenariocatalog/executor/build_info_pairing_test.go",
+            "operation_id": "getAdminBuildInfo",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/build"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/display",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/dirty",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/build_number",
+                  "op": "type",
+                  "value": "integer"
+                },
+                {
+                  "pointer": "/available",
+                  "op": "type",
+                  "value": "boolean"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "build.admin_secondary_profile",
@@ -268,7 +406,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Build values retain the original binary metadata; absent timestamps are omitted and present timestamps use UTC milliseconds. Unauthenticated refusal uses Problem Details. The focused runner compares exact projected fields and unchanged full account tables.",
+            "recorded_in": "internal/scenariocatalog/executor/build_info_pairing_test.go",
+            "operation_id": "getAdminBuildInfo",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/system/build"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "build.error_shape",
