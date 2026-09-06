@@ -21635,13 +21635,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/branding/assets/{kind}",
         "operation_id": "getBrandingAsset"
       },
-      "notes": "Implemented public branding discovery/overrides and image GET/HEAD on reviewed raw foundation; independent review and native branding discovery adoption pending. Asset URLs target v2, exact content-version requests cache immutably, stale versions return404, unversioned reads revalidate. Security headers and conditional tags preserved. Bundled web uses v2 discovery/overrides. Capability GET /api/v2/theme/capabilities. Frozen v1 transport unchanged."
+      "notes": "Implemented public branding discovery/overrides and image GET/HEAD on reviewed raw foundation. Asset URLs target v2, exact content-version requests cache immutably, stale versions return404, unversioned reads revalidate. Security headers and conditional tags preserved. Bundled web uses v2 discovery/overrides. Capability GET /api/v2/theme/capabilities. Frozen v1 transport unchanged. Independently reviewed and accepted with coordinated Apple and Android public branding consumers; no native CSS caller."
     },
     {
       "listener": "api",
@@ -43547,13 +43547,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/theme/admin-css",
         "operation_id": "getThemeOverrides"
       },
-      "notes": "Implemented public branding discovery/overrides and image GET/HEAD on reviewed raw foundation; independent review and native branding discovery adoption pending. Asset URLs target v2, exact content-version requests cache immutably, stale versions return404, unversioned reads revalidate. Security headers and conditional tags preserved. Bundled web uses v2 discovery/overrides. Capability GET /api/v2/theme/capabilities. Frozen v1 transport unchanged."
+      "notes": "Implemented public branding discovery/overrides and image GET/HEAD on reviewed raw foundation. Asset URLs target v2, exact content-version requests cache immutably, stale versions return404, unversioned reads revalidate. Security headers and conditional tags preserved. Bundled web uses v2 discovery/overrides. Capability GET /api/v2/theme/capabilities. Frozen v1 transport unchanged. Independently reviewed and accepted with coordinated Apple and Android public branding consumers; no native CSS caller."
     },
     {
       "listener": "api",
@@ -43622,13 +43622,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/theme/branding",
         "operation_id": "getBranding"
       },
-      "notes": "Implemented public branding discovery/overrides and image GET/HEAD on reviewed raw foundation; independent review and native branding discovery adoption pending. Asset URLs target v2, exact content-version requests cache immutably, stale versions return404, unversioned reads revalidate. Security headers and conditional tags preserved. Bundled web uses v2 discovery/overrides. Capability GET /api/v2/theme/capabilities. Frozen v1 transport unchanged."
+      "notes": "Implemented public branding discovery/overrides and image GET/HEAD on reviewed raw foundation. Asset URLs target v2, exact content-version requests cache immutably, stale versions return404, unversioned reads revalidate. Security headers and conditional tags preserved. Bundled web uses v2 discovery/overrides. Capability GET /api/v2/theme/capabilities. Frozen v1 transport unchanged. Independently reviewed and accepted with coordinated Apple and Android public branding consumers; no native CSS caller."
     },
     {
       "listener": "api",
