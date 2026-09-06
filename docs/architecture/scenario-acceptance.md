@@ -1248,3 +1248,12 @@ snapshots (96 observations), with independent transport reseeds. Exactly the
 selected usable or disabled code must disappear; every surviving column and
 other table row must match. Required DSN, pre-constructor occupancy and exact
 selector guards remain mandatory. No concurrent deletion or durable replay claim.
+
+`make test-scenario-admin-invitation-email-conflicts` selects only
+`adm_inv_create.email_taken` and `adm_inv_resend.accepted`. Original requests
+and 409 email-taken oracles remain unchanged; v2 returns typed 409 conflict
+Problems. The accepted resend fixture already has an account at its address:
+this proves email collision, not a general accepted-state refusal. Four requests
+use independent reseeds and eight full eight-table snapshots (64 observations),
+with no row or timestamp exemptions. Required DSN and pre-constructor guards
+remain mandatory. No token creation, invitation write or delivery is reached.

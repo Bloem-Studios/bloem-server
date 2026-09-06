@@ -791,3 +791,7 @@ test-scenario-logout-success:
 .PHONY: test-scenario-invite-code-deletions
 test-scenario-invite-code-deletions:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeDeletionsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-admin-invitation-email-conflicts
+test-scenario-admin-invitation-email-conflicts:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationEmailConflictsAcceptance$$' ./internal/scenariocatalog/executor

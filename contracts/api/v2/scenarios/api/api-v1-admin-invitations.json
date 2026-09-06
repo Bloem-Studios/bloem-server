@@ -926,7 +926,74 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original existing-account email refusal as a typed conflict Problem, with no invitation, account or delivery effects.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_email_conflicts_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "${member_email}"
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "An account already uses this email or username."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_create.bad_role",
@@ -1804,7 +1871,71 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original existing-account email refusal as a typed conflict Problem, with no invitation, account or delivery effects.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_email_conflicts_pairing_test.go",
+            "operation_id": "resendAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations/${invitation_accepted_id}/resend"
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "An account already uses this email or username."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_resend.not_found",
