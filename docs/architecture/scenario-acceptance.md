@@ -583,3 +583,16 @@ reseed independently; 28 complete snapshots cover users, profiles and API keys
 scratch/API-key occupancy gates fail closed. No password change, session
 revocation, credential usage or external provider operation is exercised.
 These seven frozen pairs remain separate from NEW acceptance.
+
+### Frozen sign-in provider discovery pairs
+
+`make test-scenario-auth-providers` requires `providers.ok`,
+`providers.local_default`, `providers.shape`, `providers.sorted` and
+`providers.oauth_hidden`. Original requests, database requirements and
+expectations remain unchanged. V2 adds a bounded items envelope while preserving
+metadata, default-first ordering and OAuth filtering. Ten real transport
+requests reseed independently; 20 combined snapshots cover complete users,
+profiles and API-key tables (60 table observations), with every row unchanged.
+Required DSN, pre-setup scratch/API-key occupancy and fixed-selector gates fail
+closed. No login, plugin installation or external provider call is exercised.
+These five frozen pairs remain separate from NEW acceptance.

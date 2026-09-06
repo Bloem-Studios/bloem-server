@@ -553,3 +553,8 @@ test-scenario-api-key-creations:
 .PHONY: test-scenario-account-capability
 test-scenario-account-capability:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAccountCapabilityAcceptance$$' ./internal/scenariocatalog/executor
+
+# Five outstanding frozen sign-in provider discovery scenarios.
+.PHONY: test-scenario-auth-providers
+test-scenario-auth-providers:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAuthProvidersAcceptance$$' ./internal/scenariocatalog/executor
