@@ -168,3 +168,10 @@ func defaultAccountProfile(input CreateAccountInput) (userstore.Profile, error) 
 	}
 	return userstore.Profile{Name: name, ShowForcedSubtitles: true}, nil
 }
+
+// SupportsTransactionalProfiles reports the selected provider's capability,
+// including wrappers that preserve its transaction-aware profile writer.
+func (p *AccountProvisioner) SupportsTransactionalProfiles() bool {
+	_, ok := p.storeProvider.(transactionalProfileCreator)
+	return ok
+}

@@ -1,0 +1,6 @@
+{
+  "revision": "invitation-v1/available/profile=true",
+  "state": "available",
+  "default_profile": true,
+  "profileless": true
+}

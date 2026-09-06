@@ -6889,13 +6889,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/invitations",
+        "operation_id": "listAdminInvitations"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; invitationService != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -6953,13 +6953,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/invitations",
+        "operation_id": "createAdminInvitation"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; invitationService != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -7014,13 +7014,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/invitations/{id}",
+        "operation_id": "revokeAdminInvitation"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; invitationService != nil. v2 registers the operation unconditionally and reports capability state instead. Not if_match: revokes a short-lived invitation; an accepted invitation is a domain 409, not a stale confirmation."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -7078,13 +7078,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/invitations/{id}/resend",
+        "operation_id": "resendAdminInvitation"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; invitationService != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -29008,13 +29008,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/invitations/{token}",
+        "operation_id": "lookupInvitation"
       },
-      "notes": "Conditionally registered: authHandler != nil; invitationService != nil; !(deps.RateLimitMW != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -29076,13 +29076,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/invitations/{token}",
+        "operation_id": "lookupInvitation"
       },
-      "notes": "Conditionally registered: authHandler != nil; invitationService != nil; deps.RateLimitMW != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -29144,13 +29144,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/invitations/{token}/accept",
+        "operation_id": "acceptInvitation"
       },
-      "notes": "Conditionally registered: authHandler != nil; invitationService != nil; !(deps.RateLimitMW != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",
@@ -29214,13 +29214,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/invitations/{token}/accept",
+        "operation_id": "acceptInvitation"
       },
-      "notes": "Conditionally registered: authHandler != nil; invitationService != nil; deps.RateLimitMW != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Transactional invitation domain, v2 transport, web administrator and public claim consumers, and Android claim consumer independently reviewed and accepted. POSTs remain non-retryable: uncertain outcomes require explicit recovery, not replay. Acceptance distinguishes committed account creation from session-start failure; delivery distinguishes committed links from failed or uncertain SMTP. Revoke is naturally idempotent against its exact ID. Capabilities reflect the selected profile-store limitation. Web and Android session installation is fenced by captured identity and claim lifetime. Apple uses the public web claim flow; no Jellyfin invitation surface exists."
     },
     {
       "listener": "api",

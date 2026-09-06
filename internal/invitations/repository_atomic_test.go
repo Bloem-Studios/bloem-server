@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -539,5 +540,54 @@ func TestInvitationAtomicConcurrentFreshCreate(t *testing.T) {
 	}
 	if wins != 1 || total != 1 || pending != 1 {
 		t.Fatalf("wins/total/pending=%d/%d/%d", wins, total, pending)
+	}
+}
+
+func TestInvitationListPageDB(t *testing.T) {
+	f := atomicInvitationDB(t)
+	migration, err := os.ReadFile("../../migrations/sql/20260905233159_add_invitation_paging_index.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	up, down, ok := strings.Cut(string(migration), "-- +goose Down")
+	if !ok {
+		t.Fatal("missing down migration")
+	}
+	if _, err := f.pool.Exec(t.Context(), up); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(t.Context(), down); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(t.Context(), up); err != nil {
+		t.Fatal(err)
+	}
+	first := f.invite(t, "page-first")
+	second := f.invite(t, "page-second")
+	// Equal timestamps require the immutable ID tie-breaker; status may change
+	// without invalidating the pagination position.
+	if _, err := f.pool.Exec(t.Context(), `UPDATE invitations SET created_at=$1`, first.CreatedAt); err != nil {
+		t.Fatal(err)
+	}
+	rows, more, err := f.repo.ListPage(t.Context(), nil, 1)
+	if err != nil || !more || len(rows) != 1 || rows[0].ID != second.ID {
+		t.Fatalf("first page=%v more=%v err=%v", rows, more, err)
+	}
+	if err := f.repo.Revoke(t.Context(), second.ID); err != nil {
+		t.Fatal(err)
+	}
+	after := &PageKey{CreatedAt: rows[0].CreatedAt, ID: rows[0].ID}
+	rows, more, err = f.repo.ListPage(t.Context(), after, 1)
+	if err != nil || more || len(rows) != 1 || rows[0].ID != first.ID {
+		t.Fatalf("second page=%v more=%v err=%v", rows, more, err)
+	}
+	rows, more, err = f.repo.ListPage(t.Context(), &PageKey{CreatedAt: rows[0].CreatedAt, ID: rows[0].ID}, 1)
+	if err != nil || more || len(rows) != 0 {
+		t.Fatalf("terminal page=%v more=%v err=%v", rows, more, err)
+	}
+	for _, limit := range []int{0, 201} {
+		if _, _, err := f.repo.ListPage(t.Context(), nil, limit); err == nil {
+			t.Fatalf("accepted limit%d", limit)
+		}
 	}
 }

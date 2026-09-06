@@ -1958,6 +1958,14 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, requireActingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
+	var invitationHandler *handlers.InvitationHandler
+	if invitationService != nil {
+		invitationHandler = handlers.NewInvitationHandler(invitationService)
+		if accessGroupStore != nil {
+			invitationHandler.SetAccessGroupProvider(accessGroupStore)
+		}
+		v2deps.Invitations = invitationHandler
+	}
 	if apiKeyRepo != nil {
 		v2deps.AdminAPIKeys = handlers.NewAPIKeyHandler(apiKeyRepo)
 	}
@@ -2189,10 +2197,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 			authHandler.SetOAuthRoutesAvailable(oauthHandler != nil)
 
 			if invitationService != nil {
-				invitationHandler := handlers.NewInvitationHandler(invitationService)
-				if accessGroupStore != nil {
-					invitationHandler.SetAccessGroupProvider(accessGroupStore)
-				}
 				r.Route("/invitations/{token}", func(r chi.Router) {
 					if deps.RateLimitMW != nil {
 						r.With(deps.RateLimitMW.AuthEndpointHandler("invitation")).Get("/", invitationHandler.HandleLookupInvitation)

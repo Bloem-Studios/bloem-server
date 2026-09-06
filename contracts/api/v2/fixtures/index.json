@@ -406,6 +406,157 @@
       "body_file": null
     },
     {
+      "name": "admin_invitation_capabilities",
+      "operation_id": "getAdminInvitationCapabilities",
+      "scenario": "Invitation lifecycle with synthetic identities and credentials.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/invitations/capabilities",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/InvitationCapabilities",
+      "body_file": "admin_invitation_capabilities.json"
+    },
+    {
+      "name": "admin_invitation_created",
+      "operation_id": "createAdminInvitation",
+      "scenario": "Invitation lifecycle with synthetic identities and credentials.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/invitations",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        },
+        "body": "{\"email\":\"invitee@example.invalid\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "Location": "/api/v2/admin/invitations/7"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/InvitationDelivery",
+      "body_file": "admin_invitation_created.json"
+    },
+    {
+      "name": "admin_invitation_delivery_uncertain",
+      "operation_id": "createAdminInvitation",
+      "scenario": "Invitation lifecycle with synthetic identities and credentials.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/invitations",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        },
+        "body": "{\"email\":\"invitee@example.invalid\",\"note\":\"smtp-failed\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "Location": "/api/v2/admin/invitations/7"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/InvitationDelivery",
+      "body_file": "admin_invitation_delivery_uncertain.json"
+    },
+    {
+      "name": "admin_invitation_get",
+      "operation_id": "getAdminInvitation",
+      "scenario": "Invitation lifecycle with synthetic identities and credentials.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/invitations/7",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminInvitation",
+      "body_file": "admin_invitation_get.json"
+    },
+    {
+      "name": "admin_invitation_list",
+      "operation_id": "listAdminInvitations",
+      "scenario": "Invitation lifecycle with synthetic identities and credentials.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/invitations?limit=1",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminInvitation",
+      "body_file": "admin_invitation_list.json"
+    },
+    {
+      "name": "admin_invitation_resent",
+      "operation_id": "resendAdminInvitation",
+      "scenario": "Invitation lifecycle with synthetic identities and credentials.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/invitations/7/resend",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "Location": "/api/v2/admin/invitations/8"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/InvitationDelivery",
+      "body_file": "admin_invitation_resent.json"
+    },
+    {
+      "name": "admin_invitation_revoked",
+      "operation_id": "revokeAdminInvitation",
+      "scenario": "Invitation lifecycle with synthetic identities and credentials.",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v2/admin/invitations/7",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {
+        "Cache-Control": "no-store"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
       "name": "admin_policy_activate_apply_failed",
       "operation_id": "activateAdminPolicyVersion",
       "scenario": "Activation reports persistence separately from local application; it is not an asynchronous job.",
@@ -4520,6 +4671,76 @@
       "response_media_type": null,
       "schema": null,
       "body_file": null
+    },
+    {
+      "name": "invitation_accepted",
+      "operation_id": "acceptInvitation",
+      "scenario": "Invitation lifecycle with synthetic identities and credentials.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/invitations/pending/accept",
+        "body": "{\"password\":\"synthetic-password\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/InvitationAcceptance",
+      "body_file": "invitation_accepted.json"
+    },
+    {
+      "name": "invitation_accepted_sign_in_required",
+      "operation_id": "acceptInvitation",
+      "scenario": "Invitation lifecycle with synthetic identities and credentials.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/invitations/sign-in-required/accept",
+        "body": "{\"password\":\"synthetic-password\"}"
+      },
+      "expected_status": 201,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/InvitationAcceptance",
+      "body_file": "invitation_accepted_sign_in_required.json"
+    },
+    {
+      "name": "invitation_capabilities",
+      "operation_id": "getInvitationCapabilities",
+      "scenario": "Invitation lifecycle with synthetic identities and credentials.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/invitations/capabilities"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/InvitationCapabilities",
+      "body_file": "invitation_capabilities.json"
+    },
+    {
+      "name": "invitation_lookup",
+      "operation_id": "lookupInvitation",
+      "scenario": "Invitation lifecycle with synthetic identities and credentials.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/invitations/pending"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/InvitationLookup",
+      "body_file": "invitation_lookup.json"
     },
     {
       "name": "list_admin_users_offset_rejected",

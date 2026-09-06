@@ -1628,7 +1628,8 @@ func fixtureCases() []fixtureCase {
 			status: http.StatusUnauthorized, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: problem},
 	}...)
 	cases = append(cases, adminAPIKeyFixtureCases()...)
-	return append(cases, adminPolicyFixtureCases()...)
+	cases = append(cases, adminPolicyFixtureCases()...)
+	return append(cases, invitationFixtureCases()...)
 }
 
 // fixtureMultipartType is the multipart Content-Type of the avatar fixtures,
@@ -1687,6 +1688,7 @@ func fixtureDeps() Dependencies {
 	deps.AdminRequests = fixtureAdminRequests()
 	deps.AdminHistoryImports = fixtureAdminHistoryImports()
 	deps.AdminAPIKeys = fixtureAdminAPIKeys()
+	deps.Invitations = fixtureInvitations()
 	deps.HistoryImports = fixtureHistoryImports()
 	deps.WebhookSync = &fakeWebhookManagement{}
 	deps.Markers = &fakeMarkers{}

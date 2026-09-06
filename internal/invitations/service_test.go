@@ -505,3 +505,7 @@ func TestResendDeliveryErrorRetainsCommittedReplacement(t *testing.T) {
 		t.Fatal("rejected resend sent email")
 	}
 }
+
+func (f *fakeRepo) ListPage(context.Context, *PageKey, int) ([]*models.Invitation, bool, error) {
+	return nil, false, nil
+}

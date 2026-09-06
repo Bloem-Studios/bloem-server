@@ -42,6 +42,7 @@ type repository interface {
 	GetByID(ctx context.Context, id int64) (*models.Invitation, error)
 	GetByTokenHash(ctx context.Context, tokenHash string) (*models.Invitation, error)
 	List(ctx context.Context) ([]*models.Invitation, error)
+	ListPage(context.Context, *PageKey, int) ([]*models.Invitation, bool, error)
 	Accept(ctx context.Context, tokenHash string, provision func(*models.Invitation, pgx.Tx) (*models.User, error)) (*models.User, error)
 	Resend(ctx context.Context, id int64, input models.CreateInvitationInput, tokenHash string) (*models.Invitation, error)
 	Revoke(ctx context.Context, id int64) error
@@ -269,11 +270,12 @@ func (s *Service) Revoke(ctx context.Context, id int64) error {
 // LookupResult is the claim screen's view of an invitation: only what it
 // renders, nothing else leaves the server pre-auth.
 type LookupResult struct {
-	Email       string
-	InviterName string
-	ServerName  string
-	ExpiresAt   time.Time
-	ShowTour    bool
+	Email         string
+	InviterName   string
+	ServerName    string
+	ExpiresAt     time.Time
+	ShowTour      bool
+	CreateProfile bool
 }
 
 // Lookup resolves a raw claim token for the claim screen. Unknown, expired,
@@ -285,11 +287,12 @@ func (s *Service) Lookup(ctx context.Context, token string) (*LookupResult, erro
 		return nil, err
 	}
 	return &LookupResult{
-		Email:       inv.Email,
-		InviterName: inv.InvitedByName,
-		ServerName:  s.serverName(ctx),
-		ExpiresAt:   inv.ExpiresAt,
-		ShowTour:    inv.ShowTour,
+		Email:         inv.Email,
+		InviterName:   inv.InvitedByName,
+		ServerName:    s.serverName(ctx),
+		ExpiresAt:     inv.ExpiresAt,
+		ShowTour:      inv.ShowTour,
+		CreateProfile: inv.CreateProfile,
 	}, nil
 }
 
@@ -373,4 +376,16 @@ func profileNameFromEmail(email string) string {
 		return ""
 	}
 	return strings.ToUpper(local[:1]) + local[1:]
+}
+
+// SupportsDefaultProfile reports capability, not transient storage health.
+func (s *Service) SupportsDefaultProfile() bool {
+	p, ok := s.accounts.(interface{ SupportsTransactionalProfiles() bool })
+	return ok && p.SupportsTransactionalProfiles()
+}
+func (s *Service) ListPage(ctx context.Context, after *PageKey, limit int) ([]*models.Invitation, bool, error) {
+	return s.repo.ListPage(ctx, after, limit)
+}
+func (s *Service) GetByID(ctx context.Context, id int64) (*models.Invitation, error) {
+	return s.repo.GetByID(ctx, id)
 }

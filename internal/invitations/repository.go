@@ -14,6 +14,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -268,4 +269,44 @@ func (r *Repository) Delete(ctx context.Context, id int64) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+// PageKey preserves database precision when continuing the administrator list.
+type PageKey struct {
+	CreatedAt time.Time `json:"created_at"`
+	ID        int64     `json:"id"`
+}
+
+// ListPage returns a bounded keyset page without loading the entire history.
+func (r *Repository) ListPage(ctx context.Context, after *PageKey, limit int) ([]*models.Invitation, bool, error) {
+	if limit < 1 || limit > 200 {
+		return nil, false, errors.New("invalid invitation page limit")
+	}
+	query := `SELECT ` + invitationColumns + invitationFrom
+	args := []any{limit + 1}
+	if after != nil {
+		query += `WHERE (i.created_at,i.id) < ($2,$3) `
+		args = append(args, after.CreatedAt, after.ID)
+	}
+	rows, err := r.pool.Query(ctx, query+`ORDER BY i.created_at DESC,i.id DESC LIMIT $1`, args...)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	result := make([]*models.Invitation, 0, limit+1)
+	for rows.Next() {
+		inv, err := scanInvitation(rows)
+		if err != nil {
+			return nil, false, err
+		}
+		result = append(result, inv)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, false, err
+	}
+	more := len(result) > limit
+	if more {
+		result = result[:limit]
+	}
+	return result, more, nil
 }

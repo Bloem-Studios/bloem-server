@@ -110,6 +110,23 @@ function currentServerOrigin(): string {
   return typeof globalThis.location === "undefined" ? "" : globalThis.location.origin;
 }
 
+/** Non-secret identity fence, including while the browser is signed out. */
+export interface SessionIdentitySnapshot {
+  authContextVersion: number;
+  serverOrigin: string;
+}
+
+export function captureSessionIdentity(): SessionIdentitySnapshot {
+  return { authContextVersion, serverOrigin: currentServerOrigin() };
+}
+
+export function isSessionIdentityCurrent(snapshot: SessionIdentitySnapshot): boolean {
+  return (
+    snapshot.authContextVersion === authContextVersion &&
+    snapshot.serverOrigin === currentServerOrigin()
+  );
+}
+
 /** Capture account, server, profile, and PIN authority in one synchronous turn. */
 export function captureProfileRequestContext(): ProfileRequestContextSnapshot | null {
   const profileId = getProfileId();
