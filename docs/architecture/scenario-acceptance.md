@@ -1027,3 +1027,16 @@ transport reseeds and twelve full snapshots of users, user_profiles, api_keys,
 server_settings, auth_sessions, device_login_requests, invitations and invite_codes
 (96 table observations), with no exemptions. Required DSN and pre-constructor
 occupancy guards run before setup. No successful resend or other cohort runs.
+
+### Frozen local login credential refusals
+
+`make test-scenario-login-credentials` selects `login.wrong_password`,
+`login.unknown_user` and `login.disabled`. Original requests, public principals,
+database requirements and assertions remain unchanged. V2 uses 401 invalid_token
+for invalid credentials and 403 permission_denied for the disabled account.
+Six real-router requests reseed independently; twelve combined full snapshots
+compare users, profiles, API keys, settings, login sessions and device requests
+(72 table observations), with no exemptions. Token pairs must be absent.
+Required DSN, pre-constructor occupancy and fixed-selector guards fail closed.
+No successful login, external provider, enrollment or outage is exercised.
+These three original frozen pairs remain separate from NEW acceptance.

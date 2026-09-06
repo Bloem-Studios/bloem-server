@@ -707,3 +707,7 @@ test-scenario-invite-code-delete-input:
 .PHONY: test-scenario-admin-invitation-resend-refusals
 test-scenario-admin-invitation-resend-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationResendRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-login-credentials
+test-scenario-login-credentials:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredLoginCredentialsAcceptance$$' ./internal/scenariocatalog/executor
