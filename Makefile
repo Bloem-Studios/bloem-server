@@ -739,3 +739,7 @@ test-scenario-invite-code-missing:
 .PHONY: test-scenario-admin-invitation-input-refusals
 test-scenario-admin-invitation-input-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationInputRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-signup-refusals
+test-scenario-signup-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSignupRefusalsAcceptance$$' ./internal/scenariocatalog/executor

@@ -1107,3 +1107,17 @@ independent transport reseeds and eight full snapshots of users, user_profiles,
 api_keys, server_settings, auth_sessions, device_login_requests, invitations and
 invite_codes (64 table observations), without exemptions. Required DSN and
 pre-constructor occupancy guards run before setup. No successful creation or send.
+
+### Frozen signup refusals
+
+`make test-scenario-signup-refusals` selects `signup.disabled_setting` and
+`signup.missing_fields`, preserving original requests, principals, requirements,
+settings and assertions. V2 reports 403 permission_denied and 422 validation_failed
+without token pairs. The original missing-code request also has a one-character
+password; its 422 is not isolated missing-code validation proof. Four real-router
+requests reseed independently. Eight full snapshots cover users, profiles, API
+keys, settings, login sessions, device requests, invitations and invite codes
+(64 table observations), after applying original settings, with no exemptions.
+Required DSN, pre-constructor occupancy and fixed-selector guards remain enforced.
+No signup success, enrollment, external provider or outage is exercised. These
+two original frozen pairs remain separate from NEW acceptance.
