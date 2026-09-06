@@ -1648,6 +1648,46 @@
       "body_file": "admin_marker_providers_validate.json"
     },
     {
+      "name": "admin_match_apply",
+      "operation_id": "applyAdminItemMatch",
+      "scenario": "Match selection uses the existing synchronous metadata service.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/items/item-1/match/apply",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        },
+        "body": "{\"provider_ids\":{\"tmdb\":\"42\"}}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminMatchApplied",
+      "body_file": "admin_match_apply.json"
+    },
+    {
+      "name": "admin_match_search",
+      "operation_id": "searchAdminItemMatches",
+      "scenario": "Delegated curator searches bounded provider candidates.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/items/item-1/match/search",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        },
+        "body": "{}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminMatchCandidates",
+      "body_file": "admin_match_search.json"
+    },
+    {
       "name": "admin_metadata_translation_cancel",
       "operation_id": "cancelAdminMetadataTranslation",
       "scenario": "Cancellation binds both authorized content and exact job identity.",

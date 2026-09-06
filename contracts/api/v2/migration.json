@@ -7718,11 +7718,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/items/{id}/match/apply",
+        "operation_id": "applyAdminItemMatch"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminMatchHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Item-scoped metadata_curation permission and shared frozen bridge service. Search returns bounded provider-ranked candidates with explicit truncation; apply retains synchronous identity-preserving metadata processing. Web disables both retry layers. Independent review pending."
     },
     {
       "listener": "api",
@@ -7780,11 +7780,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/items/{id}/match/search",
+        "operation_id": "searchAdminItemMatches"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminMatchHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Item-scoped metadata_curation permission and shared frozen bridge service. Search returns bounded provider-ranked candidates with explicit truncation; apply retains synchronous identity-preserving metadata processing. Web disables both retry layers. Independent review pending."
     },
     {
       "listener": "api",

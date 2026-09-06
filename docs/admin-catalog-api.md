@@ -293,3 +293,22 @@ disables mutation retries and authentication replay, including dry runs. All
 three operations require acting-administrator access. No native or Jellyfin
 administration caller was found; frozen v1 adapters retain their original wire
 shapes and behavior.
+
+### Match repair
+
+`POST /api/v2/admin/items/{id}/match/search` and `/match/apply` require the
+item-scoped `metadata_curation` permission, including the existing item access
+check. Library IDs are strings. Search preserves the existing provider-ID
+normalization, title/year fallback, library selection and provider ranking.
+Its optional `limit` defaults to 100 and accepts 1–500. The response contains
+`candidates` (never null) and `truncated`; refine the search when truncated.
+This bounds the response, not the provider fetch or normalization work, and
+provides no snapshot or continuation guarantee. The web requests 500 candidates
+and displays the refinement notice when needed.
+
+Apply requires nonempty provider IDs and runs the existing synchronous
+identity-preserving metadata pipeline. It returns `content_id` and `updated`;
+it is not a queued job. Neither web mutation automatically retries or refreshes
+and replays authentication. Frozen v1 responses and parsing order remain
+unchanged. These administration flows have web consumers; Apple, Android and
+Jellyfin have no corresponding caller in the migration inventory.

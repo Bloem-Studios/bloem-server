@@ -8,7 +8,6 @@ import type {
   ItemDetail,
   ItemImagesResponse,
   ItemMatchSearchRequest,
-  ItemMatchSearchResponse,
   ItemSplitRequest,
   WatchDetail,
 } from "@/api/types";
@@ -358,10 +357,23 @@ export function useSearchItemMatchCandidates(contentId: string) {
 
   return useMutation({
     mutationFn: (params: ItemMatchSearchRequest) =>
-      api<ItemMatchSearchResponse>(`/admin/items/${itemPathID(contentId)}/match/search`, {
-        method: "POST",
-        body: JSON.stringify(params),
-      }),
+      v2("POST /api/v2/admin/items/{id}/match/search", {
+        path: { id: contentId },
+        body: {
+          ...params,
+          library_id: params.library_id == null ? undefined : String(params.library_id),
+          limit: 500,
+        },
+        retryAuthentication: false,
+      }).then((result) => ({
+        ...result,
+        candidates: result.candidates.map((candidate) => ({
+          ...candidate,
+          image_url: candidate.image_url ?? "",
+          overview: candidate.overview ?? "",
+        })),
+      })),
+    retry: false,
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Match search failed");
     },
@@ -385,14 +397,16 @@ export function useApplyItemMatch() {
       item: ApplyMatchItem;
       providerIds: Record<string, string>;
     }) => {
-      return api(`/admin/items/${itemPathID(item.content_id)}/match/apply`, {
-        method: "POST",
-        body: JSON.stringify({
+      return v2("POST /api/v2/admin/items/{id}/match/apply", {
+        path: { id: item.content_id },
+        body: {
           provider_ids: providerIds,
-          library_id: item.library_id,
-        }),
+          library_id: item.library_id == null ? undefined : String(item.library_id),
+        },
+        retryAuthentication: false,
       });
     },
+    retry: false,
     onSuccess: async (_, { item }) => {
       toast.success("Match applied successfully");
 

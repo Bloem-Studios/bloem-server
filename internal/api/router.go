@@ -2143,6 +2143,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	v2deps.AdminCatalogSearch = adminHandler
 	v2deps.AdminItemMetadata = adminHandler
 	v2deps.AdminCatalogSplit = adminSplitHandler
+	if adminMatchHandler != nil {
+		v2deps.AdminCatalogMatch = adminMatchHandler
+	}
 	if adminIntroHandler != nil {
 		v2deps.AdminEpisodeMarkers = adminIntroHandler
 	}
