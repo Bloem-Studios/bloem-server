@@ -1653,6 +1653,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, ebookAnnotationFixtureCases()...)
 	cases = append(cases, userLibraryFixtureCases()...)
 	cases = append(cases, adminDeviceFixtureCases()...)
+	cases = append(cases, subtitleAIReadFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1678,6 +1679,7 @@ func profileOwner() map[string]string { return with(bearer(memberToken), "X-Prof
 // produced by the gate translation the production limiter goes through.
 func fixtureDeps() Dependencies {
 	deps := pilotDeps(&fakeProgress{entries: progressRows()}, nil)
+	deps.SubtitleAIReads = &fakeSubtitleAIReads{}
 	deps.EbookProgress = &fakeEbookProgress{}
 	deps.EbookConfig = &fakeEbookConfig{}
 	deps.EbookAnnotations = &fakeEbookAnnotations{}

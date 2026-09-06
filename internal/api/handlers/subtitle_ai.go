@@ -154,25 +154,11 @@ func (h *SubtitleAIHandler) HandleTranslate(w http.ResponseWriter, r *http.Reque
 // budgeting gate, not a security boundary; the quota itself is account-scoped.
 func (h *SubtitleAIHandler) quotaExempt(r *http.Request) bool {
 	ctx := r.Context()
-	if !apimw.IsAdmin(ctx) {
-		return false
-	}
 	profileID := apimw.GetProfileID(ctx)
 	if profileID == "" {
 		profileID = r.Header.Get("X-Profile-Id")
 	}
-	if profileID == "" || h.StoreProvider == nil {
-		return true
-	}
-	store, err := h.StoreProvider.ForUser(ctx, apimw.GetUserID(ctx))
-	if err != nil {
-		return false // fail closed: the quota still applies
-	}
-	profile, err := store.GetProfile(ctx, profileID)
-	if err != nil || profile == nil {
-		return false
-	}
-	return profile.IsPrimary
+	return h.subtitleQuotaExempt(ctx, apimw.GetUserID(ctx), profileID, apimw.IsAdmin(ctx))
 }
 
 // quotaExceededMessage turns a quota error into a user-facing message with the

@@ -495,6 +495,7 @@ func declaresBody(t reflect.Type) bool {
 // generator both call it, so the served router and the committed artifact
 // describe the same operations.
 func registerAll(reg *Registry) {
+	registerSubtitleAIReads(reg)
 	// Alphabetical by domain file; registration order is deterministic.
 	registerOperationalDiscovery(reg)
 	registerAccount(reg)

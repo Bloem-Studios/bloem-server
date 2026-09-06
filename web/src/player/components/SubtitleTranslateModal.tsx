@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import type { PlayerConfig } from "../context/PlayerConfigContext";
 import type { PlayerAudioTrack, PlayerSubtitleInfo } from "../types";
+import { playerV2 } from "../player-v2";
 import { playerFetch, PlayerFetchError } from "../player-fetch";
 import { LANGUAGES, getLanguageName } from "../utils/languageNames";
 import {
@@ -81,7 +82,7 @@ export function SubtitleTranslateModal({
   // Best-effort: a failed lookup just hides the counter — the server still
   // enforces the quota.
   const refreshQuota = useCallback(() => {
-    playerFetch<TranscribeQuota>(playerConfig, "/subtitles/ai/quota")
+    playerV2(playerConfig, "GET /api/v2/subtitles/ai/quota", {})
       .then((q) => setQuota(q?.limited ? q : null))
       .catch(() => setQuota(null));
   }, [playerConfig]);

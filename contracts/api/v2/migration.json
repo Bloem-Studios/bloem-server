@@ -42390,11 +42390,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/subtitles/ai/jobs",
+        "operation_id": "listSubtitleAIJobs"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Typed read implemented: opaque string IDs, canonical instants, safe job failure summary, file authorization and account quota with household-profile exemption preserved. Recent jobs retain the existing 50-row bound. Independent review and native adoption pending; not ratified."
     },
     {
       "listener": "api",
@@ -42461,11 +42461,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/subtitles/ai/jobs/{job_id}",
+        "operation_id": "getSubtitleAIJob"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Typed read implemented: opaque string IDs, canonical instants, safe job failure summary, file authorization and account quota with household-profile exemption preserved. Recent jobs retain the existing 50-row bound. Independent review and native adoption pending; not ratified."
     },
     {
       "listener": "api",
@@ -42612,11 +42612,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/subtitles/ai/quota",
+        "operation_id": "getSubtitleAIQuota"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Typed read implemented: opaque string IDs, canonical instants, safe job failure summary, file authorization and account quota with household-profile exemption preserved. Recent jobs retain the existing 50-row bound. Independent review and native adoption pending; not ratified."
     },
     {
       "listener": "api",
