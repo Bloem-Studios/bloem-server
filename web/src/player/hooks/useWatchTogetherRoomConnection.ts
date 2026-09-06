@@ -416,7 +416,11 @@ export function useWatchTogetherRoomConnection({
       if (policyRoom.current !== roomId || policyRun.current !== run) return null;
       if (!policyAuthority || !isCapturedProfileAuthorityActive(policyAuthority)) return null;
       setRoom((current) =>
-        current && current.generation > response.room.generation ? current : response.room,
+        current &&
+        current.room_id === response.room.room_id &&
+        current.generation > response.room.generation
+          ? current
+          : response.room,
       );
       return response.room;
     },
