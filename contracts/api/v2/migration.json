@@ -26239,9 +26239,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/downloads/{id}/artwork/{kind}",
+        "operation_id": "getDownloadArtwork"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -26306,9 +26306,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/downloads/{id}/file",
+        "operation_id": "downloadFile"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -26355,9 +26355,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "HEAD",
+        "path": "/api/v2/downloads/{id}/file",
+        "operation_id": "headDownloadFile"
       },
       "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -26404,9 +26404,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/downloads/{id}/file-proxy",
+        "operation_id": "downloadFileViaProxy"
       },
       "notes": "No producer or client reference found; candidate for a maintainer removal decision. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -26453,9 +26453,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "HEAD",
+        "path": "/api/v2/downloads/{id}/file-proxy",
+        "operation_id": "headDownloadFileViaProxy"
       },
       "notes": "No producer or client reference found; candidate for a maintainer removal decision. No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -26577,9 +26577,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/downloads/{id}/subtitles/{ref}",
+        "operation_id": "getDownloadSubtitle"
       },
       "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },

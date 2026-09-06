@@ -4060,6 +4060,76 @@ export interface paths {
     patch: operations["reportDownloadStatus"];
     trace?: never;
   };
+  "/api/v2/downloads/{id}/artwork/{kind}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Stream an authorized download file or offline asset using the existing delivery service. */
+    get: operations["getDownloadArtwork"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/downloads/{id}/file": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Stream an authorized download file or offline asset using the existing delivery service. */
+    get: operations["downloadFile"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /** Stream an authorized download file or offline asset using the existing delivery service. */
+    head: operations["headDownloadFile"];
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/downloads/{id}/file-proxy": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Stream an authorized download file or offline asset using the existing delivery service. */
+    get: operations["downloadFileViaProxy"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /** Stream an authorized download file or offline asset using the existing delivery service. */
+    head: operations["headDownloadFileViaProxy"];
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/downloads/{id}/subtitles/{ref}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Stream an authorized download file or offline asset using the existing delivery service. */
+    get: operations["getDownloadSubtitle"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/ebooks/{content_id}/annotations": {
     parameters: {
       query?: never;
@@ -11603,6 +11673,7 @@ export interface components {
       allowed?: boolean;
       download_allowed: boolean;
       enabled: boolean;
+      file_delivery: boolean;
       monitoring_modes: string[];
       ordered_status: boolean;
       proxy_delivery: boolean;
@@ -54819,6 +54890,1032 @@ export interface operations {
       };
       /** @description Unsupported Media Type */
       415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getDownloadArtwork: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id": string;
+      };
+      path: {
+        id: string;
+        kind: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Authorized bytes; HEAD returns only file metadata. */
+      200: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "image/*": string;
+        };
+      };
+      /** @description Invalid download scope or subtitle reference. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Download or asset not found in this scope. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description The download is not active. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  downloadFile: {
+    parameters: {
+      query?: never;
+      header: {
+        "If-Match"?: string;
+        "If-Modified-Since"?: string;
+        "If-None-Match"?: string;
+        "If-Range"?: string;
+        "If-Unmodified-Since"?: string;
+        Range?: string;
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Authorized bytes; HEAD returns only file metadata. */
+      200: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": string;
+          "audio/*": string;
+          "multipart/byteranges": string;
+          "video/*": string;
+        };
+      };
+      /** @description Single or multipart byte range. */
+      206: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": string;
+          "audio/*": string;
+          "multipart/byteranges": string;
+          "video/*": string;
+        };
+      };
+      /** @description Representation not modified. */
+      304: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid download scope or subtitle reference. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Download or asset not found in this scope. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description The download is not active. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description File precondition failed. */
+      412: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Range not satisfiable. */
+      416: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  headDownloadFile: {
+    parameters: {
+      query?: never;
+      header: {
+        "If-Match"?: string;
+        "If-Modified-Since"?: string;
+        "If-None-Match"?: string;
+        "If-Range"?: string;
+        "If-Unmodified-Since"?: string;
+        Range?: string;
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Authorized bytes; HEAD returns only file metadata. */
+      200: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Single or multipart byte range. */
+      206: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Representation not modified. */
+      304: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid download scope or subtitle reference. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Download or asset not found in this scope. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description The download is not active. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description File precondition failed. */
+      412: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Range not satisfiable. */
+      416: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  downloadFileViaProxy: {
+    parameters: {
+      query?: never;
+      header: {
+        "If-Match"?: string;
+        "If-Modified-Since"?: string;
+        "If-None-Match"?: string;
+        "If-Range"?: string;
+        "If-Unmodified-Since"?: string;
+        Range?: string;
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Authorized bytes; HEAD returns only file metadata. */
+      200: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": string;
+          "audio/*": string;
+          "multipart/byteranges": string;
+          "video/*": string;
+        };
+      };
+      /** @description Single or multipart byte range. */
+      206: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": string;
+          "audio/*": string;
+          "multipart/byteranges": string;
+          "video/*": string;
+        };
+      };
+      /** @description Representation not modified. */
+      304: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Authorized temporary proxy location; preserve the original method and range headers. */
+      307: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Invalid download scope or subtitle reference. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Download or asset not found in this scope. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description The download is not active. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description File precondition failed. */
+      412: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Range not satisfiable. */
+      416: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  headDownloadFileViaProxy: {
+    parameters: {
+      query?: never;
+      header: {
+        "If-Match"?: string;
+        "If-Modified-Since"?: string;
+        "If-None-Match"?: string;
+        "If-Range"?: string;
+        "If-Unmodified-Since"?: string;
+        Range?: string;
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Authorized bytes; HEAD returns only file metadata. */
+      200: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Single or multipart byte range. */
+      206: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Representation not modified. */
+      304: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Authorized temporary proxy location; preserve the original method and range headers. */
+      307: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid download scope or subtitle reference. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Download or asset not found in this scope. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description The download is not active. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description File precondition failed. */
+      412: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Range not satisfiable. */
+      416: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getDownloadSubtitle: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id": string;
+      };
+      path: {
+        id: string;
+        ref: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Authorized bytes; HEAD returns only file metadata. */
+      200: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": string;
+          "application/ttml+xml": string;
+          "application/x-subrip": string;
+          "text/plain": string;
+          "text/vtt": string;
+          "text/x-ass": string;
+          "text/x-ssa": string;
+        };
+      };
+      /** @description Invalid download scope or subtitle reference. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Download or asset not found in this scope. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description The download is not active. */
+      409: {
         headers: {
           [name: string]: unknown;
         };

@@ -59,6 +59,7 @@ type DownloadDeleteInput struct {
 }
 type DownloadCapability struct {
 	Capability
+	FileDelivery         bool     `json:"file_delivery"`
 	Enabled              bool     `json:"enabled"`
 	DownloadAllowed      bool     `json:"download_allowed"`
 	ProxyDelivery        bool     `json:"proxy_delivery"`
@@ -103,6 +104,14 @@ func downloadProblem(err error) *Problem {
 	switch {
 	case errors.Is(err, downloads.ErrNotFound), errors.Is(err, downloads.ErrSubscriptionNotFound), errors.Is(err, downloads.ErrAssetNotFound), errors.Is(err, catalogpkg.ErrItemNotFound):
 		return NewProblem(TypeNotFound, "Download not found.")
+	case errors.Is(err, downloads.ErrDownloadNotActive):
+		return NewProblem(TypeConflict, "The download is no longer active.")
+	case errors.Is(err, downloads.ErrFeatureDisabled), errors.Is(err, downloads.ErrDownloadNotAllowed):
+		return NewProblem(TypePermissionDenied, "Downloads are not allowed.")
+	case errors.Is(err, downloads.ErrManifestUnavailable):
+		return NewProblem(TypeDependencyUnavailable, "Offline assets are not configured.")
+	case errors.Is(err, downloads.ErrInvalidSubtitleRef):
+		return NewProblem(TypeMalformedRequest, "Invalid subtitle reference.")
 	case errors.Is(err, downloads.ErrStatusConflict):
 		return NewProblem(TypeConflict, "The download revision changed; reload the registry before reporting new events.")
 	case errors.Is(err, downloads.ErrInvalidStatus), errors.Is(err, downloads.ErrInvalidStatusEvent), errors.Is(err, downloads.ErrProfileRequired):
@@ -187,6 +196,7 @@ func (reg *Registry) getDownloadCapability(ctx context.Context, _ *struct{}) (*D
 		out.Enabled = view.Enabled
 		out.DownloadAllowed = view.DownloadAllowed
 		out.OrderedStatus = true
+		out.FileDelivery = reg.deps.DownloadDelivery != nil
 		if reg.deps.DownloadProxyDelivery != nil {
 			out.ProxyDelivery = reg.deps.DownloadProxyDelivery()
 		}

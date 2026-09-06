@@ -1,6 +1,7 @@
 {
-  "revision": "cdd05485f0370970",
+  "revision": "7ccb669772ed5ff3",
   "state": "available",
+  "file_delivery": false,
   "enabled": true,
   "download_allowed": true,
   "proxy_delivery": false,

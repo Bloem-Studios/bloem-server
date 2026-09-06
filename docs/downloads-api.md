@@ -1381,3 +1381,30 @@ entries return 404.
 `ordered_status`. The create, subscription, manifest and binary migrations are
 separate from this registry checkpoint; clients must coordinate adoption of the
 complete offline flow.
+
+### Native file and asset delivery
+
+The `file_delivery` capability advertises the native byte routes.
+`GET` and `HEAD /api/v2/downloads/{id}/file` preserve attachment filenames,
+MIME types, byte ranges (206, multipart ranges and 416), conditional requests
+and bodyless HEAD metadata. Serving uses the existing per-user bandwidth and
+rolling write-deadline behavior. Managed requests recheck current policy,
+account/profile/device ownership, content access and the selected source or
+prepared artifact's file restrictions.
+
+`GET` and `HEAD /api/v2/downloads/{id}/file-proxy` additionally allow 307
+redirects to the existing short-lived authorized proxy delivery URL when
+`proxy_delivery` is true. Clients preserve the original method and Range
+headers when following that URL. The ordinary file route remains local;
+unavailable or ineligible proxy targets fall back to existing local delivery.
+
+`GET /api/v2/downloads/{id}/artwork/{kind}` and
+`GET /api/v2/downloads/{id}/subtitles/{ref}` require the device header.
+Artwork kinds are poster, backdrop and logo; subtitle references retain the
+existing external:index and downloaded:id identity. Current content access is
+checked before asset delivery, and downloaded subtitle ownership must match the
+entry's media file. These two asset routes preserve whole-object delivery and
+private caching; they do not advertise byte ranges.
+
+Failures before the body starts use v2 Problems. An upstream failure after bytes
+have been written never appends JSON to the partial asset.
