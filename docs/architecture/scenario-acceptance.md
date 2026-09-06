@@ -38,6 +38,16 @@ cases are not acceptance evidence. The catalog coverage gate still checks all
 existing scenarios, but the other unpaired rows remain outside this bounded
 acceptance pilot.
 
+Offline baseline policy: `TestScenarioCatalogs` without a database must report
+zero failures. The offline router is built without a user store, policy system,
+viewer-access or acting-admin gate, so v2 operations whose declared class
+(`x-silo-class`) is anything other than `public` or `authenticated` fail closed
+with 503 `dependency_unavailable` before authentication. The executor therefore
+treats those v2 exchanges, and any v2 follow-up step on such an operation, as
+database-gated and skips them offline, exactly as it already skips v1 rows the
+offline wiring does not register. Their 401 oracles are proven only on the live
+router by the required targeted packets.
+
 ## Device-list checkpoint
 
 `make test-scenario-device-pairing` requires the same guarded synthetic PostgreSQL

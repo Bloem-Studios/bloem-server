@@ -14,6 +14,7 @@ import (
 // openAPIOperation is the slice of one embedded v2 operation the validators read.
 type openAPIOperation struct {
 	OperationID string `json:"operationId"`
+	Class       string `json:"x-silo-class"`
 	Parameters  []struct {
 		Name   string `json:"name"`
 		In     string `json:"in"`
@@ -51,6 +52,24 @@ func ValidatePairing(pair *V2Expectation) error {
 		return err
 	}
 	return validateOperation(pair.OperationID, pair.Method, pair.Request.Path)
+}
+
+// OperationClass reports the declared gate class (x-silo-class) of a v2
+// operation from the embedded document, so a harness can tell which gates an
+// exchange will meet before it is sent.
+func OperationClass(operationID string) (string, bool) {
+	paths, err := openAPIPaths()
+	if err != nil {
+		return "", false
+	}
+	for _, methods := range paths {
+		for _, op := range methods {
+			if op.OperationID == operationID {
+				return op.Class, true
+			}
+		}
+	}
+	return "", false
 }
 
 func validateOperation(operationID, method, requestPath string) error {

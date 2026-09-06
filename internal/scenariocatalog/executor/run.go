@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/contracts/api/v2/scenarios"
+	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/scenariocatalog"
 )
 
@@ -101,6 +102,17 @@ func (e *Env) Run(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.
 	}
 }
 
+// offlineGated reports whether the offline router can run a v2 operation's
+// gate chain to a real verdict. The offline wiring (contracts/api/v2/
+// offline-routes.txt) has the auth middleware but no user store, policy
+// system, viewer-access or acting-admin gate, so only public and
+// authenticated operations reach their handler or a genuine 401; every other
+// class fails closed with 503 dependency_unavailable before authentication.
+func offlineGated(operationID string) bool {
+	class, ok := scenariocatalog.OperationClass(operationID)
+	return ok && (class == string(apiv2.ClassPublic) || class == string(apiv2.ClassAuthenticated))
+}
+
 // Each transport owns its follow-ups; v1 steps and response values never supply
 // the v2 contract. V2 steps stay on the explicit V2Expectation.
 func v2Scenario(s scenariocatalog.Scenario) scenariocatalog.Scenario {
@@ -145,11 +157,17 @@ func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenari
 		needsDB = true
 	}
 	if transport == "v2" {
+		// The v2 listener is always mounted offline, so OfflineHas cannot
+		// tell that an operation's gate chain needs wiring the offline
+		// router lacks; the declared class can. Mirror the row guard above.
+		if !dbUnavailable && !offlineGated(operationID) {
+			needsDB = true
+		}
 		for _, step := range s.V2Expectation.Then {
 			if step.Principal != nil && step.Principal.Class != publicPrincipal {
 				needsDB = true
 			}
-			if !dbUnavailable && !e.OfflineHas(step.Method, step.Request.Path) {
+			if !dbUnavailable && (!e.OfflineHas(step.Method, step.Request.Path) || !offlineGated(step.OperationID)) {
 				needsDB = true
 			}
 		}
