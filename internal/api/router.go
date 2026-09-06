@@ -2305,8 +2305,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if userImportHandler != nil {
 		v2deps.CollectionImports = userImportHandler
 	}
+	if subtitleSearchHandler != nil {
+		v2deps.SubtitleProviders = subtitleSearchHandler
+	}
 	if subtitleAIHandler != nil {
 		v2deps.SubtitleAIReads = subtitleAIHandler
+		v2deps.SubtitleAI = subtitleAIHandler
 	}
 	if deps.v2Wiring != nil {
 		deps.v2Wiring(v2deps)

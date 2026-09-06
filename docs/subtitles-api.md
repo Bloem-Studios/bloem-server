@@ -40,3 +40,24 @@ this typed quota operation through its captured player configuration.
 These operations read persisted state and do not enqueue or cancel jobs. Job
 creation and cancellation remain separate migration work. Native consumers must
 retain string identifiers and the captured account/profile when following jobs.
+
+The v2 subtitle capability probes are always registered. They require an
+authenticated account. A supplied profile must belong to that account and pass
+viewer-access checks; a profile header is optional, as on the bridge API.
+
+| Operation | Method and path | Response |
+| --- | --- | --- |
+| Provider status | GET `/api/v2/subtitles/providers/status` | `schema_version`, `enabled`, `providers` |
+| AI status | GET `/api/v2/subtitles/ai/status` | `enabled`, `transcribe_enabled` |
+
+Both return 200 and `Cache-Control: no-store`. When providers are absent,
+`enabled` is false and `providers` is an empty array. Registered provider names
+are sorted and contain no credentials. `schema_version` remains 1. When the AI
+service is absent, both AI flags are false. These reads do not search providers,
+start jobs, or contact an external engine.
+
+The web subtitle menu uses the typed v2 AI probe with the player's credentials.
+Apple and Android adoption is coordinated separately. Subtitle search, stored
+tracks, generation, and delivery retain their existing routes until their own
+migration scopes land. Jellyfin compatibility uses its existing subtitle
+protocol and needs no equivalent native capability route.

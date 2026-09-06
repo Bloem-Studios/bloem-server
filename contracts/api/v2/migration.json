@@ -42735,11 +42735,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/subtitles/ai/status",
+        "operation_id": "getSubtitleAIStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; !(subtitleAIHandler != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Typed v2 capability always registered. Missing subtitle services return disabled 200 with explicit booleans and empty provider list; optional profile still resolves viewer access. Shared v1/v2 capability methods preserve bridge responses. Web AI probe migrated; native adoption and independent review pending. See docs/subtitles-api.md."
     },
     {
       "listener": "api",
@@ -42816,11 +42816,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/subtitles/ai/status",
+        "operation_id": "getSubtitleAIStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Typed v2 capability always registered. Missing subtitle services return disabled 200 with explicit booleans and empty provider list; optional profile still resolves viewer access. Shared v1/v2 capability methods preserve bridge responses. Web AI probe migrated; native adoption and independent review pending. See docs/subtitles-api.md."
     },
     {
       "listener": "api",
@@ -43120,11 +43120,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/subtitles/providers/status",
+        "operation_id": "getSubtitleProviderStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; !(subtitleSearchHandler != nil). v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Typed v2 capability always registered. Missing subtitle services return disabled 200 with explicit booleans and empty provider list; optional profile still resolves viewer access. Shared v1/v2 capability methods preserve bridge responses. Web AI probe migrated; native adoption and independent review pending. See docs/subtitles-api.md."
     },
     {
       "listener": "api",
@@ -43180,11 +43180,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/subtitles/providers/status",
+        "operation_id": "getSubtitleProviderStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil. v2 registers the operation unconditionally and reports capability state instead. One of several registrations of this method+path with different middleware/conditions; see registration_index and conditions."
+      "notes": "Typed v2 capability always registered. Missing subtitle services return disabled 200 with explicit booleans and empty provider list; optional profile still resolves viewer access. Shared v1/v2 capability methods preserve bridge responses. Web AI probe migrated; native adoption and independent review pending. See docs/subtitles-api.md."
     },
     {
       "listener": "api",

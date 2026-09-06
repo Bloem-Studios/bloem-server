@@ -69,11 +69,21 @@ type translateSubtitleRequest struct {
 // HandleStatus reports whether AI subtitle translation / ASR generation are
 // available, so the player can show or hide the entry points.
 // GET /api/v1/subtitles/ai/status
-func (h *SubtitleAIHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{
-		"enabled":            h.service.Enabled(),
-		"transcribe_enabled": h.service.TranscribeEnabled(),
-	})
+func (h *SubtitleAIHandler) HandleStatus(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, h.SubtitleAIStatus())
+}
+
+type SubtitleAIStatusView struct {
+	Enabled           bool `json:"enabled"`
+	TranscribeEnabled bool `json:"transcribe_enabled"`
+}
+
+// SubtitleAIStatus reports configured engine capabilities without starting work.
+func (h *SubtitleAIHandler) SubtitleAIStatus() SubtitleAIStatusView {
+	if h == nil || h.service == nil {
+		return SubtitleAIStatusView{}
+	}
+	return SubtitleAIStatusView{Enabled: h.service.Enabled(), TranscribeEnabled: h.service.TranscribeEnabled()}
 }
 
 // WriteSubtitleAIDisabledStatus answers the AI status capability probe with a

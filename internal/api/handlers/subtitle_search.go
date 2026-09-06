@@ -98,7 +98,7 @@ func (h *SubtitleSearchHandler) authorizeMediaFile(w http.ResponseWriter, r *htt
 	return authorizeMediaFileAccess(w, r, h.FileAuthorizer, fileID)
 }
 
-// subtitleProviderStatusResponse tells a client whether this deployment can
+// SubtitleProviderStatusView tells a client whether this deployment can
 // search external subtitle providers at all, following the per-subsystem
 // capability convention (/subtitles/ai/status, /items/trailers/capability).
 //
@@ -112,7 +112,7 @@ func (h *SubtitleSearchHandler) authorizeMediaFile(w http.ResponseWriter, r *htt
 // Provider names are safe to return to any authenticated viewer: they already
 // travel in every SubtitleResult.provider and DownloadedSubtitle.provider. The
 // credentials behind them stay in the admin-only provider config.
-type subtitleProviderStatusResponse struct {
+type SubtitleProviderStatusView struct {
 	SchemaVersion int `json:"schema_version"`
 	// Enabled reports that at least one provider is registered, so
 	// POST /subtitles/search can actually reach an upstream.
@@ -130,15 +130,21 @@ type subtitleProviderStatusResponse struct {
 // is the answer in that case; the router registers a fallback so a client never
 // has to interpret a 404 on the probe itself.
 func (h *SubtitleSearchHandler) HandleProviderStatus(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, h.SubtitleProviderStatus())
+}
+
+// SubtitleProviderStatus returns public provider identifiers without credentials.
+// A missing subsystem is a disabled capability, not an unavailable endpoint.
+func (h *SubtitleSearchHandler) SubtitleProviderStatus() SubtitleProviderStatusView {
 	providers := []string{}
 	if h != nil && h.manager != nil {
 		providers = h.manager.ProviderNames()
 	}
-	writeJSON(w, http.StatusOK, subtitleProviderStatusResponse{
+	return SubtitleProviderStatusView{
 		SchemaVersion: 1,
 		Enabled:       len(providers) > 0,
 		Providers:     providers,
-	})
+	}
 }
 
 // WriteSubtitleProvidersDisabledStatus answers the subtitle provider capability
@@ -147,7 +153,7 @@ func (h *SubtitleSearchHandler) HandleProviderStatus(w http.ResponseWriter, _ *h
 // /providers/status path is not shadowed by the 1-segment /{media_file_id}
 // route — they never compete in chi's router).
 func WriteSubtitleProvidersDisabledStatus(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, subtitleProviderStatusResponse{
+	writeJSON(w, http.StatusOK, SubtitleProviderStatusView{
 		SchemaVersion: 1,
 		Enabled:       false,
 		Providers:     []string{},

@@ -1674,6 +1674,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminCatalogImagesFixtureCases()...)
 	cases = append(cases, downloadSubscriptionMutationFixtureCases()...)
 	cases = append(cases, downloadCreateFixtureCases()...)
+	cases = append(cases, subtitleCapabilityFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 

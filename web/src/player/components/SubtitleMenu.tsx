@@ -6,7 +6,7 @@ import type { PlayerConfig } from "../context/PlayerConfigContext";
 import { SubtitleSearchModal } from "./SubtitleSearchModal";
 import { SubtitleTranslateModal } from "./SubtitleTranslateModal";
 import { SubtitleAppearancePanel } from "./SubtitleAppearancePanel";
-import { playerFetch } from "../player-fetch";
+import { playerV2 } from "../player-v2";
 import { getLanguageName } from "../utils/languageNames";
 import { sortSubtitlesBySource } from "../utils/subtitleSort";
 import { getSubtitleFormatLabel, isSubtitleFormatLabel } from "../utils/subtitleCodecs";
@@ -72,10 +72,7 @@ export function SubtitleMenu({
   useEffect(() => {
     if (!playerConfig) return;
     let cancelled = false;
-    playerFetch<{ enabled: boolean; transcribe_enabled?: boolean }>(
-      playerConfig,
-      "/subtitles/ai/status",
-    )
+    playerV2(playerConfig, "GET /api/v2/subtitles/ai/status", {})
       .then((res) => {
         if (cancelled) return;
         setAiEnabled(Boolean(res?.enabled));
