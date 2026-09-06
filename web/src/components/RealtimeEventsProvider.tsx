@@ -16,7 +16,14 @@ import type {
   ScanRun,
   TaskInfo,
 } from "@/api/types";
-import { api, getAccessToken } from "@/api/client";
+import {
+  api,
+  getAccessToken,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  type ProfileRequestContextSnapshot,
+} from "@/api/client";
+import { jellyfinCompatStatusKey } from "@/api/v2/jellyfinStatusCache";
 import {
   applyNotificationCreated,
   applyNotificationRead,
@@ -181,16 +188,19 @@ function upsertJob(existing: AdminJob[] | undefined, nextJob: AdminJob, limit = 
   return sortJobs(jobs).slice(0, limit);
 }
 
-function applyJellyfinCompatOperationUpdate(
+export function applyJellyfinCompatOperationUpdate(
   queryClient: QueryClient,
   operation: JellyfinCompatOperationStatus,
+  authority: ProfileRequestContextSnapshot | null,
 ) {
+  if (!authority || !isCapturedProfileAuthorityActive(authority)) return;
+  const key = jellyfinCompatStatusKey(authority);
   if (!operation?.id) {
-    void queryClient.invalidateQueries({ queryKey: adminKeys.jellyfinCompatStatus() });
+    void queryClient.invalidateQueries({ queryKey: key, exact: true });
     return;
   }
 
-  queryClient.setQueryData<JellyfinCompatStatus>(adminKeys.jellyfinCompatStatus(), (existing) => {
+  queryClient.setQueryData<JellyfinCompatStatus>(key, (existing) => {
     if (!existing) {
       return existing;
     }
@@ -202,7 +212,7 @@ function applyJellyfinCompatOperationUpdate(
   });
 
   if (operation.state !== "running") {
-    void queryClient.invalidateQueries({ queryKey: adminKeys.jellyfinCompatStatus() });
+    void queryClient.invalidateQueries({ queryKey: key, exact: true });
   }
 }
 
@@ -681,7 +691,10 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  function handleEvent(message: EventsEventMessage) {
+  function handleEvent(
+    message: EventsEventMessage,
+    realtimeAuthority: ProfileRequestContextSnapshot | null,
+  ) {
     switch (message.channel) {
       case "catalog":
         {
@@ -731,6 +744,7 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
           applyJellyfinCompatOperationUpdate(
             queryClient,
             message.data as JellyfinCompatOperationStatus,
+            realtimeAuthority,
           );
         }
         break;
@@ -790,6 +804,7 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const realtimeAuthority = captureProfileRequestContext();
     let closedByEffect = false;
     let activeSocket: WebSocket | null = null;
 
@@ -905,7 +920,7 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
             handleSnapshot(message);
             return;
           case "event":
-            handleEvent(message);
+            handleEvent(message, realtimeAuthority);
             return;
           case "error":
             return;
