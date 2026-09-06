@@ -122,6 +122,8 @@ export const v2Operations = {
   "GET /api/v2/admin/libraries/{library_id}/collection-groups/order":
     "getAdminCollectionGroupOrder",
   "GET /api/v2/admin/literary-works/items/{content_id}/candidates": "listAdminLiteraryCandidates",
+  "GET /api/v2/admin/logs/app": "listAdminOperationalLogs",
+  "GET /api/v2/admin/logs/audit": "listAdminAuditLogs",
   "GET /api/v2/admin/markers/files/{fileId}/history": "listAdminFileMarkerHistory",
   "GET /api/v2/admin/markers/history": "listAdminMarkerHistory",
   "GET /api/v2/admin/markers/items/{id}/history": "listAdminItemMarkerHistory",
