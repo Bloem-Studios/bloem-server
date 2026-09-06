@@ -15918,13 +15918,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/settings",
         "operation_id": "getAdminStoredSettings"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented settings inspection and existing web consumers; independent review pending. Secret values and machine-managed settings remain excluded. Runtime default resolution and configured secret key names use existing administrator policy."
+      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented settings inspection and existing web consumers; independent coordinator review clear for implementation commit 3b0b799f577a108175a1258e71366f0ea91a91e8; ordinary port ratified. Secret values and machine-managed settings remain excluded. Runtime default resolution and configured secret key names use existing administrator policy."
     },
     {
       "listener": "api",
@@ -16105,13 +16105,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/settings/effective",
         "operation_id": "getAdminEffectiveSettings"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented settings inspection and existing web consumers; independent review pending. Secret values and machine-managed settings remain excluded. Runtime default resolution and configured secret key names use existing administrator policy."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented settings inspection and existing web consumers; independent coordinator review clear for implementation commit 3b0b799f577a108175a1258e71366f0ea91a91e8; ordinary port ratified. Secret values and machine-managed settings remain excluded. Runtime default resolution and configured secret key names use existing administrator policy."
     },
     {
       "listener": "api",
@@ -16166,13 +16166,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/settings/restart-keys",
         "operation_id": "getAdminRestartKeys"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented settings inspection and existing web consumers; independent review pending. Secret values and machine-managed settings remain excluded. Runtime default resolution and configured secret key names use existing administrator policy."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented settings inspection and existing web consumers; independent coordinator review clear for implementation commit 3b0b799f577a108175a1258e71366f0ea91a91e8; ordinary port ratified. Secret values and machine-managed settings remain excluded. Runtime default resolution and configured secret key names use existing administrator policy."
     },
     {
       "listener": "api",
@@ -16333,13 +16333,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/admin/settings/sensitive-status",
         "operation_id": "getAdminSensitiveSettingsStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented settings inspection and existing web consumers; independent review pending. Secret values and machine-managed settings remain excluded. Runtime default resolution and configured secret key names use existing administrator policy."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Implemented settings inspection and existing web consumers; independent coordinator review clear for implementation commit 3b0b799f577a108175a1258e71366f0ea91a91e8; ordinary port ratified. Secret values and machine-managed settings remain excluded. Runtime default resolution and configured secret key names use existing administrator policy."
     },
     {
       "listener": "api",
