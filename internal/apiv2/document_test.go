@@ -181,7 +181,6 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	// Every operation the viewer-access gate fronts documents the header;
 	// the acting-admin class resolves the declared profile the same way.
 	profileToken := map[string]bool{
-		"getPolicyCapability":            true,
 		"getAdminInviteCodeCapabilities": true, "listAdminInviteCodes": true, "createAdminInviteCode": true, "updateAdminInviteCode": true, "topUpAdminInviteCode": true, "deleteAdminInviteCode": true,
 		"listProgress": true, "listAdminUsers": true, "updateProfile": true, "listProfiles": true, "createProfile": true,
 		"listProfileSectionOverrides": true, "replaceProfileSectionOverrides": true, "resetProfileSectionOverrides": true,
