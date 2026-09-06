@@ -1,4 +1,10 @@
-import { setAccessToken, setProfileId, setProfileToken } from "@/api/client";
+import { adminSessionsKey } from "@/api/v2/adminSessionsCache";
+import {
+  captureProfileRequestContext,
+  setAccessToken,
+  setProfileId,
+  setProfileToken,
+} from "@/api/client";
 import type { ReactNode } from "react";
 import { useRealtimeEvents } from "./realtimeEventsContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -359,6 +365,86 @@ describe("RealtimeEventsProvider", () => {
     view.unmount();
     setProfileId(null);
     setProfileToken(null);
+  });
+
+  it.each(["snapshot", "event"])(
+    "writes %s sessions only to the socket authority cache",
+    async (type) => {
+      setProfileId("primary");
+      mockState.profile = { id: "primary", has_pin: false };
+      const authority = captureProfileRequestContext()!;
+      const currentKey = adminSessionsKey(authority);
+      expect(currentKey).toEqual([
+        ...adminKeys.sessions(),
+        `${authority.serverOrigin}:${authority.authContextVersion}:primary`,
+      ]);
+      const otherKey = adminSessionsKey({ ...authority, profileId: "other" });
+      const queryClient = new QueryClient();
+      const original = [{ id: "before" }];
+      for (const key of [currentKey, otherKey, adminKeys.sessions()]) {
+        queryClient.setQueryData(key, original);
+      }
+      render(
+        <QueryClientProvider client={queryClient}>
+          <RealtimeEventsProvider>
+            <div />
+          </RealtimeEventsProvider>
+        </QueryClientProvider>,
+      );
+      await act(async () => {});
+      const socket = FakeWebSocket.instances[0]!;
+      const replacement = [{ id: "running" }];
+      await act(async () => {
+        socket.emitMessage({
+          type,
+          channel: "sessions",
+          event: "sessions.replaced",
+          data: replacement,
+        });
+      });
+      expect(queryClient.getQueryData(currentKey)).toEqual(replacement);
+      expect(queryClient.getQueryData(otherKey)).toEqual(original);
+      expect(queryClient.getQueryData(adminKeys.sessions())).toEqual(original);
+      // A proof change must fence queued frames even before React cleans up.
+      setProfileToken("replacement-proof");
+      await act(async () => {
+        socket.emitMessage({ type, channel: "sessions", event: "sessions.replaced", data: [] });
+      });
+      expect(queryClient.getQueryData(currentKey)).toEqual(replacement);
+      expect(queryClient.getQueryData(otherKey)).toEqual(original);
+    },
+  );
+
+  it("defers session refresh only for the captured scoped query on an inactive dashboard", async () => {
+    setProfileId("primary");
+    mockState.profile = { id: "primary", has_pin: false };
+    mockState.pathname = "/admin";
+    mockState.pageActivity.canPollDashboard = false;
+    const authority = captureProfileRequestContext()!;
+    const currentKey = adminSessionsKey(authority);
+    const otherKey = adminSessionsKey({ ...authority, profileId: "other" });
+    const queryClient = new QueryClient();
+    for (const key of [currentKey, otherKey, adminKeys.sessions()])
+      queryClient.setQueryData(key, []);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RealtimeEventsProvider>
+          <div />
+        </RealtimeEventsProvider>
+      </QueryClientProvider>,
+    );
+    await act(async () => {});
+    await act(async () => {
+      FakeWebSocket.instances[0]!.emitMessage({
+        type: "snapshot",
+        channel: "sessions",
+        data: [{ id: "running" }],
+      });
+    });
+    expect(queryClient.getQueryData(currentKey)).toEqual([]);
+    expect(queryClient.getQueryState(currentKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(otherKey)?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(adminKeys.sessions())?.isInvalidated).toBe(false);
   });
 
   it("defers broad catch-up refetches until foreground playback exits", async () => {

@@ -1,3 +1,4 @@
+import { adminSessionsKey } from "@/api/v2/adminSessionsCache";
 import { jellyfinCompatStatusKey } from "@/api/v2/jellyfinStatusCache";
 import { fetchAdminTaskJob } from "@/api/v2/adminTasks";
 import type { QueryClient } from "@tanstack/react-query";
@@ -76,13 +77,6 @@ const CATALOG_ITEM_CHANGED_EVENTS = new Set([
   "library.item_added",
   "metadata.updated",
 ]);
-const DASHBOARD_QUERY_KEYS = [
-  adminKeys.stats(),
-  adminKeys.sessions(),
-  adminKeys.libraries(),
-  adminKeys.users(),
-] as const;
-
 function buildEventsUrl(location: Pick<Location, "protocol" | "host">) {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${location.host}/api/v2/events/ws`;
@@ -242,15 +236,6 @@ function findCachedAdminJob(queryClient: QueryClient, jobId: string) {
   return null;
 }
 
-function invalidateDashboardQueries(queryClient: QueryClient, allowRefetch: boolean) {
-  for (const queryKey of DASHBOARD_QUERY_KEYS) {
-    void queryClient.invalidateQueries({
-      queryKey,
-      refetchType: allowRefetch ? "active" : "none",
-    });
-  }
-}
-
 function catalogEventLibraryID(data: unknown) {
   if (!data || typeof data !== "object" || !("library_id" in data)) {
     return undefined;
@@ -294,12 +279,16 @@ function hydrateSessions(
   queryClient: QueryClient,
   sessions: AdminSession[],
   allowDashboardUpdates: boolean,
+  authority: ProfileRequestContextSnapshot | null,
 ) {
+  if (!authority?.profileId || !isCapturedProfileAuthorityActive(authority)) return;
+  const queryKey = adminSessionsKey(authority);
   if (!allowDashboardUpdates) {
-    invalidateDashboardQueries(queryClient, false);
+    void queryClient.invalidateQueries({ queryKey, exact: true, refetchType: "none" });
+    void queryClient.invalidateQueries({ queryKey: adminKeys.stats(), refetchType: "none" });
     return;
   }
-  queryClient.setQueryData(adminKeys.sessions(), sessions);
+  queryClient.setQueryData(queryKey, sessions);
   void queryClient.invalidateQueries({ queryKey: adminKeys.stats() });
 }
 
@@ -575,7 +564,10 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  function handleSnapshot(message: EventsSnapshotMessage) {
+  function handleSnapshot(
+    message: EventsSnapshotMessage,
+    authority: ProfileRequestContextSnapshot | null,
+  ) {
     switch (message.channel) {
       case "jobs":
         if (Array.isArray(message.data)) {
@@ -590,6 +582,7 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
           queryClient,
           (message.data as AdminSession[]) ?? [],
           allowDashboardRealtimeUpdatesRef.current,
+          authority,
         );
         break;
       case "tasks":
@@ -689,6 +682,7 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
             queryClient,
             (message.data as AdminSession[]) ?? [],
             allowDashboardRealtimeUpdatesRef.current,
+            realtimeAuthority,
           );
         }
         break;
@@ -887,7 +881,7 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
             return;
           }
           case "snapshot":
-            handleSnapshot(message);
+            handleSnapshot(message, authority);
             return;
           case "event":
             handleEvent(message, authority);
