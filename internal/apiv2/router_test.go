@@ -575,6 +575,7 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST /api/v2/admin/autoscan/connections/test",
 		"POST /api/v2/admin/autoscan/connections",
 		"PUT /api/v2/admin/autoscan/connections/{id}",
+		"DELETE /api/v2/admin/autoscan/connections/{id}",
 		"GET /api/v2/admin/system/hw-accel",
 		"GET /api/v2/admin/system/resources",
 		"GET /api/v2/api-keys",
