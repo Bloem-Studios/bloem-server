@@ -37,3 +37,12 @@ on these publication guarantees. The revision trigger invalidates guards for
 older writers, but cannot make an older binary's object moves or shared-key
 cleanup safe. This storage foundation alone does not enable API v2 mutations or
 activate playback for existing accounts.
+
+AI job cancellation attempts the guarded terminal job-state transition before
+canceling a local worker context. A database error is returned even when local
+work can be asked to stop. Already-terminal rows remain unchanged. This does
+not fence publication: an in-flight worker can still store subtitle output
+after cancellation or stale-job recovery. Immutable object ownership protects
+other publications' bytes, but does not make job completion and subtitle
+metadata publication atomic. AI mutation migration must resolve that boundary
+before claiming durable cancellation of output.

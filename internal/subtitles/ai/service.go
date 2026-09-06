@@ -252,15 +252,17 @@ func (s *Service) Cancel(ctx context.Context, id int64) error {
 		return ErrJobNotFound
 	}
 
-	if s.runner.Cancel(id) {
-		return nil
-	}
-	// No in-flight goroutine (e.g. another node, or never started): best-effort
-	// terminal transition if it is still active.
+	// Persist the terminal transition even when this process owns the work.
+	// Canceling a context alone cannot acknowledge a job-state change: the
+	// provider may ignore it, and the process may exit before its cleanup runs.
 	if !job.Status.Terminal() {
-		return s.repo.FailJob(ctx, id, JobStatusCancelled, "cancelled")
+		err = s.repo.FailJob(ctx, id, JobStatusCancelled, "cancelled") //nolint:misspell // Preserve the existing persisted message.
 	}
-	return nil
+	// Still ask local work to stop if the database outcome is uncertain, but
+	// return that error rather than reporting a successful cancellation. This
+	// does not fence subtitle publication by an already-running worker.
+	s.runner.Cancel(id)
+	return err
 }
 
 // dispatch launches a bounded background goroutine to run the job.
