@@ -71,6 +71,13 @@ func lockApplePushInstallation(ctx context.Context, tx pgx.Tx, device string) (i
 // ApplyApplePush commits each newer APNs intent and row replacement atomically.
 // Exact replay preserves provider outcomes and does not resurrect a deleted row.
 func (r *PushDeviceRepository) ApplyApplePush(ctx context.Context, cmd ApplePushCommand, cipher *secret.Cipher) (ApplePushReceipt, error) {
+	return r.ApplyApplePushAndFinalize(ctx, cmd, cipher, nil)
+}
+
+// ApplyApplePushAndFinalize invokes finalize while installation and device locks
+// are held. It must not perform external delivery or publish a result before
+// this method successfully commits. An error rolls back the registration.
+func (r *PushDeviceRepository) ApplyApplePushAndFinalize(ctx context.Context, cmd ApplePushCommand, cipher *secret.Cipher, finalize func(ApplePushReceipt) error) (ApplePushReceipt, error) {
 	var result ApplePushReceipt
 	if r == nil || r.pool == nil || cipher == nil {
 		return result, ErrPushDeviceUnavailable
@@ -114,6 +121,11 @@ func (r *PushDeviceRepository) ApplyApplePush(ctx context.Context, cmd ApplePush
 			} else if err != nil {
 				return ApplePushReceipt{}, err
 			}
+			if finalize != nil {
+				if err = finalize(result); err != nil {
+					return ApplePushReceipt{}, err
+				}
+			}
 			return result, tx.Commit(ctx)
 		}
 	} else {
@@ -140,8 +152,35 @@ func (r *PushDeviceRepository) ApplyApplePush(ctx context.Context, cmd ApplePush
 	if err != nil {
 		return result, err
 	}
+	if finalize != nil {
+		if err = finalize(result); err != nil {
+			return ApplePushReceipt{}, err
+		}
+	}
 	if err = tx.Commit(ctx); err != nil {
 		return result, err
 	}
 	return result, nil
+}
+
+type applePushFinalizingStore interface {
+	ApplyApplePushAndFinalize(context.Context, ApplePushCommand, *secret.Cipher, func(ApplePushReceipt) error) (ApplePushReceipt, error)
+}
+
+func (s *PushDeviceService) OrderedAppleAvailable() bool {
+	if !s.Available() {
+		return false
+	}
+	_, ok := s.store.(applePushFinalizingStore)
+	return ok
+}
+func (s *PushDeviceService) ApplyApplePushAndFinalize(ctx context.Context, cmd ApplePushCommand, finalize func(ApplePushReceipt) error) (ApplePushReceipt, error) {
+	if !s.OrderedAppleAvailable() || finalize == nil {
+		return ApplePushReceipt{}, ErrPushDeviceUnavailable
+	}
+	store, ok := s.store.(applePushFinalizingStore)
+	if !ok {
+		return ApplePushReceipt{}, ErrPushDeviceUnavailable
+	}
+	return store.ApplyApplePushAndFinalize(ctx, cmd, s.cipher, finalize)
 }

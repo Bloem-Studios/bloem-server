@@ -24762,7 +24762,7 @@
       "section": "auth-devices",
       "release_flow": "settings",
       "tier": 1,
-      "retry_safety": "unique_constraint",
+      "retry_safety": "domain_identity",
       "retry_safety_note": "DEFECT: the device uniqueness resolves a retry to the same row, but the update writes the request token, mode, and enabled state unconditionally, so a delayed older retry restores an expired token over a newer one. The v2 port must carry a registration sequence applied only if newer.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
@@ -24770,9 +24770,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/devices/push/apple",
+        "operation_id": "registerApplePushDevice"
       },
       "notes": "Conditionally registered: authMiddleware != nil; deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
     },

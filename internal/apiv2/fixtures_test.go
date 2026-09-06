@@ -1683,7 +1683,8 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminProviderConfigurationFixtureCases()...)
 	cases = append(cases, subtitleAICancelFixtureCases()...)
 	cases = append(cases, subtitleAICreateFixtureCases()...)
-	return append(cases, notificationInboxFixtureCases()...)
+	cases = append(cases, notificationInboxFixtureCases()...)
+	return append(cases, applePushFixtureCases()...)
 }
 
 // fixtureMultipartType is the multipart Content-Type of the avatar fixtures,

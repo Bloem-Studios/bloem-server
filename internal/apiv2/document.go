@@ -508,6 +508,7 @@ func registerAll(reg *Registry) {
 	registerWatchTogetherCreate(reg)
 	registerWatchTogetherSocket(reg)
 	registerOrderedAndroidPush(reg)
+	registerOrderedApplePush(reg)
 	registerEventsCapability(reg)
 	registerEventsSocket(reg)
 	registerPluginContent(reg)

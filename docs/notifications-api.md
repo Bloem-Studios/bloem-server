@@ -412,3 +412,49 @@ ordered Apple adoption; adopted installations reject those legacy writes.
 Generic deletion locks Android ordering before Apple ordering. The migration's
 Down operation is not an online rollback protocol. This storage prerequisite
 does not introduce an Apple v2 endpoint, native adoption or rollout authorization.
+
+## Apple registration and display renewal
+
+`GET /api/v2/devices/push/apple/capabilities` reports `ordered_apple_v1` and local
+`registration_available`. Availability does not assert provider delivery or that
+all serving nodes have completed the guarded-writer rollout.
+
+`POST /api/v2/devices/push/apple` requires a current expiring access login session,
+a verified selected profile (including its PIN proof where required), and the
+existing demo write guard. API keys, display credentials and sessionless access
+are not registration authority. The server checks current session, account and
+profile policy before registration and again after any database lock wait.
+
+Send `X-Push-Installation-Key` as a private canonical base64url 32-byte credential
+and `X-Push-Generation` as a positive canonical decimal int64. Persist both before
+sending. Keep the installation credential across account/profile switches and
+increment generation only for a new registration intent. Capture the account,
+profile and body with that intent. After uncertainty, replay the exact original
+packet; do not automatically read, rebase or advance its generation. Neither
+credential belongs in logs or URLs.
+
+The JSON body contains `device_id`, `apns_token`, `apns_environment` (`production`
+or `sandbox`), `apns_topic` (`org.siloserver.silo`) and optional `push_mode`
+(`off`, `in_app_only`, `private_push`; existing default applies). Success returns
+string `generation`, `id`, `server_device_id`, `push_mode`, `enabled` and `removed`.
+An existing disabled or deleted registration remains so on exact replay. A stale
+or changed same-generation intent returns409; invalid installation proof returns403.
+
+For a current enabled registration, success may include `display_token` and UTC
+`display_token_expires_at`. An unchanged accepted intent can renew these fields
+without advancing generation or rewriting registration state. Credential issuance
+runs under the installation and device transaction locks, so a newer registration
+cannot overtake it. No credential is returned on transaction failure. Disabled or
+removed receipts omit credentials. A signing failure still returns the accepted
+registration without credentials, preserving the existing extension access-token
+fallback. Responses are `no-store`.
+
+The display credential retains its existing account/login-session/profile scope
+and lifetime; this operation does not introduce device-bound display authorization
+or revoke previously issued display credentials on registration replacement.
+Current registration is guaranteed at issuance, not for the credential's entire
+lifetime. Native code must retain its authority fence before storing a response,
+clear stale display credentials for disabled/removed state, and preserve the
+original registration packet for explicit renewal/retry. Native adoption requires
+its own reviewed persistence and lifecycle implementation; this server packet does
+not enable it. The browser has no Apple-registration caller.
