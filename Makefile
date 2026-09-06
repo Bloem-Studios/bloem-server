@@ -548,3 +548,8 @@ test-scenario-api-key-create-refusals:
 .PHONY: test-scenario-api-key-creations
 test-scenario-api-key-creations:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAPIKeyCreateAcceptance$$' ./internal/scenariocatalog/executor
+
+# Seven outstanding frozen account password capability scenarios.
+.PHONY: test-scenario-account-capability
+test-scenario-account-capability:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAccountCapabilityAcceptance$$' ./internal/scenariocatalog/executor

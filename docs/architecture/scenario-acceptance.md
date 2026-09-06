@@ -568,3 +568,18 @@ three prior rows remain byte-identical. Credentials stay out of effect-assertion
 messages. Required DSN, pre-setup occupancy and fixed-selector gates fail closed.
 These four frozen pairs are separate from NEW acceptance; no real-user
 credential, authentication usage or provider operation is exercised.
+
+### Frozen account password capability pairs
+
+`make test-scenario-account-capability` requires seven original
+`account_capability.*` cases: `ok`, `meaning`, `no_profile`,
+`secondary_profile`, `no_token`, `bad_token` and `error_shape`.
+The fixed selector accepts only the supported database requirement. Original
+requests, principals and expectations remain unchanged. V2 records the same
+authorization decision through `allowed` with capability revision/state,
+password length policy and Problem Details. Fourteen real transport requests
+reseed independently; 28 complete snapshots cover users, profiles and API keys
+(84 table observations), with every row unchanged. Required DSN and pre-setup
+scratch/API-key occupancy gates fail closed. No password change, session
+revocation, credential usage or external provider operation is exercised.
+These seven frozen pairs remain separate from NEW acceptance.

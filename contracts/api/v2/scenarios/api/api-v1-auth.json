@@ -4574,7 +4574,70 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 expresses the same primary/secondary/profile-less password decision through allowed with capability revision/state, retaining password policy; unauthenticated refusals use Problem Details. Account/profile/credential rows remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/account_capability_pairing_test.go",
+            "operation_id": "getAccountPasswordCapability",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/password/capability"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "revision",
+                    "state",
+                    "allowed",
+                    "requires_current_password",
+                    "minimum_password_length",
+                    "maximum_password_bytes"
+                  ]
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "equals",
+                  "value": "1"
+                },
+                {
+                  "pointer": "/state",
+                  "op": "equals",
+                  "value": "available"
+                },
+                {
+                  "pointer": "/allowed",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/requires_current_password",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/minimum_password_length",
+                  "op": "equals",
+                  "value": 8
+                },
+                {
+                  "pointer": "/maximum_password_bytes",
+                  "op": "equals",
+                  "value": 72
+                }
+              ]
+            }
+          }
         },
         {
           "id": "account_capability.meaning",
@@ -4619,7 +4682,70 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 expresses the same primary/secondary/profile-less password decision through allowed with capability revision/state, retaining password policy; unauthenticated refusals use Problem Details. Account/profile/credential rows remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/account_capability_pairing_test.go",
+            "operation_id": "getAccountPasswordCapability",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/password/capability"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "revision",
+                    "state",
+                    "allowed",
+                    "requires_current_password",
+                    "minimum_password_length",
+                    "maximum_password_bytes"
+                  ]
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "equals",
+                  "value": "1"
+                },
+                {
+                  "pointer": "/state",
+                  "op": "equals",
+                  "value": "available"
+                },
+                {
+                  "pointer": "/allowed",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/requires_current_password",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/minimum_password_length",
+                  "op": "equals",
+                  "value": 8
+                },
+                {
+                  "pointer": "/maximum_password_bytes",
+                  "op": "equals",
+                  "value": 72
+                }
+              ]
+            }
+          }
         },
         {
           "id": "account_capability.no_profile",
@@ -4650,7 +4776,70 @@
             "database"
           ],
           "notes": "passwordChangeAllowed falls back to the account role when no profile is declared, so only an admin may change the password profile-less.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 expresses the same primary/secondary/profile-less password decision through allowed with capability revision/state, retaining password policy; unauthenticated refusals use Problem Details. Account/profile/credential rows remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/account_capability_pairing_test.go",
+            "operation_id": "getAccountPasswordCapability",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/password/capability"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "revision",
+                    "state",
+                    "allowed",
+                    "requires_current_password",
+                    "minimum_password_length",
+                    "maximum_password_bytes"
+                  ]
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "equals",
+                  "value": "1"
+                },
+                {
+                  "pointer": "/state",
+                  "op": "equals",
+                  "value": "available"
+                },
+                {
+                  "pointer": "/allowed",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/requires_current_password",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/minimum_password_length",
+                  "op": "equals",
+                  "value": 8
+                },
+                {
+                  "pointer": "/maximum_password_bytes",
+                  "op": "equals",
+                  "value": 72
+                }
+              ]
+            }
+          }
         },
         {
           "id": "account_capability.secondary_profile",
@@ -4686,7 +4875,70 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 expresses the same primary/secondary/profile-less password decision through allowed with capability revision/state, retaining password policy; unauthenticated refusals use Problem Details. Account/profile/credential rows remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/account_capability_pairing_test.go",
+            "operation_id": "getAccountPasswordCapability",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/password/capability"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "revision",
+                    "state",
+                    "allowed",
+                    "requires_current_password",
+                    "minimum_password_length",
+                    "maximum_password_bytes"
+                  ]
+                },
+                {
+                  "pointer": "/revision",
+                  "op": "equals",
+                  "value": "1"
+                },
+                {
+                  "pointer": "/state",
+                  "op": "equals",
+                  "value": "available"
+                },
+                {
+                  "pointer": "/allowed",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/requires_current_password",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/minimum_password_length",
+                  "op": "equals",
+                  "value": 8
+                },
+                {
+                  "pointer": "/maximum_password_bytes",
+                  "op": "equals",
+                  "value": 72
+                }
+              ]
+            }
+          }
         },
         {
           "id": "account_capability.no_token",
@@ -4738,7 +4990,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 expresses the same primary/secondary/profile-less password decision through allowed with capability revision/state, retaining password policy; unauthenticated refusals use Problem Details. Account/profile/credential rows remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/account_capability_pairing_test.go",
+            "operation_id": "getAccountPasswordCapability",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/password/capability"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "account_capability.bad_token",
@@ -4793,7 +5093,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 expresses the same primary/secondary/profile-less password decision through allowed with capability revision/state, retaining password policy; unauthenticated refusals use Problem Details. Account/profile/credential rows remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/account_capability_pairing_test.go",
+            "operation_id": "getAccountPasswordCapability",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/password/capability",
+              "headers": {
+                "Authorization": "Bearer not-a-jwt"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "account_capability.error_shape",
@@ -4828,7 +5179,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 expresses the same primary/secondary/profile-less password decision through allowed with capability revision/state, retaining password policy; unauthenticated refusals use Problem Details. Account/profile/credential rows remain unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/account_capability_pairing_test.go",
+            "operation_id": "getAccountPasswordCapability",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/password/capability"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },
