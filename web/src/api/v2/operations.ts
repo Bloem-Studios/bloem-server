@@ -287,6 +287,7 @@ export const v2Operations = {
   "GET /api/v2/onboarding/flow": "getOnboardingFlow",
   "GET /api/v2/onboarding/state": "getOnboardingState",
   "GET /api/v2/openapi.json": "getOpenAPIDocument",
+  "GET /api/v2/plugin-content/capabilities": "getPluginContentCapabilities",
   "GET /api/v2/policy/capability": "getPolicyCapability",
   "GET /api/v2/profile/sections": "listProfileSectionOverrides",
   "GET /api/v2/profile/sections/flags": "getProfileSectionFlags",

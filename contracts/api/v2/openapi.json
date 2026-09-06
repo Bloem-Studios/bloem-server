@@ -117479,6 +117479,79 @@
         "x-silo-class": "public"
       }
     },
+    "/api/v2/plugin-content/capabilities": {
+      "get": {
+        "operationId": "getPluginContentCapabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Capability"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Discover whether the dynamic plugin-content proxy is configured.",
+        "tags": [
+          "plugins"
+        ],
+        "x-silo-class": "public",
+        "x-silo-service-backed": true
+      }
+    },
     "/api/v2/policy/capability": {
       "get": {
         "operationId": "getPolicyCapability",
@@ -139289,6 +139362,69 @@
         "x-silo-service-backed": true
       }
     }
+  },
+  "x-silo-plugin-content": {
+    "prefix": "/api/v2/plugin-content",
+    "mounts": [
+      {
+        "path": "/api/v2/plugin-content/plugins/{installation_id}",
+        "methods": [
+          "CONNECT",
+          "DELETE",
+          "GET",
+          "HEAD",
+          "OPTIONS",
+          "PATCH",
+          "POST",
+          "PUT",
+          "TRACE"
+        ],
+        "request": "Plugin descriptor and implementation define the request body and query; existing proxy buffering and header filters apply.",
+        "response": "Plugin-defined status, headers and bytes; missing trailing slash redirects308 before proxy dispatch. No finite response schema.",
+        "authorization": "Existing optional session/launch-cookie/unscoped-key resolution followed by the plugin route descriptor's public/authenticated/admin policy."
+      },
+      {
+        "path": "/api/v2/plugin-content/plugins/{installation_id}/*",
+        "methods": [
+          "CONNECT",
+          "DELETE",
+          "GET",
+          "HEAD",
+          "OPTIONS",
+          "PATCH",
+          "POST",
+          "PUT",
+          "TRACE"
+        ],
+        "request": "Plugin descriptor and implementation define the request body and query; existing proxy buffering and header filters apply.",
+        "response": "Plugin-defined status, headers and bytes; missing trailing slash redirects308 before proxy dispatch. No finite response schema.",
+        "authorization": "Existing optional session/launch-cookie/unscoped-key resolution followed by the plugin route descriptor's public/authenticated/admin policy."
+      },
+      {
+        "path": "/api/v2/plugin-content/plugin-assets/{installation_id}",
+        "methods": [
+          "GET"
+        ],
+        "request": "Static asset path; no asset path returns404.",
+        "response": "Resolved file through http.ServeFile, including content-specific media, conditions and ranges.",
+        "authorization": "Existing asset session/launch-cookie resolution followed by the static descriptor access policy; API keys are not accepted for this mount."
+      },
+      {
+        "path": "/api/v2/plugin-content/plugin-assets/{installation_id}/*",
+        "methods": [
+          "GET"
+        ],
+        "request": "Static asset path; no asset path returns404.",
+        "response": "Resolved file through http.ServeFile, including content-specific media, conditions and ranges.",
+        "authorization": "Existing asset session/launch-cookie resolution followed by the static descriptor access policy; API keys are not accepted for this mount."
+      }
+    ],
+    "limitations": [
+      "Dynamic plugin content is excluded from native finite operation schemas; this description is not a plugin-specific API contract.",
+      "Missing proxy dependency returns plain-text503. Existing proxy error, buffering and resource limits remain unchanged; HTTPRoutes RPC is not an arbitrary streaming or websocket tunnel.",
+      "Plugin-generated absolute links and redirects are not rewritten. Each affected plugin needs explicit compatibility evidence before browser adoption.",
+      "V1 mounts remain unchanged. Launch-cookie/navigation and shared href adoption are separate reviewed dependencies; no cookie is broadened here."
+    ]
   },
   "x-silo-worker-protocols": {
     "operations": [
