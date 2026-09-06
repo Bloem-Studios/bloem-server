@@ -168,6 +168,10 @@ PUT /api/v2/admin/markers/providers/{provider}	non-media
 POST /api/v2/admin/markers/providers/{provider}/validate	non-media
 GET /api/v2/admin/node-sessions	non-media
 GET /api/v2/admin/nodes	non-media
+POST /api/v2/admin/nodes/force-reload	non-media
+POST /api/v2/admin/nodes/{id}/check	non-media
+POST /api/v2/admin/nodes/{id}/force-reload	non-media
+POST /api/v2/admin/nodes/{id}/reprobe	non-media
 POST /api/v2/admin/notifications/discord/test	non-media
 POST /api/v2/admin/notifications/push/apple/test	non-media
 POST /api/v2/admin/notifications/push/fcm/test	non-media
@@ -1228,6 +1232,10 @@ PUT /api/v2/admin/markers/providers/{provider}	non-media
 POST /api/v2/admin/markers/providers/{provider}/validate	non-media
 GET /api/v2/admin/node-sessions	non-media
 GET /api/v2/admin/nodes	non-media
+POST /api/v2/admin/nodes/force-reload	non-media
+POST /api/v2/admin/nodes/{id}/check	non-media
+POST /api/v2/admin/nodes/{id}/force-reload	non-media
+POST /api/v2/admin/nodes/{id}/reprobe	non-media
 POST /api/v2/admin/notifications/discord/test	non-media
 POST /api/v2/admin/notifications/push/apple/test	non-media
 POST /api/v2/admin/notifications/push/fcm/test	non-media
