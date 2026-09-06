@@ -809,7 +809,69 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects the original invalid address or malformed JSON with typed Problems before invitation creation. No stored state changes or mail delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_input_refusals_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "not-an-address"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_create.email_taken",
@@ -1031,7 +1093,72 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects the original invalid address or malformed JSON with typed Problems before invitation creation. No stored state changes or mail delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_input_refusals_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "raw_body": "x"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/malformed_request$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/errors",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "errors"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_create.shape",

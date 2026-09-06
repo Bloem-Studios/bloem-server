@@ -735,3 +735,7 @@ test-scenario-device-poll-states:
 .PHONY: test-scenario-invite-code-missing
 test-scenario-invite-code-missing:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeMissingAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-admin-invitation-input-refusals
+test-scenario-admin-invitation-input-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationInputRefusalsAcceptance$$' ./internal/scenariocatalog/executor

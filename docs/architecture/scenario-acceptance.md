@@ -1098,3 +1098,12 @@ assertions remain unchanged; v2 returns typed not-found Problems. Four HTTP
 refusals use independent transport reseeds and eight full eight-table snapshots
 (64 observations), with no exemptions or successful mutation. Required DSN,
 pre-constructor occupancy and exact selector guards remain mandatory.
+
+`make test-scenario-admin-invitation-input-refusals` selects only
+`adm_inv_create.invalid_email` and `adm_inv_create.malformed`. Original administrator
+requests, structured/raw bodies and v1 400 assertions remain unchanged. V2 returns
+422 for the invalid email and 400 for malformed JSON. Four HTTP refusals use
+independent transport reseeds and eight full snapshots of users, user_profiles,
+api_keys, server_settings, auth_sessions, device_login_requests, invitations and
+invite_codes (64 table observations), without exemptions. Required DSN and
+pre-constructor occupancy guards run before setup. No successful creation or send.
