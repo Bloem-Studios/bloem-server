@@ -1644,6 +1644,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, invitationFixtureCases()...)
 	cases = append(cases, adminAccountFixtureCases()...)
 	cases = append(cases, adminSubtitleInspectionFixtureCases()...)
+	cases = append(cases, themeCatalogFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1718,6 +1719,7 @@ func fixtureDeps() Dependencies {
 	deps.AdminRequests = fixtureAdminRequests()
 	deps.AdminHistoryImports = fixtureAdminHistoryImports()
 	deps.AdminAPIKeys = fixtureAdminAPIKeys()
+	deps.ThemeCatalog = fixtureThemeCatalog()
 	deps.Invitations = fixtureInvitations()
 	deps.NotificationInbox = fixtureNotificationInbox()
 	deps.AdminNotificationPush = new(fakeAdminNotificationPush)

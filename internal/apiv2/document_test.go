@@ -203,6 +203,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	// Shared policy discovery verifies an optional selected profile.
 	profileToken["getPolicyCapability"] = true
 	profileToken["getImageCapabilities"] = true
+	profileToken["refreshThemeCatalog"] = true
 	for _, id := range historyImportOperationIDs {
 		profileToken[id] = true
 	}

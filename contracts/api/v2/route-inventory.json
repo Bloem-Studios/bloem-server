@@ -23015,7 +23015,7 @@
         "authMiddleware != nil"
       ],
       "conditional": true,
-      "request_kind": "binary",
+      "request_kind": "none",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
@@ -23047,7 +23047,7 @@
       ],
       "conditional": true,
       "request_kind": "unknown",
-      "response_media_kind": "unknown",
+      "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
       "upgrades_websocket": false,
@@ -23076,7 +23076,7 @@
         "authMiddleware != nil"
       ],
       "conditional": true,
-      "request_kind": "binary",
+      "request_kind": "none",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,

@@ -222,6 +222,7 @@ type Dependencies struct {
 	ThemeOverrides          ThemeOverrideService
 	AdminInviteCodes        AdminInviteCodeService
 	Invitations             InvitationService
+	ThemeCatalog            ThemeCatalogService
 	// PersonalCollections manages a profile's own collections and groups
 	// (*handlers.CollectionHandler).
 	PersonalCollections PersonalCollectionService

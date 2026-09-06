@@ -736,3 +736,49 @@ A valid kind without a configured asset returns `404`; missing asset storage ret
 
 The frozen v1 routes and administrator asset upload/delete operations are unchanged.
 Theme catalog/download and catalog refresh are separate operations.
+
+
+## V2 theme catalog and portable downloads
+
+| Method | Path | Response |
+|---|---|---|
+| GET | `/api/v2/theme/catalog/capabilities` | Availability and accepted document byte limits |
+| GET | `/api/v2/theme/catalog` | `{document, stale}` catalog envelope |
+| POST | `/api/v2/theme/catalog/refresh` | The same envelope after clearing this node's cache and fetching synchronously |
+| GET | `/api/v2/theme/download?url=...` | `{document}` portable theme file envelope |
+
+Reads require account authentication and do not require a profile. Refresh requires
+acting-admin authority. It invalidates the serving node's cache; it is neither a
+cluster-wide invalidation nor a durable job. Repeated refresh converges, matching its
+natural-idempotent retry declaration. The bundled web still disables automatic
+mutation retries and authentication replay for the refresh button.
+
+The `document` objects preserve the portable theme format's established property
+names, including `updatedAt`, `downloadUrl`, `baseTheme`, `customCss`, and `createdAt`.
+Catalog documents carry `version` and `themes`; each theme includes its identifier,
+name, author/description, preview colors, tags, download URL, and version. Theme file
+documents carry `version`, `name`, `baseTheme`, a string-valued `vars` object, and
+`customCss`, with optional author, description, and creation time. Unsupported theme
+versions/base themes remain subject to the installing client's parser. The web keeps
+its existing portable-file validation and CSS sanitizer before applying a download.
+
+Both transports call the same application methods for upstream access and caching.
+Initial and redirected requests retain the existing approved-host HTTPS restriction
+and timeout. The cache remains bound to the configured catalog URL; a fresh cache
+from a previous URL cannot hide a configuration change. Upstream connection or
+non-200 failures may return an expired catalog for the same URL, indicated by
+`stale: true`. Invalid JSON and read failures do not use that fallback. Refresh clears
+the cache before fetching and therefore cannot fall back to its former contents.
+
+V2 responses use `no-store`; the frozen v1 transport keeps its original cache and
+stale headers and byte-preserving JSON response. V1 reads remain capped at 1 MiB for
+catalogs and 256 KiB for files. Because a capped read can be a valid JSON prefix of a
+larger document, v2 refuses bodies exactly at those caps: its capability reports
+1,048,575 and 262,143 accepted bytes respectively. Malformed portable documents and
+upstream failures return `503 dependency_unavailable`; invalid requested URLs return
+`422 validation_failed`, and disallowed download targets return
+`403 permission_denied`. V1 status codes and error identifiers are unchanged.
+
+There are no first-party Apple, Android, or Jellyfin callers of these theme catalog,
+download, and refresh operations to migrate. The separate public branding discovery
+consumer work remains tracked independently.

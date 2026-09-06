@@ -43667,7 +43667,7 @@
         "authMiddleware != nil"
       ],
       "delegates_to": null,
-      "request_kind": "binary",
+      "request_kind": "none",
       "response_media_kind": "json",
       "streams": false,
       "upgrades_websocket": false,
@@ -43695,11 +43695,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/theme/catalog",
+        "operation_id": "getThemeCatalog"
       },
-      "notes": "Conditionally registered: settingsRepo != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented shared theme upstream/cache application methods and typed portable document envelopes; independent review pending. Frozen v1 bytes, status/error codes, size caps and cache/stale headers retained. V2 validates document shape and rejects cap-sized possibly truncated reads. Approved HTTPS initial/redirect targets unchanged. Account-authenticated reads and acting-admin synchronous per-node refresh. Bundled web uses v2 and retains parser/CSS sanitization; no native or Jellyfin theme-catalog/download consumer. Capability GET /api/v2/theme/catalog/capabilities."
     },
     {
       "listener": "api",
@@ -43726,7 +43726,7 @@
       ],
       "delegates_to": null,
       "request_kind": "unknown",
-      "response_media_kind": "unknown",
+      "response_media_kind": "json",
       "streams": false,
       "upgrades_websocket": false,
       "capability_endpoint": null,
@@ -43755,11 +43755,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/theme/catalog/refresh",
+        "operation_id": "refreshThemeCatalog"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: settingsRepo != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented shared theme upstream/cache application methods and typed portable document envelopes; independent review pending. Frozen v1 bytes, status/error codes, size caps and cache/stale headers retained. V2 validates document shape and rejects cap-sized possibly truncated reads. Approved HTTPS initial/redirect targets unchanged. Account-authenticated reads and acting-admin synchronous per-node refresh. Bundled web uses v2 and retains parser/CSS sanitization; no native or Jellyfin theme-catalog/download consumer. Capability GET /api/v2/theme/catalog/capabilities."
     },
     {
       "listener": "api",
@@ -43784,7 +43784,7 @@
         "authMiddleware != nil"
       ],
       "delegates_to": null,
-      "request_kind": "binary",
+      "request_kind": "none",
       "response_media_kind": "json",
       "streams": false,
       "upgrades_websocket": false,
@@ -43810,11 +43810,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/theme/download",
+        "operation_id": "downloadThemeFile"
       },
-      "notes": "Conditionally registered: settingsRepo != nil; authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented shared theme upstream/cache application methods and typed portable document envelopes; independent review pending. Frozen v1 bytes, status/error codes, size caps and cache/stale headers retained. V2 validates document shape and rejects cap-sized possibly truncated reads. Approved HTTPS initial/redirect targets unchanged. Account-authenticated reads and acting-admin synchronous per-node refresh. Bundled web uses v2 and retains parser/CSS sanitization; no native or Jellyfin theme-catalog/download consumer. Capability GET /api/v2/theme/catalog/capabilities."
     },
     {
       "listener": "api",
