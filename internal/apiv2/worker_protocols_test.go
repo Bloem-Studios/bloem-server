@@ -3,8 +3,13 @@ package apiv2
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -263,6 +268,79 @@ func TestWorkerChapterExtractionProtocol(t *testing.T) {
 			if err := failure.Validate(body); err != nil {
 				t.Fatal(err)
 			}
+		}
+	}
+}
+
+func TestWorkerArtifactConditionalProtocol(t *testing.T) {
+	watcher := nodeconfig.NewWatcher(nil, nil, nil, nodeconfig.BootstrapOverrides{})
+	cfg := &config.Config{}
+	cfg.Auth.JWTSecret = "synthetic-worker-secret"
+	cfg.Playback.TranscodeDir = t.TempDir()
+	cfg.Download.ArtifactDir = t.TempDir()
+	watcher.SetConfigForTest(cfg)
+	if err := os.WriteFile(filepath.Join(cfg.Download.ArtifactDir, "fixture.mp4"), []byte("0123456789"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(transcodenode.NewServer(watcher, nil).Handler())
+	defer server.Close()
+	registry := describeWorkerProtocols()
+	for _, tc := range []struct {
+		method, header, value string
+		status                int
+	}{
+		{"GET", "Range", "bytes=1-2", 206},
+		{"GET", "Range", "bytes=0-1,8-9", 206},
+		{"GET", "Range", "bytes=99-100", 416},
+		{"GET", "If-None-Match", `"fixture-10"`, 304},
+		{"GET", "If-Match", `"different"`, 412},
+		{"HEAD", "", "", 200},
+		{"DELETE", "", "", 204},
+		{"DELETE", "", "", 204},
+		{"GET", "", "", 404},
+	} {
+		req, err := http.NewRequestWithContext(t.Context(), tc.method, server.URL+"/downloads/artifacts/fixture", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Authorization", "Bearer "+cfg.Auth.JWTSecret)
+		if tc.header != "" {
+			req.Header.Set(tc.header, tc.value)
+		}
+		response, err := server.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(response.Body)
+		closeErr := response.Body.Close()
+		if err != nil || closeErr != nil {
+			t.Fatal(err, closeErr)
+		}
+		if response.StatusCode != tc.status {
+			t.Fatalf("%+v got %d %s", tc, response.StatusCode, body)
+		}
+		if tc.method == "HEAD" && len(body) != 0 {
+			t.Fatal("HEAD emitted bytes")
+		}
+		found := false
+		for _, op := range registry.Operations {
+			if op.Path != "/downloads/artifacts/{artifact_id}" || op.Method != tc.method {
+				continue
+			}
+			declared := op.Responses[strconv.Itoa(tc.status)]
+			if declared == nil {
+				t.Fatal("undeclared artifact status", tc)
+			}
+			if len(body) > 0 {
+				media, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
+				if err != nil || declared.Content[media] == nil {
+					t.Fatal("undeclared media", media, tc)
+				}
+			}
+			found = true
+		}
+		if !found {
+			t.Fatal("missing artifact operation", tc.method)
 		}
 	}
 }

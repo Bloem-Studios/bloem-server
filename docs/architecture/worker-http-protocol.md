@@ -60,3 +60,20 @@ Bearer refusal uses plain-text 401; input-path refusal can instead use plain-tex
 The description retains both media types for the shared statuses. Extraction
 has no durable request identity or replay receipt and is classified
 `non_retryable`; no new retry behavior is added to the existing worker client.
+
+Prepared artifacts retain GET, HEAD and DELETE at
+`/downloads/artifacts/{artifact_id}` on the transcode listener. The node bearer
+protects all three operations; the identifier is an opaque bounded handle, not a
+filesystem path or native download grant. Reads use the startup artifact root
+and share its lifecycle lock with preparation and deletion. GET supports
+`http.ServeContent` conditions and byte ranges, including multipart ranges;
+HEAD returns metadata without bytes. ETag combines artifact identity and size.
+Matching stored receipts may supply the existing bounded execution/tone-map
+attestation headers through `downloadprepare.SetResultHeaders`; an absent receipt
+does not prevent byte delivery. Availability and receipts remain node-local.
+
+DELETE invalidates the receipt before removing the completed and partial files.
+A missing valid identifier succeeds with 204; invalid identifiers return 404.
+Removal can partially succeed before a 500. Deletion is naturally idempotent for
+the exact artifact and does not cancel preparation, remove another node's bytes,
+or revoke a native delivery grant. These descriptions change no worker behavior.

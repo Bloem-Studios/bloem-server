@@ -36,5 +36,6 @@ func describeWorkerProtocols() workerProtocolRegistry {
 	operations = append(operations, proxy.ProtocolControls(schemas)...)
 	operations = append(operations, transcodenode.ProtocolControls(schemas)...)
 	operations = append(operations, transcodenode.ProtocolChapterExtraction(schemas))
+	operations = append(operations, transcodenode.ProtocolArtifacts()...)
 	return workerProtocolRegistry{Operations: operations, Schemas: schemas.Map()}
 }
