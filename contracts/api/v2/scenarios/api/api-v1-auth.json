@@ -3092,7 +3092,62 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Completed setup uses 409 and invalid fields use 422; malformed JSON remains 400. The limited registration preserves its real burst refusal with a 429 Problem. These original cases start with the seeded household and do not assert initial setup success.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_family_test.go",
+            "operation_id": "setupServer",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/setup",
+              "body": {
+                "username": "fixture-owner",
+                "email": "fixture-owner@silo.example.test",
+                "password": "fixture-owner-password",
+                "create_default_profile": true,
+                "default_profile_name": "Owner"
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "setup.field_shape",
@@ -3127,7 +3182,62 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Completed setup uses 409 and invalid fields use 422; malformed JSON remains 400. The limited registration preserves its real burst refusal with a 429 Problem. These original cases start with the seeded household and do not assert initial setup success.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_family_test.go",
+            "operation_id": "setupServer",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/setup",
+              "body": {
+                "username": "fixture-owner",
+                "email": "fixture-owner@silo.example.test",
+                "password": "fixture-owner-password",
+                "create_default_profile": true,
+                "default_profile_name": "Owner"
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "setup.data_meaning",
@@ -3160,7 +3270,62 @@
             "database"
           ],
           "notes": "The 201 success path (login response shape with create_default_profile) is untestable against the seeded household; covered by unit tests in internal/auth. Section PR must add an empty-database scenario.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Completed setup uses 409 and invalid fields use 422; malformed JSON remains 400. The limited registration preserves its real burst refusal with a 429 Problem. These original cases start with the seeded household and do not assert initial setup success.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_family_test.go",
+            "operation_id": "setupServer",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/setup",
+              "body": {
+                "username": "fixture-owner",
+                "email": "fixture-owner@silo.example.test",
+                "password": "fixture-owner-password",
+                "create_default_profile": true,
+                "default_profile_name": "Owner"
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -3237,7 +3402,62 @@
             "database"
           ],
           "notes": "Refusal is 401 (not 403/409) although no credential is involved; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Completed setup uses 409 and invalid fields use 422; malformed JSON remains 400. The limited registration preserves its real burst refusal with a 429 Problem. These original cases start with the seeded household and do not assert initial setup success.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_family_test.go",
+            "operation_id": "setupServer",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/setup",
+              "body": {
+                "username": "fixture-owner",
+                "email": "fixture-owner@silo.example.test",
+                "password": "fixture-owner-password",
+                "create_default_profile": true,
+                "default_profile_name": "Owner"
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "setup.missing_fields.r1",
@@ -3294,7 +3514,60 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Completed setup uses 409 and invalid fields use 422; malformed JSON remains 400. The limited registration preserves its real burst refusal with a 429 Problem. These original cases start with the seeded household and do not assert initial setup success.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_family_test.go",
+            "operation_id": "setupServer",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/setup",
+              "body": {
+                "username": "  ",
+                "email": "",
+                "password": ""
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "setup.malformed_json.r1",
@@ -3347,7 +3620,56 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Completed setup uses 409 and invalid fields use 422; malformed JSON remains 400. The limited registration preserves its real burst refusal with a 429 Problem. These original cases start with the seeded household and do not assert initial setup success.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_family_test.go",
+            "operation_id": "setupServer",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/setup",
+              "raw_body": "[]x"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/malformed_request$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "setup.status_headers.r1",
@@ -3399,7 +3721,62 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Completed setup uses 409 and invalid fields use 422; malformed JSON remains 400. The limited registration preserves its real burst refusal with a 429 Problem. These original cases start with the seeded household and do not assert initial setup success.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_family_test.go",
+            "operation_id": "setupServer",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/setup",
+              "body": {
+                "username": "fixture-owner",
+                "email": "fixture-owner@silo.example.test",
+                "password": "fixture-owner-password",
+                "create_default_profile": true,
+                "default_profile_name": "Owner"
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "setup.field_shape.r1",
@@ -3434,7 +3811,62 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Completed setup uses 409 and invalid fields use 422; malformed JSON remains 400. The limited registration preserves its real burst refusal with a 429 Problem. These original cases start with the seeded household and do not assert initial setup success.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_family_test.go",
+            "operation_id": "setupServer",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/setup",
+              "body": {
+                "username": "fixture-owner",
+                "email": "fixture-owner@silo.example.test",
+                "password": "fixture-owner-password",
+                "create_default_profile": true,
+                "default_profile_name": "Owner"
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "setup.data_meaning.r1",
@@ -3467,7 +3899,62 @@
             "database"
           ],
           "notes": "The 201 success path (login response shape with create_default_profile) is untestable against the seeded household; covered by unit tests in internal/auth. Section PR must add an empty-database scenario.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Completed setup uses 409 and invalid fields use 422; malformed JSON remains 400. The limited registration preserves its real burst refusal with a 429 Problem. These original cases start with the seeded household and do not assert initial setup success.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_family_test.go",
+            "operation_id": "setupServer",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/setup",
+              "body": {
+                "username": "fixture-owner",
+                "email": "fixture-owner@silo.example.test",
+                "password": "fixture-owner-password",
+                "create_default_profile": true,
+                "default_profile_name": "Owner"
+              }
+            },
+            "expect": {
+              "status": 409,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 409
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/conflict$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "setup.rate_limited.r1",
@@ -3542,7 +4029,80 @@
           ],
           "fresh_state": true,
           "notes": "The 429 body has a third key (retry_after) unlike every other error envelope; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Completed setup uses 409 and invalid fields use 422; malformed JSON remains 400. The limited registration preserves its real burst refusal with a 429 Problem. These original cases start with the seeded household and do not assert initial setup success. V2 carries Retry-After but deliberately omits legacy X-RateLimit headers (internal/apiv2/gates.go).",
+            "recorded_in": "internal/scenariocatalog/executor/setup_family_test.go",
+            "operation_id": "setupServer",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/setup",
+              "repeat": 7,
+              "body": {
+                "username": "fixture-owner",
+                "email": "fixture-owner@silo.example.test",
+                "password": "fixture-owner-password",
+                "create_default_profile": true,
+                "default_profile_name": "Owner"
+              }
+            },
+            "expect": {
+              "status": 429,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Retry-After",
+                  "op": "matches",
+                  "value": "^[0-9]+$"
+                },
+                {
+                  "name": "X-RateLimit-Remaining",
+                  "op": "absent"
+                },
+                {
+                  "name": "X-RateLimit-Limit",
+                  "op": "absent"
+                },
+                {
+                  "name": "X-RateLimit-Reset",
+                  "op": "absent"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 429
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/rate_limited$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },
