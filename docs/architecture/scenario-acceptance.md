@@ -664,6 +664,15 @@ and API-key tables (48 table observations), without field exemptions. Required
 DSN, pre-setup occupancy and fixed-selector checks fail closed. No hardware,
 provider, media-catalog or previously completed scenario is exercised.
 
+`make test-scenario-build-authority` separately requires only
+`build.admin_secondary_profile`, `build.non_admin` and `build.error_shape`.
+It reuses the same guarded runner with six transport requests and twelve combined
+full-table snapshots (36 table observations). Original 403 assertions and
+principals remain unchanged: an admin account acting through its secondary
+profile differs from a non-admin account acting through its primary profile.
+V2 asserts permission_denied Problem Details. This target does not rerun or count
+the four build-info pairs.
+
 ### Frozen login-session list pairs
 
 `make test-scenario-login-sessions` requires `sessions.ok`, `sessions.meaning`,

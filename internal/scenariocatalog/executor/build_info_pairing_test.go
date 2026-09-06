@@ -11,8 +11,17 @@ import (
 )
 
 func TestRequiredBuildInfoAcceptance(t *testing.T) {
+	runBuildAcceptance(t, scenariocatalog.BuildInfoAcceptance, scenariocatalog.RequiredBuildInfoScenarios, 8)
+}
+
+func TestRequiredBuildAuthorityAcceptance(t *testing.T) {
+	runBuildAcceptance(t, scenariocatalog.BuildAuthorityAcceptance, scenariocatalog.RequiredBuildAuthorityScenarios, 6)
+}
+
+func runBuildAcceptance(t *testing.T, selectCases func([]*scenariocatalog.Catalog) ([]*scenariocatalog.Catalog, error), ids []string, wantRequests int) {
+	t.Helper()
 	if os.Getenv("SILO_SCENARIO_REQUIRED") != "1" {
-		t.Skip("run make test-scenario-build-info for required paired acceptance")
+		t.Skip("run the selected make test-scenario-build-info or test-scenario-build-authority target for required paired acceptance")
 	}
 	if os.Getenv(DatabaseEnv) == "" {
 		t.Fatal(DatabaseEnv + " is required; acceptance cannot skip its database")
@@ -21,7 +30,7 @@ func TestRequiredBuildInfoAcceptance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := scenariocatalog.BuildInfoAcceptance(catalogs)
+	selected, err := selectCases(catalogs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,11 +123,11 @@ func TestRequiredBuildInfoAcceptance(t *testing.T) {
 			}
 		}
 	}
-	if err := requiredPairedResults(results, scenariocatalog.RequiredBuildInfoScenarios); err != nil {
+	if err := requiredPairedResults(results, ids); err != nil {
 		t.Error(err)
 	}
-	if requests != 8 || effects != 16 {
-		t.Errorf("paired build metadata evidence %dHTTP/%dPG, want8/16", requests, effects)
+	if requests != wantRequests || effects != 2*wantRequests {
+		t.Errorf("paired build metadata evidence %dHTTP/%dPG, want%d/%d", requests, effects, wantRequests, 2*wantRequests)
 	}
 	t.Logf("verified %d HTTP requests, %d combined snapshots, %d full-table observations", requests, effects, effects*3)
 	if err := WriteReport(results); err != nil {

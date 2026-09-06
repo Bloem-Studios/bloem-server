@@ -11,7 +11,20 @@ var RequiredBuildInfoScenarios = []string{
 }
 
 func BuildInfoAcceptance(catalogs []*Catalog) ([]*Catalog, error) {
-	selected, err := requiredAcceptance(catalogs, http.MethodGet, []string{"/api/v1/admin/system/build"}, RequiredBuildInfoScenarios)
+	return buildInfoAcceptance(catalogs, RequiredBuildInfoScenarios)
+}
+
+// RequiredBuildAuthorityScenarios keeps the remaining three frozen refusals separate.
+var RequiredBuildAuthorityScenarios = []string{
+	"build.admin_secondary_profile", "build.non_admin", "build.error_shape",
+}
+
+func BuildAuthorityAcceptance(catalogs []*Catalog) ([]*Catalog, error) {
+	return buildInfoAcceptance(catalogs, RequiredBuildAuthorityScenarios)
+}
+
+func buildInfoAcceptance(catalogs []*Catalog, ids []string) ([]*Catalog, error) {
+	selected, err := requiredAcceptance(catalogs, http.MethodGet, []string{"/api/v1/admin/system/build"}, ids)
 	if err != nil {
 		return nil, err
 	}

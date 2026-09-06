@@ -588,3 +588,8 @@ test-scenario-device-capability:
 .PHONY: test-scenario-device-lookup
 test-scenario-device-lookup:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceLookupAcceptance$$' ./internal/scenariocatalog/executor
+
+# Three remaining frozen administrator build authority refusals.
+.PHONY: test-scenario-build-authority
+test-scenario-build-authority:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredBuildAuthorityAcceptance$$' ./internal/scenariocatalog/executor
