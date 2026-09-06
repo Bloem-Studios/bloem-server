@@ -117,7 +117,7 @@ func requireProblem(t *testing.T, rec *httptest.ResponseRecorder, want ProblemTy
 // --- Mount and registration -------------------------------------------------
 
 // TestRuntimeReconcile walks the real assembled router and asserts the routes
-// it serves are exactly the set the registry declares.
+// it serves are exactly the set the registry and plugin-content extension declare.
 func TestRuntimeReconcile(t *testing.T) {
 	var declared []Declared
 	deps := Dependencies{testRegister: func(reg *Registry) {
@@ -132,6 +132,17 @@ func TestRuntimeReconcile(t *testing.T) {
 	want := map[string]bool{}
 	for _, d := range declared {
 		want[d.Method+" "+d.Path] = true
+	}
+	// Dynamic plugin mounts are declared by the closed extension inventory,
+	// not by Huma operations. Keep expectations independent of the router walk.
+	for _, mount := range describePluginContent().Mounts {
+		for _, method := range mount.Methods {
+			key := method + " " + mount.Path
+			if want[key] {
+				t.Fatalf("duplicate extension declaration: %s", key)
+			}
+			want[key] = true
+		}
 	}
 	got := map[string]bool{}
 	for _, o := range observed {
