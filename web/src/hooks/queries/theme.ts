@@ -1,11 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { v2 } from "@/api/v2/request";
 import { themeKeys } from "./keys";
-
-interface AdminCssResponse {
-  vars: string; // JSON-encoded Record<string, string>
-  raw_css: string;
-}
 
 /** Fetch the admin's server-wide custom CSS config. Public endpoint (no auth needed). */
 export function useAdminPublicCss() {
@@ -13,7 +9,7 @@ export function useAdminPublicCss() {
     queryKey: themeKeys.adminCss(),
     queryFn: async () => {
       try {
-        const result = await api<AdminCssResponse>("/theme/admin-css");
+        const result = await v2("GET /api/v2/theme/admin-css");
         let vars: Record<string, string> = {};
         if (result.vars) {
           try {

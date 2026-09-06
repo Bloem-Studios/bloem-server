@@ -706,3 +706,33 @@ A missing `values` member (`update_plugin_settings_values_required.json`):
 | `updated_at` as stored text                                                      | RFC 3339 instant                                                                |
 | `admin_form` on a plugin installation                                            | Not carried                                                                     |
 | `/settings/`, `/settings/{key}`, `/settings/device/{key}`, `/settings/effective` | Removed; use the typed operations above                                         |
+
+
+## V2 public branding
+
+Branding remains public so it can render before sign-in:
+
+| Method | Path | Response |
+|---|---|---|
+| GET | `/api/v2/theme/capabilities` | Branding, CSS-override, and asset-storage availability |
+| GET | `/api/v2/theme/branding` | Server name, login subtitle, optional accent/theme and asset URLs, storage availability |
+| GET | `/api/v2/theme/admin-css` | JSON object with `vars` and `raw_css` strings |
+| GET / HEAD | `/api/v2/branding/assets/{kind}` | Image bytes or matching headers without a body |
+
+Discovery uses the existing branding service and theme settings. When dependencies
+are absent, configuration returns default branding and empty overrides; capabilities
+report availability explicitly. Discovery responses are not cached. The bundled web
+uses these v2 reads. Native server-identity discovery must adopt the same public
+endpoint through its negotiated API-version handling.
+
+Asset URLs include `?v=<content-reference>`. Only an exact current reference receives
+immutable caching; a stale reference returns `404`, so newer bytes cannot be cached
+under an older content URL. An unversioned request uses `Cache-Control: public,
+no-cache` and revalidates. ETags support `If-Match` and `If-None-Match`, including
+weak read matches and lists. `304` retains the validator and cache headers. Images
+preserve the branding content-security policy and `nosniff`, including SVG favicons.
+A valid kind without a configured asset returns `404`; missing asset storage returns
+`503`. Assets use the raw HTTP registry rather than JSON encoding.
+
+The frozen v1 routes and administrator asset upload/delete operations are unchanged.
+Theme catalog/download and catalog refresh are separate operations.

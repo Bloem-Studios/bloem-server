@@ -2667,6 +2667,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/branding/assets/{kind}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read a public branding image with content-version validation. */
+    get: operations["getBrandingAsset"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /** Read a public branding image with content-version validation. */
+    head: operations["headBrandingAsset"];
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/calendar": {
     parameters: {
       query?: never;
@@ -5613,6 +5631,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/theme/admin-css": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read public pre-login theme overrides. */
+    get: operations["getThemeOverrides"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/theme/branding": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read public pre-login branding. */
+    get: operations["getBranding"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/theme/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Discover public branding and asset storage availability. */
+    get: operations["getBrandingCapabilities"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/watch-providers": {
     parameters: {
       query?: never;
@@ -8514,6 +8583,24 @@ export interface components {
       items: components["schemas"]["AuthProvider"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
+    };
+    BrandingCapabilitiesOutputBody: {
+      branding_available: boolean;
+      overrides_available: boolean;
+      storage_available: boolean;
+    };
+    BrandingConfiguration: {
+      accent_color?: string;
+      default_theme?: string;
+      favicon_url?: string;
+      login_bg_url?: string;
+      login_subtitle: string;
+      mark_light_url?: string;
+      mark_url?: string;
+      server_name: string;
+      storage_available: boolean;
+      wordmark_light_url?: string;
+      wordmark_url?: string;
     };
     BulkItemFailure: {
       detail: string;
@@ -15257,6 +15344,10 @@ export interface components {
       tmdb_collection?: components["schemas"]["TMDBCollectionSpec"];
       tmdb_discover?: components["schemas"]["TMDBDiscoverSpec"];
       trakt?: components["schemas"]["TraktSpec"];
+    };
+    ThemeOverrides: {
+      raw_css: string;
+      vars: string;
     };
     TMDBCollectionImport: {
       /** @example  */
@@ -41785,6 +41876,158 @@ export interface operations {
       };
     };
   };
+  getBrandingAsset: {
+    parameters: {
+      query?: {
+        /** @description Content reference returned by branding discovery; a stale reference returns 404. */
+        v?: string;
+      };
+      header?: {
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
+      path: {
+        kind: "wordmark" | "wordmark_light" | "mark" | "mark_light" | "favicon" | "login_bg";
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Branding image bytes (no body for HEAD) */
+      200: {
+        headers: {
+          "Cache-Control"?: string;
+          "Content-Length"?: string;
+          "Content-Security-Policy"?: string;
+          ETag?: string;
+          "X-Content-Type-Options"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": string;
+          "image/png": string;
+          "image/svg+xml": string;
+          "image/webp": string;
+          "image/x-icon": string;
+        };
+      };
+      /** @description Image unchanged */
+      304: {
+        headers: {
+          "Cache-Control"?: string;
+          "Content-Length"?: string;
+          "Content-Security-Policy"?: string;
+          ETag?: string;
+          "X-Content-Type-Options"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unknown, absent, or stale asset */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Image precondition failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Asset could not be read */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  headBrandingAsset: {
+    parameters: {
+      query?: {
+        /** @description Content reference returned by branding discovery; a stale reference returns 404. */
+        v?: string;
+      };
+      header?: {
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+      };
+      path: {
+        kind: "wordmark" | "wordmark_light" | "mark" | "mark_light" | "favicon" | "login_bg";
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Branding image bytes (no body for HEAD) */
+      200: {
+        headers: {
+          "Cache-Control"?: string;
+          "Content-Length"?: string;
+          "Content-Security-Policy"?: string;
+          ETag?: string;
+          "X-Content-Type-Options"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Image unchanged */
+      304: {
+        headers: {
+          "Cache-Control"?: string;
+          "Content-Length"?: string;
+          "Content-Security-Policy"?: string;
+          ETag?: string;
+          "X-Content-Type-Options"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unknown, absent, or stale asset */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Image precondition failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Asset could not be read */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   getCalendar: {
     parameters: {
       query: {
@@ -66815,6 +67058,201 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["SetupStatus"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getThemeOverrides: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ThemeOverrides"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getBranding: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BrandingConfiguration"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getBrandingCapabilities: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BrandingCapabilitiesOutputBody"];
         };
       };
       /** @description Bad Request */

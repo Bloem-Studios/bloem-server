@@ -21637,11 +21637,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/branding/assets/{kind}",
+        "operation_id": "getBrandingAsset"
       },
-      "notes": "External caller: browser loads of server-rendered asset URLs (favicon, PWA manifest, email). Conditionally registered: settingsRepo != nil; brandingHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented public branding discovery/overrides and image GET/HEAD on reviewed raw foundation; independent review and native branding discovery adoption pending. Asset URLs target v2, exact content-version requests cache immutably, stale versions return404, unversioned reads revalidate. Security headers and conditional tags preserved. Bundled web uses v2 discovery/overrides. Capability GET /api/v2/theme/capabilities. Frozen v1 transport unchanged."
     },
     {
       "listener": "api",
@@ -43549,11 +43549,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/theme/admin-css",
+        "operation_id": "getThemeOverrides"
       },
-      "notes": "Conditionally registered: settingsRepo != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented public branding discovery/overrides and image GET/HEAD on reviewed raw foundation; independent review and native branding discovery adoption pending. Asset URLs target v2, exact content-version requests cache immutably, stale versions return404, unversioned reads revalidate. Security headers and conditional tags preserved. Bundled web uses v2 discovery/overrides. Capability GET /api/v2/theme/capabilities. Frozen v1 transport unchanged."
     },
     {
       "listener": "api",
@@ -43624,11 +43624,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/theme/branding",
+        "operation_id": "getBranding"
       },
-      "notes": "Conditionally registered: settingsRepo != nil; brandingHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented public branding discovery/overrides and image GET/HEAD on reviewed raw foundation; independent review and native branding discovery adoption pending. Asset URLs target v2, exact content-version requests cache immutably, stale versions return404, unversioned reads revalidate. Security headers and conditional tags preserved. Bundled web uses v2 discovery/overrides. Capability GET /api/v2/theme/capabilities. Frozen v1 transport unchanged."
     },
     {
       "listener": "api",

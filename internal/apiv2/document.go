@@ -551,6 +551,7 @@ func registerAll(reg *Registry) {
 	registerAdminAPIKeys(reg)
 	registerPersonalAPIKeys(reg)
 	registerPolicyCapability(reg)
+	registerBranding(reg)
 	registerAdminInviteCodes(reg)
 	registerInvitations(reg)
 	registerWebhookSync(reg)

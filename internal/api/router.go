@@ -1979,6 +1979,15 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		v2deps.Invitations = invitationHandler
 	}
+	var themeHandler *handlers.ThemeHandler
+	if settingsRepo != nil {
+		themeHandler = handlers.NewThemeHandler(settingsRepo)
+		v2deps.ThemeOverrides = themeHandler
+	}
+	if deps.BrandingService != nil {
+		v2deps.Branding = deps.BrandingService
+	}
+
 	if inviteCodeRepo != nil {
 		v2deps.AdminInviteCodes = inviteCodeRepo
 	}
@@ -2203,7 +2212,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 
 		// Theme endpoints (admin-css is public for pre-login branding).
 		if settingsRepo != nil {
-			themeHandler := handlers.NewThemeHandler(settingsRepo)
 			r.Get("/theme/admin-css", themeHandler.HandleAdminCSS)
 			if brandingHandler != nil {
 				// Public branding read + asset serving (pre-login white-label).

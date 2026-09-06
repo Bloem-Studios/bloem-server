@@ -7324,6 +7324,70 @@
         ],
         "type": "object"
       },
+      "BrandingCapabilitiesOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "branding_available": {
+            "type": "boolean"
+          },
+          "overrides_available": {
+            "type": "boolean"
+          },
+          "storage_available": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "branding_available",
+          "overrides_available",
+          "storage_available"
+        ],
+        "type": "object"
+      },
+      "BrandingConfiguration": {
+        "additionalProperties": false,
+        "properties": {
+          "accent_color": {
+            "type": "string"
+          },
+          "default_theme": {
+            "type": "string"
+          },
+          "favicon_url": {
+            "type": "string"
+          },
+          "login_bg_url": {
+            "type": "string"
+          },
+          "login_subtitle": {
+            "type": "string"
+          },
+          "mark_light_url": {
+            "type": "string"
+          },
+          "mark_url": {
+            "type": "string"
+          },
+          "server_name": {
+            "type": "string"
+          },
+          "storage_available": {
+            "type": "boolean"
+          },
+          "wordmark_light_url": {
+            "type": "string"
+          },
+          "wordmark_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_name",
+          "login_subtitle",
+          "storage_available"
+        ],
+        "type": "object"
+      },
       "BulkItemFailure": {
         "additionalProperties": false,
         "properties": {
@@ -23246,6 +23310,22 @@
           "category",
           "source",
           "media_kind"
+        ],
+        "type": "object"
+      },
+      "ThemeOverrides": {
+        "additionalProperties": false,
+        "properties": {
+          "raw_css": {
+            "type": "string"
+          },
+          "vars": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vars",
+          "raw_css"
         ],
         "type": "object"
       },
@@ -62671,6 +62751,309 @@
         "x-silo-service-backed": true
       }
     },
+    "/api/v2/branding/assets/{kind}": {
+      "get": {
+        "operationId": "getBrandingAsset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "wordmark",
+                "wordmark_light",
+                "mark",
+                "mark_light",
+                "favicon",
+                "login_bg"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Content reference returned by branding discovery; a stale reference returns 404.",
+            "in": "query",
+            "name": "v",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/svg+xml": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/x-icon": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Branding image bytes (no body for HEAD)",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Security-Policy": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Image unchanged",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Security-Policy": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, absent, or stale asset"
+          },
+          "412": {
+            "description": "Image precondition failed"
+          },
+          "500": {
+            "description": "Asset could not be read"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Read a public branding image with content-version validation.",
+        "tags": [
+          "branding"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "branding-image",
+        "x-silo-raw-reason": "Image bytes and HEAD/conditional HTTP semantics bypass JSON encoding.",
+        "x-silo-service-backed": true
+      },
+      "head": {
+        "operationId": "headBrandingAsset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "wordmark",
+                "wordmark_light",
+                "mark",
+                "mark_light",
+                "favicon",
+                "login_bg"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Content reference returned by branding discovery; a stale reference returns 404.",
+            "in": "query",
+            "name": "v",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Branding image bytes (no body for HEAD)",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Security-Policy": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Image unchanged",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Security-Policy": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, absent, or stale asset"
+          },
+          "412": {
+            "description": "Image precondition failed"
+          },
+          "500": {
+            "description": "Asset could not be read"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Read a public branding image with content-version validation.",
+        "tags": [
+          "branding"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "branding-image",
+        "x-silo-raw-reason": "Image bytes and HEAD/conditional HTTP semantics bypass JSON encoding.",
+        "x-silo-service-backed": true
+      }
+    },
     "/api/v2/calendar": {
       "get": {
         "operationId": "getCalendar",
@@ -100306,6 +100689,225 @@
         "summary": "Report whether the server still needs its first administrator.",
         "tags": [
           "system"
+        ],
+        "x-silo-class": "public",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/theme/admin-css": {
+      "get": {
+        "operationId": "getThemeOverrides",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeOverrides"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Read public pre-login theme overrides.",
+        "tags": [
+          "branding"
+        ],
+        "x-silo-class": "public",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/theme/branding": {
+      "get": {
+        "operationId": "getBranding",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandingConfiguration"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Read public pre-login branding.",
+        "tags": [
+          "branding"
+        ],
+        "x-silo-class": "public",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/theme/capabilities": {
+      "get": {
+        "operationId": "getBrandingCapabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandingCapabilitiesOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Discover public branding and asset storage availability.",
+        "tags": [
+          "branding"
         ],
         "x-silo-class": "public",
         "x-silo-service-backed": true

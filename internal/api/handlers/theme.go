@@ -42,8 +42,8 @@ func NewThemeHandler(settings ThemeSettingsReader) *ThemeHandler {
 	}
 }
 
-// adminCssResponse is returned by GET /theme/admin-css.
-type adminCssResponse struct {
+// AdminCSSView is returned by GET /theme/admin-css.
+type AdminCSSView struct {
 	Vars   string `json:"vars"`
 	RawCSS string `json:"raw_css"`
 }
@@ -52,14 +52,15 @@ type adminCssResponse struct {
 // Public endpoint — no authentication required. This allows admin
 // branding to apply before login (white-label).
 func (h *ThemeHandler) HandleAdminCSS(w http.ResponseWriter, r *http.Request) {
-	vars, _ := h.settings.Get(r.Context(), "ui.admin_theme_vars")
-	rawCSS, _ := h.settings.Get(r.Context(), "ui.admin_custom_css")
-
 	w.Header().Set("Cache-Control", "no-store")
-	writeJSON(w, http.StatusOK, adminCssResponse{
-		Vars:   vars,
-		RawCSS: rawCSS,
-	})
+	writeJSON(w, http.StatusOK, h.AdminCSS(r.Context()))
+}
+
+// AdminCSS reads the shared server overrides used before login.
+func (h *ThemeHandler) AdminCSS(ctx context.Context) AdminCSSView {
+	vars, _ := h.settings.Get(ctx, "ui.admin_theme_vars")
+	rawCSS, _ := h.settings.Get(ctx, "ui.admin_custom_css")
+	return AdminCSSView{Vars: vars, RawCSS: rawCSS}
 }
 
 // HandleDownload proxies a theme file download from an allowed host.

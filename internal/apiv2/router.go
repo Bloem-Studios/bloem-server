@@ -211,6 +211,8 @@ type Dependencies struct {
 	AdminAPIKeys        AdminAPIKeyService
 	PersonalAPIKeys     PersonalAPIKeyService
 	PolicyCapability    PolicyCapabilityService
+	Branding            BrandingService
+	ThemeOverrides      ThemeOverrideService
 	AdminInviteCodes    AdminInviteCodeService
 	Invitations         InvitationService
 	// PersonalCollections manages a profile's own collections and groups
