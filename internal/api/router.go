@@ -1968,6 +1968,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if apiKeyRepo != nil {
 		v2deps.AdminAPIKeys = handlers.NewAPIKeyHandler(apiKeyRepo)
+		v2deps.PersonalAPIKeys = handlers.NewAPIKeyHandler(apiKeyRepo)
 	}
 	if markersHandler != nil {
 		v2deps.Markers = markersHandler

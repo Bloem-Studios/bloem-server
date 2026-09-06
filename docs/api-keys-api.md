@@ -200,7 +200,7 @@ The v2 admin editor exposes the following operations under `/api/v2`:
 
 These operations preserve acting-admin and demo restrictions. Scoped API keys
 cannot access credential management; unscoped keys retain the owning account's
-access. Personal key management remains on v1.
+access. Personal key management uses the separate account-scoped operations below.
 
 IDs use JSON strings. Canonical metadata excludes the full key, usage timestamps,
 and the owner's display name. The collection adds usage and owner display fields.
@@ -219,3 +219,36 @@ the current tag. `If-Match: *` explicitly permits changing the current resource.
 Canonical reads support conditional requests, including `304` for an unchanged
 `If-None-Match` tag. Authentication usage and no-op tier edits do not invalidate
 configuration tags. Successful deletion returns no validator.
+
+
+## V2 personal lifecycle
+
+Personal key management operates on the login account, without requiring a household
+profile. The v1 endpoints remain frozen during the bridge.
+
+| Method | Path | Result |
+|---|---|---|
+| GET | `/api/v2/api-keys/scopes` | Availability and supported scopes |
+| GET | `/api/v2/api-keys` | Metadata collection with opaque cursor continuation |
+| POST | `/api/v2/api-keys` | `201` response containing the credential once |
+| DELETE | `/api/v2/api-keys/{id}` | Owner-only revocation returning `204` |
+
+Listing, creation, and revocation require JWT authentication; API-key credentials
+receive `403`. Scope discovery retains its availability to unscoped API keys.
+All four operations retain the demo restriction. An unavailable store reports
+`available: false` in scope discovery and `503` for management operations.
+
+Create with `{"label":"Script","scopes":[]}`. Omitting scopes creates an unscoped
+key. Explicit nulls and unknown fields are rejected. The account comes from the
+login session; a caller cannot choose another owner. Store the returned credential
+securely: creation is non-retryable after an uncertain response. List responses
+contain metadata only, with string IDs and optional usage timestamps.
+
+The list accepts `limit` (1–200, default 50) and `cursor`, ordered by creation time
+and ID descending. Cursors bind to the account and page size, independently of the
+selected profile. Revocation checks ownership in the database delete. Missing keys
+and keys belonging to another account both return `404`; retrying revocation has
+no additional effect. This self-service revocation does not require `If-Match`.
+
+The current web, Apple, and Android clients have no personal key-management
+consumer to migrate. Jellyfin credential endpoints keep their separate protocol.

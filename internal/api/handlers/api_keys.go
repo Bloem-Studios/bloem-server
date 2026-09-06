@@ -426,3 +426,21 @@ func (h *APIKeyHandler) ListAdminUserAPIKeysPage(ctx context.Context, userID int
 	}
 	return out, more, nil
 }
+
+// ListPersonalAPIKeysPage returns only metadata belonging to the login account.
+func (h *APIKeyHandler) ListPersonalAPIKeysPage(ctx context.Context, userID int, after *auth.APIKeyPageKey, limit int) ([]APIKeyListItem, bool, error) {
+	rows, more, err := h.ListAdminUserAPIKeysPage(ctx, userID, after, limit)
+	if err != nil {
+		return nil, false, err
+	}
+	items := make([]APIKeyListItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, row.APIKeyListItem)
+	}
+	return items, more, nil
+}
+
+// RevokePersonalAPIKey checks ownership in the deleting statement.
+func (h *APIKeyHandler) RevokePersonalAPIKey(ctx context.Context, userID int, id int64) error {
+	return h.repo.Delete(ctx, id, userID)
+}

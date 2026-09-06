@@ -177,3 +177,38 @@ func TestCreateAdminAPIKeyApplicationValidatesBeforeStorage(t *testing.T) {
 		t.Fatalf("scope normalization failed: %v", err)
 	}
 }
+
+// Account filtering must survive the transport-to-store boundary: the personal
+// service cannot accidentally call the unfiltered administrator delete.
+type personalAPIKeyStore struct {
+	fakeAPIKeyStore
+	userID int
+	keyID  int64
+	limit  int
+	after  *auth.APIKeyPageKey
+}
+
+func (s *personalAPIKeyStore) Delete(_ context.Context, id int64, userID int) error {
+	s.keyID, s.userID = id, userID
+	return auth.ErrAPIKeyNotFound
+}
+func (s *personalAPIKeyStore) DeleteByAdmin(context.Context, int64) error { panic("unfiltered delete") }
+func (s *personalAPIKeyStore) ListByUserAdminPage(_ context.Context, userID int, after *auth.APIKeyPageKey, limit int) ([]*models.APIKeyMetadataWithUser, bool, error) {
+	s.userID, s.after, s.limit = userID, after, limit
+	return []*models.APIKeyMetadataWithUser{}, false, nil
+}
+func TestPersonalAPIKeyServiceAccountBoundary(t *testing.T) {
+	store := new(personalAPIKeyStore)
+	handler := NewAPIKeyHandler(store)
+	if err := handler.RevokePersonalAPIKey(t.Context(), 42, 7); !errors.Is(err, auth.ErrAPIKeyNotFound) {
+		t.Fatal(err)
+	}
+	if store.userID != 42 || store.keyID != 7 {
+		t.Fatal(store.userID, store.keyID)
+	}
+	after := &auth.APIKeyPageKey{ID: 9}
+	rows, more, err := handler.ListPersonalAPIKeysPage(t.Context(), 42, after, 25)
+	if err != nil || more || rows == nil || store.userID != 42 || store.after != after || store.limit != 25 {
+		t.Fatal(rows, more, err, store)
+	}
+}

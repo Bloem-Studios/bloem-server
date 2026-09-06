@@ -200,6 +200,7 @@ type Dependencies struct {
 	HistoryImports      HistoryImportService
 	AdminHistoryImports AdminHistoryImportService
 	AdminAPIKeys        AdminAPIKeyService
+	PersonalAPIKeys     PersonalAPIKeyService
 	Invitations         InvitationService
 	// PersonalCollections manages a profile's own collections and groups
 	// (*handlers.CollectionHandler).
