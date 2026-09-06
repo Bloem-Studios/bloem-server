@@ -113,6 +113,9 @@ func registerWatchTogetherSuggestions(reg *Registry) {
 		vote       bool
 	}{{http.MethodPost, "voteWatchTogetherSuggestion", true}, {http.MethodDelete, "unvoteWatchTogetherSuggestion", false}} {
 		op := Operation{Operation: humaOp(v.method, root+"/{suggestion_id}/vote", v.id, "realtime", "Set this profile's vote membership. An already satisfied vote state returns an empty receipt; opposing writes are not ordered."), Class: ClassProfileScoped, ServiceBacked: true, DemoRestricted: true, RetrySafety: RetrySafetyNaturalIdempotent}
+		if v.vote {
+			op.RetrySafety = RetrySafetyUniqueConstraint
+		}
 		op.DefaultStatus = http.StatusNoContent
 		op.Errors = []int{409}
 		Register(reg, op, func(ctx context.Context, in *WatchTogetherSuggestionVoteInput) (*struct{}, error) {

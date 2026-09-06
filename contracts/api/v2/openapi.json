@@ -134407,7 +134407,7 @@
         ],
         "x-silo-class": "profile_scoped",
         "x-silo-demo-restricted": true,
-        "x-silo-retry-safety": "natural_idempotent",
+        "x-silo-retry-safety": "unique_constraint",
         "x-silo-service-backed": true
       }
     },
