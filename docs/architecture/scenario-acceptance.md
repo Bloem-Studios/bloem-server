@@ -1212,3 +1212,16 @@ and 404 not-found Problems. Four requests use independent transport reseeds
 and eight full eight-table snapshots (64 observations), with no row or timestamp
 exemptions. Required DSN, pre-constructor occupancy and exact selector guards
 remain mandatory. This does not cover successful revocation or delivery.
+
+### Frozen ordinary account reads
+
+`make test-scenario-account-reads` selects `me.ok` and `me.meaning`, retaining
+original requests, authenticated principals, requirements and assertions. V2
+returns the same current account and effective download policy with a string
+account ID and no impersonation object. Four reads reseed independently before
+and after execution. Eight full snapshots compare users, profiles, API keys,
+settings, login sessions, device requests, invitations and invite codes
+(64 table observations), with no exemptions. Required DSN, pre-constructor
+occupancy and fixed-selector guards remain enforced. No API-key usage,
+impersonation, enrollment, external provider or outage is exercised. These two
+original frozen pairs remain separate from NEW acceptance.

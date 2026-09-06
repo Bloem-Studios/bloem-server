@@ -779,3 +779,7 @@ test-scenario-invite-code-topups:
 .PHONY: test-scenario-admin-invitation-revoke-targets
 test-scenario-admin-invitation-revoke-targets:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationRevokeTargetsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-account-reads
+test-scenario-account-reads:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAccountReadsAcceptance$$' ./internal/scenariocatalog/executor

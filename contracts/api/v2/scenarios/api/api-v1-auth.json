@@ -6155,7 +6155,59 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns the same current account and effective download policy, using a string account ID and omitting impersonation for an ordinary session. Stored state remains unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/account_reads_pairing_test.go",
+            "operation_id": "getCurrentUser",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/me"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "username",
+                    "email",
+                    "role",
+                    "permissions",
+                    "download_allowed"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "equals",
+                  "value": "${member_user_id}"
+                },
+                {
+                  "pointer": "/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/impersonation",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "me.meaning",
@@ -6187,7 +6239,62 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 returns the same current account and effective download policy, using a string account ID and omitting impersonation for an ordinary session. Stored state remains unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/account_reads_pairing_test.go",
+            "operation_id": "getCurrentUser",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/me"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/username",
+                  "op": "equals",
+                  "value": "${member_username}"
+                },
+                {
+                  "pointer": "/role",
+                  "op": "equals",
+                  "value": "user"
+                },
+                {
+                  "pointer": "/download_allowed",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/id",
+                  "op": "equals",
+                  "value": "${member_user_id}"
+                },
+                {
+                  "pointer": "/id",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/impersonation",
+                  "op": "absent"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "me.api_key",
