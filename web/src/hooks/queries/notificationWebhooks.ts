@@ -3,13 +3,13 @@ import { requireNotificationAuthority } from "@/api/v2/notifications";
 import { useRef } from "react";
 import { testNotificationDestination } from "@/api/v2/notificationDestinationTests";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
+import { captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
 import {
   notificationCapabilities,
   notificationScope,
   captureNotificationAuthority,
 } from "@/api/v2/notifications";
-import type { NotificationWebhook, NotificationWebhookInput } from "@/api/types";
+import type { NotificationWebhookInput } from "@/api/types";
 import {
   listNotificationWebPushSubscriptions,
   deleteNotificationWebPushSubscription,
@@ -75,19 +75,54 @@ export function useCreateNotificationWebhook() {
 
 export function useUpdateNotificationWebhook() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, ...input }: NotificationWebhookInput & { id: string }) =>
-      api<NotificationWebhook>(`/notifications/webhooks/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(input),
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: notificationKeys.webhooks() });
+  const context = captureProfileRequestContext();
+  type Input = NotificationWebhookInput & { id: string; etag: string };
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async (intent: {
+      input: Input;
+      authority: ReturnType<typeof captureProfileRequestContext>;
+    }) => {
+      if (!intent.authority) throw new StaleApiRequestContextError();
+      const { id, etag, type: _type, ...body } = intent.input;
+      if (!etag || etag === "*")
+        throw new Error("Reload the webhook list before editing this destination.");
+      requireNotificationAuthority(intent.authority);
+      const result = await v2("PUT /api/v2/notifications/webhooks/{id}", {
+        path: { id },
+        body,
+        headers: { "If-Match": etag },
+        profileContext: intent.authority,
+        retryAuthentication: false,
+      });
+      requireNotificationAuthority(intent.authority);
+      return result;
     },
-    onError: (error) => {
+    onSuccess: (_result, intent) => {
+      if (!intent.authority) throw new StaleApiRequestContextError();
+      requireNotificationAuthority(intent.authority);
+      void queryClient.invalidateQueries({
+        queryKey: [...notificationKeys.webhooks(), notificationScope(intent.authority)],
+        exact: true,
+      });
+    },
+    onError: (error, intent) => {
+      if (!intent.authority) return;
+      try {
+        requireNotificationAuthority(intent.authority);
+      } catch {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Failed to update webhook");
     },
   });
+  return {
+    ...mutation,
+    mutate: (input: Input, options?: Parameters<typeof mutation.mutate>[1]) =>
+      mutation.mutate({ input: { ...input }, authority: context }, options),
+    mutateAsync: (input: Input, options?: Parameters<typeof mutation.mutateAsync>[1]) =>
+      mutation.mutateAsync({ input: { ...input }, authority: context }, options),
+  };
 }
 
 export function useDeleteNotificationWebhook() {

@@ -101,3 +101,11 @@ func (h *NotificationsHandler) RotateNotificationWebhookSecret(ctx context.Conte
 	}
 	return svc.RotateSecretV2(ctx, profile, id)
 }
+
+func (h *NotificationsHandler) UpdateNotificationWebhook(ctx context.Context, profile, id string, input notifications.WebhookInput, check func(int64) error) (*notifications.Webhook, error) {
+	svc := h.webhooks()
+	if svc == nil {
+		return nil, apiError(503, "unavailable", "Webhooks are not available")
+	}
+	return svc.UpdateGuarded(ctx, profile, id, input, check)
+}

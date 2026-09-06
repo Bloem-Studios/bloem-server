@@ -451,3 +451,42 @@ func (r *WebhookRepository) ReplaceSigningSecret(ctx context.Context, profile, i
 	}
 	return nil
 }
+
+// UpdateGuarded reads, validates and updates configuration under the same row lock.
+// Secret/type and provider outcome columns are never copied from an editor.
+func (r *WebhookRepository) UpdateGuarded(ctx context.Context, profile, id string, apply func(*Webhook) error) (*Webhook, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	hook, err := scanWebhook(tx.QueryRow(ctx, `SELECT `+webhookColumns+` FROM notification_webhooks WHERE profile_id=$1 AND id=$2 FOR UPDATE`, profile, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrWebhookNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err = apply(hook); err != nil {
+		return nil, err
+	}
+	row, err := scanWebhook(tx.QueryRow(ctx, `UPDATE notification_webhooks SET
+ name=$3, url_ciphertext=$4, url_host=$5, enabled=$6,
+ notify_favorites=$7, notify_watchlist=$8, notify_continue_watching=$9,
+ notify_next_up=$10, notify_requests=$11, consecutive_failures=$12,
+ disabled_reason=$13, updated_at=now()
+ WHERE profile_id=$1 AND id=$2 RETURNING `+webhookColumns,
+		profile, id, hook.Name, hook.URLCiphertext, hook.URLHost, hook.Enabled,
+		hook.NotifyFavorites, hook.NotifyWatchlist, hook.NotifyContinueWatching,
+		hook.NotifyNextUp, hook.NotifyRequests, hook.ConsecutiveFailures, hook.DisabledReason))
+	if isWebhookNameViolation(err) {
+		return nil, ErrWebhookNameTaken
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return row, nil
+}

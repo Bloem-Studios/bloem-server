@@ -302,3 +302,45 @@ func TestNotificationWebhookRotate(t *testing.T) {
 	deps.NotificationDestinations = nil
 	requireProblem(t, do(t, NewHandler(deps), http.MethodPost, path, "", profileOwner()), TypeDependencyUnavailable)
 }
+
+func (f *fakeNotificationDestinations) UpdateNotificationWebhook(_ context.Context, profile, id string, input notifications.WebhookInput, check func(int64) error) (*notifications.Webhook, error) {
+	f.calls++
+	if id == "missing" {
+		return nil, notifications.ErrWebhookNotFound
+	}
+	if err := check(7); err != nil {
+		return nil, err
+	}
+	if input.Name != nil && *input.Name == "" {
+		return nil, notifications.ErrWebhookInvalid
+	}
+	return &notifications.Webhook{ID: id, ProfileID: profile, Name: "updated", Type: "generic", Revision: 8}, nil
+}
+
+func TestNotificationWebhookUpdate(t *testing.T) {
+	f := new(fakeNotificationDestinations)
+	deps := pilotDeps(nil, nil)
+	deps.NotificationDestinations = f
+	h := NewHandler(deps)
+	path := Prefix + "/notifications/webhooks/row-one"
+	tag := notificationWebhookTag("p-owner", "row-one", 7).String()
+	headers := profileOwner()
+	headers["If-Match"] = tag
+	rec := do(t, h, http.MethodPut, path, `{"name":"updated","enabled":false}`, headers)
+	if rec.Code != 200 || rec.Header().Get("ETag") != notificationWebhookTag("p-owner", "row-one", 8).String() || !strings.Contains(rec.Body.String(), `"name":"updated"`) {
+		t.Fatalf("%d %s", rec.Code, rec.Body.String())
+	}
+	requireProblem(t, do(t, h, http.MethodPut, path, `{}`, profileOwner()), TypePreconditionRequired)
+	headers["If-Match"] = notificationWebhookTag("p-owner", "row-one", 6).String()
+	requireProblem(t, do(t, h, http.MethodPut, path, `{}`, headers), TypePreconditionFailed)
+	requireProblem(t, do(t, h, http.MethodPut, Prefix+"/notifications/webhooks/missing", `{}`, profileOwner()), TypeNotFound)
+	headers["If-Match"] = tag
+	requireProblem(t, do(t, h, http.MethodPut, path, `{"name":""}`, headers), TypeValidationFailed)
+	before := f.calls
+	requireProblem(t, do(t, h, http.MethodPut, path, `{}`, nil), TypeAuthenticationRequired)
+	if f.calls != before {
+		t.Fatal("unauthorized dispatch")
+	}
+	deps.NotificationDestinations = nil
+	requireProblem(t, do(t, NewHandler(deps), http.MethodPut, path, `{}`, headers), TypeDependencyUnavailable)
+}

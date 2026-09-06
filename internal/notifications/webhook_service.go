@@ -207,51 +207,8 @@ func (s *WebhookService) Update(ctx context.Context, profileID, id string, input
 		return nil, ErrWebhookNotFound
 	}
 
-	if input.Name != nil {
-		name, err := validateChannelName(*input.Name, ErrWebhookInvalid)
-		if err != nil {
-			return nil, err
-		}
-		hook.Name = name
-	}
-	if input.URL != nil {
-		rawURL := strings.TrimSpace(*input.URL)
-		host, err := ValidateWebhookURL(rawURL, s.settings.WebhooksAllowPrivateDestinations(ctx))
-		if err != nil {
-			return nil, fmt.Errorf("%w: %s", ErrWebhookInvalid, err.Error())
-		}
-		if err := validateReplacementURL(hook.Type, rawURL, ErrWebhookInvalid); err != nil {
-			return nil, err
-		}
-		hook.URLCiphertext, err = s.cipher.Encrypt(rawURL, webhookURLAAD(hook.ID))
-		if err != nil {
-			return nil, fmt.Errorf("encrypt webhook url: %w", err)
-		}
-		hook.URLHost = host
-		hook.ConsecutiveFailures = 0
-		hook.DisabledReason = nil
-	}
-	if input.Enabled != nil {
-		hook.Enabled = *input.Enabled
-		if hook.Enabled {
-			hook.DisabledReason = nil
-			hook.ConsecutiveFailures = 0
-		}
-	}
-	if input.NotifyFavorites != nil {
-		hook.NotifyFavorites = *input.NotifyFavorites
-	}
-	if input.NotifyWatchlist != nil {
-		hook.NotifyWatchlist = *input.NotifyWatchlist
-	}
-	if input.NotifyContinueWatching != nil {
-		hook.NotifyContinueWatching = *input.NotifyContinueWatching
-	}
-	if input.NotifyNextUp != nil {
-		hook.NotifyNextUp = *input.NotifyNextUp
-	}
-	if input.NotifyRequests != nil {
-		hook.NotifyRequests = *input.NotifyRequests
+	if err := s.applyWebhookInput(ctx, hook, input); err != nil {
+		return nil, err
 	}
 
 	if err := s.repo.Update(ctx, *hook); err != nil {
@@ -397,4 +354,69 @@ func (s *WebhookService) RotateSecretV2(ctx context.Context, profile, id string)
 		return "", err
 	}
 	return value, nil
+}
+
+// applyWebhookInput preserves the bridge validation and reset behavior.
+func (s *WebhookService) applyWebhookInput(ctx context.Context, hook *Webhook, input WebhookInput) error {
+	if input.Name != nil {
+		name, err := validateChannelName(*input.Name, ErrWebhookInvalid)
+		if err != nil {
+			return err
+		}
+		hook.Name = name
+	}
+	if input.URL != nil {
+		rawURL := strings.TrimSpace(*input.URL)
+		host, err := ValidateWebhookURL(rawURL, s.settings.WebhooksAllowPrivateDestinations(ctx))
+		if err != nil {
+			return fmt.Errorf("%w: %s", ErrWebhookInvalid, err.Error())
+		}
+		if err := validateReplacementURL(hook.Type, rawURL, ErrWebhookInvalid); err != nil {
+			return err
+		}
+		hook.URLCiphertext, err = s.cipher.Encrypt(rawURL, webhookURLAAD(hook.ID))
+		if err != nil {
+			return fmt.Errorf("encrypt webhook url: %w", err)
+		}
+		hook.URLHost = host
+		hook.ConsecutiveFailures = 0
+		hook.DisabledReason = nil
+	}
+	if input.Enabled != nil {
+		hook.Enabled = *input.Enabled
+		if hook.Enabled {
+			hook.DisabledReason = nil
+			hook.ConsecutiveFailures = 0
+		}
+	}
+	if input.NotifyFavorites != nil {
+		hook.NotifyFavorites = *input.NotifyFavorites
+	}
+	if input.NotifyWatchlist != nil {
+		hook.NotifyWatchlist = *input.NotifyWatchlist
+	}
+	if input.NotifyContinueWatching != nil {
+		hook.NotifyContinueWatching = *input.NotifyContinueWatching
+	}
+	if input.NotifyNextUp != nil {
+		hook.NotifyNextUp = *input.NotifyNextUp
+	}
+	if input.NotifyRequests != nil {
+		hook.NotifyRequests = *input.NotifyRequests
+	}
+
+	return nil
+}
+
+func (s *WebhookService) UpdateGuarded(ctx context.Context, profile, id string, input WebhookInput, check func(int64) error) (*Webhook, error) {
+	row, err := s.repo.UpdateGuarded(ctx, profile, id, func(hook *Webhook) error {
+		if err := check(hook.Revision); err != nil {
+			return err
+		}
+		return s.applyWebhookInput(ctx, hook, input)
+	})
+	if errors.Is(err, ErrWebhookNameTaken) {
+		return nil, fmt.Errorf("%w: %s", ErrWebhookInvalid, err.Error())
+	}
+	return row, err
 }

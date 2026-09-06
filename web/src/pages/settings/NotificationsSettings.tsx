@@ -732,7 +732,7 @@ function WebhookFormDialog({
     }
     if (editing) {
       update.mutate(
-        { id: webhook.id, ...input },
+        { id: webhook.id, etag: webhook.etag ?? "", ...input },
         {
           onSuccess: () => onOpenChange(false),
         },
@@ -887,7 +887,9 @@ function WebhookCard({
           </span>
           <Switch
             checked={webhook.enabled}
-            onCheckedChange={(checked) => update.mutate({ id: webhook.id, enabled: checked })}
+            onCheckedChange={(checked) =>
+              update.mutate({ id: webhook.id, etag: webhook.etag ?? "", enabled: checked })
+            }
           />
         </div>
       </div>
