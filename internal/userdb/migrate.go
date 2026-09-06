@@ -234,8 +234,12 @@ func runMigrations(db *sql.DB) error {
 		}
 	}
 	if version < 25 {
-		if _, err := tx.Exec(`ALTER TABLE profile_onboarding ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK (revision > 0)`); err != nil {
-			return fmt.Errorf("migration v25 failed: %w", err)
+		// InitSchema runs before migrations and creates the current table when
+		// opening pre-v14 stores, which did not yet have onboarding state.
+		if !columnExists(tx, "profile_onboarding", "revision") {
+			if _, err := tx.Exec(`ALTER TABLE profile_onboarding ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK (revision > 0)`); err != nil {
+				return fmt.Errorf("migration v25 failed: %w", err)
+			}
 		}
 		if _, err := tx.Exec(onboardingRevisionSchema); err != nil {
 			return err
