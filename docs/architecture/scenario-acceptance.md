@@ -1338,3 +1338,32 @@ defaults, sequence allocation and database-clock-bounded timestamps. All other
 rows and columns stay unchanged; refusals allocate no setting identity. Credential
 fields remain absent from v2 responses. The proof covers fresh-setting insertion,
 not existing-setting revision updates, concurrent writes or retry safety.
+
+### Frozen password and session transitions
+
+`make test-scenario-password-sessions` runs password.ok, password.meaning,
+password.shape, session_delete.ok, session_delete.meaning and session_delete.shape.
+This six-case batch preserves the original multi-step password sequence and
+repeated deletion request. Each transport reseeds independently; each password
+follow-up observes the state established by its preceding step. Twelve transport
+results execute eighteen HTTP requests with thirty-two full eight-table snapshots
+(256 observations). The eight tables are users, profiles, API keys, settings,
+login sessions, device requests, invitations and invite codes.
+
+Password replacement may change only the target account hash, a database-clock-
+bounded updated_at, and the trigger-maintained admin_revision by exactly one. Bcrypt checks prove the old/new credential transition; the
+original follow-ups refuse the old password and return a valid new-password
+login whose exact session/token effects use the accepted lifecycle checker.
+Session deletion changes only target revoked_at within database request bounds,
+including timestamp refresh on an already-revoked row. Repeated current-session
+deletion must refuse its now-invalid bearer. All other fields/rows remain equal,
+including all sessions during the password update itself. No blanket timestamp
+or hash exemptions are used. V2 preserves empty204 responses and expresses the
+old-password/revoked-session refusals as invalid_token/session_expired Problems.
+
+Required DSN, pre-constructor scratch/API-key guards and fixed-selector checks
+remain enforced. The original six-case scope is kept together because it spans
+credential changes, sequential authentication and session mutation. This does
+not claim concurrent password changes, API-key usage, profile/PIN mutation,
+external providers, enrollment, outages or durable replay. The six original
+pairs remain separate from NEW acceptance.

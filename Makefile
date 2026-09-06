@@ -811,3 +811,7 @@ test-scenario-admin-invitation-lifecycle:
 .PHONY: test-scenario-household-update
 test-scenario-household-update:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredHouseholdUpdateAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-password-sessions
+test-scenario-password-sessions:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredPasswordSessionsAcceptance$$' ./internal/scenariocatalog/executor

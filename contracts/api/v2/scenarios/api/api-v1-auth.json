@@ -7898,7 +7898,26 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports retain credential replacement and session revocation semantics. Password follow-ups refuse the old credential and accept the new one; v2 uses invalid_token/session_expired Problems and string account IDs. Every admitted hash, timestamp and session creation is checked explicitly.",
+            "recorded_in": "internal/scenariocatalog/executor/password_sessions_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "body": {
+                "current_password": "${member_password}",
+                "new_password": "fixture-rotated-pw1"
+              }
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "password.meaning",
@@ -8002,7 +8021,127 @@
               }
             }
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both transports retain credential replacement and session revocation semantics. Password follow-ups refuse the old credential and accept the new one; v2 uses invalid_token/session_expired Problems and string account IDs. Every admitted hash, timestamp and session creation is checked explicitly.",
+            "recorded_in": "internal/scenariocatalog/executor/password_sessions_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "body": {
+                "current_password": "${member_password}",
+                "new_password": "fixture-rotated-pw1"
+              }
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            },
+            "then": [
+              {
+                "method": "POST",
+                "description": "the old password is refused",
+                "principal": {
+                  "class": "public"
+                },
+                "request": {
+                  "path": "/api/v2/auth/login",
+                  "body": {
+                    "username": "${member_username}",
+                    "password": "${member_password}"
+                  }
+                },
+                "expect": {
+                  "status": 401,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/problem+json"
+                    },
+                    {
+                      "name": "Cache-Control",
+                      "op": "equals",
+                      "value": "no-store"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "/status",
+                      "op": "equals",
+                      "value": 401
+                    },
+                    {
+                      "pointer": "/type",
+                      "op": "matches",
+                      "value": "/invalid_token$"
+                    },
+                    {
+                      "pointer": "/title",
+                      "op": "non_empty"
+                    },
+                    {
+                      "pointer": "/detail",
+                      "op": "non_empty"
+                    },
+                    {
+                      "pointer": "/instance",
+                      "op": "non_empty"
+                    },
+                    {
+                      "pointer": "/access_token",
+                      "op": "absent"
+                    },
+                    {
+                      "pointer": "/refresh_token",
+                      "op": "absent"
+                    }
+                  ]
+                },
+                "operation_id": "login"
+              },
+              {
+                "method": "POST",
+                "description": "the new password logs in",
+                "principal": {
+                  "class": "public"
+                },
+                "request": {
+                  "path": "/api/v2/auth/login",
+                  "body": {
+                    "username": "${member_username}",
+                    "password": "fixture-rotated-pw1"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/user/username",
+                      "op": "equals",
+                      "value": "${member_username}"
+                    },
+                    {
+                      "pointer": "/user/id",
+                      "op": "type",
+                      "value": "string"
+                    }
+                  ],
+                  "headers": [
+                    {
+                      "name": "Cache-Control",
+                      "op": "equals",
+                      "value": "no-store"
+                    }
+                  ]
+                },
+                "operation_id": "login"
+              }
+            ]
+          }
         },
         {
           "id": "password.shape",
@@ -8032,7 +8171,31 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports retain credential replacement and session revocation semantics. Password follow-ups refuse the old credential and accept the new one; v2 uses invalid_token/session_expired Problems and string account IDs. Every admitted hash, timestamp and session creation is checked explicitly.",
+            "recorded_in": "internal/scenariocatalog/executor/password_sessions_pairing_test.go",
+            "operation_id": "changePassword",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/account/password",
+              "body": {
+                "current_password": "${member_password}",
+                "new_password": "fixture-rotated-pw1"
+              }
+            },
+            "expect": {
+              "status": 204,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "absent"
+                }
+              ],
+              "body_kind": "empty",
+              "body": []
+            }
+          }
         },
         {
           "id": "password.wrong_current",
@@ -10428,7 +10591,22 @@
             "body_kind": "empty"
           },
           "notes": "Revoking an already-revoked session is also 204 (idempotent).",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports retain credential replacement and session revocation semantics. Password follow-ups refuse the old credential and accept the new one; v2 uses invalid_token/session_expired Problems and string account IDs. Every admitted hash, timestamp and session creation is checked explicitly.",
+            "recorded_in": "internal/scenariocatalog/executor/password_sessions_pairing_test.go",
+            "operation_id": "deleteSession",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/auth/sessions/${member_revoked_session_id}"
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "session_delete.other_user",
@@ -10682,7 +10860,64 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both transports retain credential replacement and session revocation semantics. Password follow-ups refuse the old credential and accept the new one; v2 uses invalid_token/session_expired Problems and string account IDs. Every admitted hash, timestamp and session creation is checked explicitly.",
+            "recorded_in": "internal/scenariocatalog/executor/password_sessions_pairing_test.go",
+            "operation_id": "deleteSession",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/auth/sessions/${member_session_id}",
+              "repeat": 2
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/session_expired$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "session_delete.shape",
@@ -10699,7 +10934,22 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "Both transports retain credential replacement and session revocation semantics. Password follow-ups refuse the old credential and accept the new one; v2 uses invalid_token/session_expired Problems and string account IDs. Every admitted hash, timestamp and session creation is checked explicitly.",
+            "recorded_in": "internal/scenariocatalog/executor/password_sessions_pairing_test.go",
+            "operation_id": "deleteSession",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/auth/sessions/${member_revoked_session_id}"
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "session_delete.no_token",
