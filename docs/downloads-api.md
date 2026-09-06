@@ -1408,3 +1408,30 @@ private caching; they do not advertise byte ranges.
 
 Failures before the body starts use v2 Problems. An upstream failure after bytes
 have been written never appends JSON to the partial asset.
+
+### Bounded native offline manifests
+
+`bounded_manifests` advertises `GET /api/v2/downloads/{id}/manifest` and
+`GET /api/v2/downloads/batches/{batch_id}/manifests`. Both require the current
+profile and device identity and use the existing authorized manifest builder.
+
+A native manifest has `manifest_version: 3`, a string `media_file_id`,
+millisecond UTC `generated_at`, and authenticated `/api/v2/downloads/...`
+artwork/subtitle references. It preserves the complete metadata, stable provider
+identity, integrity, source or artifact media details, chapters, markers and
+selected audio information. Bridge manifests remain version 2 with their
+original v1 references.
+
+Each encoded native manifest is limited to 1 MiB. A single manifest beyond that
+bound returns 413; no fields or arrays are silently truncated. Batch responses
+contain `items`, `skipped` and `page`. Their default `limit` is 3, maximum 10,
+and applies to examined registry rows before metadata is built. This bounds a
+page to ten complete manifests, with per-item `too_large` in `skipped` for an
+oversized manifest. Existing revoked, not_found and error skip reasons remain.
+
+Continue with `page.next_cursor` while `page.has_more` is true, even when
+`items` is empty: skipped rows still advance the cursor. Cursors bind the
+account, profile, access policy, device and batch. Source rows sort by creation
+time and ID descending; this is live paging, so clients reconcile only after a
+complete successful scan. Metadata shared by episodes is cached within each
+page using the existing batch builder.

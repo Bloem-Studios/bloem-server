@@ -20,6 +20,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	catalogsvc "github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/downloads"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/routeinventory"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -1655,6 +1656,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminDeviceFixtureCases()...)
 	cases = append(cases, subtitleAIReadFixtureCases()...)
 	cases = append(cases, downloadRegistryFixtureCases()...)
+	cases = append(cases, downloadManifestFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1682,6 +1684,7 @@ func fixtureDeps() Dependencies {
 	deps := pilotDeps(&fakeProgress{entries: progressRows()}, nil)
 	deps.SubtitleAIReads = &fakeSubtitleAIReads{}
 	deps.Downloads = &fakeDownloadRegistry{}
+	deps.DownloadManifests = &fakeDownloadManifests{row: syntheticDownloadManifest(), page: downloads.ManifestPage{Items: []*downloads.OfflineManifest{syntheticDownloadManifest()}, Skipped: []downloads.SkippedManifest{{DownloadID: "revoked", Reason: "revoked"}}}}
 	deps.EbookProgress = &fakeEbookProgress{}
 	deps.EbookConfig = &fakeEbookConfig{}
 	deps.EbookAnnotations = &fakeEbookAnnotations{}

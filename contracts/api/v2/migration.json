@@ -25614,9 +25614,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/downloads/batches/{batch_id}/manifests",
+        "operation_id": "listDownloadBatchManifests"
       },
       "notes": "Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },
@@ -26512,9 +26512,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/downloads/{id}/manifest",
+        "operation_id": "getDownloadManifest"
       },
       "notes": "Conditionally registered: authMiddleware != nil. v2 registers the operation unconditionally and reports capability state instead."
     },

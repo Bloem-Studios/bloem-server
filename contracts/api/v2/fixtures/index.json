@@ -3734,6 +3734,48 @@
       "body_file": null
     },
     {
+      "name": "download_manifest",
+      "operation_id": "getDownloadManifest",
+      "scenario": "A complete native offline manifest preserves identity, chapters and quality, with string media_file_id and authenticated v2 asset references.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/downloads/entry/manifest",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/DownloadManifest",
+      "body_file": "download_manifest.json"
+    },
+    {
+      "name": "download_manifest_page",
+      "operation_id": "listDownloadBatchManifests",
+      "scenario": "A terminal batch page contains complete manifests and explicit skipped rows.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/downloads/batches/batch/manifests",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/DownloadManifestPage",
+      "body_file": "download_manifest_page.json"
+    },
+    {
       "name": "download_status_event",
       "operation_id": "reportDownloadStatus",
       "scenario": "A local completion report carries its retained event time and registry revision.",

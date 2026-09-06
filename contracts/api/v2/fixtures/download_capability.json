@@ -1,6 +1,7 @@
 {
-  "revision": "7ccb669772ed5ff3",
+  "revision": "effc090c23ca8ae3",
   "state": "available",
+  "bounded_manifests": true,
   "file_delivery": false,
   "enabled": true,
   "download_allowed": true,

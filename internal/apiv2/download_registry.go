@@ -59,6 +59,7 @@ type DownloadDeleteInput struct {
 }
 type DownloadCapability struct {
 	Capability
+	BoundedManifests     bool     `json:"bounded_manifests"`
 	FileDelivery         bool     `json:"file_delivery"`
 	Enabled              bool     `json:"enabled"`
 	DownloadAllowed      bool     `json:"download_allowed"`
@@ -197,6 +198,7 @@ func (reg *Registry) getDownloadCapability(ctx context.Context, _ *struct{}) (*D
 		out.DownloadAllowed = view.DownloadAllowed
 		out.OrderedStatus = true
 		out.FileDelivery = reg.deps.DownloadDelivery != nil
+		out.BoundedManifests = reg.deps.DownloadManifests != nil
 		if reg.deps.DownloadProxyDelivery != nil {
 			out.ProxyDelivery = reg.deps.DownloadProxyDelivery()
 		}
