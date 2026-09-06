@@ -57,13 +57,59 @@ export function useAdminPluginInstallations() {
   });
 }
 
-export function useAdminPlugins() {
-  const repositoriesQuery = useQuery({
-    queryKey: adminKeys.pluginRepositories(),
-    queryFn: () =>
-      api<PluginRepository[]>("/admin/plugins/repositories").then((data) => data ?? []),
+export function useAdminPluginRepositories() {
+  const profileContext = captureProfileRequestContext();
+  return useQuery({
+    queryKey: [
+      ...adminKeys.pluginRepositories(),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+      profileContext?.profileTokenGeneration,
+    ],
+    queryFn: async (): Promise<PluginRepository[]> => {
+      if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const repositories: PluginRepository[] = [];
+      const cursors = new Set<string>();
+      const ids = new Set<string>();
+      let cursor: string | undefined;
+      for (let pageNumber = 0; pageNumber < 100; pageNumber++) {
+        const page = await v2("GET /api/v2/admin/plugins/repositories", {
+          query: { limit: 100, cursor },
+          profileContext,
+        });
+        if (!isCapturedProfileAuthorityActive(profileContext))
+          throw new StaleApiRequestContextError();
+        for (const row of page.items) {
+          const id = Number(row.id);
+          if (!/^[1-9][0-9]*$/.test(row.id) || !Number.isSafeInteger(id) || ids.has(row.id))
+            throw new Error("Invalid repository identifier in response.");
+          if (
+            row.source_kind !== "silo" &&
+            row.source_kind !== "approved_community" &&
+            row.source_kind !== "external"
+          )
+            throw new Error("Unrecognized repository source kind.");
+          ids.add(row.id);
+          repositories.push({ ...row, id, source_kind: row.source_kind });
+        }
+        if (!page.page) throw new Error("Missing repository pagination metadata.");
+        if (!page.page.has_more) return repositories;
+        const next = page.page.next_cursor;
+        if (!next || cursors.has(next)) throw new Error("Invalid repository continuation.");
+        cursors.add(next);
+        cursor = next;
+      }
+      throw new Error("Repository list exceeds this client's page limit.");
+    },
     staleTime: ADMIN_STALE_TIME,
+    enabled: profileContext !== null,
   });
+}
+
+export function useAdminPlugins() {
+  const repositoriesQuery = useAdminPluginRepositories();
 
   const catalogQuery = useQuery({
     queryKey: adminKeys.pluginCatalog(),
@@ -86,6 +132,7 @@ export function useAdminPlugins() {
 
   return {
     repositories: repositoriesQuery.data ?? [],
+    repositoriesError: repositoriesQuery.error,
     catalog: catalogQuery.data ?? [],
     installations: installationsQuery.data ?? [],
     catalogSettings: catalogSettingsQuery.data,

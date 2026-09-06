@@ -138,6 +138,7 @@ type Dependencies struct {
 	AdminServerStatus             AdminServerStatusService
 	AdminEmailTests               AdminEmailTestService
 	AdminDiagnosticDeletes        AdminDiagnosticDeleteService
+	AdminPluginRepositories       AdminPluginRepositoriesService
 	AdminPluginCatalogSettings    AdminPluginCatalogSettingsService
 	AdminRecommendations          AdminRecommendationsService
 	AdminLiteraryWorks            AdminLiteraryWorkService

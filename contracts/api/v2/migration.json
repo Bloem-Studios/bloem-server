@@ -12185,9 +12185,9 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/plugins/repositories",
+        "operation_id": "listAdminPluginRepositories"
       },
       "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
     },

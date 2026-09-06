@@ -545,6 +545,7 @@ func registerAll(reg *Registry) {
 	registerAdminTasks(reg)
 	registerAdminSystem(reg)
 	registerAdminHardwareAcceleration(reg)
+	registerAdminPluginRepositories(reg)
 	registerAdminSettingsInspection(reg)
 	registerAdminSettingsWrite(reg)
 	registerAdminSettingsChecks(reg)

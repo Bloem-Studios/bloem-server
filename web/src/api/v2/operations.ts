@@ -144,6 +144,7 @@ export const v2Operations = {
   "GET /api/v2/admin/playback-routing/capabilities": "getAdminPlaybackRoutingCapabilities",
   "GET /api/v2/admin/plugins/catalog-settings": "getAdminPluginCatalogSettings",
   "GET /api/v2/admin/plugins/catalog-status": "getAdminPluginCatalogStatus",
+  "GET /api/v2/admin/plugins/repositories": "listAdminPluginRepositories",
   "GET /api/v2/admin/policy/decisions": "listAdminPolicyDecisions",
   "GET /api/v2/admin/policy/decisions/{id}": "getAdminPolicyDecision",
   "GET /api/v2/admin/policy/documents": "listAdminPolicyDocuments",

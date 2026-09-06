@@ -1812,3 +1812,20 @@ The actual web settings/overview reader captures service/account/profile/PIN
 authority, rejects late decoded responses and partitions cached success by the
 setter-owned PIN generation. Automatic query retries and authentication replay
 are disabled. This contract does not advertise a new hardware support flag.
+
+### Stored plugin repositories in v2
+
+`GET /api/v2/admin/plugins/repositories` reads stored configuration under the
+acting-admin gate, with demo access restricted. It does not fetch repository
+indexes or require a running plugin. A missing database-backed store returns503;
+private store errors are masked. String IDs, managed status, source kind, configured
+URL and UTC-millisecond timestamps preserve the existing repository meanings.
+
+The collection uses ascending numeric ID and signed continuation bound to account,
+profile/access scope and page limit. Each page enumerates the full stored list;
+this is live pagination, not a snapshot or bounded database query. The web reader
+drains at most100pages and fails visibly on invalid/duplicate identity, unsupported
+source kind or bad continuation rather than publishing a partial list. It captures
+authority and keys cached success by non-secret PIN generation. Existing legacy
+repository writes invalidate the shared key prefix; their transport is unchanged.
+Plugin installation/runtime compatibility remains a separate gate.

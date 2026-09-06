@@ -874,7 +874,7 @@ function CommunityCatalogControl({
 /* ─── Repository management ─────────────────────────────────────── */
 
 function RepositorySection() {
-  const { repositories } = useAdminPlugins();
+  const { repositories, repositoriesError } = useAdminPlugins();
   const createRepository = useCreatePluginRepository();
   const updateRepository = useUpdatePluginRepository();
   const deleteRepository = useDeletePluginRepository();
@@ -908,6 +908,12 @@ function RepositorySection() {
           {showForm ? "Cancel" : "Add"}
         </Button>
       </div>
+
+      {repositoriesError && (
+        <p role="alert" className="text-destructive text-sm">
+          Failed to load plugin repositories.
+        </p>
+      )}
 
       {showForm && (
         <form
