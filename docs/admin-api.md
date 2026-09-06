@@ -1671,3 +1671,15 @@ nonretryable because those notifications are not durable replay receipts. The
 existing web serving toggle captures its displayed settings validator, copied
 patch and profile before an offline pause, disables authentication replay, and
 invalidates the exact compatibility status scope only for the active authority.
+
+### Dashboard capability discovery in v2
+
+`GET /api/v2/admin/dashboard/capabilities` returns the eight dashboard support
+flags to an acting administrator. These describe the v2 surface in the API build;
+they do not promise that a database or other runtime dependency is healthy.
+
+`timeseries`, `playback_activity`, `top_activity`, `health`, `watch_providers` and
+`downloads_stats` are true for the existing v2 dashboard operations.
+`server_layouts` and `log_level_list` are false while the corresponding v2 layout
+lifecycle and multi-level application-log reader remain unavailable. Clients
+must not infer v2 support from the bridge's independently retained capabilities.

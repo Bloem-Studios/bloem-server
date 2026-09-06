@@ -4987,11 +4987,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/dashboard/capabilities",
+        "operation_id": "getAdminDashboardCapabilities"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Build-level v2 support discovery with no runtime health guarantee. Six accepted dashboard features supported; server_layouts and log_level_list remain false until those v2 operations exist. No actual web/Apple/Android caller found; bridge remains unchanged. Independent review pending."
     },
     {
       "listener": "api",
