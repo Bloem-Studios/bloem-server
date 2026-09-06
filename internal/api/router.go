@@ -2052,9 +2052,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if catalogSeedHandler != nil {
 		v2deps.AdminCatalogSources = catalogSeedHandler
+		v2deps.AdminCatalogTransfer = catalogSeedHandler
 	}
 	v2deps.AdminFilesystem = handlers.NewFilesystemHandler()
 	v2deps.AdminResourceSampler = deps.ResourceSampler
+	v2deps.AdminCatalogSearch = adminHandler
 	if deps.TaskManager != nil && deps.DB != nil {
 		v2deps.AdminTasks = deps.TaskManager
 		v2deps.AdminTaskMetrics = metadata.NewRefreshDebtRepository(deps.DB)

@@ -264,7 +264,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range []string{"getAdminBuildInfo", "getAdminSystemResources", "getAdminStoredSettings", "getAdminEffectiveSettings", "getAdminRestartKeys", "getAdminSensitiveSettingsStatus"} {
 		profileToken[id] = true
 	}
-	for _, id := range []string{"listCatalogImportSources", "listLocalCatalogImportSources", "browseAdminFilesystem", "listAdminTasks", "getAdminTask", "runAdminTask", "cancelAdminTask", "getAdminTaskSchedule", "updateAdminTaskSchedule", "listAdminTaskHistory", "getAdminTaskMetrics", "listAdminJobs"} {
+	for _, id := range []string{opExportAdminCatalog, "createCatalogExportJob", "createCatalogImportJob", "importAdminCatalog", "publishCatalogExportJob", "getAdminCatalogSearchStatus", "listCatalogImportSources", "listLocalCatalogImportSources", "browseAdminFilesystem", "listAdminTasks", "getAdminTask", "runAdminTask", "cancelAdminTask", "getAdminTaskSchedule", "updateAdminTaskSchedule", "listAdminTaskHistory", "getAdminTaskMetrics", "listAdminJobs"} {
 		profileToken[id] = true
 	}
 

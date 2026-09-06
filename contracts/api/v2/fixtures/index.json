@@ -575,6 +575,110 @@
       "body_file": "admin_api_key_precondition_required.json"
     },
     {
+      "name": "admin_catalog_export_link",
+      "operation_id": "publishCatalogExportJob",
+      "scenario": "A saved signed URL retains its original seven-day expiry.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/catalog/export-jobs/catalog-job/publish",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminCatalogPublished",
+      "body_file": "admin_catalog_export_link.json"
+    },
+    {
+      "name": "admin_catalog_export_media_refused",
+      "operation_id": "exportAdminCatalog",
+      "scenario": "A synchronous gzip export refuses a JSON-only Accept header before execution; binary success is covered by actual-router byte tests.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/catalog/export",
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{}"
+      },
+      "expected_status": 406,
+      "response_headers": {
+        "Content-Type": "application/problem+json"
+      },
+      "response_media_type": "application/problem+json",
+      "schema": "#/components/schemas/Problem",
+      "body_file": "admin_catalog_export_media_refused.json"
+    },
+    {
+      "name": "admin_catalog_export_queued",
+      "operation_id": "createCatalogExportJob",
+      "scenario": "HTTP 202 acknowledges the persisted export job.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/catalog/export-jobs",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{}"
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "Location": "/api/v2/admin/jobs/catalog-job",
+        "Retry-After": "5"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminTaskJob",
+      "body_file": "admin_catalog_export_queued.json"
+    },
+    {
+      "name": "admin_catalog_import_committed",
+      "operation_id": "importAdminCatalog",
+      "scenario": "Synchronous success reports committed import counts.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/catalog/import",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"local_path\":\"/seed.json.gz\",\"conflict_mode\":\"skip_existing\",\"path_rewrites\":[]}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/ImportResult",
+      "body_file": "admin_catalog_import_committed.json"
+    },
+    {
+      "name": "admin_catalog_import_queued",
+      "operation_id": "createCatalogImportJob",
+      "scenario": "A queued import retains a source reference, not frozen source bytes.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/catalog/import-jobs",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"local_path\":\"/seed.json.gz\",\"conflict_mode\":\"skip_existing\",\"path_rewrites\":[]}"
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Content-Type": "application/json",
+        "Location": "/api/v2/admin/jobs/catalog-job",
+        "Retry-After": "5"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminTaskJob",
+      "body_file": "admin_catalog_import_queued.json"
+    },
+    {
       "name": "admin_catalog_local_sources",
       "operation_id": "listLocalCatalogImportSources",
       "scenario": "Local import files use bounded path-ordered pages.",
@@ -592,6 +696,25 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/CollectionAdminCatalogSource",
       "body_file": "admin_catalog_local_sources.json"
+    },
+    {
+      "name": "admin_catalog_search_status",
+      "operation_id": "getAdminCatalogSearchStatus",
+      "scenario": "Search runtime status preserves large event identities as strings.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/catalog/search/status",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminCatalogSearchRuntimeStatus",
+      "body_file": "admin_catalog_search_status.json"
     },
     {
       "name": "admin_catalog_storage_sources",

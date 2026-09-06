@@ -24,6 +24,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -47,6 +48,7 @@ import { formatDateTime } from "@/lib/datetime";
 
 export default function AdminCatalogMaintenance() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [execution, setExecution] = useState<"queued" | "synchronous">("queued");
   const exportJobsQuery = useCatalogExportJobs();
   const importJobsQuery = useCatalogImportJobs();
   const importSourcesQuery = useCatalogImportSources();
@@ -85,6 +87,7 @@ export default function AdminCatalogMaintenance() {
 
   function resetImportState() {
     setImportSource("local_path");
+    setExecution("queued");
     setLocalPath("/catalog-seeds/");
     setSelectedExportJobId("");
     setSelectedArtifactKey("");
@@ -107,6 +110,7 @@ export default function AdminCatalogMaintenance() {
     importMutation.mutate(
       {
         source: importSource,
+        execution,
         ...(importSource === "local_path"
           ? { local_path: localPath.trim() }
           : importSource === "export_job"
@@ -142,7 +146,7 @@ export default function AdminCatalogMaintenance() {
         <div className="space-y-1">
           <h2 className="text-lg font-semibold">Catalog Import & Export</h2>
           <p className="text-muted-foreground text-sm">
-            Queue full catalog exports, import seeds from uploads or S3, and watch background job
+            Queue full catalog exports, import seeds from files or S3, and watch background job
             progress in one place.
           </p>
         </div>
@@ -176,6 +180,9 @@ export default function AdminCatalogMaintenance() {
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Import Catalog Seed</DialogTitle>
+                <DialogDescription>
+                  Import a catalog seed with optional path rewrites.
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleImportSubmit} className="space-y-4">
                 <div className="space-y-2">
@@ -196,6 +203,26 @@ export default function AdminCatalogMaintenance() {
                       <SelectItem value="remote_url">Remote URL</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Execution</Label>
+                  <Select
+                    value={execution}
+                    onValueChange={(value: "queued" | "synchronous") => setExecution(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="queued">Background job</SelectItem>
+                      <SelectItem value="synchronous">Import and wait</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-muted-foreground text-xs">
+                    {execution === "queued"
+                      ? "A worker reads the source later. Local files must be available on that worker."
+                      : "Keep this request open until the import commits. If the connection is lost, check the catalog before trying again."}
+                  </p>
                 </div>
                 {importSource === "local_path" ? (
                   <div className="space-y-2">
@@ -616,7 +643,7 @@ export default function AdminCatalogMaintenance() {
                         onClick={() => publishMutation.mutate(job.id)}
                         disabled={publishMutation.isPending}
                       >
-                        Publish
+                        Create seven-day link
                       </Button>
                     ) : null}
                     {job.public_url ? (

@@ -1,12 +1,11 @@
+import { adminTaskJobFromV2 } from "@/api/v2/adminTasks";
 import { useAdminTaskJobs } from "@/hooks/queries/admin/taskJobs";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, getAccessToken } from "@/api/client";
+import { api } from "@/api/client";
 import type {
   AdminJob,
-  ApiError,
   CatalogSeedExportRequest,
   CatalogSeedImportRequest,
-  CatalogSeedImportResponse,
   CreateLibraryRequest,
   DeleteLibraryRootOverrideRequest,
   Library,
@@ -44,144 +43,48 @@ import { usePageActivity } from "@/hooks/usePageActivity";
 
 const ADMIN_STALE_TIME = 30_000;
 
-class AdminJobRequestError extends Error {
-  status?: number;
-  unmatchedRoots?: string[];
-  activeJobId?: string;
-  activeJob?: AdminJob;
-
-  constructor(
-    message: string,
-    status?: number,
-    unmatchedRoots?: string[],
-    activeJobId?: string,
-    activeJob?: AdminJob,
-  ) {
-    super(message);
-    this.name = "AdminJobRequestError";
-    this.status = status;
-    this.unmatchedRoots = unmatchedRoots;
-    this.activeJobId = activeJobId;
-    this.activeJob = activeJob;
-  }
+function catalogImportBody(
+  body: CatalogSeedImportRequest,
+): V2Body<"POST /api/v2/admin/catalog/import"> {
+  return {
+    ...(body.source === "local_path"
+      ? { local_path: body.local_path }
+      : body.source === "export_job"
+        ? { export_job_id: body.export_job_id }
+        : body.source === "bucket_artifact"
+          ? { artifact_key: body.artifact_key }
+          : { remote_url: body.remote_url }),
+    conflict_mode: body.conflict_mode,
+    path_rewrites: body.path_rewrites,
+  };
 }
-
-function buildAdminHeaders() {
-  const headers: Record<string, string> = {};
-  const token = getAccessToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  return headers;
-}
-
-async function parseAdminJobError(res: Response): Promise<never> {
-  let apiErr: ApiError = { error: "unknown", message: res.statusText };
-  try {
-    apiErr = (await res.json()) as ApiError;
-  } catch {
-    // Ignore JSON parse failures for non-JSON error bodies.
-  }
-  throw new AdminJobRequestError(
-    apiErr.message || "Admin job request failed",
-    res.status,
-    apiErr.unmatched_roots,
-    apiErr.active_job_id,
-    apiErr.active_job,
+async function createCatalogExportJob(body?: CatalogSeedExportRequest): Promise<AdminJob> {
+  return adminTaskJobFromV2(
+    await v2("POST /api/v2/admin/catalog/export-jobs", {
+      body: { library_ids: body?.library_ids?.map(String) },
+      retryAuthentication: false,
+    }),
   );
 }
-
-async function createCatalogExportJob(body?: CatalogSeedExportRequest): Promise<AdminJob> {
-  const res = await fetch("/api/v1/admin/catalog/export-jobs", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...buildAdminHeaders(),
-    },
-    body: JSON.stringify(body ?? {}),
-  });
-
-  if (!res.ok) {
-    await parseAdminJobError(res);
-  }
-
-  return (await res.json()) as AdminJob;
-}
-
 async function createCatalogImportJob(body: CatalogSeedImportRequest): Promise<AdminJob> {
-  const form = new FormData();
-  if (body.source === "local_path" && body.local_path) {
-    form.append("local_path", body.local_path);
-  }
-  if (body.source === "export_job" && body.export_job_id) {
-    form.append("export_job_id", body.export_job_id);
-  }
-  if (body.source === "bucket_artifact" && body.artifact_key) {
-    form.append("artifact_key", body.artifact_key);
-  }
-  if (body.source === "remote_url" && body.remote_url) {
-    form.append("remote_url", body.remote_url);
-  }
-  form.append("conflict_mode", body.conflict_mode);
-  form.append("path_rewrites", JSON.stringify(body.path_rewrites));
-
-  const res = await fetch("/api/v1/admin/catalog/import-jobs", {
-    method: "POST",
-    headers: buildAdminHeaders(),
-    body: form,
-  });
-
-  if (!res.ok) {
-    await parseAdminJobError(res);
-  }
-
-  return (await res.json()) as AdminJob;
+  return adminTaskJobFromV2(
+    await v2("POST /api/v2/admin/catalog/import-jobs", {
+      body: catalogImportBody(body),
+      retryAuthentication: false,
+    }),
+  );
 }
-
-async function importCatalogSeed(
-  body: CatalogSeedImportRequest,
-): Promise<CatalogSeedImportResponse> {
-  const form = new FormData();
-  if (body.source === "local_path" && body.local_path) {
-    form.append("local_path", body.local_path);
-  }
-  if (body.source === "export_job" && body.export_job_id) {
-    form.append("export_job_id", body.export_job_id);
-  }
-  if (body.source === "bucket_artifact" && body.artifact_key) {
-    form.append("artifact_key", body.artifact_key);
-  }
-  if (body.source === "remote_url" && body.remote_url) {
-    form.append("remote_url", body.remote_url);
-  }
-  form.append("conflict_mode", body.conflict_mode);
-  form.append("path_rewrites", JSON.stringify(body.path_rewrites));
-
-  const res = await fetch("/api/v1/admin/catalog/import", {
-    method: "POST",
-    headers: buildAdminHeaders(),
-    body: form,
+async function importCatalogSeed(body: CatalogSeedImportRequest) {
+  return v2("POST /api/v2/admin/catalog/import", {
+    body: catalogImportBody(body),
+    retryAuthentication: false,
   });
-
-  if (!res.ok) {
-    await parseAdminJobError(res);
-  }
-
-  const imported: CatalogSeedImportResponse = await res.json();
-  return imported;
 }
-
-async function publishCatalogExportJob(id: string): Promise<AdminJob> {
-  const res = await fetch(`/api/v1/admin/catalog/export-jobs/${encodeURIComponent(id)}/publish`, {
-    method: "POST",
-    headers: buildAdminHeaders(),
+async function publishCatalogExportJob(id: string) {
+  return v2("POST /api/v2/admin/catalog/export-jobs/{id}/publish", {
+    path: { id },
+    retryAuthentication: false,
   });
-
-  if (!res.ok) {
-    await parseAdminJobError(res);
-  }
-
-  return (await res.json()) as AdminJob;
 }
 
 export function fetchAdminLibraries(signal?: AbortSignal): Promise<Library[]> {
@@ -950,13 +853,14 @@ export function useLocalImportSources() {
 export function useCreateCatalogExportJob() {
   const queryClient = useQueryClient();
   return useMutation({
+    retry: false,
     mutationFn: (body?: CatalogSeedExportRequest) => createCatalogExportJob(body),
     onSuccess: () => {
       toast.success("Catalog export queued");
       queryClient.invalidateQueries({ queryKey: adminKeys.jobs("catalog_export") });
     },
     onError: (err) => {
-      if (err instanceof AdminJobRequestError && err.activeJobId) {
+      if (err instanceof V2ProblemError && err.problem.status === 409) {
         toast.error(err.message);
         queryClient.invalidateQueries({ queryKey: adminKeys.jobs("catalog_export") });
         return;
@@ -969,9 +873,10 @@ export function useCreateCatalogExportJob() {
 export function usePublishCatalogExportJob() {
   const queryClient = useQueryClient();
   return useMutation({
+    retry: false,
     mutationFn: (id: string) => publishCatalogExportJob(id),
     onSuccess: () => {
-      toast.success("Catalog export published");
+      toast.success("Seven-day download link saved");
       queryClient.invalidateQueries({ queryKey: adminKeys.jobs("catalog_export") });
     },
     onError: (err) => {
@@ -983,21 +888,13 @@ export function usePublishCatalogExportJob() {
 export function useImportCatalogSeed() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (body: CatalogSeedImportRequest) => {
-      try {
-        const job = await createCatalogImportJob(body);
-        return { mode: "job" as const, job };
-      } catch (err) {
-        if (
-          err instanceof AdminJobRequestError &&
-          (err.status === 404 ||
-            (body.source !== "export_job" && err.message === "Job repository is not configured"))
-        ) {
-          const result = await importCatalogSeed(body);
-          return { mode: "sync" as const, result };
-        }
-        throw err;
-      }
+    retry: false,
+    mutationFn: async (
+      body: CatalogSeedImportRequest & { execution?: "queued" | "synchronous" },
+    ) => {
+      if (body.execution === "synchronous")
+        return { mode: "sync" as const, result: await importCatalogSeed(body) };
+      return { mode: "job" as const, job: await createCatalogImportJob(body) };
     },
     onSuccess: (payload) => {
       if (payload.mode === "job") {
@@ -1011,10 +908,11 @@ export function useImportCatalogSeed() {
       queryClient.invalidateQueries({ queryKey: adminKeys.libraries() });
     },
     onError: (err) => {
-      if (err instanceof AdminJobRequestError && err.unmatchedRoots?.length) {
-        toast.error(
-          `${err.message}: ${err.unmatchedRoots.slice(0, 2).join(", ")}${err.unmatchedRoots.length > 2 ? "..." : ""}`,
-        );
+      if (
+        err instanceof V2ProblemError &&
+        err.problem.errors?.some((error) => error.code === "path_rewrite_required")
+      ) {
+        toast.error([err.message, ...err.problem.errors.map((error) => error.detail)].join(" "));
         return;
       }
       toast.error(err instanceof Error ? err.message : "Failed to import catalog seed");

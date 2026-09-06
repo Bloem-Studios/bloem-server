@@ -37,3 +37,54 @@ directory returns not found.
 These are web administration utilities. The Apple and Android clients have no
 callers for them, and the Jellyfin compatibility surface has no equivalent catalog
 seed or administrator filesystem operation.
+
+## Export and import
+
+| Endpoint | Acknowledgment |
+| --- | --- |
+| `POST /api/v2/admin/catalog/export` | `200` with synchronous gzip bytes |
+| `POST /api/v2/admin/catalog/export-jobs` | `202` after a queued export job is persisted |
+| `POST /api/v2/admin/catalog/import` | `200` after the catalog import transaction commits |
+| `POST /api/v2/admin/catalog/import-jobs` | `202` after a queued import job is persisted |
+| `POST /api/v2/admin/catalog/export-jobs/{id}/publish` | `200` with a saved signed download URL |
+| `GET /api/v2/admin/catalog/search/status` | Current catalog search runtime status |
+
+Export requests use JSON `{}` for the entire catalog or `library_ids` containing
+opaque string IDs. Direct export declares `application/gzip` as its success
+representation; request it with an appropriate `Accept` header. A JSON-only
+`Accept` is refused with `406`. Errors still use `application/problem+json`.
+Other operations retain JSON negotiation. Large exports should use background
+jobs, whose exporter writes through a temporary file before storage upload.
+
+Import requests use JSON with exactly one of `local_path`, `export_job_id`,
+`artifact_key`, or `remote_url`, plus `conflict_mode` (`skip_existing` or
+`overwrite_existing`) and `path_rewrites` (an array of `from`/`to` pairs, possibly
+empty). Null fields and incomplete rewrite pairs are rejected before execution.
+Missing root rewrites produce a validation problem with `path_rewrite_required`
+field errors that explain the affected source roots.
+
+Direct import runs the existing catalog transaction and returns its committed
+counts. If a response is lost, callers must inspect the catalog before deciding
+whether to submit again. The web explicitly offers background execution or
+"Import and wait"; it does not fall back between them after an error. All transfer
+mutations disable automatic mutation and authentication retries.
+
+Queued responses contain the existing typed administrator job and a `Location`
+pointing to `GET /api/v2/admin/jobs/{id}`. An active job of the same kind produces
+`409`; when available, `Location` identifies that active job. Persisting a job
+acknowledges scheduling, not import/export completion or exactly-once execution.
+The worker later opens the local path, downloads the remote URL, or reads the
+storage object. Source bytes are not frozen at submission. Local paths must be
+available on the worker that claims the job; remote content may change between
+submission and execution.
+
+The publish operation requires a completed export artifact. It saves a signed URL
+with a seven-day signature lifetime and returns `job_id`, `url`, and `expires_at`.
+It does not change the storage ACL. Repeating it returns the saved URL and original
+expiry, even after expiry; it does not renew the link. Artifact retention or
+removal can make the link unavailable before its signature expires.
+
+Search status retains the existing runtime/provider/index information, uses UTC
+millisecond instants, and represents `last_processed_event_id` as a string. Its
+task links and media-type coverage groups are finite collections. These transfer
+and status operations have no Apple, Android, or Jellyfin compatibility callers.

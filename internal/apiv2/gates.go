@@ -293,16 +293,23 @@ func defaultHeaders(ctx huma.Context, next func(huma.Context)) {
 
 // normalizeAccept implements the contract's negotiation rule in front of
 // Huma's exact-match negotiation: a missing Accept, `*/*`, `application/*` or
-// an explicit application/json select JSON; anything else is the 406 problem.
+// an explicit application/json select JSON. An operation declaring gzip as its
+// sole success representation negotiates gzip instead. Refused media is 406.
 // NoFormatFallback stays set so Huma agrees if a request reaches it anyway.
 func normalizeAccept(ctx huma.Context, next func(huma.Context)) {
 	r, w := humachi.Unwrap(ctx)
 	accept := r.Header.Get("Accept")
-	if accept != "" && !acceptsJSON(accept) {
+	representation := mediaTypeJSON
+	// A declared gzip success is written directly by the export callback.
+	// Errors still use Problem JSON; every other operation keeps JSON negotiation.
+	if response := ctx.Operation().Responses["200"]; response != nil && len(response.Content) == 1 && response.Content[mediaTypeCatalogGzip] != nil {
+		representation = mediaTypeCatalogGzip
+	}
+	if accept != "" && !acceptsRepresentation(accept, representation) {
 		writeProblem(w, r, NewProblem(TypeNotAcceptable, "No acceptable representation is available for this operation."))
 		return
 	}
-	r.Header.Set("Accept", mediaTypeJSON)
+	r.Header.Set("Accept", representation)
 	next(ctx)
 }
 
@@ -311,6 +318,10 @@ func normalizeAccept(ctx huma.Context, next func(huma.Context)) {
 // decides, so "application/json;q=0, */*" refuses JSON even though the
 // wildcard would accept it, and "*/*;q=0, application/json" accepts it.
 func acceptsJSON(accept string) bool {
+	return acceptsRepresentation(accept, mediaTypeJSON)
+}
+
+func acceptsRepresentation(accept, representation string) bool {
 	bestSpecificity, bestQ := 0, 0.0
 	for _, part := range strings.Split(accept, ",") {
 		fields := strings.Split(part, ";")
@@ -326,7 +337,7 @@ func acceptsJSON(accept string) bool {
 		}
 		var specificity int
 		switch mt {
-		case mediaTypeJSON:
+		case representation:
 			specificity = 3
 		case "application/*":
 			specificity = 2

@@ -3133,11 +3133,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/catalog/export",
+        "operation_id": "exportAdminCatalog"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil; catalogSeedHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
     },
     {
       "listener": "api",
@@ -3193,11 +3193,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/catalog/export-jobs",
+        "operation_id": "createCatalogExportJob"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; catalogSeedHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
     },
     {
       "listener": "api",
@@ -3253,11 +3253,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/catalog/export-jobs/{id}/publish",
+        "operation_id": "publishCatalogExportJob"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; catalogSeedHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
     },
     {
       "listener": "api",
@@ -3313,11 +3313,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/catalog/import",
+        "operation_id": "importAdminCatalog"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; catalogSeedHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
     },
     {
       "listener": "api",
@@ -3373,11 +3373,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/catalog/import-jobs",
+        "operation_id": "createCatalogImportJob"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; catalogSeedHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
     },
     {
       "listener": "api",
@@ -3558,11 +3558,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/catalog/search/status",
+        "operation_id": "getAdminCatalogSearchStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed catalog transfer and search status with generated web adoption; review pending. Direct export remains synchronous gzip; direct import returns after commit; queued operations persist jobs but do not freeze source bytes. Publishing stores a seven-day signed URL without changing ACLs or renewing an existing link. Mutations disable automatic request and authentication retries. Search event IDs are strings. No native clients or Jellyfin equivalents found."
     },
     {
       "listener": "api",

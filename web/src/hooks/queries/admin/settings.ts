@@ -1,3 +1,4 @@
+import { v2, type V2Result } from "@/api/v2/request";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { v2 } from "@/api/v2/request";
@@ -30,64 +31,7 @@ function affectsOverlayConfig(key: string) {
   return (OVERLAY_CONFIG_SERVER_KEYS as readonly string[]).includes(key);
 }
 
-export interface CatalogSearchStatus {
-  configured_provider: string;
-  active_provider: string;
-  degraded: boolean;
-  degraded_reason?: string;
-  meilisearch: {
-    configured: boolean;
-    healthy: boolean;
-    circuit_state: string;
-    circuit_reason?: string;
-    circuit_until?: string;
-    last_fallback?: string;
-    timeout_ms: number;
-    matching_strategy: string;
-    index_types?: string[];
-    semantic_enabled: boolean;
-    binary_quantized: boolean;
-    semantic_ratio: number;
-    embedder: string;
-  };
-  index: {
-    active_index_uid: string;
-    schema_version: number;
-    expected_schema_version: number;
-    rebuild_required: boolean;
-    document_count: number;
-    vector_document_count: number;
-    pending_events: number;
-    dead_lettered_events: number;
-    last_rebuild_at?: string;
-    last_sync_at?: string;
-    last_processed_event_id: number;
-  };
-  semantic?: {
-    ready: boolean;
-    disabled_reason?: string;
-    vector_coverage_ratio: number;
-    coverage_updated_at?: string;
-    per_type?: Array<{
-      type: string;
-      eligible: number;
-      vectorized: number;
-      vector_coverage_ratio: number;
-      ready: boolean;
-    }>;
-    capability: {
-      ok: boolean;
-      reason?: string;
-      embedder?: string;
-      dimensions?: number;
-    };
-  };
-  tasks: Array<{
-    key: string;
-    name: string;
-    href: string;
-  }>;
-}
+export type CatalogSearchStatus = V2Result<"GET /api/v2/admin/catalog/search/status">;
 
 export function useAdminServerSettings() {
   return useQuery({
@@ -245,7 +189,7 @@ export function useCheckAdminSettingsConnection() {
 export function useCatalogSearchStatus(enabled = true) {
   return useQuery({
     queryKey: adminKeys.catalogSearchStatus(),
-    queryFn: () => api<CatalogSearchStatus>("/admin/catalog/search/status"),
+    queryFn: ({ signal }) => v2("GET /api/v2/admin/catalog/search/status", { signal }),
     enabled,
     staleTime: 15_000,
     refetchInterval: (query) => (query.state.data?.index.rebuild_required ? 2_000 : false),
