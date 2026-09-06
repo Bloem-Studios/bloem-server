@@ -997,3 +997,17 @@ v1 400 assertions remain unchanged; v2 returns 422 validation Problems. Four
 HTTP refusals use independent transport reseeds and eight full eight-table
 snapshots (64 observations), with no exemptions or successful top-up. Required
 DSN, pre-constructor occupancy and exact selector guards remain mandatory.
+
+### Frozen login input refusal pairs
+
+`make test-scenario-login-input` requires `login.unknown_provider`,
+`login.missing_fields` and `login.malformed_json`, preserving every original
+request, principal and assertion. V2 reports unknown provider credentials as
+401 invalid_token, empty required fields as 422 validation_failed, and malformed
+JSON as 400 malformed_request. Six transport requests reseed independently;
+twelve combined snapshots compare complete users, profiles, API-key, settings,
+login-session and device-request tables (72 observations). All rows must remain
+unchanged, and responses must omit token pairs. Required DSN, pre-setup scratch
+and API-key occupancy guards and fixed-selector checks fail closed. This scope
+does not exercise valid credentials, provider calls, enrollment or outages.
+These three original frozen pairs remain separate from NEW acceptance.

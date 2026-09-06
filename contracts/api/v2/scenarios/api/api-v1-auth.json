@@ -476,7 +476,68 @@
             "database"
           ],
           "notes": "A bad provider value is reported as bad credentials (401) rather than 400; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports unknown provider credentials as invalid_token, empty required fields as 422 validation_failed, and malformed JSON as 400 malformed_request. Refusals create no token pair and leave stored state unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/login_input_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "${member_username}",
+                "password": "${member_password}",
+                "provider": "no-such-provider"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/invalid_token$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.missing_fields",
@@ -532,7 +593,67 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports unknown provider credentials as invalid_token, empty required fields as 422 validation_failed, and malformed JSON as 400 malformed_request. Refusals create no token pair and leave stored state unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/login_input_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "body": {
+                "username": "",
+                "password": ""
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.malformed_json",
@@ -585,7 +706,64 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 reports unknown provider credentials as invalid_token, empty required fields as 422 validation_failed, and malformed JSON as 400 malformed_request. Refusals create no token pair and leave stored state unchanged.",
+            "recorded_in": "internal/scenariocatalog/executor/login_input_pairing_test.go",
+            "operation_id": "login",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/login",
+              "raw_body": "{not json"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/malformed_request$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "login.unknown_fields_ignored",
