@@ -541,3 +541,16 @@ Required DSN, the pre-setup occupancy guard and the fixed selector fail closed.
 API-key-auth usage metadata remains outside this cohort. These six frozen pairs
 are separate from NEW scenarios; no provisioning or scope-enforcement mutation
 is exercised.
+
+### Frozen API-key creation refusal pairs
+
+`make test-scenario-api-key-create-refusals` requires five original cases:
+`keys_create.bad_scope`, `keys_create.missing_label`, `keys_create.malformed`,
+`keys_create.demo` and `keys_create.no_token`. Original requests, settings and
+expectations remain unchanged. V2 explicitly records validation 422, malformed
+JSON 400 and demo/authentication 403/401 Problem Details. Ten real-router
+transport requests use per-transport reseeding and 20 full API-key-table
+snapshots to prove all three fixture rows remain unchanged. Required DSN,
+pre-setup occupancy and fixed-selector gates fail closed. No successful
+credential creation, API-key-auth metadata update or external call is exercised.
+These five frozen pairs remain separate from NEW acceptance.

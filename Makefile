@@ -538,3 +538,8 @@ test-scenario-api-key-lists:
 .PHONY: test-scenario-api-key-scopes
 test-scenario-api-key-scopes:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAPIKeyScopesAcceptance$$' ./internal/scenariocatalog/executor
+
+# Five outstanding frozen API-key creation refusals with unchanged rows.
+.PHONY: test-scenario-api-key-create-refusals
+test-scenario-api-key-create-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAPIKeyCreateRefusalAcceptance$$' ./internal/scenariocatalog/executor

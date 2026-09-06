@@ -830,7 +830,61 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects invalid scope and missing label with validation422, malformed JSON with400, and demo/unauthenticated requests with403/401 Problem Details; no credential row may change on any refusal.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_create_refusal_pairing_test.go",
+            "operation_id": "createPersonalAPIKey",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/api-keys",
+              "body": {
+                "label": "x",
+                "scopes": [
+                  "admin:everything"
+                ]
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_create.missing_label",
@@ -885,7 +939,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects invalid scope and missing label with validation422, malformed JSON with400, and demo/unauthenticated requests with403/401 Problem Details; no credential row may change on any refusal.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_create_refusal_pairing_test.go",
+            "operation_id": "createPersonalAPIKey",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/api-keys",
+              "body": {
+                "label": ""
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_create.malformed",
@@ -938,7 +1043,56 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects invalid scope and missing label with validation422, malformed JSON with400, and demo/unauthenticated requests with403/401 Problem Details; no credential row may change on any refusal.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_create_refusal_pairing_test.go",
+            "operation_id": "createPersonalAPIKey",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/api-keys",
+              "raw_body": "x"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/malformed_request$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_create.api_key_forbidden",
@@ -1026,7 +1180,58 @@
           "settings": {
             "demo.enabled": "true"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects invalid scope and missing label with validation422, malformed JSON with400, and demo/unauthenticated requests with403/401 Problem Details; no credential row may change on any refusal.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_create_refusal_pairing_test.go",
+            "operation_id": "createPersonalAPIKey",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/api-keys",
+              "body": {
+                "label": "x"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_create.shape",
@@ -1110,7 +1315,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects invalid scope and missing label with validation422, malformed JSON with400, and demo/unauthenticated requests with403/401 Problem Details; no credential row may change on any refusal.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_create_refusal_pairing_test.go",
+            "operation_id": "createPersonalAPIKey",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/api-keys",
+              "body": {
+                "label": "x"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },
