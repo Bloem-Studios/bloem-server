@@ -924,3 +924,11 @@ row unchanged, including approval and profile state. Required DSN, pre-setup
 scratch/API-key occupancy and fixed-selector gates fail closed. No successful
 handoff, enrollment or outage substitution is exercised. These five frozen
 pairs remain separate from NEW acceptance.
+
+`make test-scenario-invite-code-delete-refusals` selects only
+`codes_delete.admin_secondary_profile`, `codes_delete.non_admin` and
+`codes_delete.no_token`. Original symbolic IDs, public literal ID, principals and
+403/403/401 assertions remain unchanged. Six HTTP refusals use independent
+transport reseeds and twelve full eight-table snapshots (96 observations), with
+no field exemptions. No successful deletion or other cohort runs. Required DSN,
+pre-constructor occupancy and exact selector guards remain mandatory.

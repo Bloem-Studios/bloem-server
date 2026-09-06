@@ -2253,7 +2253,71 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves original administrator and profile refusal statuses using Problem Details. No invitation/code or account state changes.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_refusals_pairing_test.go",
+            "operation_id": "deleteAdminInviteCode",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_id}"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Admin access requires the account's primary profile"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_delete.non_admin",
@@ -2305,7 +2369,71 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves original administrator and profile refusal statuses using Problem Details. No invitation/code or account state changes.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_refusals_pairing_test.go",
+            "operation_id": "deleteAdminInviteCode",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_id}"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Admin access required"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_delete.no_token",
@@ -2357,7 +2485,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves original administrator and profile refusal statuses using Problem Details. No invitation/code or account state changes.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_refusals_pairing_test.go",
+            "operation_id": "deleteAdminInviteCode",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/1"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     }
