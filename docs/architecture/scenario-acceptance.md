@@ -1121,3 +1121,12 @@ keys, settings, login sessions, device requests, invitations and invite codes
 Required DSN, pre-constructor occupancy and fixed-selector guards remain enforced.
 No signup success, enrollment, external provider or outage is exercised. These
 two original frozen pairs remain separate from NEW acceptance.
+
+`make test-scenario-admin-invitation-resend-targets` selects only
+`adm_inv_resend.bad_id` and `adm_inv_resend.not_found`. Original administrator
+requests, target IDs and v1 400/404 assertions remain unchanged. V2 returns 422
+for the invalid path and 404 for the missing record. Four HTTP refusals use
+independent transport reseeds and eight full snapshots of users, user_profiles,
+api_keys, server_settings, auth_sessions, device_login_requests, invitations and
+invite_codes (64 table observations), without exemptions. Required DSN and
+pre-constructor occupancy guards run before setup. No successful resend occurs.

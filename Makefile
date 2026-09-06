@@ -743,3 +743,7 @@ test-scenario-admin-invitation-input-refusals:
 .PHONY: test-scenario-signup-refusals
 test-scenario-signup-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSignupRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-admin-invitation-resend-targets
+test-scenario-admin-invitation-resend-targets:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationResendTargetsAcceptance$$' ./internal/scenariocatalog/executor

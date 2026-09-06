@@ -1719,7 +1719,71 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 refuses the original invalid or missing invitation target using typed Problems before resend. No stored state changes or mail delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_resend_targets_pairing_test.go",
+            "operation_id": "resendAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations/999999/resend"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invitation not found or no longer available."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_resend.bad_id",
@@ -1771,7 +1835,71 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 refuses the original invalid or missing invitation target using typed Problems before resend. No stored state changes or mail delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_resend_targets_pairing_test.go",
+            "operation_id": "resendAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations/abc/resend"
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/errors",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "errors"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_resend.shape",
