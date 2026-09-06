@@ -2441,7 +2441,7 @@
           "v2_expectation": {
             "kind": "intentional_difference",
             "summary": "V2 preserves original administrator and profile refusal statuses using Problem Details. No invitation/code or account state changes.",
-            "recorded_in": "internal/scenariocatalog/executor/invite_code_refusals_pairing_test.go",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_delete_refusals_pairing_test.go",
             "operation_id": "deleteAdminInviteCode",
             "method": "DELETE",
             "request": {
@@ -2557,7 +2557,7 @@
           "v2_expectation": {
             "kind": "intentional_difference",
             "summary": "V2 preserves original administrator and profile refusal statuses using Problem Details. No invitation/code or account state changes.",
-            "recorded_in": "internal/scenariocatalog/executor/invite_code_refusals_pairing_test.go",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_delete_refusals_pairing_test.go",
             "operation_id": "deleteAdminInviteCode",
             "method": "DELETE",
             "request": {
@@ -2673,7 +2673,7 @@
           "v2_expectation": {
             "kind": "intentional_difference",
             "summary": "V2 preserves original administrator and profile refusal statuses using Problem Details. No invitation/code or account state changes.",
-            "recorded_in": "internal/scenariocatalog/executor/invite_code_refusals_pairing_test.go",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_delete_refusals_pairing_test.go",
             "operation_id": "deleteAdminInviteCode",
             "method": "DELETE",
             "request": {
