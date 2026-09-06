@@ -20685,13 +20685,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/auth/oauth/{install_id}/callback",
         "operation_id": "finishOAuthCallback"
       },
-      "notes": "Implemented finite raw browser OAuth redirects on accepted shared foundation, using existing Init/Callback/Complete application methods. Independent review pending. V2 init passes its own callback URI; providers must register that URI before using the new flow. Signed state/install binding, one-time store consumption, persisted provider state/redirect URI, sanitized next path and one-time completion exchange retained. Init is non_retryable; no PKCE/browser-session binding or account-linking feature invented. Web form posts to v2; no native in-app handshake caller. V1 unchanged. Capability GET /api/v2/auth/oauth/capabilities."
+      "notes": "Implemented finite raw browser OAuth redirects on accepted shared foundation, using existing Init/Callback/Complete application methods. Independently reviewed and accepted. V2 init passes its own callback URI; providers must register that URI before using the new flow. Signed state/install binding, one-time store consumption, persisted provider state/redirect URI, sanitized next path and one-time completion exchange retained. Init is non_retryable; no PKCE/browser-session binding or account-linking feature invented. Web form posts to v2; no native in-app handshake caller. V1 unchanged. Capability GET /api/v2/auth/oauth/capabilities."
     },
     {
       "listener": "api",
@@ -20740,13 +20740,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "POST",
         "path": "/api/v2/auth/oauth/{install_id}/init",
         "operation_id": "initOAuthLogin"
       },
-      "notes": "Implemented finite raw browser OAuth redirects on accepted shared foundation, using existing Init/Callback/Complete application methods. Independent review pending. V2 init passes its own callback URI; providers must register that URI before using the new flow. Signed state/install binding, one-time store consumption, persisted provider state/redirect URI, sanitized next path and one-time completion exchange retained. Init is non_retryable; no PKCE/browser-session binding or account-linking feature invented. Web form posts to v2; no native in-app handshake caller. V1 unchanged. Capability GET /api/v2/auth/oauth/capabilities."
+      "notes": "Implemented finite raw browser OAuth redirects on accepted shared foundation, using existing Init/Callback/Complete application methods. Independently reviewed and accepted. V2 init passes its own callback URI; providers must register that URI before using the new flow. Signed state/install binding, one-time store consumption, persisted provider state/redirect URI, sanitized next path and one-time completion exchange retained. Init is non_retryable; no PKCE/browser-session binding or account-linking feature invented. Web form posts to v2; no native in-app handshake caller. V1 unchanged. Capability GET /api/v2/auth/oauth/capabilities."
     },
     {
       "listener": "api",
