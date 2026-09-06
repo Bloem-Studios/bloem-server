@@ -789,3 +789,17 @@ with every row unchanged. Required DSN, pre-setup scratch/API-key occupancy and
 fixed-selector gates fail closed. No successful token rotation, real authentication,
 enrollment or outage substitution is exercised. These four frozen pairs remain
 separate from NEW acceptance.
+
+### Frozen administrator invitation-list refusals
+
+`make test-scenario-admin-invitation-refusals` requires exactly
+`adm_inv_list.admin_secondary_profile`, `adm_inv_list.non_admin` and
+`adm_inv_list.no_token`. Original requests and assertions remain unchanged;
+v2 retains 403 for the administrator secondary profile and non-admin principal,
+and 401 without authentication, using Problem Details. Each transport reseeds
+independently and compares every row of users, profiles, API keys, settings,
+login sessions, device-login requests, invitations and invite codes before/after.
+Six HTTP requests require 12 combined snapshots (96 full-table observations).
+Required DSN and scratch/API-key occupancy guards run before construction.
+No successful list, invitation creation, send, redemption or account action is
+exercised. These three original pairs remain separate from NEW acceptance.

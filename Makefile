@@ -618,3 +618,7 @@ test-scenario-device-start-refusals:
 .PHONY: test-scenario-refresh-refusals
 test-scenario-refresh-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredRefreshRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-admin-invitation-refusals
+test-scenario-admin-invitation-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationRefusalsAcceptance$$' ./internal/scenariocatalog/executor
