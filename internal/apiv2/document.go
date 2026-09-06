@@ -499,6 +499,7 @@ func registerAll(reg *Registry) {
 	registerWatchTogetherSuggestions(reg)
 	registerWatchTogetherSuggestionDelete(reg)
 	registerWatchTogetherSuggestionCreate(reg)
+	registerWatchTogetherSuggestionPromote(reg)
 	registerWatchTogetherClose(reg)
 	registerWatchTogetherRoomRead(reg)
 	registerWatchTogetherPolicy(reg)

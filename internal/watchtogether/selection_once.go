@@ -17,6 +17,16 @@ type selectionOnceStore interface {
 }
 
 func (r *Repository) SelectOnce(ctx context.Context, roomID string, user int, profile string, selection SelectItemInput, viaVote bool, expected int64, now time.Time) (*Room, bool, error) {
+	return r.selectOnce(ctx, roomID, user, profile, selection, viaVote, expected, now, false)
+}
+
+// PromoteOnce preserves the currently selected content variant. Suggestions
+// identify content only; resolving a new default file must not restart it.
+func (r *Repository) PromoteOnce(ctx context.Context, roomID string, user int, profile string, selection SelectItemInput, viaVote bool, expected int64, now time.Time) (*Room, bool, error) {
+	return r.selectOnce(ctx, roomID, user, profile, selection, viaVote, expected, now, true)
+}
+
+func (r *Repository) selectOnce(ctx context.Context, roomID string, user int, profile string, selection SelectItemInput, viaVote bool, expected int64, now time.Time, contentOnly bool) (*Room, bool, error) {
 	if r == nil || r.pool == nil {
 		return nil, false, fmt.Errorf("watch together repository unavailable")
 	}
@@ -38,7 +48,7 @@ func (r *Repository) SelectOnce(ctx context.Context, roomID string, user int, pr
 	if room.SelectionMode == RoomSelectionModeVote && !viaVote {
 		return nil, false, ErrVoteRoomSelection
 	}
-	identical := room.SelectedContentID != nil && *room.SelectedContentID == selection.ContentID && equalSelectionID(room.SelectedFileID, selection.FileID) && equalSelectionID(room.SelectedLibraryID, selection.LibraryID)
+	identical := room.SelectedContentID != nil && *room.SelectedContentID == selection.ContentID && (contentOnly || (equalSelectionID(room.SelectedFileID, selection.FileID) && equalSelectionID(room.SelectedLibraryID, selection.LibraryID)))
 	if identical || room.Generation != expected {
 		if err := tx.Commit(ctx); err != nil {
 			return nil, false, err
@@ -70,12 +80,26 @@ func equalSelectionID(a, b *int) bool {
 // SelectItemOnce is the v2 selection path. It never resets an identical current
 // resolved selection; a different intervening selection is not a replay receipt.
 func (s *Service) SelectItemOnce(ctx context.Context, roomID string, user int, profile string, input SelectItemInput) (Snapshot, error) {
+	return s.selectItemOnce(ctx, roomID, user, profile, input, false, false)
+}
+
+func (s *Service) selectItemOnce(ctx context.Context, roomID string, user int, profile string, input SelectItemInput, viaVote, promotion bool) (Snapshot, error) {
 	if s == nil {
 		return Snapshot{}, fmt.Errorf("watch together unavailable")
 	}
 	store, ok := s.repo.(selectionOnceStore)
 	if !ok || s.selectionResolver == nil {
 		return Snapshot{}, fmt.Errorf("watch together selection unavailable")
+	}
+	write := store.SelectOnce
+	if promotion {
+		promoting, ok := s.repo.(interface {
+			PromoteOnce(context.Context, string, int, string, SelectItemInput, bool, int64, time.Time) (*Room, bool, error)
+		})
+		if !ok {
+			return Snapshot{}, ErrSuggestionPromotionUnavailable
+		}
+		write = promoting.PromoteOnce
 	}
 	if strings.TrimSpace(input.ContentID) == "" {
 		return Snapshot{}, ErrInvalidSelection
@@ -97,7 +121,7 @@ func (s *Service) SelectItemOnce(ctx context.Context, roomID string, user int, p
 	s.mu.Lock()
 	expected := live.room.Generation
 	s.mu.Unlock()
-	room, applied, err := store.SelectOnce(ctx, roomID, user, profile, SelectItemInput{ContentID: resolved.ContentID, FileID: resolved.FileID, LibraryID: resolved.LibraryID}, false, expected, s.now())
+	room, applied, err := write(ctx, roomID, user, profile, SelectItemInput{ContentID: resolved.ContentID, FileID: resolved.FileID, LibraryID: resolved.LibraryID}, viaVote, expected, s.now())
 	if err != nil {
 		return Snapshot{}, err
 	}

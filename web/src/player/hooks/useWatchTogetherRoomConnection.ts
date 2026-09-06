@@ -538,17 +538,42 @@ export function useWatchTogetherRoomConnection({
     [roomId, roomToken],
   );
 
+  const promotionAuthority = captureProfileRequestContext();
+  const promotionRun = useRef(0);
+  const promotionRoom = useRef(roomId);
+  const invalidatePromotion = useCallback(() => {
+    promotionRun.current++;
+  }, []);
+  useLayoutEffect(() => {
+    promotionRoom.current = roomId;
+    invalidatePromotion();
+    return invalidatePromotion;
+  }, [roomId, roomToken, invalidatePromotion]);
   const promoteSuggestion = useCallback(
     async (suggestionId: string) => {
-      if (!roomId || !roomToken) {
-        return null;
-      }
-
-      const response = await promoteWatchTogetherSuggestion(roomId, roomToken, suggestionId);
-      setRoom(response.room);
+      if (!roomId || !roomToken || promotionRoom.current !== roomId) return null;
+      const run = ++promotionRun.current;
+      const response = await promoteWatchTogetherSuggestion(
+        roomId,
+        roomToken,
+        suggestionId,
+        promotionAuthority,
+      ).catch((error: unknown) => {
+        if (run !== promotionRun.current) return null;
+        throw error;
+      });
+      if (!response || run !== promotionRun.current) return null;
+      if (!promotionAuthority || !isCapturedProfileAuthorityActive(promotionAuthority)) return null;
+      setRoom((current) =>
+        current &&
+        current.room_id === response.room.room_id &&
+        current.generation > response.room.generation
+          ? current
+          : response.room,
+      );
       return response.room;
     },
-    [roomId, roomToken],
+    [roomId, roomToken, promotionAuthority],
   );
 
   return {

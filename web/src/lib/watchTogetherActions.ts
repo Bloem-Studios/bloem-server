@@ -67,3 +67,20 @@ export async function endWatchTogetherRoom(closeRoom: () => Promise<void>): Prom
       toast.error(error instanceof Error ? error.message : "Failed to end room");
   }
 }
+
+/** Reports only the current promotion receipt, without assuming it started playback. */
+export async function promoteWatchTogetherWithFeedback(
+  promote: (id: string) => Promise<WatchTogetherRoomSnapshot | null>,
+  id: string,
+): Promise<void> {
+  const authority = captureProfileRequestContext();
+  try {
+    const room = await promote(id);
+    if (room && authority && isCapturedProfileAuthorityActive(authority))
+      toast.success("Room selection updated");
+  } catch (error) {
+    if (error instanceof StaleApiRequestContextError) return;
+    if (authority && isCapturedProfileAuthorityActive(authority))
+      toast.error(error instanceof Error ? error.message : "Failed to start suggestion");
+  }
+}

@@ -1,3 +1,4 @@
+import { promoteRoomSuggestion } from "@/api/v2/watchTogetherSuggestionPromote";
 import {
   createRoomSuggestion,
   type SuggestionCreationDraft,
@@ -201,15 +202,9 @@ export async function promoteWatchTogetherSuggestion(
   roomId: string,
   roomToken: string,
   suggestionId: string,
+  authority = captureProfileRequestContext(),
 ) {
-  const params = new URLSearchParams({ room_token: roomToken });
-  return api<WatchTogetherRoomResponse>(
-    `/watch-together/rooms/${roomId}/suggestions/promote?${params.toString()}`,
-    {
-      method: "POST",
-      body: JSON.stringify({ suggestion_id: suggestionId }),
-    },
-  );
+  return promoteRoomSuggestion(roomId, roomToken, suggestionId, authority);
 }
 
 export function buildWatchTogetherInviteUrl(invitePath?: string | null) {

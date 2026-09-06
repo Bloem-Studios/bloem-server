@@ -999,9 +999,7 @@ export default function WatchTogetherRoomPage() {
             onVote={(id: string) => roomConnection.vote(id)}
             onUnvote={(id: string) => roomConnection.unvote(id)}
             onDelete={(id: string) => roomConnection.deleteSuggestion(id)}
-            onPromote={async (id: string) => {
-              await roomConnection.promoteSuggestion(id);
-            }}
+            onPromote={(id: string) => roomConnection.promoteSuggestion(id)}
             onOpenSearch={() => {
               searchInputRef.current?.focus();
             }}
