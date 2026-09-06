@@ -617,6 +617,8 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST /api/v2/notifications/web-push/unsubscribe",
 		"DELETE /api/v2/notifications/web-push/subscriptions/{id}",
 		"GET /api/v2/notifications/webhooks",
+		"DELETE /api/v2/notifications/discord-link",
+		"DELETE /api/v2/notifications/email-preferences/address",
 		"POST /api/v2/admin/notifications/discord/test",
 	)
 	observed = append(observed,
