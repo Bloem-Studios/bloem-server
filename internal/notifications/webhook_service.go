@@ -368,3 +368,7 @@ func boolOrDefault(value *bool, fallback bool) bool {
 func (s *WebhookService) ListPage(ctx context.Context, profile string, limit int, after *Cursor) ([]Webhook, error) {
 	return s.repo.ListPage(ctx, profile, limit, after)
 }
+
+func (s *WebhookService) DeleteGuarded(ctx context.Context, profile, id string, check func(int64) error) error {
+	return s.repo.DeleteGuarded(ctx, profile, id, check)
+}

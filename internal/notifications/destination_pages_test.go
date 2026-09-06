@@ -46,7 +46,7 @@ func TestNotificationDestinationPages(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err = pool.Exec(ctx, `ALTER TABLE notification_webhooks ADD COLUMN notify_requests boolean NOT NULL DEFAULT false;
+	if _, err = pool.Exec(ctx, `ALTER TABLE notification_webhooks ADD COLUMN notify_requests boolean NOT NULL DEFAULT false, ADD COLUMN revision bigint NOT NULL DEFAULT 1;
  ALTER TABLE notification_server_channels ADD COLUMN notify_new_audiobooks boolean NOT NULL DEFAULT true, ADD COLUMN notify_new_ebooks boolean NOT NULL DEFAULT true;
  INSERT INTO web_push_subscriptions (id,user_id,profile_id,endpoint,p256dh,auth,created_at) SELECT id,1,profile,'https://push.example.test/'||id,'key','auth','2026-09-01T00:00:00Z'::timestamptz FROM (VALUES ('01','owner'),('02','owner'),('03','owner'),('00','other')) AS v(id,profile);
  INSERT INTO notification_webhooks (id,user_id,profile_id,name,type,url_ciphertext,url_host,signing_secret_ciphertext,created_at) SELECT id,1,profile,id,'generic','ciphertext','example.test','secret','2026-09-01T00:00:00Z'::timestamptz FROM (VALUES ('01','owner'),('02','owner'),('03','owner'),('00','other')) AS v(id,profile);

@@ -29,7 +29,7 @@ const webhookColumns = `
 	notify_requests,
 	consecutive_failures, disabled_reason,
 	last_success_at, last_failure_at, last_failure_status, last_failure_message,
-	created_at, updated_at`
+	created_at, updated_at, revision`
 
 func scanWebhook(row pgx.Row) (*Webhook, error) {
 	var hook Webhook
@@ -40,7 +40,7 @@ func scanWebhook(row pgx.Row) (*Webhook, error) {
 		&hook.NotifyRequests,
 		&hook.ConsecutiveFailures, &hook.DisabledReason,
 		&hook.LastSuccessAt, &hook.LastFailureAt, &hook.LastFailureStatus, &hook.LastFailureMessage,
-		&hook.CreatedAt, &hook.UpdatedAt,
+		&hook.CreatedAt, &hook.UpdatedAt, &hook.Revision,
 	)
 	if err != nil {
 		return nil, err
@@ -413,4 +413,29 @@ func (r *WebhookRepository) ListPage(ctx context.Context, profile string, limit 
 		return nil, fmt.Errorf("list notification destinations: %w", err)
 	}
 	return scanWebhooks(rows)
+}
+
+// DeleteGuarded holds the row lock across precondition evaluation and deletion.
+// The revision trigger covers bridge, configuration and provider writers too.
+func (r *WebhookRepository) DeleteGuarded(ctx context.Context, profile, id string, check func(int64) error) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var revision int64
+	err = tx.QueryRow(ctx, `SELECT revision FROM notification_webhooks WHERE profile_id=$1 AND id=$2 FOR UPDATE`, profile, id).Scan(&revision)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrWebhookNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if err = check(revision); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM notification_webhooks WHERE profile_id=$1 AND id=$2`, profile, id); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
