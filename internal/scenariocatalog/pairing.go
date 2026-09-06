@@ -6,9 +6,35 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 
 	apiv2 "github.com/Silo-Server/silo-server/contracts/api/v2"
 )
+
+// openAPIOperation is the slice of one embedded v2 operation the validators read.
+type openAPIOperation struct {
+	OperationID string `json:"operationId"`
+	Parameters  []struct {
+		Name   string `json:"name"`
+		In     string `json:"in"`
+		Schema struct {
+			Type string `json:"type"`
+		} `json:"schema"`
+	} `json:"parameters"`
+}
+
+// openAPIPaths parses the embedded v2 document exactly once. The document is
+// immutable for the life of the process and is read on every pairing check,
+// so re-parsing it per scenario dominated catalog loading.
+var openAPIPaths = sync.OnceValues(func() (map[string]map[string]openAPIOperation, error) {
+	var spec struct {
+		Paths map[string]map[string]openAPIOperation `json:"paths"`
+	}
+	if err := json.Unmarshal(apiv2.OpenAPI, &spec); err != nil {
+		return nil, err
+	}
+	return spec.Paths, nil
+})
 
 const (
 	deviceListPath      = "/api/v2/devices"
@@ -28,15 +54,11 @@ func ValidatePairing(pair *V2Expectation) error {
 }
 
 func validateOperation(operationID, method, requestPath string) error {
-	var spec struct {
-		Paths map[string]map[string]struct {
-			OperationID string `json:"operationId"`
-		} `json:"paths"`
-	}
-	if err := json.Unmarshal(apiv2.OpenAPI, &spec); err != nil {
+	paths, err := openAPIPaths()
+	if err != nil {
 		return err
 	}
-	for path, methods := range spec.Paths {
+	for path, methods := range paths {
 		operation, ok := methods[strings.ToLower(method)]
 		if !ok || operation.OperationID != operationID {
 			continue

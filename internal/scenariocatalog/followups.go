@@ -9,8 +9,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-
-	apiv2 "github.com/Silo-Server/silo-server/contracts/api/v2"
+	"sync"
 )
 
 const bindingAPIKeyPrincipal = "api_key"
@@ -61,23 +60,12 @@ func ValidateV2Bindings(step V2Step) error {
 	if err := ValidateResponseBindings(step.Request, step.FromPrevious); err != nil {
 		return err
 	}
-	var spec struct {
-		Paths map[string]map[string]struct {
-			OperationID string `json:"operationId"`
-			Parameters  []struct {
-				Name   string `json:"name"`
-				In     string `json:"in"`
-				Schema struct {
-					Type string `json:"type"`
-				} `json:"schema"`
-			} `json:"parameters"`
-		} `json:"paths"`
-	}
-	if err := json.Unmarshal(apiv2.OpenAPI, &spec); err != nil {
+	paths, err := openAPIPaths()
+	if err != nil {
 		return err
 	}
 	allowed := map[string]bool{}
-	for _, methods := range spec.Paths {
+	for _, methods := range paths {
 		for _, op := range methods {
 			if op.OperationID == step.OperationID {
 				for _, p := range op.Parameters {
@@ -172,6 +160,22 @@ func validCapturePointer(pointer string) bool {
 //go:embed sequence_originals.json
 var sequenceOriginals []byte
 
+type sequenceOriginal struct {
+	Row       Row
+	Scenario  Scenario
+	Operation string
+}
+
+// frozenSequenceOriginals parses the embedded allowlist exactly once; callers
+// only read the result, so the parsed originals are shared safely.
+var frozenSequenceOriginals = sync.OnceValues(func() ([]sequenceOriginal, error) {
+	var originals []sequenceOriginal
+	if err := json.Unmarshal(sequenceOriginals, &originals); err != nil {
+		return nil, err
+	}
+	return originals, nil
+})
+
 // ValidateScenarioPairing retains the default sequence budget except for the two
 // exact frozen device rate-limit bursts. Call before replacing the v1 request.
 func ValidateScenarioPairing(row Row, scenario Scenario) error {
@@ -179,12 +183,8 @@ func ValidateScenarioPairing(row Row, scenario Scenario) error {
 	if pair == nil {
 		return fmt.Errorf("missing v2 expectation")
 	}
-	var originals []struct {
-		Row       Row
-		Scenario  Scenario
-		Operation string
-	}
-	if err := json.Unmarshal(sequenceOriginals, &originals); err != nil {
+	originals, err := frozenSequenceOriginals()
+	if err != nil {
 		return err
 	}
 	for _, original := range originals {
