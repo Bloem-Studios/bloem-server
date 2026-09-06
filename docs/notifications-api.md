@@ -2,8 +2,8 @@
 
 The v2 inbox uses the existing durable delivery rows and preference store. All
 routes below `/api/v2/notifications` require an authenticated, verified profile
-and retain the demo write guard. These routes do not change the delivery workers,
-websocket transport, email links, or push-registration protocol.
+and retain the demo write guard. Websocket transport, email links, and
+push-registration protocol retain their existing shapes.
 
 | Method and suffix | Result |
 | --- | --- |
@@ -26,6 +26,15 @@ signed cutoff describing an empty set.
 Delivery IDs and linked library/item IDs are strings. Public timestamps use UTC
 milliseconds; the signed cursors retain the database timestamp precision. The
 `reason_flags` object retains event-specific data used by existing clients.
+
+Delivery insertion serializes each profile's timestamp allocation through a
+database row lock held until commit. A trigger assigns `created_at` strictly
+above that profile's previous committed timestamp, even when a transaction
+started earlier or the clock moves backwards. The boundary survives delivery
+retention. A later delivery therefore cannot commit behind an observed cutoff.
+Fanout transactions lock their complete recipient profile union in sorted order
+before inserting; unrelated profiles can progress independently. Existing rows
+retain their timestamps, and migration seeds the boundary from their maximum.
 
 ## Fixed read cutoff
 
