@@ -26994,11 +26994,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/ebooks/{content_id}/files/{file_id}/read",
+        "operation_id": "readEbookFile"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 raw byte delivery reuses the reader file authorization and conversion service, including ranges/conditionals, no-conversion HEAD and raw Kindle failure fallback. Review and native adoption pending."
     },
     {
       "listener": "api",
@@ -27045,11 +27045,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "HEAD",
+        "path": "/api/v2/ebooks/{content_id}/files/{file_id}/read",
+        "operation_id": "headEbookFile"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; ebookReaderHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 raw byte delivery reuses the reader file authorization and conversion service, including ranges/conditionals, no-conversion HEAD and raw Kindle failure fallback. Review and native adoption pending."
     },
     {
       "listener": "api",

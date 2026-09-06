@@ -3736,6 +3736,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/ebooks/{content_id}/files/{file_id}/read": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read an authorized ebook with HTTP byte-range and conditional semantics; HEAD does not start conversion. */
+    get: operations["readEbookFile"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /** Read an authorized ebook with HTTP byte-range and conditional semantics; HEAD does not start conversion. */
+    head: operations["headEbookFile"];
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/ebooks/{content_id}/progress": {
     parameters: {
       query?: never;
@@ -10632,6 +10650,7 @@ export interface components {
       kindle_conversion: boolean;
       /** @description Reader progress accepts client event times and refuses older or equal writes. */
       ordered_progress: boolean;
+      reader_files: boolean;
       /** @description Opaque revision of this document */
       revision: string;
       served_format: string;
@@ -51425,6 +51444,358 @@ export interface operations {
         };
         content: {
           "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  readEbookFile: {
+    parameters: {
+      query?: never;
+      header: {
+        "If-Match"?: string;
+        "If-Modified-Since"?: string;
+        "If-None-Match"?: string;
+        "If-Range"?: string;
+        "If-Unmodified-Since"?: string;
+        Range?: string;
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        content_id: string;
+        file_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Ebook bytes, or HEAD metadata. Uncached Kindle HEAD may omit length and advertises EPUB optimistically; GET determines conversion or fallback. */
+      200: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          "X-Silo-Ebook-Conversion"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/epub+zip": string;
+          "application/pdf": string;
+          "application/vnd.amazon.ebook": string;
+          "application/vnd.amazon.mobi8-ebook": string;
+          "application/vnd.comicbook-rar": string;
+          "application/vnd.comicbook+zip": string;
+          "application/x-fictionbook+xml": string;
+          "application/x-mobipocket-ebook": string;
+          "application/x-zip-compressed-fb2": string;
+          "multipart/byteranges": string;
+        };
+      };
+      /** @description Requested single or multipart byte ranges. */
+      206: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          "X-Silo-Ebook-Conversion"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/epub+zip": string;
+          "application/pdf": string;
+          "application/vnd.amazon.ebook": string;
+          "application/vnd.amazon.mobi8-ebook": string;
+          "application/vnd.comicbook-rar": string;
+          "application/vnd.comicbook+zip": string;
+          "application/x-fictionbook+xml": string;
+          "application/x-mobipocket-ebook": string;
+          "application/x-zip-compressed-fb2": string;
+          "multipart/byteranges": string;
+        };
+      };
+      /** @description Representation not modified. */
+      304: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          "X-Silo-Ebook-Conversion"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description File precondition failed. */
+      412: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          "X-Silo-Ebook-Conversion"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Requested range not satisfiable. */
+      416: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          "X-Silo-Ebook-Conversion"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  headEbookFile: {
+    parameters: {
+      query?: never;
+      header: {
+        "If-Match"?: string;
+        "If-Modified-Since"?: string;
+        "If-None-Match"?: string;
+        "If-Range"?: string;
+        "If-Unmodified-Since"?: string;
+        Range?: string;
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        content_id: string;
+        file_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Ebook bytes, or HEAD metadata. Uncached Kindle HEAD may omit length and advertises EPUB optimistically; GET determines conversion or fallback. */
+      200: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          "X-Silo-Ebook-Conversion"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Requested single or multipart byte ranges. */
+      206: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          "X-Silo-Ebook-Conversion"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Representation not modified. */
+      304: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          "X-Silo-Ebook-Conversion"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description File precondition failed. */
+      412: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          "X-Silo-Ebook-Conversion"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Requested range not satisfiable. */
+      416: {
+        headers: {
+          "Accept-Ranges"?: string;
+          "Cache-Control"?: string;
+          "Content-Disposition"?: string;
+          "Content-Length"?: string;
+          "Content-Range"?: string;
+          ETag?: string;
+          "Last-Modified"?: string;
+          "X-Silo-Ebook-Conversion"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
         };
       };
       /** @description Unprocessable Entity */

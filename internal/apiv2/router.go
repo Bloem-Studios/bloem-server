@@ -68,6 +68,7 @@ func init() {
 // operations. Every field is optional: a missing gate never removes a route,
 // it makes the operations behind that gate fail closed with a typed problem.
 type Dependencies struct {
+	EbookFiles                 EbookFileService
 	EbookConfig                EbookConfigService
 	EbookProgress              EbookProgressService
 	AdminItemMetadata          AdminItemMetadataService

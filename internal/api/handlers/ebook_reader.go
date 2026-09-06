@@ -124,18 +124,13 @@ func (h *EbookReaderHandler) HandleReadFile(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	file, err := h.FileAuthorizer.Authorize(r, fileID)
+	file, err := h.ResolveReaderFile(r.Context(), contentID, fileID, requestAccessFilter(r))
 	if err != nil {
 		h.writeReadError(w, err)
 		return
 	}
-	if file == nil || file.ContentID != contentID || !isEbookFile(file) {
-		writeError(w, http.StatusNotFound, "not_found", "Ebook file not found")
-		return
-	}
-	attachTransfer(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), fileID)
 
-	if err := h.serveEbook(w, r, file); err != nil {
+	if err := h.ServeReaderFile(w, r, file); err != nil {
 		if errors.Is(err, catalog.ErrItemNotFound) {
 			writeError(w, http.StatusNotFound, "not_found", "Ebook file not found")
 			return

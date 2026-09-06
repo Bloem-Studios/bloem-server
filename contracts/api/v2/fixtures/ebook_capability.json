@@ -1,6 +1,7 @@
 {
-  "revision": "1f8781e508cfe80f",
+  "revision": "65312029b67b7143",
   "state": "available",
+  "reader_files": false,
   "guarded_config": false,
   "ordered_progress": true,
   "kindle_conversion": false,

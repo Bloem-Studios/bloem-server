@@ -1974,6 +1974,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if ebookReaderHandler != nil {
 		v2deps.EbookProgress = ebookReaderHandler
 		v2deps.EbookConfig = ebookReaderHandler
+		v2deps.EbookFiles = ebookReaderHandler
 	}
 	var invitationHandler *handlers.InvitationHandler
 	if invitationService != nil {

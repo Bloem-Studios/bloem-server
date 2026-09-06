@@ -10,12 +10,9 @@ export { fetchEbookReaderProgress, saveEbookReaderProgress } from "./ebookProgre
 export type { EbookReaderProgress, EbookReaderProgressPayload } from "./ebookProgressApi";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
+import { readEbookBlob } from "@/api/v2/ebookFile";
 
-import {
-  apiBlob,
-  captureProfileRequestContext,
-  isCapturedProfileAuthorityActive,
-} from "@/api/client";
+import { captureProfileRequestContext, isCapturedProfileAuthorityActive } from "@/api/client";
 import type { FileVersion } from "@/api/types";
 import { ebookKeys } from "@/hooks/queries/keys";
 import type { EbookReaderAnnotation } from "@/reader/ebookReaderApi";
@@ -746,7 +743,7 @@ const FoliateBookReader = forwardRef<FoliateBookReaderHandle, FoliateBookReaderP
         try {
           const format = readerFileFormat(file);
           const [blob, savedProgress] = await Promise.all([
-            apiBlob(ebookReadPath(contentID, file.file_id)),
+            readEbookBlob(contentID, file.file_id, progressAuthority),
             fetchEbookReaderProgress(contentID),
           ]);
           if (cancelled) return;

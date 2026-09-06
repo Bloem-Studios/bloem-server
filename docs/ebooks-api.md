@@ -57,3 +57,23 @@ invalidates the v2 validator. Clients should retain their validator while the
 user edits and handle a conflict by reloading and reconciling, rather than
 retrying with an unconditional overwrite. The capability's `guarded_config`
 field advertises this contract.
+
+## Ebook bytes
+
+`GET` and `HEAD /api/v2/ebooks/{content_id}/files/{file_id}/read` use the same
+verified profile and current file/parent authorization as reader state. The
+`reader_files` capability advertises this route. Files remain inline with their
+native ebook MIME type and `X-Content-Type-Options: nosniff`.
+
+These operations stream bytes outside JSON buffering. They preserve byte ranges
+(including multipart ranges), 206 and Content-Range, unsatisfiable-range 416,
+HTTP conditional requests, and HEAD body suppression. The reader's existing
+rolling write deadline applies. HEAD for an uncached Kindle conversion never
+starts the conversion: it advertises EPUB without a Content-Length, while GET
+produces the authoritative representation. A failed conversion returns the raw
+original with the conversion-failed header and no-store caching. Cached converted
+EPUB responses retain their conversion-key ETag and revalidation policy.
+
+The web reader loads these bytes through the v2 session boundary using its
+captured profile authority. The existing 512 MiB Content-Length check remains;
+files beyond that size require downloading instead of an in-tab blob.
