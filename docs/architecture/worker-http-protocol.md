@@ -158,3 +158,21 @@ This ID-addressed operation has no durable stop identity. Repeating it against a
 reused transport ID could affect a successor, so its description is non-retryable.
 It is not an alias for the native stop protocol and does not supply missing bound
 executor authority. No process-survival guarantee is attached to the local fence.
+
+The retained transcode `POST /transcode/start` decodes the owning
+`TranscodeStartRequest` with ordinary JSON defaults and unknown-key tolerance;
+it does not impose a decoder body bound. Input authority, audio/copy/tone-map
+recipe checks, GPU admission and the configuration reload guard run before
+execution. A supplied executor namespace must validate and acquire its execution
+grant; an existing bound session refuses replacement, including the same identity.
+Legacy same-ID replacement may remove the predecessor before a later start fails.
+
+Success is 202 with JSON-encoded `TranscodeStartResponse`, including available
+recipe attestations. The current handler does not set Content-Type: the HTTP
+server emits text/plain. The description uses JSON Schema content annotations
+for that textual payload rather than claiming application/json on the wire.
+`RequireReady` waits for a manifest, with the existing limited software retry for
+early hardware failure. Without it, 202 establishes registration, not playable
+bytes or successful encoder completion. Tracking is asynchronous monitoring.
+The command is non-retryable and has no durable admission or replay identity;
+it does not alter native startPlayback ownership or release gates.

@@ -142522,6 +142522,117 @@
             "description": "Service Unavailable"
           }
         }
+      },
+      {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/x-silo-worker-protocols/schemas/transcodenode_TranscodeStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "description": "Start a process-local HLS session after input, recipe, GPU and configuration guards. Ordinary JSON decoding ignores unknown keys and defaults omitted fields; there is no decoder body limit. Bound executor execution requires its grant authority; existing bound sessions cannot be replaced even by the same namespace. Legacy same-ID starts can tear down and replace an earlier session before failing. RequireReady waits for a manifest and may retry early hardware startup failure in software; otherwise 202 does not establish playable media. Monitoring runs asynchronously. No durable admission/replay receipt or automatic caller retry is implied.",
+        "retry_safety": "non_retryable",
+        "listener": "transcode_node",
+        "method": "POST",
+        "path": "/transcode/start",
+        "handler": "(*internal/transcodenode.Server).handleStart",
+        "auth_class": "node_bearer",
+        "responses": {
+          "202": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "contentMediaType": "application/json",
+                  "contentSchema": {
+                    "$ref": "#/x-silo-worker-protocols/schemas/transcodenode_TranscodeStartResponse"
+                  },
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Started session and recipe attestations, encoded as JSON text. The existing handler omits Content-Type; net/http serves text/plain."
+          },
+          "400": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unprocessable Entity",
+            "headers": {
+              "X-Silo-Tone-Map-Execution-Error": {
+                "description": "Existing tone-map refusal code when available.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable",
+            "headers": {
+              "X-Silo-Tone-Map-Execution-Error": {
+                "description": "Existing tone-map refusal code when available.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     ],
     "schemas": {
@@ -142845,6 +142956,27 @@
         ],
         "type": "object"
       },
+      "playback_ExecutorNamespaceV3": {
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "executor_id": {
+            "type": "string"
+          },
+          "incarnation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "incarnation",
+          "epoch",
+          "executor_id"
+        ],
+        "type": "object"
+      },
       "playback_HWAccelInfo": {
         "additionalProperties": false,
         "properties": {
@@ -143136,6 +143268,179 @@
           "status",
           "active_jobs",
           "sessions"
+        ],
+        "type": "object"
+      },
+      "transcodenode_TranscodeStartRequest": {
+        "additionalProperties": true,
+        "properties": {
+          "audio_recipe_version": {
+            "type": "string"
+          },
+          "audio_track_index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "copy_fmp4_recipe_version": {
+            "type": "string"
+          },
+          "copy_seek_anchor_resolved": {
+            "type": "boolean"
+          },
+          "copy_video_mpegts": {
+            "type": "boolean"
+          },
+          "executor": {
+            "$ref": "#/x-silo-worker-protocols/schemas/playback_ExecutorNamespaceV3"
+          },
+          "hw_accel": {
+            "type": "string"
+          },
+          "input_path": {
+            "type": "string"
+          },
+          "require_ready": {
+            "type": "boolean"
+          },
+          "seek_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "segment_duration": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "software_video_decode": {
+            "type": "boolean"
+          },
+          "source_audio_channels": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "source_video_bit_depth": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "source_video_codec": {
+            "type": "string"
+          },
+          "source_video_profile": {
+            "type": "string"
+          },
+          "start_segment_number": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "stream_origin_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "subtitle_burn_in": {
+            "type": "boolean"
+          },
+          "subtitle_codec": {
+            "type": "string"
+          },
+          "subtitle_track_index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "target_audio_bitrate_kbps": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "target_audio_channels": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "target_bitrate_kbps": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "target_codec_audio": {
+            "type": "string"
+          },
+          "target_codec_video": {
+            "type": "string"
+          },
+          "target_resolution": {
+            "type": "string"
+          },
+          "tone_map_dv_bl_compat_id_present": {
+            "type": "boolean"
+          },
+          "tone_map_dv_bl_present": {
+            "type": "boolean"
+          },
+          "tone_map_dv_config_present": {
+            "type": "boolean"
+          },
+          "tone_map_dv_rpu_present": {
+            "type": "boolean"
+          },
+          "tone_map_mode": {
+            "type": "string"
+          },
+          "tone_map_policy": {
+            "type": "string"
+          },
+          "tone_map_preflight_required": {
+            "type": "boolean"
+          },
+          "tone_map_recipe_version": {
+            "type": "string"
+          },
+          "tone_map_source_kind": {
+            "type": "string"
+          },
+          "tone_map_source_revision": {
+            "$ref": "#/x-silo-worker-protocols/schemas/tonemap_SourceRevision"
+          },
+          "total_duration": {
+            "format": "double",
+            "type": "number"
+          },
+          "video_bitstream_filter": {
+            "type": "string"
+          },
+          "video_sample_entry": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "input_path"
+        ],
+        "type": "object"
+      },
+      "transcodenode_TranscodeStartResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "audio_recipe_version": {
+            "type": "string"
+          },
+          "copy_fmp4_recipe_version": {
+            "type": "string"
+          },
+          "hw_accel": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "tone_map_mode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "status"
         ],
         "type": "object"
       }
