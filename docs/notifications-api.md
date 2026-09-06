@@ -242,3 +242,30 @@ authentication replay, and suppress stale results. Configuration changes and
 secret rotation retain their bridge routes pending guarded mutation migration.
 Apple and Android have no destination-test callers. Jellyfin compatibility has
 no corresponding operation.
+
+### API v2 tokenized notification email links
+
+Notification verification emails now link to
+`GET /api/v2/notifications/email/verify?token=...`
+(`verifyNotificationEmailAddress`). Notification email footers and
+List-Unsubscribe headers use `/api/v2/notifications/email/unsubscribe?token=...`:
+GET is `unsubscribeNotificationEmail`; the RFC 8058 one-click POST is
+`unsubscribeNotificationEmailOneClick`.
+
+These public token-authorized routes render the existing standalone HTML pages.
+They require no Silo login or profile header and accept mail-client HTML
+negotiation and one-click form bodies. Verification consumes the single-use
+proof and promotes the pending address; success is 200, expired/consumed/missing
+proof is 400, an address ownership conflict is 409, and storage errors are 500.
+Unsubscribe retains the existing profile capability token and switches email
+mode off: 200 on success, 400 for invalid/missing proof, and 500 on storage error.
+An unavailable service returns a 503 problem. API v2 adds no-store and
+no-referrer headers; pages never reflect the proof or internal error text.
+
+The one-click POST is `non_retryable`: the existing capability token can turn
+email off again after the profile later re-enables it. This migration adds no
+generation guard or delivery retry. Address request/clear transports remain on
+the bridge until their separate migration. Previously sent bridge links keep
+working through the bridge release. Mail clients follow the emitted URLs;
+Apple and Android have no in-app callback consumer, and Jellyfin compatibility
+has no corresponding operation.

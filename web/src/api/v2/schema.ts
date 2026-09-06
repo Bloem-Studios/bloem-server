@@ -4996,6 +4996,41 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/notifications/email/unsubscribe": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Process a tokenized notification email link and render its standalone result. */
+    get: operations["unsubscribeNotificationEmail"];
+    put?: never;
+    /** Process a tokenized notification email link and render its standalone result. */
+    post: operations["unsubscribeNotificationEmailOneClick"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/notifications/email/verify": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Process a tokenized notification email link and render its standalone result. */
+    get: operations["verifyNotificationEmailAddress"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/notifications/preferences": {
     parameters: {
       query?: never;
@@ -63369,6 +63404,185 @@ export interface operations {
         };
         content: {
           "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  unsubscribeNotificationEmail: {
+    parameters: {
+      query?: {
+        /** @description Email capability token. Missing, expired or consumed proof returns an HTML error page. */
+        token?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Standalone email-link result page */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          "Referrer-Policy"?: "no-referrer";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Standalone email-link result page */
+      400: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          "Referrer-Policy"?: "no-referrer";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Standalone email-link result page */
+      500: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          "Referrer-Policy"?: "no-referrer";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  unsubscribeNotificationEmailOneClick: {
+    parameters: {
+      query?: {
+        /** @description Email capability token. Missing, expired or consumed proof returns an HTML error page. */
+        token?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Standalone email-link result page */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          "Referrer-Policy"?: "no-referrer";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Standalone email-link result page */
+      400: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          "Referrer-Policy"?: "no-referrer";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Standalone email-link result page */
+      500: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          "Referrer-Policy"?: "no-referrer";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  verifyNotificationEmailAddress: {
+    parameters: {
+      query?: {
+        /** @description Email capability token. Missing, expired or consumed proof returns an HTML error page. */
+        token?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Standalone email-link result page */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          "Referrer-Policy"?: "no-referrer";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Standalone email-link result page */
+      400: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          "Referrer-Policy"?: "no-referrer";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Address now belongs to another profile or account */
+      409: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          "Referrer-Policy"?: "no-referrer";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Standalone email-link result page */
+      500: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          "Referrer-Policy"?: "no-referrer";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/html": string;
         };
       };
       /** @description Service Unavailable */

@@ -96,7 +96,7 @@ func (s *System) RequestEmailAddress(ctx context.Context, userID int, profileID,
 		return err
 	}
 
-	verifyURL := linkBase + "/api/v1/notifications/email/verify?token=" + token
+	verifyURL := linkBase + "/api/v2/notifications/email/verify?token=" + token
 	content := composeVerificationEmail(profile.Name, verifyURL)
 	err = s.mailSender.Send(ctx, mail.Message{
 		To:       []string{address},

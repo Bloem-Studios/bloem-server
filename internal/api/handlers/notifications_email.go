@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -149,12 +150,17 @@ func (h *NotificationsHandler) HandleClearEmailAddress(w http.ResponseWriter, r 
 // verification and unsubscribe. Both are clicked from email clients on
 // devices that may have no Silo session, so they render minimal standalone
 // HTML instead of redirecting into the authenticated app.
+type NotificationEmailLinkProcessor interface {
+	VerifyEmailToken(context.Context, string) (notifications.EmailVerifyOutcome, error)
+	UnsubscribeEmail(context.Context, string) (bool, error)
+}
+
 type EmailLinkHandler struct {
-	system *notifications.System
+	system NotificationEmailLinkProcessor
 }
 
 // NewEmailLinkHandler creates an EmailLinkHandler.
-func NewEmailLinkHandler(system *notifications.System) *EmailLinkHandler {
+func NewEmailLinkHandler(system NotificationEmailLinkProcessor) *EmailLinkHandler {
 	return &EmailLinkHandler{system: system}
 }
 
