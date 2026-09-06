@@ -83,8 +83,7 @@ results with a generic warning; their raw error details are not part of v2.
 The web detail dialog and player search use typed v2 requests. The existing web
 track selector still needs numeric stored IDs; its adapter rejects IDs that it
 cannot represent safely. Native consumers need the string-ID models and new
-paths. Provider download and multipart uploads are described below. Delete and
-AI-job mutations remain separate migration scopes; their retry limitations still apply.
+paths. Provider download and multipart uploads are described below. Viewer deletion and AI-job mutations are described below; their retry limitations still apply.
 
 ## Provider download
 
@@ -354,3 +353,13 @@ configuration only, not which revision every server is using. Existing provider
 test transport remains separate. There is no Jellyfin provider-administration
 counterpart; native configuration callers require separate exact inventories
 before ordinary ratification.
+
+### Viewer stored subtitle deletion
+
+`GET /api/v2/subtitles/stored/{id}/metadata` (`getViewerSubtitleMetadata`) supplies the safe stored-subtitle representation and a strong validator bound to the account, optional profile, subtitle ID and revision. This is distinct from the file-scoped list at `GET /api/v2/subtitles/{media_file_id}`. Both the metadata read and `DELETE /api/v2/subtitles/stored/{id}` (`deleteStoredSubtitle`) require file/parent access plus either the original downloading account or effective administrator authority. A primary household profile alone grants no administrator permission. Storage keys and downloading-account identities are omitted.
+
+DELETE requires `If-Match`: missing validators return 428, stale validators or a revision race return 412, and absent metadata returns 404. Authority is checked again before deletion. Even explicit `If-Match: *` retains the freshly authorized revision in the SQL comparison; a concurrent replacement requires a fresh authorized observation. Reads support `If-Match` and `If-None-Match` with 304 for an unchanged representation.
+
+A 204 confirms metadata removal only. Object cleanup is best effort using the accepted immutable-object deletion service. An uncertain database response never triggers cleanup or proves that metadata survived. This operation is non-retryable: there is no durable receipt, automatic replay, physical-erasure guarantee, or orphan reconciler. Inspect current metadata after uncertainty before deciding on another attempt; even absence is not proof of physical cleanup. Missing dependencies return 503 and unexpected errors are redacted.
+
+The bundled viewer subtitle search dialogs and track selector have no stored-subtitle deletion action. Administrator deletion and subtitle-preference removal are separate caller families. Native viewer-deletion inventories remain a coordination prerequisite; no new viewer deletion UI or Jellyfin behavior is introduced.

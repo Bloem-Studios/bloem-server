@@ -43436,11 +43436,12 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/subtitles/stored/{id}",
+        "operation_id": "deleteStoredSubtitle"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil. v2 registers the operation unconditionally and reports capability state instead. V2 requires file access and downloading-account or effective-admin authority, plus If-Match from the viewer metadata read. CAS confirms metadata deletion only; object cleanup remains best effort, and uncertain outcomes must not be automatically replayed.",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",

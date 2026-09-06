@@ -2366,6 +2366,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if subtitleSearchHandler != nil {
 		v2deps.SubtitleProviders = subtitleSearchHandler
 		v2deps.SubtitleReads = subtitleSearchHandler
+		v2deps.ViewerSubtitleDelete = subtitleSearchHandler
 		v2deps.SubtitleDownloads = subtitleSearchHandler
 		v2deps.SubtitleUploads = subtitleSearchHandler
 	}
