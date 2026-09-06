@@ -50,3 +50,25 @@ func TestSubtitleDownloadServiceAuthorizationAttributionAndBridge(t *testing.T) 
 		t.Fatal(rec.Code, rec.Body.String(), provider.calls)
 	}
 }
+
+func TestSubtitleUploadServiceAuthorizationAndAttribution(t *testing.T) {
+	repo := newMockSubtitleRepoForHandler()
+	manager := subtitles.NewManager(repo, newMockS3ClientForHandler(), "synthetic")
+	h := NewSubtitleSearchHandler(manager, repo, nil)
+	h.FileAuthorizer = &MediaFileAuthorizer{FileResolver: stubMediaFileResolver{file: &models.MediaFile{ID: 42, ContentID: "movie"}}, ItemAccess: stubItemAccessChecker{err: catalog.ErrItemNotFound}}
+	request := subtitles.UploadRequest{MediaFileID: 42, UserID: new(999), Filename: "synthetic.en.srt", Language: "fr", PreferUserLanguage: true, Data: []byte("synthetic")}
+	_, err := h.UploadStoredSubtitle(t.Context(), catalog.AccessFilter{UserID: 1}, request)
+	if failure, ok := errors.AsType[*APIError](err); !ok || failure.Status != 404 {
+		t.Fatalf("authorization: %v", err)
+	}
+	h.FileAuthorizer.ItemAccess = stubItemAccessChecker{}
+	row, err := h.UploadStoredSubtitle(t.Context(), catalog.AccessFilter{UserID: 1}, request)
+	if err != nil || row.DownloadedBy == nil || *row.DownloadedBy != 1 || row.Language != "fr" {
+		t.Fatalf("upload result: %+v %v", row, err)
+	}
+	request.Data = nil
+	_, err = h.UploadStoredSubtitle(t.Context(), catalog.AccessFilter{UserID: 1}, request)
+	if failure, ok := errors.AsType[*APIError](err); !ok || failure.Status != 400 || failure.Code != "bad_request" {
+		t.Fatalf("invalid upload: %v", err)
+	}
+}

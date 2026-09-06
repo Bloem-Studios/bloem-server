@@ -127,3 +127,27 @@ describe("playerV2", () => {
     });
   });
 });
+
+it("sends subtitle multipart bytes once without a JSON content type", async () => {
+  const fetchMock = vi.fn(
+    async () =>
+      new Response(JSON.stringify({ subtitle: { id: "7", media_file_id: "42" } }), { status: 200 }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  const file = new File(["synthetic subtitle"], "synthetic.en.srt", {
+    type: "application/octet-stream",
+  });
+  await playerV2(config, "POST /api/v2/subtitles/upload", {
+    form: { media_file_id: "42", file, language_override: "true", language: "fr" },
+  });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toBe("/api/v2/subtitles/upload");
+  expect(new Headers(init.headers).get("Content-Type")).toBeNull();
+  expect(new Headers(init.headers).get("Authorization")).toBe("Bearer token-1");
+  expect(init.body).toBeInstanceOf(FormData);
+  const form = init.body as FormData;
+  expect(form.get("file")).toBe(file);
+  expect(form.get("language_override")).toBe("true");
+  expect(form.get("media_file_id")).toBe("42");
+});

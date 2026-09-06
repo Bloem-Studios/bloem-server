@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import {
-  api,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
@@ -28,34 +27,6 @@ import { isSettingValueMissing } from "./settingValues";
 
 interface DownloadSubtitleResponse {
   subtitle: DownloadedSubtitle;
-}
-
-function buildSubtitleUploadFormData(request: SubtitleUploadRequest): FormData {
-  const form = new FormData();
-  form.set("media_file_id", String(request.media_file_id));
-  if (request.language) {
-    form.set("language", request.language);
-  }
-  if (request.language_override) {
-    form.set("language_override", "true");
-  }
-  form.set("file", request.file);
-  if (request.release_name) {
-    form.set("release_name", request.release_name);
-  }
-  if (request.hearing_impaired) {
-    form.set("hearing_impaired", "true");
-  }
-  return form;
-}
-
-function buildSubtitleDetectFormData(file: File, language?: string): FormData {
-  const form = new FormData();
-  form.set("file", file);
-  if (language) {
-    form.set("language", language);
-  }
-  return form;
 }
 
 export async function fetchDownloadedSubtitles(
@@ -127,11 +98,33 @@ export async function uploadSubtitle(
   request: SubtitleUploadRequest,
   options?: RequestInit,
 ): Promise<DownloadSubtitleResponse> {
-  return api<DownloadSubtitleResponse>("/subtitles/upload", {
-    ...options,
-    method: "POST",
-    body: buildSubtitleUploadFormData(request),
+  const snapshot = captureProfileRequestContext();
+  if (!snapshot) throw new StaleApiRequestContextError();
+  const response = await v2("POST /api/v2/subtitles/upload", {
+    form: {
+      media_file_id: String(request.media_file_id),
+      file: request.file,
+      language: request.language,
+      language_override: request.language_override ? "true" : "false",
+      release_name: request.release_name,
+      hearing_impaired: request.hearing_impaired ? "true" : "false",
+    },
+    signal: options?.signal ?? undefined,
+    profileContext: snapshot,
+    retryAuthentication: false,
   });
+  if (!isCapturedProfileAuthorityActive(snapshot)) throw new StaleApiRequestContextError();
+  const id = Number(response.subtitle.id),
+    fileId = Number(response.subtitle.media_file_id);
+  if (
+    !Number.isSafeInteger(id) ||
+    id <= 0 ||
+    String(id) !== response.subtitle.id ||
+    fileId !== request.media_file_id ||
+    String(fileId) !== response.subtitle.media_file_id
+  )
+    throw new Error("Unsupported subtitle identifier");
+  return { subtitle: { ...response.subtitle, id, media_file_id: fileId } };
 }
 
 export async function detectSubtitleLanguage(
@@ -139,11 +132,15 @@ export async function detectSubtitleLanguage(
   language?: string,
   options?: RequestInit,
 ): Promise<SubtitleLanguageDetection> {
-  return api<SubtitleLanguageDetection>("/subtitles/detect-language", {
-    ...options,
-    method: "POST",
-    body: buildSubtitleDetectFormData(file, language),
+  const snapshot = captureProfileRequestContext();
+  if (!snapshot) throw new StaleApiRequestContextError();
+  const result = await v2("POST /api/v2/subtitles/detect-language", {
+    form: { file, language },
+    signal: options?.signal ?? undefined,
+    profileContext: snapshot,
   });
+  if (!isCapturedProfileAuthorityActive(snapshot)) throw new StaleApiRequestContextError();
+  return result;
 }
 
 export function useDownloadedSubtitles(mediaFileId: number | undefined) {
@@ -281,6 +278,8 @@ export function useUploadSubtitle() {
 
   return useMutation({
     mutationFn: (request: SubtitleUploadRequest) => uploadSubtitle(request),
+    retry: false,
+    networkMode: "always",
     onSuccess: async (_response, request) => {
       toast.success("Subtitle uploaded");
       await queryClient.invalidateQueries({
@@ -288,7 +287,8 @@ export function useUploadSubtitle() {
       });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to upload subtitle");
+      if (!(err instanceof StaleApiRequestContextError))
+        toast.error(err instanceof Error ? err.message : "Failed to upload subtitle");
     },
   });
 }

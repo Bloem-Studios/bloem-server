@@ -1653,6 +1653,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, invitationFixtureCases()...)
 	cases = append(cases, adminAccountFixtureCases()...)
 	cases = append(cases, subtitleDownloadFixtureCases()...)
+	cases = append(cases, subtitleUploadFixtureCases()...)
 	cases = append(cases, adminSubtitleInspectionFixtureCases()...)
 	cases = append(cases, themeCatalogFixtureCases()...)
 	cases = append(cases, ebookProgressFixtureCases()...)
@@ -1795,6 +1796,7 @@ func fixtureDeps() Dependencies {
 	deps.WebhookSync = &fakeWebhookManagement{}
 	deps.Markers = &fakeMarkers{}
 	deps.SubtitleDownloads = &fakeSubtitleDownloads{}
+	deps.SubtitleUploads = &fakeSubtitleUploads{}
 	deps.AdminSubtitleInspection = &fakeAdminSubtitleInspection{}
 	deps.SubtitleReads = &fakeSubtitleReads{}
 	deps.RequestLifecycle = &fakeLifecycle{}

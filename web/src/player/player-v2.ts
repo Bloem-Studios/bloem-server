@@ -34,6 +34,13 @@ type BodyOf<Op> = Op extends { requestBody: { content: { "application/json": inf
   ? B
   : never;
 
+type FormOf<Op> = Op extends { requestBody: { content: { "multipart/form-data": infer F } } }
+  ? F
+  : never;
+type FormFields<Op> = [FormOf<Op>] extends [never]
+  ? never
+  : { [P in keyof FormOf<Op>]: Blob | string };
+
 type SuccessStatus = 200 | 201 | 202 | 203 | 204;
 
 type SuccessOf<Op> = Op extends { responses: infer R }
@@ -56,7 +63,8 @@ export type PlayerV2Options<K extends PlayerV2Key> = {
 } & ([PathParamsOf<OperationOf<K>>] extends [never]
   ? unknown
   : { path: PathParamsOf<OperationOf<K>> }) &
-  ([PlayerV2Body<K>] extends [never] ? unknown : { body: PlayerV2Body<K> });
+  ([PlayerV2Body<K>] extends [never] ? unknown : { body: PlayerV2Body<K> }) &
+  ([FormFields<OperationOf<K>>] extends [never] ? unknown : { form: FormFields<OperationOf<K>> });
 
 interface ProblemLike {
   type?: string;
@@ -94,11 +102,12 @@ export async function playerV2<K extends PlayerV2Key>(
   options: PlayerV2Options<K>,
 ): Promise<SuccessOf<OperationOf<K>>> {
   const [method, route] = key.split(" ", 2) as [string, string];
-  const { signal, path, query, body } = options as {
+  const { signal, path, query, body, form } = options as {
     signal?: AbortSignal;
     path?: Record<string, string | number>;
     query?: Record<string, unknown>;
     body?: unknown;
+    form?: Record<string, Blob | string | undefined>;
   };
 
   const headers = playerRequestHeaders(config, { Accept: "application/json" }, body !== undefined);
@@ -109,11 +118,19 @@ export async function playerV2<K extends PlayerV2Key>(
     }
   }
   const search = params.size > 0 ? `?${params}` : "";
+  let requestBody: BodyInit | undefined = body === undefined ? undefined : JSON.stringify(body);
+  if (form) {
+    const multipart = new FormData();
+    for (const [name, value] of Object.entries(form)) {
+      if (value !== undefined) multipart.set(name, value);
+    }
+    requestBody = multipart;
+  }
   const res = await fetch(`${playerV2Origin(config)}${buildV2Url(route, path)}${search}`, {
     method,
     headers,
     signal,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: requestBody,
   });
 
   const text = await res.text().catch(() => "");

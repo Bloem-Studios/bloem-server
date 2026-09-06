@@ -83,8 +83,8 @@ results with a generic warning; their raw error details are not part of v2.
 The web detail dialog and player search use typed v2 requests. The existing web
 track selector still needs numeric stored IDs; its adapter rejects IDs that it
 cannot represent safely. Native consumers need the string-ID models and new
-paths. Provider download is described below. Upload, delete, and AI-job mutations
-remain separate migration scopes; their existing retry limitations still apply.
+paths. Provider download and multipart uploads are described below. Delete and
+AI-job mutations remain separate migration scopes; their retry limitations still apply.
 
 ## Provider download
 
@@ -116,3 +116,37 @@ The bridge download retains its existing request and response contract. This
 operation does not change Jellyfin subtitle delivery. Both native clients must
 adopt the new download operation separately; AI creation/cancellation and user
 multipart uploads remain separate migration scopes.
+
+
+## Multipart upload and language detection
+
+`POST /api/v2/subtitles/upload` takes a `multipart/form-data` request with `file`
+and string `media_file_id`. Optional fields are `language`, `language_override`,
+`release_name`, and `hearing_impaired`. Boolean fields use `true` or `false` text.
+The file is limited to 5 MiB; the whole form is limited to 5 MiB plus 256 KiB for
+framing and other fields. Supported filename extensions are SRT, VTT, ASS, SSA,
+and SUB. The filename determines format; the file part can use
+`application/octet-stream`.
+
+Authentication and profile gates precede multipart parsing. The shared service
+checks file and parent-item access before storage and derives uploader identity
+from the authenticated account. Demo mode refuses uploads. Language selection
+retains filename, metadata and content detection with a manual fallback;
+`language_override=true` explicitly selects the supplied valid language. Success
+returns the same `200` public `subtitle` projection as provider download.
+
+Uploads are `non_retryable`. A full-content match may reuse a stored row, but it
+is not a durable receipt across later edits or deletion. Clients must not repeat
+an uncertain upload automatically or replay it after authentication refresh.
+The storage foundation's all-writer rollout and best-effort cleanup limitations
+still apply. Missing upload dependencies return a dependency-unavailable problem.
+
+`POST /api/v2/subtitles/detect-language` takes `file` and optional `language`, under
+the same byte limits. It returns `language` and `source` (`filename`, `metadata`,
+`content`, or `manual`) and never stores the file. It requires account/profile
+authority but works without subtitle storage. This read-only POST is naturally
+idempotent. Detection uses the supplied language only as fallback, not override.
+
+Web detail and player callers use these forms with captured authority and suppress
+stale completions. Apple and Android multipart adoption is separate required work;
+bridge multipart behavior and Jellyfin subtitle delivery remain unchanged.

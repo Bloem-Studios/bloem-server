@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -288,7 +287,7 @@ func (h *SubtitleSearchHandler) HandleUpload(w http.ResponseWriter, r *http.Requ
 	userLanguage := strings.TrimSpace(r.FormValue("language"))
 	preferUserLanguage := parseBoolFormValue(r.FormValue("language_override"))
 
-	sub, err := h.manager.Upload(r.Context(), subtitles.UploadRequest{
+	sub, err := h.uploadAuthorizedSubtitle(r.Context(), subtitles.UploadRequest{
 		MediaFileID:        mediaFileID,
 		UserID:             &userID,
 		Language:           userLanguage,
@@ -299,19 +298,7 @@ func (h *SubtitleSearchHandler) HandleUpload(w http.ResponseWriter, r *http.Requ
 		Data:               data,
 	})
 	if err != nil {
-		switch {
-		case strings.Contains(err.Error(), "unsupported subtitle format"),
-			strings.Contains(err.Error(), "missing file extension"),
-			strings.Contains(err.Error(), "empty subtitle file"),
-			strings.Contains(err.Error(), "could not detect subtitle language"),
-			strings.Contains(err.Error(), "invalid subtitle language"):
-			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
-		case strings.Contains(err.Error(), "exceeds maximum size"):
-			writeError(w, http.StatusRequestEntityTooLarge, "too_large", "Subtitle file must be under 5 MB")
-		default:
-			slog.ErrorContext(r.Context(), "subtitle upload failed", "component", "api", "media_file_id", mediaFileID, "error", err)
-			writeError(w, http.StatusInternalServerError, "upload_error", "Failed to upload subtitle")
-		}
+		writeAPIError(w, err)
 		return
 	}
 

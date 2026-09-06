@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { PlayerConfig } from "../context/PlayerConfigContext";
-import { playerFetch } from "../player-fetch";
 import { playerV2 } from "../player-v2";
 import type { SubtitleLanguageDetection, SubtitleResult } from "@/api/types";
 import { SubtitleUploadForm } from "@/components/subtitles/SubtitleUploadForm";
@@ -143,39 +142,49 @@ export function SubtitleSearchModal({
       languageOverride?: boolean;
       hearingImpaired: boolean;
     }) => {
-      const form = new FormData();
-      form.set("media_file_id", String(input.mediaFileId));
-      if (input.language) {
-        form.set("language", input.language);
-      }
-      if (input.languageOverride) {
-        form.set("language_override", "true");
-      }
-      form.set("file", input.file);
-      if (input.hearingImpaired) {
-        form.set("hearing_impaired", "true");
-      }
-
-      await playerFetch(playerConfig, "/subtitles/upload", {
-        method: "POST",
-        body: form,
+      const token = playerConfig.getAccessToken(),
+        profile = playerConfig.getProfileId(),
+        pin = playerConfig.getProfileToken?.();
+      const authority = playerConfig.capturePlaybackMutationContext?.();
+      const generation = downloadGeneration.current;
+      await playerV2(playerConfig, "POST /api/v2/subtitles/upload", {
+        form: {
+          media_file_id: String(input.mediaFileId),
+          file: input.file,
+          language: input.language,
+          language_override: input.languageOverride ? "true" : "false",
+          hearing_impaired: input.hearingImpaired ? "true" : "false",
+        },
       });
+      if (
+        generation !== downloadGeneration.current ||
+        token !== playerConfig.getAccessToken() ||
+        profile !== playerConfig.getProfileId() ||
+        pin !== playerConfig.getProfileToken?.() ||
+        (authority && !authority.isCurrent())
+      )
+        throw new DOMException("Subtitle upload context changed", "AbortError");
     },
     [playerConfig],
   );
 
   const handleDetectLanguage = useCallback(
     async (file: File, fallbackLanguage?: string): Promise<SubtitleLanguageDetection> => {
-      const form = new FormData();
-      form.set("file", file);
-      if (fallbackLanguage) {
-        form.set("language", fallbackLanguage);
-      }
-
-      return playerFetch<SubtitleLanguageDetection>(playerConfig, "/subtitles/detect-language", {
-        method: "POST",
-        body: form,
+      const token = playerConfig.getAccessToken(),
+        profile = playerConfig.getProfileId(),
+        pin = playerConfig.getProfileToken?.();
+      const generation = downloadGeneration.current;
+      const result = await playerV2(playerConfig, "POST /api/v2/subtitles/detect-language", {
+        form: { file, language: fallbackLanguage },
       });
+      if (
+        generation !== downloadGeneration.current ||
+        token !== playerConfig.getAccessToken() ||
+        profile !== playerConfig.getProfileId() ||
+        pin !== playerConfig.getProfileToken?.()
+      )
+        throw new DOMException("Subtitle detection context changed", "AbortError");
+      return result;
     },
     [playerConfig],
   );

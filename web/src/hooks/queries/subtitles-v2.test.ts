@@ -8,7 +8,13 @@ vi.mock("@/api/client", async (importOriginal) => ({
   captureProfileRequestContext: mocks.capture,
   isCapturedProfileAuthorityActive: mocks.active,
 }));
-import { downloadSubtitle, fetchDownloadedSubtitles, searchSubtitles } from "./subtitles";
+import {
+  uploadSubtitle,
+  detectSubtitleLanguage,
+  downloadSubtitle,
+  fetchDownloadedSubtitles,
+  searchSubtitles,
+} from "./subtitles";
 
 afterEach(() => mocks.v2.mockReset());
 
@@ -85,4 +91,35 @@ it("does not repeat an uncertain download or coerce a different returned file", 
   expect(mocks.v2).toHaveBeenCalledTimes(1);
   mocks.v2.mockResolvedValue({ subtitle: { id: "7", media_file_id: "43" } });
   await expect(downloadSubtitle(selected)).rejects.toThrow("Unsupported subtitle identifier");
+});
+
+it("uploads one captured multipart intent and keeps detection non-persistent", async () => {
+  const snapshot = { profileId: "p-owner", accessToken: "synthetic" };
+  mocks.capture.mockReturnValue(snapshot);
+  mocks.active.mockReturnValue(true);
+  const file = new File(["synthetic"], "synthetic.en.srt");
+  mocks.v2.mockResolvedValue({ subtitle: { id: "7", media_file_id: "42" } });
+  await uploadSubtitle({ media_file_id: 42, file, language: "fr", language_override: true });
+  expect(mocks.v2).toHaveBeenLastCalledWith("POST /api/v2/subtitles/upload", {
+    form: {
+      media_file_id: "42",
+      file,
+      language: "fr",
+      language_override: "true",
+      release_name: undefined,
+      hearing_impaired: "false",
+    },
+    profileContext: snapshot,
+    retryAuthentication: false,
+    signal: undefined,
+  });
+  mocks.v2.mockResolvedValue({ language: "en", source: "filename" });
+  expect(await detectSubtitleLanguage(file, "fr")).toEqual({ language: "en", source: "filename" });
+  expect(mocks.v2).toHaveBeenLastCalledWith("POST /api/v2/subtitles/detect-language", {
+    form: { file, language: "fr" },
+    profileContext: snapshot,
+    signal: undefined,
+  });
+  mocks.active.mockReturnValue(false);
+  await expect(detectSubtitleLanguage(file)).rejects.toThrow();
 });

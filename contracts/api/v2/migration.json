@@ -42969,11 +42969,12 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/subtitles/detect-language",
+        "operation_id": "detectSubtitleLanguage"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed bounded multipart operation implemented with shared subtitle format/language rules. Upload applies file/parent access and authenticated attribution; detection does not store content. Web callers adopted; independent review and native adoption pending. Storage publication rollout and best-effort orphan cleanup limits remain explicit.",
+      "retry_safety_note": "Read-only deterministic detection of the supplied bounded filename/content and optional language fallback; no subtitle or provider state is written."
     },
     {
       "listener": "api",
@@ -43332,19 +43333,19 @@
       "section": "playback-subtitles",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "unique_constraint",
-      "retry_safety_note": "DEFECT: UNIQUE (s3_key) resolves a retry to the existing row, but two overlapping calls across API nodes both see no row, both write the same key, and the insert that loses the race runs DeleteObject on the object the winning row references. The v2 port must claim the key durably before writing.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Full-content deduplication does not provide a durable replay receipt across later metadata edits or deletion. Send one multipart upload; do not automatically retry an uncertain response.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/subtitles/upload",
+        "operation_id": "uploadSubtitle"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed bounded multipart operation implemented with shared subtitle format/language rules. Upload applies file/parent access and authenticated attribution; detection does not store content. Web callers adopted; independent review and native adoption pending. Storage publication rollout and best-effort orphan cleanup limits remain explicit."
     },
     {
       "listener": "api",
