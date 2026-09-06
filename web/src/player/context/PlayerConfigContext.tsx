@@ -5,7 +5,15 @@ import type { ReactNode } from "react";
  * PlayerConfig is the portability contract — the host app provides these
  * values so the player module never imports app-specific code.
  */
+export interface PlaybackMutationContext {
+  accountId: string;
+  profileId: string;
+  origin: string;
+  isCurrent: () => boolean;
+}
+
 export interface PlayerConfig {
+  capturePlaybackMutationContext?: () => PlaybackMutationContext | null;
   /** Base URL for API calls, e.g. "/api/v1" */
   apiBaseUrl: string;
   /** Sync getter for the current JWT access token. */
