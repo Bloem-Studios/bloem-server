@@ -7722,7 +7722,9 @@
         "path": "/api/v2/admin/items/{id}/match/apply",
         "operation_id": "applyAdminItemMatch"
       },
-      "notes": "Item-scoped metadata_curation permission and shared frozen bridge service. Search returns bounded provider-ranked candidates with explicit truncation; apply retains synchronous identity-preserving metadata processing. Web disables both retry layers. Independent review pending."
+      "notes": "Item-scoped metadata_curation permission and shared frozen bridge service. Search returns bounded provider-ranked candidates with explicit truncation; apply retains synchronous identity-preserving metadata processing. Web disables both retry layers. Independent review pending.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Synchronous provider search or metadata processing has no durable replay identity; web disables both automatic retry layers."
     },
     {
       "listener": "api",
@@ -7784,7 +7786,9 @@
         "path": "/api/v2/admin/items/{id}/match/search",
         "operation_id": "searchAdminItemMatches"
       },
-      "notes": "Item-scoped metadata_curation permission and shared frozen bridge service. Search returns bounded provider-ranked candidates with explicit truncation; apply retains synchronous identity-preserving metadata processing. Web disables both retry layers. Independent review pending."
+      "notes": "Item-scoped metadata_curation permission and shared frozen bridge service. Search returns bounded provider-ranked candidates with explicit truncation; apply retains synchronous identity-preserving metadata processing. Web disables both retry layers. Independent review pending.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Synchronous provider search or metadata processing has no durable replay identity; web disables both automatic retry layers."
     },
     {
       "listener": "api",
