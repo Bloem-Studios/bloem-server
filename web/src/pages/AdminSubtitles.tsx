@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { adminSubtitleListScope } from "@/api/v2/adminSubtitles";
 import { useSearchParams } from "react-router";
-import type { AdminStoredSubtitle as AdminDownloadedSubtitle } from "@/api/v2/adminSubtitles";
 import AdminSubtitlesFilters, {
   FILTER_ALL,
 } from "@/components/admin/subtitles/AdminSubtitlesFilters";
@@ -15,10 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  useAdminDeleteDownloadedSubtitle,
-  useAdminDownloadedSubtitles,
-} from "@/hooks/queries/admin/subtitles";
+import { useAdminDownloadedSubtitles } from "@/hooks/queries/admin/subtitles";
 import { useAdminUsers } from "@/hooks/queries/admin/users";
 
 const PAGE_SIZE_OPTIONS = ["25", "50", "100"] as const;
@@ -28,7 +24,6 @@ export default function AdminSubtitles() {
   const { data: users = [] } = useAdminUsers();
 
   const [pageSize, setPageSize] = useState(25);
-  const deleteMutation = useAdminDeleteDownloadedSubtitle();
 
   const provider = searchParams.get("provider") ?? FILTER_ALL;
   const language = searchParams.get("language") ?? FILTER_ALL;
@@ -87,10 +82,6 @@ export default function AdminSubtitles() {
   function resetFilters() {
     setPagination({ scope, cursors: [undefined] });
     setSearchParams(new URLSearchParams(), { replace: true });
-  }
-
-  function handleDelete(subtitle: AdminDownloadedSubtitle) {
-    deleteMutation.mutate(subtitle.id);
   }
 
   const canPrev = page > 0;
@@ -154,8 +145,6 @@ export default function AdminSubtitles() {
         subtitles={subtitles}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={resetFilters}
-        onDelete={handleDelete}
-        isDeleting={deleteMutation.isPending}
       />
 
       {(total > 0 || page > 0) && (

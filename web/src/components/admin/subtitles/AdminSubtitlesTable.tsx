@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import AdminSubtitleDeleteDialog, { type SubtitleDeleteTarget } from "./AdminSubtitleDeleteDialog";
 import { downloadAdminSubtitle } from "@/api/v2/adminSubtitleBytes";
 import { adminSubtitleListScope } from "@/api/v2/adminSubtitles";
 import { getLanguageName } from "@/player/utils/languageNames";
@@ -38,8 +38,6 @@ interface AdminSubtitlesTableProps {
   authorityScope: string;
   hasActiveFilters: boolean;
   onResetFilters: () => void;
-  onDelete: (subtitle: AdminDownloadedSubtitle) => void;
-  isDeleting: boolean;
 }
 
 function formatRelative(value: string): string {
@@ -51,11 +49,9 @@ export default function AdminSubtitlesTable({
   authorityScope,
   hasActiveFilters,
   onResetFilters,
-  onDelete,
-  isDeleting,
 }: AdminSubtitlesTableProps) {
   const [editTarget, setEditTarget] = useState<AdminSubtitleEditIntent | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<AdminDownloadedSubtitle | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SubtitleDeleteTarget | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function handleDownload(subtitle: AdminDownloadedSubtitle) {
@@ -236,7 +232,7 @@ export default function AdminSubtitlesTable({
                       size="icon"
                       className="text-destructive hover:text-destructive h-8 w-8"
                       aria-label={`Delete subtitle ${subtitle.id}`}
-                      onClick={() => setDeleteTarget(subtitle)}
+                      onClick={() => setDeleteTarget({ subtitle, scope: authorityScope })}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -256,27 +252,7 @@ export default function AdminSubtitlesTable({
         }}
       />
 
-      <ConfirmDialog
-        open={deleteTarget != null}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
-        }}
-        title="Delete subtitle?"
-        description={
-          deleteTarget
-            ? `Remove ${providerLabel(deleteTarget.provider)} ${deleteTarget.language.toUpperCase()} subtitles for "${deleteTarget.media_title || "this media"}"? This deletes the stored file from S3.`
-            : ""
-        }
-        confirmLabel="Delete"
-        variant="destructive"
-        isPending={isDeleting}
-        onConfirm={() => {
-          if (deleteTarget) {
-            onDelete(deleteTarget);
-            setDeleteTarget(null);
-          }
-        }}
-      />
+      <AdminSubtitleDeleteDialog target={deleteTarget} onClose={() => setDeleteTarget(null)} />
     </>
   );
 }

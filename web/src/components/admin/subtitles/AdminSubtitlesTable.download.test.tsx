@@ -41,8 +41,6 @@ it("actual download gesture saves via v2 and keeps the opaque subtitle ID", asyn
           authorityScope={adminSubtitleListScope()}
           hasActiveFilters={false}
           onResetFilters={() => {}}
-          onDelete={() => {}}
-          isDeleting={false}
         />
       </QueryClientProvider>
     </MemoryRouter>,

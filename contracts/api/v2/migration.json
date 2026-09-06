@@ -17221,11 +17221,14 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/subtitles/{id}",
+        "operation_id": "deleteAdminStoredSubtitle"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSubtitleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Guarded administrator metadata deletion uses the captured canonical metadata validator and durable SQL revision predicate. Physical object cleanup is best effort after confirmed row removal. Web consumes one confirmation intent, with no rebase, auth replay or automatic resubmission. Independent source and native deletion inventories pending.",
+      "concurrency": "if_match",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Single revision-guarded metadata delete with best-effort object cleanup; lost SQL or HTTP replies are uncertain and require explicit reconciliation, not automatic replay."
     },
     {
       "listener": "api",

@@ -620,6 +620,7 @@ func registerAll(reg *Registry) {
 	registerAdminSubtitleList(reg)
 	registerAdminSubtitleMetadata(reg)
 	registerAdminSubtitleBytes(reg)
+	registerAdminSubtitleDelete(reg)
 	registerAdminAPIKeys(reg)
 	registerPersonalAPIKeys(reg)
 	registerAdminDevices(reg)

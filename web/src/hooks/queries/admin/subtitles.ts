@@ -44,23 +44,6 @@ export function useAdminUpdateDownloadedSubtitle() {
   });
 }
 
-export function useAdminDeleteDownloadedSubtitle() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      api<void>(`/admin/subtitles/${id}`, {
-        method: "DELETE",
-      }),
-    onSuccess: () => {
-      toast.success("Subtitle deleted");
-      queryClient.invalidateQueries({ queryKey: ["admin", "downloadedSubtitles"] });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to delete subtitle");
-    },
-  });
-}
-
 export function useSubtitleProviders() {
   return useQuery({
     queryKey: adminKeys.subtitleProviders(),
