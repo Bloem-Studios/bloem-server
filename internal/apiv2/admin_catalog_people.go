@@ -12,15 +12,15 @@ type AdminPeopleService interface {
 	UpdateAdminPerson(context.Context, int64, handlers.UpdatePersonRequest) (handlers.PersonView, error)
 }
 type AdminPersonUpdate struct {
-	Name       *string `json:"name,omitempty"`
-	Bio        *string `json:"bio,omitempty"`
-	BirthDate  *string `json:"birth_date,omitempty" doc:"YYYY-MM-DD; empty clears; null or omission preserves."`
-	DeathDate  *string `json:"death_date,omitempty" doc:"YYYY-MM-DD; empty clears; null or omission preserves."`
-	Birthplace *string `json:"birthplace,omitempty"`
-	Homepage   *string `json:"homepage,omitempty"`
-	TmdbID     *string `json:"tmdb_id,omitempty"`
-	ImdbID     *string `json:"imdb_id,omitempty"`
-	TvdbID     *string `json:"tvdb_id,omitempty"`
+	Name       *string `json:"name,omitempty" nullable:"true"`
+	Bio        *string `json:"bio,omitempty" nullable:"true"`
+	BirthDate  *string `json:"birth_date,omitempty" nullable:"true" doc:"YYYY-MM-DD; empty clears; null or omission preserves."`
+	DeathDate  *string `json:"death_date,omitempty" nullable:"true" doc:"YYYY-MM-DD; empty clears; null or omission preserves."`
+	Birthplace *string `json:"birthplace,omitempty" nullable:"true"`
+	Homepage   *string `json:"homepage,omitempty" nullable:"true"`
+	TmdbID     *string `json:"tmdb_id,omitempty" nullable:"true"`
+	ImdbID     *string `json:"imdb_id,omitempty" nullable:"true"`
+	TvdbID     *string `json:"tvdb_id,omitempty" nullable:"true"`
 }
 type AdminPersonUpdateInput struct {
 	ID   ID `path:"id"`
