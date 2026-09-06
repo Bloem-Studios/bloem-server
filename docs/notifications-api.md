@@ -507,3 +507,40 @@ exactly-once delivery. The later dispatcher needs an explicit policy for ambiguo
 outcomes: retrying the same retained message can duplicate mail after a crash;
 holding it can leave a request undelivered. That policy remains unresolved. HTTP
 success for the future caller must describe queued admission, not claim delivery.
+
+## Queued email verification caller
+
+`PUT /api/v2/notifications/email-preferences/address` accepts an `email` and
+client-created `verification_id` UUID under the existing authenticated profile and
+demo guards. The service requires a current non-child profile. A new intent needs
+a configured HTTP(S) external link base without credentials, query or fragment;
+an exact admitted replay keeps its original link even if configuration disappears.
+
+The200 response is a durable admission receipt: `verification_id`, UTC
+`expires_at`, and `current`. It is not SMTP acceptance or delivery. `current=false`
+means the original pending verification has expired, been cleared or verified, or
+been replaced; it does not initiate a resend. The response contains neither the
+bearer token nor the email message. Conflict returns409, admission rate limits429,
+invalid input422, denied profile403 and unavailable storage503.
+
+`GET /api/v2/notifications/email-preferences/address/capabilities` reports
+`queued_verification_v1`, `queue_available` and `dispatch_available` separately.
+The current packet implements queued admission only: `dispatch_available=false`.
+No worker or SMTP retry policy is activated by either operation. The method remains
+proposed until dispatch and consumer requirements close.
+
+The settings web caller captures the email, UUID and render authority synchronously
+before a mutation can pause offline. An uncertain response retains that exact draft
+for explicit retry while the hook remains mounted. Changing the email or authority
+creates another intent; a known receipt completes a draft, and a later explicit
+request creates a new one. There is no automatic authentication replay, rebasing or
+resend. Drafts are not persisted across page reload or unmount; this packet makes
+no browser-crash recovery guarantee.
+
+Dispatch, cache invalidation, toast and component callbacks require the original
+acting authority and current mounted draft. The receipt invalidates only that
+profile's email-preferences query rather than asserting a complete preferences
+snapshot. The form reports queued/pending verification and prevents editing the
+submitted address while its request is pending. It does not claim an email was
+sent. Worker uncertainty, receipt/payload retention and rollout requirements remain
+separate held work.

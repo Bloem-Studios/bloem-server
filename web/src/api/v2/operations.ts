@@ -321,6 +321,8 @@ export const v2Operations = {
   "GET /api/v2/notifications/discord-preferences": "getNotificationDiscordPreferences",
   "GET /api/v2/notifications/discord/link/callback": "completeNotificationDiscordLink",
   "GET /api/v2/notifications/email-preferences": "getNotificationEmailPreferences",
+  "GET /api/v2/notifications/email-preferences/address/capabilities":
+    "getNotificationEmailVerificationCapabilities",
   "GET /api/v2/notifications/email/unsubscribe": "unsubscribeNotificationEmail",
   "GET /api/v2/notifications/email/verify": "verifyNotificationEmailAddress",
   "GET /api/v2/notifications/preferences": "getNotificationPreferences",
@@ -724,6 +726,7 @@ export const v2Operations = {
   "PUT /api/v2/markers/items/{item_id}": "setItemMarkers",
   "PUT /api/v2/notifications/discord-preferences": "updateNotificationDiscordPreferences",
   "PUT /api/v2/notifications/email-preferences": "updateNotificationEmailPreferences",
+  "PUT /api/v2/notifications/email-preferences/address": "requestNotificationEmailVerification",
   "PUT /api/v2/notifications/preferences": "updateNotificationPreferences",
   "PUT /api/v2/notifications/webhooks/{id}": "updateNotificationWebhook",
   "PUT /api/v2/onboarding/progress": "updateOnboardingProgress",

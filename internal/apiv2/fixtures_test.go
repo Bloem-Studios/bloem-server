@@ -1686,6 +1686,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, subtitleAICreateFixtureCases()...)
 	cases = append(cases, notificationInboxFixtureCases()...)
 	cases = append(cases, applePushFixtureCases()...)
+	cases = append(cases, emailVerificationFixtureCases()...)
 	cases = append(cases, playbackFixtureCases()...)
 	cases = append(cases, playbackRouteEventFixtureCases()...)
 	return append(cases, playbackReplanFixtureCases()...)

@@ -63,6 +63,9 @@ type System struct {
 	// delivers once an admin configures bot credentials in settings.
 	DiscordPrefs *DiscordPrefsRepository
 
+	// EmailVerification admits durable requests; it does not run a dispatcher.
+	EmailVerification *EmailVerificationService
+
 	mailSender    mail.Sender
 	emailWorker   *accountChannelWorker[string]
 	discordWorker *accountChannelWorker[int]
@@ -246,6 +249,9 @@ func NewSystem(
 		stores:              stores,
 		users:               users,
 		logger:              slog.Default().With("component", "notifications.system"),
+	}
+	if emailPrefs != nil && cipher != nil {
+		system.EmailVerification = &EmailVerificationService{store: emailPrefs, cipher: cipher, profile: system.lookupProfile, linkBase: system.emailLinkBase}
 	}
 	wsDispatcher.payload = system.PayloadForRow
 	if emailChannelInst != nil {

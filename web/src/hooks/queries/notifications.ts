@@ -1,11 +1,16 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
+import {
+  captureEmailVerificationIntent,
+  queueNotificationEmailVerification,
+  type EmailVerificationIntent,
+} from "@/api/v2/notificationEmailVerification";
 import {
   beginNotificationDiscordLink,
   unlinkNotificationDiscord,
 } from "@/api/v2/notificationDiscord";
 import type { QueryClient } from "@tanstack/react-query";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
+import { captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
 import {
   captureNotificationAuthority,
   notificationScope,
@@ -27,7 +32,6 @@ import {
 import type {
   AppNotification,
   NotificationDiscordMode,
-  NotificationEmailPreferences,
   NotificationEmailPreferencesUpdate,
   NotificationListResponse,
   NotificationPreferences,
@@ -179,28 +183,86 @@ export function useUpdateEmailNotificationPreferences() {
 
 export function useRequestEmailNotificationAddress() {
   const queryClient = useQueryClient();
-  const context = captureProfileRequestContext();
-  return useMutation({
+  const authority = captureProfileRequestContext();
+  const draft = useRef<EmailVerificationIntent | null>(null);
+  const completed = useRef<EmailVerificationIntent | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const current = (intent: EmailVerificationIntent) => {
+    if (!mounted.current || draft.current !== intent) return false;
+    try {
+      requireNotificationAuthority(intent.authority);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const mutation = useMutation({
     retry: false,
-    mutationFn: (email: string) =>
-      api<NotificationEmailPreferences>("/notifications/email-preferences/address", {
-        method: "PUT",
-        body: JSON.stringify({ email }),
-      }),
-    onSuccess: (prefs) => {
-      if (!context) return;
-      requireNotificationAuthority(context);
-      queryClient.setQueryData(
-        [...notificationKeys.emailPreferences(), notificationScope(context)],
-        prefs,
-      );
-      toast.success(`Verification email sent to ${prefs.pending_email}`);
+    mutationFn: (intent: EmailVerificationIntent) => {
+      if (!current(intent)) throw new StaleApiRequestContextError();
+      return queueNotificationEmailVerification(intent);
     },
-    onError: (error) => {
-      if (error instanceof StaleApiRequestContextError) return;
-      toast.error(error instanceof Error ? error.message : "Failed to send the verification email");
+    onSuccess: (receipt, intent) => {
+      if (!current(intent)) return;
+      completed.current = intent;
+      void queryClient.invalidateQueries({
+        queryKey: [...notificationKeys.emailPreferences(), intent.scope],
+        exact: true,
+      });
+      toast.success(
+        receipt.current
+          ? "Verification request queued."
+          : "This verification request is no longer pending.",
+      );
+    },
+    onError: (error, intent) => {
+      if (!current(intent) || error instanceof StaleApiRequestContextError) return;
+      toast.error(error instanceof Error ? error.message : "Failed to queue verification request");
     },
   });
+  type Options = NonNullable<Parameters<typeof mutation.mutate>[1]>;
+  const callbacks = (options: Options | undefined, intent: EmailVerificationIntent): Options => ({
+    ...options,
+    onSuccess: (...args) => {
+      if (current(intent)) options?.onSuccess?.(...args);
+    },
+    onError: (...args) => {
+      if (current(intent)) options?.onError?.(...args);
+    },
+    onSettled: (...args) => {
+      if (current(intent)) options?.onSettled?.(...args);
+    },
+  });
+  const capture = (email: string) => {
+    const intent = captureEmailVerificationIntent(
+      email,
+      authority,
+      completed.current === draft.current ? null : draft.current,
+    );
+    draft.current = intent;
+    return intent;
+  };
+  return {
+    ...mutation,
+    mutate: (email: string, options?: Options) => {
+      try {
+        const intent = capture(email);
+        mutation.mutate(intent, callbacks(options, intent));
+      } catch (error) {
+        if (!(error instanceof StaleApiRequestContextError)) throw error;
+      }
+    },
+    mutateAsync: async (email: string, options?: Options) => {
+      const intent = capture(email);
+      return mutation.mutateAsync(intent, callbacks(options, intent));
+    },
+  };
 }
 
 export function useClearEmailNotificationAddress() {

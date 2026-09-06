@@ -205,7 +205,7 @@ function ChannelFrequencyRow({
 /**
  * Destination address for this profile's emails. There is no account-email
  * fallback: the profile receives nothing until an address is verified here.
- * Changing it sends a verification link to the new address; the old address
+ * Changing it queues a verification request for the new address; the old address
  * keeps receiving mail until the link is clicked. Removing the address also
  * turns the channel off. Child profiles cannot set addresses.
  */
@@ -219,7 +219,7 @@ function EmailDestinationRow({ prefs }: { prefs: NotificationEmailPreferences })
 
   const submit = () => {
     const trimmed = address.trim();
-    if (!trimmed) {
+    if (!trimmed || requestAddress.isPending) {
       return;
     }
     requestAddress.mutate(trimmed, {
@@ -245,13 +245,18 @@ function EmailDestinationRow({ prefs }: { prefs: NotificationEmailPreferences })
               <Button
                 variant="ghost"
                 size="sm"
-                disabled={clearAddress.isPending}
+                disabled={clearAddress.isPending || requestAddress.isPending}
                 onClick={() => clearAddress.mutate()}
               >
                 Remove
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => setEditing((value) => !value)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={requestAddress.isPending}
+              onClick={() => setEditing((value) => !value)}
+            >
               {editing ? "Cancel" : hasAddress ? "Change" : "Add address"}
             </Button>
           </div>
@@ -261,6 +266,7 @@ function EmailDestinationRow({ prefs }: { prefs: NotificationEmailPreferences })
         <div className="flex items-center gap-2">
           <Input
             type="email"
+            disabled={requestAddress.isPending}
             placeholder="name@example.com"
             value={address}
             onChange={(event) => setAddress(event.target.value)}
@@ -273,14 +279,14 @@ function EmailDestinationRow({ prefs }: { prefs: NotificationEmailPreferences })
           />
           <Button size="sm" disabled={requestAddress.isPending || !address.trim()} onClick={submit}>
             {requestAddress.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-            Send verification
+            Request verification
           </Button>
         </div>
       )}
       {prefs.pending_email !== "" && (
         <div className="text-xs text-amber-500">
-          Verification email sent to {prefs.pending_email} — it becomes active once the link in it
-          is opened.
+          Verification pending for {prefs.pending_email}. Open the verification link when the email
+          arrives to activate the address.
         </div>
       )}
       {!prefs.can_edit_address && (

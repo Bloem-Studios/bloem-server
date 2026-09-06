@@ -509,6 +509,7 @@ func registerAll(reg *Registry) {
 	registerWatchTogetherSocket(reg)
 	registerOrderedAndroidPush(reg)
 	registerOrderedApplePush(reg)
+	registerEmailVerification(reg)
 	registerEventsCapability(reg)
 	registerEventsSocket(reg)
 	registerAdminLogsSocket(reg)

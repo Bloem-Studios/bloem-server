@@ -76,6 +76,7 @@ type Dependencies struct {
 	DirectDownloads                 *DirectDownloadHandlers
 	ViewerSubtitleDelete            ViewerSubtitleDeleteService
 	OrderedApplePush                OrderedApplePushService
+	NotificationEmailVerification   NotificationEmailVerificationService
 	AdminAutoscanSourceDeletes      AdminAutoscanSourceDeleteService
 	AdminAutoscanSourceWrites       AdminAutoscanSourceWriteService
 	WatchTogetherSocket             WatchTogetherSocketService
