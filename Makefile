@@ -775,3 +775,7 @@ test-scenario-me-impersonation:
 .PHONY: test-scenario-invite-code-topups
 test-scenario-invite-code-topups:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeTopUpsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-admin-invitation-revoke-targets
+test-scenario-admin-invitation-revoke-targets:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationRevokeTargetsAcceptance$$' ./internal/scenariocatalog/executor

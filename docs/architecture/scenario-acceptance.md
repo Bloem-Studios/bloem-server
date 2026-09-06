@@ -1204,3 +1204,11 @@ eight-table snapshots (96 observations). Only the target's `max_uses` increment
 and database-clock-bounded `updated_at` may change; every other column/row must
 match. No retry or concurrent top-up claim. Required DSN, pre-constructor
 occupancy and exact selector guards remain mandatory.
+
+`make test-scenario-admin-invitation-revoke-targets` selects only
+`adm_inv_revoke.bad_id` and `adm_inv_revoke.not_found`. Original administrator
+DELETE requests and 400/404 oracles remain unchanged; v2 returns 422 validation
+and 404 not-found Problems. Four requests use independent transport reseeds
+and eight full eight-table snapshots (64 observations), with no row or timestamp
+exemptions. Required DSN, pre-constructor occupancy and exact selector guards
+remain mandatory. This does not cover successful revocation or delivery.
