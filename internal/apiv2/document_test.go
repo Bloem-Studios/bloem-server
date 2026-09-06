@@ -199,6 +199,8 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 		"cancelLibraryJob": true,
 		opListDevices:      true, opForgetDevice: true, opClearDeviceSettings: true,
 	}
+	// Shared policy discovery verifies an optional selected profile.
+	profileToken["getPolicyCapability"] = true
 	for _, id := range historyImportOperationIDs {
 		profileToken[id] = true
 	}

@@ -36281,13 +36281,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/policy/capability",
         "operation_id": "getPolicyCapability"
       },
-      "notes": "Implemented shared authenticated policy discovery; independent review pending. Optional profile retains viewer verification when selected; demo guard preserved. Absent policy system reports enabled=false. Bundled web query adopts v2. No Apple or Android caller found; Jellyfin policy discovery is a separate protocol."
+      "notes": "Shared authenticated policy discovery independently reviewed and accepted. Optional profile retains viewer verification when selected; demo guard preserved. Absent policy system reports enabled=false. Bundled web query adopts v2. No Apple or Android caller found; Jellyfin policy discovery is a separate protocol."
     },
     {
       "listener": "api",
