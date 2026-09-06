@@ -46,7 +46,44 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses an items collection with an explicit empty array and omits page for this bounded unpaginated result.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "listProfileSectionOverrides",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/page",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "overrides_get.empty",
@@ -67,7 +104,44 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses an items collection with an explicit empty array and omits page for this bounded unpaginated result.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "listProfileSectionOverrides",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/page",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "overrides_get.scope_default",
@@ -92,7 +166,48 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses an items collection with an explicit empty array and omits page for this bounded unpaginated result.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "listProfileSectionOverrides",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections",
+              "query": {
+                "scope": "library",
+                "library_id": "7"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/page",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "overrides_get.shape",
@@ -116,7 +231,44 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses an items collection with an explicit empty array and omits page for this bounded unpaginated result.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "listProfileSectionOverrides",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/page",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "overrides_get.no_profile",
@@ -169,7 +321,38 @@
             ]
           },
           "notes": "Missing profile header is a 400, the same status as a malformed body; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 requires profile selection through validation (422); v1 returns 400.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "listProfileSectionOverrides",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "overrides_get.unknown_profile",
@@ -222,7 +405,38 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both refuse unavailable profiles; v2 returns Problem Details.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "listProfileSectionOverrides",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "overrides_get.other_account_profile",
@@ -276,7 +490,38 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both refuse unavailable profiles; v2 returns Problem Details.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "listProfileSectionOverrides",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "overrides_get.no_token",
@@ -328,7 +573,38 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both require authentication; v2 returns Problem Details.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "listProfileSectionOverrides",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -1324,7 +1600,44 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses an items collection with an explicit empty array and omits page for this bounded unpaginated result.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionSettings",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/settings"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/page",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_settings.empty",
@@ -1346,7 +1659,44 @@
             ]
           },
           "notes": "Migrations seed no home sections into a fresh database; defaults are created at first admin visit. The populated shape (id, section_type, title, featured, item_limit, hidden, is_custom, customized, position, config) needs seeded sections in the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses an items collection with an explicit empty array and omits page for this bounded unpaginated result.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionSettings",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/settings"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/page",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_settings.bad_library_id",
@@ -1401,7 +1751,41 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects a home-scope library parameter with validation 422; v1 rejects the malformed identifier with 400.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionSettings",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/settings",
+              "query": {
+                "library_id": "abc"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_settings.scope",
@@ -1426,7 +1810,48 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses an items collection with an explicit empty array and omits page for this bounded unpaginated result.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionSettings",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/settings",
+              "query": {
+                "scope": "library",
+                "library_id": "7"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/page",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_settings.shape",
@@ -1450,7 +1875,44 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 uses an items collection with an explicit empty array and omits page for this bounded unpaginated result.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionSettings",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/settings"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items"
+                  ]
+                },
+                {
+                  "pointer": "/items",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/page",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_settings.no_profile",
@@ -1503,7 +1965,38 @@
             ]
           },
           "notes": "Missing profile header is a 400, the same status as a malformed body; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 requires profile selection through validation (422); v1 returns 400.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionSettings",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/settings"
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_settings.other_account_profile",
@@ -1557,7 +2050,38 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both refuse unavailable profiles; v2 returns Problem Details.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionSettings",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/settings"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_settings.no_token",
@@ -1609,7 +2133,38 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both require authentication; v2 returns Problem Details.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionSettings",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/settings"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -1654,7 +2209,40 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "The fixture server flag retains its boolean meaning and exact response fields.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionFlags",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/flags"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "allow_profile_custom_sections"
+                  ]
+                },
+                {
+                  "pointer": "/allow_profile_custom_sections",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_flags.off",
@@ -1676,7 +2264,40 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "The fixture server flag retains its boolean meaning and exact response fields.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionFlags",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/flags"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "allow_profile_custom_sections"
+                  ]
+                },
+                {
+                  "pointer": "/allow_profile_custom_sections",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_flags.on",
@@ -1701,7 +2322,40 @@
           "settings": {
             "sections.allow_profile_custom_sections": "true"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "The fixture server flag retains its boolean meaning and exact response fields.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionFlags",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/flags"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "allow_profile_custom_sections"
+                  ]
+                },
+                {
+                  "pointer": "/allow_profile_custom_sections",
+                  "op": "equals",
+                  "value": true
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_flags.shape",
@@ -1723,7 +2377,40 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "The fixture server flag retains its boolean meaning and exact response fields.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionFlags",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/flags"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "allow_profile_custom_sections"
+                  ]
+                },
+                {
+                  "pointer": "/allow_profile_custom_sections",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_flags.no_profile",
@@ -1776,7 +2463,38 @@
             ]
           },
           "notes": "Missing profile header is a 400, the same status as a malformed body; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 requires profile selection through validation (422); v1 returns 400.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionFlags",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/flags"
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_flags.other_account_profile",
@@ -1830,7 +2548,38 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both refuse unavailable profiles; v2 returns Problem Details.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionFlags",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/flags"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_flags.no_token",
@@ -1882,7 +2631,38 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both require authentication; v2 returns Problem Details.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionFlags",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/flags"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "section_flags.error_shape",
@@ -1917,7 +2697,38 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Both require authentication; v2 returns Problem Details.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "getProfileSectionFlags",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/profile/sections/flags"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                }
+              ]
+            }
+          }
         }
       ]
     }

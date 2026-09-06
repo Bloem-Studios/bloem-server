@@ -136,3 +136,23 @@ Teardown restores the ordinary fixture. Default fixtures, production behavior
 and all original v1 records remain unchanged. Missing pairings/read-after steps,
 skipped results and failed assertions fail this gate. SQLite execution, profile
 creation, avatars and additional profile authorization cases remain separate work.
+
+## Profile-section reads
+
+`make test-scenario-section-reads` requires the 24 existing read scenarios for
+profile overrides, resolved section settings, and the custom-section flag. Each
+transport starts from a separate fixture reseed through the real router and
+PostgreSQL provider. The gate requires all 48 transport results without skips;
+`SILO_SCENARIO_REPORT` writes their individual assertions and outcomes.
+
+The pairs preserve the original v1 exchanges. V2 collections use `items` with
+explicit empty arrays and omit `page` for these bounded, unpaginated results. Authorization failures use Problem Details;
+missing profile selection and invalid scope/library parameters use validation
+422. The server's custom-section flag retains its boolean meaning, including
+explicit false and true settings. These cases cover empty home/library pages,
+response shape, account isolation, unavailable profiles and missing credentials.
+
+This slice does not establish populated section ordering, override mutation
+effects, catalog-media behavior, SQLite parity or full migration acceptance.
+Use a dedicated empty database as described above; shared integration databases
+are unsuitable because the executor migrates and reseeds synthetic fixture state.

@@ -438,3 +438,8 @@ test-scenario-device-mutations:
 .PHONY: test-scenario-profile-mutations
 test-scenario-profile-mutations:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredProfileMutationAcceptance$$' ./internal/scenariocatalog/executor
+
+# Required paired reads of the acting profile's page customization.
+.PHONY: test-scenario-section-reads
+test-scenario-section-reads:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSectionReadAcceptance$$' ./internal/scenariocatalog/executor
