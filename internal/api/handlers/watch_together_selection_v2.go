@@ -10,7 +10,7 @@ func (h *WatchTogetherHandler) SelectWatchTogetherItem(ctx context.Context, room
 	if h == nil || h.Service == nil || h.TokenService == nil {
 		return watchtogether.Snapshot{}, "", apiError(503, "unavailable", "Watch together is unavailable")
 	}
-	snapshot, err := h.Service.SelectItem(ctx, room, user, profile, input)
+	snapshot, err := h.Service.SelectItemOnce(ctx, room, user, profile, input)
 	if err != nil {
 		return watchtogether.Snapshot{}, "", err
 	}

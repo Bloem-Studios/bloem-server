@@ -21,7 +21,7 @@ type WatchTogetherSelectionInput struct {
 }
 
 func registerWatchTogetherSelection(reg *Registry) {
-	op := Operation{Operation: humaOp(http.MethodPut, Prefix+"/watch-together/rooms/{room_id}/selection", "selectWatchTogetherRoomItem", "realtime", "Select playable content as the host in a host-pick room. This resets selection readiness and playback anchor; never replay an uncertain selection."), Class: ClassProfileScoped, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
+	op := Operation{Operation: humaOp(http.MethodPut, Prefix+"/watch-together/rooms/{room_id}/selection", "selectWatchTogetherRoomItem", "realtime", "Select playable content as the host in a host-pick room. An identical current resolved selection is a no-op; changing selection resets readiness and playback anchor. Never replay an uncertain selection after another selection."), Class: ClassProfileScoped, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
 	op.MaxBodyBytes = 4096
 	op.Errors = []int{409}
 	Register(reg, op, func(ctx context.Context, in *WatchTogetherSelectionInput) (*WatchTogetherRoomReadOutput, error) {

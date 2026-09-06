@@ -8440,7 +8440,7 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** Select playable content as the host in a host-pick room. This resets selection readiness and playback anchor; never replay an uncertain selection. */
+    /** Select playable content as the host in a host-pick room. An identical current resolved selection is a no-op; changing selection resets readiness and playback anchor. Never replay an uncertain selection after another selection. */
     put: operations["selectWatchTogetherRoomItem"];
     post?: never;
     delete?: never;
