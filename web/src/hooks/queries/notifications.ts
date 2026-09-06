@@ -1,6 +1,17 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { api, captureProfileRequestContext } from "@/api/client";
+import {
+  captureNotificationAuthority,
+  notificationScope,
+  requireNotificationAuthority,
+  listNotifications,
+  unreadNotificationCount,
+  notificationPreferences,
+  updateNotificationPreferences,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from "@/api/v2/notifications";
 import type {
   AppNotification,
   NotificationDiscordLinkInit,
@@ -11,90 +22,116 @@ import type {
   NotificationListResponse,
   NotificationPreferences,
   NotificationReadEventPayload,
-  NotificationUnreadCountResponse,
 } from "@/api/types";
 import { notificationKeys } from "./keys";
 import { toast } from "sonner";
 
 const NOTIFICATIONS_PAGE_SIZE = 25;
 
+export const notificationInboxKeys = {
+  list: (status: "all" | "unread", scope = notificationScope()) => [
+    ...notificationKeys.list(status),
+    scope,
+  ],
+  count: (scope = notificationScope()) => [...notificationKeys.unreadCount(), scope],
+  preferences: (scope = notificationScope()) => [...notificationKeys.preferences(), scope],
+};
+function invalidateInbox(queryClient: QueryClient, scope = notificationScope()) {
+  for (const status of ["all", "unread"] as const)
+    void queryClient.invalidateQueries({ queryKey: notificationInboxKeys.list(status, scope) });
+  void queryClient.invalidateQueries({ queryKey: notificationInboxKeys.count(scope) });
+}
 export function useNotifications(status: "all" | "unread" = "all") {
-  return useInfiniteQuery({
-    queryKey: notificationKeys.list(status),
-    initialPageParam: "",
-    queryFn: ({ pageParam }) => {
-      const search = new URLSearchParams({ limit: String(NOTIFICATIONS_PAGE_SIZE) });
-      if (status === "unread") {
-        search.set("status", "unread");
-      }
-      if (pageParam) {
-        search.set("before", pageParam);
-      }
-      return api<NotificationListResponse>(`/notifications?${search.toString()}`);
+  const context = captureProfileRequestContext();
+  const scope = notificationScope(context);
+  const queryClient = useQueryClient();
+  const queryKey = notificationInboxKeys.list(status, scope);
+  const query = useInfiniteQuery({
+    queryKey,
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
+      const result = await listNotifications(
+        status,
+        pageParam,
+        context ?? captureNotificationAuthority(),
+      );
+      const params =
+        queryClient.getQueryData<{ pageParams: (string | undefined)[] }>(queryKey)?.pageParams ??
+        [];
+      const index = params.indexOf(pageParam);
+      const prior = index < 0 ? params : params.slice(0, index + 1);
+      if (result.next_cursor && prior.includes(result.next_cursor))
+        throw new Error("Notification cursor repeated. Reload notifications.");
+      return result;
     },
-    getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
+    getNextPageParam: (last) => last.next_cursor,
+    enabled: context !== null,
+    retry: false,
   });
+  return { ...query, restart: () => queryClient.resetQueries({ queryKey, exact: true }) };
 }
-
 export function useUnreadNotificationCount(enabled = true) {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: notificationKeys.unreadCount(),
-    queryFn: () =>
-      api<NotificationUnreadCountResponse>("/notifications/unread-count").then((d) => d.count),
-    enabled,
+    queryKey: notificationInboxKeys.count(notificationScope(context)),
+    queryFn: () => unreadNotificationCount(context ?? captureNotificationAuthority()),
+    enabled: enabled && context !== null,
     staleTime: 30_000,
+    retry: false,
   });
 }
-
 export function useMarkNotificationRead() {
   const queryClient = useQueryClient();
+  const context = captureNotificationAuthority();
   return useMutation({
-    mutationFn: (id: string) => api(`/notifications/${id}/read`, { method: "POST" }),
+    mutationFn: (id: string) => markNotificationRead(id, context),
+    retry: false,
     onMutate: (id: string) => {
-      applyNotificationRead(queryClient, { profile_id: "", id });
+      requireNotificationAuthority(context);
+      applyNotificationRead(queryClient, { profile_id: context.profileId, id });
     },
     onError: () => {
       toast.error("Failed to mark notification read");
-      void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+      invalidateInbox(queryClient, notificationScope(context));
     },
   });
 }
-
 export function useMarkAllNotificationsRead() {
   const queryClient = useQueryClient();
+  const context = captureNotificationAuthority();
   return useMutation({
-    mutationFn: () => api("/notifications/read-all", { method: "POST" }),
-    onMutate: () => {
-      applyNotificationRead(queryClient, { profile_id: "", all: true });
-    },
+    mutationFn: (through: string) => markAllNotificationsRead(through, context),
+    retry: false,
+    onSuccess: () => invalidateInbox(queryClient, notificationScope(context)),
     onError: () => {
       toast.error("Failed to mark notifications read");
-      void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+      invalidateInbox(queryClient, notificationScope(context));
     },
   });
 }
-
 export function useNotificationPreferences() {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: notificationKeys.preferences(),
-    queryFn: () => api<NotificationPreferences>("/notifications/preferences"),
+    queryKey: notificationInboxKeys.preferences(notificationScope(context)),
+    queryFn: () => notificationPreferences(context ?? captureNotificationAuthority()),
+    enabled: context !== null,
+    retry: false,
   });
 }
-
 export function useUpdateNotificationPreferences() {
   const queryClient = useQueryClient();
+  const context = captureNotificationAuthority();
   return useMutation({
-    mutationFn: (update: Partial<NotificationPreferences>) =>
-      api<NotificationPreferences>("/notifications/preferences", {
-        method: "PUT",
-        body: JSON.stringify(update),
-      }),
+    mutationFn: (input: Partial<NotificationPreferences>) =>
+      updateNotificationPreferences(input, context),
+    retry: false,
     onSuccess: (prefs) => {
-      queryClient.setQueryData(notificationKeys.preferences(), prefs);
+      queryClient.setQueryData(
+        notificationInboxKeys.preferences(notificationScope(context)),
+        prefs,
+      );
     },
-    onError: () => {
-      toast.error("Failed to save notification preferences");
-    },
+    onError: () => toast.error("Failed to save notification preferences"),
   });
 }
 
@@ -219,23 +256,27 @@ function updateCachedLists(
   update: (notification: AppNotification) => AppNotification,
 ) {
   for (const status of ["all", "unread"] as const) {
-    queryClient.setQueryData<NotificationsInfiniteData>(notificationKeys.list(status), (data) =>
-      data
-        ? {
-            ...data,
-            pages: data.pages.map((page) => ({
-              ...page,
-              notifications: page.notifications.map(update),
-            })),
-          }
-        : data,
+    queryClient.setQueryData<NotificationsInfiniteData>(
+      notificationInboxKeys.list(status),
+      (data) =>
+        data
+          ? {
+              ...data,
+              pages: data.pages.map((page) => ({
+                ...page,
+                notifications: page.notifications.map(update),
+              })),
+            }
+          : data,
     );
   }
 }
 
 /** Prepends a freshly created notification and bumps the unread badge. */
 export function applyNotificationCreated(queryClient: QueryClient, notification: AppNotification) {
-  queryClient.setQueryData<NotificationsInfiniteData>(notificationKeys.list("all"), (data) => {
+  const context = captureProfileRequestContext();
+  if (!context || notification.profile_id !== context.profileId) return;
+  queryClient.setQueryData<NotificationsInfiniteData>(notificationInboxKeys.list("all"), (data) => {
     const first = data?.pages[0];
     if (!data || !first) {
       return data;
@@ -251,23 +292,31 @@ export function applyNotificationCreated(queryClient: QueryClient, notification:
       ],
     };
   });
-  void queryClient.invalidateQueries({ queryKey: notificationKeys.list("unread") });
+  void queryClient.invalidateQueries({ queryKey: notificationInboxKeys.list("unread") });
   if (!notification.read_at) {
-    queryClient.setQueryData<number>(notificationKeys.unreadCount(), (count) => (count ?? 0) + 1);
+    queryClient.setQueryData<number>(notificationInboxKeys.count(), (count) => (count ?? 0) + 1);
   }
 }
 
 /** Applies a read event (single id or all) to cached rows and the badge. */
 export function applyNotificationRead(
   queryClient: QueryClient,
-  payload: NotificationReadEventPayload,
+  payload: NotificationReadEventPayload & { through_created_at?: string; through_id?: string },
 ) {
+  const context = captureProfileRequestContext();
+  if (!context || (payload.profile_id && payload.profile_id !== context.profileId)) return;
+  if (payload.through_created_at && payload.through_id) {
+    // The wire list timestamps have millisecond precision; the delivery cutoff
+    // can retain microseconds. Re-read instead of guessing tuple order locally.
+    invalidateInbox(queryClient, notificationScope(context));
+    return;
+  }
   const readAt = new Date().toISOString();
   if (payload.all) {
     updateCachedLists(queryClient, (entry) =>
       entry.read_at ? entry : { ...entry, read_at: readAt },
     );
-    queryClient.setQueryData<number>(notificationKeys.unreadCount(), 0);
+    queryClient.setQueryData<number>(notificationInboxKeys.count(), 0);
     return;
   }
   if (!payload.id) {
@@ -290,7 +339,7 @@ export function applyNotificationRead(
   // not cached at all (the backend only publishes read events on real
   // transitions, so an unseen row was unread).
   if (!found || transitioned) {
-    queryClient.setQueryData<number>(notificationKeys.unreadCount(), (count) =>
+    queryClient.setQueryData<number>(notificationInboxKeys.count(), (count) =>
       count == null ? count : Math.max(0, count - 1),
     );
   }
@@ -298,20 +347,23 @@ export function applyNotificationRead(
 
 /** Hydrates the unread badge from the websocket snapshot (recent unread rows). */
 export function applyNotificationsSnapshot(queryClient: QueryClient, rows: AppNotification[]) {
+  const context = captureProfileRequestContext();
+  if (!context) return;
+  rows = rows.filter((row) => row.profile_id === context.profileId);
   // The snapshot is capped (25 rows); use it as a lower bound and refresh the
   // exact count only when the cap means the lower bound may be incomplete.
-  queryClient.setQueryData<number>(notificationKeys.unreadCount(), (count) =>
+  queryClient.setQueryData<number>(notificationInboxKeys.count(), (count) =>
     Math.max(count ?? 0, rows.length),
   );
   if (rows.length >= NOTIFICATIONS_PAGE_SIZE) {
-    void queryClient.invalidateQueries({ queryKey: notificationKeys.unreadCount() });
+    void queryClient.invalidateQueries({ queryKey: notificationInboxKeys.count() });
   }
   void queryClient.invalidateQueries({
-    queryKey: notificationKeys.list("all"),
+    queryKey: notificationInboxKeys.list("all"),
     refetchType: "active",
   });
   void queryClient.invalidateQueries({
-    queryKey: notificationKeys.list("unread"),
+    queryKey: notificationInboxKeys.list("unread"),
     refetchType: "active",
   });
 }

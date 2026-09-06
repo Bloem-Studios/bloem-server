@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { api, captureProfileRequestContext } from "@/api/client";
+import {
+  notificationCapabilities,
+  notificationScope,
+  captureNotificationAuthority,
+} from "@/api/v2/notifications";
 import type {
-  NotificationCapability,
   NotificationWebhook,
   NotificationWebhookInput,
   NotificationWebhookTestResult,
@@ -11,9 +15,12 @@ import { notificationKeys } from "./keys";
 import { toast } from "sonner";
 
 export function useNotificationCapability() {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: notificationKeys.capability(),
-    queryFn: () => api<NotificationCapability>("/notifications/capability"),
+    queryKey: [...notificationKeys.capability(), notificationScope(context)],
+    queryFn: () => notificationCapabilities(context ?? captureNotificationAuthority()),
+    enabled: context !== null,
+    retry: false,
     staleTime: 5 * 60_000,
   });
 }

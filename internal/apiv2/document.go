@@ -498,6 +498,7 @@ func registerAll(reg *Registry) {
 	registerDeviceLogin(reg)
 	registerAdminUsers(reg)
 	registerAdminAccounts(reg)
+	registerNotificationInbox(reg)
 	registerAdminUserAPIKeys(reg)
 	registerAdminAccountActivity(reg)
 	registerAdminAccountSettings(reg)

@@ -2033,6 +2033,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminSettingsInspection = adminHandler
 		v2deps.AdminSettingsChecks = adminHandler
 	}
+	if deps.Notifications != nil {
+		inbox := handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub)
+		inbox.SetApplePushDisplayTokenIssuer(jwtService)
+		v2deps.NotificationInbox = inbox
+	}
 	v2deps.AdminAccessGroups = accessGroupHandler
 	if deps.ActivityLogRepo != nil {
 		v2deps.AdminAccountActivity = deps.ActivityLogRepo

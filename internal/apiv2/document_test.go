@@ -295,6 +295,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	for _, id := range []string{"listAdminAccessGroups", "createAdminAccessGroup", "deleteAdminAccessGroup", "getAdminAccessGroup", "updateAdminAccessGroup", "listAdminIPUsers", "createAdminUser", "getAdminAccountCapabilities", "deleteAdminUser", "getAdminUser", "updateAdminUser", "listAdminUserAPIKeys", "impersonateAdminUser", "listAdminUserIPs", "listAdminUserProfiles", "listAdminUserSettingValues", "deleteAdminUserSettingValue", "setAdminUserSettingValue"} {
 		profileToken[id] = true
 	}
+	for _, id := range []string{"listNotifications", "getNotificationCapabilities", "getNotificationPreferences", "updateNotificationPreferences", "markNotificationsRead", "syncNotifications", "getNotificationUnreadCount", "getNotification", "markNotificationRead"} {
+		profileToken[id] = true
+	}
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {

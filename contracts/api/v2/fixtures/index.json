@@ -7885,6 +7885,195 @@
       "body_file": null
     },
     {
+      "name": "notification_get_notification",
+      "operation_id": "getNotification",
+      "scenario": "Profile notification inbox with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/notifications/00000000-0000-0000-0000-000000000002",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationItem",
+      "body_file": "notification_get_notification.json"
+    },
+    {
+      "name": "notification_get_notification_capabilities",
+      "operation_id": "getNotificationCapabilities",
+      "scenario": "Profile notification inbox with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/notifications/capabilities",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CapabilityResponse",
+      "body_file": "notification_get_notification_capabilities.json"
+    },
+    {
+      "name": "notification_get_notification_preferences",
+      "operation_id": "getNotificationPreferences",
+      "scenario": "Profile notification inbox with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/notifications/preferences",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationPreferences",
+      "body_file": "notification_get_notification_preferences.json"
+    },
+    {
+      "name": "notification_get_notification_unread_count",
+      "operation_id": "getNotificationUnreadCount",
+      "scenario": "Profile notification inbox with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/notifications/unread-count",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationCountOutputBody",
+      "body_file": "notification_get_notification_unread_count.json"
+    },
+    {
+      "name": "notification_list_notifications",
+      "operation_id": "listNotifications",
+      "scenario": "Profile notification inbox with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/notifications",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationListOutputBody",
+      "body_file": "notification_list_notifications.json"
+    },
+    {
+      "name": "notification_mark_notification_read",
+      "operation_id": "markNotificationRead",
+      "scenario": "Profile notification inbox with synthetic records.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/notifications/00000000-0000-0000-0000-000000000002/read",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {
+        "Cache-Control": "no-store"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
+      "name": "notification_mark_notifications_read",
+      "operation_id": "markNotificationsRead",
+      "scenario": "Profile notification inbox with synthetic records.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/notifications/read-all",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"through\":\"eyJ2IjoxLCJwIjp7IkNyZWF0ZWRBdCI6IjIwMjYtMDEtMDJUMDM6MDQ6MDUuNjc4MTIzWiIsIklEIjoiMDAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAyIn19.1XGV2v9oOwcSOPf8PkUnDCirBWKmUgYhJK9fDytWdaI\"}"
+      },
+      "expected_status": 204,
+      "response_headers": {
+        "Cache-Control": "no-store"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
+      "name": "notification_sync_notifications",
+      "operation_id": "syncNotifications",
+      "scenario": "Profile notification inbox with synthetic records.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/notifications/sync",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationSyncOutputBody",
+      "body_file": "notification_sync_notifications.json"
+    },
+    {
+      "name": "notification_update_notification_preferences",
+      "operation_id": "updateNotificationPreferences",
+      "scenario": "Profile notification inbox with synthetic records.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/notifications/preferences",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"enabled\":false}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationPreferences",
+      "body_file": "notification_update_notification_preferences.json"
+    },
+    {
       "name": "payload_too_large",
       "operation_id": null,
       "scenario": "A JSON body over the operation's declared limit (256 bytes on this probe), refused before decoding.",

@@ -1633,7 +1633,8 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminCatalogSourcesFixtureCases()...)
 	cases = append(cases, adminCatalogTransferFixtureCases()...)
 	cases = append(cases, invitationFixtureCases()...)
-	return append(cases, adminAccountFixtureCases()...)
+	cases = append(cases, adminAccountFixtureCases()...)
+	return append(cases, notificationInboxFixtureCases()...)
 }
 
 // fixtureMultipartType is the multipart Content-Type of the avatar fixtures,
@@ -1702,6 +1703,7 @@ func fixtureDeps() Dependencies {
 	deps.AdminHistoryImports = fixtureAdminHistoryImports()
 	deps.AdminAPIKeys = fixtureAdminAPIKeys()
 	deps.Invitations = fixtureInvitations()
+	deps.NotificationInbox = fixtureNotificationInbox()
 	accounts := fixtureAdminAccounts()
 	accounts.allowImpersonation = true
 	deps.AdminAccounts = accounts

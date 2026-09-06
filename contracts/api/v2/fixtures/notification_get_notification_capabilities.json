@@ -1,0 +1,37 @@
+{
+  "in_app": {
+    "enabled": true
+  },
+  "apple_push": {
+    "available": false,
+    "provider": "off",
+    "supported_modes": [
+      "in_app_only"
+    ]
+  },
+  "android_push": {
+    "available": false,
+    "provider": "off",
+    "supported_modes": [
+      "in_app_only"
+    ]
+  },
+  "web_push": {
+    "available": false
+  },
+  "webhooks": {
+    "available": false,
+    "max_per_profile": 0,
+    "supported_types": []
+  },
+  "email": {
+    "available": false,
+    "modes": [],
+    "digest_hour": 0
+  },
+  "discord": {
+    "available": false,
+    "modes": [],
+    "digest_hour": 0
+  }
+}
