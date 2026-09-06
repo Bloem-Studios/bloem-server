@@ -1,6 +1,11 @@
 import { deleteRoomSuggestion } from "@/api/v2/watchTogetherSuggestionDelete";
 import { listRoomSuggestions, setRoomSuggestionVote } from "@/api/v2/watchTogetherSuggestions";
-import { api } from "@/api/client";
+import {
+  api,
+  captureProfileRequestContext,
+  type ProfileRequestContextSnapshot,
+} from "@/api/client";
+import { closeRoom } from "@/api/v2/watchTogetherClose";
 
 export type GuestControlPolicy = "host_only" | "guest_play_pause";
 export type WatchTogetherRole = "host" | "guest";
@@ -146,10 +151,11 @@ export async function selectWatchTogetherRoomItem(
   });
 }
 
-export async function closeWatchTogetherRoom(roomId: string) {
-  return api<void>(`/watch-together/rooms/${roomId}`, {
-    method: "DELETE",
-  });
+export async function closeWatchTogetherRoom(
+  roomId: string,
+  authority: ProfileRequestContextSnapshot | null = captureProfileRequestContext(),
+) {
+  return closeRoom(roomId, authority);
 }
 
 export async function listWatchTogetherSuggestions(roomId: string, roomToken: string) {

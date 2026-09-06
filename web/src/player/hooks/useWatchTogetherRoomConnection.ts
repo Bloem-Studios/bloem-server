@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiClientError, getAccessToken, getProfileToken } from "@/api/client";
+import {
+  ApiClientError,
+  captureProfileRequestContext,
+  getAccessToken,
+  getProfileToken,
+} from "@/api/client";
 import {
   closeWatchTogetherRoom,
   type CreateWatchTogetherSuggestionInput,
@@ -404,13 +409,14 @@ export function useWatchTogetherRoomConnection({
     [roomId],
   );
 
+  const closeAuthority = captureProfileRequestContext();
   const closeRoom = useCallback(async () => {
     if (!roomId) {
       return;
     }
 
-    await closeWatchTogetherRoom(roomId);
-  }, [roomId]);
+    await closeWatchTogetherRoom(roomId, closeAuthority);
+  }, [roomId, closeAuthority]);
 
   const createSuggestion = useCallback(
     async (input: CreateWatchTogetherSuggestionInput) => {

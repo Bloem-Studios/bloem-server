@@ -108,3 +108,11 @@ The existing web delete action sends once, surfaces errors including `404`, and
 reloads the bounded list only after success under the original captured authority.
 It does not replay after a lost response or authentication error. Suggestion
 creation and promotion remain separate bridge operations.
+
+### End a Watch Together room
+
+`DELETE /api/v2/watch-together/rooms/{room_id}` (`closeWatchTogetherRoom`) requires authenticated profile authority and the demo guard. The existing service checks both the host account and host profile. A guest room token does not authorize closing; this operation does not require room proof in addition to host identity.
+
+Success returns bodyless `204` after the existing room-close service completes. Non-host authority returns `403`, a missing room `404`, an already-ended room `409`, and unavailable service `503`. Natural-idempotent classification describes convergence on ended state, not a promise that every repeated request returns `204`. The actual web action sends once without authentication replay and fences original authority before dispatch, after receipt and before completion feedback. It does not optimistically mark the room ended or automatically retry an uncertain close.
+
+The owning service retains persistence, host/wait timer cleanup, local connected-member `room_closed` dispatch with the existing `host_left` reason, and live-room removal. This port changes no domain persistence or callback behavior. It does not cancel already-dispatched playback, establish cross-node socket broadcast, or complete the separate v2 room-socket contract. Existing room creation, joining and room credentials remain separate migration scopes; v1 wire behavior is unchanged.

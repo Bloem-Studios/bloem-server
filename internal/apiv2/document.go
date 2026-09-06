@@ -498,6 +498,7 @@ func registerAll(reg *Registry) {
 	registerSubtitleAIReads(reg)
 	registerWatchTogetherSuggestions(reg)
 	registerWatchTogetherSuggestionDelete(reg)
+	registerWatchTogetherClose(reg)
 	registerOrderedAndroidPush(reg)
 	registerEventsCapability(reg)
 	registerEventsSocket(reg)

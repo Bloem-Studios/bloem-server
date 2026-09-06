@@ -1,3 +1,8 @@
+import {
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
 import { toast } from "sonner";
 import {
   buildWatchTogetherInviteUrl,
@@ -49,10 +54,13 @@ export async function setWatchTogetherGuestControl(
 
 /** Ends the watch party with toast feedback. */
 export async function endWatchTogetherRoom(closeRoom: () => Promise<void>): Promise<void> {
+  const authority = captureProfileRequestContext();
   try {
     await closeRoom();
-    toast.success("Room ended");
+    if (authority && isCapturedProfileAuthorityActive(authority)) toast.success("Room ended");
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : "Failed to end room");
+    if (error instanceof StaleApiRequestContextError) return;
+    if (authority && isCapturedProfileAuthorityActive(authority))
+      toast.error(error instanceof Error ? error.message : "Failed to end room");
   }
 }

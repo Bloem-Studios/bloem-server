@@ -75,6 +75,7 @@ type Dependencies struct {
 	AdminJellyfinCompatSettings   AdminJellyfinCompatSettingsService
 	OrderedAndroidPush            OrderedAndroidPushService
 	WatchTogetherSuggestionDelete WatchTogetherSuggestionDeleteService
+	WatchTogetherClose            WatchTogetherCloseService
 	WatchTogetherSuggestions      WatchTogetherSuggestionService
 	AdminSectionSettingsWrite     AdminSectionSettingsWriteService
 	AdminDashboardStats           AdminDashboardStatsService
