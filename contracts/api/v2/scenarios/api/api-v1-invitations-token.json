@@ -53,7 +53,45 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "email",
+                    "inviter_name",
+                    "server_name",
+                    "expires_at",
+                    "show_tour",
+                    "acceptance_available"
+                  ]
+                },
+                {
+                  "pointer": "/acceptance_available",
+                  "op": "equals",
+                  "value": true
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_lookup.meaning",
@@ -97,7 +135,51 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/email",
+                  "op": "equals",
+                  "value": "fixture-invitee@silo.example.test"
+                },
+                {
+                  "pointer": "/inviter_name",
+                  "op": "equals",
+                  "value": "${admin_username}"
+                },
+                {
+                  "pointer": "/server_name",
+                  "op": "equals",
+                  "value": "${server_name}"
+                },
+                {
+                  "pointer": "/show_tour",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/expires_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/acceptance_available",
+                  "op": "equals",
+                  "value": true
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "inv_lookup.shape",
@@ -128,7 +210,37 @@
             "database"
           ],
           "notes": "inviter_name is omitempty; other fields are always present.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/expires_at",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/show_tour",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/acceptance_available",
+                  "op": "equals",
+                  "value": true
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "inv_lookup.accepted",
@@ -183,7 +295,71 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token_accepted}"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invitation not found or no longer available."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_lookup.expired",
@@ -238,7 +414,71 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/fixture-invitation-token-expired"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invitation not found or no longer available."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_lookup.unknown",
@@ -288,7 +528,71 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/no-such-token"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invitation not found or no longer available."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_lookup.trailing_slash",
@@ -314,7 +618,33 @@
             "database"
           ],
           "notes": "The inventory path carries a trailing slash while clients may call either spelling. Flagged so the section PR picks one canonical form.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/acceptance_available",
+                  "op": "equals",
+                  "value": true
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -387,7 +717,61 @@
           ],
           "fresh_state": true,
           "notes": "This response carries tokens or a profile token yet sets no Cache-Control (writeJSON only sets Content-Type), so a shared cache may store it. Pinned as the current behavior and flagged for the section PR as an accidental omission.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}/accept",
+              "body": {
+                "password": "fixture-invitee-password"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "login_status",
+                    "username",
+                    "tokens"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "accepted"
+                },
+                {
+                  "pointer": "/login_status",
+                  "op": "equals",
+                  "value": "signed_in"
+                },
+                {
+                  "pointer": "/username",
+                  "op": "equals",
+                  "value": "fixture-invitee@silo.example.test"
+                },
+                {
+                  "pointer": "/tokens/expires_in",
+                  "op": "type",
+                  "value": "integer"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.meaning",
@@ -426,7 +810,61 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}/accept",
+              "body": {
+                "password": "fixture-invitee-password"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "login_status",
+                    "username",
+                    "tokens"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "accepted"
+                },
+                {
+                  "pointer": "/login_status",
+                  "op": "equals",
+                  "value": "signed_in"
+                },
+                {
+                  "pointer": "/username",
+                  "op": "equals",
+                  "value": "fixture-invitee@silo.example.test"
+                },
+                {
+                  "pointer": "/tokens/expires_in",
+                  "op": "type",
+                  "value": "integer"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.single_use",
@@ -481,7 +919,75 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}/accept",
+              "body": {
+                "password": "fixture-invitee-password"
+              },
+              "repeat": 2
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invitation not found or no longer available."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.weak_password",
@@ -539,7 +1045,58 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/no-such-token/accept",
+              "body": {
+                "password": "short"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.malformed",
@@ -595,7 +1152,56 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}/accept",
+              "raw_body": "nope"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/malformed_request$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.unknown",
@@ -648,7 +1254,74 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/no-such-token/accept",
+              "body": {
+                "password": "fixture-invitee-password"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invitation not found or no longer available."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.shape",
@@ -681,7 +1354,61 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original invitation token intent with explicit acceptance capability, typed Problems, and committed acceptance plus separate login outcome/token envelope. Synthetic invitation effects only.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_token_lifecycle_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}/accept",
+              "body": {
+                "password": "fixture-invitee-password"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "login_status",
+                    "username",
+                    "tokens"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "accepted"
+                },
+                {
+                  "pointer": "/login_status",
+                  "op": "equals",
+                  "value": "signed_in"
+                },
+                {
+                  "pointer": "/username",
+                  "op": "equals",
+                  "value": "fixture-invitee@silo.example.test"
+                },
+                {
+                  "pointer": "/tokens/expires_in",
+                  "op": "type",
+                  "value": "integer"
+                }
+              ]
+            }
+          }
         }
       ]
     },

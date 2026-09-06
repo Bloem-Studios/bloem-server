@@ -1367,3 +1367,23 @@ credential changes, sequential authentication and session mutation. This does
 not claim concurrent password changes, API-key usage, profile/PIN mutation,
 external providers, enrollment, outages or durable replay. The six original
 pairs remain separate from NEW acceptance.
+
+`make test-scenario-invitation-token-lifecycle` selects the fourteen original
+non-`.r1` invitation lookup/acceptance cases. Original requests, requirements,
+oracles and single-use repeat are preserved. V2 reports acceptance capability,
+typed errors, and committed acceptance with a separate signed-in token envelope.
+
+Synthetic account/default-profile/session provisioning and invitation consumption
+are checked as invitation effects only. Twenty-eight results issue thirty HTTP
+requests with fifty-eight eleven-table snapshots (638 observations); the
+intermediate single-use snapshot proves the second accept changes nothing.
+All preexisting rows/columns remain exact except the consumed invitation fields.
+New rows retain fixture-equivalent defaults with new account revisions exactly1,
+requested identity, verified bcrypt
+hash and bounded timestamps. Issued access/refresh signatures, identities and
+lifetimes match the new account/session. Account sequence effects are explicit.
+Database timestamps use database bounds; profile and session/token expiry use
+application bounds at their storage precision. No account login, refresh, profile
+CRUD or rate-limit case is added; no real enrollment or network delivery occurs.
+Required scratch guards, original pertransport reseeding, full effects and exact
+cleanup remain mandatory; prior negative guard evidence may be reused.
