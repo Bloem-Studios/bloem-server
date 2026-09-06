@@ -141,15 +141,16 @@ authority receipts nor source markers are implicitly imported as personal data.
 ## Activation requirements
 
 Local sink atomicity is not a transaction spanning control PostgreSQL and
-SQLite. The future coordinator must reserve pending authority, install its
-fence in the selected sink, then CAS-activate the same control intent. Recovery
+SQLite. The opt-in initial handler reserves pending authority, installs its fence in
+the selected sink, then CAS-activates the same control intent. Recovery
 after installation moves forward; it must never roll the sink fence back.
 An old write that commits before sink advancement is ordered before that
 advancement. Afterward its fence is stale. Control-plane lease expiry alone
 does not atomically revoke a selected SQLite writer.
 
 Operational source registration, restore/copy cutover, coordinated receipt retirement,
-pending/install/activate recovery, public lifecycle and executor replacement
-remain inactive. Exact source handles detect a different marker, but a
+production lifecycle enablement and executor replacement remain inactive. The
+explicitly configured initial handler covers staged start, sequenced progress
+and normal stop against an already admitted source. Exact source handles detect a different marker, but a
 persisted UUID cannot prove that a restored copy contains current fences.
 Those storage-topology and recovery rules must be implemented before activation.

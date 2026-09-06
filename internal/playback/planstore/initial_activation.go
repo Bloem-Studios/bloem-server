@@ -171,7 +171,16 @@ func (s *Postgres) AcknowledgeInitialInstallation(ctx context.Context, binding p
 		return state, saveInitialActivation(ctx, tx, state)
 	})
 }
+
+// CancelInitialActivation records the captured live owner's durable cancellation.
+// It does not grant a reconciler renewed publication or execution authority.
+func (s *Postgres) CancelInitialActivation(ctx context.Context, binding playback.InitialActivationBindingV3, abortID string) (playback.InitialActivationV3, error) {
+	return s.abortInitialActivation(ctx, binding, abortID, true)
+}
 func (s *Postgres) AbortInitialActivation(ctx context.Context, binding playback.InitialActivationBindingV3, abortID string) (playback.InitialActivationV3, error) {
+	return s.abortInitialActivation(ctx, binding, abortID, false)
+}
+func (s *Postgres) abortInitialActivation(ctx context.Context, binding playback.InitialActivationBindingV3, abortID string, ownerCancellation bool) (playback.InitialActivationV3, error) {
 	if !validInitialUUID(abortID) {
 		return playback.InitialActivationV3{}, playback.ErrInitialActivationInvalidV3
 	}
@@ -187,7 +196,11 @@ func (s *Postgres) AbortInitialActivation(ctx context.Context, binding playback.
 			}
 			return state, nil
 		}
-		if (state.Phase != playback.InitialActivationPendingV3 && state.Phase != playback.InitialActivationInstalledV3) || (row.admitting && row.authority.LeaseExpiresAt.After(row.now)) {
+		eligible := !row.admitting || !row.authority.LeaseExpiresAt.After(row.now)
+		if ownerCancellation {
+			eligible = row.live() && row.authority.State == playback.AttemptPreparingV3
+		}
+		if (state.Phase != playback.InitialActivationPendingV3 && state.Phase != playback.InitialActivationInstalledV3) || !eligible {
 			return zero, playback.ErrInitialActivationConflictV3
 		}
 		state.Phase = playback.InitialActivationAbortingV3
@@ -305,15 +318,22 @@ func validateStoredInitialActivation(state playback.InitialActivationV3) error {
 	}
 	switch state.Phase {
 	case playback.InitialActivationPendingV3:
-		if state.Install != nil || state.Terminal != nil || state.AbortID != "" || !state.DrainNotBefore.IsZero() {
+		if state.Install != nil || state.Terminal != nil || state.AbortID != "" || state.StopID != "" || !state.DrainNotBefore.IsZero() {
 			return playback.ErrInitialActivationInvalidV3
 		}
 	case playback.InitialActivationInstalledV3, playback.InitialActivationActivatedV3:
-		if state.Install == nil || state.Terminal != nil || state.AbortID != "" || !state.DrainNotBefore.IsZero() {
+		if state.Install == nil || state.Terminal != nil || state.AbortID != "" || state.StopID != "" || !state.DrainNotBefore.IsZero() {
 			return playback.ErrInitialActivationInvalidV3
 		}
 	case playback.InitialActivationAbortingV3, playback.InitialActivationAbortedV3:
-		if !validInitialUUID(state.AbortID) || state.DrainNotBefore.IsZero() || (state.Phase == playback.InitialActivationAbortedV3) != (state.Terminal != nil) {
+		if state.StopID != "" || !validInitialUUID(state.AbortID) || state.DrainNotBefore.IsZero() || (state.Phase == playback.InitialActivationAbortedV3) != (state.Terminal != nil) {
+			return playback.ErrInitialActivationInvalidV3
+		}
+	case playback.InitialActivationStoppingV3, playback.InitialActivationStoppedV3:
+		if state.Install == nil || state.AbortID != "" || state.StopID == "" || state.DrainNotBefore.IsZero() || (state.Phase == playback.InitialActivationStoppedV3) != (state.Terminal != nil) {
+			return playback.ErrInitialActivationInvalidV3
+		}
+		if state.Terminal != nil && (state.Terminal.Stop == nil || state.Terminal.Stop.StopID != state.StopID) {
 			return playback.ErrInitialActivationInvalidV3
 		}
 	default:

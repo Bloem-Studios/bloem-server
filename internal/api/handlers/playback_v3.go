@@ -1581,6 +1581,15 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 			writeJSON(w, http.StatusCreated, response)
 			return
 		}
+		if h.initialFlow != nil {
+			recovered, err := h.recoverInitialPublicationV3(r.Context(), existing)
+			if err != nil {
+				writeNativeAuthorityUnavailable(w)
+				return
+			}
+			writeJSON(w, http.StatusCreated, recovered)
+			return
+		}
 		// The replayed plan is only usable while its session is alive; a dead
 		// session must surface as a retryable terminal so the client mints a
 		// fresh attempt instead of replaying a plan it can never stream.
@@ -1738,6 +1747,12 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 	response, statusErr := h.startPlannedPlaybackV3(r, userID, profileID, req, requestDigests, requestedFile, effectiveFile, audioIndex, result, clientInfo)
 	timings.mark("session_transport_commit")
 	if statusErr != nil {
+		if h.initialFlow != nil {
+			// A bound intent may have committed in another store. Preserve its
+			// reconciliation state instead of invoking legacy decision persistence.
+			writeError(w, http.StatusServiceUnavailable, statusErr.reason, statusErr.message)
+			return
+		}
 		if statusErr.reason == "playback_attempt_reused" {
 			writeError(w, http.StatusConflict, "playback_attempt_reused", statusErr.message)
 			return
@@ -1873,6 +1888,9 @@ func appendStartWarningsV3(result *playback.PlannerResultV3, warnings []playback
 
 // startPlannedPlaybackV3 creates a session and transport for an accepted plan.
 func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, profileID string, req playback.StartRequestV3, requestDigests playbackStartRequestDigestsV3, requestedFile, effectiveFile *models.MediaFile, audioIndex int, result playback.PlannerResultV3, clientInfo playback.ClientInfo) (playback.DecisionResponseV3, *transportErrorV3) {
+	if h.initialFlow != nil {
+		return h.startInitialPlaybackV3(r, userID, profileID, req, requestDigests, requestedFile, effectiveFile, audioIndex, result, clientInfo)
+	}
 	if result.Plan == nil {
 		return playback.DecisionResponseV3{}, &transportErrorV3{reason: "internal_error", message: "The server produced no playback plan."}
 	}

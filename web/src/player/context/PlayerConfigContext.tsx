@@ -14,6 +14,8 @@ export interface PlayerConfig {
   getProfileId: () => string | null;
   /** Sync getter for the current verified profile token, when one exists. */
   getProfileToken?: () => string | null;
+  /** Reports an unconfirmed stop, including after the player has unmounted. */
+  onPlaybackStopError?: (sessionId: string, error: Error, retry: () => void) => void;
   /** Stable device identity used for device-scoped playback settings. */
   getDeviceId: () => string;
 }
