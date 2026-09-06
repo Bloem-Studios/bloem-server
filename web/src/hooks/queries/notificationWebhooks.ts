@@ -14,6 +14,7 @@ import {
   listNotificationWebPushSubscriptions,
   deleteNotificationWebPushSubscription,
   deleteNotificationWebhook,
+  rotateNotificationWebhookSecret,
   listNotificationWebhooks,
 } from "@/api/v2/notificationDestinations";
 import { notificationKeys } from "./keys";
@@ -156,15 +157,42 @@ export function useTestNotificationWebhook() {
 }
 
 export function useRotateNotificationWebhookSecret() {
-  return useMutation({
-    mutationFn: (id: string) =>
-      api<{ signing_secret: string }>(`/notifications/webhooks/${id}/rotate-secret`, {
-        method: "POST",
-      }),
-    onError: (error) => {
+  const context = captureProfileRequestContext();
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async (intent: {
+      id: string;
+      authority: ReturnType<typeof captureProfileRequestContext>;
+    }) => {
+      if (!intent.authority) throw new StaleApiRequestContextError();
+      return rotateNotificationWebhookSecret(intent.id, intent.authority);
+    },
+    onSuccess: (_result, intent) => {
+      if (!intent.authority) throw new StaleApiRequestContextError();
+      requireNotificationAuthority(intent.authority);
+      void queryClient.invalidateQueries({
+        queryKey: [...notificationKeys.webhooks(), notificationScope(intent.authority)],
+        exact: true,
+      });
+    },
+    onError: (error, intent) => {
+      if (!intent.authority) return;
+      try {
+        requireNotificationAuthority(intent.authority);
+      } catch {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Failed to rotate signing secret");
     },
   });
+  return {
+    ...mutation,
+    mutate: (id: string, options?: Parameters<typeof mutation.mutate>[1]) =>
+      mutation.mutate({ id, authority: context }, options),
+    mutateAsync: (id: string, options?: Parameters<typeof mutation.mutateAsync>[1]) =>
+      mutation.mutateAsync({ id, authority: context }, options),
+  };
 }
 
 export function useWebPushSubscriptions(enabled = true) {

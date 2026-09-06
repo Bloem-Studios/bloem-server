@@ -538,6 +538,7 @@ export const v2Operations = {
   "POST /api/v2/notifications/web-push/subscriptions": "subscribeNotificationWebPush",
   "POST /api/v2/notifications/web-push/unsubscribe": "unsubscribeNotificationWebPush",
   "POST /api/v2/notifications/webhooks": "createNotificationWebhook",
+  "POST /api/v2/notifications/webhooks/{id}/rotate-secret": "rotateNotificationWebhookSecret",
   "POST /api/v2/notifications/webhooks/{id}/test": "testNotificationWebhook",
   "POST /api/v2/notifications/{id}/read": "markNotificationRead",
   "POST /api/v2/profiles": "createProfile",

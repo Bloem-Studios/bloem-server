@@ -93,3 +93,11 @@ func (h *NotificationsHandler) DeleteNotificationServerChannel(ctx context.Conte
 	}
 	return h.system.ServerChannels.Delete(ctx, id)
 }
+
+func (h *NotificationsHandler) RotateNotificationWebhookSecret(ctx context.Context, profile, id string) (string, error) {
+	svc := h.webhooks()
+	if svc == nil {
+		return "", apiError(503, "unavailable", "Webhooks are not available")
+	}
+	return svc.RotateSecretV2(ctx, profile, id)
+}

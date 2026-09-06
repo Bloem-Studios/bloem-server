@@ -17,6 +17,7 @@ const (
 )
 
 type NotificationDestinationService interface {
+	RotateNotificationWebhookSecret(context.Context, string, string) (string, error)
 	DeleteNotificationServerChannel(context.Context, string) error
 	DeleteNotificationWebhook(context.Context, string, string, func(int64) error) error
 	SubscribeNotificationWebPush(context.Context, int, string, string, string, string, string) (*notifications.WebPushSubscription, error)
@@ -202,8 +203,45 @@ type NotificationServerChannelDeleteInput struct {
 	ID string `path:"id"`
 }
 
+type NotificationWebhookRotateInput struct {
+	ID string `path:"id"`
+}
+
+const notificationSecretNoStore = "no-store"
+
+type NotificationWebhookSecretOutput struct {
+	CacheControl string `header:"Cache-Control"`
+	Body         struct {
+		SigningSecret string `json:"signing_secret"`
+	}
+}
+
 func registerNotificationDestinations(reg *Registry) {
+
+	rotate := notificationOperation(http.MethodPost, "/webhooks/{id}/rotate-secret", "rotateNotificationWebhookSecret")
+	rotate.RetrySafety = RetrySafetyNonRetryable
+	rotate.Summary = "Replace the generic webhook signing secret and reveal it once. Never replay an uncertain rotation."
+	Register(reg, rotate, func(ctx context.Context, in *NotificationWebhookRotateInput) (*NotificationWebhookSecretOutput, error) {
+		if reg.deps.NotificationDestinations == nil {
+			return nil, unavailable("notification destinations")
+		}
+		value, err := reg.deps.NotificationDestinations.RotateNotificationWebhookSecret(ctx, profileFrom(ctx), in.ID)
+		if errors.Is(err, notifications.ErrWebhookNotFound) {
+			return nil, NewProblem(TypeNotFound, "Webhook not found.")
+		}
+		if errors.Is(err, notifications.ErrWebhookInvalid) {
+			return nil, NewProblem(TypeValidationFailed, "Only generic webhooks have signing secrets.")
+		}
+		if err != nil {
+			return nil, serviceProblem(err)
+		}
+		out := &NotificationWebhookSecretOutput{CacheControl: notificationSecretNoStore}
+		out.Body.SigningSecret = value
+		return out, nil
+	})
+
 	removeChannel := Operation{Operation: humaOp(http.MethodDelete, Prefix+"/admin/notifications/server-channels/{id}", "deleteAdminNotificationServerChannel", "admin", "Delete the exact server notification channel and its row-local delivery bookkeeping. Does not recall already-dispatched provider work."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNaturalIdempotent}
+
 	removeChannel.DefaultStatus = http.StatusNoContent
 	Register(reg, removeChannel, func(ctx context.Context, in *NotificationServerChannelDeleteInput) (*struct{}, error) {
 		if reg.deps.NotificationDestinations == nil {

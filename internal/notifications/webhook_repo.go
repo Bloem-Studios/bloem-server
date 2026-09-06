@@ -439,3 +439,15 @@ func (r *WebhookRepository) DeleteGuarded(ctx context.Context, profile, id strin
 	}
 	return tx.Commit(ctx)
 }
+
+// ReplaceSigningSecret changes no configuration or provider bookkeeping fields.
+func (r *WebhookRepository) ReplaceSigningSecret(ctx context.Context, profile, id, ciphertext string) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE notification_webhooks SET signing_secret_ciphertext=$3, updated_at=now() WHERE profile_id=$1 AND id=$2 AND type='generic'`, profile, id, ciphertext)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrWebhookNotFound
+	}
+	return nil
+}

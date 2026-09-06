@@ -100,3 +100,17 @@ export async function deleteNotificationServerChannel(
   });
   requireNotificationAuthority(profileContext);
 }
+
+export async function rotateNotificationWebhookSecret(
+  id: string,
+  profileContext: ProfileRequestContextSnapshot,
+) {
+  requireNotificationAuthority(profileContext);
+  const result = await v2("POST /api/v2/notifications/webhooks/{id}/rotate-secret", {
+    path: { id },
+    profileContext,
+    retryAuthentication: false,
+  });
+  requireNotificationAuthority(profileContext);
+  return result;
+}

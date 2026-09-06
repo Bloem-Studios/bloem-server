@@ -372,3 +372,29 @@ func (s *WebhookService) ListPage(ctx context.Context, profile string, limit int
 func (s *WebhookService) DeleteGuarded(ctx context.Context, profile, id string, check func(int64) error) error {
 	return s.repo.DeleteGuarded(ctx, profile, id, check)
 }
+
+// RotateSecretV2 avoids copying a stale configuration snapshot back into storage.
+func (s *WebhookService) RotateSecretV2(ctx context.Context, profile, id string) (string, error) {
+	hook, err := s.repo.GetByID(ctx, profile, id)
+	if err != nil {
+		return "", err
+	}
+	if hook == nil {
+		return "", ErrWebhookNotFound
+	}
+	if hook.Type != WebhookTypeGeneric {
+		return "", fmt.Errorf("%w: only generic webhooks have signing secrets", ErrWebhookInvalid)
+	}
+	value, err := newSigningSecret()
+	if err != nil {
+		return "", err
+	}
+	ciphertext, err := s.cipher.Encrypt(value, webhookSecretAAD(id))
+	if err != nil {
+		return "", fmt.Errorf("encrypt signing secret: %w", err)
+	}
+	if err = s.repo.ReplaceSigningSecret(ctx, profile, id, ciphertext); err != nil {
+		return "", err
+	}
+	return value, nil
+}

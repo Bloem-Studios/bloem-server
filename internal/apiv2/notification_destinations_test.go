@@ -271,3 +271,34 @@ func TestNotificationServerChannelDelete(t *testing.T) {
 	deps.NotificationDestinations = nil
 	requireProblem(t, do(t, NewHandler(deps), http.MethodDelete, path, "", bearer(adminToken)), TypeDependencyUnavailable)
 }
+
+func (f *fakeNotificationDestinations) RotateNotificationWebhookSecret(_ context.Context, profile, id string) (string, error) {
+	f.calls++
+	f.profile, f.deleted = profile, id
+	if id == "discord" {
+		return "", notifications.ErrWebhookInvalid
+	}
+	if id == "missing" {
+		return "", notifications.ErrWebhookNotFound
+	}
+	return "synthetic-secret", nil
+}
+func TestNotificationWebhookRotate(t *testing.T) {
+	f := new(fakeNotificationDestinations)
+	deps := pilotDeps(nil, nil)
+	deps.NotificationDestinations = f
+	h := NewHandler(deps)
+	path := Prefix + "/notifications/webhooks/row-one/rotate-secret"
+	rec := do(t, h, http.MethodPost, path, "", profileOwner())
+	if rec.Code != 200 || rec.Header().Get("Cache-Control") != "no-store" || !strings.Contains(rec.Body.String(), `"signing_secret":"synthetic-secret"`) || f.calls != 1 || f.profile != "p-owner" {
+		t.Fatalf("%d %s %+v", rec.Code, rec.Body.String(), f)
+	}
+	requireProblem(t, do(t, h, http.MethodPost, path, "", nil), TypeAuthenticationRequired)
+	if f.calls != 1 {
+		t.Fatal("unauthorized dispatch")
+	}
+	requireProblem(t, do(t, h, http.MethodPost, strings.Replace(path, "row-one", "discord", 1), "", profileOwner()), TypeValidationFailed)
+	requireProblem(t, do(t, h, http.MethodPost, strings.Replace(path, "row-one", "missing", 1), "", profileOwner()), TypeNotFound)
+	deps.NotificationDestinations = nil
+	requireProblem(t, do(t, NewHandler(deps), http.MethodPost, path, "", profileOwner()), TypeDependencyUnavailable)
+}
