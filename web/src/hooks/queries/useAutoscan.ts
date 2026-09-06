@@ -1,3 +1,4 @@
+import { readAdminAutoscanConnections } from "@/api/v2/adminAutoscanConnections";
 import {
   readAdminAutoscanSettings,
   readAdminAutoscanStatus,
@@ -10,7 +11,6 @@ import type {
   AutoscanAvailableSourcesResponse,
   AutoscanConnection,
   AutoscanConnectionInput,
-  AutoscanConnectionsResponse,
   AutoscanConnectionTestInput,
   AutoscanConnectionTestResult,
   AutoscanEvent,
@@ -71,12 +71,19 @@ export function useUpdateAutoscanSettings() {
 // --- Connections ---
 
 export function useAutoscanConnections() {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.autoscanConnections(),
-    queryFn: () =>
-      api<AutoscanConnectionsResponse>("/admin/autoscan/connections").then(
-        (data) => data.connections ?? [],
-      ),
+    queryKey: [
+      ...adminKeys.autoscanConnections(),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+    ],
+    enabled: profileContext !== null,
+    queryFn: () => {
+      if (!profileContext) throw new StaleApiRequestContextError();
+      return readAdminAutoscanConnections(profileContext);
+    },
     staleTime: AUTOSCAN_STALE_TIME,
   });
 }

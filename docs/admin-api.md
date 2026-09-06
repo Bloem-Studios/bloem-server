@@ -1538,3 +1538,11 @@ observations omit webhook credentials and source configuration. The web settings
 and activity queries use these reads under captured authority and retain their
 existing refresh cadence. Bridge configuration mutations and scheduler updates
 remain unchanged. No Apple, Android or Jellyfin caller uses these administrator reads.
+
+`GET /api/v2/admin/autoscan/connections` lists configured connections using a
+signed administrator/profile/limit-bound name-and-ID cursor. Each page enumerates
+the full configured connection list; concurrent edits can reorder the live list.
+The response preserves connection metadata and `has_api_key`, while excluding
+credential references and resolved secrets. Reading does not contact a provider.
+The existing web picker drains bounded pages under captured authority; connection
+writes remain on the bridge. No native or Jellyfin connection-list caller exists.

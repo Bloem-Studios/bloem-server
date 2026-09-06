@@ -189,7 +189,9 @@ func (h *AutoscanHandler) HandleUpdateSettings(w http.ResponseWriter, r *http.Re
 // includes api_key_ref or any resolved credential: callers manage credentials
 // either by setting an api-key ref (write-only) or by linking a Requests
 // integration.
-type autoscanConnectionResponse struct {
+type autoscanConnectionResponse = AdminAutoscanConnectionView
+
+type AdminAutoscanConnectionView struct {
 	ID                   string  `json:"id"`
 	Name                 string  `json:"name"`
 	Kind                 string  `json:"kind"`
@@ -255,18 +257,27 @@ func normalizeRequestIntegrationID(ref *string) *string {
 }
 
 func (h *AutoscanHandler) HandleListConnections(w http.ResponseWriter, r *http.Request) {
-	conns, err := h.repo.ListConnections(r.Context())
+	out, err := h.ReadAdminAutoscanConnections(r.Context())
 	if err != nil {
 		writeAutoscanError(w, err)
 		return
 	}
-	out := make([]autoscanConnectionResponse, 0, len(conns))
+	writeJSON(w, http.StatusOK, struct {
+		Connections []AdminAutoscanConnectionView `json:"connections"`
+	}{out})
+}
+
+// ReadAdminAutoscanConnections returns configured connections without resolving credentials.
+func (h *AutoscanHandler) ReadAdminAutoscanConnections(ctx context.Context) ([]AdminAutoscanConnectionView, error) {
+	conns, err := h.repo.ListConnections(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]AdminAutoscanConnectionView, 0, len(conns))
 	for _, c := range conns {
 		out = append(out, connectionResponse(c))
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Connections []autoscanConnectionResponse `json:"connections"`
-	}{Connections: out})
+	return out, nil
 }
 
 func (h *AutoscanHandler) HandleCreateConnection(w http.ResponseWriter, r *http.Request) {
