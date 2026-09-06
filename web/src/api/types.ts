@@ -4834,22 +4834,8 @@ export interface ReattributionReport {
 export type ItemSplitResponse = import("@/api/v2/schema").components["schemas"]["AdminSplitResult"];
 
 // Image selector types
-export interface RemoteImage {
-  provider_id: string;
-  url: string;
-  original_url: string;
-  type: "poster" | "backdrop" | "logo" | "still";
-  language: string;
-  width: number;
-  height: number;
-  rating: number;
-}
-
-export interface CurrentImages {
-  poster_url?: string;
-  backdrop_url?: string;
-  logo_url?: string;
-}
+export type RemoteImage = import("@/api/v2/schema").components["schemas"]["ItemImageEntry"];
+export type CurrentImages = import("@/api/v2/schema").components["schemas"]["CurrentImages"];
 
 export interface ItemImagesResponse {
   images: RemoteImage[];

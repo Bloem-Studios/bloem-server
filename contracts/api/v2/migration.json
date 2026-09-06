@@ -7596,11 +7596,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/items/{id}/images",
+        "operation_id": "listAdminItemImages"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminImageHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Acting-admin image selection shares frozen bridge service. Bounded pages refetch providers and bind cursor to choice digest, excluding expiring display URLs. Web drains pages under captured authority; apply is synchronous immutable artwork publication. Independent review pending."
     },
     {
       "listener": "api",
@@ -7658,11 +7658,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/items/{id}/images/apply",
+        "operation_id": "applyAdminItemImage"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminImageHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Acting-admin image selection shares frozen bridge service. Bounded pages refetch providers and bind cursor to choice digest, excluding expiring display URLs. Web drains pages under captured authority; apply is synchronous immutable artwork publication. Independent review pending.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Artwork fetch/cache and publication have no durable replay identity; both web retry layers disabled."
     },
     {
       "listener": "api",
@@ -18024,11 +18026,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/unmatched",
+        "operation_id": "listAdminUnmatchedFiles"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Acting-admin SQL ID keyset pages exclude matched files and extras. Shared bridge query retains offset and raw-array response. No web/native/Jellyfin caller. Independent review pending."
     },
     {
       "listener": "api",

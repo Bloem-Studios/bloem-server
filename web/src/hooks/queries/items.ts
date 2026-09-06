@@ -1,12 +1,10 @@
+import { getAdminItemImages, applyAdminItemImage } from "@/api/v2/adminImages";
 import { getAdminItemFiles, splitAdminItem } from "@/api/v2/adminSplit";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
 import { useRealtimeEvents } from "@/components/realtimeEventsContext";
 import type {
   ApplyItemImageRequest,
-  ApplyItemImageResponse,
   ItemDetail,
-  ItemImagesResponse,
   ItemMatchSearchRequest,
   ItemSplitRequest,
   WatchDetail,
@@ -28,10 +26,6 @@ import {
   updateCatalogItemDetail,
 } from "./mediaSurfaceRefresh";
 import { bumpHomeRefreshSignal } from "@/pages/homeSurfaceRefresh";
-
-function itemPathID(id: string): string {
-  return encodeURIComponent(id);
-}
 
 export async function fetchWatchDetail(
   id: string,
@@ -504,7 +498,7 @@ export function useSplitItem() {
 export function useItemImages(contentId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: adminKeys.itemImages(contentId!),
-    queryFn: () => api<ItemImagesResponse>(`/admin/items/${itemPathID(contentId!)}/images`),
+    queryFn: ({ signal }) => getAdminItemImages(contentId!, signal),
     enabled: !!contentId && enabled,
     staleTime: 5 * 60_000,
   });
@@ -522,11 +516,8 @@ export function useApplyItemImage() {
     }: {
       item: ApplyImageItem;
       request: ApplyItemImageRequest;
-    }) =>
-      api<ApplyItemImageResponse>(`/admin/items/${itemPathID(item.content_id)}/images/apply`, {
-        method: "POST",
-        body: JSON.stringify(request),
-      }),
+    }) => applyAdminItemImage(item.content_id, request),
+    retry: false,
     onSuccess: async (_, { item }) => {
       toast.success("Image applied successfully");
 

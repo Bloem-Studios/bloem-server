@@ -2142,6 +2142,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 	v2deps.AdminResourceSampler = deps.ResourceSampler
 	v2deps.AdminCatalogSearch = adminHandler
 	v2deps.AdminItemMetadata = adminHandler
+	if adminHandler != nil {
+		v2deps.AdminUnmatchedFiles = adminHandler
+	}
+	if adminImageHandler != nil {
+		v2deps.AdminCatalogImages = adminImageHandler
+	}
 	v2deps.AdminCatalogSplit = adminSplitHandler
 	if adminMatchHandler != nil {
 		v2deps.AdminCatalogMatch = adminMatchHandler

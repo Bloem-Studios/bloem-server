@@ -1279,6 +1279,45 @@
       "body_file": "admin_item_files.json"
     },
     {
+      "name": "admin_item_image_apply",
+      "operation_id": "applyAdminItemImage",
+      "scenario": "Synchronous artwork publication returns the immutable revision.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/items/item-1/images/apply",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        },
+        "body": "{\"original_url\":\"source\",\"type\":\"poster\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminImageApplied",
+      "body_file": "admin_item_image_apply.json"
+    },
+    {
+      "name": "admin_item_images",
+      "operation_id": "listAdminItemImages",
+      "scenario": "Administrator image choices use a bounded collection with current selection.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/items/item-1/images",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminImagesPage",
+      "body_file": "admin_item_images.json"
+    },
+    {
       "name": "admin_item_merge",
       "operation_id": "mergeAdminItem",
       "scenario": "Administrator file grouping preserves synchronous repair and dry-run projection.",
@@ -2730,6 +2769,25 @@
       "response_media_type": "application/json",
       "schema": "#/components/schemas/CollectionAdminTask",
       "body_file": "admin_tasks.json"
+    },
+    {
+      "name": "admin_unmatched_files",
+      "operation_id": "listAdminUnmatchedFiles",
+      "scenario": "Unmatched files retain opaque IDs and bounded live continuation.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/unmatched?limit=1",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionAdminUnmatchedFile",
+      "body_file": "admin_unmatched_files.json"
     },
     {
       "name": "approve_device_handoff_ok",

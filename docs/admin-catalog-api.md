@@ -312,3 +312,36 @@ it is not a queued job. Neither web mutation automatically retries or refreshes
 and replays authentication. Frozen v1 responses and parsing order remain
 unchanged. These administration flows have web consumers; Apple, Android and
 Jellyfin have no corresponding caller in the migration inventory.
+
+### Unmatched files
+
+`GET /api/v2/admin/unmatched` lists actual files with neither a content match nor
+an extra association. Acting administrators receive `items` and `page`; file and
+library IDs are strings. `limit` defaults to 50 and accepts 1–200. SQL applies the
+ID-ascending keyset and limit before scanning rows. Signed cursors bind the
+operation, authority and page size. This is a live collection: concurrently
+matched files may disappear. Frozen v1 retains its offset pagination and raw
+array. No current web, native or Jellyfin consumer needs migration for this route.
+
+### Item image selection
+
+`GET /api/v2/admin/items/{id}/images` requires acting-admin access and returns
+`items`, `page`, `current`, and optional `provider_errors`. Pages default to 50
+choices and accept `limit` 1–200. Choice metadata determines a stable order;
+continuation binds the content ID, authority, limit and complete choice digest.
+Expiring display URLs are excluded from that digest. A provider choice change
+returns `invalid_cursor` and requires reloading. Each page fetches and resolves
+the provider list again; pagination bounds response size, not provider work or
+memory, and stores no server-side snapshot. Provider failures expose generic
+messages. The web drains all pages under one captured authority and refuses
+repeated or invalid continuation rather than publishing a partial list.
+
+`POST /api/v2/admin/items/{id}/images/apply` accepts `original_url`, `type`, and
+optional `provider_id`. It preserves target validation before remote work,
+episode-to-still coercion, parent/season/episode cache identity, immutable upload,
+transactional catalog publication and orphan-GC scheduling after publication
+failure. Success returns the stored path, thumbhash and available revision/display
+URL. This is synchronous and may fail after upload; it is not a persisted job
+or replay-safe operation. Both web retry layers are disabled. Frozen v1 retains
+its response shapes and error codes. No native or Jellyfin caller is present in
+the migration inventory.

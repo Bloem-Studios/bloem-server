@@ -1354,15 +1354,41 @@ func (h *AdminHandler) HandleListUnmatched(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	rows, err := h.pool.Query(r.Context(),
+	files, err := h.listUnmatchedFiles(r.Context(), limit, offset, nil)
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, files)
+}
+
+type AdminUnmatchedFileView = unmatchedFileRow
+
+// ListAdminUnmatchedFiles returns a live ID-ordered SQL page, excluding extras.
+func (h *AdminHandler) ListAdminUnmatchedFiles(ctx context.Context, limit, after int) ([]AdminUnmatchedFileView, bool, error) {
+	if h == nil || h.pool == nil {
+		return nil, false, apiError(http.StatusServiceUnavailable, "unavailable", "Database not configured")
+	}
+	if limit < 1 || limit > 200 || after < 0 {
+		return nil, false, apiError(http.StatusBadRequest, "bad_request", "Invalid unmatched file page")
+	}
+	rows, err := h.listUnmatchedFiles(ctx, limit+1, 0, new(after))
+	if err != nil {
+		return nil, false, err
+	}
+	more := len(rows) > limit
+	return rows[:min(len(rows), limit)], more, nil
+}
+
+func (h *AdminHandler) listUnmatchedFiles(ctx context.Context, limit, offset int, after *int) ([]unmatchedFileRow, error) {
+	rows, err := h.pool.Query(ctx,
 		`SELECT id, media_folder_id, file_path, file_size, container
 		 FROM media_files
-		 WHERE content_id IS NULL AND extra_id IS NULL
+		 WHERE content_id IS NULL AND extra_id IS NULL AND ($3::bigint IS NULL OR id > $3)
 		 ORDER BY id ASC
-		 LIMIT $1 OFFSET $2`, limit, offset)
+		 LIMIT $1 OFFSET $2`, limit, offset, after)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list unmatched files")
-		return
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to list unmatched files")
 	}
 	defer rows.Close()
 
@@ -1370,17 +1396,15 @@ func (h *AdminHandler) HandleListUnmatched(w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var f unmatchedFileRow
 		if err := rows.Scan(&f.ID, &f.MediaFolderID, &f.FilePath, &f.FileSize, &f.Container); err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to scan file")
-			return
+			return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to scan file")
 		}
 		files = append(files, f)
 	}
 	if err := rows.Err(); err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to iterate files")
-		return
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to iterate files")
 	}
 
-	writeJSON(w, http.StatusOK, files)
+	return files, nil
 }
 
 // HandleGetStats handles GET /admin/stats.
