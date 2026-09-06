@@ -2067,6 +2067,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminSettingsInspection = adminHandler
 		v2deps.AdminSettingsChecks = adminHandler
 	}
+	if deps.EventsHub != nil {
+		v2deps.EventsCapability = handlers.NewEventsHandler(deps.EventsHub, adminJobsHandler, adminHandler, deps.TaskManager, deps.ScanRegistry, deps.LibraryScanQueue, historyImportSvc)
+	}
 	if deps.Notifications != nil {
 		inbox := handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub)
 		inbox.SetApplePushDisplayTokenIssuer(jwtService)

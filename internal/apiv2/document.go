@@ -496,6 +496,7 @@ func declaresBody(t reflect.Type) bool {
 // describe the same operations.
 func registerAll(reg *Registry) {
 	registerSubtitleAIReads(reg)
+	registerEventsCapability(reg)
 	// Alphabetical by domain file; registration order is deterministic.
 	registerOperationalDiscovery(reg)
 	registerAccount(reg)

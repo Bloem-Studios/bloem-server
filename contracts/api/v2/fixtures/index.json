@@ -4480,6 +4480,26 @@
       "body_file": "end_impersonation_not_impersonating.json"
     },
     {
+      "name": "events_capabilities",
+      "operation_id": "getEventsCapabilities",
+      "scenario": "An authenticated account reads shared realtime subscription limits without requiring an active profile.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/events/capabilities",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/EventsCapabilities",
+      "body_file": "events_capabilities.json"
+    },
+    {
       "name": "forget_device_missing",
       "operation_id": "forgetDevice",
       "scenario": "Missing or already forgotten device.",

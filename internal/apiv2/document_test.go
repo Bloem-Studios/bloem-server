@@ -146,6 +146,7 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	doc := generatedDocument(t)
 	bodies := 0
 	expect := map[string]map[int]bool{
+		"getEventsCapabilities":          {http.StatusOK: true, http.StatusServiceUnavailable: true},
 		"getSetupStatus":                 {http.StatusServiceUnavailable: true},
 		"getSystemInfo":                  {http.StatusServiceUnavailable: false},
 		"getOpenAPIDocument":             {http.StatusServiceUnavailable: false},
