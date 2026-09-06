@@ -459,6 +459,8 @@ export const v2Operations = {
   "POST /api/v2/admin/notifications/push/fcm/test": "testAdminAndroidPushNotification",
   "POST /api/v2/admin/notifications/push/relay/register": "registerAdminNotificationRelay",
   "POST /api/v2/admin/notifications/server-channels": "createAdminNotificationServerChannel",
+  "POST /api/v2/admin/notifications/server-channels/{id}/rotate-secret":
+    "rotateAdminNotificationServerChannelSecret",
   "POST /api/v2/admin/notifications/server-channels/{id}/test":
     "testAdminNotificationServerChannel",
   "POST /api/v2/admin/people/{id}/refresh": "refreshAdminPerson",

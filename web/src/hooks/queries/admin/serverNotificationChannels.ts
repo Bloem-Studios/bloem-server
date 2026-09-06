@@ -132,13 +132,50 @@ export function useTestServerNotificationChannel() {
 }
 
 export function useRotateServerNotificationChannelSecret() {
-  return useMutation({
-    mutationFn: (id: string) =>
-      api<{ signing_secret: string }>(`/admin/notifications/server-channels/${id}/rotate-secret`, {
-        method: "POST",
-      }),
-    onError: (error) => {
+  const context = captureProfileRequestContext();
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async (intent: {
+      id: string;
+      authority: ReturnType<typeof captureProfileRequestContext>;
+    }) => {
+      if (!intent.authority) throw new StaleApiRequestContextError();
+      requireNotificationAuthority(intent.authority);
+      const result = await v2(
+        "POST /api/v2/admin/notifications/server-channels/{id}/rotate-secret",
+        {
+          path: { id: intent.id },
+          profileContext: intent.authority,
+          retryAuthentication: false,
+        },
+      );
+      requireNotificationAuthority(intent.authority);
+      return result;
+    },
+    onSuccess: (_result, intent) => {
+      if (!intent.authority) throw new StaleApiRequestContextError();
+      requireNotificationAuthority(intent.authority);
+      void queryClient.invalidateQueries({
+        queryKey: [...adminKeys.serverNotificationChannels(), notificationScope(intent.authority)],
+        exact: true,
+      });
+    },
+    onError: (error, intent) => {
+      if (!intent.authority) return;
+      try {
+        requireNotificationAuthority(intent.authority);
+      } catch {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Failed to rotate signing secret");
     },
   });
+  return {
+    ...mutation,
+    mutate: (id: string, options?: Parameters<typeof mutation.mutate>[1]) =>
+      mutation.mutate({ id, authority: context }, options),
+    mutateAsync: (id: string, options?: Parameters<typeof mutation.mutateAsync>[1]) =>
+      mutation.mutateAsync({ id, authority: context }, options),
+  };
 }

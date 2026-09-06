@@ -307,3 +307,29 @@ func capitalize(s string) string {
 func (s *ServerChannelService) ListPage(ctx context.Context, limit int, after *Cursor) ([]ServerChannel, error) {
 	return s.repo.ListPage(ctx, limit, after)
 }
+
+// RotateSecretV2 writes only the secret, preserving current channel configuration.
+func (s *ServerChannelService) RotateSecretV2(ctx context.Context, id string) (string, error) {
+	ch, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if ch == nil {
+		return "", ErrServerChannelNotFound
+	}
+	if ch.Type != WebhookTypeGeneric {
+		return "", fmt.Errorf("%w: only generic channels have signing secrets", ErrServerChannelInvalid)
+	}
+	signingSecret, err := newSigningSecret()
+	if err != nil {
+		return "", err
+	}
+	ciphertext, err := s.cipher.Encrypt(signingSecret, serverChannelSecretAAD(ch.ID))
+	if err != nil {
+		return "", fmt.Errorf("encrypt signing secret: %w", err)
+	}
+	if err := s.repo.ReplaceSigningSecret(ctx, id, ciphertext); err != nil {
+		return "", err
+	}
+	return signingSecret, nil
+}

@@ -344,3 +344,35 @@ func TestNotificationWebhookUpdate(t *testing.T) {
 	deps.NotificationDestinations = nil
 	requireProblem(t, do(t, NewHandler(deps), http.MethodPut, path, `{}`, headers), TypeDependencyUnavailable)
 }
+
+func (f *fakeNotificationDestinations) RotateNotificationServerChannelSecret(_ context.Context, id string) (string, error) {
+	f.calls++
+	f.deleted = id
+	if id == "missing" {
+		return "", notifications.ErrServerChannelNotFound
+	}
+	if id == "discord" {
+		return "", notifications.ErrServerChannelInvalid
+	}
+	return "synthetic-secret", nil
+}
+func TestNotificationServerChannelRotate(t *testing.T) {
+	f := new(fakeNotificationDestinations)
+	deps := pilotDeps(nil, nil)
+	deps.NotificationDestinations = f
+	h := NewHandler(deps)
+	path := Prefix + "/admin/notifications/server-channels/row-one/rotate-secret"
+	rec := do(t, h, http.MethodPost, path, "", bearer(adminToken))
+	if rec.Code != 200 || rec.Header().Get("Cache-Control") != "no-store" || !strings.Contains(rec.Body.String(), `"signing_secret":"synthetic-secret"`) || f.calls != 1 || f.deleted != "row-one" {
+		t.Fatalf("%d %s %+v", rec.Code, rec.Body.String(), f)
+	}
+	requireProblem(t, do(t, h, http.MethodPost, path, "", nil), TypeAuthenticationRequired)
+	requireProblem(t, do(t, h, http.MethodPost, path, "", profileOwner()), TypePermissionDenied)
+	if f.calls != 1 {
+		t.Fatal("unauthorized dispatch")
+	}
+	requireProblem(t, do(t, h, http.MethodPost, strings.Replace(path, "row-one", "missing", 1), "", bearer(adminToken)), TypeNotFound)
+	requireProblem(t, do(t, h, http.MethodPost, strings.Replace(path, "row-one", "discord", 1), "", bearer(adminToken)), TypeValidationFailed)
+	deps.NotificationDestinations = nil
+	requireProblem(t, do(t, NewHandler(deps), http.MethodPost, path, "", bearer(adminToken)), TypeDependencyUnavailable)
+}

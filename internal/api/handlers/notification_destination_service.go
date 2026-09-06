@@ -109,3 +109,10 @@ func (h *NotificationsHandler) UpdateNotificationWebhook(ctx context.Context, pr
 	}
 	return svc.UpdateGuarded(ctx, profile, id, input, check)
 }
+
+func (h *NotificationsHandler) RotateNotificationServerChannelSecret(ctx context.Context, id string) (string, error) {
+	if h == nil || h.system == nil || h.system.ServerChannels == nil {
+		return "", apiError(503, "unavailable", "Server channels are not available")
+	}
+	return h.system.ServerChannels.RotateSecretV2(ctx, id)
+}

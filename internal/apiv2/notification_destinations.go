@@ -17,6 +17,7 @@ const (
 )
 
 type NotificationDestinationService interface {
+	RotateNotificationServerChannelSecret(context.Context, string) (string, error)
 	UpdateNotificationWebhook(context.Context, string, string, notifications.WebhookInput, func(int64) error) (*notifications.Webhook, error)
 	RotateNotificationWebhookSecret(context.Context, string, string) (string, error)
 	DeleteNotificationServerChannel(context.Context, string) error
@@ -233,6 +234,26 @@ func registerNotificationDestinations(reg *Registry) {
 		}
 		if errors.Is(err, notifications.ErrWebhookInvalid) {
 			return nil, NewProblem(TypeValidationFailed, "Only generic webhooks have signing secrets.")
+		}
+		if err != nil {
+			return nil, serviceProblem(err)
+		}
+		out := &NotificationWebhookSecretOutput{CacheControl: notificationSecretNoStore}
+		out.Body.SigningSecret = value
+		return out, nil
+	})
+
+	rotateChannel := Operation{Operation: humaOp(http.MethodPost, Prefix+"/admin/notifications/server-channels/{id}/rotate-secret", "rotateAdminNotificationServerChannelSecret", "admin", "Replace the generic server channel signing secret and reveal it once. Never replay an uncertain rotation."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
+	Register(reg, rotateChannel, func(ctx context.Context, in *NotificationWebhookRotateInput) (*NotificationWebhookSecretOutput, error) {
+		if reg.deps.NotificationDestinations == nil {
+			return nil, unavailable("notification destinations")
+		}
+		value, err := reg.deps.NotificationDestinations.RotateNotificationServerChannelSecret(ctx, in.ID)
+		if errors.Is(err, notifications.ErrServerChannelNotFound) {
+			return nil, NewProblem(TypeNotFound, "Server channel not found.")
+		}
+		if errors.Is(err, notifications.ErrServerChannelInvalid) {
+			return nil, NewProblem(TypeValidationFailed, "Only generic server channels have signing secrets.")
 		}
 		if err != nil {
 			return nil, serviceProblem(err)

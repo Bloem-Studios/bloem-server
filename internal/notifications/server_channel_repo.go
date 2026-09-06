@@ -346,3 +346,15 @@ func (r *ServerChannelRepository) ListPage(ctx context.Context, limit int, after
 	}
 	return scanServerChannels(rows)
 }
+
+// ReplaceSigningSecret does not rewrite configuration or delivery bookkeeping.
+func (r *ServerChannelRepository) ReplaceSigningSecret(ctx context.Context, id, ciphertext string) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE notification_server_channels SET signing_secret_ciphertext=$2, updated_at=now() WHERE id=$1 AND type='generic'`, id, ciphertext)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrServerChannelNotFound
+	}
+	return nil
+}
