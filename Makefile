@@ -463,3 +463,8 @@ test-scenario-new-catalog-sources:
 .PHONY: test-scenario-new-catalog-reads
 test-scenario-new-catalog-reads:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewCatalogMediaReads$$' ./internal/scenariocatalog/executor
+
+# NEW real notification inbox and persisted read effects; outside frozen oracle.
+.PHONY: test-scenario-new-notification-inbox
+test-scenario-new-notification-inbox:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewNotificationInbox$$' ./internal/scenariocatalog/executor

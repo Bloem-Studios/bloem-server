@@ -256,3 +256,36 @@ This scope establishes local directory browsing and cursor/authorization behavio
 It does not exercise remote object storage, catalog archive import/export,
 concurrent filesystem changes, permission-restricted operating-system accounts,
 or full migration acceptance.
+
+## New notification inbox regressions
+
+`make test-scenario-new-notification-inbox` runs eight **new** v2 scenarios with
+20 HTTP exchanges and five direct PostgreSQL effect reads. It uses the production
+API router, notification system and delivery repository, real account/profile
+providers, and the migrated inbox timestamp trigger. These cases remain outside
+the frozen 598-scenario oracle and do not increase its paired count.
+
+The required target refuses a missing database or pre-existing deliveries/inbox
+clocks. Each case cleans only its exact delivery IDs and synthetic profile clock
+rows, then runs the ordinary guarded household reseed. Synthetic operational
+notifications belong to two profiles on the same account. Notification workers
+are not started, and no outbound channels or real delivery destinations are
+configured. Teardown restores the ordinary fixture and scratch guard.
+
+The cases check:
+
+- A signed list window excludes arrivals inserted after its first page.
+- Read-all applies its captured cutoff, including older rows beyond the displayed
+  page, while retaining unread later arrivals and the other profile's delivery.
+- Repeated single-item read returns a bodyless 204 without changing `read_at`.
+- Foreign delivery reads/writes and cross-profile list/read-all cursors fail
+  without altering persisted read state.
+- An empty sync checkpoint discovers later arrivals in bounded ordered pages,
+  then returns an empty terminal continuation.
+- Anonymous and missing-profile requests return their specified Problems.
+
+`SILO_SCENARIO_REPORT` records the unique new cases, HTTP count, effect-read count
+and failures. Setup/teardown and test exit must pass alongside that report. This
+scope does not repeat the independent reversed-commit ordering tests or establish
+websocket/push delivery, retention, concurrent writer behavior, native UI behavior,
+or full notification migration acceptance.
