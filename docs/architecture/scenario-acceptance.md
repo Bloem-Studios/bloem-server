@@ -1153,3 +1153,13 @@ account insertion; no code use is consumed. Required DSN, pre-constructor
 occupancy and fixed-selector guards remain enforced. No successful signup,
 enrollment, external provider or outage is exercised. These three original
 frozen pairs remain separate from NEW acceptance.
+
+`make test-scenario-admin-invitation-role-refusals` selects only
+`adm_inv_create.bad_role` and `adm_inv_create.admin_grouped`. Original administrator
+requests, bodies and v1 403/422 assertions remain unchanged. V2 returns 422 validation
+Problems. The original grouped request sends a numeric access_group_id, rejected
+by the string schema: this is not isolated proof of the admin-group domain rule.
+Four HTTP refusals use independent reseeds and eight full snapshots of users,
+user_profiles, api_keys, server_settings, auth_sessions, device_login_requests,
+invitations and invite_codes (64 table observations), without exemptions. Required
+DSN and pre-constructor occupancy guards run before setup. No creation or send succeeds.

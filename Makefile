@@ -755,3 +755,7 @@ test-scenario-invite-code-duplicate:
 .PHONY: test-scenario-signup-codes
 test-scenario-signup-codes:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSignupCodesAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-admin-invitation-role-refusals
+test-scenario-admin-invitation-role-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredAdminInvitationRoleRefusalsAcceptance$$' ./internal/scenariocatalog/executor

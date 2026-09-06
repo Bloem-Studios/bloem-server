@@ -983,7 +983,75 @@
             ]
           },
           "notes": "An invalid enum value is 403 rather than 400; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects the unchanged role value with a validation Problem before invitation creation. No stored state changes or mail delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_role_refusals_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "fixture-guest@silo.example.test",
+                "role": "owner"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/errors",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "errors"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_create.admin_grouped",
@@ -1040,7 +1108,76 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 rejects the original numeric access_group_id against its string schema; this is not isolated proof of the admin-group domain rule. No stored state changes or mail delivery.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_role_refusals_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "fixture-guest@silo.example.test",
+                "role": "admin",
+                "access_group_id": 1
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/errors",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "errors"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_create.malformed",
