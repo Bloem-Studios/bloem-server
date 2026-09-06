@@ -32440,13 +32440,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/notifications/discord/link/callback",
+        "operation_id": "completeNotificationDiscordLink"
       },
-      "notes": "External caller: Discord OAuth browser redirect. Conditionally registered: deps.Notifications != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared bridge/v2 consent and callback with version-specific redirect URI independently reviewed. Existing web consumer captures authority; no native caller. External Discord application must register the v2 callback URI. Overlapping consent and unlink generation semantics remain unchanged."
     },
     {
       "listener": "api",
@@ -32497,19 +32497,19 @@
       "section": "notifications",
       "release_flow": "notifications",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
-      "retry_safety_note": "Stores a one-time OAuth state; a duplicate is an orphan state that expires unused.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Initiation creates a new expiring OAuth state and consent URL. Clients do not automatically replay initiation; overlapping consent and unlink ordering are not generation guarded.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/notifications/discord/link/init",
+        "operation_id": "beginNotificationDiscordLink"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; deps.Notifications != nil; discordNotificationsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Shared bridge/v2 consent and callback with version-specific redirect URI independently reviewed. Existing web consumer captures authority; no native caller. External Discord application must register the v2 callback URI. Overlapping consent and unlink generation semantics remain unchanged."
     },
     {
       "listener": "api",
