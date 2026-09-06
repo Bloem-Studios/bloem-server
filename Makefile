@@ -443,3 +443,8 @@ test-scenario-profile-mutations:
 .PHONY: test-scenario-section-reads
 test-scenario-section-reads:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSectionReadAcceptance$$' ./internal/scenariocatalog/executor
+
+# Required paired resets preserve sibling profiles and other page scopes.
+.PHONY: test-scenario-section-resets
+test-scenario-section-resets:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSectionResetAcceptance$$' ./internal/scenariocatalog/executor

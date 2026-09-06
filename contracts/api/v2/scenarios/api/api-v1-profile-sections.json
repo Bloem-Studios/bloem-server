@@ -1304,7 +1304,213 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 resets the same selected profile and page at DELETE /profile/sections; errors use Problems and missing profile selection uses 422. Explicit reads verify the target effect and preserve the other page and sibling profile.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "resetProfileSectionOverrides",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 204,
+              "headers": [],
+              "body": [],
+              "body_kind": "empty"
+            },
+            "then": [
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "overrides_reset.idempotent",
@@ -1321,7 +1527,214 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 resets the same selected profile and page at DELETE /profile/sections; errors use Problems and missing profile selection uses 422. Explicit reads verify the target effect and preserve the other page and sibling profile.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "resetProfileSectionOverrides",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profile/sections",
+              "repeat": 2
+            },
+            "expect": {
+              "status": 204,
+              "headers": [],
+              "body": [],
+              "body_kind": "empty"
+            },
+            "then": [
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "overrides_reset.scope",
@@ -1341,7 +1754,217 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 resets the same selected profile and page at DELETE /profile/sections; errors use Problems and missing profile selection uses 422. Explicit reads verify the target effect and preserve the other page and sibling profile.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "resetProfileSectionOverrides",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profile/sections",
+              "query": {
+                "scope": "library",
+                "library_id": "7"
+              }
+            },
+            "expect": {
+              "status": 204,
+              "headers": [],
+              "body": [],
+              "body_kind": "empty"
+            },
+            "then": [
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "overrides_reset.shape",
@@ -1357,7 +1980,213 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 resets the same selected profile and page at DELETE /profile/sections; errors use Problems and missing profile selection uses 422. Explicit reads verify the target effect and preserve the other page and sibling profile.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "resetProfileSectionOverrides",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 204,
+              "headers": [],
+              "body": [],
+              "body_kind": "empty"
+            },
+            "then": [
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "overrides_reset.no_profile",
@@ -1410,7 +2239,244 @@
             ]
           },
           "notes": "Missing profile header is a 400, the same status as a malformed body; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 resets the same selected profile and page at DELETE /profile/sections; errors use Problems and missing profile selection uses 422. Explicit reads verify the target effect and preserve the other page and sibling profile.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "resetProfileSectionOverrides",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "overrides_reset.other_account_profile",
@@ -1464,7 +2530,244 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 resets the same selected profile and page at DELETE /profile/sections; errors use Problems and missing profile selection uses 422. Explicit reads verify the target effect and preserve the other page and sibling profile.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "resetProfileSectionOverrides",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "overrides_reset.no_token",
@@ -1516,7 +2819,244 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 resets the same selected profile and page at DELETE /profile/sections; errors use Problems and missing profile selection uses 422. Explicit reads verify the target effect and preserve the other page and sibling profile.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "resetProfileSectionOverrides",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
           "id": "overrides_reset.error_shape",
@@ -1551,7 +3091,244 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 resets the same selected profile and page at DELETE /profile/sections; errors use Problems and missing profile selection uses 422. Explicit reads verify the target effect and preserve the other page and sibling profile.",
+            "recorded_in": "internal/apiv2/profile_sections.go",
+            "operation_id": "resetProfileSectionOverrides",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/profile/sections"
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            },
+            "then": [
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "secondary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections"
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-home"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              },
+              {
+                "operation_id": "listProfileSectionOverrides",
+                "method": "GET",
+                "principal": {
+                  "class": "primary_profile"
+                },
+                "request": {
+                  "path": "/api/v2/profile/sections",
+                  "query": {
+                    "scope": "library",
+                    "library_id": "7"
+                  }
+                },
+                "expect": {
+                  "status": 200,
+                  "headers": [
+                    {
+                      "name": "Content-Type",
+                      "op": "equals",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": [
+                    {
+                      "pointer": "",
+                      "op": "keys_equal",
+                      "value": [
+                        "items"
+                      ]
+                    },
+                    {
+                      "pointer": "/items",
+                      "op": "length",
+                      "value": 1
+                    },
+                    {
+                      "pointer": "/items/0/id",
+                      "op": "equals",
+                      "value": "primary-library"
+                    },
+                    {
+                      "pointer": "/items/0/section_id",
+                      "op": "equals",
+                      "value": "fixture-section"
+                    },
+                    {
+                      "pointer": "/items/0/hidden",
+                      "op": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         }
       ]
     },

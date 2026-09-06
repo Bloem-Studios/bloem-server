@@ -156,3 +156,22 @@ This slice does not establish populated section ordering, override mutation
 effects, catalog-media behavior, SQLite parity or full migration acceptance.
 Use a dedicated empty database as described above; shared integration databases
 are unsuitable because the executor migrates and reseeds synthetic fixture state.
+
+## Profile-section reset effects
+
+`make test-scenario-section-resets` requires the eight existing reset scenarios,
+including repeated reset, library scope and authorization refusals. The target
+installs a test-only overlay of home and library overrides for two profiles after
+every transport reseed. Ordinary read fixtures retain their empty state.
+
+Each v2 reset has four explicit follow-up reads. They verify that the selected
+profile/page was cleared on success, other scopes and sibling profiles retain
+their rows, and refused resets preserve all four sets. Repeated reset remains
+204. The gate requires 16 transport results and issues 50 physical requests,
+including repeats and follow-ups. Teardown restores the ordinary fixture and
+checks that no section-override settings remain.
+
+V1 requests and assertions remain frozen; their status checks run against the
+same populated overlay, while the new effect reads belong explicitly to v2.
+This target does not establish concurrent-write isolation, replacement semantics,
+SQLite behavior or populated resolved-section ordering.
