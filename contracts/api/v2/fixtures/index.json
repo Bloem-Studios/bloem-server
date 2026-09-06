@@ -7885,6 +7885,27 @@
       "body_file": null
     },
     {
+      "name": "notification_apple_push_display",
+      "operation_id": "getNotificationApplePushDisplay",
+      "scenario": "Compact display metadata for an acting-profile delivery.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/notifications/push/apple/display/00000000-0000-0000-0000-000000000002",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationPushDisplay",
+      "body_file": "notification_apple_push_display.json"
+    },
+    {
       "name": "notification_get_notification",
       "operation_id": "getNotification",
       "scenario": "Profile notification inbox with synthetic records.",

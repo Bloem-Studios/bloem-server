@@ -200,6 +200,7 @@ export const v2Operations = {
   "GET /api/v2/notifications": "listNotifications",
   "GET /api/v2/notifications/capabilities": "getNotificationCapabilities",
   "GET /api/v2/notifications/preferences": "getNotificationPreferences",
+  "GET /api/v2/notifications/push/apple/display/{delivery_id}": "getNotificationApplePushDisplay",
   "GET /api/v2/notifications/sync": "syncNotifications",
   "GET /api/v2/notifications/unread-count": "getNotificationUnreadCount",
   "GET /api/v2/notifications/{id}": "getNotification",

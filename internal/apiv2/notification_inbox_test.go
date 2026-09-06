@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 )
 
@@ -148,5 +150,78 @@ func TestNotificationEmptySyncHasStableCheckpoint(t *testing.T) {
 	}
 	if err := json.Unmarshal(r.Body.Bytes(), &second); err != nil || second.Initial || r.Code != 200 {
 		t.Fatal(second, err, r.Code)
+	}
+}
+
+func (f *fakeNotificationInbox) NotificationPushDisplay(_ context.Context, profile, id string) (notifications.NotificationDisplay, error) {
+	if profile != "p-owner" || id != notificationFixtureID {
+		return notifications.NotificationDisplay{}, &handlers.APIError{Status: 404, Code: "not_found", Message: "Notification not found"}
+	}
+	return notifications.BuildNotificationDisplay(notifications.DeliveryRow{Delivery: notifications.Delivery{ID: id, Type: "request.approved", ReasonFlags: json.RawMessage(`{"request_id":"request-1"}`)}}), nil
+}
+
+func TestNotificationApplePushDisplay(t *testing.T) {
+	deps := pilotDeps(nil, nil)
+	deps.NotificationInbox = fixtureNotificationInbox()
+	h := NewHandler(deps)
+	path := Prefix + "/notifications/push/apple/display/"
+	for _, tc := range []struct {
+		name, id string
+		headers  map[string]string
+		status   int
+	}{
+		{"owner", notificationFixtureID, profileOwner(), 200},
+		{"missing", "00000000-0000-0000-0000-000000000003", profileOwner(), 404},
+		{"invalid", "not-a-uuid", profileOwner(), 422},
+		{"anonymous", notificationFixtureID, nil, 401},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := do(t, h, http.MethodGet, path+tc.id, "", tc.headers)
+			if rec.Code != tc.status {
+				t.Fatalf("%d: %s", rec.Code, rec.Body.String())
+			}
+			if rec.Code == 200 {
+				var body NotificationPushDisplay
+				if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+					t.Fatal(err)
+				}
+				if body.DeliveryID != ID(notificationFixtureID) || body.Category != "request_approved" || body.ThreadID != "request:request-1" {
+					t.Fatalf("unexpected display: %+v", body)
+				}
+				if rec.Header().Get("Cache-Control") != "no-store" {
+					t.Fatal(rec.Header())
+				}
+			}
+		})
+	}
+}
+
+func TestNotificationDisplayCredentialScope(t *testing.T) {
+	deps := pilotDeps(nil, nil)
+	deps.NotificationInbox = fixtureNotificationInbox()
+	claims := map[string]*auth.Claims{
+		"display": {UserID: 1, Role: "user", SessionID: "live", ProfileID: "p-owner", TokenType: auth.TokenTypeApplePushDisplay},
+		"revoked": {UserID: 1, Role: "user", SessionID: "dead", ProfileID: "p-owner", TokenType: auth.TokenTypeApplePushDisplay},
+		"deleted": {UserID: 1, Role: "user", SessionID: "live", ProfileID: "p-gone", TokenType: auth.TokenTypeApplePushDisplay},
+	}
+	deps.Auth = apimw.NewAuthMiddleware(fakeTokens{claims}, fakeSessions{map[string]bool{"live": true}}, nil, nil)
+	h := NewHandler(deps)
+	displayPath := Prefix + "/notifications/push/apple/display/" + notificationFixtureID
+	for _, tc := range []struct {
+		name, path, token string
+		status            int
+	}{
+		{"bound profile overrides header", displayPath, "display", 200},
+		{"revoked session", displayPath, "revoked", 401},
+		{"deleted profile", displayPath, "deleted", 404},
+		{"inbox disallows display token", Prefix + "/notifications", "display", 401},
+		{"query credential disallowed", displayPath + "?token=display", "", 401},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := do(t, h, http.MethodGet, tc.path, "", with(bearer(tc.token), "X-Profile-Id", "p-other"))
+			if rec.Code != tc.status {
+				t.Fatalf("%d: %s", rec.Code, rec.Body.String())
+			}
+		})
 	}
 }

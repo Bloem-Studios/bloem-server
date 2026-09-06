@@ -100,3 +100,16 @@ func (h *NotificationsHandler) NotificationPreferences(ctx context.Context, prof
 func (h *NotificationsHandler) PatchNotificationPreferences(ctx context.Context, profile string, patch notifications.PreferencePatch) (notifications.Preferences, error) {
 	return h.system.Preferences.Patch(ctx, profile, patch)
 }
+
+// NotificationPushDisplay uses the same profile-scoped row and rendering as the
+// bridge notification extension endpoint without hydrating unrelated inbox data.
+func (h *NotificationsHandler) NotificationPushDisplay(ctx context.Context, profile, id string) (notifications.NotificationDisplay, error) {
+	row, err := h.system.Deliveries.GetByID(ctx, profile, id)
+	if err != nil {
+		return notifications.NotificationDisplay{}, err
+	}
+	if row == nil {
+		return notifications.NotificationDisplay{}, apiError(404, "not_found", "Notification not found")
+	}
+	return notifications.BuildNotificationDisplay(*row), nil
+}

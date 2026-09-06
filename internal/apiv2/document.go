@@ -133,7 +133,12 @@ func documentDeclaration(op *Operation, input reflect.Type) {
 		if op.ProfileOptional {
 			class = ClassAuthenticated // documented as optional
 		}
-		op.Parameters = append(op.Parameters, profileHeaderParam(class), profileTokenHeaderParam())
+		profile := profileHeaderParam(class)
+		if op.OperationID == notificationApplePushDisplayOperation {
+			profile.Required = false
+			profile.Description = "Required for access tokens and API keys. Display tokens bind the profile from their claims and ignore this header; a display token is accepted only by this operation."
+		}
+		op.Parameters = append(op.Parameters, profile, profileTokenHeaderParam())
 	}
 }
 

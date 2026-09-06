@@ -35,6 +35,9 @@ func classGate(deps Dependencies) func(huma.Context, func(huma.Context)) {
 		profileOptional, _ := op.Metadata[metaProfileOptional].(bool)
 		bucket, _ := op.Metadata[metaRateLimitBucket].(string)
 		chain, missing := gateChain(deps, class, permission, demoRestricted, profileOptional, bucket)
+		if op.OperationID == notificationApplePushDisplayOperation {
+			chain, missing = notificationDisplayGateChain(deps)
+		}
 		r, w := humachi.Unwrap(ctx)
 		if missing != "" {
 			// A gate the class needs is not wired. Fail closed with a typed

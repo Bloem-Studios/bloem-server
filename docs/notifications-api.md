@@ -76,3 +76,25 @@ preference rows retain the existing all-enabled defaults.
 The web captures account/profile authority for requests and mutations, validates
 pagination, and surfaces initial and partial failures. It does not automatically
 retry mutations or optimistically mark every cached delivery read.
+
+### API v2 Apple push display
+
+`GET /api/v2/notifications/push/apple/display/{delivery_id}`
+(`getNotificationApplePushDisplay`) returns compact display metadata from the
+same delivery row and renderer as the bridge endpoint. The response fields are
+`delivery_id` (string), `title`, optional `body` and `thread_id`, `category`, and
+`url`. Responses use `Cache-Control: no-store`; missing or other-profile
+notifications return a 404 problem. Delivery IDs must be UUIDs.
+
+The route accepts ordinary bearer/API-key authentication with `X-Profile-Id`,
+or the existing Apple display token in the Authorization header. A display
+token binds its own profile, ignores a supplied profile header, and requires a
+valid login session and a still-owned profile. It is rejected by other API v2
+operations. Query-string display credentials are not accepted. Existing
+pre-auth and post-auth rate limits apply. This read neither marks a notification
+read nor sends a push. Apple registration and display-token issuance retain
+the bridge contract until their separate migration is accepted.
+
+The Apple notification extension is the consumer; Android does not call this
+Apple display endpoint. Jellyfin compatibility has no equivalent display-token
+flow and needs no route change.

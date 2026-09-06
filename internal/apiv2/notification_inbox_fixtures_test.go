@@ -8,6 +8,7 @@ func notificationInboxFixtureCases() []fixtureCase {
 		panic(err)
 	}
 	cases := []fixtureCase{
+		{name: "notification_apple_push_display", operationID: "getNotificationApplePushDisplay", scenario: "Compact display metadata for an acting-profile delivery.", method: "GET", path: "/api/v2/notifications/push/apple/display/00000000-0000-0000-0000-000000000002", headers: profileOwner(), status: 200, schema: "#/components/schemas/NotificationPushDisplay", assertHeaders: []string{"Cache-Control"}},
 		{name: "notification_list_notifications", operationID: "listNotifications", scenario: "Profile notification inbox with synthetic records.", method: "GET", path: "/api/v2/notifications", headers: profileOwner(), status: 200, schema: "#/components/schemas/NotificationListOutputBody", assertHeaders: []string{"Cache-Control"}},
 		{name: "notification_get_notification_capabilities", operationID: "getNotificationCapabilities", scenario: "Profile notification inbox with synthetic records.", method: "GET", path: "/api/v2/notifications/capabilities", headers: profileOwner(), status: 200, schema: "#/components/schemas/CapabilityResponse", assertHeaders: []string{"Cache-Control"}},
 		{name: "notification_get_notification_preferences", operationID: "getNotificationPreferences", scenario: "Profile notification inbox with synthetic records.", method: "GET", path: "/api/v2/notifications/preferences", headers: profileOwner(), status: 200, schema: "#/components/schemas/NotificationPreferences", assertHeaders: []string{"Cache-Control"}},

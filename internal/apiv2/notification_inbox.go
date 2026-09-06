@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 )
 
 type NotificationInboxService interface {
+	NotificationPushDisplay(context.Context, string, string) (notifications.NotificationDisplay, error)
 	NotificationCapabilities(context.Context) handlers.NotificationCapabilitiesView
 	ListNotificationInbox(context.Context, string, bool, int, *notifications.Cursor, *notifications.Cursor) (handlers.NotificationInboxPageView, error)
 	SyncNotificationInbox(context.Context, string, int, *notifications.Cursor) ([]notifications.DeliveryRowPayload, bool, int, error)
@@ -148,7 +150,36 @@ func (reg *Registry) notificationInbox() (NotificationInboxService, *Problem) {
 func notificationCursorScope(ctx context.Context, operation, filter string) CursorScope {
 	return CursorScope{OperationID: operation, Security: strconv.Itoa(claimsFrom(ctx).UserID) + "/" + profileFrom(ctx), Filter: filter, Sort: "created_at,id", Tiebreaker: "id"}
 }
+
+const notificationApplePushDisplayOperation = "getNotificationApplePushDisplay"
+
+type NotificationPushDisplay struct {
+	DeliveryID ID     `json:"delivery_id"`
+	Title      string `json:"title"`
+	Body       string `json:"body,omitempty"`
+	ThreadID   string `json:"thread_id,omitempty"`
+	Category   string `json:"category"`
+	URL        string `json:"url"`
+}
+type NotificationPushDisplayInput struct {
+	DeliveryID ID `path:"delivery_id" format:"uuid"`
+}
+type NotificationPushDisplayOutput struct{ Body NotificationPushDisplay }
+
 func registerNotificationInbox(reg *Registry) {
+	display := notificationOperation(http.MethodGet, "/push/apple/display/{delivery_id}", notificationApplePushDisplayOperation)
+	display.Summary = "Read compact display metadata for an Apple push notification."
+	Register(reg, display, func(ctx context.Context, in *NotificationPushDisplayInput) (*NotificationPushDisplayOutput, error) {
+		svc, p := reg.notificationInbox()
+		if p != nil {
+			return nil, p
+		}
+		view, err := svc.NotificationPushDisplay(ctx, profileFrom(ctx), string(in.DeliveryID))
+		if err != nil {
+			return nil, serviceProblem(err)
+		}
+		return &NotificationPushDisplayOutput{Body: NotificationPushDisplay{DeliveryID: ID(view.DeliveryID), Title: view.Title, Body: view.Body, ThreadID: view.ThreadID, Category: view.Category, URL: view.URL}}, nil
+	})
 	cursors := NewCursors(reg.deps.CursorSecret)
 	Register(reg, notificationOperation(http.MethodGet, "/capabilities", "getNotificationCapabilities"), func(ctx context.Context, _ *struct{}) (*NotificationCapabilitiesOutput, error) {
 		svc, p := reg.notificationInbox()
@@ -327,4 +358,29 @@ func registerNotificationInbox(reg *Registry) {
 		}
 		return &NotificationPreferencesOutput{Body: notificationPreferencesOf(prefs)}, nil
 	})
+}
+
+// Only the extension display operation admits a display token. Reuse the
+// bridge's session/profile validation and both limiter positions, including
+// the pre-auth budget protecting the long-lived token's session lookup.
+func notificationDisplayGateChain(deps Dependencies) ([]func(http.Handler) http.Handler, string) {
+	if deps.Auth == nil {
+		return nil, "auth"
+	}
+	if deps.ViewerAccess == nil {
+		return nil, "viewer access"
+	}
+	postAuth := func(next http.Handler) http.Handler {
+		h := deps.ViewerAccess.RequireViewerAccess(apimw.RequireProfile(next))
+		if deps.RateLimit != nil {
+			h = deps.RateLimit(h)
+		}
+		return h
+	}
+	fallback := func(next http.Handler) http.Handler { return deps.Auth.RequireAuth(postAuth(next)) }
+	chain := make([]func(http.Handler) http.Handler, 0, 2)
+	if deps.RateLimit != nil {
+		chain = append(chain, deps.RateLimit)
+	}
+	return append(chain, deps.Auth.RequireApplePushDisplayAuth(fallback, postAuth)), ""
 }
