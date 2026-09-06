@@ -8543,11 +8543,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/jellyfin-compat/web/install",
+        "operation_id": "installAdminJellyfinCompatWeb"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "coalescing",
+      "retry_safety_note": "Starts one local per-install-root operation; a repeat while the same-kind operation runs returns that running operation, a running removal is 409. Not a durable cluster-wide job; completion is observed through status/events."
     },
     {
       "listener": "api",
@@ -8604,11 +8606,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/jellyfin-compat/web/remove",
+        "operation_id": "removeAdminJellyfinCompatWeb"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "coalescing",
+      "retry_safety_note": "Starts one local per-install-root removal and records web_enabled=false; a repeat while removal runs returns that running operation, a running install is 409. Not a durable cluster-wide job."
     },
     {
       "listener": "api",
@@ -8655,11 +8659,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/jellyfin-compat/web/install",
+        "operation_id": "installAdminJellyfinCompatWeb"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "coalescing",
+      "retry_safety_note": "Byte-identical to install in v1 (same handler); v2 exposes one install operation. Starts one local per-install-root operation; a repeat while the same-kind operation runs returns that running operation, a running removal is 409. Not a durable cluster-wide job; completion is observe"
     },
     {
       "listener": "api",

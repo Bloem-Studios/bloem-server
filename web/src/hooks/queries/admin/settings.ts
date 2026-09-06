@@ -10,10 +10,10 @@ import {
 import { jellyfinCompatStatusKey } from "@/api/v2/jellyfinStatusCache";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  api,
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
+  type ProfileRequestContextSnapshot,
 } from "@/api/client";
 import type {
   AdminSettingUpdateResponse,
@@ -420,48 +420,92 @@ export function useUpdateJellyfinCompatSettings() {
   };
 }
 
-export function useInstallJellyfinCompatWeb() {
+/**
+ * Jellyfin Web asset commands are coalescing: a repeat while the same-kind
+ * operation runs returns that running operation, and a running operation of the
+ * other kind is a 409. Each intent captures its authority at click time, sends
+ * once without authentication replay, and refuses to run after the authority
+ * changed. Progress is local to the replica that accepted it.
+ */
+type JellyfinWebIntent = {
+  body: JellyfinCompatWebInstallRequest;
+  profileContext: ProfileRequestContextSnapshot | null;
+};
+function jellyfinWebIntent(body: JellyfinCompatWebInstallRequest = {}): JellyfinWebIntent {
+  return { body: { ...body }, profileContext: captureProfileRequestContext() };
+}
+function jellyfinWebAuthorityActive(intent: JellyfinWebIntent): boolean {
+  return intent.profileContext !== null && isCapturedProfileAuthorityActive(intent.profileContext);
+}
+function useJellyfinWebCommand(kind: "install" | "remove", started: string, failed: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: JellyfinCompatWebInstallRequest = {}) =>
-      api<JellyfinCompatStatus>("/admin/jellyfin-compat/web/install", {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: async () => {
-      toast.success("Jellyfin Web install started");
+    retry: false,
+    mutationFn: async (intent: JellyfinWebIntent): Promise<JellyfinCompatStatus> => {
+      if (!intent.profileContext || !jellyfinWebAuthorityActive(intent))
+        throw new StaleApiRequestContextError();
+      const common = { profileContext: intent.profileContext, retryAuthentication: false };
+      const status =
+        kind === "install"
+          ? await v2("POST /api/v2/admin/jellyfin-compat/web/install", {
+              ...common,
+              body: intent.body,
+            })
+          : await v2("POST /api/v2/admin/jellyfin-compat/web/remove", common);
+      if (!jellyfinWebAuthorityActive(intent)) throw new StaleApiRequestContextError();
+      return {
+        ...status,
+        operation: status.operation
+          ? { ...status.operation, started_at: status.operation.started_at ?? "" }
+          : undefined,
+      };
+    },
+    onSuccess: async (_result, intent) => {
+      if (!intent.profileContext || !jellyfinWebAuthorityActive(intent)) return;
+      toast.success(started);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: adminKeys.jellyfinCompatStatus() }),
+        queryClient.invalidateQueries({
+          queryKey: jellyfinCompatStatusKey(intent.profileContext),
+          exact: true,
+        }),
         queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
         queryClient.invalidateQueries({ queryKey: adminKeys.serverStatus() }),
       ]);
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to install Jellyfin Web assets");
+    onError: (err, intent) => {
+      if (!jellyfinWebAuthorityActive(intent)) return;
+      toast.error(err instanceof Error ? err.message : failed);
     },
   });
 }
 
+export function useInstallJellyfinCompatWeb() {
+  const mutation = useJellyfinWebCommand(
+    "install",
+    "Jellyfin Web install started",
+    "Failed to install Jellyfin Web assets",
+  );
+  return {
+    ...mutation,
+    variables: mutation.variables?.body,
+    mutate: (body: JellyfinCompatWebInstallRequest = {}) =>
+      mutation.mutate(jellyfinWebIntent(body)),
+    mutateAsync: (body: JellyfinCompatWebInstallRequest = {}) =>
+      mutation.mutateAsync(jellyfinWebIntent(body)),
+  };
+}
+
 export function useRemoveJellyfinCompatWeb() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () =>
-      api<JellyfinCompatStatus>("/admin/jellyfin-compat/web/remove", {
-        method: "POST",
-        body: JSON.stringify({}),
-      }),
-    onSuccess: async () => {
-      toast.success("Jellyfin Web removal started");
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: adminKeys.jellyfinCompatStatus() }),
-        queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
-        queryClient.invalidateQueries({ queryKey: adminKeys.serverStatus() }),
-      ]);
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to remove Jellyfin Web assets");
-    },
-  });
+  const mutation = useJellyfinWebCommand(
+    "remove",
+    "Jellyfin Web removal started",
+    "Failed to remove Jellyfin Web assets",
+  );
+  return {
+    ...mutation,
+    mutate: () => mutation.mutate(jellyfinWebIntent()),
+    mutateAsync: () => mutation.mutateAsync(jellyfinWebIntent()),
+  };
 }
 
 /** Reads one stored setting for the setup wizard. Protected/empty values stay absent. */

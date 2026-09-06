@@ -481,6 +481,8 @@ export const v2Operations = {
   "POST /api/v2/admin/items/{id}/refresh-markers": "refreshAdminEpisodeMarkers",
   "POST /api/v2/admin/items/{id}/refresh-metadata": "refreshAdminItemMetadata",
   "POST /api/v2/admin/items/{id}/split": "splitAdminItem",
+  "POST /api/v2/admin/jellyfin-compat/web/install": "installAdminJellyfinCompatWeb",
+  "POST /api/v2/admin/jellyfin-compat/web/remove": "removeAdminJellyfinCompatWeb",
   "POST /api/v2/admin/libraries/{library_id}/collection-groups": "createAdminCollectionGroup",
   "POST /api/v2/admin/literary-works/link": "linkAdminLiteraryItems",
   "POST /api/v2/admin/literary-works/matches/confirm": "confirmAdminLiteraryMatch",

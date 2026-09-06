@@ -118,6 +118,7 @@ type Dependencies struct {
 	DownloadCreation                DownloadCreationService
 	AdminJellyfinCompatStatus       AdminJellyfinCompatStatusService
 	AdminSettingRead                AdminSettingReadService
+	AdminJellyfinCompatWeb          AdminJellyfinCompatWebService
 	AdminRateLimitsWrite            AdminRateLimitWriteService
 	AdminRateLimits                 AdminRateLimitReadService
 	DownloadSubscriptionMutations   DownloadSubscriptionMutationService
