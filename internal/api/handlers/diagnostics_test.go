@@ -891,3 +891,24 @@ func sameStringSlice(a, b []string) bool {
 	}
 	return true
 }
+
+func TestOpenAdminDiagnosticDownloadAlwaysStreams(t *testing.T) {
+	service := newFakeDiagnosticsService()
+	service.getReport = readyDiagnosticsReport()
+	service.presignURL = "https://storage.example.test/report"
+	service.openData = []byte("bundle")
+	download, err := NewDiagnosticsHandler(service).OpenAdminDiagnosticDownload(t.Context(), "report-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer download.Body.Close()
+	body, err := io.ReadAll(download.Body)
+	if err != nil || string(body) != "bundle" || service.presignCalls != 0 || service.openCalls != 1 || download.Size == nil || download.Filename == "" {
+		t.Fatal(download, err, service.presignCalls, service.openCalls)
+	}
+	service.getReport.State = diagnostics.StateReceiving
+	_, err = NewDiagnosticsHandler(service).OpenAdminDiagnosticDownload(t.Context(), "report-1")
+	if !errors.Is(err, diagnostics.ErrReportNotReady) || service.openCalls != 1 {
+		t.Fatal(err, service.openCalls)
+	}
+}

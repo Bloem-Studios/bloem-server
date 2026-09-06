@@ -5541,11 +5541,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/diagnostics/reports/{id}/download",
+        "operation_id": "downloadAdminDiagnosticReport"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; diagnosticsHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Streams the existing web proxy download as application/gzip through the API host. No presigned URL is exposed. Service absence returns 503; Range requests receive the complete bundle. Independent scope review pending."
     },
     {
       "listener": "api",

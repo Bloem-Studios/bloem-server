@@ -73,6 +73,7 @@ export const v2Operations = {
   "GET /api/v2/admin/collections/{id}": "getAdminCollection",
   "GET /api/v2/admin/collections/{id}/items": "getAdminCollectionItems",
   "GET /api/v2/admin/collections/{id}/items/order": "getAdminCollectionItemsOrder",
+  "GET /api/v2/admin/diagnostics/reports/{id}/download": "downloadAdminDiagnosticReport",
   "GET /api/v2/admin/filesystem/browse": "browseAdminFilesystem",
   "GET /api/v2/admin/history-import-sources": "listAdminHistoryImportSources",
   "GET /api/v2/admin/history-import-sources/{id}": "getAdminHistoryImportSource",

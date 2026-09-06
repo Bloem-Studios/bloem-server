@@ -7,14 +7,17 @@ import type { DiagnosticReport } from "@/api/types";
 
 const mocks = vi.hoisted(() => ({
   api: vi.fn(),
-  apiResponse: vi.fn(),
+  bundle: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }));
 
 vi.mock("@/api/client", () => ({
   api: mocks.api,
-  apiResponse: mocks.apiResponse,
+}));
+
+vi.mock("@/api/v2/adminDiagnosticDownload", () => ({
+  fetchAdminDiagnosticReportBundle: mocks.bundle,
 }));
 
 vi.mock("sonner", () => ({
@@ -34,7 +37,7 @@ const report = {
 describe("downloadDiagnosticReport", () => {
   beforeEach(() => {
     mocks.api.mockReset();
-    mocks.apiResponse.mockReset();
+    mocks.bundle.mockReset();
     mocks.toastError.mockReset();
     mocks.toastSuccess.mockReset();
   });
@@ -45,21 +48,11 @@ describe("downloadDiagnosticReport", () => {
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => undefined);
-    // A string body, not a Blob: `new Response(blob)` reads the body via
-    // `blob.stream()`, which jsdom's Blob does not implement on Node 22 — the
-    // version the Dockerfile builds with — so the Blob form passes locally on
-    // Node 24 and throws "object.stream is not a function" in CI. Nothing here
-    // asserts on the body's contents, only that the object URL and filename
-    // reach the anchor, so the string is equivalent and version-independent.
-    mocks.apiResponse.mockResolvedValue(
-      new Response("bundle", { headers: { "Content-Type": "application/gzip" } }),
-    );
+    mocks.bundle.mockResolvedValue(new Blob(["bundle"], { type: "application/gzip" }));
 
     await downloadDiagnosticReport(report);
 
-    expect(mocks.apiResponse).toHaveBeenCalledWith(
-      "/admin/diagnostics/reports/83fd3186-bd4f-42e1-8285-58107c503685/download?proxy=1",
-    );
+    expect(mocks.bundle).toHaveBeenCalledWith("83fd3186-bd4f-42e1-8285-58107c503685");
     expect(click).toHaveBeenCalledOnce();
     expect(objectURL).toHaveBeenCalledOnce();
     // The click spy records `this` as the anchor the download helper clicked;
@@ -77,7 +70,7 @@ describe("downloadDiagnosticReport", () => {
   });
 
   it("propagates request failures to the caller", async () => {
-    mocks.apiResponse.mockRejectedValue(new Error("Diagnostic report bundle not found"));
+    mocks.bundle.mockRejectedValue(new Error("Diagnostic report bundle not found"));
 
     await expect(downloadDiagnosticReport(report)).rejects.toThrow(
       "Diagnostic report bundle not found",
@@ -88,7 +81,7 @@ describe("downloadDiagnosticReport", () => {
 describe("useUpdateDiagnosticsUploadsEnabled", () => {
   beforeEach(() => {
     mocks.api.mockReset();
-    mocks.apiResponse.mockReset();
+    mocks.bundle.mockReset();
     mocks.toastError.mockReset();
     mocks.toastSuccess.mockReset();
   });

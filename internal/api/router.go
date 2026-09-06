@@ -2096,6 +2096,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.RecWorker != nil {
 		v2deps.AdminRecommendations = deps.RecWorker
 	}
+	if diagnosticsHandler != nil {
+		v2deps.AdminDiagnosticDownloads = diagnosticsHandler
+	}
 	if deps.DB != nil {
 		v2deps.AdminPluginCatalogSettings = plugins.NewRepositoryStore(deps.DB)
 	}

@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { api, apiResponse } from "@/api/client";
+import { api } from "@/api/client";
+import { fetchAdminDiagnosticReportBundle } from "@/api/v2/adminDiagnosticDownload";
 import type {
   AdminSettingUpdateResponse,
   DiagnosticReport,
@@ -110,10 +111,7 @@ export async function downloadDiagnosticReport(report: DiagnosticReportSummary) 
   // separate window the UI can neither detect the failure nor fall back. Admin
   // downloads are bounded and rare, so proxying through the server is reliable
   // and lets errors surface here for the caller to report.
-  const response = await apiResponse(
-    `/admin/diagnostics/reports/${encodeURIComponent(report.id)}/download?proxy=1`,
-  );
-  const blob = await response.blob();
+  const blob = await fetchAdminDiagnosticReportBundle(report.id);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
