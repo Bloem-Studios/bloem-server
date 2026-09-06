@@ -1,6 +1,7 @@
 {
-  "revision": "72e49c05419ffd31",
+  "revision": "9593fa66202599a1",
   "state": "available",
+  "bounded_creation": true,
   "subscription_mutations": true,
   "bounded_subscription_sync": true,
   "subscription_reads": true,

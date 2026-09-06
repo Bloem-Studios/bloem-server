@@ -59,6 +59,7 @@ type DownloadDeleteInput struct {
 }
 type DownloadCapability struct {
 	Capability
+	BoundedCreation         bool     `json:"bounded_creation"`
 	SubscriptionMutations   bool     `json:"subscription_mutations"`
 	BoundedSubscriptionSync bool     `json:"bounded_subscription_sync"`
 	SubscriptionReads       bool     `json:"subscription_reads"`
@@ -204,6 +205,7 @@ func (reg *Registry) getDownloadCapability(ctx context.Context, _ *struct{}) (*D
 		out.BoundedManifests = reg.deps.DownloadManifests != nil
 		out.SubscriptionReads = reg.deps.DownloadSubscriptions != nil
 		out.SubscriptionMutations = reg.deps.DownloadSubscriptionMutations != nil
+		out.BoundedCreation = reg.deps.DownloadCreation != nil
 		out.BoundedSubscriptionSync = reg.deps.DownloadSubscriptionSync != nil
 		if reg.deps.DownloadProxyDelivery != nil {
 			out.ProxyDelivery = reg.deps.DownloadProxyDelivery()

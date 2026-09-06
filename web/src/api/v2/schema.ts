@@ -4547,7 +4547,8 @@ export interface paths {
     /** Page device-managed downloads or account ephemeral downloads. */
     get: operations["listDownloads"];
     put?: never;
-    post?: never;
+    /** Create one download or one bounded series/season page using shared preparation and registration. Do not automatically replay uncertain creation; reconcile the registry first. */
+    post: operations["createDownloads"];
     delete?: never;
     options?: never;
     head?: never;
@@ -11958,6 +11959,17 @@ export interface components {
        */
       new_password: string;
     };
+    ClientCapabilities: {
+      audio_passthrough_codecs?: string[];
+      client_features?: string[];
+      codecs_audio: string[];
+      codecs_video: string[];
+      containers: string[];
+      hdr: boolean;
+      max_resolution: string;
+      video_decode?: components["schemas"]["VideoDecodeCapabilityV3"][];
+      video_evidence?: string;
+    };
     CollectionAdminAccessGroupListItem: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["AdminAccessGroupListItem"][];
@@ -12895,6 +12907,7 @@ export interface components {
     DownloadCapability: {
       /** @description Whether the current principal may use the capability */
       allowed?: boolean;
+      bounded_creation: boolean;
       bounded_manifests: boolean;
       bounded_subscription_sync: boolean;
       download_allowed: boolean;
@@ -12917,6 +12930,50 @@ export interface components {
       subscription_reads: boolean;
       transcode_enabled: boolean;
       transcode_user_allowed: boolean;
+    };
+    DownloadCreateBody: {
+      /**
+       * @description Required stable client-selected batch identity for every page of a series request.
+       * @example 1
+       */
+      batch_id?: string;
+      caps?: components["schemas"]["ClientCapabilities"];
+      content_id: string;
+      episode_id?: string;
+      /**
+       * @description Required with a positive expected_revision; retain the exact registry entry ID.
+       * @example 1
+       */
+      expected_download_id?: string;
+      /** @description At most 100 episode ID to exact registry ID/revision guards. Existing rows without a guard retain current bytes, status and batch. */
+      expected_entries?: {
+        [key: string]: components["schemas"]["DownloadEntryExpectation"];
+      };
+      /**
+       * Format: int64
+       * @description Required for a single managed request: zero requires absence; a positive revision authorizes replacement. Retain after uncertainty.
+       */
+      expected_revision?: number;
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      media_file_id?: string;
+      /** @enum {string} */
+      quality?: "original" | "20mbps" | "10mbps" | "5mbps" | "2mbps" | "1mbps";
+      /** Format: int64 */
+      season_number?: number;
+      series?: boolean;
+    };
+    DownloadCreated: {
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      batch_id?: string;
+      items: components["schemas"]["DownloadEntry"][];
+      page: components["schemas"]["PageInfo"];
+      skipped: components["schemas"]["SkippedDownload"][];
     };
     DownloadEntry: {
       /**
@@ -12969,6 +13026,15 @@ export interface components {
       status_event_at?: string;
       /** Format: int64 */
       target_bitrate_kbps: number;
+    };
+    DownloadEntryExpectation: {
+      /**
+       * @description Opaque identifier
+       * @example 1
+       */
+      id?: string;
+      /** Format: int64 */
+      revision: number;
     };
     DownloadManifest: {
       artwork_urls: components["schemas"]["DownloadManifestArtworkURLsStruct"];
@@ -18448,6 +18514,10 @@ export interface components {
        */
       enabled: boolean;
     };
+    SkippedDownload: {
+      episode_id: string;
+      reason: string;
+    };
     SkippedManifest: {
       download_id: string;
       reason: string;
@@ -19176,6 +19246,22 @@ export interface components {
       language?: string;
       resolution?: string;
       title?: string;
+    };
+    VideoDecodeCapabilityV3: {
+      bit_depths?: number[];
+      codec: string;
+      decoder_name?: string;
+      hardware: boolean;
+      levels?: number[];
+      /** Format: int64 */
+      max_bitrate_kbps?: number;
+      /** Format: double */
+      max_frame_rate?: number;
+      /** Format: int64 */
+      max_height?: number;
+      /** Format: int64 */
+      max_width?: number;
+      profiles?: string[];
     };
     VideoTrack: {
       aspect_ratio?: string;
@@ -60062,6 +60148,167 @@ export interface operations {
       };
       /** @description Internal Server Error */
       500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  createDownloads: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id"?: string;
+        "X-Silo-Device-Name"?: string;
+        "X-Silo-Device-Platform"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DownloadCreateBody"];
+      };
+    };
+    responses: {
+      /** @description Accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DownloadCreated"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Implemented */
+      501: {
         headers: {
           [name: string]: unknown;
         };

@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	chimw "github.com/go-chi/chi/v5/middleware"
 
@@ -1670,6 +1671,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminCatalogUnmatchedFixtureCases()...)
 	cases = append(cases, adminCatalogImagesFixtureCases()...)
 	cases = append(cases, downloadSubscriptionMutationFixtureCases()...)
+	cases = append(cases, downloadCreateFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1697,6 +1699,7 @@ func fixtureDeps() Dependencies {
 	deps := pilotDeps(&fakeProgress{entries: progressRows()}, nil)
 	deps.SubtitleAIReads = &fakeSubtitleAIReads{}
 	deps.Downloads = &fakeDownloadRegistry{}
+	deps.DownloadCreation = &fakeDownloadCreation{row: &downloads.Download{ID: "entry", ContentID: "movie", MediaFileID: 42, Revision: 1, CreatedAt: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC), Status: downloads.StatusReady, Quality: downloads.QualityOriginal, EffectiveQuality: downloads.QualityOriginal, Format: downloads.FormatOriginal, DeviceID: "device-one"}, page: downloads.CreatePage{BatchID: "intent", Skipped: []downloads.SkippedDownload{{EpisodeID: "missing", Reason: "no_file"}}}}
 	deps.DownloadSubscriptionMutations = &fakeSubscriptionMutations{row: syntheticDownloadSubscription()}
 	deps.DownloadSubscriptionSync = &fakeSubscriptionSync{row: syntheticDownloadSubscription(), page: downloads.SubscriptionSyncPage{Registered: 1, Examined: 3}}
 	deps.DownloadSubscriptions = &fakeDownloadSubscriptions{row: syntheticDownloadSubscription(), rows: []*downloads.Subscription{syntheticDownloadSubscription()}}

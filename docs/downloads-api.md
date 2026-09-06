@@ -1488,3 +1488,47 @@ never register episodes. The bridge retains immediate best-effort backfill on
 create/edit and now discards delayed sync snapshots after a monitor change.
 Capabilities `subscription_mutations` and `bounded_subscription_sync` identify
 these operations separately from subscription reads.
+
+### Native download creation
+
+`POST /api/v2/downloads` returns 202 with `{items, skipped, page}` and an optional
+`batch_id`. It uses the existing download policy, source selection, artifact
+preparation, quota checks and device registration. The request requires
+`content_id`; optional `episode_id`, string `media_file_id`, `quality` and the
+shared playback `caps` payload select the source and delivery target. All six
+quality choices remain supported, including `1mbps`. Detailed decoder evidence
+uses the existing playback validator. Explicit file/episode selection must match
+the requested catalog identity.
+
+With a device header, a single-item request requires `expected_revision`: zero
+requires an absent managed entry; a positive value together with `expected_download_id` identifies the exact entry
+being reused, revived or replaced. A stale revision returns 409 before replacing newer
+bytes. A losing database compare-and-set cannot acknowledge a different winner as
+the requested target. Without a device header, creation retains the account's
+ephemeral transfer flow and rejects managed revision guards.
+
+For a series or season, send `series:true`, a client-selected `batch_id`, and
+optional `season_number` (zero selects Specials). The `limit` query defaults to
+50 and is capped at 100 examined episodes. Keep batch, content, season, quality
+and device/profile identity unchanged while following `page.next_cursor` through
+the `cursor` query. Continue through empty `items` when `page.has_more` is true;
+`skipped` explicitly reports episodes with no file. Bulk quality remains original
+only, matching the existing supported flow.
+
+Batch pages preserve existing managed entries by default, including their chosen
+bytes, completion/terminal status, revision and previous batch membership. An
+optional `expected_entries` object supplies at most 100 episode-ID to
+`{id, revision}` guards for replacements or revivals on that page. A zero revision
+requires absence and omits `id`. Positive revisions require the exact registry ID
+so a deleted-and-recreated entry cannot inherit old replacement authority. Returned entries
+carry their actual batch identity; fetch an individual manifest for a reused
+entry that belongs to an earlier batch. Newly registered pages share the
+requested batch ID. The traversal reads the live catalog, so refreshes may be
+needed for episodes inserted behind a cursor.
+
+Creation has no durable response receipt and does not promise atomic application
+of all replacements in a page. Do not automatically replay an uncertain request,
+refresh revision guards, or fall back to v1. Reconcile the registry after
+uncertainty, then make an explicit new request for unresolved work. This also
+prevents duplicate ephemeral transfers. The download capability exposes
+`bounded_creation` when this full native creation flow is configured.

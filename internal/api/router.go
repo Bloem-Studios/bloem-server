@@ -1980,6 +1980,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.DownloadSubscriptions = downloadSvc
 		v2deps.DownloadSubscriptionMutations = downloadSvc
 		v2deps.DownloadSubscriptionSync = downloadSvc
+		v2deps.DownloadCreation = downloadSvc
 	}
 	if ebookReaderHandler != nil {
 		v2deps.EbookProgress = ebookReaderHandler

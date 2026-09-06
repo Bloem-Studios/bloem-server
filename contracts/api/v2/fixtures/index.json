@@ -4063,6 +4063,50 @@
       "body_file": "download_capability.json"
     },
     {
+      "name": "download_create_page",
+      "operation_id": "createDownloads",
+      "scenario": "A bounded specials page can contain no new files and report the skipped episode without truncating a later page.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/downloads",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        },
+        "body": "{\"content_id\":\"series\",\"series\":true,\"season_number\":0,\"batch_id\":\"intent\"}"
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/DownloadCreated",
+      "body_file": "download_create_page.json"
+    },
+    {
+      "name": "download_create_single",
+      "operation_id": "createDownloads",
+      "scenario": "Managed creation carries explicit absence authority and returns complete registry identity in the collection envelope.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/downloads",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner",
+          "X-Silo-Device-Id": "device-one"
+        },
+        "body": "{\"content_id\":\"movie\",\"media_file_id\":\"42\",\"expected_revision\":0}"
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/DownloadCreated",
+      "body_file": "download_create_single.json"
+    },
+    {
       "name": "download_deleted",
       "operation_id": "deleteDownload",
       "scenario": "Deleting a registry entry returns no representation.",

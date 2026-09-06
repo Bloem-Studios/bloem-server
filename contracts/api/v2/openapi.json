@@ -12248,6 +12248,64 @@
         ],
         "type": "object"
       },
+      "ClientCapabilities": {
+        "additionalProperties": false,
+        "properties": {
+          "audio_passthrough_codecs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "client_features": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "codecs_audio": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "codecs_video": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "containers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "hdr": {
+            "type": "boolean"
+          },
+          "max_resolution": {
+            "type": "string"
+          },
+          "video_decode": {
+            "items": {
+              "$ref": "#/components/schemas/VideoDecodeCapabilityV3"
+            },
+            "type": "array"
+          },
+          "video_evidence": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "codecs_video",
+          "codecs_audio",
+          "containers",
+          "max_resolution",
+          "hdr"
+        ],
+        "type": "object"
+      },
       "CollectionAdminAPIKeyListItem": {
         "additionalProperties": false,
         "properties": {
@@ -14716,6 +14774,9 @@
             "description": "Whether the current principal may use the capability",
             "type": "boolean"
           },
+          "bounded_creation": {
+            "type": "boolean"
+          },
           "bounded_manifests": {
             "type": "boolean"
           },
@@ -14783,6 +14844,7 @@
           }
         },
         "required": [
+          "bounded_creation",
           "subscription_mutations",
           "bounded_subscription_sync",
           "subscription_reads",
@@ -14800,6 +14862,118 @@
           "monitoring_modes",
           "revision",
           "state"
+        ],
+        "type": "object"
+      },
+      "DownloadCreateBody": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "description": "Required stable client-selected batch identity for every page of a series request.",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "caps": {
+            "$ref": "#/components/schemas/ClientCapabilities"
+          },
+          "content_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "episode_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "expected_download_id": {
+            "description": "Required with a positive expected_revision; retain the exact registry entry ID.",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "expected_entries": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DownloadEntryExpectation"
+            },
+            "description": "At most 100 episode ID to exact registry ID/revision guards. Existing rows without a guard retain current bytes, status and batch.",
+            "type": "object"
+          },
+          "expected_revision": {
+            "description": "Required for a single managed request: zero requires absence; a positive revision authorizes replacement. Retain after uncertainty.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "media_file_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "quality": {
+            "enum": [
+              "original",
+              "20mbps",
+              "10mbps",
+              "5mbps",
+              "2mbps",
+              "1mbps"
+            ],
+            "type": "string"
+          },
+          "season_number": {
+            "format": "int64",
+            "maximum": 9999,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "series": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "content_id"
+        ],
+        "type": "object"
+      },
+      "DownloadCreated": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DownloadEntry"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedDownload"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "skipped",
+          "page"
         ],
         "type": "object"
       },
@@ -14911,6 +15085,28 @@
           "target_bitrate_kbps",
           "revision",
           "created_at"
+        ],
+        "type": "object"
+      },
+      "DownloadEntryExpectation": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision"
         ],
         "type": "object"
       },
@@ -27713,6 +27909,22 @@
         ],
         "type": "object"
       },
+      "SkippedDownload": {
+        "additionalProperties": false,
+        "properties": {
+          "episode_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "episode_id",
+          "reason"
+        ],
+        "type": "object"
+      },
       "SkippedManifest": {
         "additionalProperties": false,
         "properties": {
@@ -29513,6 +29725,61 @@
           "default",
           "hearing_impaired",
           "external"
+        ],
+        "type": "object"
+      },
+      "VideoDecodeCapabilityV3": {
+        "additionalProperties": false,
+        "properties": {
+          "bit_depths": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "codec": {
+            "type": "string"
+          },
+          "decoder_name": {
+            "type": "string"
+          },
+          "hardware": {
+            "type": "boolean"
+          },
+          "levels": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "max_bitrate_kbps": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_frame_rate": {
+            "format": "double",
+            "type": "number"
+          },
+          "max_height": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_width": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "profiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "codec",
+          "hardware"
         ],
         "type": "object"
       },
@@ -90370,6 +90637,252 @@
           "downloads"
         ],
         "x-silo-class": "profile_scoped",
+        "x-silo-service-backed": true
+      },
+      "post": {
+        "operationId": "createDownloads",
+        "parameters": [
+          {
+            "description": "The household profile acting for this request; it must belong to the authenticated account.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Silo-Device-Id",
+            "schema": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Silo-Device-Name",
+            "schema": {
+              "maxLength": 120,
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Silo-Device-Platform",
+            "schema": {
+              "maxLength": 40,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DownloadCreateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadCreated"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "408": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Timeout"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "501": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create one download or one bounded series/season page using shared preparation and registration. Do not automatically replay uncertain creation; reconcile the registry first.",
+        "tags": [
+          "downloads"
+        ],
+        "x-silo-class": "profile_scoped",
+        "x-silo-retry-safety": "non_retryable",
         "x-silo-service-backed": true
       }
     },
