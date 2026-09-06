@@ -42388,13 +42388,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/subtitles/ai/jobs",
         "operation_id": "listSubtitleAIJobs"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Typed read implemented: opaque string IDs, canonical instants, safe job failure summary, file authorization and account quota with household-profile exemption preserved. Recent jobs retain the existing 50-row bound. Independent review and native adoption pending; not ratified."
+      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Typed read implemented: opaque string IDs, canonical instants, safe job failure summary, file authorization and account quota with household-profile exemption preserved. Recent jobs retain the existing 50-row bound. Apple server review CLEAR; Apple e0ed35c and Android 0440e9b8 consumer acceptance CLEAR. Web quota adoption verified; native quota/polling and Android recent-job facade migrated, with no current native recent-list UI caller. Jellyfin has no corresponding AI job/quota operations. Exactly the three ordinary reads are ratified; creation and cancellation remain separate."
     },
     {
       "listener": "api",
@@ -42459,13 +42459,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/subtitles/ai/jobs/{job_id}",
         "operation_id": "getSubtitleAIJob"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Typed read implemented: opaque string IDs, canonical instants, safe job failure summary, file authorization and account quota with household-profile exemption preserved. Recent jobs retain the existing 50-row bound. Independent review and native adoption pending; not ratified."
+      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Typed read implemented: opaque string IDs, canonical instants, safe job failure summary, file authorization and account quota with household-profile exemption preserved. Recent jobs retain the existing 50-row bound. Apple server review CLEAR; Apple e0ed35c and Android 0440e9b8 consumer acceptance CLEAR. Web quota adoption verified; native quota/polling and Android recent-job facade migrated, with no current native recent-list UI caller. Jellyfin has no corresponding AI job/quota operations. Exactly the three ordinary reads are ratified; creation and cancellation remain separate."
     },
     {
       "listener": "api",
@@ -42610,13 +42610,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
         "method": "GET",
         "path": "/api/v2/subtitles/ai/quota",
         "operation_id": "getSubtitleAIQuota"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Typed read implemented: opaque string IDs, canonical instants, safe job failure summary, file authorization and account quota with household-profile exemption preserved. Recent jobs retain the existing 50-row bound. Independent review and native adoption pending; not ratified."
+      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead. Typed read implemented: opaque string IDs, canonical instants, safe job failure summary, file authorization and account quota with household-profile exemption preserved. Recent jobs retain the existing 50-row bound. Apple server review CLEAR; Apple e0ed35c and Android 0440e9b8 consumer acceptance CLEAR. Web quota adoption verified; native quota/polling and Android recent-job facade migrated, with no current native recent-list UI caller. Jellyfin has no corresponding AI job/quota operations. Exactly the three ordinary reads are ratified; creation and cancellation remain separate."
     },
     {
       "listener": "api",
