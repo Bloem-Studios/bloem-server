@@ -659,3 +659,7 @@ test-scenario-device-deny-refusals:
 .PHONY: test-scenario-device-approve-refusals
 test-scenario-device-approve-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceApproveRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-handoff-refusals
+test-scenario-handoff-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredHandoffRefusalsAcceptance$$' ./internal/scenariocatalog/executor

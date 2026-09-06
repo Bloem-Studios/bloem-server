@@ -909,3 +909,18 @@ unchanged, including approval identity and timestamps. Required DSN, pre-setup
 scratch/API-key occupancy and fixed-selector gates fail closed. No successful
 approval, enrollment or outage substitution is exercised. These four frozen
 pairs remain separate from NEW acceptance.
+
+### Frozen handoff approval refusal pairs
+
+`make test-scenario-handoff-refusals` requires `handoff.no_profile`,
+`handoff.locked_unverified`, `handoff.purpose_mismatch`,
+`handoff.other_account_profile` and `handoff.no_token`. Original requests,
+principals and assertions remain unchanged. V2 returns 422 for the missing
+profile header and preserves the other refusal statuses with explicit
+profile/PIN/account/purpose Problem types. Ten transport requests reseed
+independently; 20 combined snapshots cover complete users, profiles, API-key,
+settings, login-session and device-request tables (120 observations), with every
+row unchanged, including approval and profile state. Required DSN, pre-setup
+scratch/API-key occupancy and fixed-selector gates fail closed. No successful
+handoff, enrollment or outage substitution is exercised. These five frozen
+pairs remain separate from NEW acceptance.
