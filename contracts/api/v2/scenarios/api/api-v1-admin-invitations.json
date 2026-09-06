@@ -1135,7 +1135,60 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original administrator and profile refusal statuses using Problem Details. No invitation creation, send or stored state changes.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_create_refusals_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "fixture-guest@silo.example.test",
+                "role": "user",
+                "note": "welcome"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_create.non_admin",
@@ -1192,7 +1245,60 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original administrator and profile refusal statuses using Problem Details. No invitation creation, send or stored state changes.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_create_refusals_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "fixture-guest@silo.example.test",
+                "role": "user",
+                "note": "welcome"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "adm_inv_create.no_token",
@@ -1249,7 +1355,60 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original administrator and profile refusal statuses using Problem Details. No invitation creation, send or stored state changes.",
+            "recorded_in": "internal/scenariocatalog/executor/admin_invitation_create_refusals_pairing_test.go",
+            "operation_id": "createAdminInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/admin/invitations",
+              "body": {
+                "email": "fixture-guest@silo.example.test",
+                "role": "user",
+                "note": "welcome"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },

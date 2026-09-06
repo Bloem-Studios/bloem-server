@@ -1068,3 +1068,12 @@ settings, login sessions and device requests (48 table observations), with no
 exemptions. Required DSN, pre-constructor occupancy and fixed-selector guards
 fail closed. No successful polling, token redemption, enrollment or outage is
 exercised. These two original frozen pairs remain separate from NEW acceptance.
+
+`make test-scenario-admin-invitation-create-refusals` selects only
+`adm_inv_create.admin_secondary_profile`, `adm_inv_create.non_admin`, and
+`adm_inv_create.no_token`. Original bodies, principals, requests and 403/403/401
+assertions remain unchanged. Six HTTP refusals use independent transport reseeds
+and twelve full snapshots of users, user_profiles, api_keys, server_settings,
+auth_sessions, device_login_requests, invitations and invite_codes (96 table
+observations), without exemptions. Required DSN and pre-constructor occupancy
+guards run before setup. No successful creation, send or other cohort runs.
