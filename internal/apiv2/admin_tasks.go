@@ -1,6 +1,7 @@
 package apiv2
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -82,6 +83,8 @@ type AdminTaskScheduleOutput struct {
 	Body AdminTaskSchedule
 }
 type AdminTaskScheduleInput struct {
+	// RawBody preserves explicit nulls that Huma otherwise treats as omissions.
+	RawBody     []byte
 	Key         string `path:"key"`
 	IfMatch     string `header:"If-Match"`
 	IfNoneMatch string `header:"If-None-Match"`
@@ -242,6 +245,22 @@ func (reg *Registry) updateAdminTaskSchedule(ctx context.Context, in *AdminTaskS
 	}
 	if in.Body.Triggers == nil {
 		return nil, NewProblem(TypeValidationFailed, "Triggers must be an array")
+	}
+	var raw struct {
+		Triggers []map[string]json.RawMessage `json:"triggers"`
+	}
+	if err := json.Unmarshal(in.RawBody, &raw); err != nil {
+		return nil, NewProblem(TypeValidationFailed, "Invalid schedule body")
+	}
+	for _, trigger := range raw.Triggers {
+		if trigger == nil {
+			return nil, NewProblem(TypeValidationFailed, "Each trigger must be an object")
+		}
+		for _, value := range trigger {
+			if bytes.Equal(bytes.TrimSpace(value), jsonNull) {
+				return nil, NewProblem(TypeValidationFailed, "Trigger fields cannot be null; omit optional fields to use their defaults")
+			}
+		}
 	}
 	configs := make([]taskmanager.TriggerConfig, 0, len(in.Body.Triggers))
 	for _, c := range in.Body.Triggers {

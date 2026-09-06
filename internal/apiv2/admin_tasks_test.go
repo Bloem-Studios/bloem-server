@@ -188,3 +188,40 @@ func TestAdminJobOwnerReadIsSafe(t *testing.T) {
 	}
 	requireProblem(t, do(t, h, "GET", Prefix+"/admin/jobs/missing", "", bearer(memberToken)), TypeNotFound)
 }
+
+func TestAdminTaskScheduleRejectsNestedNullWithoutWrites(t *testing.T) {
+	for _, body := range []string{
+		`{"triggers":[{"type":"weekly","time_of_day":"10:00","day_of_week":null}]}`,
+		`{"triggers":[{"type":"weekly","time_of_day":"10:00","max_runtime_ms":null}]}`,
+		`{"triggers":[{"type":"startup","interval_ms":null}]}`,
+		`{"triggers":[{"type":"startup","time_of_day":null}]}`,
+		`{"triggers":[{"type":"startup"},null]}`,
+		`{"triggers":[{"type":"startup"},{"type":"weekly","time_of_day":"10:00","day_of_week":null}]}`,
+	} {
+		t.Run(body, func(t *testing.T) {
+			f := newFakeAdminTasks()
+			h := adminTasksTestHandler(t, f)
+			requireProblem(t, do(t, h, "PUT", Prefix+"/admin/tasks/fixture/triggers", body, with(bearer(adminToken), "If-Match", "*")), TypeValidationFailed)
+			if f.writes != 0 || f.schedule.Revision != 2 {
+				t.Fatalf("null changed schedule: %+v", f)
+			}
+		})
+	}
+	for _, body := range []string{
+		`{"triggers":[{"type":"startup"}]}`,
+		`{"triggers":[{"type":"startup","interval_ms":0,"time_of_day":"","day_of_week":0,"max_runtime_ms":0}]}`,
+		`{"triggers":[{"type":"weekly","time_of_day":"10:00","day_of_week":0,"max_runtime_ms":0}]}`,
+	} {
+		t.Run(body, func(t *testing.T) {
+			f := newFakeAdminTasks()
+			h := adminTasksTestHandler(t, f)
+			response := do(t, h, "PUT", Prefix+"/admin/tasks/fixture/triggers", body, with(bearer(adminToken), "If-Match", "*"))
+			if response.Code != 200 || f.writes != 1 {
+				t.Fatalf("omission/zero rejected: %d %s", response.Code, response.Body)
+			}
+			if f.schedule.Triggers[0].DayOfWeek != 0 || f.schedule.Triggers[0].MaxRuntimeMs != 0 {
+				t.Fatalf("zero/default changed: %+v", f.schedule)
+			}
+		})
+	}
+}
