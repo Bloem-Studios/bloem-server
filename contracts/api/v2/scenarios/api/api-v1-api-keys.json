@@ -704,7 +704,82 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Creation still discloses the new account-owned credential once, normalizes scopes and uses the standard tier; v2 uses string IDs and UTC-millisecond timestamps. Full-table effects link the returned credential to exactly one new row.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_create_pairing_test.go",
+            "operation_id": "createPersonalAPIKey",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/api-keys",
+              "body": {
+                "label": "fixture-created"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "user_id",
+                    "label",
+                    "key",
+                    "rate_tier",
+                    "scopes",
+                    "created_at"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "matches",
+                  "value": "^[1-9][0-9]*$"
+                },
+                {
+                  "pointer": "/user_id",
+                  "op": "equals",
+                  "value": "${member_user_id}"
+                },
+                {
+                  "pointer": "/key",
+                  "op": "matches",
+                  "value": "^sa_[0-9a-f]{64}$"
+                },
+                {
+                  "pointer": "/label",
+                  "op": "equals",
+                  "value": "fixture-created"
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/rate_tier",
+                  "op": "equals",
+                  "value": "standard"
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/last_used_at",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_create.meaning",
@@ -745,7 +820,82 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Creation still discloses the new account-owned credential once, normalizes scopes and uses the standard tier; v2 uses string IDs and UTC-millisecond timestamps. Full-table effects link the returned credential to exactly one new row.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_create_pairing_test.go",
+            "operation_id": "createPersonalAPIKey",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/api-keys",
+              "body": {
+                "label": "fixture-created"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "user_id",
+                    "label",
+                    "key",
+                    "rate_tier",
+                    "scopes",
+                    "created_at"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "matches",
+                  "value": "^[1-9][0-9]*$"
+                },
+                {
+                  "pointer": "/user_id",
+                  "op": "equals",
+                  "value": "${member_user_id}"
+                },
+                {
+                  "pointer": "/key",
+                  "op": "matches",
+                  "value": "^sa_[0-9a-f]{64}$"
+                },
+                {
+                  "pointer": "/label",
+                  "op": "equals",
+                  "value": "fixture-created"
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/rate_tier",
+                  "op": "equals",
+                  "value": "standard"
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/last_used_at",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_create.scoped",
@@ -777,7 +927,88 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Creation still discloses the new account-owned credential once, normalizes scopes and uses the standard tier; v2 uses string IDs and UTC-millisecond timestamps. Full-table effects link the returned credential to exactly one new row.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_create_pairing_test.go",
+            "operation_id": "createPersonalAPIKey",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/api-keys",
+              "body": {
+                "label": "scoped",
+                "scopes": [
+                  "admin:users",
+                  "admin:users"
+                ]
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "user_id",
+                    "label",
+                    "key",
+                    "rate_tier",
+                    "scopes",
+                    "created_at"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "matches",
+                  "value": "^[1-9][0-9]*$"
+                },
+                {
+                  "pointer": "/user_id",
+                  "op": "equals",
+                  "value": "${member_user_id}"
+                },
+                {
+                  "pointer": "/key",
+                  "op": "matches",
+                  "value": "^sa_[0-9a-f]{64}$"
+                },
+                {
+                  "pointer": "/label",
+                  "op": "equals",
+                  "value": "scoped"
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "equals",
+                  "value": [
+                    "admin:users"
+                  ]
+                },
+                {
+                  "pointer": "/rate_tier",
+                  "op": "equals",
+                  "value": "standard"
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/last_used_at",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_create.bad_scope",
@@ -1260,7 +1491,82 @@
             ]
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Creation still discloses the new account-owned credential once, normalizes scopes and uses the standard tier; v2 uses string IDs and UTC-millisecond timestamps. Full-table effects link the returned credential to exactly one new row.",
+            "recorded_in": "internal/scenariocatalog/executor/api_key_create_pairing_test.go",
+            "operation_id": "createPersonalAPIKey",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/api-keys",
+              "body": {
+                "label": "fixture-created"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "user_id",
+                    "label",
+                    "key",
+                    "rate_tier",
+                    "scopes",
+                    "created_at"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "matches",
+                  "value": "^[1-9][0-9]*$"
+                },
+                {
+                  "pointer": "/user_id",
+                  "op": "equals",
+                  "value": "${member_user_id}"
+                },
+                {
+                  "pointer": "/key",
+                  "op": "matches",
+                  "value": "^sa_[0-9a-f]{64}$"
+                },
+                {
+                  "pointer": "/label",
+                  "op": "equals",
+                  "value": "fixture-created"
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "equals",
+                  "value": []
+                },
+                {
+                  "pointer": "/rate_tier",
+                  "op": "equals",
+                  "value": "standard"
+                },
+                {
+                  "pointer": "/created_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/last_used_at",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_create.no_token",

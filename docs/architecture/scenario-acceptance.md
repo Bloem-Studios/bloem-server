@@ -554,3 +554,17 @@ snapshots to prove all three fixture rows remain unchanged. Required DSN,
 pre-setup occupancy and fixed-selector gates fail closed. No successful
 credential creation, API-key-auth metadata update or external call is exercised.
 These five frozen pairs remain separate from NEW acceptance.
+
+### Frozen successful API-key creation pairs
+
+`make test-scenario-api-key-creations` requires `keys_create.ok`,
+`keys_create.meaning`, `keys_create.scoped` and `keys_create.shape`.
+Original v1 expectations and requests remain unchanged. V2 records string IDs,
+UTC-millisecond timestamps and creation-only secret disclosure. Eight real
+transport requests reseed independently and compare 16 full-table snapshots:
+exactly one new member-owned row must match the returned ID, credential, label,
+normalized scopes, standard tier and timestamp, with no usage timestamp; all
+three prior rows remain byte-identical. Credentials stay out of effect-assertion
+messages. Required DSN, pre-setup occupancy and fixed-selector gates fail closed.
+These four frozen pairs are separate from NEW acceptance; no real-user
+credential, authentication usage or provider operation is exercised.
