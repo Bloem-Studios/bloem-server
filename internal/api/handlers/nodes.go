@@ -459,25 +459,8 @@ func (h *NodeHandler) HandleCheckNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	healthy, activeJobs, egressKbps, capabilitiesHash, lastStats := nodepool.CheckNode(r.Context(), node)
-
-	if err := h.repo.UpdateHealth(r.Context(), id, node.URL, healthy, activeJobs, egressKbps, lastStats); err != nil {
-		slog.ErrorContext(r.Context(), "persisting health check result", "component", "api", "node_id", id, "error", err)
-	}
-	// The pools get it too, exactly as the background sweep would. A manual
-	// check that only wrote the row would leave the planner admitting work to a
-	// node whose scratch volume this check just found full, and would pair a
-	// fresh last_health_check in the database with the pool's older advertised
-	// hash — which is the combination the Nodes page reads as "this inventory
-	// was reconfirmed", for up to the next 30 seconds.
-	h.applyHealthToPools(node, healthy, activeJobs, egressKbps, capabilitiesHash, lastStats)
-
-	writeJSON(w, http.StatusOK, checkNodeResult{
-		Healthy:          healthy,
-		ActiveJobs:       activeJobs,
-		EgressKbps:       egressKbps,
-		CapabilitiesHash: capabilitiesHash,
-	})
+	result := h.checkNodeView(r.Context(), node)
+	writeJSON(w, http.StatusOK, checkNodeResult{Healthy: result.Healthy, ActiveJobs: result.ActiveJobs, EgressKbps: result.EgressKbps, CapabilitiesHash: result.CapabilitiesHash})
 }
 
 // applyHealthToPools publishes one check's result to whichever pool holds the
@@ -756,34 +739,7 @@ func (h *NodeHandler) HandleReprobeNode(w http.ResponseWriter, r *http.Request) 
 
 	h.extendReprobeWriteDeadline(w, r, node, h.nodeReprobeTimeout(node))
 
-	result := ReprobeNodeResult{NodeID: node.ID, NodeName: node.Name, Status: "ok"}
-	reprobed, err := h.reprobeNode(r.Context(), node)
-	if err != nil {
-		slog.WarnContext(r.Context(), "node capability re-probe failed", "component", "api",
-			"node_id", node.ID, "name", node.Name, "error", err)
-		result.Status = "error"
-		result.Error = err.Error()
-		writeJSON(w, http.StatusOK, result)
-		return
-	}
-	result.Resolved = reprobed.Resolved
-	result.CapabilityHash = reprobed.CapabilityHash
-
-	// The node has already recomputed at this point, so a refresh failure is
-	// reported alongside a successful re-probe rather than turning it into one:
-	// the next sweep will store the report, and saying the re-probe failed
-	// would invite an operator to run it again for nothing.
-	if h.capabilities == nil {
-		writeJSON(w, http.StatusOK, result)
-		return
-	}
-	if err := h.capabilities.RefreshNodeCapabilities(r.Context(), node); err != nil {
-		slog.WarnContext(r.Context(), "storing re-probed node capabilities failed", "component", "api",
-			"node_id", node.ID, "name", node.Name, "error", err)
-	} else {
-		result.CapabilitiesRefreshed = true
-	}
-	writeJSON(w, http.StatusOK, result)
+	writeJSON(w, http.StatusOK, h.reprobeNodeView(r.Context(), node))
 }
 
 // nodeReprobeResponse is the node's own answer to /admin/reprobe-capabilities.

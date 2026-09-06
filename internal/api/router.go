@@ -2226,6 +2226,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		nodeHandler = handlers.NewNodeHandler(deps.NodeRepo, deps.ProxyPool, deps.TranscodePool, deps.NodeRepo, deps.EventBus, deps.RedisClient, jwtSecret)
 		v2deps.AdminNodesRead = nodeHandler
+		v2deps.AdminNodeCommands = nodeHandler
 	}
 	var rateLimitHandler *handlers.RateLimitHandler
 	if settingsRepo != nil {

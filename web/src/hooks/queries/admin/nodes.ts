@@ -4,6 +4,7 @@ import {
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
+  type ProfileRequestContextSnapshot,
 } from "@/api/client";
 import { v2 } from "@/api/v2/request";
 import type {
@@ -12,7 +13,6 @@ import type {
   NodeLastStats,
   CreateNodeRequest,
   UpdateNodeRequest,
-  CheckNodeResponse,
   ReprobeNodeResult,
 } from "@/api/types";
 import { adminKeys } from "../keys";
@@ -22,8 +22,9 @@ import { toast } from "sonner";
 
 const ADMIN_STALE_TIME = 30_000;
 
-export async function fetchAdminNodes(): Promise<StreamNode[]> {
-  const profileContext = captureProfileRequestContext();
+export async function fetchAdminNodes(
+  profileContext = captureProfileRequestContext(),
+): Promise<StreamNode[]> {
   if (!profileContext) throw new StaleApiRequestContextError();
   const nodes: StreamNode[] = [];
   let cursor: string | undefined;
@@ -62,10 +63,17 @@ export async function fetchAdminNodes(): Promise<StreamNode[]> {
  */
 export function useAdminNodes() {
   const pageActivity = usePageActivity();
-
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.nodes(),
-    queryFn: fetchAdminNodes,
+    queryKey: [
+      ...adminKeys.nodes(),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+      profileContext?.profileTokenGeneration,
+    ],
+    enabled: profileContext !== null,
+    queryFn: () => fetchAdminNodes(profileContext),
     staleTime: ADMIN_STALE_TIME,
     refetchInterval: pageActivity.canApplyRealtimeUpdates ? ADMIN_STALE_TIME : false,
   });
@@ -123,60 +131,72 @@ export function useDeleteNode() {
   });
 }
 
-export function useCheckNodeHealth() {
+type NodeCommandIntent = { node: StreamNode; authority: ProfileRequestContextSnapshot };
+function useNodeObservationCommand(action: "check" | "reprobe") {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (node: StreamNode) =>
-      api<CheckNodeResponse>(`/admin/nodes/${node.id}/check`, {
-        method: "POST",
-      }).then((result) => ({ node, result })),
-    onSuccess: ({ node, result }) => {
-      toast.success(result.healthy ? `${node.name} is healthy` : `${node.name} is unhealthy`);
-      queryClient.invalidateQueries({ queryKey: adminKeys.nodes() });
+  const renderedAuthority = captureProfileRequestContext();
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async (intent: NodeCommandIntent) => {
+      if (!isCapturedProfileAuthorityActive(intent.authority))
+        throw new StaleApiRequestContextError();
+      const options = {
+        path: { id: String(intent.node.id) },
+        profileContext: intent.authority,
+        retryAuthentication: false,
+      };
+      const result =
+        action === "check"
+          ? await v2("POST /api/v2/admin/nodes/{id}/check", options)
+          : await v2("POST /api/v2/admin/nodes/{id}/reprobe", options);
+      if (!isCapturedProfileAuthorityActive(intent.authority))
+        throw new StaleApiRequestContextError();
+      if ("node_id" in result && result.node_id !== String(intent.node.id))
+        throw new Error("Unexpected node observation");
+      return result;
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Health check failed");
-    },
-  });
-}
-
-/**
- * Ask one node to re-verify its hardware against live devices.
- *
- * The call always answers 200 — a node that refused or could not be reached is
- * reported in the body — so the outcome is read from `status`, not from a
- * thrown error. It can take a couple of minutes on a node with several devices,
- * since the point is to pay the full cold probe cost the node otherwise caches
- * away for its process lifetime; the server extends the connection's write
- * deadline to cover that, so a long wait here is the action working, not a hung
- * request. A node that is transcoding refuses, because the probe encodes on the
- * GPU and a busy encoder would report working hardware as failed.
- *
- * The nodes list is invalidated either way: on success the server has already
- * stored the fresh report, and on failure the row may still have moved.
- */
-export function useReprobeNode() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (node: StreamNode) =>
-      api<ReprobeNodeResult>(`/admin/nodes/${node.id}/reprobe`, {
-        method: "POST",
-      }).then((result) => ({ node, result })),
-    onSuccess: ({ node, result }) => {
-      const outcome = describeReprobeOutcome(node, result);
-      if (outcome.ok) {
-        toast.success(outcome.message);
+    onSuccess: (result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.authority)) return;
+      if ("healthy" in result) {
+        toast.success(
+          result.healthy ? `${intent.node.name} is healthy` : `${intent.node.name} is unhealthy`,
+        );
+        if (!result.health_persisted)
+          toast.error("Health was observed but could not be stored. Refresh node state.");
       } else {
-        toast.error(outcome.message);
+        const outcome = describeReprobeOutcome(intent.node, {
+          ...result,
+          node_id: Number(result.node_id),
+        } as ReprobeNodeResult);
+        if (outcome.ok) toast.success(outcome.message);
+        else toast.error(outcome.message);
       }
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Re-probe failed");
+    onError: (_error, intent) => {
+      if (isCapturedProfileAuthorityActive(intent.authority))
+        toast.error(
+          "Node command could not be confirmed. Inspect node state before another explicit command.",
+        );
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.nodes() });
+    onSettled: (_result, _error, intent) => {
+      if (isCapturedProfileAuthorityActive(intent.authority))
+        queryClient.invalidateQueries({ queryKey: adminKeys.nodes() });
     },
   });
+  return {
+    ...mutation,
+    variables: mutation.variables?.node,
+    mutate: (node: StreamNode) => {
+      if (!renderedAuthority || !isCapturedProfileAuthorityActive(renderedAuthority)) return;
+      mutation.mutate({ node: structuredClone(node), authority: renderedAuthority });
+    },
+  };
+}
+export function useCheckNodeHealth() {
+  return useNodeObservationCommand("check");
+}
+export function useReprobeNode() {
+  return useNodeObservationCommand("reprobe");
 }
 
 export function useToggleNode() {

@@ -2158,3 +2158,33 @@ success, new scan runs or completed downstream work. The web Run-now button capt
 profile authority before queueing, disables retries/auth replay, stays pending until
 acknowledgement and fences late feedback/invalidation under a changed authority.
 There is no corresponding Jellyfin administration operation.
+
+### Node health and reprobe commands (v2)
+
+`POST /api/v2/admin/nodes/{id}/check` (`checkAdminNode`) and
+`POST /api/v2/admin/nodes/{id}/reprobe` (`reprobeAdminNode`) require an acting
+administrator, reject demo mode, take no body and accept positive database node IDs.
+Both return synchronous200 observations; neither accepts a durable job or promises
+cluster-wide completion. Missing nodes return404, missing configuration503, invalid
+IDs422, and repository failures a private500 problem.
+
+Check uses the existing bounded health request and URL-fenced persistence/pool updates.
+An unreachable or unhealthy node is an observation, not an HTTP error. The response
+includes healthy, active_jobs, egress_kbps and optional capabilities_hash.
+health_persisted means the persistence call returned successfully; that call may ignore
+a node repointed during the request. A false value does not erase the live observation.
+It is not a revision receipt. This observational command remains natural_idempotent.
+
+Reprobe retains existing node refusal, probe timeout, policy-derived write deadline and
+capability refresh behavior. Its200 body carries status ok/error and a private summary
+for worker refusal or uncertain completion. node_id is an opaque decimal string;
+capabilities_refreshed distinguishes a refreshed inventory from a successful node probe.
+A failed refresh does not turn an already successful probe into failure. No hardware
+support or plugin launch is inferred. The operation remains non_retryable; inspect
+node state before repeating an uncertain command. Frozen bridge response shapes and
+worker wire contracts remain unchanged through shared service extraction.
+
+Actual node-row actions copy the selected node and capture authority before queueing,
+disable automatic/authentication replay, and fence late receipts, feedback and cache
+invalidation. Node list caches include profile/PIN authority so old rows cannot be reused
+under a new authority. There is no corresponding Jellyfin administrative operation.
