@@ -1720,39 +1720,10 @@ func (h *AdminHandler) HandleGetSensitiveStatus(w http.ResponseWriter, r *http.R
 		writeError(w, http.StatusInternalServerError, "settings_error", err.Error())
 		return
 	}
-	configuredSet := make(map[string]struct{})
-	for key := range sensitiveSettingKeys {
-		if v, ok := all[key]; ok && v != "" {
-			configuredSet[key] = struct{}{}
-		}
-	}
-	for key, configured := range h.BootstrapSensitiveConfigured {
-		if configured && sensitiveSettingKeys[key] {
-			configuredSet[key] = struct{}{}
-		}
-	}
-	for key, value := range h.BootstrapSensitiveValues {
-		if value != "" && sensitiveSettingKeys[key] {
-			configuredSet[key] = struct{}{}
-		}
-	}
-	configured := make([]string, 0, len(configuredSet))
-	for key := range configuredSet {
-		configured = append(configured, key)
-	}
-	sort.Strings(configured)
-
-	managedByEnv := make([]string, 0, len(h.BootstrapSensitiveConfigured))
-	for key, configured := range h.BootstrapSensitiveConfigured {
-		if configured {
-			managedByEnv = append(managedByEnv, key)
-		}
-	}
-	sort.Strings(managedByEnv)
-
+	status := h.adminSensitiveSettingsStatus(all)
 	writeJSON(w, http.StatusOK, sensitiveStatusResponse{
-		Configured:   configured,
-		ManagedByEnv: managedByEnv,
+		Configured:   status.Configured,
+		ManagedByEnv: status.ManagedByEnv,
 	})
 }
 

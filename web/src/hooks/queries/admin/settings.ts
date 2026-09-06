@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { v2 } from "@/api/v2/request";
 import type {
   AdminSettingUpdateResponse,
   AdminServerStatus,
@@ -12,13 +13,6 @@ import type {
 } from "@/api/types";
 import { adminKeys, compatKeys, settingsKeys, themeKeys } from "../keys";
 import { toast } from "sonner";
-
-type ServerSettings = Record<string, string>;
-
-interface SensitiveStatusResponse {
-  configured: string[];
-  managed_by_env?: string[];
-}
 
 /**
  * server_settings keys surfaced by GET /settings/overlay-config, in the order
@@ -98,7 +92,7 @@ export interface CatalogSearchStatus {
 export function useAdminServerSettings() {
   return useQuery({
     queryKey: adminKeys.serverSettings(),
-    queryFn: () => api<ServerSettings>("/admin/settings/effective").then((d) => d ?? {}),
+    queryFn: () => v2("GET /api/v2/admin/settings/effective"),
     staleTime: 30_000,
   });
 }
@@ -118,7 +112,7 @@ export interface RestartKeysResponse {
 export function useAdminRestartKeys() {
   return useQuery({
     queryKey: adminKeys.restartKeys(),
-    queryFn: () => api<RestartKeysResponse>("/admin/settings/restart-keys"),
+    queryFn: () => v2("GET /api/v2/admin/settings/restart-keys"),
     staleTime: 5 * 60_000,
     retry: false,
   });
@@ -233,7 +227,7 @@ export function useUpdateServerSetting() {
 export function useAdminSensitiveStatus() {
   return useQuery({
     queryKey: [...adminKeys.serverSettings(), "sensitive-status"] as const,
-    queryFn: () => api<SensitiveStatusResponse>("/admin/settings/sensitive-status"),
+    queryFn: () => v2("GET /api/v2/admin/settings/sensitive-status"),
     staleTime: 30_000,
   });
 }

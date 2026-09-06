@@ -68,23 +68,24 @@ func init() {
 // operations. Every field is optional: a missing gate never removes a route,
 // it makes the operations behind that gate fail closed with a typed problem.
 type Dependencies struct {
-	AdminResourceSampler  AdminResourceSampler
-	AdminTaskJobs         AdminTaskJobsService
-	AdminCatalogSources   AdminCatalogSourcesService
-	AdminFilesystem       AdminFilesystemService
-	AdminTaskMetrics      AdminTaskMetricsService
-	AdminTasks            AdminTaskService
-	AdminTaskHistory      AdminTaskHistoryService
-	Devices               DeviceLoginService
-	Sessions              SessionService
-	OAuth                 OAuthService
-	BucketRateLimit       func(string) func(http.Handler) http.Handler
-	Markers               MarkerService
-	AdminSections         AdminSectionService
-	AdminPolicy           AdminPolicyService
-	AdminCollections      AdminCollectionService
-	AdminCollectionGroups AdminCollectionGroupService
-	WebhookSync           WebhookSyncService
+	AdminSettingsInspection AdminSettingsInspectionService
+	AdminResourceSampler    AdminResourceSampler
+	AdminTaskJobs           AdminTaskJobsService
+	AdminCatalogSources     AdminCatalogSourcesService
+	AdminFilesystem         AdminFilesystemService
+	AdminTaskMetrics        AdminTaskMetricsService
+	AdminTasks              AdminTaskService
+	AdminTaskHistory        AdminTaskHistoryService
+	Devices                 DeviceLoginService
+	Sessions                SessionService
+	OAuth                   OAuthService
+	BucketRateLimit         func(string) func(http.Handler) http.Handler
+	Markers                 MarkerService
+	AdminSections           AdminSectionService
+	AdminPolicy             AdminPolicyService
+	AdminCollections        AdminCollectionService
+	AdminCollectionGroups   AdminCollectionGroupService
+	WebhookSync             WebhookSyncService
 	// Auth is the bearer/API-key gate shared with the v1 router.
 	Auth *apimw.AuthMiddleware
 	// ViewerAccess resolves the declared profile into a viewer scope.
