@@ -9602,7 +9602,65 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves expired lookup as 200 without mutating stored state, uses a 404 Problem for unknown tokens, and validates absent lookup parameters with 422 instead of the legacy 404.",
+            "recorded_in": "internal/scenariocatalog/executor/device_lookup_errors_pairing_test.go",
+            "operation_id": "getDeviceLogin",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/device",
+              "query": {
+                "token": "${browser_code_expired}"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "expired"
+                },
+                {
+                  "pointer": "/expires_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/user_code",
+                  "op": "equals",
+                  "value": ""
+                },
+                {
+                  "pointer": "/temporary",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "user_code",
+                    "match_code",
+                    "device_name",
+                    "device_platform",
+                    "ip_address_hint",
+                    "expires_at",
+                    "client_purpose",
+                    "temporary"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_lookup.shape",
@@ -9774,7 +9832,58 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves expired lookup as 200 without mutating stored state, uses a 404 Problem for unknown tokens, and validates absent lookup parameters with 422 instead of the legacy 404.",
+            "recorded_in": "internal/scenariocatalog/executor/device_lookup_errors_pairing_test.go",
+            "operation_id": "getDeviceLogin",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/device",
+              "query": {
+                "token": "nope"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "device_lookup.no_params",
@@ -9825,7 +9934,65 @@
             "database"
           ],
           "notes": "A request with neither parameter is 404 rather than a validation 400; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves expired lookup as 200 without mutating stored state, uses a 404 Problem for unknown tokens, and validates absent lookup parameters with 422 instead of the legacy 404.",
+            "recorded_in": "internal/scenariocatalog/executor/device_lookup_errors_pairing_test.go",
+            "operation_id": "getDeviceLogin",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/auth/device"
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/errors/0/location",
+                  "op": "equals",
+                  "value": "query.code"
+                },
+                {
+                  "pointer": "/errors/0/code",
+                  "op": "equals",
+                  "value": "required"
+                }
+              ]
+            }
+          }
         }
       ]
     },

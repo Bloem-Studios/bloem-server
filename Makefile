@@ -593,3 +593,7 @@ test-scenario-device-lookup:
 .PHONY: test-scenario-build-authority
 test-scenario-build-authority:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredBuildAuthorityAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-device-lookup-errors
+test-scenario-device-lookup-errors:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceLookupErrorsAcceptance$$' ./internal/scenariocatalog/executor

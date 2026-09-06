@@ -714,3 +714,17 @@ users, profiles, API-key, settings, login-session and device-request tables
 occupancy and fixed-selector gates fail closed. No start, approval, poll, token
 collection or enrollment is exercised. These four frozen pairs remain separate
 from NEW acceptance.
+
+### Frozen expired and missing device-login lookups
+
+`make test-scenario-device-lookup-errors` requires `device_lookup.expired`,
+`device_lookup.not_found` and `device_lookup.no_params`. Original public/database
+requests and assertions remain unchanged. V2 preserves expired status with 200,
+uses a 404 Problem for unknown tokens, and rejects missing parameters with a
+422 validation Problem instead of legacy 404. Six transport requests reseed
+independently; 12 combined snapshots cover complete users, profiles, API-key,
+settings, login-session and device-request tables (72 observations), with every
+row unchanged, including stored expiry status. Required DSN, pre-setup scratch/
+API-key occupancy and fixed-selector gates fail closed. No pairing mutation,
+token collection, enrollment or outage substitution is exercised. These three
+frozen pairs remain separate from NEW acceptance.
