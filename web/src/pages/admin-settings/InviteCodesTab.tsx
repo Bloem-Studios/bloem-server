@@ -246,7 +246,7 @@ export default function InviteCodesTab() {
 
 function CreateInviteCodeForm({ onClose }: { onClose: () => void }) {
   const [code, setCode] = useState(() =>
-    crypto.randomUUID().replaceAll("-", "").slice(0, 16).toUpperCase(),
+    crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase(),
   );
   const [label, setLabel] = useState("");
   const [maxUses, setMaxUses] = useState("10");
