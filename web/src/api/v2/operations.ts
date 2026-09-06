@@ -103,6 +103,7 @@ export const v2Operations = {
   "GET /api/v2/admin/libraries/{library_id}/collection-groups/order":
     "getAdminCollectionGroupOrder",
   "GET /api/v2/admin/literary-works/items/{content_id}/candidates": "listAdminLiteraryCandidates",
+  "GET /api/v2/admin/nodes": "listAdminNodes",
   "GET /api/v2/admin/notifications/server-channels": "listAdminNotificationServerChannels",
   "GET /api/v2/admin/plugins/catalog-settings": "getAdminPluginCatalogSettings",
   "GET /api/v2/admin/plugins/catalog-status": "getAdminPluginCatalogStatus",
@@ -128,6 +129,10 @@ export const v2Operations = {
   "GET /api/v2/admin/settings/effective": "getAdminEffectiveSettings",
   "GET /api/v2/admin/settings/restart-keys": "getAdminRestartKeys",
   "GET /api/v2/admin/settings/sensitive-status": "getAdminSensitiveSettingsStatus",
+  "GET /api/v2/admin/stats/downloads": "getAdminDashboardDownloadsStats",
+  "GET /api/v2/admin/stats/playback-activity": "getAdminDashboardPlaybackActivity",
+  "GET /api/v2/admin/stats/timeseries": "getAdminDashboardTimeseries",
+  "GET /api/v2/admin/stats/top-activity": "getAdminDashboardTopActivity",
   "GET /api/v2/admin/subtitle-providers": "listAdminSubtitleProviders",
   "GET /api/v2/admin/system/build": "getAdminBuildInfo",
   "GET /api/v2/admin/system/resources": "getAdminSystemResources",
