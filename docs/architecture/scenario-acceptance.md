@@ -1646,6 +1646,32 @@ postcommit session-failure recovery, durable replay, distributed rate limiting,
 concurrent reload, refill-after-wait, or outage behavior. Acceptance remains
 non-retryable. These sixteen original pairs remain separate from NEW acceptance.
 
+### Frozen device burst sequence bounds
+
+The default v2 sequence budget remains 16 exchanges, including all repeated
+primary and follow-up requests. `ValidateV2Sequence` and `ValidatePairing` retain
+that context-free limit. Selectors for the two larger frozen bursts must instead
+call `ValidateScenarioPairing(row, originalScenario)` before translating the
+original request.
+
+Only `device_lookup.rate_limited.r1` (21 requests) and
+`device_poll.rate_limited.r1` (31 requests) qualify. The validator compares the
+entire original scenario and its ledger row key against the frozen originals in
+`sequence_originals.json`, copied unchanged from the original catalog checkpoint.
+It requires the corresponding v2 operation and method, the exact original request
+with only its API version translated, the original repeat count, no principal
+override, no follow-up steps, and the expected 429. An ID alone grants no larger
+budget. Changed originals, shortened or enlarged bursts, added request material,
+and split sequences are rejected.
+
+Catalog loading applies the same validator as manual executor input. `Env.Run`
+validates before either transport can reseed or send; the v2 transport validates
+again while the original request is still available, then translates it. Existing
+operation, follow-up binding, body-source and total-exchange checks remain in
+force. This accommodation supplies no execution credit or rate-limit behavior
+proof: each owning acceptance packet must run every original request and verify
+its own effects and cleanup.
+
 ### Host resources, remote-playback handoff and impersonation end
 
 `make test-scenario-resources-handoff-impersonation` pairs four original

@@ -1,10 +1,12 @@
 package scenariocatalog
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -21,12 +23,16 @@ var captureName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
 
 // ValidateV2Sequence also protects manually constructed executor inputs.
 func ValidateV2Sequence(pair *V2Expectation) error {
+	return validateV2Sequence(pair, MaxV2Exchanges)
+}
+
+func validateV2Sequence(pair *V2Expectation, limit int) error {
 	if pair == nil {
 		return fmt.Errorf("missing v2 expectation")
 	}
 	count := max(1, pair.Request.Repeat)
-	if count > MaxV2Exchanges {
-		return fmt.Errorf("v2 sequence exceeds %d exchanges", MaxV2Exchanges)
+	if count > limit {
+		return fmt.Errorf("v2 sequence exceeds %d exchanges", limit)
 	}
 	for i, step := range pair.Then {
 		if step.Request.Body != nil && (step.Request.BodyRef != "" || step.Request.RawBody != nil || step.Request.Multipart != nil) {
@@ -41,8 +47,8 @@ func ValidateV2Sequence(pair *V2Expectation) error {
 		if err := ValidateV2Bindings(step); err != nil {
 			return fmt.Errorf("then[%d]: %w", i, err)
 		}
-		if max(1, step.Request.Repeat) > MaxV2Exchanges-count {
-			return fmt.Errorf("v2 sequence exceeds %d exchanges", MaxV2Exchanges)
+		if max(1, step.Request.Repeat) > limit-count {
+			return fmt.Errorf("v2 sequence exceeds %d exchanges", limit)
 		}
 		count += max(1, step.Request.Repeat)
 	}
@@ -158,4 +164,65 @@ func validCapturePointer(pointer string) bool {
 		}
 	}
 	return true
+}
+
+// Frozen originals from 06dae49ec, without any v2 declarations. This allowlist
+// binds the exceptional budget to the entire original, not a caller-supplied ID.
+//
+//go:embed sequence_originals.json
+var sequenceOriginals []byte
+
+// ValidateScenarioPairing retains the default sequence budget except for the two
+// exact frozen device rate-limit bursts. Call before replacing the v1 request.
+func ValidateScenarioPairing(row Row, scenario Scenario) error {
+	pair := scenario.V2Expectation
+	if pair == nil {
+		return fmt.Errorf("missing v2 expectation")
+	}
+	var originals []struct {
+		Row       Row
+		Scenario  Scenario
+		Operation string
+	}
+	if err := json.Unmarshal(sequenceOriginals, &originals); err != nil {
+		return err
+	}
+	for _, original := range originals {
+		if scenario.ID != original.Scenario.ID {
+			continue
+		}
+		unpaired := scenario
+		unpaired.V2Expectation = nil
+		request := original.Scenario.Request
+		request.Path = strings.Replace(request.Path, "/api/v1/", "/api/v2/", 1)
+		if row.Key() != original.Row.Key() || !sameSequenceShape(unpaired, original.Scenario) ||
+			pair.OperationID != original.Operation || pair.Method != original.Row.Method ||
+			!sameSequenceShape(pair.Request, request) || pair.Principal != nil || len(pair.Then) != 0 || pair.Expect.Status != http.StatusTooManyRequests {
+			return fmt.Errorf("%s: exceptional sequence must match the frozen original and exact v2 request", scenario.ID)
+		}
+		if err := validateV2Sequence(pair, original.Scenario.Request.Repeat); err != nil {
+			return err
+		}
+		return validateOperation(pair.OperationID, pair.Method, pair.Request.Path)
+	}
+	return ValidatePairing(pair)
+}
+
+// Compare JSON values so raw JSON whitespace cannot change request identity.
+func sameSequenceShape(a, b any) bool {
+	normalize := func(value any) (any, error) {
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			return nil, err
+		}
+		var result any
+		err = json.Unmarshal(encoded, &result)
+		return result, err
+	}
+	left, err := normalize(a)
+	if err != nil {
+		return false
+	}
+	right, err := normalize(b)
+	return err == nil && reflect.DeepEqual(left, right)
 }

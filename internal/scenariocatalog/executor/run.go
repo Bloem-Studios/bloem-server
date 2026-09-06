@@ -79,6 +79,14 @@ func runAll(t *testing.T, catalogs []*scenariocatalog.Catalog, env *Env) []Resul
 // receives the result before any Skip/Fatal unwinds the subtest.
 func (e *Env) Run(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.Row, s scenariocatalog.Scenario, record func(Result)) {
 	t.Helper()
+	// Validate original manual inputs before either transport can reseed or send.
+	if s.V2Expectation != nil {
+		if err := scenariocatalog.ValidateScenarioPairing(row, s); err != nil {
+			record(Result{Scenario: s.ID, Transport: "v2", Failures: []string{err.Error()}})
+			t.Fatal(err)
+			return
+		}
+	}
 	run := func(transport, operationID, method string, scenario scenariocatalog.Scenario) {
 		t.Run(transport, func(t *testing.T) {
 			if s.V2Expectation != nil && e.HasDatabase() {
@@ -89,8 +97,7 @@ func (e *Env) Run(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.
 	}
 	run("v1", "", s.Method(), s)
 	if pair := s.V2Expectation; pair != nil {
-		paired := v2Scenario(s)
-		run("v2", pair.OperationID, pair.Method, paired)
+		run("v2", pair.OperationID, pair.Method, s)
 	}
 }
 
@@ -108,11 +115,12 @@ func v2Scenario(s scenariocatalog.Scenario) scenariocatalog.Scenario {
 func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenariocatalog.Row, s scenariocatalog.Scenario, transport, operationID, method string, record func(Result)) {
 	t.Helper()
 	if transport == "v2" {
-		if err := scenariocatalog.ValidateV2Sequence(s.V2Expectation); err != nil {
+		if err := scenariocatalog.ValidateScenarioPairing(row, s); err != nil {
 			record(Result{Scenario: s.ID, Transport: transport, Failures: []string{err.Error()}})
 			t.Fatal(err)
 			return
 		}
+		s = v2Scenario(s)
 	}
 	res := Result{ID: s.ID + "/" + transport, Transport: transport, OperationID: operationID, Catalog: c.File, Row: row.Key().String(), Scenario: s.ID}
 	defer func() { record(res) }()

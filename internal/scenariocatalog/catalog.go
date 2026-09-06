@@ -343,7 +343,7 @@ func (c *Catalog) check() []string {
 		covered := map[Category]bool{}
 		for _, s := range row.Scenarios {
 			if s.V2Expectation != nil {
-				if err := ValidatePairing(s.V2Expectation); err != nil {
+				if err := ValidateScenarioPairing(row, s); err != nil {
 					problems = append(problems, fmt.Sprintf("%s: scenario %s: %v", c.File, s.ID, err))
 				}
 			}
