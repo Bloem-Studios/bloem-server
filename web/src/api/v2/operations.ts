@@ -23,6 +23,7 @@ export const v2Operations = {
   "DELETE /api/v2/admin/policy/documents/{id}": "deleteAdminPolicyDocument",
   "DELETE /api/v2/admin/request-integrations/{id}": "deleteRequestIntegration",
   "DELETE /api/v2/admin/sections/{id}": "deleteAdminSection",
+  "DELETE /api/v2/admin/subtitles/{id}": "deleteAdminStoredSubtitle",
   "DELETE /api/v2/admin/users/{id}": "deleteAdminUser",
   "DELETE /api/v2/admin/users/{id}/settings/values/{key}": "deleteAdminUserSettingValue",
   "DELETE /api/v2/api-keys/{id}": "revokePersonalAPIKey",

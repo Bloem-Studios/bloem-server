@@ -232,6 +232,7 @@ func TestReconcileSpecSeeded(t *testing.T) {
 
 		"GET " + Prefix + "/admin/subtitles",
 		"GET /api/v2/admin/subtitles/{id}",
+		"DELETE /api/v2/admin/subtitles/{id}",
 		"PATCH /api/v2/admin/subtitles/{id}",
 		"GET /api/v2/admin/subtitles/{id}/download",
 		"DELETE " + Prefix + "/watch-together/rooms/{room_id}/suggestions/{suggestion_id}",
@@ -660,6 +661,7 @@ func TestReconcileSpecSeeded(t *testing.T) {
 	)
 	observed = append(observed,
 		"POST /api/v2/notifications/webhooks/{id}/test",
+		"POST /api/v2/notifications/webhooks/{id}/rotate-secret",
 		"POST /api/v2/admin/notifications/server-channels/{id}/test",
 		"GET /api/v2/notifications/email/verify",
 		"GET /api/v2/notifications/email/unsubscribe",
