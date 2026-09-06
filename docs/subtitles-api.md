@@ -207,3 +207,47 @@ modal is a local UI action. Native callers adopt this operation separately,
 retaining the exact job ID and captured account/profile/PIN authority for
 requests and any completion-driven UI updates. Creation and live streaming
 ownership remain separate migration work.
+
+### V2 AI creation and live delivery
+
+`POST /api/v2/subtitles/ai/translate` accepts a string `media_file_id`, explicit
+`kind` (`translate`, `transcribe`, or `transcribe_translate`), `source_index`,
+`source_language`, `target_language`, and nonnegative `start_position` in seconds.
+`source_index` preserves the combined subtitle ordinal for translation and the
+audio ordinal for transcription (`-1` selects the default audio track).
+Plain transcription may use an empty target language. Optional `session_id`
+requests live cues for the caller's local playback session. File authorization
+and account/profile/session matching precede enqueue; account and quota
+attribution come from authentication, never request fields.
+
+The response is `202` with `job` in the existing v2 job projection (string IDs)
+and `live_delivery_attached`. That boolean reports whether this request attached
+its live notifier to a newly created job. It does not acknowledge socket delivery.
+An existing active job is returned without attaching another viewer's stream.
+Clients should poll the returned job or refresh the file's subtitle inventory.
+
+Creation is `non_retryable`: send once, with no automatic authentication replay
+or offline queue. Active-job deduplication ends when a job becomes terminal and
+is not a durable request receipt. An uncertain response requires reconciliation
+through job reads; resubmission may create another job. Persisted job state and
+atomic subtitle publication do not turn process-local execution dispatch into a
+durable worker queue. Missing engine/live-delivery dependencies return `503`,
+hidden files or foreign/missing playback sessions return `404`, and transcription
+quota rejection returns a `429` `rate_limited` Problem.
+
+Live notifications capture account, profile, effective/requested file, session
+start, executor namespace and initial activation binding. A check before sending
+suppresses events when the local runtime no longer matches. This check does not
+hold session-manager locks over socket writes, validate a new media grant, or
+revoke cues already queued or written. Socket delivery remains best effort;
+reconnect does not replay missed cues. Finished-track notification retains the
+existing file broadcast. Atomic publication, cancellation races, worker adoption
+and uncertain commit behavior retain the limits described above.
+
+The player sends the typed request once, rejects stale decoded responses after
+modal/media/session/config/account/profile/PIN changes, checks returned job/file
+identity, and reports background progress when no live notifier was attached.
+Apple and Android must adopt the explicit kind, string file ID, single-send
+semantics and returned job projection before this ordinary row can be ratified.
+There is no Jellyfin AI creation counterpart. Production activation and account
+enrollment are unchanged.

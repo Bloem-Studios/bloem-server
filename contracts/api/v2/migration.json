@@ -42894,19 +42894,19 @@
       "section": "playback-subtitles",
       "release_flow": "browse_search",
       "tier": 1,
-      "retry_safety": "coalescing",
-      "retry_safety_note": "GetActiveJobByIdempotencyKey returns the active job for the same file and language from the database.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Send once: active-job dedup ends at terminal state and is not durable request replay. Execution dispatch and live delivery are process-local; uncertain creation requires reading job state, not automatic resubmission.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/subtitles/ai/translate",
+        "operation_id": "createSubtitleAIJob"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed creation derives account/quota authority and authorizes file access before enqueue. Optional live delivery binds the requesting local playback identity and does not attach to a deduplicated job. Atomic publication and cooperative stop limits remain. Proposed pending independent review and native consumer adoption."
     },
     {
       "listener": "api",

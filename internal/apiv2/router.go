@@ -166,6 +166,7 @@ type Dependencies struct {
 	AdminSettingsWrite            AdminSettingsWriteService
 	PluginContent                 PluginContentService
 	SubtitleAICancel              SubtitleAICancelService
+	SubtitleAICreate              SubtitleAICreateService
 	// Auth is the bearer/API-key gate shared with the v1 router.
 	Auth *apimw.AuthMiddleware
 	// ViewerAccess resolves the declared profile into a viewer scope.

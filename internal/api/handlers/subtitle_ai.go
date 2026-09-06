@@ -12,6 +12,7 @@ import (
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/subtitles/ai"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
@@ -22,6 +23,7 @@ import (
 // subtitle pipeline.
 type SubtitleAIHandler struct {
 	service        *ai.Service
+	LiveNotifier   *playback.SubtitleReadyNotifier
 	FileAuthorizer *MediaFileAuthorizer
 	// StoreProvider resolves household profiles for the transcription quota
 	// exemption check; when nil the whole admin account is exempt.

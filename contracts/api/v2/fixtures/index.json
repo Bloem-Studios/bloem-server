@@ -11035,6 +11035,28 @@
       "body_file": null
     },
     {
+      "name": "subtitle_ai_create",
+      "operation_id": "createSubtitleAIJob",
+      "scenario": "A single authorized request returns exact string job/file IDs and reports whether best-effort live delivery was attached.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/subtitles/ai/translate",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"media_file_id\":\"42\",\"kind\":\"translate\",\"source_index\":3,\"source_language\":\"en\",\"target_language\":\"fr\",\"session_id\":\"session\",\"start_position\":12.5}"
+      },
+      "expected_status": 202,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/SubtitleAICreateOutputBody",
+      "body_file": "subtitle_ai_create.json"
+    },
+    {
       "name": "subtitle_ai_disabled",
       "operation_id": "getSubtitleAIStatus",
       "scenario": "Missing AI configuration reports both engine capabilities disabled.",

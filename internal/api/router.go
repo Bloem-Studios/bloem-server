@@ -1529,6 +1529,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		subtitleAIHandler = handlers.NewSubtitleAIHandler(aiService)
 		subtitleAIHandler.StoreProvider = deps.UserStoreProvider
+		subtitleAIHandler.LiveNotifier = subtitleAINotifier
 	}
 
 	// Metadata AI translation (descriptions into the localization tables).
@@ -2319,6 +2320,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.SubtitleAI = subtitleAIHandler
 
 		v2deps.SubtitleAICancel = subtitleAIHandler
+		v2deps.SubtitleAICreate = subtitleAIHandler
 	}
 	if deps.PluginHTTPProxy != nil {
 		v2deps.AuthProviderIconPublic = deps.PluginHTTPProxy.PublicGETRoute
