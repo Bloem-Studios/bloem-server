@@ -68,6 +68,7 @@ func init() {
 // operations. Every field is optional: a missing gate never removes a route,
 // it makes the operations behind that gate fail closed with a typed problem.
 type Dependencies struct {
+	AdminAutoscanSourceDeletes      AdminAutoscanSourceDeleteService
 	WatchTogetherSocket             WatchTogetherSocketService
 	WatchTogetherCreate             WatchTogetherCreateService
 	AdminAutoscanEvents             AdminAutoscanEventsService

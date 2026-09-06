@@ -1405,3 +1405,12 @@ func (h *AutoscanHandler) UpdateAdminAutoscanSettings(ctx context.Context, input
 	}
 	return out, nil
 }
+
+var ErrAdminAutoscanSourceDeleteUnavailable = errors.New("autoscan source deletion unavailable")
+
+func (h *AutoscanHandler) DeleteAdminAutoscanSource(ctx context.Context, id string) error {
+	if h == nil || h.repo == nil {
+		return ErrAdminAutoscanSourceDeleteUnavailable
+	}
+	return h.repo.DeleteSource(ctx, strings.TrimSpace(id))
+}

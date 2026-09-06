@@ -365,6 +365,7 @@ export function useAutoscanSources() {
       profileContext?.serverOrigin,
       profileContext?.authContextVersion,
       profileContext?.profileId,
+      profileContext?.profileTokenGeneration,
     ],
     enabled: profileContext !== null,
     queryFn: () => {
@@ -430,21 +431,73 @@ export function useUpdateAutoscanSource() {
   });
 }
 
+export type AutoscanSourceDeleteIntent = {
+  id: string;
+  profileContext: ProfileRequestContextSnapshot;
+};
+export function captureSourceDeletion(
+  id: string,
+  profileContext = captureProfileRequestContext(),
+): AutoscanSourceDeleteIntent {
+  if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+    throw new StaleApiRequestContextError();
+  return { id, profileContext };
+}
 export function useDeleteAutoscanSource() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      api<void>(`/admin/autoscan/sources/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    mutationFn: async ({ id, profileContext }: AutoscanSourceDeleteIntent): Promise<void> => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      await v2("DELETE /api/v2/admin/autoscan/sources/{id}", {
+        path: { id },
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+    },
+    retry: false,
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Autoscan source deleted");
       queryClient.invalidateQueries({ queryKey: adminKeys.autoscanSources() });
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to delete autoscan source");
+    onError: (_error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        "Source deletion could not be confirmed. Refresh sources before submitting again; running work may continue.",
+      );
     },
   });
+  return {
+    ...mutation,
+    mutateCaptured: (intent: AutoscanSourceDeleteIntent) => mutation.mutate(intent),
+    mutate: (
+      id: string,
+      options?: {
+        onSuccess?: () => void;
+        onError?: (error: Error) => void;
+      },
+    ) => {
+      let intent: AutoscanSourceDeleteIntent;
+      try {
+        intent = captureSourceDeletion(id);
+      } catch {
+        options?.onError?.(new StaleApiRequestContextError());
+        return;
+      }
+      mutation.mutate(intent, {
+        onSuccess: () => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onSuccess?.();
+        },
+        onError: (error) => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onError?.(error);
+        },
+      });
+    },
+    mutateAsync: (id: string) => mutation.mutateAsync(captureSourceDeletion(id)),
+  };
 }
 
 // --- Webhook endpoints ---

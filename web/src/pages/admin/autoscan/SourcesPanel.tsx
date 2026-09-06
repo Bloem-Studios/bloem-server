@@ -2,7 +2,7 @@ import {
   captureAutoscanRewriteIntent,
   type AutoscanRewriteIntent,
 } from "@/api/v2/adminAutoscanRewrites";
-import { isCapturedProfileAuthorityActive } from "@/api/client";
+import { captureProfileRequestContext, isCapturedProfileAuthorityActive } from "@/api/client";
 import { autoscanWebhookURL } from "./webhookURL";
 import { useCallback, useLayoutEffect, useId, useMemo, useRef, useState } from "react";
 import {
@@ -76,6 +76,8 @@ import {
   useCreateAutoscanSource,
   useCreateAutoscanWebhook,
   useDeleteAutoscanSource,
+  captureSourceDeletion,
+  type AutoscanSourceDeleteIntent,
   useRotateAutoscanWebhook,
   useUpdateAutoscanSource,
 } from "@/hooks/queries/useAutoscan";
@@ -1717,7 +1719,15 @@ export default function SourcesPanel() {
   );
   const deleteSource = useDeleteAutoscanSource();
 
-  const [deleteTarget, setDeleteTarget] = useState<AutoscanSource | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    source: AutoscanSource;
+    intent: AutoscanSourceDeleteIntent;
+  } | null>(null);
+  const renderedAuthority = captureProfileRequestContext();
+  const requestDelete = (source: AutoscanSource) => {
+    if (!renderedAuthority || !isCapturedProfileAuthorityActive(renderedAuthority)) return;
+    setDeleteTarget({ source, intent: captureSourceDeletion(source.id, renderedAuthority) });
+  };
   const [addOpen, setAddOpen] = useState(false);
 
   const connectionOptions = (connections.data ?? []).map((c) => ({
@@ -1817,7 +1827,7 @@ export default function SourcesPanel() {
             connectionOptions={connectionOptions}
             pluginDisplayNames={pluginDisplayNames}
             globalPollInterval={globalPollInterval}
-            onDelete={setDeleteTarget}
+            onDelete={requestDelete}
             layout="card"
           />
         ))}
@@ -1844,7 +1854,7 @@ export default function SourcesPanel() {
                 connectionOptions={connectionOptions}
                 pluginDisplayNames={pluginDisplayNames}
                 globalPollInterval={globalPollInterval}
-                onDelete={setDeleteTarget}
+                onDelete={requestDelete}
                 layout="table"
               />
             ))}
@@ -1863,7 +1873,7 @@ export default function SourcesPanel() {
             <AlertDialogDescription>
               &ldquo;
               {deleteTarget
-                ? resolveSourceName(deleteTarget, connectionOptions, pluginDisplayNames)
+                ? resolveSourceName(deleteTarget.source, connectionOptions, pluginDisplayNames)
                 : ""}
               &rdquo; will be permanently removed. This cannot be undone.
             </AlertDialogDescription>
@@ -1874,7 +1884,7 @@ export default function SourcesPanel() {
               variant="destructive"
               onClick={() => {
                 if (deleteTarget) {
-                  deleteSource.mutate(deleteTarget.id);
+                  deleteSource.mutateCaptured(deleteTarget.intent);
                   setDeleteTarget(null);
                 }
               }}

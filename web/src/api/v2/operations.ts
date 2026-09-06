@@ -8,6 +8,7 @@ export const v2Operations = {
   "DELETE /api/v2/admin/access-groups/{id}": "deleteAdminAccessGroup",
   "DELETE /api/v2/admin/api-keys/{id}": "deleteAdminAPIKey",
   "DELETE /api/v2/admin/autoscan/connections/{id}": "deleteAdminAutoscanConnection",
+  "DELETE /api/v2/admin/autoscan/sources/{id}": "deleteAdminAutoscanSource",
   "DELETE /api/v2/admin/collection-groups/{id}": "deleteAdminCollectionGroup",
   "DELETE /api/v2/admin/collections/{id}": "deleteAdminCollection",
   "DELETE /api/v2/admin/collections/{id}/image": "deleteAdminCollectionImage",

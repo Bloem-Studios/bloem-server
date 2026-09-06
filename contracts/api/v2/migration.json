@@ -2533,11 +2533,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/autoscan/sources/{id}",
+        "operation_id": "deleteAdminAutoscanSource"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Deletes stored source and cascading webhook rows, retaining event history without source reference. No replay identity, cancellation or durable receipt; reconcile uncertain completion before explicit resubmission."
     },
     {
       "listener": "api",

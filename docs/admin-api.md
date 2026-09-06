@@ -2029,3 +2029,20 @@ in-flight save in the existing mutation scope. The reset disables retries and
 authentication replay and fences late invalidation. Cross-tab/server write ordering
 is unchanged. PUT remains a separate migration and server_layouts stays false until
 the full lifecycle is accepted.
+
+### Delete an autoscan source (v2)
+
+`DELETE /api/v2/admin/autoscan/sources/{id}` (`deleteAdminAutoscanSource`)
+requires an acting administrator. It deletes the stored source with empty204;
+unknown IDs return404, absent storage503, and private failures an uncertain500.
+No installed plugin resolution is required, allowing removal of orphaned sources.
+Existing foreign keys cascade webhook endpoint and queued delivery rows; event
+history remains with a null source reference. Already-running work is not canceled.
+No provider update, scheduler acknowledgement or durable completion receipt is supplied.
+
+The operation is `non_retryable`. Reconcile uncertain completion before another
+explicit submission. The actual Sources confirmation captures source and authority
+when opened, keeps them through queueing, disables retries/authentication replay,
+and fences dispatch, completion and invalidation. Source query cache includes the
+setter-owned non-secret PIN generation; a changed PIN cannot reuse cached success.
+Other source and webhook lifecycle operations remain separate migrations.
