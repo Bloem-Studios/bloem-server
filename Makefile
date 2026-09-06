@@ -508,3 +508,8 @@ test-scenario-new-child-curation:
 .PHONY: test-scenario-new-viewer-libraries
 test-scenario-new-viewer-libraries:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewViewerLibraries$$' ./internal/scenariocatalog/executor
+
+# NEW notification webhook destination reads; outside frozen oracle.
+.PHONY: test-scenario-new-webhook-destinations
+test-scenario-new-webhook-destinations:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewWebhookDestinations$$' ./internal/scenariocatalog/executor

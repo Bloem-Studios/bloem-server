@@ -433,3 +433,20 @@ and deletes only its exact IDs before each new household. Required DSN, cleanup
 and process exit must pass alongside `SILO_SCENARIO_REPORT`. These scenarios are
 outside the frozen 598-scenario oracle. No object-store presigning, access-policy
 mutation endpoint, native UI or concurrent policy-change guarantee is claimed.
+
+### NEW webhook-destination read scenarios
+
+`make test-scenario-new-webhook-destinations` runs four **new** scenarios through
+the real router, notification service and PostgreSQL repository. Ten GET requests
+and eight full-table snapshots check equal-timestamp ID traversal, disabled-row
+visibility, profile/limit-bound cursors, household isolation, an empty administrator
+profile and authentication refusal. Public responses include the host and nullable
+status timestamps while omitting stored URL/signing fields. All rows stay unchanged.
+
+The fixture refuses existing webhook destinations before setup, cleans only four
+synthetic IDs and reseeds the household per case. The notification system is wired
+without starting dispatch workers. Stored secret fields contain synthetic opaque
+sentinels; this scope tests omission, not encryption or delivery. Required DSN,
+cleanup and process exit must pass alongside `SILO_SCENARIO_REPORT`. These cases
+remain outside the frozen 598-scenario oracle. No notification sends, provider,
+creation/update/delete, concurrent snapshot or native/browser claim follows.
