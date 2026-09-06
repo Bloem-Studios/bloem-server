@@ -1356,3 +1356,17 @@ func (h *AutoscanHandler) ReadAdminAutoscanScans(ctx context.Context, filter aut
 	total, err := h.repo.CountAutoscanScans(ctx, filter)
 	return rows, total, err
 }
+
+var ErrAdminAutoscanEventsUnavailable = errors.New("autoscan event history unavailable")
+
+func (h *AutoscanHandler) ReadAdminAutoscanEvents(ctx context.Context, filter autoscan.EventListFilter) ([]autoscan.EventWithRuns, int, error) {
+	if h == nil || h.repo == nil {
+		return nil, 0, ErrAdminAutoscanEventsUnavailable
+	}
+	rows, err := h.repo.ListEvents(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := h.repo.CountEvents(ctx, filter)
+	return rows, total, err
+}

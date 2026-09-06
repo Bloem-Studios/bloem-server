@@ -1,3 +1,4 @@
+import { readAdminAutoscanEvents, type AutoscanEventQuery } from "@/api/v2/adminAutoscanEvents";
 import { readAdminAutoscanScans, type AutoscanScanQuery } from "@/api/v2/adminAutoscanScans";
 import { v2 } from "@/api/v2/request";
 import { readAdminAutoscanRewrites } from "@/api/v2/adminAutoscanRewrites";
@@ -8,7 +9,7 @@ import {
   readAdminAutoscanStatus,
 } from "@/api/v2/adminAutoscanInspection";
 import { readAdminAutoscanSources } from "@/api/v2/adminAutoscanSources";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   api,
@@ -22,9 +23,6 @@ import type {
   AutoscanConnectionInput,
   AutoscanConnectionTestInput,
   AutoscanConnectionTestResult,
-  AutoscanEvent,
-  AutoscanEventsResponse,
-  AutoscanEventStatus,
   AutoscanSettings,
   AutoscanSource,
   AutoscanSourceCreateInput,
@@ -550,35 +548,23 @@ export interface AutoscanPage<T> {
   total: number;
 }
 
-export function useAutoscanEvents(params?: {
-  sourceId?: string;
-  status?: AutoscanEventStatus;
-  query?: string;
-  limit?: number;
-  offset?: number;
-  enabled?: boolean;
-}) {
-  const queryParams = new URLSearchParams();
-  if (params?.sourceId) queryParams.set("source_id", params.sourceId);
-  if (params?.status) queryParams.set("status", params.status);
-  if (params?.query) queryParams.set("q", params.query);
-  if (params?.limit != null) queryParams.set("limit", String(params.limit));
-  if (params?.offset != null) queryParams.set("offset", String(params.offset));
-  const suffix = queryParams.toString();
-  const path = suffix ? `/admin/autoscan/events?${suffix}` : "/admin/autoscan/events";
+export function useAutoscanEvents(params: AutoscanEventQuery = {}) {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.autoscanEvents(params ?? {}),
-    queryFn: (): Promise<AutoscanPage<AutoscanEvent>> =>
-      api<AutoscanEventsResponse>(path).then((data) => ({
-        rows: data.events ?? [],
-        total: data.total ?? data.events?.length ?? 0,
-      })),
+    queryKey: [
+      ...adminKeys.autoscanEvents(params),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+      profileContext?.profileTokenGeneration,
+    ],
+    queryFn: () => {
+      if (!profileContext) throw new StaleApiRequestContextError();
+      return readAdminAutoscanEvents(profileContext, params);
+    },
     staleTime: AUTOSCAN_ACTIVITY_REFRESH_MS,
     refetchInterval: AUTOSCAN_ACTIVITY_REFRESH_MS,
-    // Hold the prior page on screen while the next one loads so paging through
-    // history never flashes an empty/loading state.
-    placeholderData: keepPreviousData,
-    enabled: params?.enabled ?? true,
+    enabled: profileContext !== null && (params.enabled ?? true),
   });
 }
 

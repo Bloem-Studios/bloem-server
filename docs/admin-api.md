@@ -1974,3 +1974,22 @@ The Activity panel retains polling and numbered pages through at most100 cursor
 reads per request. It rejects unsupported/unsafe row values and invalid continuation
 without partial success. Cache identity includes captured profile/PIN generation;
 previous-page placeholders are not reused, and stale-authority results are rejected.
+
+### Autoscan poll-event history (v2)
+
+`GET /api/v2/admin/autoscan/events` (`listAdminAutoscanEvents`) requires an acting
+administrator. Filters are source_id, status (running/success/error/unresolved), q,
+limit (1–200/default50) and cursor. Event IDs and nested library IDs are decimal
+strings; timestamps are UTC milliseconds. Items include all scan runs associated
+with the selected events. Only the event SQL page is bounded; nested runs are fully
+enumerated. Ordering remains completed_at DESC/id DESC with a signed offset bound
+to actor/profile/access, filters and limit. A separate live total and mutable page
+positions do not provide snapshot consistency; full final pages may require an
+additional empty read. Running events retain the existing start-time placeholder
+in completed_at and their running status. Missing service returns503, private
+source failures500. No execution or worker behavior changes.
+
+The Activity panel keeps polling and numbered pages through at most100 cursor
+reads per requested page. Captured authority/PIN cache identity, stale-response
+checks and no previous-page placeholders isolate authority transitions. Unsupported
+states, unsafe numeric IDs and invalid continuation fail without partial success.

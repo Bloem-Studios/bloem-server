@@ -210,6 +210,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/autoscan/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read bounded SQL offset pages with a separate live count. Completed timestamp descending/id descending order; associated runs fully enumerated; signed continuation is not a snapshot or keyset guarantee. */
+    get: operations["listAdminAutoscanEvents"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/autoscan/scan-source-plugins": {
     parameters: {
       query?: never;
@@ -9155,6 +9172,74 @@ export interface components {
       error?: string;
       ok: boolean;
       version?: string;
+    };
+    AdminAutoscanEvent: {
+      capability_id: string;
+      /** Format: int64 */
+      changes_resolved: number;
+      /** Format: int64 */
+      changes_returned: number;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      completed_at: string;
+      delivery_mode: string;
+      /** Format: int64 */
+      duration_ms: number;
+      error_message?: string;
+      id: string;
+      plugin_id: string;
+      provider_event_type?: string;
+      scan_runs: components["schemas"]["AdminAutoscanEventRun"][];
+      /** Format: int64 */
+      scans_created: number;
+      /** Format: int64 */
+      scans_reused: number;
+      /** Format: int64 */
+      scans_suppressed: number;
+      source_id: string | null;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      started_at: string;
+      status: string;
+      /** Format: int64 */
+      targets_claimed: number;
+    };
+    AdminAutoscanEventRun: {
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      completed_at?: string;
+      error_message?: string;
+      id: string;
+      library_id: string;
+      mode: string;
+      path?: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      requested_at?: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      started_at?: string;
+      status: string;
+      trigger: string;
+    };
+    AdminAutoscanEventsPage: {
+      items: components["schemas"]["AdminAutoscanEvent"][];
+      page: components["schemas"]["PageInfo"];
+      /**
+       * Format: int64
+       * @description Separate live count; not a snapshot of the page.
+       */
+      total: number;
     };
     AdminAutoscanPathRewrite: {
       from: string;
@@ -25151,6 +25236,118 @@ export interface operations {
       };
       /** @description Unsupported Media Type */
       415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listAdminAutoscanEvents: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+        q?: string;
+        source_id?: string;
+        status?: "" | "running" | "success" | "error" | "unresolved";
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminAutoscanEventsPage"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
         headers: {
           [name: string]: unknown;
         };
