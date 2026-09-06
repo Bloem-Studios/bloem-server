@@ -290,6 +290,16 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {layout.serverSaveBlocked && (
+        <div role="status" className="text-sm">
+          Local edits are not being saved. Reload the server layout to discard local edits and
+          resume.
+          <Button variant="outline" size="sm" onClick={() => void layout.reloadServerLayout()}>
+            Reload server layout
+          </Button>
+        </div>
+      )}
+
       <DashboardGrid
         layout={layout}
         isAddPanelOpen={isAddPanelOpen}

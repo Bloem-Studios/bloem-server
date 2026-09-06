@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { setAccessToken, setRefreshToken, setProfileId, setProfileToken } from "@/api/client";
 import { useSaveAdminDashboardLayout } from "./dashboardLayout";
 const body = { version: 1, entries: [{ id: "users", span: 5, rows: 4 }] };
-const response = () => new Response(null, { status: 204 });
+const response = () => new Response(null, { status: 204, headers: { ETag: '"B"' } });
 function fixture() {
   const client = new QueryClient({
     defaultOptions: { mutations: { retry: 3, retryDelay: 0 }, queries: { retry: false } },
@@ -36,7 +36,7 @@ it("copies the connection draft before offline queueing and sends once", async (
   vi.stubGlobal("fetch", fetchMock);
   const { result } = renderHook(useSaveAdminDashboardLayout, fixture());
   const draft = { ...body, entries: body.entries.map((row) => ({ ...row })) };
-  act(() => result.current.mutate(draft));
+  act(() => result.current.mutate(draft, '"A"'));
   await waitFor(() => expect(result.current.isPaused).toBe(true));
   draft.entries[0]!.span = 9;
   act(() => onlineManager.setOnline(true));
@@ -52,7 +52,7 @@ it("refuses a queued check after authority replacement", async () => {
   const fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
   const { result } = renderHook(useSaveAdminDashboardLayout, fixture());
-  act(() => result.current.mutate(body));
+  act(() => result.current.mutate(body, '"A"'));
   await waitFor(() => expect(result.current.isPaused).toBe(true));
   act(() => {
     setProfileToken("pin-b");
@@ -81,7 +81,7 @@ it.each(["401", "network"])(
           );
     vi.stubGlobal("fetch", fetchMock);
     const { result } = renderHook(useSaveAdminDashboardLayout, fixture());
-    act(() => result.current.mutate(body));
+    act(() => result.current.mutate(body, '"A"'));
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(fetchMock).toHaveBeenCalledOnce();
   },
@@ -100,7 +100,7 @@ it("does not invalidate another authority after late save acknowledgement", asyn
   const { client, wrapper } = fixture();
   const invalidation = vi.spyOn(client, "invalidateQueries");
   const { result } = renderHook(useSaveAdminDashboardLayout, { wrapper });
-  act(() => result.current.mutate(body));
+  act(() => result.current.mutate(body, '"A"'));
   await waitFor(() => expect(release).toBeTypeOf("function"));
   act(() => setProfileToken("pin-b"));
   await act(async () => release(response()));

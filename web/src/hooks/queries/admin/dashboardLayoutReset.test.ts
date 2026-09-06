@@ -123,7 +123,7 @@ it("keeps reset behind an in-flight legacy save in the shared mutation scope", a
     fixture(),
   );
   act(() => {
-    result.current.save.mutate({ version: 1, entries: [] });
+    result.current.save.mutate({ version: 1, entries: [] }, '"A"');
     result.current.reset.mutate();
   });
   await waitFor(() => expect(writes).toEqual(["PUT"]));

@@ -11,7 +11,17 @@ import {
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: 1 } }) }));
 vi.mock("@/hooks/queries/admin/dashboardLayout", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/hooks/queries/admin/dashboardLayout")>();
-  return { ...actual, useAdminDashboardLayout: () => ({ data: undefined, isSuccess: false }) };
+  return {
+    ...actual,
+    useAdminDashboardLayout: () => ({
+      data: {
+        layout: { version: 1, entries: [{ id: "users", span: 5, rows: 4 }] },
+        updated_at: null,
+        etag: '"A"',
+      },
+      isSuccess: true,
+    }),
+  };
 });
 beforeEach(() => {
   vi.useFakeTimers();
@@ -42,7 +52,9 @@ function fixture() {
 it.each(["timer", "unmount"])(
   "rejects original edit authority after replacement before %s flush",
   async (how) => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204, headers: { ETag: '"B"' } }));
     vi.stubGlobal("fetch", fetchMock);
     const { result, unmount } = renderHook(useDashboardLayout, fixture());
     act(() => result.current.resizeWidget("users", { span: 6 }));
@@ -55,7 +67,9 @@ it.each(["timer", "unmount"])(
   },
 );
 it("submits the captured edit once after debounce", async () => {
-  const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValue(new Response(null, { status: 204, headers: { ETag: '"B"' } }));
   vi.stubGlobal("fetch", fetchMock);
   const { result } = renderHook(useDashboardLayout, fixture());
   act(() => result.current.resizeWidget("users", { span: 6 }));

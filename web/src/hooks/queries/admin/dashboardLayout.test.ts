@@ -123,7 +123,7 @@ it("serializes legacy save/reset and refetches canonical data instead of seeding
   );
   await waitFor(() => expect(result.current.read.data).toEqual(absent));
   act(() => {
-    result.current.save.mutate(layout);
+    result.current.save.mutate(layout, '"A"');
     result.current.reset.mutate();
   });
   await waitFor(() => expect(writes).toEqual(["PUT"]));
@@ -150,7 +150,7 @@ it("a late legacy success never seeds the new authority cache", async () => {
     { wrapper },
   );
   await waitFor(() => expect(result.current.read.isSuccess).toBe(true));
-  act(() => result.current.save.mutate(layout));
+  act(() => result.current.save.mutate(layout, '"A"'));
   await waitFor(() => expect(release).toBeTypeOf("function"));
   act(() => setProfileId("profile-b"));
   rerender();

@@ -49671,7 +49671,7 @@
             "bearerAuth": []
           }
         ],
-        "summary": "Read this administrator account's stored layout. Null means retain the local/default arrangement. The validator describes this read, not an acknowledged write or durable revision.",
+        "summary": "Read this administrator account's stored layout. Null means retain the local/default arrangement. The validator includes the stored generation, including resets, and is required by layout saves.",
         "tags": [
           "admin-observability"
         ],
@@ -49683,6 +49683,23 @@
       "put": {
         "operationId": "saveAdminDashboardLayout",
         "parameters": [
+          {
+            "description": "The resource's current ETag, or \"*\" to overwrite deliberately. A missing field is 428 precondition_required; a stale tag is 412 precondition_failed with the current ETag.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional second precondition, evaluated after If-Match succeeds: \"*\" or any tag matching the current representation is 412 precondition_failed with the current ETag.",
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
             "in": "header",
@@ -49718,7 +49735,15 @@
         },
         "responses": {
           "204": {
-            "description": "No Content"
+            "description": "No Content",
+            "headers": {
+              "ETag": {
+                "description": "The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "content": {
@@ -49780,6 +49805,24 @@
             },
             "description": "Request Timeout"
           },
+          "412": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Precondition Failed",
+            "headers": {
+              "ETag": {
+                "description": "The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "413": {
             "content": {
               "application/problem+json": {
@@ -49809,6 +49852,16 @@
               }
             },
             "description": "Unprocessable Entity"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Precondition Required"
           },
           "429": {
             "content": {
@@ -49846,12 +49899,13 @@
             "bearerAuth": []
           }
         ],
-        "summary": "Store this administrator account's client-owned layout object. Last write wins; no revision receipt, automatic replay or cross-tab ordering guarantee.",
+        "summary": "Store this administrator account's client-owned layout object. Requires the original read validator; successful ETag acknowledges this committed write. No automatic replay.",
         "tags": [
           "admin-observability"
         ],
         "x-silo-class": "acting_admin",
         "x-silo-demo-restricted": true,
+        "x-silo-guarded": true,
         "x-silo-retry-safety": "non_retryable",
         "x-silo-service-backed": true
       }

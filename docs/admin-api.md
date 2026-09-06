@@ -2026,9 +2026,37 @@ the server guards the layout generation or provides equivalent ordering protecti
 The actual Reset layout action checks its rendered authority before changing local
 state, drops its unsent debounced save, and queues the captured reset behind any
 in-flight save in the existing mutation scope. The reset disables retries and
-authentication replay and fences late invalidation. Cross-tab/server write ordering
-is unchanged. PUT remains a separate migration and server_layouts stays false until
-the full lifecycle is accepted.
+authentication replay and fences late invalidation. Reset now shares the account
+transaction lock and advances the persistent generation, but remains an unguarded
+explicit deletion: replay after a replacement save is still unsafe. server_layouts
+stays false until the full lifecycle is accepted.
+
+### Save the administrator dashboard layout (v2)
+
+`PUT /api/v2/admin/dashboard/layout` (`saveAdminDashboardLayout`) requires an acting
+administrator and a layout JSON object, within a16KiB request body. The document
+belongs to the client; unknown fields and numeric JSON spelling are preserved.
+The operation requires the validator from the original GET in If-Match. Missing
+header428, stale or weak match412, and malformed lists400 follow the shared parser;
+If-Match is evaluated before If-None-Match. A successful empty204 includes the ETag
+of that exact committed write. Invalid objects422, excessive body413, missing storage503
+and masked uncertain500 remain. No automatic replay or durable job receipt is supplied.
+
+A dashboard-specific revision table retains generations after reset. All current
+bridge/v2 save/reset handlers lock the account before checking or changing layout and
+revision in one transaction. The migration preserves existing layouts; bridge HTTP
+bodies/statuses remain unchanged. The lock covers an absent layout too, and reset
+cannot make an old absent-layout validator current again. Old binaries that do not
+participate in this writer protocol are not covered by this ordering guarantee.
+
+The dashboard captures the original version, copied layout and authority before
+edit/debounce/cleanup. One save is in flight locally; only its acknowledged ETag can
+advance retained pending edits. Background GET data never rebases a draft. On conflict,
+uncertain response or reset, further server saves stop while local edits remain visible.
+An explicit Reload server layout discards local edits and resumes from the returned
+canonical version; edits made during that reload prevent its late adoption. Authority
+changes cannot recapture an old draft for submission. Retries/auth replay stay disabled.
+The server_layouts capability remains false pending separate lifecycle activation review.
 
 ### Delete an autoscan source (v2)
 
@@ -2046,19 +2074,3 @@ when opened, keeps them through queueing, disables retries/authentication replay
 and fences dispatch, completion and invalidation. Source query cache includes the
 setter-owned non-secret PIN generation; a changed PIN cannot reuse cached success.
 Other source and webhook lifecycle operations remain separate migrations.
-
-### Save the administrator dashboard layout (v2)
-
-`PUT /api/v2/admin/dashboard/layout` (`saveAdminDashboardLayout`) requires an acting
-administrator and a layout JSON object, within a16KiB request body. The document
-belongs to the client; unknown fields and numeric JSON spelling are preserved.
-The existing account-keyed UPSERT is last-write-wins and returns empty204, without
-an acknowledged revision or durable receipt. Invalid objects return422, excessive
-body413, unavailable storage503 and masked failure500. An error can follow commit;
-there is no automatic replay or cross-tab ordering guarantee.
-
-The dashboard captures a copied layout and authority at the edit, before debounce
-or cleanup flush. Queued writes retain that capture and refuse a replacement
-authority. Save and reset share their local mutation queue; retries and authentication
-replay are disabled. Local arrangement remains usable after server uncertainty.
-The server_layouts capability stays false until save/reset acceptance closes.

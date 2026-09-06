@@ -39,13 +39,20 @@ export function useAdminDashboardLayout() {
       profileContext?.profileId,
       profileContext?.profileTokenGeneration,
     ],
-    queryFn: async (): Promise<AdminDashboardLayoutResponse> => {
+    queryFn: async (): Promise<AdminDashboardLayoutResponse & { etag: string }> => {
       if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
         throw new StaleApiRequestContextError();
-      const result = await v2("GET /api/v2/admin/dashboard/layout", { profileContext });
+      let etag: string | null = null;
+      const result = await v2("GET /api/v2/admin/dashboard/layout", {
+        profileContext,
+        onResponse: (response) => {
+          etag = response.headers.get("ETag");
+        },
+      });
+      if (!etag) throw new Error("Server layout validator missing.");
       if (!isCapturedProfileAuthorityActive(profileContext))
         throw new StaleApiRequestContextError();
-      return { layout: result.layout, updated_at: result.updated_at };
+      return { layout: result.layout, updated_at: result.updated_at, etag };
     },
     enabled: profileContext !== null,
     staleTime: Infinity,
@@ -55,15 +62,19 @@ export function useAdminDashboardLayout() {
 
 export type DashboardLayoutSaveIntent = {
   layout: AdminDashboardLayoutDocument;
+  etag: string;
   profileContext: ProfileRequestContextSnapshot;
 };
 export function captureDashboardLayoutSave(
   layout: AdminDashboardLayoutDocument,
+  etag: string,
   profileContext = captureProfileRequestContext(),
 ): DashboardLayoutSaveIntent {
   if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
     throw new StaleApiRequestContextError();
+  if (!etag) throw new Error("Read the server layout version before saving.");
   return {
+    etag,
     layout: JSON.parse(JSON.stringify(layout)) as AdminDashboardLayoutDocument,
     profileContext,
   };
@@ -76,13 +87,21 @@ export function useSaveAdminDashboardLayout() {
     mutationFn: async (intent: DashboardLayoutSaveIntent) => {
       if (!isCapturedProfileAuthorityActive(intent.profileContext))
         throw new StaleApiRequestContextError();
+      let etag: string | null = null;
       await v2("PUT /api/v2/admin/dashboard/layout", {
+        headers: { "If-Match": intent.etag },
+        onResponse: (response) => {
+          etag = response.headers.get("ETag");
+        },
         body: { layout: { ...intent.layout } },
         profileContext: intent.profileContext,
         retryAuthentication: false,
       });
       if (!isCapturedProfileAuthorityActive(intent.profileContext))
         throw new StaleApiRequestContextError();
+      if (!etag)
+        throw new Error("Server layout write revision missing; reload before saving again.");
+      return etag;
     },
     onSuccess: (_result, intent) => {
       if (isCapturedProfileAuthorityActive(intent.profileContext))
@@ -97,14 +116,28 @@ export function useSaveAdminDashboardLayout() {
     },
   });
   const rawMutate = mutation.mutate;
+  const rawMutateAsync = mutation.mutateAsync;
   const mutateCaptured = useCallback(
-    (intent: DashboardLayoutSaveIntent) => rawMutate(intent),
-    [rawMutate],
+    (
+      intent: DashboardLayoutSaveIntent,
+      options?: { onSuccess?: (etag: string) => void; onError?: () => void },
+    ) => {
+      // Promise completion survives observer unmount; per-call mutate callbacks
+      // do not. Cleanup may still hold a newer copied edit behind this write.
+      void rawMutateAsync(intent).then(
+        (etag) => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onSuccess?.(etag);
+          else options?.onError?.();
+        },
+        () => options?.onError?.(),
+      );
+    },
+    [rawMutateAsync],
   );
   const mutate = useCallback(
-    (layout: AdminDashboardLayoutDocument) => {
+    (layout: AdminDashboardLayoutDocument, etag: string) => {
       try {
-        rawMutate(captureDashboardLayoutSave(layout));
+        rawMutate(captureDashboardLayoutSave(layout, etag));
       } catch {
         toast.error("Select an administrator profile before saving the server layout.", {
           id: SAVE_TOAST_ID,
@@ -117,8 +150,8 @@ export function useSaveAdminDashboardLayout() {
     ...mutation,
     mutate,
     mutateCaptured,
-    mutateAsync: (layout: AdminDashboardLayoutDocument) =>
-      mutation.mutateAsync(captureDashboardLayoutSave(layout)),
+    mutateAsync: (layout: AdminDashboardLayoutDocument, etag: string) =>
+      mutation.mutateAsync(captureDashboardLayoutSave(layout, etag)),
   };
 }
 

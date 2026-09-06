@@ -890,9 +890,9 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Read this administrator account's stored layout. Null means retain the local/default arrangement. The validator describes this read, not an acknowledged write or durable revision. */
+    /** Read this administrator account's stored layout. Null means retain the local/default arrangement. The validator includes the stored generation, including resets, and is required by layout saves. */
     get: operations["getAdminDashboardLayout"];
-    /** Store this administrator account's client-owned layout object. Last write wins; no revision receipt, automatic replay or cross-tab ordering guarantee. */
+    /** Store this administrator account's client-owned layout object. Requires the original read validator; successful ETag acknowledges this committed write. No automatic replay. */
     put: operations["saveAdminDashboardLayout"];
     post?: never;
     /** Delete this administrator account's stored layout. Already absent is success; no revision or durable receipt. Clients must not automatically replay across another layout write. */
@@ -31712,7 +31712,11 @@ export interface operations {
   saveAdminDashboardLayout: {
     parameters: {
       query?: never;
-      header?: {
+      header: {
+        /** @description The resource's current ETag, or "*" to overwrite deliberately. A missing field is 428 precondition_required; a stale tag is 412 precondition_failed with the current ETag. */
+        "If-Match": string;
+        /** @description Optional second precondition, evaluated after If-Match succeeds: "*" or any tag matching the current representation is 412 precondition_failed with the current ETag. */
+        "If-None-Match"?: string;
         /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
         "X-Profile-Id"?: string;
         /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
@@ -31730,6 +31734,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -31788,6 +31794,17 @@ export interface operations {
           "application/problem+json": components["schemas"]["Problem"];
         };
       };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
       /** @description Request Entity Too Large */
       413: {
         headers: {
@@ -31808,6 +31825,15 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Required */
+      428: {
         headers: {
           [name: string]: unknown;
         };

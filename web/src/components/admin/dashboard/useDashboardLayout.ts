@@ -214,6 +214,8 @@ export interface DashboardLayout {
    */
   addWidget: (id: WidgetId, beforeId?: WidgetId | null) => void;
   resetLayout: () => void;
+  reloadServerLayout: () => Promise<void>;
+  serverSaveBlocked: boolean;
 }
 
 /**
@@ -235,6 +237,7 @@ export function useDashboardLayout(): DashboardLayout {
   const userId = useAuth().user?.id ?? null;
   const [entries, setEntries] = useState<DashboardLayoutEntry[]>(() => loadStoredLayout(userId));
   const [isCustomizing, setCustomizing] = useState(false);
+  const [serverSaveBlocked, setServerSaveBlocked] = useState(false);
 
   useEffect(clearLegacyStoredLayout, []);
 
@@ -252,24 +255,66 @@ export function useDashboardLayout(): DashboardLayout {
   const settledRef = useRef(false);
   const editedRef = useRef(false);
   const pendingRef = useRef<DashboardLayoutSaveIntent | null>(null);
+  const baselineRef = useRef<string | null>(null);
+  const inFlightRef = useRef<DashboardLayoutSaveIntent | null>(null);
+  const baselineAuthorityRef = useRef<ReturnType<typeof captureProfileRequestContext>>(null);
+  const editSequenceRef = useRef(0);
+  const blockedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const flushSave = useCallback(() => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    const pending = pendingRef.current;
-    pendingRef.current = null;
-    if (pending) {
-      saveMutate(pending);
-    }
-  }, [saveMutate]);
+  const flushSave = useCallback(
+    function flush() {
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      if (inFlightRef.current || blockedRef.current) return;
+      const intent = pendingRef.current;
+      if (!intent) return;
+      pendingRef.current = null;
+      inFlightRef.current = intent;
+      saveMutate(intent, {
+        onSuccess: (etag) => {
+          if (inFlightRef.current !== intent) return;
+          inFlightRef.current = null;
+          // Only this acknowledged write can advance retained local edits. A
+          // refreshed GET may have observed a competitor and is never used here.
+          if (!blockedRef.current && baselineRef.current === intent.etag) {
+            baselineRef.current = etag;
+            if (pendingRef.current?.etag === intent.etag)
+              pendingRef.current = { ...pendingRef.current, etag };
+            flush();
+          }
+        },
+        onError: () => {
+          if (inFlightRef.current !== intent) return;
+          inFlightRef.current = null;
+          if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+          blockedRef.current = true;
+          setServerSaveBlocked(true);
+        },
+      });
+    },
+    [saveMutate],
+  );
 
   const scheduleSave = useCallback(
     (next: DashboardLayoutEntry[]) => {
       if (!editAuthority || !isCapturedProfileAuthorityActive(editAuthority)) return;
-      pendingRef.current = captureDashboardLayoutSave(toLayoutDocument(next), editAuthority);
+      if (
+        !baselineRef.current ||
+        !baselineAuthorityRef.current ||
+        !isCapturedProfileAuthorityActive(baselineAuthorityRef.current) ||
+        blockedRef.current
+      ) {
+        setServerSaveBlocked(true);
+        return;
+      }
+      pendingRef.current = captureDashboardLayoutSave(
+        toLayoutDocument(next),
+        baselineRef.current,
+        editAuthority,
+      );
       if (timerRef.current !== null) {
         clearTimeout(timerRef.current);
       }
@@ -302,6 +347,11 @@ export function useDashboardLayout(): DashboardLayout {
     cancelPendingSave();
     settledRef.current = false;
     editedRef.current = false;
+    baselineRef.current = null;
+    baselineAuthorityRef.current = null;
+    inFlightRef.current = null;
+    blockedRef.current = false;
+    setServerSaveBlocked(false);
     setEntries(loadStoredLayout(userId));
   }, [userId, cancelPendingSave]);
 
@@ -313,6 +363,8 @@ export function useDashboardLayout(): DashboardLayout {
       return;
     }
     settledRef.current = true;
+    baselineRef.current = remoteData?.etag ?? null;
+    baselineAuthorityRef.current = editAuthority;
     // An edit made while the query was in flight is newer than the response;
     // its own debounced save carries it to the server.
     if (editedRef.current) {
@@ -329,10 +381,16 @@ export function useDashboardLayout(): DashboardLayout {
     // Only this account's own cache qualifies.
     const local = readStoredLayout(userId);
     if (local) {
-      if (editAuthority && isCapturedProfileAuthorityActive(editAuthority))
-        saveMutate(captureDashboardLayoutSave(toLayoutDocument(local), editAuthority));
+      if (editAuthority && isCapturedProfileAuthorityActive(editAuthority) && baselineRef.current) {
+        pendingRef.current = captureDashboardLayoutSave(
+          toLayoutDocument(local),
+          baselineRef.current,
+          editAuthority,
+        );
+        flushSave();
+      }
     }
-  }, [remoteSettled, remoteData, saveMutate, userId, editAuthority]);
+  }, [remoteSettled, remoteData, flushSave, userId, editAuthority]);
 
   const update = useCallback(
     (updater: (prev: DashboardLayoutEntry[]) => DashboardLayoutEntry[]) => {
@@ -343,6 +401,7 @@ export function useDashboardLayout(): DashboardLayout {
           return prev;
         }
         editedRef.current = true;
+        editSequenceRef.current++;
         persistLayout(userId, next);
         scheduleSave(next);
         return next;
@@ -471,12 +530,46 @@ export function useDashboardLayout(): DashboardLayout {
     // be cancelled here — the shared mutation scope in
     // `hooks/queries/admin/dashboardLayout` makes the reset wait for it instead.
     cancelPendingSave();
+    editSequenceRef.current++;
+    baselineRef.current = null;
+    blockedRef.current = true;
+    setServerSaveBlocked(true);
     clearStoredLayout(userId);
     editedRef.current = true;
     settledRef.current = true;
     setEntries([...DEFAULT_LAYOUT]);
     resetMutate();
   }, [cancelPendingSave, resetMutate, userId, resetAuthority]);
+
+  const reloadServerLayout = async () => {
+    const authority = captureProfileRequestContext();
+    if (
+      !authority ||
+      !isCapturedProfileAuthorityActive(authority) ||
+      inFlightRef.current ||
+      resetRemoteLayout.isPending
+    )
+      return;
+    const editSequence = editSequenceRef.current;
+    const result = await remote.refetch();
+    if (
+      !isCapturedProfileAuthorityActive(authority) ||
+      !result.isSuccess ||
+      !result.data?.etag ||
+      editSequenceRef.current !== editSequence
+    )
+      return;
+    cancelPendingSave();
+    const loaded = sanitizeLayoutDocument(result.data.layout) ?? [...DEFAULT_LAYOUT];
+    setEntries(loaded);
+    persistLayout(userId, loaded);
+    baselineRef.current = result.data.etag;
+    baselineAuthorityRef.current = authority;
+    blockedRef.current = false;
+    setServerSaveBlocked(false);
+    settledRef.current = true;
+    editedRef.current = false;
+  };
 
   const hiddenWidgets = useMemo(() => {
     const visible = new Set(entries.map((entry) => entry.id));
@@ -494,5 +587,7 @@ export function useDashboardLayout(): DashboardLayout {
     removeWidget,
     addWidget,
     resetLayout,
+    reloadServerLayout,
+    serverSaveBlocked,
   };
 }

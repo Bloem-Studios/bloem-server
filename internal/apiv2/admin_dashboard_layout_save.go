@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/danielgtaylor/huma/v2"
 )
 
 type AdminDashboardLayoutSaveService interface {
-	SaveAdminDashboardLayout(context.Context, int, json.RawMessage) error
+	SaveAdminDashboardLayout(context.Context, int, json.RawMessage, func(handlers.AdminDashboardLayoutView) error) (handlers.AdminDashboardLayoutView, error)
 }
 type DashboardLayoutWriteDocument json.RawMessage
 
@@ -24,12 +26,19 @@ func (DashboardLayoutWriteDocument) Schema(reg huma.Registry) *huma.Schema {
 type AdminDashboardLayoutSaveBody struct {
 	Layout DashboardLayoutWriteDocument `json:"layout"`
 }
-type AdminDashboardLayoutSaveInput struct{ Body AdminDashboardLayoutSaveBody }
+type AdminDashboardLayoutSaveInput struct {
+	Body        AdminDashboardLayoutSaveBody
+	IfMatch     string `header:"If-Match"`
+	IfNoneMatch string `header:"If-None-Match"`
+}
+type AdminDashboardLayoutSaveOutput struct {
+	ETag string `header:"ETag"`
+}
 
 func registerAdminDashboardLayoutSave(reg *Registry) {
-	op := Operation{Operation: humaOp("PUT", Prefix+"/admin/dashboard/layout", "saveAdminDashboardLayout", "admin-observability", "Store this administrator account's client-owned layout object. Last write wins; no revision receipt, automatic replay or cross-tab ordering guarantee."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, RetrySafety: RetrySafetyNonRetryable}
+	op := Operation{Operation: humaOp("PUT", Prefix+"/admin/dashboard/layout", "saveAdminDashboardLayout", "admin-observability", "Store this administrator account's client-owned layout object. Requires the original read validator; successful ETag acknowledges this committed write. No automatic replay."), Class: ClassActingAdmin, DemoRestricted: true, ServiceBacked: true, Guarded: true, RetrySafety: RetrySafetyNonRetryable}
 	op.MaxBodyBytes = 16 << 10
-	Register(reg, op, func(ctx context.Context, in *AdminDashboardLayoutSaveInput) (*struct{}, error) {
+	Register(reg, op, func(ctx context.Context, in *AdminDashboardLayoutSaveInput) (*AdminDashboardLayoutSaveOutput, error) {
 		if reg.deps.AdminDashboardLayoutSaves == nil {
 			return nil, unavailable("dashboard layout")
 		}
@@ -37,9 +46,29 @@ func registerAdminDashboardLayoutSave(reg *Registry) {
 		if len(layout) == 0 || layout[0] != '{' || !json.Valid(layout) {
 			return nil, NewProblem(TypeValidationFailed, "A layout object is required.")
 		}
-		if err := reg.deps.AdminDashboardLayoutSaves.SaveAdminDashboardLayout(ctx, claimsFrom(ctx).UserID, layout); err != nil {
+		committed, err := reg.deps.AdminDashboardLayoutSaves.SaveAdminDashboardLayout(ctx, claimsFrom(ctx).UserID, layout, func(current handlers.AdminDashboardLayoutView) error {
+			_, tag, err := dashboardLayoutRepresentation(ctx, current)
+			if err != nil {
+				return err
+			}
+			if p := EvaluateGuardedPreconditions(in.IfMatch, in.IfNoneMatch, tag); p != nil {
+				if p.Status == 412 {
+					return StaleVersionProblem(tag)
+				}
+				return p
+			}
+			return nil
+		})
+		if err != nil {
+			if problem, ok := errors.AsType[*Problem](err); ok {
+				return nil, problem
+			}
 			return nil, serviceProblem(err)
 		}
-		return nil, nil
+		_, tag, err := dashboardLayoutRepresentation(ctx, committed)
+		if err != nil {
+			return nil, err
+		}
+		return &AdminDashboardLayoutSaveOutput{ETag: tag.String()}, nil
 	})
 }
