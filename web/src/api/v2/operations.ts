@@ -182,6 +182,7 @@ export const v2Operations = {
   "GET /api/v2/admin/subtitles/{id}": "getAdminSubtitleMetadata",
   "GET /api/v2/admin/subtitles/{id}/download": "downloadAdminStoredSubtitle",
   "GET /api/v2/admin/system/build": "getAdminBuildInfo",
+  "GET /api/v2/admin/system/hw-accel": "getAdminHardwareAcceleration",
   "GET /api/v2/admin/system/resources": "getAdminSystemResources",
   "GET /api/v2/admin/tasks": "listAdminTasks",
   "GET /api/v2/admin/tasks/{key}": "getAdminTask",

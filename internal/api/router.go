@@ -2173,6 +2173,17 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.AdminCatalogSources = catalogSeedHandler
 		v2deps.AdminCatalogTransfer = catalogSeedHandler
 	}
+	systemJWTSecret := ""
+	if deps.Config != nil {
+		systemJWTSecret = deps.Config.Auth.JWTSecret
+	}
+	v2deps.AdminHardwareAcceleration = handlers.NewSystemHandler(deps.TranscodePool, systemJWTSecret, func() (string, string, string) {
+		cfg := deps.CurrentConfig()
+		if cfg == nil {
+			return "", "", ""
+		}
+		return cfg.Playback.FFmpegPath, cfg.Playback.HWAccel, cfg.Playback.HWDevice
+	})
 	v2deps.AdminFilesystem = handlers.NewFilesystemHandler()
 	if adminHandler != nil {
 		v2deps.AdminDashboardInsights = adminHandler

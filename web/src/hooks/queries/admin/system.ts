@@ -1,5 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import {
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
 import { v2 } from "@/api/v2/request";
 import { adminKeys } from "../keys";
 
@@ -75,11 +79,30 @@ export function useSystemResources(enabled = true) {
 }
 
 export function useHWAccelDetection(enabled = true) {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.hwAccel(),
-    queryFn: () => api<HWAccelInfo>("/admin/system/hw-accel"),
+    queryKey: [
+      ...adminKeys.hwAccel(),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+      profileContext?.profileTokenGeneration,
+    ],
+    queryFn: async (): Promise<HWAccelInfo> => {
+      if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const result = await v2("GET /api/v2/admin/system/hw-accel", {
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      if (result.source !== "local" && result.source !== "transcode_node")
+        throw new Error("Unrecognized hardware inventory source.");
+      return { ...result, source: result.source };
+    },
     staleTime: 60_000,
     retry: false,
-    enabled,
+    enabled: enabled && profileContext !== null,
   });
 }

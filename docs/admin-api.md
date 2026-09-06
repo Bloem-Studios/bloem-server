@@ -1791,3 +1791,24 @@ variants so active readers fetch the canonical document; it does not seed a loca
 timestamp as a server acknowledgement. Local immediate edits, debounced saves
 and serialized legacy writes remain unchanged. This read migration does not add
 write-side conflict handling or change the legacy writer's authority semantics.
+
+### Hardware-acceleration inventory in v2
+
+`GET /api/v2/admin/system/hw-accel` requires an acting administrator and reuses
+the synchronous inventory walk described for the bridge endpoint. Enabled healthy
+nodes are queried concurrently within their advertised/configured budgets. The
+first successful node supplies the primary report; no nodes, or all failed nodes,
+falls back to the local host with current playback settings. Failed nodes remain
+visible with a generic error. Node URL userinfo, query and fragment are removed.
+This is a live inventory, not a cluster capability union, snapshot or durable job.
+`resolved` may name an explicitly configured backend whose probe did not verify;
+`detected_backends` carries verification/skipped results. Missing service returns
+503, distinct from an inventory reporting unavailable hardware. Arrays of render
+devices/details are non-null. Existing worker transport and probe cache behavior
+are unchanged; local detection retains its own budget rather than promising
+request cancellation stops every subprocess.
+
+The actual web settings/overview reader captures service/account/profile/PIN
+authority, rejects late decoded responses and partitions cached success by the
+setter-owned PIN generation. Automatic query retries and authentication replay
+are disabled. This contract does not advertise a new hardware support flag.

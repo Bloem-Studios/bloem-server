@@ -543,6 +543,7 @@ func registerAll(reg *Registry) {
 	registerAdminPolicy(reg)
 	registerAdminTasks(reg)
 	registerAdminSystem(reg)
+	registerAdminHardwareAcceleration(reg)
 	registerAdminSettingsInspection(reg)
 	registerAdminSettingsWrite(reg)
 	registerAdminSettingsChecks(reg)
