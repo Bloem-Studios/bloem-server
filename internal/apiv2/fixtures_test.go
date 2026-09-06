@@ -1627,7 +1627,8 @@ func fixtureCases() []fixtureCase {
 			method:   http.MethodPost, path: "/api/v2/account/password", body: `{"current_password":"pw","new_password":"margin fossil quench hollow"}`,
 			status: http.StatusUnauthorized, assertHeaders: []string{"Content-Type", "Cache-Control"}, schema: problem},
 	}...)
-	return append(cases, adminAPIKeyFixtureCases()...)
+	cases = append(cases, adminAPIKeyFixtureCases()...)
+	return append(cases, adminPolicyFixtureCases()...)
 }
 
 // fixtureMultipartType is the multipart Content-Type of the avatar fixtures,
@@ -1666,6 +1667,9 @@ func fixtureDeps() Dependencies {
 	adminCollections.job = &models.AdminJob{ID: "collection-job", JobType: adminjob.JobTypeTemplateBundleApply, Status: adminjob.StatusQueued, RequestedAt: fixedTime()}
 	deps.AdminCollections = adminCollections
 	deps.AdminSections = newFakeAdminSections()
+	adminPolicy := newFakeAdminPolicy()
+	adminPolicy.applyFailed = true
+	deps.AdminPolicy = adminPolicy
 	deps.LibraryJobs = &fixtureAdminCollectionJobs{fakeLibraryJobs: *deps.LibraryJobs.(*fakeLibraryJobs)}
 	deps.LibrarySections = &fakeLibraryViews{}
 	deps.LibraryCollections = &fakeLibraryViews{}

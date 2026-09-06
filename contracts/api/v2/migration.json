@@ -12657,13 +12657,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/policy/decisions",
+        "operation_id": "listAdminPolicyDecisions"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -12719,13 +12719,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/policy/decisions/{id}",
+        "operation_id": "getAdminPolicyDecision"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -12781,13 +12781,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/policy/documents",
+        "operation_id": "listAdminPolicyDocuments"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -12839,18 +12839,19 @@
       "section": "admin-policy",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "unique_constraint",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/policy/documents",
+        "operation_id": "createAdminPolicyDocument"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned.",
+      "retry_safety_note": "No automatic replay. Appends create a new saved identity; document mutations compare the captured canonical validator. A committed write remains successful when application fails. Validation and simulation can be explicitly requested again."
     },
     {
       "listener": "api",
@@ -12902,19 +12903,20 @@
       "section": "admin-policy",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
+      "retry_safety": "non_retryable",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "DELETE",
+        "path": "/api/v2/admin/policy/documents/{id}",
+        "operation_id": "deleteAdminPolicyDocument"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned. Requires the canonical document If-Match validator; the original revision is compared under the database lock. No automatic mutation retry.",
+      "concurrency": "if_match",
+      "retry_safety_note": "No automatic replay. Appends create a new saved identity; document mutations compare the captured canonical validator. A committed write remains successful when application fails. Validation and simulation can be explicitly requested again."
     },
     {
       "listener": "api",
@@ -12970,13 +12972,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/policy/documents/{id}",
+        "operation_id": "getAdminPolicyDocument"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -13029,18 +13031,19 @@
       "release_flow": "core_admin",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "SetEnabled writes the requested boolean unconditionally, bumps the policy generation, and notifies the cluster, so a delayed retry landing after another admin changed the document restores the obsolete state and triggers another reload. The v2 port must require If-Match on the document.",
+      "retry_safety_note": "No automatic replay. Appends create a new saved identity; document mutations compare the captured canonical validator. A committed write remains successful when application fails. Validation and simulation can be explicitly requested again.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PATCH",
+        "path": "/api/v2/admin/policy/documents/{id}",
+        "operation_id": "setAdminPolicyEnabled"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned. Requires the canonical document If-Match validator; the original revision is compared under the database lock. No automatic mutation retry. HTTP 200 reports persisted generation separately from local application and notification failure; no durable job is implied.",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -13096,13 +13099,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/policy/documents/{id}/versions",
+        "operation_id": "listAdminPolicyVersions"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -13154,19 +13157,19 @@
       "section": "admin-policy",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "unique_constraint",
-      "retry_safety_note": "v1 assigns version_number and a duplicate appends a second identical version; the v2 port takes the expected version_number so UNIQUE (document_id, version_number) resolves a retry to the existing version.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic replay. Appends create a new saved identity; document mutations compare the captured canonical validator. A committed write remains successful when application fails. Validation and simulation can be explicitly requested again.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/policy/documents/{id}/versions",
+        "operation_id": "createAdminPolicyVersion"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned. HTTP 201 returns the saved version identity and compile diagnostics even for a draft that fails compilation."
     },
     {
       "listener": "api",
@@ -13222,13 +13225,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/policy/documents/{id}/versions/{version}",
+        "operation_id": "getAdminPolicyVersion"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -13281,18 +13284,19 @@
       "release_flow": "core_admin",
       "tier": 1,
       "retry_safety": "non_retryable",
-      "retry_safety_note": "Activate repoints active_version_id unconditionally and bumps the policy generation, so a retry after a lost response that lands after another activation restores an obsolete policy and triggers a cluster reload. The v2 port must require If-Match on the document.",
+      "retry_safety_note": "No automatic replay. Appends create a new saved identity; document mutations compare the captured canonical validator. A committed write remains successful when application fails. Validation and simulation can be explicitly requested again.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/policy/documents/{id}/active-version",
+        "operation_id": "activateAdminPolicyVersion"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned. Requires the canonical document If-Match validator; the original revision is compared under the database lock. No automatic mutation retry. HTTP 200 reports persisted generation separately from local application and notification failure; no durable job is implied.",
+      "concurrency": "if_match"
     },
     {
       "listener": "api",
@@ -13344,19 +13348,19 @@
       "section": "admin-policy",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
-      "retry_safety_note": "Read-only query carried on POST for body size; writes nothing, so a retry is a plain re-read.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic replay. Appends create a new saved identity; document mutations compare the captured canonical validator. A committed write remains successful when application fails. Validation and simulation can be explicitly requested again.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/policy/simulate",
+        "operation_id": "simulateAdminPolicy"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -13408,19 +13412,19 @@
       "section": "admin-policy",
       "release_flow": "core_admin",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
-      "retry_safety_note": "Read-only query carried on POST for body size; writes nothing, so a retry is a plain re-read.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "No automatic replay. Appends create a new saved identity; document mutations compare the captured canonical validator. A committed write remains successful when application fails. Validation and simulation can be explicitly requested again.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/policy/validate",
+        "operation_id": "validateAdminPolicy"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",
@@ -13476,13 +13480,13 @@
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
-      "review_state": "proposed",
+      "review_state": "ratified",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/policy/vendor",
+        "operation_id": "listAdminPolicyVendor"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; policyHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Transport, pagination, and web consumer independently reviewed and ratified. Policy capability remains auth-core owned."
     },
     {
       "listener": "api",

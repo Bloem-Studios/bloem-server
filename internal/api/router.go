@@ -2032,6 +2032,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 			v2deps.LibraryJobs = adminjob.NewRepository(deps.DB)
 		}
 	}
+	if policyHandler != nil {
+		v2deps.AdminPolicy = policyHandler
+	}
 	if sectionHandler != nil {
 		v2deps.LibrarySections = sectionHandler
 		v2deps.AdminSections = sectionHandler

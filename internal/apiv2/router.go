@@ -74,6 +74,7 @@ type Dependencies struct {
 	BucketRateLimit       func(string) func(http.Handler) http.Handler
 	Markers               MarkerService
 	AdminSections         AdminSectionService
+	AdminPolicy           AdminPolicyService
 	AdminCollections      AdminCollectionService
 	AdminCollectionGroups AdminCollectionGroupService
 	WebhookSync           WebhookSyncService

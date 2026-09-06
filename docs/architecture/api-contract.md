@@ -2021,3 +2021,56 @@ the locked source; failed writes roll back both the document revision and runtim
 event-publication outcomes. Failure to apply or announce a committed change is not a mutation
 error and does not authorize replay. This is storage/domain groundwork; administrator policy
 transport mappings remain proposed until their API and consumer reviews finish.
+
+### Administrator policy transport
+
+The 14 administrator policy mappings use `/api/v2/admin/policy`. Their transport, pagination, and web
+consumer reviews are complete; all 14 mappings are ratified. They require acting-administrator
+access; editor operations retain the policy editor setting gate, while decision-log reads remain
+available independently of that
+setting. The shared policy capability route remains owned by auth-core. Neither Apple nor Android
+has an administrator policy consumer in the migration inventory. Jellyfin exposes no policy editor;
+policy evaluation behavior shared with its clients is unchanged.
+
+Document and version IDs are opaque strings. Version paths select the saved version ID, not the
+per-document version number. Document, version, and decision lists use named collection envelopes
+with explicit cursor page state, default limit 50, and maximum 200. Repository reads fetch at most limit plus one
+rows. Documents sort by ascending ID; versions sort by descending per-document unique version
+number. These are live traversals: document updates do not move the key, and version appends
+appear on a restarted history rather than in an older continuation. Document and version
+cursors bind the account, acting profile, operation, and ordering; version cursors also bind
+the document ID. Only the finite embedded vendor list remains unpaged. Decision cursors bind the
+account, acting profile, filters, and timestamp/ID order using the shared v2 signing key. Policy
+input, simulation results, and retained decision samples carry policy-domain JSON values, explicitly
+outside the fixed HTTP field contract.
+
+The canonical document GET includes its active source when present and supplies a strong,
+caller-bound ETag. The ETag covers version-history changes as well as the document fields. PATCH
+of the document sets the required `enabled` boolean; PUT of its `active-version` subresource takes
+`version_id`. These writes and DELETE require the captured canonical `If-Match`. The storage CAS
+compares that original revision under lock; a mismatch returns 412 with the observed revision's
+validator without a post-conflict read or automatic retry. The author-deletion lock ordering
+above covers the production single-account deletion operation, not arbitrary multi-account SQL
+DELETE statements.
+
+Enablement and activation return HTTP 200 after persistence, including when local application or
+notification fails. `persisted_generation` identifies that commit, while `application.local_applied`
+and `application.loaded_generation` describe the local reload result. `publication_failed` reports
+an error publishing the change notification; false does not promise that other nodes have applied
+it. A concurrent commit can make the loaded generation differ from the persisted generation.
+The response contains the document captured by the write transaction and its validator. It is
+not a durable job, and application failure does not authorize replaying the mutation.
+
+Creating a version returns HTTP 201, its Location, and the saved immutable version even when
+`compiled_ok` is false. Compilation diagnostics accompany that saved identity. Validation alone
+returns diagnostics without persistence. Saving a draft, enabling, activating, and deleting are
+non-retryable operations; clients refresh canonical state and obtain user intent before trying a
+new write after a conflict or uncertain outcome. The web policy consumer uses the generated v2
+operations while the shared policy capability remains on its auth-owned route. Document and version history pages load through explicit
+continuation controls; selecting a document does not depend on its presence in the first page.
+Editors pin the draft and original validator, retain both after 412, and require explicit
+current-state review before using a new revision after an append or conflict. A saved draft
+that fails compilation retains its identity. In-flight validation and save results remain
+associated with their submitted source. Mutations disable both query-library retries and
+authentication refresh replay; read refresh remains enabled. Persistence and local application
+are reported separately.
