@@ -311,6 +311,7 @@ export const v2Operations = {
   "GET /api/v2/watch/{id}": "getWatchState",
   "GET /api/v2/watchlist": "listWatchlist",
   "GET /api/v2/watchlist/{item_id}": "getWatchlistEntry",
+  "GET /api/v2/webhook-sync/capabilities": "getWebhookReceiverCapabilities",
   "GET /api/v2/webhook-sync/connections": "listWebhookConnections",
   "GET /api/v2/webhook-sync/connections/{id}/events": "listWebhookEvents",
   "GET /api/v2/webhook-sync/connections/{id}/profile-mappings": "getWebhookMappings",
@@ -458,6 +459,7 @@ export const v2Operations = {
   "POST /api/v2/watched/{id}": "markWatched",
   "POST /api/v2/webhook-sync/connections": "createWebhookConnection",
   "POST /api/v2/webhook-sync/connections/{id}/webhook/rotate": "rotateWebhookConnection",
+  "POST /api/v2/webhook-sync/webhooks/{secret}": "receiveExternalWebhook",
   "PUT /api/v2/admin/access-groups/{id}": "updateAdminAccessGroup",
   "PUT /api/v2/admin/api-keys/{id}/tier": "updateAdminAPIKeyTier",
   "PUT /api/v2/admin/collection-groups/{group_id}/collections/order":

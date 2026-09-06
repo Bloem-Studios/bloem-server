@@ -7,17 +7,17 @@ describe("webhook management v2 adapters", () => {
   it("follows connection cursors and resolves receiver URLs against the server origin", async () => {
     request
       .mockResolvedValueOnce({
-        items: [{ id: "a", webhook_url: "/api/v1/webhook-sync/webhooks/secret" }],
+        items: [{ id: "a", webhook_url: "/api/v2/webhook-sync/webhooks/secret" }],
         page: { has_more: true, next_cursor: "next" },
       })
       .mockResolvedValueOnce({
-        items: [{ id: "b", webhook_url: "/api/v1/webhook-sync/webhooks/second" }],
+        items: [{ id: "b", webhook_url: "/api/v2/webhook-sync/webhooks/second" }],
         page: { has_more: false },
       });
     const result = await listWebhookConnections();
     expect(result.map((r) => r.id)).toEqual(["a", "b"]);
     expect(result[0]?.webhook_url).toBe(
-      `${window.location.origin}/api/v1/webhook-sync/webhooks/secret`,
+      `${window.location.origin}/api/v2/webhook-sync/webhooks/secret`,
     );
     expect(request.mock.calls[1]).toEqual([
       "GET /api/v2/webhook-sync/connections",

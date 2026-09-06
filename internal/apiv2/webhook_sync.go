@@ -41,7 +41,7 @@ type WebhookConnection struct {
 }
 
 func webhookConnectionOf(c webhooksync.Connection) WebhookConnection {
-	return WebhookConnection{ID: ID(c.ID), Provider: c.Provider, ServerID: c.ServerID, ServerName: c.ServerName, DefaultProfileID: ID(c.DefaultProfileID), WebhookURL: "/api/v1/webhook-sync/webhooks/" + url.PathEscape(c.WebhookSecret), AccountDiscoveryAvailable: c.AccountDiscoveryAvailable, UserCount: c.UserCount, LastWebhookReceivedAt: instantPtr(c.LastWebhookReceivedAt), LastWebhookErrorAt: instantPtr(c.LastWebhookErrorAt), LastWebhookErrorMessage: c.LastWebhookErrorMessage, CreatedAt: NewInstant(c.CreatedAt), UpdatedAt: NewInstant(c.UpdatedAt)}
+	return WebhookConnection{ID: ID(c.ID), Provider: c.Provider, ServerID: c.ServerID, ServerName: c.ServerName, DefaultProfileID: ID(c.DefaultProfileID), WebhookURL: Prefix + "/webhook-sync/webhooks/" + url.PathEscape(c.WebhookSecret), AccountDiscoveryAvailable: c.AccountDiscoveryAvailable, UserCount: c.UserCount, LastWebhookReceivedAt: instantPtr(c.LastWebhookReceivedAt), LastWebhookErrorAt: instantPtr(c.LastWebhookErrorAt), LastWebhookErrorMessage: c.LastWebhookErrorMessage, CreatedAt: NewInstant(c.CreatedAt), UpdatedAt: NewInstant(c.UpdatedAt)}
 }
 
 type WebhookConnectionOutput struct{ Body WebhookConnection }
@@ -248,7 +248,9 @@ func registerWebhookSync(reg *Registry) {
 		if err != nil {
 			return nil, webhookProblem(err)
 		}
-		return &WebhookRotateOutput{Body: *r}, nil
+		out := *r
+		out.WebhookURL = strings.Replace(out.WebhookURL, "/api/v1/webhook-sync/webhooks/", Prefix+"/webhook-sync/webhooks/", 1)
+		return &WebhookRotateOutput{Body: out}, nil
 	})
 	Register(reg, op(http.MethodGet, "/connections/{id}/profile-mappings", "getWebhookMappings", "Read external-user profile mappings."), func(ctx context.Context, in *WebhookConnectionID) (*WebhookMappingsOutput, error) {
 		s, u, p := svc(ctx)

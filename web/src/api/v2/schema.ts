@@ -6720,6 +6720,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/webhook-sync/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Discover external webhook receiver availability and body limit. */
+    get: operations["getWebhookReceiverCapabilities"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/webhook-sync/connections": {
     parameters: {
       query?: never;
@@ -6802,6 +6819,26 @@ export interface paths {
     put?: never;
     /** Rotate the external receiver URL. */
     post: operations["rotateWebhookConnection"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/webhook-sync/webhooks/{secret}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Receive a provider webhook using its connection secret.
+     * @description Accepts provider JSON, form or multipart bytes up to 10485760 bytes. Secret is resolved before body processing. No login/profile or Origin proof substitutes for the receiver secret. Processing is synchronous and non-retryable; no exactly-once guarantee.
+     */
+    post: operations["receiveExternalWebhook"];
     delete?: never;
     options?: never;
     head?: never;
@@ -18358,6 +18395,11 @@ export interface components {
       external_user_id: string;
       external_user_name: string;
       silo_profile_id: string | null;
+    };
+    WebhookReceiverCapabilitiesOutputBody: {
+      available: boolean;
+      /** Format: int64 */
+      max_body_bytes: number;
     };
   };
   responses: never;
@@ -77245,6 +77287,71 @@ export interface operations {
       };
     };
   };
+  getWebhookReceiverCapabilities: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WebhookReceiverCapabilitiesOutputBody"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   listWebhookConnections: {
     parameters: {
       query?: {
@@ -78257,6 +78364,72 @@ export interface operations {
         };
       };
       /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  receiveExternalWebhook: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Connection receiver secret; rotation invalidates the previous URL. */
+        secret: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Delivery processed synchronously, including ignored or unmatched events. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Rejected delivery. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Rejected delivery. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Rejected delivery. */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Rejected delivery. */
       500: {
         headers: {
           [name: string]: unknown;

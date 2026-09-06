@@ -47,7 +47,7 @@ func TestWebhookManagementAccountCursorAndSecrets(t *testing.T) {
 	}
 	var body WebhookConnectionCollection
 	decodeBody(t, rec.Body, &body)
-	if len(body.Items) != 1 || body.Items[0].WebhookURL != "/api/v1/webhook-sync/webhooks/receiver-secret" {
+	if len(body.Items) != 1 || body.Items[0].WebhookURL != "/api/v2/webhook-sync/webhooks/receiver-secret" {
 		t.Fatalf("response: %s", rec.Body)
 	}
 	// Inspect cursor through public JSON to preserve envelope type encapsulation.

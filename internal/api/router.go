@@ -2213,6 +2213,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if webhookSyncHandler != nil {
 		v2deps.WebhookSync = webhookSyncHandler
+		v2deps.WebhookReceiver = webhookSyncHandler
 	}
 	if historyImportHandler != nil {
 		v2deps.HistoryImports = historyImportHandler

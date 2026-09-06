@@ -868,3 +868,31 @@ before using that flow. V1 init continues to issue its v1 callback URI, and froz
 v1 transports are unchanged. This port adds no account-linking, PKCE, or new
 browser-session-binding mechanism. No native in-app handshake or Jellyfin caller
 was found; provider redirects and browser forms follow the emitted URLs.
+
+### External watch-state webhook receiver
+
+`POST /api/v2/webhook-sync/webhooks/{secret}` accepts existing Plex multipart,
+Emby JSON/form/multipart, and Jellyfin JSON deliveries. The connection secret is
+resolved before reading the body; an ambient bearer token or profile does not
+replace this proof. Secret rotation immediately invalidates the previous URL.
+No browser Origin is required for these server-to-server deliveries.
+
+V2 limits the complete body to 10 MiB before provider parsing or watch-state
+side effects, including bodies with unknown or understated lengths. Oversize
+requests return a 413 `payload_too_large` problem. Multipart resources are cleaned
+up after parsing. The shared application processor retains explicit profile
+mapping, provider normalization, watch-state behavior and delivery logging with
+bounded sanitized body excerpts. A processed delivery returns bodyless 204,
+including ignored, skipped or unmatched events. Malformed payloads return 400,
+unknown secrets 404, and internal failures a safe 500 problem. Known-connection
+rejections retain delivery logs. This synchronous operation is non-retryable;
+existing provider ordering and duplicate-handling behavior is unchanged and does
+not provide an exactly-once guarantee.
+
+Responses set `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+`GET /api/v2/webhook-sync/capabilities` exposes `available` and `max_body_bytes`.
+V2 connection list/create/update and secret rotation emit v2 receiver URLs.
+Existing external configurations continue to use their bridge URLs until updated;
+frozen v1 URL generation, response shapes and provider parsing remain unchanged.
+The web management screen consumes the emitted URL. No native receiver or
+management caller was found; no Jellyfin-protocol endpoint needs migration.
