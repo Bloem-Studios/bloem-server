@@ -1680,8 +1680,8 @@ they do not promise that a database or other runtime dependency is healthy.
 
 `timeseries`, `playback_activity`, `top_activity`, `health`, `watch_providers` and
 `downloads_stats` are true for the existing v2 dashboard operations.
-`server_layouts` and `log_level_list` are false while the corresponding v2 layout
-lifecycle and multi-level application-log reader remain unavailable. Clients
+`server_layouts` remains false while the v2 layout lifecycle is unavailable.
+`log_level_list` is true for the accepted multi-level application-log reader. Clients
 must not infer v2 support from the bridge's independently retained capabilities.
 
 ### Retained application-log read in v2

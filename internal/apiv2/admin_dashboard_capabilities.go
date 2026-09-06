@@ -17,10 +17,10 @@ type AdminDashboardCapabilities struct {
 type AdminDashboardCapabilitiesOutput struct{ Body AdminDashboardCapabilities }
 
 func registerAdminDashboardCapabilities(reg *Registry) {
-	op := Operation{Operation: humaOp("GET", Prefix+"/admin/dashboard/capabilities", "getAdminDashboardCapabilities", "admin-observability", "Discover dashboard features supported by v2 in this build. Support does not promise dependency readiness; layout storage and multi-level log filtering are not yet available on v2."), Class: ClassActingAdmin, DemoRestricted: true}
+	op := Operation{Operation: humaOp("GET", Prefix+"/admin/dashboard/capabilities", "getAdminDashboardCapabilities", "admin-observability", "Discover dashboard features supported by v2 in this build. Support does not promise dependency readiness; layout storage is not yet available on v2."), Class: ClassActingAdmin, DemoRestricted: true}
 	Register(reg, op, func(context.Context, *struct{}) (*AdminDashboardCapabilitiesOutput, error) {
 		return &AdminDashboardCapabilitiesOutput{Body: AdminDashboardCapabilities{
-			Timeseries: true, PlaybackActivity: true, TopActivity: true, Health: true, WatchProviders: true, DownloadsStats: true,
+			Timeseries: true, PlaybackActivity: true, TopActivity: true, Health: true, WatchProviders: true, DownloadsStats: true, LogLevelList: true,
 		}}, nil
 	})
 }

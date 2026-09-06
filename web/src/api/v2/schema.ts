@@ -751,7 +751,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Discover dashboard features supported by v2 in this build. Support does not promise dependency readiness; layout storage and multi-level log filtering are not yet available on v2. */
+    /** Discover dashboard features supported by v2 in this build. Support does not promise dependency readiness; layout storage is not yet available on v2. */
     get: operations["getAdminDashboardCapabilities"];
     put?: never;
     post?: never;
