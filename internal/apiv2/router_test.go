@@ -234,6 +234,8 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"GET " + Prefix + "/admin/settings/sections",
 		"GET " + Prefix + "/admin/playback-routing/capabilities",
 		"GET " + Prefix + "/admin/jellyfin-compat/status",
+		"PATCH /api/v2/admin/jellyfin-compat/settings",
+		"GET /api/v2/admin/dashboard/capabilities",
 		"POST " + Prefix + "/downloads/subscriptions",
 		"PATCH " + Prefix + "/downloads/subscriptions/{id}",
 		"DELETE " + Prefix + "/downloads/subscriptions/{id}",
