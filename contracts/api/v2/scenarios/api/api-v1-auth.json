@@ -6767,7 +6767,69 @@
             ]
           },
           "notes": "Accidental: /auth/me, /auth/logout, /auth/sessions, and /auth/impersonation/end call extractClaims on the raw header instead of reading the middleware's claims, so API keys are rejected after authenticating. Flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve the original key authority oracle. V2 uses typed Problems and permits unscoped account reads. Observe actual asynchronous last-used commits only for middleware-admitted keys; scope/public refusals do not touch usage.",
+            "recorded_in": "internal/scenariocatalog/executor/key_authority_usage_pairing_test.go",
+            "operation_id": "getCurrentUser",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/me"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "id",
+                    "username",
+                    "email",
+                    "role",
+                    "permissions",
+                    "download_allowed"
+                  ]
+                },
+                {
+                  "pointer": "/id",
+                  "op": "equals",
+                  "value": "${admin_user_id}"
+                },
+                {
+                  "pointer": "/username",
+                  "op": "equals",
+                  "value": "${admin_username}"
+                },
+                {
+                  "pointer": "/role",
+                  "op": "equals",
+                  "value": "admin"
+                },
+                {
+                  "pointer": "/download_allowed",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/impersonation",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "me.scoped_api_key",
@@ -6822,7 +6884,63 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve the original key authority oracle. V2 uses typed Problems and permits unscoped account reads. Observe actual asynchronous last-used commits only for middleware-admitted keys; scope/public refusals do not touch usage.",
+            "recorded_in": "internal/scenariocatalog/executor/key_authority_usage_pairing_test.go",
+            "operation_id": "getCurrentUser",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/account/me"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "me.impersonation",
@@ -9465,7 +9583,63 @@
             ]
           },
           "notes": "Same extractClaims re-parse as /auth/me; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve the original key authority oracle. V2 uses typed Problems and permits unscoped account reads. Observe actual asynchronous last-used commits only for middleware-admitted keys; scope/public refusals do not touch usage.",
+            "recorded_in": "internal/scenariocatalog/executor/key_authority_usage_pairing_test.go",
+            "operation_id": "logout",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/logout"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "logout.no_token",

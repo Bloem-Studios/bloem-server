@@ -457,7 +457,63 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve the original key authority oracle. V2 uses typed Problems and permits unscoped account reads. Observe actual asynchronous last-used commits only for middleware-admitted keys; scope/public refusals do not touch usage.",
+            "recorded_in": "internal/scenariocatalog/executor/key_authority_usage_pairing_test.go",
+            "operation_id": "listPersonalAPIKeys",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_list.empty",
@@ -645,7 +701,63 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve the original key authority oracle. V2 uses typed Problems and permits unscoped account reads. Observe actual asynchronous last-used commits only for middleware-admitted keys; scope/public refusals do not touch usage.",
+            "recorded_in": "internal/scenariocatalog/executor/key_authority_usage_pairing_test.go",
+            "operation_id": "listPersonalAPIKeys",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -1373,7 +1485,66 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve the original key authority oracle. V2 uses typed Problems and permits unscoped account reads. Observe actual asynchronous last-used commits only for middleware-admitted keys; scope/public refusals do not touch usage.",
+            "recorded_in": "internal/scenariocatalog/executor/key_authority_usage_pairing_test.go",
+            "operation_id": "createPersonalAPIKey",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/api-keys",
+              "body": {
+                "label": "x"
+              }
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_create.demo",
@@ -1909,7 +2080,61 @@
           "expect": {
             "status": 200
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve the original key authority oracle. V2 uses typed Problems and permits unscoped account reads. Observe actual asynchronous last-used commits only for middleware-admitted keys; scope/public refusals do not touch usage.",
+            "recorded_in": "internal/scenariocatalog/executor/key_authority_usage_pairing_test.go",
+            "operation_id": "getPersonalAPIKeyScopes",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/api-keys/scopes"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "available",
+                    "scopes"
+                  ]
+                },
+                {
+                  "pointer": "/available",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/scopes",
+                  "op": "length",
+                  "value": 2
+                },
+                {
+                  "pointer": "/scopes/0/name",
+                  "op": "equals",
+                  "value": "admin:users"
+                },
+                {
+                  "pointer": "/scopes/1/name",
+                  "op": "equals",
+                  "value": "admin:access-groups:read"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "scopes.shape",
@@ -2677,7 +2902,63 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserve the original key authority oracle. V2 uses typed Problems and permits unscoped account reads. Observe actual asynchronous last-used commits only for middleware-admitted keys; scope/public refusals do not touch usage.",
+            "recorded_in": "internal/scenariocatalog/executor/key_authority_usage_pairing_test.go",
+            "operation_id": "revokePersonalAPIKey",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/api-keys/1"
+            },
+            "expect": {
+              "status": 403,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 403
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/permission_denied$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/access_token",
+                  "op": "absent"
+                },
+                {
+                  "pointer": "/refresh_token",
+                  "op": "absent"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "keys_delete.demo",
