@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { CheckCircle2, Pencil, Plus, Trash2, XCircle } from "lucide-react";
 import type {
   AutoscanConnection,
@@ -119,6 +119,13 @@ export default function ConnectionsPanel() {
   const testConnection = useTestAutoscanConnection();
 
   const [dialog, setDialog] = useState<DialogState>(BLANK_DIALOG);
+  const activeDialog = useRef<DialogState | null>(dialog);
+  useLayoutEffect(() => {
+    activeDialog.current = dialog;
+    return () => {
+      activeDialog.current = null;
+    };
+  }, [dialog]);
   const [deleteTarget, setDeleteTarget] = useState<AutoscanConnection | null>(null);
   const [testOutcome, setTestOutcome] = useState<{
     scope: DialogState;
@@ -254,7 +261,11 @@ export default function ConnectionsPanel() {
     if (dialog.editing) {
       updateConnection.mutate({ id: dialog.editing.id, body }, { onSuccess: closeDialog });
     } else {
-      createConnection.mutate(body, { onSuccess: closeDialog });
+      createConnection.mutate(body, {
+        onSuccess: () => {
+          if (activeDialog.current === dialog) closeDialog();
+        },
+      });
     }
   }
 

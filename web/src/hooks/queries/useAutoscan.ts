@@ -95,22 +95,76 @@ export function useAutoscanConnections() {
   });
 }
 
+type AutoscanConnectionCreationIntent = {
+  body: AutoscanConnectionInput;
+  profileContext: ProfileRequestContextSnapshot;
+};
+function captureConnectionCreation(
+  body: AutoscanConnectionInput,
+): AutoscanConnectionCreationIntent {
+  const profileContext = captureProfileRequestContext();
+  if (!profileContext) throw new StaleApiRequestContextError();
+  return { body: { ...body }, profileContext };
+}
 export function useCreateAutoscanConnection() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: AutoscanConnectionInput) =>
-      api<AutoscanConnection>("/admin/autoscan/connections", {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    mutationFn: async ({
+      body,
+      profileContext,
+    }: AutoscanConnectionCreationIntent): Promise<AutoscanConnection> => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const result = await v2("POST /api/v2/admin/autoscan/connections", {
+        body: { ...body, request_integration_id: body.request_integration_id ?? undefined },
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return result;
+    },
+    retry: false,
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Autoscan connection created");
       queryClient.invalidateQueries({ queryKey: adminKeys.autoscanConnections() });
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to create autoscan connection");
+    onError: (_error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        "Connection creation could not be confirmed. Refresh connections before submitting again.",
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (
+      body: AutoscanConnectionInput,
+      options?: {
+        onSuccess?: (result: AutoscanConnection) => void;
+        onError?: (error: Error) => void;
+      },
+    ) => {
+      let intent: AutoscanConnectionCreationIntent;
+      try {
+        intent = captureConnectionCreation(body);
+      } catch {
+        options?.onError?.(new StaleApiRequestContextError());
+        return;
+      }
+      mutation.mutate(intent, {
+        onSuccess: (result) => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onSuccess?.(result);
+        },
+        onError: (error) => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onError?.(error);
+        },
+      });
+    },
+    mutateAsync: (body: AutoscanConnectionInput) =>
+      mutation.mutateAsync(captureConnectionCreation(body)),
+  };
 }
 
 export function useUpdateAutoscanConnection() {

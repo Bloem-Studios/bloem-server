@@ -1293,3 +1293,23 @@ func (h *AutoscanHandler) TestAdminAutoscanConnection(ctx context.Context, in Ad
 	}
 	return h.svc.TestConnection(ctx, autoscan.Connection{BaseURL: strings.TrimSpace(in.BaseURL), APIKeyRef: strings.TrimSpace(in.APIKeyRef), RequestIntegrationID: in.RequestIntegrationID})
 }
+
+// AdminAutoscanConnectionCreateInput retains the existing write-only credential input.
+type AdminAutoscanConnectionCreateInput = autoscanConnectionInput
+
+var ErrAdminAutoscanConnectionCreateUnavailable = errors.New("autoscan connection creation unavailable")
+var ErrAdminAutoscanConnectionCreateInvalid = errors.New("autoscan connection name and URL or integration are required")
+
+func (h *AutoscanHandler) CreateAdminAutoscanConnection(ctx context.Context, in AdminAutoscanConnectionCreateInput) (AdminAutoscanConnectionView, error) {
+	if h == nil || h.repo == nil {
+		return AdminAutoscanConnectionView{}, ErrAdminAutoscanConnectionCreateUnavailable
+	}
+	if strings.TrimSpace(in.Name) == "" || validateConnectionInput(in) != nil {
+		return AdminAutoscanConnectionView{}, ErrAdminAutoscanConnectionCreateInvalid
+	}
+	created, err := h.repo.CreateConnection(ctx, autoscan.Connection{Name: strings.TrimSpace(in.Name), Kind: strings.TrimSpace(in.Kind), BaseURL: strings.TrimSpace(in.BaseURL), APIKeyRef: strings.TrimSpace(in.APIKeyRef), RequestIntegrationID: normalizeRequestIntegrationID(in.RequestIntegrationID)})
+	if err != nil {
+		return AdminAutoscanConnectionView{}, err
+	}
+	return connectionResponse(created), nil
+}

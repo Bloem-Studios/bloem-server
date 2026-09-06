@@ -1841,11 +1841,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/autoscan/connections",
+        "operation_id": "createAdminAutoscanConnection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Creates a server-generated connection with no replay identity or deduplication. Store/transport failure may follow a committed insert; reconcile explicitly and never automatically retry or replace."
     },
     {
       "listener": "api",

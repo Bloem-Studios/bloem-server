@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Plus, XCircle } from "lucide-react";
 
 import type { AutoscanConnectionTestInput, AutoscanConnectionTestResult } from "@/api/types";
@@ -84,6 +84,13 @@ export function InlineConnectionPicker({
     () => ({ adding, name, baseUrl, apiKey, reuseId, manualKind, value, idPrefix, kindsScope }),
     [adding, name, baseUrl, apiKey, reuseId, manualKind, value, idPrefix, kindsScope],
   );
+  const activeDraft = useRef<object | null>(testScope);
+  useLayoutEffect(() => {
+    activeDraft.current = testScope;
+    return () => {
+      activeDraft.current = null;
+    };
+  }, [testScope]);
   const [testOutcome, setTestOutcome] = useState<{
     scope: object;
     result: AutoscanConnectionTestResult;
@@ -168,6 +175,7 @@ export function InlineConnectionPicker({
 
     createConnection.mutate(body, {
       onSuccess: (created) => {
+        if (activeDraft.current !== testScope) return;
         // Select what was just made, so the operator never has to find it.
         onChange(created.id);
         setAdding(false);

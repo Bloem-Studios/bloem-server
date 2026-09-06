@@ -419,6 +419,7 @@ export const v2Operations = {
   "POST /api/v2/account/password": "changePassword",
   "POST /api/v2/admin/access-groups": "createAdminAccessGroup",
   "POST /api/v2/admin/api-keys": "createAdminAPIKey",
+  "POST /api/v2/admin/autoscan/connections": "createAdminAutoscanConnection",
   "POST /api/v2/admin/autoscan/connections/test": "testAdminAutoscanConnection",
   "POST /api/v2/admin/catalog/export": "exportAdminCatalog",
   "POST /api/v2/admin/catalog/export-jobs": "createCatalogExportJob",

@@ -1884,3 +1884,19 @@ or authentication replay, fallback, connection write or durable job. Both web
 connection dialogs capture draft/authority at the gesture and reject results from
 replaced authority, older drafts or a closed/reopened dialog. The check remains
 advisory and never blocks the separate save operation.
+
+### Creating an autoscan connection in v2
+
+`POST /api/v2/admin/autoscan/connections` creates one stored connection and returns
+201 with the credential-free connection projection. Name is required, with either
+a base URL or a Requests integration link. Text is trimmed and blank links become
+null. Credentials remain input-only; has_api_key reports presence. The existing
+store generates the connection ID, encrypts with its existing row-ID binding and
+performs one INSERT. No probe, provider update or source creation occurs.
+
+The acting-admin/demo-gated operation is nonretryable and has no replay identity
+or durable job. Failed completion may follow a committed insert; explicitly refresh
+and reconcile before submitting again. Both dialogs capture copied body/authority
+before queueing, disable retries/auth replay and reject stale completion. A late
+result cannot close a newer connection draft or select the created ID in a changed
+inline source draft. Update/delete and source writes remain separate migrations.
