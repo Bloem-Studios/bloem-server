@@ -2186,6 +2186,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		return cfg.Playback.FFmpegPath, cfg.Playback.HWAccel, cfg.Playback.HWDevice
 	})
+	v2deps.AdminTelemetryParity = &handlers.StreamTelemetryParityHandler{Registry: deps.StreamTelemetry, ViewCache: deps.StreamTelemetryViewCache, Pool: deps.DB, Redis: deps.RedisClient}
 	v2deps.AdminFilesystem = handlers.NewFilesystemHandler()
 	if adminHandler != nil {
 		v2deps.AdminDashboardInsights = adminHandler

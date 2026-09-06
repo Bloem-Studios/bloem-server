@@ -1829,3 +1829,23 @@ source kind or bad continuation rather than publishing a partial list. It captur
 authority and keys cached success by non-secret PIN generation. Existing legacy
 repository writes invalidate the shared key prefix; their transport is unchanged.
 Plugin installation/runtime compatibility remains a separate gate.
+
+### Stream telemetry parity in v2
+
+`GET /api/v2/admin/stream-telemetry/parity` compares the cached global telemetry
+view with bounded PostgreSQL and Redis legacy session reads. It requires an acting
+administrator. A missing comparison service returns503; disabled telemetry returns
+200 with enabled:false and a reason. An unbuilt view and unavailable legacy source
+remain distinct from an empty successful comparison. No publisher, session storage,
+worker protocol or cutover behavior changes.
+
+The view retains availability, staleness, completeness, missing publishers, clock
+skew and refresh counters; built_at uses UTC milliseconds. Source/cache errors are
+masked. Existing differences retain their explicit truncation counts and absent
+field counts. Each source exposes the existing60000record legacy_scan_limit and
+legacy_may_be_truncated: PostgreSQL reaching the cap is conservatively uncertain;
+Redis uses its actual scan truncation signal. Undecodable Redis records remain
+noted. Reads are not a cross-store snapshot and may race session updates. A report's
+agrees flag ignores fields absent on one side and does not establish completeness
+or authorize retirement/cutover. No first-party web, Swift or Kotlin caller exists
+in the inspected source inventory.
