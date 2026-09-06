@@ -43,11 +43,24 @@ func (m *ViewerAccessMiddleware) RequireViewerAccess(next http.Handler) http.Han
 			return
 		}
 		input := access.ResolveInput{
+<<<<<<< HEAD
 			UserID:              claims.UserID,
 			SessionID:           claims.SessionID,
 			ProfileID:           profileID,
 			ProfileToken:        r.Header.Get("X-Profile-Token"),
 			SkipPINVerification: claims.TokenType == auth.TokenTypeAPIKey || claims.AuthMethod == auth.AuthMethodDirectProfile || claims.AuthMethod == auth.AuthMethodAudienceTicket,
+=======
+			UserID:       claims.UserID,
+			SessionID:    claims.SessionID,
+			ProfileID:    profileID,
+			ProfileToken: r.Header.Get("X-Profile-Token"),
+			// API keys have no PIN proof by design. A display token was
+			// issued to an already verified profile session and carries the
+			// profile in its claims; the profile still has to exist and be
+			// owned by the user, which Resolve checks.
+			SkipPINVerification: claims.TokenType == auth.TokenTypeAPIKey ||
+				claims.TokenType == auth.TokenTypeApplePushDisplay,
+>>>>>>> upstream/main
 		}
 
 		scope, err := m.resolver.Resolve(r.Context(), input)

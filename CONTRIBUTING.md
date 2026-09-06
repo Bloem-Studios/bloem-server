@@ -110,27 +110,63 @@ web bundle. `make lint` runs the full local Go and frontend linters; CI scopes
 its Go lint gate to changed lines because the repository has pre-existing
 findings. `go tool govulncheck ./...` is CI's reachable Go vulnerability scan.
 
+<<<<<<< HEAD
 If your change spans this server and Bloem's own private plugin SDK, local iteration through
 an untracked `go.work` workspace is expected. Do not rely on that workspace in repo-tracked
 config or release pipelines. CI validates this repo with `GOWORK=off`, and any new SDK package
 or symbol must come from a pushed, tagged release of the SDK before the change is ready to merge
 — the same discipline Silo's own `silo-plugin-sdk` workflow uses, applied to Bloem's separate,
 private SDK.
+=======
+Summarize the relevant commands and results in the pull request. Name required
+checks that were skipped or failed, and include short output excerpts only when
+they help explain a failure. Describe the test environment without identifying
+private infrastructure. Never claim a check passed or ran on a target it did not.
+>>>>>>> upstream/main
 
 ## Style
 
+<<<<<<< HEAD
 - One thing per MR. Don't mix unrelated changes.
 - Follow existing patterns.
 - Comments for non-obvious things only.
 
 ## For AI Agents
+=======
+Disclose AI use in every issue and pull request, or state "No AI used" when true.
+The [AI-assisted contribution policy](docs/ai-contributions.md) covers contributor
+responsibility, evidence, and enforcement. Use the disclosure fields in the PR
+template or issue form.
+>>>>>>> upstream/main
 
 If you're an LLM working on this codebase: read `CLAUDE.md` (or `AGENTS.md` when available) for project-specific instructions, architecture reference, and verification requirements. The rules in this file apply to you too — especially the parts about not submitting slop and running verification before declaring work complete.
 
+<<<<<<< HEAD
 ## Be Realistic
+=======
+Use a [Conventional Commit](https://www.conventionalcommits.org/) title and fill
+in the pull request template. Link the issue or scope item for non-trivial
+work; write `Related issue: N/A — narrow fix` only when no prior coordination
+was needed. Keep the commit history intentional and the diff limited to the
+stated problem. Keep the description proportional to the change; omit session
+history, full logs, and private report links. Follow the
+[public-content and media rules](AGENTS.md#pull-requests). Screenshots and recordings
+are not routine PR requirements; attach them only when explicitly requested.
+>>>>>>> upstream/main
 
 Opening a merge request doesn't create an obligation on my side. I might close it, ignore it, ask you to shrink it, or reimplement the idea myself later. The codebase is moving fast and sometimes the best response to a good PR is "thanks, but I already went a different direction."
 
 If you're fine with that, welcome aboard.
 
+<<<<<<< HEAD
 If you're not sure whether something is in scope, open an issue and ask. Always better than building something that needs to be reshaped.
+=======
+## Instructions for coding agents
+
+Coding agents must read [AGENTS.md](AGENTS.md) before changing the repository
+(`CLAUDE.md` points to the same file). This guide and the
+[AI-assisted contribution policy](docs/ai-contributions.md) apply to agent and
+human authors equally. Before creating or updating an issue or pull request,
+agents must apply the checked-in [unslop skill](.agents/skills/unslop/SKILL.md) to
+the title and body, as required by the [Writing policy](AGENTS.md#writing).
+>>>>>>> upstream/main

@@ -1294,6 +1294,8 @@ type sectionItemImageURLs struct {
 // already-validated library scope of library-scoped endpoints (nil for the
 // home/profile surfaces) so play-target resolution stays scoped to it.
 func (h *SectionHandler) buildSectionsResponse(r *http.Request, withItems []sections.SectionWithItems, libraryID *int) homeSectionsResponse {
+	deduplicateSectionItems(r.Context(), withItems)
+
 	overlaySummaries := make(map[string]*models.OverlaySummary)
 	contentIDs := make([]string, 0)
 	seen := make(map[string]struct{})
@@ -1405,6 +1407,7 @@ func (h *SectionHandler) buildSectionsResponse(r *http.Request, withItems []sect
 	return resp
 }
 
+<<<<<<< HEAD
 // promoSectionItem projects an S-2 card onto the section item union: the
 // `promo` variant (type "promo", content_id = promotion id, title =
 // headline). Media fields stay at their zero values.
@@ -1417,6 +1420,57 @@ func promoSectionItem(card promotions.Card) sectionItemResponse {
 		Genres:    []string{},
 		Keywords:  []string{},
 		Promo:     &c,
+=======
+// deduplicateSectionItems enforces the wire-level invariant that a non-empty
+// content ID appears at most once within one section. Invalid cards are dropped
+// because downstream enrichment and keyed client layouts require a usable
+// content ID. The first occurrence wins so query ordering and per-card fields
+// such as PlayContentID stay intact. Each section has its own seen set because
+// overlap between different rows is controlled separately by
+// applyDiversityFilter.
+func deduplicateSectionItems(ctx context.Context, withItems []sections.SectionWithItems) {
+	for i := range withItems {
+		if len(withItems[i].Items) == 0 {
+			continue
+		}
+
+		originalCount := len(withItems[i].Items)
+		seen := make(map[string]struct{}, len(withItems[i].Items))
+		kept := withItems[i].Items[:0]
+		duplicateCount := 0
+		invalidCount := 0
+		for _, item := range withItems[i].Items {
+			if item == nil || item.ContentID == "" {
+				invalidCount++
+				continue
+			}
+			if _, duplicate := seen[item.ContentID]; duplicate {
+				duplicateCount++
+				continue
+			}
+			seen[item.ContentID] = struct{}{}
+			kept = append(kept, item)
+		}
+		if duplicateCount == 0 && invalidCount == 0 {
+			continue
+		}
+
+		withItems[i].Items = kept
+		// A total no larger than the rendered slice is a rendered-count total
+		// and can be repaired exactly. A larger total describes the full source,
+		// which this limited slice cannot safely recompute; its producer owns the
+		// unique full-count invariant.
+		if withItems[i].TotalCount <= originalCount {
+			withItems[i].TotalCount = len(kept)
+		}
+		slog.WarnContext(ctx, "removed invalid or duplicate section items",
+			"component", "api",
+			"section_id", withItems[i].ID,
+			"type", withItems[i].SectionType,
+			"duplicate_count", duplicateCount,
+			"invalid_count", invalidCount,
+		)
+>>>>>>> upstream/main
 	}
 }
 

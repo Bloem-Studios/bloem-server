@@ -64,6 +64,7 @@ WEBTEST_KNOWN_FAILURES := \
 	--exclude src/pages/Catalog.test.tsx \
 	--exclude src/pages/ItemDetail/SeasonContent.test.tsx \
 	--exclude src/pages/LibraryRecommended.test.tsx \
+<<<<<<< HEAD
 	--exclude src/pages/setup-wizard/steps/ServerStorageStep.test.tsx \
 	--exclude src/player/hooks/useASSSubtitles.test.tsx \
 	--exclude src/utils/storage.test.ts \
@@ -72,6 +73,9 @@ WEBTEST_KNOWN_FAILURES := \
 	--exclude src/hooks/useTheme.test.ts \
 	--exclude src/hooks/appearanceCacheOwnership.test.tsx \
 	--exclude src/contexts/AdminContextProvider.test.tsx
+=======
+	--exclude src/pages/setup-wizard/steps/ServerStorageStep.test.tsx
+>>>>>>> upstream/main
 
 # The Go binary embeds the built frontend, so every Go build and test needs
 # web/dist to exist. Tests never serve it, so a placeholder is enough; `make
@@ -248,7 +252,7 @@ verify-client-dtos:
 # this would let the contract and the implementation drift apart in silence.
 PLAYBACK_FIXTURE_DIR := internal/playback/testdata/protocol_v3
 PLAYBACK_SCHEMA_FIXTURE_DIR := docs/design/schemas/playback-v3/v3/fixtures/valid
-PLAYBACK_WIRE_FIXTURES := start_request.json replan_request.json decision_response.json capability_response.json error_response.json route_event.json
+PLAYBACK_WIRE_FIXTURES := start_request.json replan_request.json decision_response.json native-decision_response.json capability_response.json error_response.json route_event.json
 
 playback-fixtures:
 	go run ./cmd/playbackfixtures -out $(PLAYBACK_FIXTURE_DIR)
