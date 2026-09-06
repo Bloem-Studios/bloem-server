@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, captureProfileRequestContext } from "@/api/client";
+import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
 import {
   captureNotificationAuthority,
   notificationScope,
@@ -12,11 +12,16 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from "@/api/v2/notifications";
+import {
+  getNotificationEmailPreferences,
+  updateNotificationEmailPreferences,
+  getNotificationDiscordPreferences,
+  updateNotificationDiscordPreferences,
+} from "@/api/v2/notificationChannels";
 import type {
   AppNotification,
   NotificationDiscordLinkInit,
   NotificationDiscordMode,
-  NotificationDiscordPreferences,
   NotificationEmailPreferences,
   NotificationEmailPreferencesUpdate,
   NotificationListResponse,
@@ -136,25 +141,32 @@ export function useUpdateNotificationPreferences() {
 }
 
 export function useEmailNotificationPreferences(enabled = true) {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: notificationKeys.emailPreferences(),
-    queryFn: () => api<NotificationEmailPreferences>("/notifications/email-preferences"),
-    enabled,
+    queryKey: [...notificationKeys.emailPreferences(), notificationScope(context)],
+    queryFn: () => getNotificationEmailPreferences(context ?? captureNotificationAuthority()),
+    enabled: enabled && context !== null,
+    retry: false,
   });
 }
 
 export function useUpdateEmailNotificationPreferences() {
   const queryClient = useQueryClient();
+  const context = captureProfileRequestContext();
   return useMutation({
+    retry: false,
     mutationFn: (update: NotificationEmailPreferencesUpdate) =>
-      api<NotificationEmailPreferences>("/notifications/email-preferences", {
-        method: "PUT",
-        body: JSON.stringify(update),
-      }),
+      updateNotificationEmailPreferences(update, context ?? captureNotificationAuthority()),
     onSuccess: (prefs) => {
-      queryClient.setQueryData(notificationKeys.emailPreferences(), prefs);
+      if (!context) return;
+      requireNotificationAuthority(context);
+      queryClient.setQueryData(
+        [...notificationKeys.emailPreferences(), notificationScope(context)],
+        prefs,
+      );
     },
     onError: (error) => {
+      if (error instanceof StaleApiRequestContextError) return;
       toast.error(error instanceof Error ? error.message : "Failed to save email preferences");
     },
   });
@@ -162,17 +174,25 @@ export function useUpdateEmailNotificationPreferences() {
 
 export function useRequestEmailNotificationAddress() {
   const queryClient = useQueryClient();
+  const context = captureProfileRequestContext();
   return useMutation({
+    retry: false,
     mutationFn: (email: string) =>
       api<NotificationEmailPreferences>("/notifications/email-preferences/address", {
         method: "PUT",
         body: JSON.stringify({ email }),
       }),
     onSuccess: (prefs) => {
-      queryClient.setQueryData(notificationKeys.emailPreferences(), prefs);
+      if (!context) return;
+      requireNotificationAuthority(context);
+      queryClient.setQueryData(
+        [...notificationKeys.emailPreferences(), notificationScope(context)],
+        prefs,
+      );
       toast.success(`Verification email sent to ${prefs.pending_email}`);
     },
     onError: (error) => {
+      if (error instanceof StaleApiRequestContextError) return;
       toast.error(error instanceof Error ? error.message : "Failed to send the verification email");
     },
   });
@@ -180,41 +200,56 @@ export function useRequestEmailNotificationAddress() {
 
 export function useClearEmailNotificationAddress() {
   const queryClient = useQueryClient();
+  const context = captureProfileRequestContext();
   return useMutation({
+    retry: false,
     mutationFn: () =>
       api<NotificationEmailPreferences>("/notifications/email-preferences/address", {
         method: "DELETE",
       }),
     onSuccess: (prefs) => {
-      queryClient.setQueryData(notificationKeys.emailPreferences(), prefs);
+      if (!context) return;
+      requireNotificationAuthority(context);
+      queryClient.setQueryData(
+        [...notificationKeys.emailPreferences(), notificationScope(context)],
+        prefs,
+      );
     },
     onError: (error) => {
+      if (error instanceof StaleApiRequestContextError) return;
       toast.error(error instanceof Error ? error.message : "Failed to remove the custom address");
     },
   });
 }
 
 export function useDiscordNotificationPreferences(enabled = true) {
+  const context = captureProfileRequestContext();
   return useQuery({
-    queryKey: notificationKeys.discordPreferences(),
-    queryFn: () => api<NotificationDiscordPreferences>("/notifications/discord-preferences"),
-    enabled,
+    queryKey: [...notificationKeys.discordPreferences(), notificationScope(context)],
+    queryFn: () => getNotificationDiscordPreferences(context ?? captureNotificationAuthority()),
+    enabled: enabled && context !== null,
+    retry: false,
   });
 }
 
 export function useUpdateDiscordNotificationPreferences() {
   const queryClient = useQueryClient();
+  const context = captureProfileRequestContext();
   return useMutation({
+    retry: false,
     mutationFn: (update: { mode: NotificationDiscordMode }) =>
-      api<NotificationDiscordPreferences>("/notifications/discord-preferences", {
-        method: "PUT",
-        body: JSON.stringify(update),
-      }),
+      updateNotificationDiscordPreferences(update, context ?? captureNotificationAuthority()),
     onSuccess: (prefs) => {
-      queryClient.setQueryData(notificationKeys.discordPreferences(), prefs);
+      if (!context) return;
+      requireNotificationAuthority(context);
+      queryClient.setQueryData(
+        [...notificationKeys.discordPreferences(), notificationScope(context)],
+        prefs,
+      );
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to save Discord preferences");
+      if (error instanceof StaleApiRequestContextError) return;
+      toast.error(error instanceof Error ? error.message : "Failed to save discord preferences");
     },
   });
 }

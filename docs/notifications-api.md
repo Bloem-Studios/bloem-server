@@ -150,3 +150,28 @@ shared 500 `internal_error`; other existing supported statuses retain their
 meaning. V1 response statuses, error codes, timestamp format, and headers remain
 unchanged. Native clients and Jellyfin compatibility do not manage relay
 credentials and need no consumer change.
+
+### API v2 email and Discord preferences
+
+`GET` and `PUT /api/v2/notifications/email-preferences` read and set the acting
+profile's email mode. The response retains `mode`, `custom_email`,
+`pending_email`, and `can_edit_address`. Each profile uses its own verified
+address; there is no login-account email fallback. Address verification and
+removal remain separate bridge operations pending their durable dispatch and
+callback migration.
+
+`GET` and `PUT /api/v2/notifications/discord-preferences` read and set the login
+account's Discord mode. A selected profile is optional; when supplied, the
+existing viewer/PIN gate still validates it. Responses retain `linked`, optional
+`discord_username` and `link_failure`, and `mode`. The underlying Discord user
+identifier and credentials are not returned.
+
+Both mode writes accept only `mode`: `off`, `per_episode`, `daily_digest`, or
+`per_episode_and_digest`. Existing allowance, verified-address, and linked-account
+checks still apply; rejected modes return a 422 problem. Writes call the existing
+setter once and then reread state. They are `non_retryable`: these setters also
+reset delivery backoff and can advance the delivery watermark. The v2 ports do
+not change those effects or present repeated writes as harmless. Web queries use
+captured-authority cache keys and mode writes disable automatic retries and
+401 authentication replay. No current native email/Discord preference caller was
+found; Jellyfin compatibility has no equivalent preference surface.

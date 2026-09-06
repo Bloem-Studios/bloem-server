@@ -101,3 +101,44 @@ it("validates cursor traversal while allowing ordinary refetch of cached pages",
   await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
   expect(result.current.isError).toBe(false);
 });
+
+it("keeps the scoped email reader current after the retained bridge address writer", async () => {
+  const { useEmailNotificationPreferences, useRequestEmailNotificationAddress } =
+    await import("./notifications");
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: 3 } },
+  });
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client }, children);
+  const original = { mode: "off", custom_email: "", pending_email: "", can_edit_address: true };
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify(original), { headers: { "Content-Type": "application/json" } }),
+    )
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify({ ...original, pending_email: "pending@example.test" }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  vi.stubGlobal("fetch", fetch);
+  const { result } = renderHook(
+    () => ({
+      query: useEmailNotificationPreferences(),
+      request: useRequestEmailNotificationAddress(),
+    }),
+    { wrapper },
+  );
+  await waitFor(() => expect(result.current.query.data).toEqual(original));
+  await act(async () => {
+    await result.current.request.mutateAsync("pending@example.test");
+  });
+  await waitFor(() =>
+    expect(result.current.query.data?.pending_email).toBe("pending@example.test"),
+  );
+  expect(String(fetch.mock.calls[0]![0])).toContain("/api/v2/notifications/email-preferences");
+  expect(String(fetch.mock.calls[1]![0])).toContain(
+    "/api/v1/notifications/email-preferences/address",
+  );
+  expect(fetch).toHaveBeenCalledTimes(2);
+});

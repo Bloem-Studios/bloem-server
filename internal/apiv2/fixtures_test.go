@@ -1634,6 +1634,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, adminCatalogTransferFixtureCases()...)
 	cases = append(cases, adminNotificationPushFixtureCases()...)
 	cases = append(cases, notificationRelayFixtureCases()...)
+	cases = append(cases, notificationChannelFixtureCases()...)
 	cases = append(cases, invitationFixtureCases()...)
 	cases = append(cases, adminAccountFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
@@ -1708,6 +1709,7 @@ func fixtureDeps() Dependencies {
 	deps.NotificationInbox = fixtureNotificationInbox()
 	deps.AdminNotificationPush = new(fakeAdminNotificationPush)
 	deps.NotificationRelay = new(fakeNotificationRelay)
+	deps.NotificationChannels = new(fakeNotificationChannels)
 	accounts := fixtureAdminAccounts()
 	accounts.allowImpersonation = true
 	deps.AdminAccounts = accounts

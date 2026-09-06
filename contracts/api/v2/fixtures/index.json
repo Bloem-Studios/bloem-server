@@ -7948,6 +7948,90 @@
       "body_file": "notification_apple_push_display.json"
     },
     {
+      "name": "notification_discord_mode",
+      "operation_id": "updateNotificationDiscordPreferences",
+      "scenario": "A mode mutation reports account state without leaking the linked identity token.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/notifications/discord-preferences",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        },
+        "body": "{\"mode\":\"off\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationDiscordPreferences",
+      "body_file": "notification_discord_mode.json"
+    },
+    {
+      "name": "notification_discord_preferences",
+      "operation_id": "getNotificationDiscordPreferences",
+      "scenario": "Discord preferences belong to the login account without requiring a selected profile.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/notifications/discord-preferences",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationDiscordPreferences",
+      "body_file": "notification_discord_preferences.json"
+    },
+    {
+      "name": "notification_email_mode",
+      "operation_id": "updateNotificationEmailPreferences",
+      "scenario": "The existing delivery mode setter is invoked once.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/notifications/email-preferences",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"mode\":\"off\"}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationEmailPreferences",
+      "body_file": "notification_email_mode.json"
+    },
+    {
+      "name": "notification_email_preferences",
+      "operation_id": "getNotificationEmailPreferences",
+      "scenario": "A child profile cannot edit its notification email address.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/notifications/email-preferences",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/NotificationEmailPreferences",
+      "body_file": "notification_email_preferences.json"
+    },
+    {
       "name": "notification_get_notification",
       "operation_id": "getNotification",
       "scenario": "Profile notification inbox with synthetic records.",
