@@ -28,7 +28,7 @@ func (f *fakeNotificationDestinations) ListNotificationWebPushPage(_ context.Con
 }
 func (f *fakeNotificationDestinations) ListNotificationWebhookPage(_ context.Context, profile string, limit int, after *notifications.Cursor) ([]notifications.Webhook, error) {
 	f.profile, f.limit = profile, limit
-	rows := []notifications.Webhook{{ID: "01", Name: "Example", Type: "generic", URLHost: "example.test", URLCiphertext: "sensitive-url", SigningSecretCiphertext: new("sensitive-secret"), CreatedAt: fixedTime()}, {ID: "02", Name: "Other", Type: "generic", URLHost: "example.test", CreatedAt: fixedTime()}}
+	rows := []notifications.Webhook{{ID: "01", ProfileID: profile, Revision: 7, Name: "Example", Type: "generic", URLHost: "example.test", URLCiphertext: "sensitive-url", SigningSecretCiphertext: new("sensitive-secret"), CreatedAt: fixedTime()}, {ID: "02", ProfileID: profile, Revision: 7, Name: "Other", Type: "generic", URLHost: "example.test", CreatedAt: fixedTime()}}
 	if after != nil {
 		rows = rows[1:]
 	}
@@ -196,7 +196,10 @@ func TestNotificationWebPushSubscribe(t *testing.T) {
 	requireProblem(t, do(t, NewHandler(deps), http.MethodPost, path, body, profileOwner()), TypeDependencyUnavailable)
 }
 
-func (f *fakeNotificationDestinations) DeleteNotificationWebhook(_ context.Context, profile, id string) error {
+func (f *fakeNotificationDestinations) DeleteNotificationWebhook(_ context.Context, profile, id string, check func(int64) error) error {
+	if err := check(7); err != nil {
+		return err
+	}
 	f.calls++
 	f.profile, f.deleted = profile, id
 	return nil
@@ -206,20 +209,35 @@ func TestNotificationWebhookDelete(t *testing.T) {
 	deps := pilotDeps(nil, nil)
 	deps.NotificationDestinations = f
 	h := NewHandler(deps)
-	path := Prefix + "/notifications/webhooks/row-one"
+	path := Prefix + "/notifications/webhooks/01"
+	page := do(t, h, http.MethodGet, Prefix+"/notifications/webhooks?limit=1", "", profileOwner())
+	var observed struct {
+		Items []struct {
+			ETag string `json:"etag"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(page.Body.Bytes(), &observed); err != nil || len(observed.Items) != 1 {
+		t.Fatalf("list: %s %v", page.Body.String(), err)
+	}
 	for range 2 {
-		rec := do(t, h, http.MethodDelete, path, "", profileOwner())
+		rec := do(t, h, http.MethodDelete, path, "", with(profileOwner(), "If-Match", observed.Items[0].ETag))
 		if rec.Code != 204 || rec.Body.Len() != 0 {
 			t.Fatalf("%d %s", rec.Code, rec.Body.String())
 		}
 	}
-	if f.calls != 2 || f.profile != "p-owner" || f.deleted != "row-one" {
+	if f.calls != 2 || f.profile != "p-owner" || f.deleted != "01" {
 		t.Fatalf("%+v", f)
 	}
 	requireProblem(t, do(t, h, http.MethodDelete, path, "", nil), TypeAuthenticationRequired)
 	requireProblem(t, do(t, h, http.MethodDelete, path, "", bearer(memberToken)), TypeValidationFailed)
 	if f.calls != 2 {
 		t.Fatal("unauthorized dispatch")
+	}
+	requireProblem(t, do(t, h, http.MethodDelete, path, "", profileOwner()), TypePreconditionRequired)
+	stale := do(t, h, http.MethodDelete, path, "", with(profileOwner(), "If-Match", notificationWebhookTag("p-owner", "01", 6).String()))
+	requireProblem(t, stale, TypePreconditionFailed)
+	if stale.Header().Get("ETag") != notificationWebhookTag("p-owner", "01", 7).String() || f.calls != 2 {
+		t.Fatal("stale deletion passed or validator missing")
 	}
 	deps.NotificationDestinations = nil
 	requireProblem(t, do(t, NewHandler(deps), http.MethodDelete, path, "", profileOwner()), TypeDependencyUnavailable)

@@ -23677,6 +23677,10 @@
           "enabled": {
             "type": "boolean"
           },
+          "etag": {
+            "description": "Original validator for conditional deletion; preserve unchanged with the observed row.",
+            "type": "string"
+          },
           "id": {
             "description": "Opaque identifier",
             "examples": [
@@ -23748,6 +23752,7 @@
           }
         },
         "required": [
+          "etag",
           "id",
           "name",
           "type",
@@ -119959,6 +119964,23 @@
         "operationId": "deleteNotificationWebhook",
         "parameters": [
           {
+            "description": "The resource's current ETag, or \"*\" to overwrite deliberately. A missing field is 428 precondition_required; a stale tag is 412 precondition_failed with the current ETag.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional second precondition, evaluated after If-Match succeeds: \"*\" or any tag matching the current representation is 412 precondition_failed with the current ETag.",
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "description": "The household profile acting for this request; it must belong to the authenticated account.",
             "in": "header",
             "name": "X-Profile-Id",
@@ -120044,6 +120066,24 @@
             },
             "description": "Not Acceptable"
           },
+          "412": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Precondition Failed",
+            "headers": {
+              "ETag": {
+                "description": "The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "422": {
             "content": {
               "application/problem+json": {
@@ -120053,6 +120093,16 @@
               }
             },
             "description": "Unprocessable Entity"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Precondition Required"
           },
           "429": {
             "content": {
@@ -120096,6 +120146,7 @@
         ],
         "x-silo-class": "profile_scoped",
         "x-silo-demo-restricted": true,
+        "x-silo-guarded": true,
         "x-silo-retry-safety": "natural_idempotent",
         "x-silo-service-backed": true
       }

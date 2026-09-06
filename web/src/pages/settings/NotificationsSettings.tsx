@@ -863,6 +863,7 @@ function WebhookCard({
   const test = useTestNotificationWebhook();
   const rotate = useRotateNotificationWebhookSecret();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteIntent, setDeleteIntent] = useState<{ id: string; etag: string } | null>(null);
   const [testResult, setTestResult] = useState<NotificationWebhookTestResult | null>(null);
 
   const lastSuccess = formatRelativeTime(webhook.last_success_at);
@@ -970,7 +971,10 @@ function WebhookCard({
           variant="outline"
           size="sm"
           className="text-destructive"
-          onClick={() => setConfirmDelete(true)}
+          onClick={() => {
+            setDeleteIntent({ id: webhook.id, etag: webhook.etag ?? "" });
+            setConfirmDelete(true);
+          }}
         >
           <Trash2 className="mr-1.5 h-3.5 w-3.5" />
           Delete
@@ -985,7 +989,10 @@ function WebhookCard({
         confirmLabel="Delete"
         variant="destructive"
         isPending={remove.isPending}
-        onConfirm={() => remove.mutate(webhook.id, { onSettled: () => setConfirmDelete(false) })}
+        onConfirm={() => {
+          if (deleteIntent)
+            remove.mutate(deleteIntent, { onSettled: () => setConfirmDelete(false) });
+        }}
       />
       {/* The edit dialog is hosted by the parent so state resets per webhook. */}
       {update.isPending && <span className="sr-only">Saving…</span>}

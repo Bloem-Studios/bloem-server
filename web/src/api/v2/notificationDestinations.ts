@@ -75,12 +75,13 @@ export async function deleteNotificationWebPushSubscription(
 }
 
 export async function deleteNotificationWebhook(
-  id: string,
+  intent: { id: string; etag: string },
   profileContext: ProfileRequestContextSnapshot,
 ) {
   requireNotificationAuthority(profileContext);
   await v2("DELETE /api/v2/notifications/webhooks/{id}", {
-    path: { id },
+    path: { id: intent.id },
+    headers: { "If-Match": intent.etag },
     profileContext,
     retryAuthentication: false,
   });

@@ -17,7 +17,7 @@ const (
 )
 
 type NotificationDestinationService interface {
-	DeleteNotificationWebhook(context.Context, string, string) error
+	DeleteNotificationWebhook(context.Context, string, string, func(int64) error) error
 	SubscribeNotificationWebPush(context.Context, int, string, string, string, string, string) (*notifications.WebPushSubscription, error)
 	UnsubscribeNotificationWebPush(context.Context, int, string, string) error
 	DeleteNotificationWebPushSubscription(context.Context, int, string, string) error
@@ -66,6 +66,7 @@ type NotificationWebPushSubscriptionListOutput struct {
 }
 
 type NotificationWebhookDestination struct {
+	ETag                   string          `json:"etag" doc:"Original validator for conditional deletion; preserve unchanged with the observed row."`
 	ID                     ID              `json:"id"`
 	Name                   string          `json:"name"`
 	Type                   string          `json:"type" enum:"discord,generic"`
@@ -86,6 +87,7 @@ type NotificationWebhookDestination struct {
 
 func notificationWebhookDestinationOf(row notifications.Webhook) NotificationWebhookDestination {
 	return NotificationWebhookDestination{
+		ETag:                   notificationWebhookTag(row.ProfileID, row.ID, row.Revision).String(),
 		ID:                     ID(row.ID),
 		Name:                   row.Name,
 		Type:                   row.Type,
@@ -185,20 +187,39 @@ type NotificationWebPushSubscribeOutput struct {
 	Body NotificationWebPushSubscription
 }
 
+func notificationWebhookTag(profile, id string, revision int64) EntityTag {
+	return RenderETag("notification-webhook:"+profile, id, revision)
+}
+
 type NotificationWebhookDeleteInput struct {
-	ID string `path:"id"`
+	ID          string `path:"id"`
+	IfMatch     string `header:"If-Match"`
+	IfNoneMatch string `header:"If-None-Match"`
 }
 
 func registerNotificationDestinations(reg *Registry) {
 	removeWebhook := notificationOperation(http.MethodDelete, "/webhooks/{id}", "deleteNotificationWebhook")
 	removeWebhook.DefaultStatus = http.StatusNoContent
+	removeWebhook.Guarded = true
 	removeWebhook.RetrySafety = RetrySafetyNaturalIdempotent
 	removeWebhook.Summary = "Delete the profile's exact webhook ID and stored attempts. Does not recall an already-dispatched webhook."
 	Register(reg, removeWebhook, func(ctx context.Context, in *NotificationWebhookDeleteInput) (*struct{}, error) {
 		if reg.deps.NotificationDestinations == nil {
 			return nil, unavailable("notification destinations")
 		}
-		if err := reg.deps.NotificationDestinations.DeleteNotificationWebhook(ctx, profileFrom(ctx), in.ID); err != nil {
+		err := reg.deps.NotificationDestinations.DeleteNotificationWebhook(ctx, profileFrom(ctx), in.ID, func(revision int64) error {
+			if p := EvaluateGuardedPreconditions(in.IfMatch, in.IfNoneMatch, notificationWebhookTag(profileFrom(ctx), in.ID, revision)); p != nil {
+				return p
+			}
+			return nil
+		})
+		if err != nil {
+			if p, ok := errors.AsType[*Problem](err); ok {
+				return nil, p
+			}
+			if errors.Is(err, notifications.ErrWebhookNotFound) {
+				return nil, NewProblem(TypeNotFound, "Webhook not found.")
+			}
 			return nil, serviceProblem(err)
 		}
 		return &struct{}{}, nil

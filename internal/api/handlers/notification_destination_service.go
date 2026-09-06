@@ -79,10 +79,10 @@ func (h *NotificationsHandler) SubscribeNotificationWebPush(ctx context.Context,
 	return svc.Subscribe(ctx, user, profile, endpoint, p256dh, auth, deviceName)
 }
 
-func (h *NotificationsHandler) DeleteNotificationWebhook(ctx context.Context, profile, id string) error {
+func (h *NotificationsHandler) DeleteNotificationWebhook(ctx context.Context, profile, id string, check func(int64) error) error {
 	svc := h.webhooks()
 	if svc == nil {
 		return apiError(503, "unavailable", "Webhooks are not available")
 	}
-	return svc.Delete(ctx, profile, id)
+	return svc.DeleteGuarded(ctx, profile, id, check)
 }

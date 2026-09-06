@@ -92,12 +92,18 @@ export function useUpdateNotificationWebhook() {
 export function useDeleteNotificationWebhook() {
   const queryClient = useQueryClient();
   const context = captureProfileRequestContext();
-  return useMutation({
+  const mutation = useMutation({
     retry: false,
-    mutationFn: async (id: string) => {
-      if (!context) throw new StaleApiRequestContextError();
-      await deleteNotificationWebhook(id, context);
-      return context;
+    mutationFn: async (intent: {
+      id: string;
+      etag: string;
+      authority: ReturnType<typeof captureProfileRequestContext>;
+    }) => {
+      if (!intent.authority) throw new StaleApiRequestContextError();
+      if (!intent.etag || intent.etag === "*")
+        throw new Error("Reload the webhook list before deleting this destination.");
+      await deleteNotificationWebhook(intent, intent.authority);
+      return intent.authority;
     },
     onSuccess: (authority) => {
       requireNotificationAuthority(authority);
@@ -107,7 +113,8 @@ export function useDeleteNotificationWebhook() {
         exact: true,
       });
     },
-    onError: () => {
+    onError: (_error, intent) => {
+      const context = intent.authority;
       if (!context) return;
       try {
         requireNotificationAuthority(context);
@@ -117,6 +124,17 @@ export function useDeleteNotificationWebhook() {
       toast.error("Failed to delete webhook");
     },
   });
+  return {
+    ...mutation,
+    mutate: (
+      intent: { id: string; etag: string },
+      options?: Parameters<typeof mutation.mutate>[1],
+    ) => mutation.mutate({ ...intent, authority: context }, options),
+    mutateAsync: (
+      intent: { id: string; etag: string },
+      options?: Parameters<typeof mutation.mutateAsync>[1],
+    ) => mutation.mutateAsync({ ...intent, authority: context }, options),
+  };
 }
 
 export function useTestNotificationWebhook() {

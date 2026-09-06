@@ -1,6 +1,7 @@
 {
   "items": [
     {
+      "etag": "\"7df75dc2f5770774ebc6d94e.1bli3kvizn9ht\"",
       "id": "01",
       "name": "Example",
       "type": "generic",
@@ -19,6 +20,7 @@
       "last_failure_message": null
     },
     {
+      "etag": "\"1d89ed4f51369d5492560be3.3k9wrnrjxd0az\"",
       "id": "02",
       "name": "Other",
       "type": "generic",

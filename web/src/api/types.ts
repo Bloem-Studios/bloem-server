@@ -2800,6 +2800,7 @@ export interface NotificationReadEventPayload {
 export type NotificationWebhookType = "discord" | "generic";
 
 export interface NotificationWebhook {
+  etag?: string;
   id: string;
   name: string;
   type: NotificationWebhookType;
