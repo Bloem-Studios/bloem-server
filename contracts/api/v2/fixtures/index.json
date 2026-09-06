@@ -2244,6 +2244,52 @@
       "body_file": "admin_policy_versions_continuation.json"
     },
     {
+      "name": "admin_provider_configuration",
+      "operation_id": "getAdminSubtitleProviderConfiguration",
+      "scenario": "Redacted canonical configuration supplies the captured edit validator.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/subtitle-providers/subdl",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "X-Profile-Id": "p-primary"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"681baa5b0f8af2e0a01fd46a.2gzrqrfexmc8k\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminSubtitleProviderConfiguration",
+      "body_file": "admin_provider_configuration.json"
+    },
+    {
+      "name": "admin_provider_configuration_saved",
+      "operation_id": "updateAdminSubtitleProviderConfiguration",
+      "scenario": "Confirmed durable revision5 is separate from local application of later revision9.",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v2/admin/subtitle-providers/subdl",
+        "headers": {
+          "Authorization": "Bearer tok-admin",
+          "If-Match": "*",
+          "X-Profile-Id": "p-primary"
+        },
+        "body": "{\"enabled\":false}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+        "ETag": "\"681baa5b0f8af2e0a01fd46a.2gzrqrfexmc8l\""
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminSubtitleProviderConfigurationSaved",
+      "body_file": "admin_provider_configuration_saved.json"
+    },
+    {
       "name": "admin_recommendations_cowatch",
       "operation_id": "triggerAdminRecommendationCowatch",
       "scenario": "Started acknowledges process-local background execution, not a persisted job.",

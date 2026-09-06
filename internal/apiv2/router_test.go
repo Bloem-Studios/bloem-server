@@ -303,6 +303,9 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"POST " + Prefix + "/admin/items/{id}/images/apply",
 		"GET " + Prefix + "/admin/unmatched",
 		"GET " + Prefix + "/admin/subtitle-providers",
+		"GET /api/v2/admin/subtitle-providers/{provider}",
+		"PUT /api/v2/admin/subtitle-providers/{provider}",
+		"DELETE /api/v2/watch-together/rooms/{room_id}",
 		"POST " + Prefix + "/admin/subtitle-providers/{provider}/test",
 
 		"GET " + Prefix + "/subtitles/providers/status",
