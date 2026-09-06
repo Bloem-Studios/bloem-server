@@ -144,3 +144,17 @@ active transfer and carries no response bytes. GET applies existing bandwidth
 limits and tracking. A read failure after headers can truncate bytes without a
 new error status. Neither method prepares an artifact or promises a durable
 transfer, retry receipt or cross-node reconstruction.
+
+The transcode listener's legacy `DELETE /transcode/{session_id}` holds the same
+lifecycle lock as start and reconstruction. Node bearer authentication does not
+confer bound-executor stop authority: a bound in-memory session or stored recipe
+returns 409. For legacy progressive remux, cancellation installs a process-local
+fence lasting the maximum token lifetime. Configured recipe deletion must succeed
+and progressive shutdown must finish before 204; either can return 503 after
+local teardown has already occurred. Session-close and file-removal errors are
+logged. A missing session and recipe returns 404 after cleanup attempts.
+
+This ID-addressed operation has no durable stop identity. Repeating it against a
+reused transport ID could affect a successor, so its description is non-retryable.
+It is not an alias for the native stop protocol and does not supply missing bound
+executor authority. No process-survival guarantee is attached to the local fence.

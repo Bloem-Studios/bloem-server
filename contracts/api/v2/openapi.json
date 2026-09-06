@@ -142457,6 +142457,71 @@
             "description": "Service Unavailable"
           }
         }
+      },
+      {
+        "parameters": [
+          {
+            "description": "Legacy transport identifier; not a bound executor namespace or durable stop receipt.",
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Stop a legacy transport under its lifecycle lock. Bound in-memory or stored executor namespaces are refused with 409; node bearer alone is not executor stop authority. Progressive cancellation installs a process-local token-lifetime fence; stored recipe deletion is required when configured. Local teardown may precede a 503 authority-deletion or shutdown failure. A missing session/recipe returns 404 after cleanup attempts. This ID-addressed command has no durable replay identity and must not be automatically repeated against a possible successor.",
+        "retry_safety": "non_retryable",
+        "listener": "transcode_node",
+        "method": "DELETE",
+        "path": "/transcode/{session_id}",
+        "handler": "(*internal/transcodenode.Server).handleStop",
+        "auth_class": "node_bearer",
+        "responses": {
+          "204": {
+            "description": "Legacy teardown and configured authority deletion completed; no body. Local file/session close errors are logged rather than changing this status."
+          },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
       }
     ],
     "schemas": {
