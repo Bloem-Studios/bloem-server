@@ -42,6 +42,6 @@ it("does not refresh or replay a connection-check POST after 401", async () => {
     ).rejects.toMatchObject({ status: 401 });
   });
   expect(fetchMock).toHaveBeenCalledTimes(1);
-  expect(String(fetchMock.mock.calls[0][0])).toBe("/api/v2/admin/settings/check/redis");
-  expect(fetchMock.mock.calls[0][1]?.method).toBe("POST");
+  expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/v2/admin/settings/check/redis");
+  expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("POST");
 });

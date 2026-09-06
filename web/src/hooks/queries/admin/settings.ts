@@ -6,7 +6,6 @@ import type {
   AdminServerStatus,
   AdminSettingsUpdateResponse,
   AdminSettingsConnectionCheckRequest,
-  ConnectionCheckResponse,
   JellyfinCompatSettingsPatch,
   JellyfinCompatStatus,
   JellyfinCompatWebInstallRequest,
@@ -35,7 +34,8 @@ export type CatalogSearchStatus = V2Result<"GET /api/v2/admin/catalog/search/sta
 export function useAdminServerSettings() {
   return useQuery({
     queryKey: adminKeys.serverSettings(),
-    queryFn: () => v2("GET /api/v2/admin/settings/effective"),
+    queryFn: async (): Promise<Record<string, string>> =>
+      v2("GET /api/v2/admin/settings/effective"),
     staleTime: 30_000,
   });
 }
