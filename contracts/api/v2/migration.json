@@ -43895,11 +43895,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/user/libraries",
+        "operation_id": "listUserLibraries"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; libraryHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented shared viewer-library projection and generated web consumer; independent review and Apple/Android adoption pending. Optional profile is verified and policy-resolved; absent profile retains account fallback. Enabled libraries remain sorted by sort_order then ID with optional presigned poster, no administrator storage/scan fields. Configuration collection retains full enumeration like library administration; no database-bounded paging claim. Capability GET /api/v2/user/libraries/capabilities. Frozen v1 bytes and errors preserved."
     },
     {
       "listener": "api",

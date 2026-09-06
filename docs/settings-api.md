@@ -782,3 +782,29 @@ upstream failures return `503 dependency_unavailable`; invalid requested URLs re
 There are no first-party Apple, Android, or Jellyfin callers of these theme catalog,
 download, and refresh operations to migrate. The separate public branding discovery
 consumer work remains tracked independently.
+
+### Viewer library discovery
+
+`GET /api/v2/user/libraries` returns an `items` collection of enabled libraries
+visible to the account or selected household profile. Each item contains a string
+`id`, `name`, `type`, `sort_order`, and optional `poster_url`. The projection
+excludes storage paths and administrator scan metadata. The configuration list
+retains complete enumeration in `sort_order`, then ID order, as library
+administration does; it does not claim database-bounded paging.
+
+The profile header is optional. When supplied it must belong to the account and
+pass PIN verification, and the resolved viewer policy controls library access.
+Without a profile, the existing account-policy fallback applies. Library rows
+with `enabled=false` are excluded in both cases. An explicitly empty library
+allowlist returns `items: []`. Optional poster signing uses the existing expiry
+and omits the URL on signing failure.
+
+`GET /api/v2/user/libraries/capabilities` exposes `available` under the same
+authority rules. Both operations remain registered when the service is absent;
+discovery returns `available: false`, and listing returns `dependency_unavailable`.
+The bundled web keeps numeric library IDs at its UI boundary, rejects unsafe
+numeric conversions, and fences responses/cache keys against account/profile
+changes. Apple and Android have existing library-discovery callers and require
+coordinated adoption before this migration row is ratified. The shared read
+preserves frozen v1 response shape and errors; Jellyfin's separate library
+projection is unchanged.

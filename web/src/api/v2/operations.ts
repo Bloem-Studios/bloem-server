@@ -286,6 +286,8 @@ export const v2Operations = {
   "GET /api/v2/theme/catalog": "getThemeCatalog",
   "GET /api/v2/theme/catalog/capabilities": "getThemeCatalogCapabilities",
   "GET /api/v2/theme/download": "downloadThemeFile",
+  "GET /api/v2/user/libraries": "listUserLibraries",
+  "GET /api/v2/user/libraries/capabilities": "getUserLibraryCapabilities",
   "GET /api/v2/watch-providers": "listWatchProviders",
   "GET /api/v2/watch-providers/{provider}/connection": "getWatchProviderConnection",
   "GET /api/v2/watch-providers/{provider}/connection/settings": "getWatchProviderSettings",

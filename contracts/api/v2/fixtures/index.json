@@ -11092,6 +11092,26 @@
       "body_file": "upload_profile_avatar_verification_required.json"
     },
     {
+      "name": "user_libraries",
+      "operation_id": "listUserLibraries",
+      "scenario": "Account library discovery returns string IDs and the viewer projection without administrator paths or scan metadata.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/user/libraries",
+        "headers": {
+          "Authorization": "Bearer tok-member"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/CollectionUserLibrary",
+      "body_file": "user_libraries.json"
+    },
+    {
       "name": "validation_failed_body",
       "operation_id": null,
       "scenario": "A JSON body with a missing required member and an out-of-range member: one errors[] entry per failure, the rejected values never echoed.",

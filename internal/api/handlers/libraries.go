@@ -408,83 +408,14 @@ func (h *LibraryHandler) toLibraryResponseWithPoster(ctx context.Context, f *mod
 	return resp
 }
 
-// userLibraryResponse is a simplified library view for non-admin users.
-type userLibraryResponse struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	SortOrder int    `json:"sort_order"`
-	PosterURL string `json:"poster_url,omitempty"`
-}
-
-// --- Handler methods ---
-
-// HandleListUserLibraries handles GET /user/libraries.
-// It returns only enabled libraries the current user has access to, with
-// simplified fields (no paths, last scan metadata, etc.).
+// HandleListUserLibraries preserves the frozen bridge projection and errors.
 func (h *LibraryHandler) HandleListUserLibraries(w http.ResponseWriter, r *http.Request) {
-	var folders []*models.MediaFolder
-	var err error
-	if scope, ok := access.GetScope(r.Context()); ok {
-		if scope.LibrariesRestricted {
-			folders, err = h.folderRepo.ListByIDs(r.Context(), scope.AllowedLibraryIDs)
-		} else {
-			folders, err = h.folderRepo.GetEnabled(r.Context())
-		}
-	} else {
-		userID := apimw.GetUserID(r.Context())
-
-		if h.userRepo != nil {
-			user, userErr := h.userRepo.GetByID(r.Context(), userID)
-			if userErr != nil {
-				slog.ErrorContext(r.Context(), "looking up user for library access", "component", "api", "error", userErr)
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to look up user")
-				return
-			}
-
-			effective, policyErr := access.EffectivePolicyForUser(r.Context(), user, h.AccessGroups)
-			if policyErr != nil {
-				slog.ErrorContext(r.Context(), "resolving user policy for library access", "component", "api", "error", policyErr)
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to resolve user access")
-				return
-			}
-			if effective.LibraryIDs != nil {
-				folders, err = h.folderRepo.ListByIDs(r.Context(), effective.LibraryIDs)
-			} else {
-				folders, err = h.folderRepo.GetEnabled(r.Context())
-			}
-		} else {
-			folders, err = h.folderRepo.GetEnabled(r.Context())
-		}
-	}
-
+	views, err := h.ListUserLibraries(r.Context(), apimw.GetUserID(r.Context()))
 	if err != nil {
-		slog.ErrorContext(r.Context(), "listing user libraries", "component", "api", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list libraries")
+		writeAPIError(w, err)
 		return
 	}
-
-	resp := make([]userLibraryResponse, 0, len(folders))
-	for _, f := range folders {
-		entry := userLibraryResponse{
-			ID:        f.ID,
-			Name:      f.Name,
-			Type:      f.Type,
-			SortOrder: f.SortOrder,
-		}
-		if f.PosterPath != "" && h.S3Meta != nil {
-			ttl := h.PresignTTL
-			if ttl <= 0 {
-				ttl = 4 * time.Hour
-			}
-			if url, err := h.S3Meta.PresignGetURL(r.Context(), h.S3Meta.Bucket(), f.PosterPath, ttl); err == nil {
-				entry.PosterURL = url
-			}
-		}
-		resp = append(resp, entry)
-	}
-
-	writeJSON(w, http.StatusOK, resp)
+	writeJSON(w, http.StatusOK, views)
 }
 
 // HandleListLibraries handles GET /libraries.

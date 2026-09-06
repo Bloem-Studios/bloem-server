@@ -1650,6 +1650,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, ebookProgressFixtureCases()...)
 	cases = append(cases, ebookConfigFixtureCases()...)
 	cases = append(cases, ebookAnnotationFixtureCases()...)
+	cases = append(cases, userLibraryFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1728,6 +1729,7 @@ func fixtureDeps() Dependencies {
 	deps.AdminHistoryImports = fixtureAdminHistoryImports()
 	deps.AdminAPIKeys = fixtureAdminAPIKeys()
 	deps.ThemeCatalog = fixtureThemeCatalog()
+	deps.UserLibraries = new(fakeUserLibraries)
 	deps.Invitations = fixtureInvitations()
 	deps.NotificationInbox = fixtureNotificationInbox()
 	deps.AdminNotificationPush = new(fakeAdminNotificationPush)
