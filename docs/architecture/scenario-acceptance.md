@@ -347,3 +347,21 @@ its exact ID. Results and counts in `SILO_SCENARIO_REPORT` remain outside the
 frozen 598-scenario oracle, and setup/teardown/test exit must pass too. No provider
 refresh, concurrent full-row update, client UI or whole curation migration claim
 follows from this scope.
+
+### NEW diagnostic history and deletion scenarios
+
+`make test-scenario-new-diagnostic-history` runs five **new** scenarios with the
+real router, diagnostic service and PostgreSQL repository. Twelve HTTP requests
+and ten full-table snapshot reads check deterministic traversal of equal
+microsecond timestamps, cursor limit/filter binding, manifest detail preservation,
+exact metadata deletion with repeated 204/absent 404 receipts, and refusal of
+ordinary-profile or administrator-secondary deletes. List summaries omit manifests;
+all responses omit stored object locations. Remaining reports must stay unchanged.
+
+The fixture reuses the pre-reseed report occupancy guard and owns only three
+synthetic UUIDs. Each case gets a fresh synthetic household/report set. Required
+DSN, setup/teardown and process exit must pass alongside `SILO_SCENARIO_REPORT`.
+These cases are outside the frozen 598-scenario oracle and separate from diagnostic
+download-failure acceptance. Object storage is unconfigured: successful metadata
+deletion does not establish blob cleanup, durable reconciliation, concurrent-list
+snapshot behavior, capture/upload, or native/browser acceptance.

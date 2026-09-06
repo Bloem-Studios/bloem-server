@@ -483,3 +483,8 @@ test-scenario-new-diagnostic-download:
 .PHONY: test-scenario-new-person-curation
 test-scenario-new-person-curation:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewPersonCuration$$' ./internal/scenariocatalog/executor
+
+# NEW real diagnostic history and metadata deletion; outside frozen oracle.
+.PHONY: test-scenario-new-diagnostic-history
+test-scenario-new-diagnostic-history:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredNewDiagnosticHistory$$' ./internal/scenariocatalog/executor
