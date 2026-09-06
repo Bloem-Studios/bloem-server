@@ -2019,8 +2019,9 @@ missing configuration is not replaced by default values for submission.
 acting administrator and resets the authenticated account's stored layout. The
 single DELETE succeeds with empty204 even when already absent. Missing storage
 returns503; private storage errors are masked. It provides no write revision or
-durable receipt. Although deletion is naturally idempotent, clients must not
-replay automatically across an intervening save.
+durable receipt. The operation is `non_retryable`: after a lost successful reset
+response, retrying can delete an intervening save. Clients must not retry until
+the server guards the layout generation or provides equivalent ordering protection.
 
 The actual Reset layout action checks its rendered authority before changing local
 state, drops its unsent debounced save, and queues the captured reset behind any
