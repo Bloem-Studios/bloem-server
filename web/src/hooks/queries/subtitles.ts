@@ -57,21 +57,29 @@ export async function fetchDownloadedSubtitles(
   mediaFileId: number,
   options?: RequestInit,
 ): Promise<DownloadedSubtitle[]> {
-  const response = await api<{ subtitles: DownloadedSubtitle[] }>(
-    `/subtitles/${mediaFileId}`,
-    options,
-  );
-  return response.subtitles ?? [];
+  const response = await v2("GET /api/v2/subtitles/{media_file_id}", {
+    path: { media_file_id: String(mediaFileId) },
+    signal: options?.signal ?? undefined,
+  });
+  // The existing track selector still consumes numeric database IDs. Reject
+  // unrepresentable IDs until that remaining player model moves to strings.
+  return response.subtitles.map((subtitle) => {
+    const id = Number(subtitle.id);
+    const fileId = Number(subtitle.media_file_id);
+    if (!Number.isSafeInteger(id) || id <= 0 || !Number.isSafeInteger(fileId) || fileId <= 0) {
+      throw new Error("Unsupported subtitle identifier");
+    }
+    return { ...subtitle, id, media_file_id: fileId };
+  });
 }
 
 export async function searchSubtitles(
   request: SubtitleSearchRequest,
   options?: RequestInit,
 ): Promise<SubtitleSearchResponse> {
-  return api<SubtitleSearchResponse>("/subtitles/search", {
-    ...options,
-    method: "POST",
-    body: JSON.stringify(request),
+  return v2("POST /api/v2/subtitles/search", {
+    body: { media_file_id: String(request.media_file_id), languages: request.languages },
+    signal: options?.signal ?? undefined,
   });
 }
 

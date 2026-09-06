@@ -172,14 +172,21 @@ func (h *SubtitleSearchHandler) HandleSearch(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	meta, err := h.mediaResolver.GetMediaFileWithMetadata(r.Context(), req.MediaFileID)
+	resp, err := h.searchAuthorizedSubtitles(r.Context(), req.MediaFileID, req.Languages)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "metadata_error", "Failed to look up media metadata")
+		writeError(w, err.Status, err.Code, err.Message)
 		return
 	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (h *SubtitleSearchHandler) searchAuthorizedSubtitles(ctx context.Context, fileID int, languages []string) (*subtitles.SearchResponse, *APIError) {
+	meta, err := h.mediaResolver.GetMediaFileWithMetadata(ctx, fileID)
+	if err != nil {
+		return nil, apiError(http.StatusInternalServerError, "metadata_error", "Failed to look up media metadata")
+	}
 	if meta == nil {
-		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
-		return
+		return nil, apiError(http.StatusNotFound, "not_found", "Media file not found")
 	}
 
 	releaseInfo := subtitles.ParseReleaseInfo(meta.FilePath)
@@ -189,7 +196,7 @@ func (h *SubtitleSearchHandler) HandleSearch(w http.ResponseWriter, r *http.Requ
 		Year:      meta.Year,
 		Season:    meta.Season,
 		Episode:   meta.Episode,
-		Languages: req.Languages,
+		Languages: languages,
 		Filename:  filepath.Base(meta.FilePath),
 		FileHash:  meta.FileHash,
 		MediaInfo: &subtitles.MediaMatchInfo{
@@ -201,13 +208,12 @@ func (h *SubtitleSearchHandler) HandleSearch(w http.ResponseWriter, r *http.Requ
 		},
 	}
 
-	resp, err := h.manager.Search(r.Context(), searchReq)
+	resp, err := h.manager.Search(ctx, searchReq)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "search_error", "Subtitle search failed")
-		return
+		return nil, apiError(http.StatusInternalServerError, "search_error", "Subtitle search failed")
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	return resp, nil
 }
 
 // HandleDownload handles POST /api/v1/subtitles/download

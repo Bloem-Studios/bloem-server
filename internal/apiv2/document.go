@@ -581,6 +581,7 @@ func registerAll(reg *Registry) {
 	registerCatalogItems(reg)
 	registerMarkers(reg)
 	registerSubtitleCapabilities(reg)
+	registerSubtitleReads(reg)
 	registerProfiles(reg)
 	registerEbookAnnotations(reg)
 	registerDownloadRegistry(reg)

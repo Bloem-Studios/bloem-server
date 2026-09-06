@@ -57,7 +57,31 @@ service is absent, both AI flags are false. These reads do not search providers,
 start jobs, or contact an external engine.
 
 The web subtitle menu uses the typed v2 AI probe with the player's credentials.
-Apple and Android adoption is coordinated separately. Subtitle search, stored
-tracks, generation, and delivery retain their existing routes until their own
+Apple and Android adoption is coordinated separately. Generation and delivery retain their existing routes until their own
 migration scopes land. Jellyfin compatibility uses its existing subtitle
 protocol and needs no equivalent native capability route.
+
+## Stored tracks and provider search
+
+GET `/api/v2/subtitles/{media_file_id}` lists stored subtitle metadata under
+`subtitles`. POST `/api/v2/subtitles/search` accepts `media_file_id` as an opaque
+string and `languages` as an array, and returns `results` and `warnings`. Search
+is read-only and can be retried; a retry makes a fresh query and can return
+different provider results. The request allows at most 100 languages.
+
+Both operations require the same account and optional-profile access as the
+capability probes. They authorize the file and its parent item before accessing
+stored tracks or contacting providers. Missing and inaccessible files return
+404. Missing subtitle dependencies return 503. Invalid identifiers return 422.
+
+Stored subtitle IDs and file IDs are strings. Search result IDs remain opaque
+provider identifiers. Timestamps use UTC with millisecond precision; an unknown
+search upload date is omitted. Arrays are empty rather than null. Stored object
+keys and uploader identities are not exposed. Provider failures preserve partial
+results with a generic warning; their raw error details are not part of v2.
+
+The web detail dialog and player search use typed v2 requests. The existing web
+track selector still needs numeric stored IDs; its adapter rejects IDs that it
+cannot represent safely. Native consumers need the string-ID models and new
+paths. Upload, download, delete, and AI-job mutations remain separate migration
+scopes; their existing retry limitations still apply.

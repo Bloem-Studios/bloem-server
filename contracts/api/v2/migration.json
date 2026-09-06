@@ -43271,11 +43271,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/subtitles/search",
+        "operation_id": "searchSubtitles"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed stored-subtitle listing and read-only provider search use file/parent authorization before repository or provider access. V2 uses opaque string IDs, UTC millisecond dates and non-null lists; provider warnings omit upstream error details. Web consumers migrated. Independent review and native adoption pending. See docs/subtitles-api.md."
     },
     {
       "listener": "api",
@@ -43472,11 +43472,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/subtitles/{media_file_id}",
+        "operation_id": "listStoredSubtitles"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed stored-subtitle listing and read-only provider search use file/parent authorization before repository or provider access. V2 uses opaque string IDs, UTC millisecond dates and non-null lists; provider warnings omit upstream error details. Web consumers migrated. Independent review and native adoption pending. See docs/subtitles-api.md."
     },
     {
       "listener": "api",

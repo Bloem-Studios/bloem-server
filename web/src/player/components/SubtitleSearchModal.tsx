@@ -2,11 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { PlayerConfig } from "../context/PlayerConfigContext";
 import { playerFetch } from "../player-fetch";
-import type {
-  SubtitleLanguageDetection,
-  SubtitleSearchResponse,
-  SubtitleResult,
-} from "@/api/types";
+import { playerV2 } from "../player-v2";
+import type { SubtitleLanguageDetection, SubtitleResult } from "@/api/types";
 import { SubtitleUploadForm } from "@/components/subtitles/SubtitleUploadForm";
 import { LANGUAGES } from "../utils/languageNames";
 
@@ -118,17 +115,9 @@ export function SubtitleSearchModal({
     setWarnings([]);
 
     try {
-      const response = await playerFetch<SubtitleSearchResponse>(
-        playerConfig,
-        "/subtitles/search",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            media_file_id: mediaFileId,
-            languages: [selectedLang],
-          }),
-        },
-      );
+      const response = await playerV2(playerConfig, "POST /api/v2/subtitles/search", {
+        body: { media_file_id: String(mediaFileId), languages: [selectedLang] },
+      });
       setResults(response.results ?? []);
       setWarnings(response.warnings ?? []);
     } catch (err) {

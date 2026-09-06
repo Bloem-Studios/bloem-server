@@ -11036,6 +11036,49 @@
       "body_file": "subtitle_ai_quota.json"
     },
     {
+      "name": "subtitles_search_partial",
+      "operation_id": "searchSubtitles",
+      "scenario": "Partial provider results omit unknown dates and replace upstream error details with a safe warning.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/subtitles/search",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        },
+        "body": "{\"media_file_id\":\"42\",\"languages\":[\"en\"]}"
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/SubtitleSearchResults",
+      "body_file": "subtitles_search_partial.json"
+    },
+    {
+      "name": "subtitles_stored",
+      "operation_id": "listStoredSubtitles",
+      "scenario": "Stored tracks expose string IDs and public metadata without object keys or uploader identity.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/subtitles/42",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/StoredSubtitles",
+      "body_file": "subtitles_stored.json"
+    },
+    {
       "name": "sync_progress_ok",
       "operation_id": "syncProgress",
       "scenario": "A batch of two progress writes, one with an offline event time; one result per item in request order.",

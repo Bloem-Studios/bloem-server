@@ -1675,6 +1675,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, downloadSubscriptionMutationFixtureCases()...)
 	cases = append(cases, downloadCreateFixtureCases()...)
 	cases = append(cases, subtitleCapabilityFixtureCases()...)
+	cases = append(cases, subtitleReadFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1793,6 +1794,7 @@ func fixtureDeps() Dependencies {
 	deps.WebhookSync = &fakeWebhookManagement{}
 	deps.Markers = &fakeMarkers{}
 	deps.AdminSubtitleInspection = &fakeAdminSubtitleInspection{}
+	deps.SubtitleReads = &fakeSubtitleReads{}
 	deps.RequestLifecycle = &fakeLifecycle{}
 	deps.WatchProviders = &fakeWatchLifecycle{}
 	catalog := &fakeCatalog{}
