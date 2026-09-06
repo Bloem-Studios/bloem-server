@@ -47,7 +47,42 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingFlow",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/flow"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "version",
+                    "tour_id",
+                    "steps"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "flow.meaning",
@@ -96,7 +131,65 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingFlow",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/flow"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/tour_id",
+                  "op": "equals",
+                  "value": "core-2026-07"
+                },
+                {
+                  "pointer": "/version",
+                  "op": "equals",
+                  "value": 1
+                },
+                {
+                  "pointer": "/steps",
+                  "op": "min_length",
+                  "value": 2
+                },
+                {
+                  "pointer": "/steps",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "keys_include",
+                    "value": [
+                      "id",
+                      "kind"
+                    ]
+                  }
+                },
+                {
+                  "pointer": "/steps",
+                  "op": "unique_by",
+                  "value": "/id"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "flow.surface_filter",
@@ -143,7 +236,63 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingFlow",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/flow",
+              "query": {
+                "surface": "tv"
+              }
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/steps",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/steps",
+                  "op": "none",
+                  "value": {
+                    "pointer": "/kind",
+                    "op": "equals",
+                    "value": "setting_choice"
+                  }
+                },
+                {
+                  "pointer": "/steps",
+                  "op": "none",
+                  "value": {
+                    "pointer": "/id",
+                    "op": "equals",
+                    "value": "apps"
+                  }
+                },
+                {
+                  "pointer": "/steps/0/id",
+                  "op": "equals",
+                  "value": "welcome"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "flow.web_surface",
@@ -185,7 +334,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingFlow",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/flow"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/steps",
+                  "op": "min_length",
+                  "value": 4
+                },
+                {
+                  "pointer": "/steps/1/kind",
+                  "op": "equals",
+                  "value": "setting_choice"
+                },
+                {
+                  "pointer": "/steps/1/id",
+                  "op": "equals",
+                  "value": "playback-quality"
+                },
+                {
+                  "pointer": "/steps/2/kind",
+                  "op": "equals",
+                  "value": "setting_choice"
+                },
+                {
+                  "pointer": "/steps/2/id",
+                  "op": "equals",
+                  "value": "subtitles"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "flow.bad_surface",
@@ -240,7 +440,46 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingFlow",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/flow",
+              "query": {
+                "surface": "watch"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "flow.child_filter",
@@ -297,7 +536,73 @@
             }
           ],
           "notes": "The fixture seeds request_settings.requests_enabled=true so the requests step is in the parent's flow; only the child filter removes it.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingFlow",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/flow"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/steps",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/steps",
+                  "op": "none",
+                  "value": {
+                    "pointer": "/id",
+                    "op": "equals",
+                    "value": "requests"
+                  }
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ]
+            },
+            "then": [
+              {
+                "method": "GET",
+                "description": "a non-child profile's flow carries the requests step",
+                "principal": {
+                  "class": "profile"
+                },
+                "request": {
+                  "path": "/api/v2/onboarding/flow"
+                },
+                "expect": {
+                  "status": 200,
+                  "body": [
+                    {
+                      "pointer": "/steps",
+                      "op": "non_empty"
+                    },
+                    {
+                      "pointer": "/steps/4/id",
+                      "op": "equals",
+                      "value": "requests"
+                    }
+                  ]
+                },
+                "operation_id": "getOnboardingFlow"
+              }
+            ]
+          }
         },
         {
           "id": "flow.shape",
@@ -319,7 +624,38 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingFlow",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/flow"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/steps",
+                  "op": "type",
+                  "value": "array"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "flow.no_profile",
@@ -372,7 +708,43 @@
             ]
           },
           "notes": "Missing profile header is a 400, the same status as a malformed body; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingFlow",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/flow"
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "flow.other_account_profile",
@@ -426,7 +798,43 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingFlow",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/flow"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "flow.no_token",
@@ -478,7 +886,43 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingFlow",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/flow"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -514,7 +958,56 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingState",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/state"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "ETag",
+                  "op": "matches",
+                  "value": "^\".+\"$"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "tour_id",
+                    "done"
+                  ]
+                },
+                {
+                  "pointer": "/tour_id",
+                  "op": "equals",
+                  "value": "core-2026-07"
+                },
+                {
+                  "pointer": "/done",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "state.fresh",
@@ -549,7 +1042,56 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingState",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/state"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "tour_id",
+                    "done"
+                  ]
+                },
+                {
+                  "pointer": "/tour_id",
+                  "op": "equals",
+                  "value": "core-2026-07"
+                },
+                {
+                  "pointer": "/done",
+                  "op": "equals",
+                  "value": false
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "ETag",
+                  "op": "matches",
+                  "value": "^\".+\"$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "state.shape",
@@ -578,7 +1120,56 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingState",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/state"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "tour_id",
+                    "done"
+                  ]
+                },
+                {
+                  "pointer": "/tour_id",
+                  "op": "equals",
+                  "value": "core-2026-07"
+                },
+                {
+                  "pointer": "/done",
+                  "op": "equals",
+                  "value": false
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                },
+                {
+                  "name": "ETag",
+                  "op": "matches",
+                  "value": "^\".+\"$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "state.no_profile",
@@ -631,7 +1222,43 @@
             ]
           },
           "notes": "Missing profile header is a 400, the same status as a malformed body; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingState",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/state"
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "state.other_account_profile",
@@ -685,7 +1312,43 @@
             ]
           },
           "notes": "Cross-account probe. The 404 (not 403) is the current scoped-lookup behavior; recorded as-is.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingState",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/state"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/not_found$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "state.no_token",
@@ -737,7 +1400,43 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingState",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/state"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/authentication_required$"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "state.error_shape",
@@ -772,7 +1471,43 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Preserves onboarding flow/state meaning and profile/child filtering; v2 uses canonical lowercase surface, validation Problems, no-store and state ETag. Each read preserves full state.",
+            "recorded_in": "internal/scenariocatalog/executor/onboarding_reads_pairing_test.go",
+            "operation_id": "getOnboardingState",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/onboarding/state"
+            },
+            "expect": {
+              "status": 422,
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/validation_failed$"
+                }
+              ],
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ]
+            }
+          }
         }
       ]
     },

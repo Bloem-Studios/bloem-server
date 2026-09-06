@@ -1437,3 +1437,20 @@ Required DSN and pre-constructor scratch/API-key guards remain enforced. This
 packet does not exercise handoff approval, PIN changes, concurrent consumption,
 uncertain-response replay, external providers or real enrollment. Polling remains
 non-retryable; these thirteen original pairs are separate from NEW acceptance.
+
+### Onboarding flow and state reads
+
+`make test-scenario-onboarding-reads` selects the ten original flow cases and seven
+original state cases. Progress writes are excluded. Original v1 requests, profile
+principals, child-to-parent follow-up and assertions stay fixed. V2 translates the
+original `TV` surface to its declared lowercase `tv`, retains the filtered flow
+meaning, and uses validation Problems, no-store and an ETag on state responses.
+
+The required guarded runner reseeds before and after each transport and snapshots
+all twenty-five tables before and after every HTTP request, including the child's
+parent-profile follow-up. Thirty-four results issue thirty-six requests with
+seventy-two snapshots (1,800 table observations). Every row and column stays
+unchanged, including the empty onboarding table; reading fresh state must not
+persist a progress row. Canonical/legacy settings and request gate settings are
+included. This proves the original fresh-state reads and filtering, not progress
+writes, conditional requests, concurrent progress changes or actual user onboarding.

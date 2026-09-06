@@ -827,3 +827,7 @@ test-scenario-household-create:
 .PHONY: test-scenario-device-decisions
 test-scenario-device-decisions:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredDeviceDecisionsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-onboarding-reads
+test-scenario-onboarding-reads:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredOnboardingReadsAcceptance$$' ./internal/scenariocatalog/executor
