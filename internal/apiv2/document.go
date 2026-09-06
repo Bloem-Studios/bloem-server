@@ -532,6 +532,7 @@ func registerAll(reg *Registry) {
 	registerAdminCatalogTransfer(reg)
 	registerAdminCatalogSearch(reg)
 	registerAdminCatalogLiterary(reg)
+	registerAdminRecommendations(reg)
 	registerProfileSections(reg)
 	registerCatalogItems(reg)
 	registerMarkers(reg)

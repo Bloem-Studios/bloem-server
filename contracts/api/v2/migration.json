@@ -13699,11 +13699,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/recommendations/status",
+        "operation_id": "getAdminRecommendationsStatus"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.RecWorker != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-administrator operations over the existing recommendation worker with generated web adoption; independent review pending. Status combines persisted counts and process-local flags. Trigger success remains HTTP200 started, not persisted job acceptance or completion. No Apple/Android administrator callers or Jellyfin equivalent found."
     },
     {
       "listener": "api",
@@ -13759,11 +13759,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/recommendations/trigger/cowatch",
+        "operation_id": "triggerAdminRecommendationCowatch"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.RecWorker != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-administrator operations over the existing recommendation worker with generated web adoption; independent review pending. Status combines persisted counts and process-local flags. Trigger success remains HTTP200 started, not persisted job acceptance or completion. No Apple/Android administrator callers or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Process-local running flags exclude active duplicate triggers only; they are neither cluster-wide leases nor durable replay receipts. Web disables both mutation and authentication retries."
     },
     {
       "listener": "api",
@@ -13819,11 +13821,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/recommendations/trigger/embeddings",
+        "operation_id": "triggerAdminRecommendationEmbeddings"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.RecWorker != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-administrator operations over the existing recommendation worker with generated web adoption; independent review pending. Status combines persisted counts and process-local flags. Trigger success remains HTTP200 started, not persisted job acceptance or completion. No Apple/Android administrator callers or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Process-local running flags exclude active duplicate triggers only; they are neither cluster-wide leases nor durable replay receipts. Web disables both mutation and authentication retries."
     },
     {
       "listener": "api",
@@ -13879,11 +13883,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/recommendations/trigger/recommendations",
+        "operation_id": "triggerAdminRecommendationRefresh"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.RecWorker != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-administrator operations over the existing recommendation worker with generated web adoption; independent review pending. Status combines persisted counts and process-local flags. Trigger success remains HTTP200 started, not persisted job acceptance or completion. No Apple/Android administrator callers or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Process-local running flags exclude active duplicate triggers only; they are neither cluster-wide leases nor durable replay receipts. Web disables both mutation and authentication retries."
     },
     {
       "listener": "api",
@@ -13939,11 +13945,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/recommendations/trigger/taste-profiles",
+        "operation_id": "triggerAdminRecommendationTasteProfiles"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.RecWorker != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-administrator operations over the existing recommendation worker with generated web adoption; independent review pending. Status combines persisted counts and process-local flags. Trigger success remains HTTP200 started, not persisted job acceptance or completion. No Apple/Android administrator callers or Jellyfin equivalent found.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Process-local running flags exclude active duplicate triggers only; they are neither cluster-wide leases nor durable replay receipts. Web disables both mutation and authentication retries."
     },
     {
       "listener": "api",

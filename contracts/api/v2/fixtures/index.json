@@ -1698,6 +1698,101 @@
       "body_file": "admin_policy_versions_continuation.json"
     },
     {
+      "name": "admin_recommendations_cowatch",
+      "operation_id": "triggerAdminRecommendationCowatch",
+      "scenario": "Started acknowledges process-local background execution, not a persisted job.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/recommendations/trigger/cowatch",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminRecommendationStarted",
+      "body_file": "admin_recommendations_cowatch.json"
+    },
+    {
+      "name": "admin_recommendations_embeddings",
+      "operation_id": "triggerAdminRecommendationEmbeddings",
+      "scenario": "Started acknowledges process-local background execution, not a persisted job.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/recommendations/trigger/embeddings",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminRecommendationStarted",
+      "body_file": "admin_recommendations_embeddings.json"
+    },
+    {
+      "name": "admin_recommendations_recommendations",
+      "operation_id": "triggerAdminRecommendationRefresh",
+      "scenario": "Started acknowledges process-local background execution, not a persisted job.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/recommendations/trigger/recommendations",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminRecommendationStarted",
+      "body_file": "admin_recommendations_recommendations.json"
+    },
+    {
+      "name": "admin_recommendations_status",
+      "operation_id": "getAdminRecommendationsStatus",
+      "scenario": "Persisted counts and process-local running flags have distinct meanings.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/admin/recommendations/status",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminRecommendationsStatus",
+      "body_file": "admin_recommendations_status.json"
+    },
+    {
+      "name": "admin_recommendations_taste_profiles",
+      "operation_id": "triggerAdminRecommendationTasteProfiles",
+      "scenario": "Started acknowledges process-local background execution, not a persisted job.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/admin/recommendations/trigger/taste-profiles",
+        "headers": {
+          "Authorization": "Bearer tok-admin"
+        }
+      },
+      "expected_status": 200,
+      "response_headers": {
+        "Content-Type": "application/json"
+      },
+      "response_media_type": "application/json",
+      "schema": "#/components/schemas/AdminRecommendationStarted",
+      "body_file": "admin_recommendations_taste_profiles.json"
+    },
+    {
       "name": "admin_request_integration_created",
       "operation_id": "createRequestIntegration",
       "scenario": "Acting administrator reads or configures requests with synthetic integration state.",
