@@ -150,3 +150,35 @@ idempotent. Detection uses the supplied language only as fallback, not override.
 Web detail and player callers use these forms with captured authority and suppress
 stale completions. Apple and Android multipart adoption is separate required work;
 bridge multipart behavior and Jellyfin subtitle delivery remain unchanged.
+
+## V2 administrator stored-subtitle list
+
+`GET /api/v2/admin/subtitles` requires an acting administrator and applies the
+existing demo restriction. It returns `{items, page, total, uploads,
+provider_downloads}`. Subtitle, media-file and uploader identifiers are decimal
+strings; `created_at` is a canonical UTC instant. Missing uploader/content
+identifiers are omitted. Source file paths remain administrator-only inspection
+data; storage object keys are not exposed.
+
+The optional filters are `provider`, `language`, `user_id`, `media_file_id` and
+`q`. IDs must be positive decimal strings. String filters are trimmed; `q`
+retains the existing case-insensitive release-name search, including `%` and `_`
+wildcards. `limit` defaults to 50 and accepts 1–200. Offset pagination is rejected.
+Rows sort by `created_at DESC, id DESC`; pass `page.next_cursor` unchanged when
+`page.has_more` is true. Cursors are signed and bound to the administrator,
+declared profile, filters, page size and ordering.
+
+Each page's rows and filtered counts use one read-only database snapshot. Later
+requests read the live collection: additions before the cursor do not appear on
+later pages, and deletions do not invalidate its ordering position. Counts may
+change between requests. `uploads` counts provider `upload`; `provider_downloads`
+counts every other provider, preserving the existing administration statistics.
+An unavailable service returns `503 dependency_unavailable`; database failures
+return a redacted `500 internal_error`.
+
+The bundled administrator page uses cursor history and authority-scoped read
+caches, discards stale account/profile/PIN replies and preserves string IDs in
+its existing controls. Metadata edits, deletion and byte downloads retain their
+separate bridge transports. This list does not add a native client screen or a
+Jellyfin counterpart. Its ordinary migration row remains proposed until the
+independent review and actual consumer inventory requirements are satisfied.

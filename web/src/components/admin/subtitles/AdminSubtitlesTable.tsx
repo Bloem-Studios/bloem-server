@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import type { AdminDownloadedSubtitle } from "@/api/types";
+import type { AdminStoredSubtitle as AdminDownloadedSubtitle } from "@/api/v2/adminSubtitles";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,7 +49,7 @@ export default function AdminSubtitlesTable({
 }: AdminSubtitlesTableProps) {
   const [editTarget, setEditTarget] = useState<AdminDownloadedSubtitle | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminDownloadedSubtitle | null>(null);
-  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function handleDownload(subtitle: AdminDownloadedSubtitle) {
     setDownloadingId(subtitle.id);

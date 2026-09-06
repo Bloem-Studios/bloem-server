@@ -1,10 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, apiDownload } from "@/api/client";
+import {
+  adminSubtitleListScope,
+  listAdminSubtitles,
+  type AdminSubtitleListQuery,
+  type AdminStoredSubtitle,
+} from "@/api/v2/adminSubtitles";
 import { v2 } from "@/api/v2/request";
 import type {
   AdminDownloadedSubtitle,
-  AdminDownloadedSubtitlesFilters,
-  AdminDownloadedSubtitlesResponse,
   AdminUpdateDownloadedSubtitleRequest,
   SubtitleProviderUpdateRequest,
   SubtitleProviderTestRequest,
@@ -14,26 +18,12 @@ import { toast } from "sonner";
 
 const ADMIN_STALE_TIME = 30_000;
 
-function buildDownloadedSubtitlesQuery(filters: AdminDownloadedSubtitlesFilters): string {
-  const params = new URLSearchParams();
-  if (filters.provider) params.set("provider", filters.provider);
-  if (filters.language) params.set("language", filters.language);
-  if (filters.userId != null) params.set("user_id", String(filters.userId));
-  if (filters.mediaFileId != null) params.set("media_file_id", String(filters.mediaFileId));
-  if (filters.q) params.set("q", filters.q);
-  params.set("limit", String(filters.limit ?? 50));
-  params.set("offset", String(filters.offset ?? 0));
-  const query = params.toString();
-  return query ? `/admin/subtitles?${query}` : "/admin/subtitles";
-}
-
-export function useAdminDownloadedSubtitles(filters: AdminDownloadedSubtitlesFilters) {
+export function useAdminDownloadedSubtitles(filters: AdminSubtitleListQuery) {
+  const scope = adminSubtitleListScope();
   return useQuery({
-    queryKey: adminKeys.downloadedSubtitles(filters),
-    queryFn: () =>
-      api<AdminDownloadedSubtitlesResponse>(buildDownloadedSubtitlesQuery(filters)).then(
-        (data) => data ?? { subtitles: [], total: 0, uploads: 0, provider_downloads: 0 },
-      ),
+    queryKey: ["admin", "downloadedSubtitles", scope, filters],
+    queryFn: ({ signal }) => listAdminSubtitles(filters, scope, signal),
+    retry: false,
     staleTime: ADMIN_STALE_TIME,
   });
 }
@@ -41,7 +31,7 @@ export function useAdminDownloadedSubtitles(filters: AdminDownloadedSubtitlesFil
 export function useAdminUpdateDownloadedSubtitle() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, patch }: { id: number; patch: AdminUpdateDownloadedSubtitleRequest }) =>
+    mutationFn: ({ id, patch }: { id: string; patch: AdminUpdateDownloadedSubtitleRequest }) =>
       api<{ subtitle: AdminDownloadedSubtitle }>(`/admin/subtitles/${id}`, {
         method: "PATCH",
         body: JSON.stringify(patch),
@@ -59,7 +49,7 @@ export function useAdminUpdateDownloadedSubtitle() {
 export function useAdminDeleteDownloadedSubtitle() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) =>
+    mutationFn: (id: string) =>
       api<void>(`/admin/subtitles/${id}`, {
         method: "DELETE",
       }),
@@ -73,7 +63,7 @@ export function useAdminDeleteDownloadedSubtitle() {
   });
 }
 
-export async function downloadAdminSubtitle(subtitle: AdminDownloadedSubtitle): Promise<void> {
+export async function downloadAdminSubtitle(subtitle: AdminStoredSubtitle): Promise<void> {
   const base = subtitle.release_name?.trim() || `subtitle-${subtitle.id}`;
   const filename = base.includes(".") ? base : `${base}.${subtitle.format}`;
   await apiDownload(`/admin/subtitles/${subtitle.id}/download`, filename);

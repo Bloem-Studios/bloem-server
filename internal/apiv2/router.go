@@ -277,6 +277,7 @@ type Dependencies struct {
 	WatchProviders          WatchProviderService
 	HistoryImports          HistoryImportService
 	AdminHistoryImports     AdminHistoryImportService
+	AdminSubtitleList       AdminSubtitleListService
 	AdminAPIKeys            AdminAPIKeyService
 	PersonalAPIKeys         PersonalAPIKeyService
 	PolicyCapability        PolicyCapabilityService

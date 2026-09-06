@@ -17155,11 +17155,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/subtitles",
+        "operation_id": "listAdminStoredSubtitles"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; adminSubtitleHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "V2 registers unconditionally; unavailable administration returns 503. Acting-admin live list preserves filters and statistics with string IDs and signed account/profile/filter/limit-bound keyset cursors. Each page uses a read-only snapshot; later pages are a live view. Bundled admin read caller adopted; independent review and native caller inventory remain required. No metadata mutation, deletion or byte-download ratification."
     },
     {
       "listener": "api",

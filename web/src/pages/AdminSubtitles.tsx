@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { adminSubtitleListScope } from "@/api/v2/adminSubtitles";
 import { useSearchParams } from "react-router";
-import type { AdminDownloadedSubtitle } from "@/api/types";
+import type { AdminStoredSubtitle as AdminDownloadedSubtitle } from "@/api/v2/adminSubtitles";
 import AdminSubtitlesFilters, {
   FILTER_ALL,
 } from "@/components/admin/subtitles/AdminSubtitlesFilters";
@@ -25,7 +26,7 @@ const PAGE_SIZE_OPTIONS = ["25", "50", "100"] as const;
 export default function AdminSubtitles() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: users = [] } = useAdminUsers();
-  const [page, setPage] = useState(0);
+
   const [pageSize, setPageSize] = useState(25);
   const deleteMutation = useAdminDeleteDownloadedSubtitle();
 
@@ -34,20 +35,33 @@ export default function AdminSubtitles() {
   const userId = searchParams.get("user_id") ?? FILTER_ALL;
   const search = searchParams.get("q") ?? "";
 
-  const filters = useMemo(
-    () => ({
-      provider: provider !== FILTER_ALL ? provider : undefined,
-      language: language !== FILTER_ALL ? language : undefined,
-      userId: userId !== FILTER_ALL ? Number(userId) : undefined,
-      q: search.trim() || undefined,
-      limit: pageSize,
-      offset: page * pageSize,
-    }),
-    [language, page, pageSize, provider, search, userId],
-  );
+  const scope = JSON.stringify([
+    adminSubtitleListScope(),
+    provider,
+    language,
+    userId,
+    search.trim(),
+    pageSize,
+  ]);
+  const [pagination, setPagination] = useState({
+    scope,
+    cursors: [undefined] as (string | undefined)[],
+  });
+  // Derive the first page immediately on filter/authority changes; never send
+  // an old cursor once under the new filters while waiting for an effect.
+  const cursors = pagination.scope === scope ? pagination.cursors : [undefined];
+  const page = cursors.length - 1;
+  const filters = {
+    provider: provider !== FILTER_ALL ? provider : undefined,
+    language: language !== FILTER_ALL ? language : undefined,
+    user_id: userId !== FILTER_ALL ? userId : undefined,
+    q: search.trim() || undefined,
+    limit: pageSize,
+    cursor: cursors[page],
+  };
 
   const subtitlesQuery = useAdminDownloadedSubtitles(filters);
-  const subtitles = subtitlesQuery.data?.subtitles ?? [];
+  const subtitles = subtitlesQuery.data?.items ?? [];
   const total = subtitlesQuery.data?.total ?? 0;
   const uploads = subtitlesQuery.data?.uploads ?? 0;
   const providerDownloads = subtitlesQuery.data?.provider_downloads ?? 0;
@@ -66,12 +80,12 @@ export default function AdminSubtitles() {
     } else {
       next.set(key, value);
     }
-    setPage(0);
+    setPagination({ scope, cursors: [undefined] });
     setSearchParams(next, { replace: true });
   }
 
   function resetFilters() {
-    setPage(0);
+    setPagination({ scope, cursors: [undefined] });
     setSearchParams(new URLSearchParams(), { replace: true });
   }
 
@@ -79,9 +93,10 @@ export default function AdminSubtitles() {
     deleteMutation.mutate(subtitle.id);
   }
 
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const canPrev = page > 0;
-  const canNext = (page + 1) * pageSize < total;
+  const nextCursor = subtitlesQuery.data?.page?.next_cursor;
+  const canNext =
+    !!subtitlesQuery.data?.page?.has_more && !!nextCursor && !cursors.includes(nextCursor);
 
   if (subtitlesQuery.isLoading) {
     return (
@@ -130,6 +145,10 @@ export default function AdminSubtitles() {
         onReset={resetFilters}
       />
 
+      {subtitlesQuery.isError && (
+        <p role="alert">Unable to load subtitles. {subtitlesQuery.error.message}</p>
+      )}
+
       <AdminSubtitlesTable
         subtitles={subtitles}
         hasActiveFilters={hasActiveFilters}
@@ -138,17 +157,17 @@ export default function AdminSubtitles() {
         isDeleting={deleteMutation.isPending}
       />
 
-      {total > 0 && (
+      {(total > 0 || page > 0) && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-muted-foreground text-sm">
-            Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} of {total}
+            {subtitles.length} subtitles on this page; {total} currently match
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Select
               value={String(pageSize)}
               onValueChange={(value) => {
                 setPageSize(Number(value));
-                setPage(0);
+                setPagination({ scope, cursors: [undefined] });
               }}
             >
               <SelectTrigger className="w-[110px]">
@@ -166,18 +185,18 @@ export default function AdminSubtitles() {
               type="button"
               variant="outline"
               disabled={!canPrev}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => setPagination({ scope, cursors: cursors.slice(0, -1) })}
             >
               Previous
             </Button>
-            <span className="text-muted-foreground px-1 text-sm">
-              Page {page + 1} of {pageCount}
-            </span>
+            <span className="text-muted-foreground px-1 text-sm">Page {page + 1}</span>
             <Button
               type="button"
               variant="outline"
               disabled={!canNext}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => {
+                if (nextCursor) setPagination({ scope, cursors: [...cursors, nextCursor] });
+              }}
             >
               Next
             </Button>

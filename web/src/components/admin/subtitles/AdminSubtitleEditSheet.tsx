@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AdminDownloadedSubtitle } from "@/api/types";
+import type { AdminStoredSubtitle as AdminDownloadedSubtitle } from "@/api/v2/adminSubtitles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
