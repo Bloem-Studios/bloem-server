@@ -1171,3 +1171,13 @@ or timestamps. Two HTTP exchanges use independent transport reseeds and four
 full eight-table snapshots (32 observations), without exemptions. This does not
 cover updates that supply fields. Required DSN, pre-constructor occupancy and
 exact selector guards remain mandatory.
+
+`make test-scenario-invite-code-field-updates` selects only `codes_update.ok`,
+`codes_update.disable` and `codes_update.shape`. Original requests, fresh-state
+declarations and 204 empty-body oracles remain unchanged. Six exchanges use
+independent reseeds and twelve full eight-table snapshots (96 observations).
+Only the seeded target's requested label or enabled field and its `updated_at`
+may change. The timestamp must fall between database clocks around the request;
+every other code column and every other table row must match exactly. No broad
+retry or concurrent-writer claim. Required DSN, pre-constructor occupancy and
+exact selector guards remain mandatory.

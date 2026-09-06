@@ -763,3 +763,7 @@ test-scenario-admin-invitation-role-refusals:
 .PHONY: test-scenario-invite-code-empty-update
 test-scenario-invite-code-empty-update:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeEmptyUpdateAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-invite-code-field-updates
+test-scenario-invite-code-field-updates:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredInviteCodeFieldUpdatesAcceptance$$' ./internal/scenariocatalog/executor

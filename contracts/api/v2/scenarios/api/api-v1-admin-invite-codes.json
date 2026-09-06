@@ -1747,7 +1747,25 @@
             "status": 204,
             "body_kind": "empty"
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original supplied-field update and 204 empty response. Only the target requested field and bounded updated_at may change; all other rows and columns are preserved.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_field_updates_pairing_test.go",
+            "operation_id": "updateAdminInviteCode",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_id}",
+              "body": {
+                "label": "renamed"
+              }
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "codes_update.partial",
@@ -1800,7 +1818,25 @@
             "body_kind": "empty"
           },
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original supplied-field update and 204 empty response. Only the target requested field and bounded updated_at may change; all other rows and columns are preserved.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_field_updates_pairing_test.go",
+            "operation_id": "updateAdminInviteCode",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_id}",
+              "body": {
+                "enabled": false
+              }
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "codes_update.not_found",
@@ -2182,7 +2218,25 @@
             "body_kind": "empty"
           },
           "notes": "PUT returns 204 while POST top-up returns 200 with the row; inconsistent within the group. Flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves the original supplied-field update and 204 empty response. Only the target requested field and bounded updated_at may change; all other rows and columns are preserved.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_field_updates_pairing_test.go",
+            "operation_id": "updateAdminInviteCode",
+            "method": "PUT",
+            "request": {
+              "path": "/api/v2/admin/invite-codes/${invite_code_id}",
+              "body": {
+                "label": "x"
+              }
+            },
+            "expect": {
+              "status": 204,
+              "body_kind": "empty",
+              "headers": [],
+              "body": []
+            }
+          }
         },
         {
           "id": "codes_update.admin_secondary_profile",
