@@ -206,25 +206,40 @@ export function useRequestEmailNotificationAddress() {
 export function useClearEmailNotificationAddress() {
   const queryClient = useQueryClient();
   const context = captureProfileRequestContext();
-  return useMutation({
+  const mutation = useMutation({
     retry: false,
-    mutationFn: () => {
-      if (!context) throw new StaleApiRequestContextError();
-      return clearNotificationEmailAddress(context);
+    mutationFn: (authority: ReturnType<typeof captureProfileRequestContext>) => {
+      if (!authority) throw new StaleApiRequestContextError();
+      return clearNotificationEmailAddress(authority);
     },
-    onSuccess: (prefs) => {
-      if (!context) return;
-      requireNotificationAuthority(context);
+    onSuccess: (prefs, authority) => {
+      if (!authority) return;
+      requireNotificationAuthority(authority);
       queryClient.setQueryData(
-        [...notificationKeys.emailPreferences(), notificationScope(context)],
+        [...notificationKeys.emailPreferences(), notificationScope(authority)],
         prefs,
       );
     },
-    onError: (error) => {
+    onError: (error, authority) => {
+      if (!authority) return;
+      try {
+        requireNotificationAuthority(authority);
+      } catch {
+        return;
+      }
       if (error instanceof StaleApiRequestContextError) return;
       toast.error(error instanceof Error ? error.message : "Failed to remove the custom address");
     },
   });
+  // Pending mutations can receive new observer options after a rerender.
+  // Keep the invocation's authority in variables, independent of those closures.
+  return {
+    ...mutation,
+    mutate: (_?: void, options?: Parameters<typeof mutation.mutate>[1]) =>
+      mutation.mutate(context, options),
+    mutateAsync: (_?: void, options?: Parameters<typeof mutation.mutateAsync>[1]) =>
+      mutation.mutateAsync(context, options),
+  };
 }
 
 export function useDiscordNotificationPreferences(enabled = true) {

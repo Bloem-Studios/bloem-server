@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { setAccessToken, setProfileId, setProfileToken } from "@/api/client";
 import { captureNotificationAuthority, notificationScope } from "@/api/v2/notifications";
@@ -15,6 +15,7 @@ beforeEach(() => {
   setProfileToken(null);
 });
 afterEach(() => {
+  onlineManager.setOnline(true);
   cleanup();
   vi.unstubAllGlobals();
 });
@@ -25,19 +26,17 @@ it("updates only the captured email preferences cache and rejects a stale receip
   const own = [...base, notificationScope(captureNotificationAuthority())];
   const other = [...base, "other"];
   for (const key of [base, own, other]) client.setQueryData(key, [{ id: "one" }]);
-  const fetch = vi
-    .fn<typeof globalThis.fetch>()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          mode: "off",
-          custom_email: "",
-          pending_email: "",
-          can_edit_address: true,
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
-    );
+  const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        mode: "off",
+        custom_email: "",
+        pending_email: "",
+        can_edit_address: true,
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    ),
+  );
   vi.stubGlobal("fetch", fetch);
   const { result } = renderHook(() => useClearEmailNotificationAddress(), {
     wrapper: ({ children }: { children: ReactNode }) =>
@@ -89,3 +88,59 @@ it("does not replay address clear on authentication or service failure", async (
   }
   client.clear();
 });
+
+it.each(["mutate", "mutateAsync"] as const)(
+  "keeps %s authority immutable across offline pause and replacement",
+  async (method) => {
+    const client = new QueryClient();
+    const original = [
+      ...notificationKeys.emailPreferences(),
+      notificationScope(captureNotificationAuthority()),
+    ];
+    client.setQueryData(original, { custom_email: "original" });
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            mode: "off",
+            custom_email: "",
+            pending_email: "",
+            can_edit_address: true,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    vi.stubGlobal("fetch", fetch);
+    const { result, rerender } = renderHook(() => useClearEmailNotificationAddress(), {
+      wrapper: ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client }, children),
+    });
+    onlineManager.setOnline(false);
+    let completion: Promise<unknown> | undefined;
+    act(() => {
+      if (method === "mutateAsync")
+        completion = result.current.mutateAsync().catch((error) => error);
+      else result.current.mutate();
+    });
+    await waitFor(() => expect(result.current.isPaused).toBe(true));
+    setProfileId("replacement");
+    setProfileToken("replacement-pin");
+    const replacement = [
+      ...notificationKeys.emailPreferences(),
+      notificationScope(captureNotificationAuthority()),
+    ];
+    client.setQueryData(replacement, { custom_email: "replacement" });
+    rerender();
+    await act(async () => {
+      onlineManager.setOnline(true);
+      await client.resumePausedMutations();
+      await completion;
+    });
+    await waitFor(() => expect(result.current.isPending).toBe(false));
+    expect(fetch).not.toHaveBeenCalled();
+    expect(client.getQueryData(original)).toEqual({ custom_email: "original" });
+    expect(client.getQueryData(replacement)).toEqual({ custom_email: "replacement" });
+    client.clear();
+  },
+);
