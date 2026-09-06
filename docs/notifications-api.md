@@ -458,3 +458,52 @@ clear stale display credentials for disabled/removed state, and preserve the
 original registration packet for explicit renewal/retry. Native adoption requires
 its own reviewed persistence and lifecycle implementation; this server packet does
 not enable it. The browser has no Apple-registration caller.
+
+## Durable email verification storage prerequisite
+
+The retained address-request route still uses the bridge flow. Its v2 port
+requires durable dispatch: replacing a pending token and sending inline would
+invalidate an earlier link and send again after a lost HTTP response.
+
+The email repository now supports a client-created verification intent UUID,
+bound to its original account, profile and normalized address. Admission locks
+the profile preferences row (creating the default row transactionally when
+absent), then commits both the pending token hash and an encrypted verification
+message in `notification_email_verifications`. The message contains the original
+recipient, rendered content and verification link; encryption is bound to the
+intent UUID. Plaintext bearer links are not stored in the outbox.
+
+Exact replay returns the retained intent receipt before applying rate limits. It
+never replaces the pending hash, regenerates the message, extends expiry or
+consumes another rate allowance. A changed address or owner under the same UUID
+conflicts. The receipt's `Current` value is false after expiry, clear, successful
+verification or replacement by another intent. It describes pending-state
+membership, not whether SMTP accepted a message. Server name and link-base changes
+do not rewrite an already-admitted message.
+
+A new intent preserves the one-minute minimum interval and ten-admissions-per-UTC-day
+limit. Address ownership is checked at admission and remains authoritative at
+verification through the existing uniqueness check. Current verified destination
+and notification mode stay unchanged while a new address is pending. Clear and
+verification keep their existing effects; retained intent rows prevent their old
+requests from recreating pending state.
+
+The migration must precede guarded writers on every serving node. After a profile
+has admitted a durable intent, the bridge's inline request path returns
+`email_verification_upgrade_required` rather than overwriting its pending token.
+Unadopted profiles retain the bridge behavior. This prerequisite does not wire a
+v2 route, web caller or sender, and must not be activated without the dispatch and
+caller work. The table's Down operation is not an online rollback protocol.
+
+Future dispatch must check current pending hash, expiry, account/profile authority
+and message ownership under its claim before sending. Queued work cannot authorize
+a send after clear, replacement or profile deletion. Retained receipts must survive
+payload cleanup; no retention or worker lease policy is introduced here. The outbox
+currently has no dispatch state, automatic retries or recovery worker.
+
+SMTP has no provider idempotency key and a failed connection cannot always establish
+whether the server accepted the message. Durable admission therefore does not imply
+exactly-once delivery. The later dispatcher needs an explicit policy for ambiguous
+outcomes: retrying the same retained message can duplicate mail after a crash;
+holding it can leave a request undelivered. That policy remains unresolved. HTTP
+success for the future caller must describe queued admission, not claim delivery.

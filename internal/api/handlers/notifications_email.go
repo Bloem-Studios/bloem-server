@@ -106,6 +106,10 @@ func (h *NotificationsHandler) HandleRequestEmailAddress(w http.ResponseWriter, 
 	err := h.system.RequestEmailAddress(r.Context(), userID, profileID, req.Email)
 	switch {
 	case err == nil:
+	case errors.Is(err, notifications.ErrEmailLegacyWriter):
+		writeError(w, http.StatusConflict, "email_verification_upgrade_required", "This profile requires durable email verification")
+		return
+
 	case errors.Is(err, notifications.ErrEmailInvalidAddress):
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid email address")
 		return
