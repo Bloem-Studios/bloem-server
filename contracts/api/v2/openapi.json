@@ -1088,6 +1088,33 @@
         ],
         "type": "object"
       },
+      "AdminAutoscanAvailableSource": {
+        "additionalProperties": false,
+        "properties": {
+          "capability_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "descriptor": {
+            "$ref": "#/components/schemas/AdminScanSourceDescriptor"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "plugin_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plugin_id",
+          "capability_id",
+          "display_name",
+          "descriptor"
+        ],
+        "type": "object"
+      },
       "AdminAutoscanConnection": {
         "additionalProperties": false,
         "properties": {
@@ -3648,6 +3675,25 @@
         ],
         "type": "object"
       },
+      "AdminFormCondition": {
+        "additionalProperties": false,
+        "properties": {
+          "equals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "field": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "equals"
+        ],
+        "type": "object"
+      },
       "AdminFormConditionView": {
         "additionalProperties": false,
         "properties": {
@@ -3731,6 +3777,25 @@
         ],
         "type": "object"
       },
+      "AdminFormOption": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "type": "object"
+      },
       "AdminFormOptionView": {
         "additionalProperties": false,
         "properties": {
@@ -3747,6 +3812,44 @@
         "required": [
           "value",
           "label"
+        ],
+        "type": "object"
+      },
+      "AdminFormSection": {
+        "additionalProperties": false,
+        "properties": {
+          "collapsed_default": {
+            "type": "boolean"
+          },
+          "collapsible": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "field_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "key": {
+            "type": "string"
+          },
+          "show_when": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFormCondition"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "field_keys"
         ],
         "type": "object"
       },
@@ -3788,6 +3891,37 @@
           "collapsed_default",
           "field_keys"
         ],
+        "type": "object"
+      },
+      "AdminFormValidation": {
+        "additionalProperties": false,
+        "properties": {
+          "has_max": {
+            "type": "boolean"
+          },
+          "has_min": {
+            "type": "boolean"
+          },
+          "max": {
+            "format": "double",
+            "type": "number"
+          },
+          "max_length": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "min": {
+            "format": "double",
+            "type": "number"
+          },
+          "min_length": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "pattern": {
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "AdminFormValidationView": {
@@ -8429,6 +8563,135 @@
         "required": [
           "keys",
           "prefixes"
+        ],
+        "type": "object"
+      },
+      "AdminScanSourceDescriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "config_form": {
+            "$ref": "#/components/schemas/AdminScanSourceForm"
+          },
+          "connection": {
+            "type": "string"
+          },
+          "connection_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "delivery_modes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "emits_native_paths": {
+            "type": "boolean"
+          },
+          "icon_url": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delivery_modes",
+          "connection",
+          "connection_kinds",
+          "emits_native_paths",
+          "summary",
+          "icon_url"
+        ],
+        "type": "object"
+      },
+      "AdminScanSourceForm": {
+        "additionalProperties": false,
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/AdminScanSourceFormField"
+            },
+            "type": "array"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFormSection"
+            },
+            "type": "array"
+          },
+          "submit_label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fields"
+        ],
+        "type": "object"
+      },
+      "AdminScanSourceFormField": {
+        "additionalProperties": false,
+        "properties": {
+          "control": {
+            "type": "string"
+          },
+          "default_value": {
+            "description": "Plugin-defined form default JSON value.",
+            "x-silo-extension-bag": "scan-source-form-default"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dynamic_options": {
+            "type": "boolean"
+          },
+          "fill_from": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "multiline": {
+            "type": "boolean"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFormOption"
+            },
+            "type": "array"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "rows": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "secret": {
+            "type": "boolean"
+          },
+          "show_when": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFormCondition"
+            },
+            "type": "array"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/AdminFormValidation"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "control"
         ],
         "type": "object"
       },
@@ -13936,6 +14199,26 @@
             "description": "The page's items; empty, never null",
             "items": {
               "$ref": "#/components/schemas/AdminAuditLog"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo",
+            "description": "Cursor state; absent for bounded unpaginated collections"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "CollectionAdminAutoscanAvailableSource": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "description": "The page's items; empty, never null",
+            "items": {
+              "$ref": "#/components/schemas/AdminAutoscanAvailableSource"
             },
             "type": "array"
           },
@@ -37667,6 +37950,175 @@
           }
         ],
         "summary": "Read configured connections without credentials. Each response page enumerates the full configured connection list.",
+        "tags": [
+          "admin-autoscan"
+        ],
+        "x-silo-class": "acting_admin",
+        "x-silo-demo-restricted": true,
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/admin/autoscan/scan-source-plugins": {
+      "get": {
+        "operationId": "listAdminAutoscanAvailableSources",
+        "parameters": [
+          {
+            "description": "Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "schema": {
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "examples": [
+                "pvt_5f3a9c1e7b2d4e8fa0c6"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size; default 50, maximum 200",
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "description": "Page size; default 50, maximum 200",
+              "examples": [
+                50
+              ],
+              "format": "int64",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "maxLength": 8192,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionAdminAutoscanAvailableSource"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read installed and built-in scan-source setup descriptors without invoking providers. Each page enumerates the full current discovery list; this is not a snapshot.",
         "tags": [
           "admin-autoscan"
         ],

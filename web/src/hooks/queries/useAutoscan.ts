@@ -1,3 +1,4 @@
+import { readAdminAutoscanAvailableSources } from "@/api/v2/adminAutoscanAvailableSources";
 import { readAdminAutoscanConnections } from "@/api/v2/adminAutoscanConnections";
 import {
   readAdminAutoscanSettings,
@@ -8,7 +9,6 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { toast } from "sonner";
 import { api, captureProfileRequestContext, StaleApiRequestContextError } from "@/api/client";
 import type {
-  AutoscanAvailableSourcesResponse,
   AutoscanConnection,
   AutoscanConnectionInput,
   AutoscanConnectionTestInput,
@@ -163,13 +163,28 @@ export function useAutoscanSources() {
   });
 }
 
+// Only an opaque observed-proof generation enters the descriptor cache key.
+let availableSourceProof: string | null | undefined;
+let availableSourceProofGeneration = 0;
 export function useAvailableScanSources() {
+  const profileContext = captureProfileRequestContext();
+  if (profileContext?.profileToken !== availableSourceProof) {
+    availableSourceProof = profileContext?.profileToken;
+    availableSourceProofGeneration += 1;
+  }
   return useQuery({
-    queryKey: adminKeys.autoscanScanSourcePlugins(),
-    queryFn: () =>
-      api<AutoscanAvailableSourcesResponse>("/admin/autoscan/scan-source-plugins").then(
-        (data) => data.plugins ?? [],
-      ),
+    queryKey: [
+      ...adminKeys.autoscanScanSourcePlugins(),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+      availableSourceProofGeneration,
+    ],
+    enabled: profileContext !== null,
+    queryFn: () => {
+      if (!profileContext) throw new StaleApiRequestContextError();
+      return readAdminAutoscanAvailableSources(profileContext);
+    },
     staleTime: AUTOSCAN_STALE_TIME,
   });
 }

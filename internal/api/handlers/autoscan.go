@@ -1268,3 +1268,8 @@ func writeAutoscanError(w http.ResponseWriter, err error) {
 	}
 	writeError(w, http.StatusInternalServerError, "internal_error", "Autoscan operation failed")
 }
+
+// ReadAdminAutoscanAvailableSources reuses discovery without reading source secrets or invoking a provider.
+func (h *AutoscanHandler) ReadAdminAutoscanAvailableSources(ctx context.Context) ([]autoscan.AvailableScanSource, error) {
+	return h.svc.ListAvailableScanSources(ctx)
+}

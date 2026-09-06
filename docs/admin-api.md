@@ -1730,3 +1730,25 @@ without snapshot, late-commit or retention completeness guarantees.
 The existing `useAuditLogs` HTTP helper uses the scoped v2 contract and rejects IDs
 outside its numeric model's safe range. No mounted component currently calls it;
 the audit viewer continues to use its separate websocket protocol.
+
+### Autoscan setup descriptor discovery in v2
+
+`GET /api/v2/admin/autoscan/scan-source-plugins` lists installed and built-in
+scan-source identities with resolved setup descriptors. The acting-administrator
+read reuses discovery and its defaults without invoking a provider or reading
+stored source configuration. Descriptor fields, setup form controls, options,
+conditions, validation and manifest defaults retain their existing meanings;
+`default_value` is a plugin-defined JSON extension value, not a stored secret.
+
+Each page enumerates the full current discovery list, sorts by `(plugin_id,
+capability_id)`, and returns at most `limit` entries (default 50, maximum 200).
+The signed cursor binds that identity position to actor/profile/access and limit.
+Duplicate identities fail rather than silently skip entries. This is a live list,
+not a snapshot; installation changes can affect later pages.
+
+The existing Add-source/edit and activity descriptor consumers drain pages through
+`useAvailableScanSources`, with a 100-page bound, loop/missing-cursor rejection,
+and authority checks before requests and after decoding. Cache keys separate
+observed PIN-proof changes without including credentials. Unknown form controls
+use the generic text fallback, and unknown connection requirements remain
+optional. Source writes, callback delivery and provider operations are separate.

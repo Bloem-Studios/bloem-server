@@ -174,6 +174,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/autoscan/scan-source-plugins": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read installed and built-in scan-source setup descriptors without invoking providers. Each page enumerates the full current discovery list; this is not a snapshot. */
+    get: operations["listAdminAutoscanAvailableSources"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/autoscan/settings": {
     parameters: {
       query?: never;
@@ -8822,6 +8839,13 @@ export interface components {
       user_agent?: string;
       user_id?: string;
     };
+    AdminAutoscanAvailableSource: {
+      capability_id: string;
+      description?: string;
+      descriptor: components["schemas"]["AdminScanSourceDescriptor"];
+      display_name: string;
+      plugin_id: string;
+    };
     AdminAutoscanConnection: {
       base_url?: string;
       has_api_key: boolean;
@@ -9721,6 +9745,10 @@ export interface components {
       parent: string;
       path: string;
     };
+    AdminFormCondition: {
+      equals: string[];
+      field: string;
+    };
     AdminFormConditionView: {
       equals: string[];
       field: string;
@@ -9743,10 +9771,24 @@ export interface components {
       show_when?: components["schemas"]["AdminFormConditionView"][];
       validation?: components["schemas"]["AdminFormValidationView"];
     };
+    AdminFormOption: {
+      description?: string;
+      label: string;
+      value: string;
+    };
     AdminFormOptionView: {
       description?: string;
       label: string;
       value: string;
+    };
+    AdminFormSection: {
+      collapsed_default?: boolean;
+      collapsible?: boolean;
+      description?: string;
+      field_keys: string[];
+      key: string;
+      show_when?: components["schemas"]["AdminFormCondition"][];
+      title: string;
     };
     AdminFormSectionView: {
       collapsed_default: boolean;
@@ -9756,6 +9798,19 @@ export interface components {
       key: string;
       show_when?: components["schemas"]["AdminFormConditionView"][];
       title: string;
+    };
+    AdminFormValidation: {
+      has_max?: boolean;
+      has_min?: boolean;
+      /** Format: double */
+      max?: number;
+      /** Format: int64 */
+      max_length?: number;
+      /** Format: double */
+      min?: number;
+      /** Format: int64 */
+      min_length?: number;
+      pattern?: string;
     };
     AdminFormValidationView: {
       has_max?: boolean;
@@ -11387,6 +11442,39 @@ export interface components {
     AdminRestartKeys: {
       keys: string[];
       prefixes: string[];
+    };
+    AdminScanSourceDescriptor: {
+      config_form?: components["schemas"]["AdminScanSourceForm"];
+      connection: string;
+      connection_kinds: string[];
+      delivery_modes: string[];
+      emits_native_paths: boolean;
+      icon_url: string;
+      summary: string;
+    };
+    AdminScanSourceForm: {
+      fields: components["schemas"]["AdminScanSourceFormField"][];
+      sections?: components["schemas"]["AdminFormSection"][];
+      submit_label?: string;
+    };
+    AdminScanSourceFormField: {
+      control: string;
+      /** @description Plugin-defined form default JSON value. */
+      default_value?: unknown;
+      description?: string;
+      dynamic_options?: boolean;
+      fill_from?: string;
+      key: string;
+      label: string;
+      multiline?: boolean;
+      options?: components["schemas"]["AdminFormOption"][];
+      placeholder?: string;
+      required?: boolean;
+      /** Format: int64 */
+      rows?: number;
+      secret?: boolean;
+      show_when?: components["schemas"]["AdminFormCondition"][];
+      validation?: components["schemas"]["AdminFormValidation"];
     };
     AdminSection: {
       /** @description A recipe's configuration document; its keys are fixed by the recipe named in section_type. */
@@ -13396,6 +13484,12 @@ export interface components {
     CollectionAdminAuditLog: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["AdminAuditLog"][];
+      /** @description Cursor state; absent for bounded unpaginated collections */
+      page?: components["schemas"]["PageInfo"];
+    };
+    CollectionAdminAutoscanAvailableSource: {
+      /** @description The page's items; empty, never null */
+      items: components["schemas"]["AdminAutoscanAvailableSource"][];
       /** @description Cursor state; absent for bounded unpaginated collections */
       page?: components["schemas"]["PageInfo"];
     };
@@ -23821,6 +23915,116 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["CollectionAdminAutoscanConnection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  listAdminAutoscanAvailableSources: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        /** @description Page size; default 50, maximum 200 */
+        limit?: number;
+      };
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v1/profiles/{id}/verify-pin until that operation moves to v2; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CollectionAdminAutoscanAvailableSource"];
         };
       };
       /** @description Bad Request */
