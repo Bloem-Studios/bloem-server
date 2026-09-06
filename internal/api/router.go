@@ -2316,6 +2316,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.SubtitleAIReads = subtitleAIHandler
 		v2deps.SubtitleAI = subtitleAIHandler
 	}
+	if deps.PluginHTTPProxy != nil {
+		v2deps.AuthProviderIconPublic = deps.PluginHTTPProxy.PublicGETRoute
+	}
 	v2deps.PluginContent = plugins.NewContentHandler(deps.PluginHTTPProxy, func(r *http.Request) plugins.ContentAccess {
 		authenticated, admin, userID, profileID := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, apiKeyRepo, userRepo)
 		return plugins.ContentAccess{Authenticated: authenticated, Admin: admin, UserID: userID, ProfileID: profileID}
