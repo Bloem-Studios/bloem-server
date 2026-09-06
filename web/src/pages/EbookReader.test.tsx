@@ -34,6 +34,7 @@ vi.mock("@/components/PageBack", () => ({
 }));
 
 vi.mock("@/reader/ebookReaderApi", () => ({
+  createEbookAnnotationSession: () => ({ profileContext: null, creates: new Map() }),
   createEbookReaderAnnotation: mocks.createEbookReaderAnnotation,
   deleteEbookReaderAnnotation: mocks.deleteEbookReaderAnnotation,
   fetchEbookReaderAnnotations: mocks.fetchEbookReaderAnnotations,
@@ -1042,7 +1043,11 @@ describe("EbookReader", () => {
       deleteButton?.click();
     });
 
-    expect(mocks.deleteEbookReaderAnnotation).toHaveBeenCalledWith("ebook-1", "ann-1");
+    expect(mocks.deleteEbookReaderAnnotation).toHaveBeenCalledWith(
+      "ebook-1",
+      expect.objectContaining({ id: "ann-1" }),
+      expect.any(Object),
+    );
 
     const highlight = container.querySelector<HTMLButtonElement>(
       'button[aria-label="Highlight selection"]',
@@ -1058,6 +1063,7 @@ describe("EbookReader", () => {
         cfi_range: "epubcfi(/6/4,/1:0,/1:12)",
         selected_text: "sample text",
       }),
+      expect.any(Object),
     );
   });
 
