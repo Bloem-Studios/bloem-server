@@ -43,7 +43,53 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 wraps the three seeded records in a terminating collection page, uses string IDs, and orders by descending ID. Original v1 assertions remain unchanged; this fixture does not cover multi-page traversal.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_list_reads_pairing_test.go",
+            "operation_id": "listAdminInviteCodes",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/invite-codes"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "type",
+                  "value": "array"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items",
+                    "page"
+                  ]
+                },
+                {
+                  "pointer": "/page",
+                  "op": "keys_equal",
+                  "value": [
+                    "has_more"
+                  ]
+                },
+                {
+                  "pointer": "/page/has_more",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_list.meaning",
@@ -74,7 +120,62 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 wraps the three seeded records in a terminating collection page, uses string IDs, and orders by descending ID. Original v1 assertions remain unchanged; this fixture does not cover multi-page traversal.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_list_reads_pairing_test.go",
+            "operation_id": "listAdminInviteCodes",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/invite-codes"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/created_by",
+                    "op": "equals",
+                    "value": "${admin_user_id}"
+                  }
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items",
+                    "page"
+                  ]
+                },
+                {
+                  "pointer": "/page",
+                  "op": "keys_equal",
+                  "value": [
+                    "has_more"
+                  ]
+                },
+                {
+                  "pointer": "/page/has_more",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_list.shape",
@@ -115,7 +216,90 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 wraps the three seeded records in a terminating collection page, uses string IDs, and orders by descending ID. Original v1 assertions remain unchanged; this fixture does not cover multi-page traversal.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_list_reads_pairing_test.go",
+            "operation_id": "listAdminInviteCodes",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/invite-codes"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "",
+                    "op": "keys_equal",
+                    "value": [
+                      "id",
+                      "code",
+                      "label",
+                      "max_uses",
+                      "use_count",
+                      "created_by",
+                      "enabled",
+                      "created_at",
+                      "updated_at"
+                    ]
+                  }
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items",
+                    "page"
+                  ]
+                },
+                {
+                  "pointer": "/page",
+                  "op": "keys_equal",
+                  "value": [
+                    "has_more"
+                  ]
+                },
+                {
+                  "pointer": "/page/has_more",
+                  "op": "equals",
+                  "value": false
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/id",
+                    "op": "type",
+                    "value": "string"
+                  }
+                },
+                {
+                  "pointer": "/items",
+                  "op": "every",
+                  "value": {
+                    "pointer": "/created_by",
+                    "op": "type",
+                    "value": "string"
+                  }
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_list.sorted",
@@ -150,7 +334,73 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 wraps the three seeded records in a terminating collection page, uses string IDs, and orders by descending ID. Original v1 assertions remain unchanged; this fixture does not cover multi-page traversal.",
+            "recorded_in": "internal/scenariocatalog/executor/invite_code_list_reads_pairing_test.go",
+            "operation_id": "listAdminInviteCodes",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/admin/invite-codes"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/items",
+                  "op": "length",
+                  "value": 3
+                },
+                {
+                  "pointer": "/items",
+                  "op": "unique_by",
+                  "value": "/id"
+                },
+                {
+                  "pointer": "/items/0/label",
+                  "op": "equals",
+                  "value": "fixture exhausted"
+                },
+                {
+                  "pointer": "/items/1/label",
+                  "op": "equals",
+                  "value": "fixture disabled"
+                },
+                {
+                  "pointer": "/items/2/label",
+                  "op": "equals",
+                  "value": "fixture usable"
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "items",
+                    "page"
+                  ]
+                },
+                {
+                  "pointer": "/page",
+                  "op": "keys_equal",
+                  "value": [
+                    "has_more"
+                  ]
+                },
+                {
+                  "pointer": "/page/has_more",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "codes_list.admin_secondary_profile",

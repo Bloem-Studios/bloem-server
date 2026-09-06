@@ -1047,3 +1047,12 @@ v2 returns its typed permission-denied Problem envelope. Two HTTP refusals use
 independent transport reseeds and four full eight-table snapshots (32 observations),
 without exemptions or successful list requests. Required DSN, pre-constructor
 occupancy and exact selector guards remain mandatory.
+
+`make test-scenario-invite-code-list-reads` selects only `codes_list.ok`,
+`codes_list.meaning`, `codes_list.shape` and `codes_list.sorted`. Original v1
+requests and assertions remain unchanged. V2 projects the collection envelope,
+string IDs and descending-ID order with the exact seeded label sequence. All
+three records fit one terminating page; this is not multi-page traversal proof.
+Eight HTTP reads use independent transport reseeds and sixteen full eight-table
+snapshots (128 observations), without exemptions. Required DSN, pre-constructor
+occupancy and exact selector guards remain mandatory.
