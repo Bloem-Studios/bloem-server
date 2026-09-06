@@ -132,35 +132,43 @@ func matchesCreation(node *Node, input CreateNodeInput) bool {
 }
 
 // Update evaluates the original-version guard while holding the row lock. The
-// trigger records configuration changes from bridge and v2 writers alike.
-func (s *AdminConfigurationStore) Update(ctx context.Context, id int, input UpdateNodeInput, guard func(int64) error) (*Node, error) {
+// trigger records configuration changes from bridge and v2 writers alike. The
+// returned previous row is the locked pre-image of the same transaction, so a
+// caller can tell a policy change (URL or acceleration override) from a resubmit.
+func (s *AdminConfigurationStore) Update(ctx context.Context, id int, input UpdateNodeInput, guard func(int64) error) (node, previous *Node, err error) {
 	if err := input.Validate(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
 	revision, err := readConfigurationRevision(ctx, tx, id)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err = guard(revision); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	node, err := NewTransactionalRepository(tx).Update(ctx, id, input)
+	repo := NewTransactionalRepository(tx)
+	previous, err = repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	previous.AdminRevision = revision
+	node, err = repo.Update(ctx, id, input)
+	if err != nil {
+		return nil, nil, err
 	}
 	node.AdminRevision, err = readConfigurationRevision(ctx, tx, id)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err = tx.Commit(ctx); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return node, nil
+	return node, previous, nil
 }
 
 // Delete atomically removes the row and records durable reconciliation work.

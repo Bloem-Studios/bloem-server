@@ -11,7 +11,8 @@ import (
 type AdminNodeConfigurationStore interface {
 	Snapshot(context.Context) ([]*nodepool.Node, int64, error)
 	Create(context.Context, nodepool.CreateNodeInput) (*nodepool.Node, error)
-	Update(context.Context, int, nodepool.UpdateNodeInput, func(int64) error) (*nodepool.Node, error)
+	// Update returns the committed row and the locked pre-image it replaced.
+	Update(context.Context, int, nodepool.UpdateNodeInput, func(int64) error) (node, previous *nodepool.Node, err error)
 	Delete(context.Context, int, func(int64) error) error
 }
 
@@ -41,11 +42,33 @@ func (h *NodeHandler) UpdateAdminNode(ctx context.Context, id int, input nodepoo
 	if h.configuration == nil {
 		return nil, ErrAdminNodesUnavailable
 	}
-	node, err := h.configuration.Update(ctx, id, input, guard)
-	if err == nil {
-		h.configurationChanged()
+	node, previous, err := h.configuration.Update(ctx, id, input, guard)
+	if err != nil {
+		return nil, err
 	}
-	return node, err
+	h.configurationChanged()
+	// Same post-commit work as HandleUpdateNode: when the URL or an acceleration
+	// override moved, nudge the worker to re-read its row and drop this server's
+	// cached capabilities before the pool publishes the new policy. Off the
+	// request goroutine; the response is the committed row and never waits on
+	// or reflects the worker's answer.
+	policyChanged := nodePolicyTargetChanged(previous, node)
+	detached := context.WithoutCancel(ctx)
+	go func() {
+		if policyChanged {
+			if !h.reloadNodeConfig(detached, node) {
+				slog.WarnContext(detached, "node has not adopted its new acceleration policy yet; transcodes dispatched to it may fail until its next config poll",
+					"component", "api", "node_id", node.ID, "name", node.Name)
+			}
+			if h.invalidateCapabilityCache != nil {
+				h.invalidateCapabilityCache(node.URL)
+			}
+		}
+		if h.afterNodeUpdate != nil {
+			h.afterNodeUpdate()
+		}
+	}()
+	return node, nil
 }
 func (h *NodeHandler) DeleteAdminNode(ctx context.Context, id int, guard func(int64) error) error {
 	if h.configuration == nil {

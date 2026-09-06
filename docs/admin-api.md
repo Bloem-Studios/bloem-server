@@ -2232,8 +2232,15 @@ snapshot. Capture the node's validator when opening an edit or delete action.
 holding the stored row lock. An absent precondition returns428; a stale or weak
 validator returns412 with the current ETag. The shared header grammar and
 If-Match-before-If-None-Match ordering apply. PUT returns200 and its own committed
-configuration validator. Public URL and acceleration/device override nulls clear
-those fields; omitted fields retain their values. DELETE returns204 after the
+configuration validator. A successful PUT always advances the validator, so a
+retry after a lost response that reuses the original `If-Match` returns412 even
+when the first write landed: a client must re-read `config_etag` and compare the
+stored configuration before resubmitting, rather than treating412 as another
+writer's change. Public URL and acceleration/device override nulls clear
+those fields; omitted fields retain their values. When a PUT changes the URL or
+an acceleration/device override, the server asks that worker to re-read its
+configuration and drops its cached capabilities after the commit, off the
+request; the response does not wait on or report the worker's answer. DELETE returns204 after the
 row deletion and durable pool invalidation commit together. A later404 does not
 prove which caller deleted the node.
 

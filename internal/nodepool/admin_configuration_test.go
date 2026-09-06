@@ -116,7 +116,7 @@ func TestAdminNodeConfigurationTransactions(t *testing.T) {
 	}
 	t.Run("guard failure has no update or delete effects", func(t *testing.T) {
 		deny := func(int64) error { return refused }
-		if _, err := store.Update(ctx, node.ID, UpdateNodeInput{Name: new("Denied")}, deny); !errors.Is(err, refused) {
+		if _, _, err := store.Update(ctx, node.ID, UpdateNodeInput{Name: new("Denied")}, deny); !errors.Is(err, refused) {
 			t.Fatal(err)
 		}
 		if err := store.Delete(ctx, node.ID, deny); !errors.Is(err, refused) {
@@ -127,6 +127,28 @@ func TestAdminNodeConfigurationTransactions(t *testing.T) {
 			t.Fatalf("refused effects: %v %d %v", rows, g, err)
 		}
 	})
+	t.Run("update returns the locked pre-image", func(t *testing.T) {
+		rows, _, err := store.Snapshot(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		current := rows[0]
+		updated, previous, err := store.Update(ctx, node.ID, UpdateNodeInput{Name: new("Pre-image check")}, guard(current.AdminRevision))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if previous.Name != current.Name || previous.AdminRevision != current.AdminRevision || updated.Name != "Pre-image check" || updated.AdminRevision == previous.AdminRevision {
+			t.Fatalf("pre-image %+v updated %+v", previous, updated)
+		}
+		if _, _, err := store.Update(ctx, node.ID, UpdateNodeInput{Name: new(input.Name)}, guard(updated.AdminRevision)); err != nil {
+			t.Fatal(err)
+		}
+		rows, _, err = store.Snapshot(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		node.AdminRevision = rows[0].AdminRevision
+	})
 	t.Run("concurrent original-version writers have one winner", func(t *testing.T) {
 		start := make(chan struct{})
 		results := make(chan error, 2)
@@ -134,7 +156,7 @@ func TestAdminNodeConfigurationTransactions(t *testing.T) {
 		for _, name := range []string{"Writer A", "Writer B"} {
 			wg.Go(func() {
 				<-start
-				_, err := store.Update(ctx, node.ID, UpdateNodeInput{Name: new(name)}, guard(node.AdminRevision))
+				_, _, err := store.Update(ctx, node.ID, UpdateNodeInput{Name: new(name)}, guard(node.AdminRevision))
 				results <- err
 			})
 		}
@@ -163,7 +185,7 @@ func TestAdminNodeConfigurationTransactions(t *testing.T) {
 		if err != nil || rows[0].Name != input.Name || rows[0].AdminRevision == node.AdminRevision {
 			t.Fatalf("ABA: %v %v", rows, err)
 		}
-		if _, err := store.Update(ctx, node.ID, UpdateNodeInput{Enabled: new(false)}, guard(node.AdminRevision)); !errors.Is(err, refused) {
+		if _, _, err := store.Update(ctx, node.ID, UpdateNodeInput{Enabled: new(false)}, guard(node.AdminRevision)); !errors.Is(err, refused) {
 			t.Fatalf("ABA accepted: %v", err)
 		}
 	})
