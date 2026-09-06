@@ -60,9 +60,12 @@ Confirmed refusal or duplicate reuse cleans only the unpublished candidate.
 An uncertain transaction reply retains the candidate because publication may
 have committed. Ready/completed notifications require a confirmed publication
 result; a refused stale publisher does not announce another terminal outcome.
-Notifications remain best effort, and reconciliation of uncertain outcomes
-requires reading persisted state. There is no durable request replay receipt or
-orphan cleanup guarantee.
+An unknown commit outcome remains distinct through the service boundary: it
+causes neither a failure-state write nor a definitive failure notification.
+Callers reconcile the persisted job instead of interpreting a lost reply as a
+failed job.
+Notifications remain best effort. There is no durable request replay receipt
+or orphan cleanup guarantee.
 
 Subtitle heartbeats signal confirmed terminal or missing rows to the shared
 runner without updating terminal timestamps. The runner stops local contexts

@@ -605,9 +605,10 @@ func (s *Service) finishWithError(ctx context.Context, job *Job, err error) {
 }
 
 func (s *Service) finishWithErrorNotify(ctx context.Context, job *Job, err error, notify bool) {
-	// Another terminal transition already owns the outcome. A stale publisher
-	// must not announce a new failure or overwrite that terminal result.
-	if errors.Is(err, subtitles.ErrAIJobInactive) {
+	// Another terminal transition may already own the outcome. An uncertain
+	// commit can have completed successfully, so neither a failure write nor
+	// a definitive notification is justified until that state is reconciled.
+	if errors.Is(err, subtitles.ErrAIJobInactive) || errors.Is(err, subtitles.ErrAIPublicationUncertain) {
 		return
 	}
 	status := JobStatusFailed

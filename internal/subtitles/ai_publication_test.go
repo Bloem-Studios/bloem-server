@@ -3,6 +3,7 @@ package subtitles
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -161,14 +162,14 @@ func (r lostAIPublicationReply) PublishAISubtitle(ctx context.Context, sub *Down
 	if _, err := r.PgRepository.PublishAISubtitle(ctx, sub, fence, legacy); err != nil {
 		return nil, err
 	}
-	return nil, errors.New("synthetic lost commit reply")
+	return nil, fmt.Errorf("%w: synthetic lost commit reply", ErrAIPublicationUncertain)
 }
 func TestAIPublicationPostgresLostReplyRetainsBytes(t *testing.T) {
 	pool := aiPublicationDatabase(t)
 	objects := newMockS3Client()
 	manager := NewManager(lostAIPublicationReply{NewPgRepository(pool, nil)}, objects, "synthetic")
-	if _, err := manager.StoreSubtitle(t.Context(), aiPublicationRequest()); err == nil {
-		t.Fatal("expected lost reply")
+	if _, err := manager.StoreSubtitle(t.Context(), aiPublicationRequest()); !errors.Is(err, ErrAIPublicationUncertain) {
+		t.Fatalf("lost reply did not preserve uncertainty: %v", err)
 	}
 	assertAIPublicationState(t, pool, "completed", 1)
 	var id int

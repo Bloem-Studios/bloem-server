@@ -78,7 +78,7 @@ func (r *PgRepository) PublishAISubtitle(ctx context.Context, candidate *Downloa
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("commit subtitle AI publication: %w", err)
+		return nil, fmt.Errorf("%w: commit subtitle AI publication: %w", ErrAIPublicationUncertain, err)
 	}
 	return sub, nil
 }

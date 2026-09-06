@@ -19,6 +19,11 @@ type AIJobPublication struct {
 // ErrAIJobInactive means publication was refused before any metadata commit.
 var ErrAIJobInactive = errors.New("subtitle AI job is no longer active")
 
+// ErrAIPublicationUncertain means the transaction may have committed. Callers
+// must not report a terminal outcome or attempt another terminal transition
+// without reconciling persisted state.
+var ErrAIPublicationUncertain = errors.New("subtitle AI publication outcome is uncertain")
+
 type aiPublicationRepository interface {
 	PublishAISubtitle(context.Context, *DownloadedSubtitle, AIJobPublication, *DownloadedSubtitle) (*DownloadedSubtitle, error)
 }

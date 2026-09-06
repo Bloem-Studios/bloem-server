@@ -19,7 +19,7 @@ func (s failingPublicationStore) StoreSubtitle(_ context.Context, req subtitles.
 	return nil, s.failure
 }
 func TestPublicationFailureDoesNotAnnounceReadyOrComplete(t *testing.T) {
-	for _, failure := range []error{subtitles.ErrAIJobInactive, errors.New("publication reply lost")} {
+	for _, failure := range []error{subtitles.ErrAIJobInactive, subtitles.ErrAIPublicationUncertain, errors.New("publication failed before commit")} {
 		for _, kind := range []JobKind{JobKindTranslate, JobKindTranscribe, JobKindTranscribeTranslate} {
 			t.Run(string(kind)+"/"+failure.Error(), func(t *testing.T) {
 				repo := &recordingRepo{}
@@ -41,11 +41,11 @@ func TestPublicationFailureDoesNotAnnounceReadyOrComplete(t *testing.T) {
 				if complete := store.stored[0].Publication.Complete; complete != (kind != JobKindTranscribeTranslate) {
 					t.Fatalf("complete=%v for %s", complete, kind)
 				}
-				if errors.Is(failure, subtitles.ErrAIJobInactive) && len(repo.failures) != 0 {
+				if (errors.Is(failure, subtitles.ErrAIJobInactive) || errors.Is(failure, subtitles.ErrAIPublicationUncertain)) && len(repo.failures) != 0 {
 					t.Fatal("inactive publisher attempted another terminal transition")
 				}
 				for _, event := range notifier.events {
-					if errors.Is(failure, subtitles.ErrAIJobInactive) && event.kind == "failed" {
+					if (errors.Is(failure, subtitles.ErrAIJobInactive) || errors.Is(failure, subtitles.ErrAIPublicationUncertain)) && event.kind == "failed" {
 						t.Fatal("inactive publisher announced a new failure")
 					}
 					if event.kind == "completed" || strings.HasPrefix(event.kind, "ready:") {
