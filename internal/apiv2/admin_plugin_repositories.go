@@ -72,13 +72,18 @@ func registerAdminPluginRepositories(reg *Registry) {
 				}
 				break
 			}
-			item := AdminPluginRepository{ID: strconv.Itoa(r.ID), URL: r.URL, DisplayName: r.DisplayName, Enabled: r.Enabled, SourceKind: r.SourceKind, Managed: r.ManagedKey != nil, CreatedAt: NewInstant(r.CreatedAt), UpdatedAt: NewInstant(r.UpdatedAt)}
-			if r.LastFetchedAt != nil {
-				item.LastFetchedAt = new(NewInstant(*r.LastFetchedAt))
-			}
+			item := adminPluginRepositoryOf(r)
 			items = append(items, item)
 			last = r.ID
 		}
 		return &AdminPluginRepositoriesOutput{Body: Paginated(items, next)}, nil
 	})
+}
+
+func adminPluginRepositoryOf(r *plugins.Repository) AdminPluginRepository {
+	item := AdminPluginRepository{ID: strconv.Itoa(r.ID), URL: r.URL, DisplayName: r.DisplayName, Enabled: r.Enabled, SourceKind: r.SourceKind, Managed: r.ManagedKey != nil, CreatedAt: NewInstant(r.CreatedAt), UpdatedAt: NewInstant(r.UpdatedAt)}
+	if r.LastFetchedAt != nil {
+		item.LastFetchedAt = new(NewInstant(*r.LastFetchedAt))
+	}
+	return item
 }

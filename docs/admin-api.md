@@ -1849,3 +1849,20 @@ noted. Reads are not a cross-store snapshot and may race session updates. A repo
 agrees flag ignores fields absent on one side and does not establish completeness
 or authorize retirement/cutover. No first-party web, Swift or Kotlin caller exists
 in the inspected source inventory.
+
+### Creating a plugin repository in v2
+
+`POST /api/v2/admin/plugins/repositories` creates one stored configuration and
+returns201 with the same typed repository projection as the list. URL and display
+name are required; omitted enabled defaults to true. Built-in repository URLs
+remain managed through catalog settings and are rejected here with422. The route
+requires an acting administrator, restricts demo access and reports missing store503.
+It performs the existing single INSERT, not a remote catalog fetch or installation.
+
+Creation has no replay identity or deduplication guarantee and is nonretryable. A
+store/transport failure may leave completion uncertain; it is not proof that no row
+exists. The Add Repository hook copies the submitted body and captures authority
+before queueing, disables mutation retries and authentication replay, and rejects
+stale completion. Successful active-authority creation retains existing plugin
+query invalidations. Failure requires explicit reconciliation before another
+submission; no automatic retry, replacement or legacy fallback occurs.

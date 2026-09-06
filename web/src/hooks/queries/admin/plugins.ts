@@ -222,22 +222,59 @@ export function useUpdatePluginCatalogSettings() {
   };
 }
 
+type PluginRepositoryCreationIntent = {
+  body: CreatePluginRepositoryRequest;
+  profileContext: ProfileRequestContextSnapshot;
+};
+function captureRepositoryCreation(
+  body: CreatePluginRepositoryRequest,
+): PluginRepositoryCreationIntent {
+  const profileContext = captureProfileRequestContext();
+  if (!profileContext) throw new StaleApiRequestContextError();
+  return { body: { ...body }, profileContext };
+}
 export function useCreatePluginRepository() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: CreatePluginRepositoryRequest) =>
-      api<PluginRepository>("/admin/plugins/repositories", {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
+  const mutation = useMutation({
+    mutationFn: async ({ body, profileContext }: PluginRepositoryCreationIntent) => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const result = await v2("POST /api/v2/admin/plugins/repositories", {
+        body,
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return result;
+    },
+    retry: false,
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
       toast.success("Repository added");
       invalidatePluginQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to add repository");
+    onError: (error, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(
+        error instanceof V2ProblemError && error.status === 422
+          ? error.message
+          : "Repository creation could not be confirmed. Refresh repositories before submitting again.",
+      );
     },
   });
+  return {
+    ...mutation,
+    mutate: (body: CreatePluginRepositoryRequest) => {
+      try {
+        mutation.mutate(captureRepositoryCreation(body));
+      } catch {
+        toast.error("Select an administrator profile before adding a repository.");
+      }
+    },
+    mutateAsync: (body: CreatePluginRepositoryRequest) =>
+      mutation.mutateAsync(captureRepositoryCreation(body)),
+  };
 }
 
 export function useUpdatePluginRepository() {

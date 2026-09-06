@@ -472,6 +472,7 @@ export const v2Operations = {
   "POST /api/v2/admin/notifications/server-channels/{id}/test":
     "testAdminNotificationServerChannel",
   "POST /api/v2/admin/people/{id}/refresh": "refreshAdminPerson",
+  "POST /api/v2/admin/plugins/repositories": "createAdminPluginRepository",
   "POST /api/v2/admin/policy/documents": "createAdminPolicyDocument",
   "POST /api/v2/admin/policy/documents/{id}/versions": "createAdminPolicyVersion",
   "POST /api/v2/admin/policy/simulate": "simulateAdminPolicy",

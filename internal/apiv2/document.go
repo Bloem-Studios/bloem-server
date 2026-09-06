@@ -548,6 +548,7 @@ func registerAll(reg *Registry) {
 	registerAdminSystem(reg)
 	registerAdminHardwareAcceleration(reg)
 	registerAdminPluginRepositories(reg)
+	registerAdminPluginRepositoryCreate(reg)
 	registerAdminTelemetryParity(reg)
 	registerAdminSettingsInspection(reg)
 	registerAdminSettingsWrite(reg)

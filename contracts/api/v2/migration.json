@@ -12247,11 +12247,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/plugins/repositories",
+        "operation_id": "createAdminPluginRepository"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; deps.PluginService != nil && deps.PluginUserConfig != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Creates one repository with no replay identity or deduplication guarantee. A failed response may follow a committed insert; reconcile explicitly and never automatically retry or replace."
     },
     {
       "listener": "api",
