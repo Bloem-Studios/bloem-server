@@ -500,6 +500,7 @@ func registerAll(reg *Registry) {
 	registerOperationalDiscovery(reg)
 	registerAccount(reg)
 	registerAuth(reg)
+	registerOAuthHandshakes(reg)
 	registerAuthSessions(reg)
 	registerDeviceLogin(reg)
 	registerAdminUsers(reg)

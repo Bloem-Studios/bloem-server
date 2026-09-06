@@ -20687,11 +20687,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/auth/oauth/{install_id}/callback",
+        "operation_id": "finishOAuthCallback"
       },
-      "notes": "External caller: OAuth provider browser redirect. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authHandler != nil; oauthHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented finite raw browser OAuth redirects on accepted shared foundation, using existing Init/Callback/Complete application methods. Independent review pending. V2 init passes its own callback URI; providers must register that URI before using the new flow. Signed state/install binding, one-time store consumption, persisted provider state/redirect URI, sanitized next path and one-time completion exchange retained. Init is non_retryable; no PKCE/browser-session binding or account-linking feature invented. Web form posts to v2; no native in-app handshake caller. V1 unchanged. Capability GET /api/v2/auth/oauth/capabilities."
     },
     {
       "listener": "api",
@@ -20734,19 +20734,19 @@
       "section": "auth-core",
       "release_flow": "login",
       "tier": 1,
-      "retry_safety": "natural_idempotent",
-      "retry_safety_note": "Writes nothing: signs a short-lived state payload and returns the redirect. A duplicate simply mints another state.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Invokes the provider and persists a new one-time OAuth state/redirect session; an uncertain response must not be replayed automatically.",
       "disposition": "ported",
       "disposition_rule": "default_ported",
       "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/auth/oauth/{install_id}/init",
+        "operation_id": "initOAuthLogin"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authHandler != nil; oauthHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Implemented finite raw browser OAuth redirects on accepted shared foundation, using existing Init/Callback/Complete application methods. Independent review pending. V2 init passes its own callback URI; providers must register that URI before using the new flow. Signed state/install binding, one-time store consumption, persisted provider state/redirect URI, sanitized next path and one-time completion exchange retained. Init is non_retryable; no PKCE/browser-session binding or account-linking feature invented. Web form posts to v2; no native in-app handshake caller. V1 unchanged. Capability GET /api/v2/auth/oauth/capabilities."
     },
     {
       "listener": "api",

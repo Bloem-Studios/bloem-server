@@ -840,3 +840,31 @@ administrator authority. Missing account/store dependencies produce
 `dependency_unavailable` from v2 metadata reads. The shared application read keeps
 frozen v1 shapes, errors and aggregation semantics. No Apple, Android or Jellyfin
 administrator-device metadata consumer was found.
+
+### Browser OAuth login handshake
+
+`POST /api/v2/auth/oauth/{install_id}/init` accepts a browser form submission
+and redirects with 302 to the authentication plugin's authorization URL.
+Optional `next` is normalized by the existing application service to a local
+path. No request-body fields are consumed. This operation is non-retryable: it
+creates a new provider authorization attempt and persisted state.
+
+`GET /api/v2/auth/oauth/{install_id}/callback?state=...&code=...` completes the
+provider redirect through the same application service. Signed state binds the
+installation and expiry; the stored state is consumed before exchange. Exchange
+uses its stored provider state and exact redirect URI. Success redirects to the
+SPA with a one-time completion code, never bearer/refresh tokens in the URL.
+The already-migrated `POST /api/v2/auth/oauth/complete` redeems that code. Failed
+state, exchange, or login completion redirects to the existing local login-error
+page. Missing code/state or invalid installation IDs return 400 plain text;
+init's plugin/storage failures retain 502/500 plain text. Missing service returns
+a 503 problem. V2 handshakes set `Cache-Control: no-store` and
+`Referrer-Policy: no-referrer` and do not require an ambient login/profile.
+
+`GET /api/v2/auth/oauth/capabilities` exposes `available`. The existing web login
+form uses the v2 init route. **Providers must register the v2 callback URI**
+(`/api/v2/auth/oauth/{install_id}/callback` under the configured host base URL)
+before using that flow. V1 init continues to issue its v1 callback URI, and frozen
+v1 transports are unchanged. This port adds no account-linking, PKCE, or new
+browser-session-binding mechanism. No native in-app handshake or Jellyfin caller
+was found; provider redirects and browser forms follow the emitted URLs.

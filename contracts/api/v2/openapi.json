@@ -19131,6 +19131,18 @@
         ],
         "type": "object"
       },
+      "OAuthHandshakeCapabilitiesOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "type": "object"
+      },
       "OverlayConfig": {
         "additionalProperties": false,
         "properties": {
@@ -69048,6 +69060,79 @@
         "x-silo-service-backed": true
       }
     },
+    "/api/v2/auth/oauth/capabilities": {
+      "get": {
+        "operationId": "getOAuthHandshakeCapabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthHandshakeCapabilitiesOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Acceptable"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Discover browser OAuth handshake availability.",
+        "tags": [
+          "auth"
+        ],
+        "x-silo-class": "public",
+        "x-silo-service-backed": true
+      }
+    },
     "/api/v2/auth/oauth/complete": {
       "post": {
         "operationId": "completeOAuthLogin",
@@ -69168,6 +69253,163 @@
           "auth"
         ],
         "x-silo-class": "public",
+        "x-silo-retry-safety": "non_retryable",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/auth/oauth/{install_id}/callback": {
+      "get": {
+        "operationId": "finishOAuthCallback",
+        "parameters": [
+          {
+            "description": "Positive authentication-plugin installation ID.",
+            "in": "path",
+            "name": "install_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Browser OAuth handshake value; validated by the owning handshake.",
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Browser OAuth handshake value; validated by the owning handshake.",
+            "in": "query",
+            "name": "code",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Provider authorization or local completion/error redirect.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Plain-text handshake failure."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Continue the browser OAuth login handshake.",
+        "tags": [
+          "auth"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "oauth-redirect",
+        "x-silo-raw-reason": "Browser form submission and provider callback require HTTP redirects, without JSON negotiation.",
+        "x-silo-service-backed": true
+      }
+    },
+    "/api/v2/auth/oauth/{install_id}/init": {
+      "post": {
+        "operationId": "initOAuthLogin",
+        "parameters": [
+          {
+            "description": "Positive authentication-plugin installation ID.",
+            "in": "path",
+            "name": "install_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Browser OAuth handshake value; validated by the owning handshake.",
+            "in": "query",
+            "name": "next",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Provider authorization or local completion/error redirect.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Plain-text handshake failure."
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Plain-text handshake failure."
+          },
+          "502": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Plain-text handshake failure."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Continue the browser OAuth login handshake.",
+        "tags": [
+          "auth"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "oauth-redirect",
+        "x-silo-raw-reason": "Browser form submission and provider callback require HTTP redirects, without JSON negotiation.",
         "x-silo-retry-safety": "non_retryable",
         "x-silo-service-backed": true
       }

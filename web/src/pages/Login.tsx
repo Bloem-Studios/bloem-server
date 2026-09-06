@@ -275,7 +275,7 @@ export default function Login() {
                 <form
                   key={entry.id}
                   method="post"
-                  action={`/api/v1/auth/oauth/${entry.installation_id}/init${nextParam}`}
+                  action={`/api/v2/auth/oauth/${entry.installation_id}/init${nextParam}`}
                 >
                   <Button type="submit" variant="outline" className="w-full justify-start gap-3">
                     {entry.icon_url && <img src={entry.icon_url} alt="" className="h-5 w-5" />}
