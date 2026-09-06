@@ -1145,10 +1145,8 @@ func main() {
 			// fresh context — the setting is already persisted, so the reload
 			// must not be skipped because the admin request was canceled.
 			if key == clientip.SettingTrustedProxies && ipResolver != nil {
-				if cidrs, loadErr := clientip.LoadTrustedCIDRs(context.Background(), settingsRepo); loadErr != nil {
+				if loadErr := ipResolver.ReloadTrustedCIDRs(context.Background(), settingsRepo); loadErr != nil {
 					slog.WarnContext(context.Background(), "clientip config reload failed", "component", "app", "error", loadErr)
-				} else {
-					ipResolver.UpdateTrustedCIDRs(cidrs)
 				}
 			}
 			// Nudge the hot-reload watcher so same-process settings changes
@@ -2220,16 +2218,19 @@ func main() {
 		if event.Type != cache.EventSettingsChanged {
 			return
 		}
-		cidrs, loadErr := clientip.LoadTrustedCIDRs(context.Background(), settingsRepo)
-		if loadErr != nil {
+		if loadErr := ipResolver.ReloadTrustedCIDRs(context.Background(), settingsRepo); loadErr != nil {
 			slog.WarnContext(context.Background(), "clientip config reload failed", "component", "app", "error", loadErr)
-			return
 		}
-		ipResolver.UpdateTrustedCIDRs(cidrs)
 	})
 	// The config watcher covers the Redis-less poll/RequestReload path, so
 	// admin UI edits apply without a restart on single-node deployments too.
-	registerClientIPConfigReload(configWatcher, ipResolver)
+	configWatcher.OnChange(func(_, _ *config.Config) {
+		// Re-read under the same resolver reload lock as direct/event callbacks.
+		// The watcher snapshot may predate a committed administrator write.
+		if loadErr := ipResolver.ReloadTrustedCIDRs(context.Background(), settingsRepo); loadErr != nil {
+			slog.WarnContext(context.Background(), "clientip config reload failed", "component", "app", "error", loadErr)
+		}
+	})
 
 	// Step 6b: Create rate limiter.
 	if cfg.RateLimit.Enabled && deps.DB != nil {

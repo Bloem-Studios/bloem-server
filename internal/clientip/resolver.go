@@ -1,6 +1,7 @@
 package clientip
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"strings"
@@ -10,8 +11,9 @@ import (
 // Resolver resolves the real client IP from an HTTP request, accounting for
 // trusted reverse proxies that set forwarding headers.
 type Resolver struct {
-	mu      sync.RWMutex
-	trusted []*net.IPNet
+	reloadMu sync.Mutex
+	mu       sync.RWMutex
+	trusted  []*net.IPNet
 }
 
 // NewResolver creates a Resolver with the given trusted proxy CIDRs.
@@ -106,4 +108,18 @@ func (r *Resolver) UpdateTrustedCIDRs(cidrs []*net.IPNet) {
 	r.mu.Lock()
 	r.trusted = cidrs
 	r.mu.Unlock()
+}
+
+// ReloadTrustedCIDRs serializes the authoritative store read and publication.
+// Holding only the publication lock would let an older delayed read overwrite
+// a newer configuration. A failed read retains the last valid trust boundary.
+func (r *Resolver) ReloadTrustedCIDRs(ctx context.Context, store SettingsStore) error {
+	r.reloadMu.Lock()
+	defer r.reloadMu.Unlock()
+	cidrs, err := LoadTrustedCIDRs(ctx, store)
+	if err != nil {
+		return err
+	}
+	r.UpdateTrustedCIDRs(cidrs)
+	return nil
 }
