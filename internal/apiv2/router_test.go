@@ -552,6 +552,13 @@ func TestReconcileSpecSeeded(t *testing.T) {
 		"GET /api/v2/subtitles/ai/jobs/{job_id}",
 		"GET /api/v2/subtitles/ai/quota",
 	)
+	observed = append(observed,
+		"GET /api/v2/auth/oauth/capabilities",
+		"POST /api/v2/auth/oauth/{install_id}/init",
+		"GET /api/v2/auth/oauth/{install_id}/callback",
+		"GET /api/v2/webhook-sync/capabilities",
+		"POST /api/v2/webhook-sync/webhooks/{secret}",
+	)
 	unaccounted, unserved, err := reconcileSpec(observed, contracts.OpenAPI, nil)
 	if err != nil || len(unaccounted) != 0 || len(unserved) != 0 {
 		t.Fatalf("baseline: %v %v %v", unaccounted, unserved, err)

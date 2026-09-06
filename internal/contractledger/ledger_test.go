@@ -1311,7 +1311,7 @@ func TestTier2RetrySchemaPreservesNotesAndExclusions(t *testing.T) {
 	}), "retry_safety")
 }
 
-func TestUnmappedExternalWebhookRemainsUnclassified(t *testing.T) {
+func TestExternalWebhookRetryClassification(t *testing.T) {
 	ledger, err := Load()
 	if err != nil {
 		t.Fatal(err)
@@ -1320,8 +1320,15 @@ func TestUnmappedExternalWebhookRemainsUnclassified(t *testing.T) {
 	for _, e := range ledger.Entries {
 		if e.Path == "/api/v1/webhook-sync/webhooks/{secret}" {
 			found = true
-			if requiresRetrySafety(e) || e.RetrySafety != "" || e.V2.OperationID != nil {
-				t.Fatalf("external ingress gained a native retry requirement: %+v", e)
+			if !requiresRetrySafety(e) || e.RetrySafety != RetrySafetyNonRetryable || e.RetrySafetyNote == "" || e.V2.OperationID == nil || *e.V2.OperationID != "receiveExternalWebhook" {
+				t.Fatalf("mapped external ingress lost its non-retryable contract: %+v", e)
+			}
+			// Unmapped tier-2 ingress still has no native retry requirement.
+			e.V2 = V2Target{}
+			e.RetrySafety = ""
+			e.RetrySafetyNote = ""
+			if requiresRetrySafety(e) {
+				t.Fatal("unmapped external ingress requires native retry metadata")
 			}
 		}
 	}
