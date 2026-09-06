@@ -2114,6 +2114,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.WatchTogetherRoomRead = watchTogetherHandler
 		v2deps.WatchTogetherPolicy = watchTogetherHandler
 		v2deps.WatchTogetherJoin = watchTogetherHandler
+		v2deps.WatchTogetherSelection = watchTogetherHandler
 	}
 	if deps.EventsHub != nil {
 		events := handlers.NewEventsHandler(deps.EventsHub, adminJobsHandler, adminHandler, deps.TaskManager, deps.ScanRegistry, deps.LibraryScanQueue, historyImportSvc)

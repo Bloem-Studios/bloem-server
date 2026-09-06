@@ -427,17 +427,42 @@ export function useWatchTogetherRoomConnection({
     [roomId, policyAuthority],
   );
 
+  const selectionAuthority = captureProfileRequestContext();
+  const selectionRun = useRef(0);
+  const selectionRoom = useRef(roomId);
+  const invalidateSelection = useCallback(() => {
+    selectionRun.current++;
+  }, []);
+  useLayoutEffect(() => {
+    selectionRoom.current = roomId;
+    invalidateSelection();
+    return invalidateSelection;
+  }, [roomId, invalidateSelection]);
   const selectItem = useCallback(
     async (input: SelectWatchTogetherRoomItemInput) => {
-      if (!roomId) {
-        return null;
-      }
-
-      const response = await selectWatchTogetherRoomItem(roomId, input);
-      setRoom(response.room);
+      if (!roomId) return null;
+      const run = ++selectionRun.current;
+      const response = await selectWatchTogetherRoomItem(
+        roomId,
+        { ...input },
+        selectionAuthority,
+      ).catch((error: unknown) => {
+        if (selectionRoom.current !== roomId || selectionRun.current !== run) return null;
+        throw error;
+      });
+      if (!response) return null;
+      if (selectionRoom.current !== roomId || selectionRun.current !== run) return null;
+      if (!selectionAuthority || !isCapturedProfileAuthorityActive(selectionAuthority)) return null;
+      setRoom((current) =>
+        current &&
+        current.room_id === response.room.room_id &&
+        current.generation > response.room.generation
+          ? current
+          : response.room,
+      );
       return response.room;
     },
-    [roomId],
+    [roomId, selectionAuthority],
   );
 
   const closeAuthority = captureProfileRequestContext();
