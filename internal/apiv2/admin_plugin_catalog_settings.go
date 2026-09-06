@@ -103,7 +103,13 @@ func registerAdminPluginCatalogSettings(reg *Registry) {
 		}
 		expected := new(s.IncludeApprovedCommunityPlugins)
 		if strings.TrimSpace(in.IfMatch) == "*" {
-			expected = nil
+			// There are two canonical values. Only drop the row-lock comparison
+			// if the other value also satisfies If-None-Match; otherwise a
+			// concurrent writer could install a value the caller excluded.
+			other := pluginCatalogSettingsTag(ctx, !s.IncludeApprovedCommunityPlugins)
+			if EvaluateGuardedPreconditions(in.IfMatch, in.IfNoneMatch, other) == nil {
+				expected = nil
+			}
 		}
 		saved, err := reg.deps.AdminPluginCatalogSettings.SetIncludeApprovedCommunityConditional(ctx, in.Body.IncludeApprovedCommunityPlugins, expected)
 		if conflict, ok := errors.AsType[*plugins.CatalogSettingsConflict](err); ok {
