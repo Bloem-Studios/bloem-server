@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { api } from "@/api/client";
+import {
+  api,
+  captureProfileRequestContext,
+  isCapturedProfileAuthorityActive,
+  StaleApiRequestContextError,
+} from "@/api/client";
+import { v2 } from "@/api/v2/request";
 import type { AdminDashboardLayoutDocument, AdminDashboardLayoutResponse } from "@/api/types";
 import { adminKeys } from "../keys";
 
@@ -17,24 +23,32 @@ const RESET_TOAST_ID = "admin-dashboard-layout-reset";
  *
  * Same-scope mutations queue and execute in the order they were started, which
  * is what keeps the last write the admin made the one that wins: without it two
- * saves can overlap and the slower one's `onSuccess` seeds the cache with the
- * older document, and a reset can land before an in-flight save that then
+ * saves can overlap and the older document can land last, and a reset can
+ * land before an in-flight save that then
  * resurrects the arrangement it just discarded.
  */
 const LAYOUT_MUTATION_SCOPE = { id: "admin-dashboard-layout" } as const;
 
-/**
- * Reads this admin account's saved dashboard arrangement.
- *
- * `staleTime: Infinity` on purpose: the layout only changes when this admin
- * edits it, and every edit writes the new document straight into the cache, so
- * there is nothing for a refetch to discover. The dashboard paints from
- * localStorage first and adopts this result when it arrives.
- */
+/** Reads the canonical account layout under the current request authority. */
 export function useAdminDashboardLayout() {
+  const profileContext = captureProfileRequestContext();
   return useQuery({
-    queryKey: adminKeys.dashboardLayout(),
-    queryFn: () => api<AdminDashboardLayoutResponse>(DASHBOARD_LAYOUT_PATH),
+    queryKey: [
+      ...adminKeys.dashboardLayout(),
+      profileContext?.serverOrigin,
+      profileContext?.authContextVersion,
+      profileContext?.profileId,
+      profileContext?.profileTokenGeneration,
+    ],
+    queryFn: async (): Promise<AdminDashboardLayoutResponse> => {
+      if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const result = await v2("GET /api/v2/admin/dashboard/layout", { profileContext });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return { layout: result.layout, updated_at: result.updated_at };
+    },
+    enabled: profileContext !== null,
     staleTime: Infinity,
     gcTime: Infinity,
   });
@@ -49,12 +63,10 @@ export function useSaveAdminDashboardLayout() {
         method: "PUT",
         body: JSON.stringify({ layout }),
       }),
-    onSuccess: (_data, layout) => {
-      queryClient.setQueryData<AdminDashboardLayoutResponse>(adminKeys.dashboardLayout(), {
-        layout,
-        updated_at: new Date().toISOString(),
-      });
-    },
+    // Legacy writes acknowledge no canonical document or revision. Invalidate
+    // every authority variant rather than fabricating a timestamp or publishing
+    // a late write into the currently active account/profile's cache.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.dashboardLayout() }),
     onError: () => {
       // The layout still works from local state, so this is informational.
       toast.error("Failed to save the dashboard layout on the server", { id: SAVE_TOAST_ID });
@@ -67,12 +79,7 @@ export function useResetAdminDashboardLayout() {
   return useMutation({
     scope: LAYOUT_MUTATION_SCOPE,
     mutationFn: () => api<void>(DASHBOARD_LAYOUT_PATH, { method: "DELETE" }),
-    onSuccess: () => {
-      queryClient.setQueryData<AdminDashboardLayoutResponse>(adminKeys.dashboardLayout(), {
-        layout: null,
-        updated_at: null,
-      });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.dashboardLayout() }),
     onError: () => {
       toast.error("Failed to reset the dashboard layout on the server", { id: RESET_TOAST_ID });
     },

@@ -1768,3 +1768,26 @@ queuing its explicit read. It disables automatic mutation retries and authentica
 replay, rejects stale decoded results and replacement-editor completion, and does
 not save merely by displaying a preview. Applying selected suggestions remains a
 separate source write; a preview from replaced authority cannot be applied.
+
+### Canonical dashboard-layout read in v2
+
+`GET /api/v2/admin/dashboard/layout` reads the acting administrator account's saved
+layout, shared across that account's profiles. No row returns `layout: null` and
+`updated_at: null`, preserving the local/default arrangement behavior. Stored
+layouts remain client-owned JSON objects; consumers must sanitize widget names and
+spans. The extension object preserves future fields and JSON number precision.
+Timestamps use UTC milliseconds.
+
+The strong conditional-read ETag binds the account, acting profile/access scope,
+canonical layout object and full stored timestamp. It supports If-Match and
+If-None-Match/304, but is not an acknowledged write revision or a promise of
+write-side compare-and-set. Save/reset transport and the complete `server_layouts`
+capability remain separate work; a read alone does not advertise that lifecycle.
+
+The web reader keys its cache by captured service/account authentication context,
+profile and setter-owned non-secret PIN generation, and rejects responses decoded
+after authority changes. Legacy save/reset success invalidates layout query
+variants so active readers fetch the canonical document; it does not seed a local
+timestamp as a server acknowledgement. Local immediate edits, debounced saves
+and serialized legacy writes remain unchanged. This read migration does not add
+write-side conflict handling or change the legacy writer's authority semantics.

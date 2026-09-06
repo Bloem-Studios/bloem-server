@@ -78,6 +78,7 @@ type Dependencies struct {
 	WatchTogetherSuggestions      WatchTogetherSuggestionService
 	AdminSectionSettingsWrite     AdminSectionSettingsWriteService
 	AdminDashboardStats           AdminDashboardStatsService
+	AdminDashboardLayout          AdminDashboardLayoutService
 	ScanControls                  ScanControlService
 	AuthProviderIconPublic        AuthProviderIconPublic
 	AdminPlaybackSessions         AdminPlaybackSessionService

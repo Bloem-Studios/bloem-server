@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -211,4 +212,30 @@ func (h *AdminHandler) HandleDeleteDashboardLayout(w http.ResponseWriter, r *htt
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// AdminDashboardLayoutView is an internal read snapshot for one admin account.
+type AdminDashboardLayoutView struct {
+	Layout    json.RawMessage
+	UpdatedAt *time.Time
+}
+
+func (h *AdminHandler) ReadAdminDashboardLayout(ctx context.Context, userID int) (AdminDashboardLayoutView, error) {
+	if h.pool == nil {
+		return AdminDashboardLayoutView{}, &APIError{Status: http.StatusServiceUnavailable, Message: "Dashboard layout storage unavailable"}
+	}
+	if userID <= 0 {
+		return AdminDashboardLayoutView{}, &APIError{Status: http.StatusUnauthorized, Message: "Authentication required"}
+	}
+	var view AdminDashboardLayoutView
+	var updatedAt time.Time
+	err := h.pool.QueryRow(ctx, `SELECT layout, updated_at FROM admin_dashboard_layouts WHERE user_id = $1`, userID).Scan(&view.Layout, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return AdminDashboardLayoutView{}, nil
+	}
+	if err != nil {
+		return AdminDashboardLayoutView{}, err
+	}
+	view.UpdatedAt = &updatedAt
+	return view, nil
 }

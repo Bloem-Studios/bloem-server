@@ -552,6 +552,7 @@ func registerAll(reg *Registry) {
 	registerAdminDiagnosticDelete(reg)
 	registerAdminDashboardInsights(reg)
 	registerAdminDashboardCapabilities(reg)
+	registerAdminDashboardLayout(reg)
 	registerAdminOperationalLogs(reg)
 	registerAdminAuditLogs(reg)
 	registerAdminDashboardStats(reg)
