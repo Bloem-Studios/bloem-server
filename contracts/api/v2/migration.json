@@ -2471,11 +2471,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/autoscan/sources",
+        "operation_id": "createAdminAutoscanSource"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Stored source write has no replay identity or revision receipt. Reconcile uncertain completion before explicit submission; update is last-write-wins and webhook readback is not acknowledgement of exclusive state."
     },
     {
       "listener": "api",
@@ -2597,11 +2599,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/autoscan/sources/{id}",
+        "operation_id": "updateAdminAutoscanSource"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Stored source write has no replay identity or revision receipt. Reconcile uncertain completion before explicit submission; update is last-write-wins and webhook readback is not acknowledgement of exclusive state."
     },
     {
       "listener": "api",

@@ -2074,3 +2074,29 @@ when opened, keeps them through queueing, disables retries/authentication replay
 and fences dispatch, completion and invalidation. Source query cache includes the
 setter-owned non-secret PIN generation; a changed PIN cannot reuse cached success.
 Other source and webhook lifecycle operations remain separate migrations.
+
+### Create and update autoscan sources (v2)
+
+`POST /api/v2/admin/autoscan/sources` (`createAdminAutoscanSource`) returns201
+for a stored source bound to a currently installed plugin/capability pair.
+`PUT /api/v2/admin/autoscan/sources/{id}` (`updateAdminAutoscanSource`) returns200
+for full-state configuration replacement; stored plugin/capability identity is immutable.
+Both require an acting administrator, an enabled boolean and path_rewrites array,
+and cap request bodies at64KiB. Nullable/omitted connection unbinds; nullable/omitted
+poll interval inherits the default, otherwise it is1–2147483647 seconds. Empty update
+delivery mode preserves the stored mode. Rewrites need nonblank from/to values.
+Configuration keys/values, connection and label are normalized as in the bridge.
+Webhook mode is restricted to the built-in identity, with auto/sonarr/radarr provider
+validation. Creation does not create a webhook endpoint. Update returns existing
+webhook state with v2 callback URL projection; reveal failures can omit the URL.
+
+Missing source or connection returns404; invalid configuration422; missing dependency503;
+private failures500 with uncertain completion. Both operations are non_retryable.
+Update is last-write-wins with no revision/ordering receipt; optional webhook readback
+can observe current state. Neither promises execution, scheduling, provider changes
+or durable job completion. The existing webhook setup operation remains separate.
+
+Actual Add/row edit/toggle callers capture copied body and draft authority before
+queueing, disable retry/authentication replay and fence late receipt/callback/cache effects.
+Row drafts retained across PIN replacement cannot submit under the new authority.
+Creation does not close or advance a newer dialog draft after an older acknowledgement.

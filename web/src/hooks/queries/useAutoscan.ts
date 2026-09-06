@@ -395,40 +395,127 @@ export function useAvailableScanSources() {
   });
 }
 
-export function useCreateAutoscanSource() {
+type SourceWriteIntent = {
+  body: AutoscanSourceCreateInput | AutoscanSourceInput;
+  id?: string;
+  profileContext: ProfileRequestContextSnapshot;
+};
+function captureSourceWrite(
+  body: SourceWriteIntent["body"],
+  profileContext: ProfileRequestContextSnapshot | null,
+  id?: string,
+): SourceWriteIntent {
+  if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+    throw new StaleApiRequestContextError();
+  return { body: JSON.parse(JSON.stringify(body)), id, profileContext };
+}
+type SourceWriteCallbacks = {
+  onSuccess?: (source: AutoscanSource) => void;
+  onError?: (error: Error) => void;
+};
+function useAutoscanSourceWrite(create: boolean) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: AutoscanSourceCreateInput) =>
-      api<AutoscanSource>("/admin/autoscan/sources", {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
-      toast.success("Autoscan source created");
-      queryClient.invalidateQueries({ queryKey: adminKeys.autoscanSources() });
+    retry: false,
+    mutationFn: async (intent: SourceWriteIntent): Promise<AutoscanSource> => {
+      const { profileContext, body, id } = intent;
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const fields = {
+        ...body,
+        connection_id: body.connection_id ?? undefined,
+        poll_interval_seconds: body.poll_interval_seconds ?? undefined,
+        path_rewrites: body.path_rewrites ?? [],
+      };
+      const result = create
+        ? await v2("POST /api/v2/admin/autoscan/sources", {
+            body: {
+              ...fields,
+              plugin_id: (body as AutoscanSourceCreateInput).plugin_id,
+              capability_id: (body as AutoscanSourceCreateInput).capability_id,
+            },
+            profileContext,
+            retryAuthentication: false,
+          })
+        : await v2("PUT /api/v2/admin/autoscan/sources/{id}", {
+            path: { id: id! },
+            body: fields,
+            profileContext,
+            retryAuthentication: false,
+          });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return {
+        ...result,
+        poll_interval_seconds: result.poll_interval_seconds ?? null,
+        last_run_at: result.last_run_at ?? null,
+        last_error: result.last_error ?? null,
+      };
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to create autoscan source");
+    onSuccess: (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      queryClient.invalidateQueries({ queryKey: adminKeys.autoscanSources() });
+      toast.success(create ? "Autoscan source created" : "Autoscan source saved");
+    },
+    onError: (_error, intent) => {
+      if (isCapturedProfileAuthorityActive(intent.profileContext))
+        toast.error(
+          "Source write could not be confirmed. Refresh sources before another explicit submission.",
+        );
     },
   });
 }
-
-export function useUpdateAutoscanSource() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: AutoscanSourceInput }) =>
-      api<AutoscanSource>(`/admin/autoscan/sources/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
-      toast.success("Autoscan source saved");
-      queryClient.invalidateQueries({ queryKey: adminKeys.autoscanSources() });
+function sourceWriteCallbacks(
+  intent: SourceWriteIntent,
+  options?: SourceWriteCallbacks,
+): SourceWriteCallbacks {
+  return {
+    onSuccess: (result) => {
+      if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onSuccess?.(result);
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to save autoscan source");
+    onError: (error) => {
+      if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onError?.(error);
     },
-  });
+  };
+}
+export function useCreateAutoscanSource(profileContext = captureProfileRequestContext()) {
+  const mutation = useAutoscanSourceWrite(true);
+  return {
+    ...mutation,
+    mutate: (body: AutoscanSourceCreateInput, options?: SourceWriteCallbacks) => {
+      let intent: SourceWriteIntent;
+      try {
+        intent = captureSourceWrite(body, profileContext);
+      } catch {
+        options?.onError?.(new StaleApiRequestContextError());
+        return;
+      }
+      mutation.mutate(intent, sourceWriteCallbacks(intent, options));
+    },
+    mutateAsync: (body: AutoscanSourceCreateInput) =>
+      mutation.mutateAsync(captureSourceWrite(body, profileContext)),
+  };
+}
+export function useUpdateAutoscanSource(profileContext = captureProfileRequestContext()) {
+  const mutation = useAutoscanSourceWrite(false);
+  return {
+    ...mutation,
+    mutate: (
+      { id, body }: { id: string; body: AutoscanSourceInput },
+      options?: SourceWriteCallbacks,
+    ) => {
+      let intent: SourceWriteIntent;
+      try {
+        intent = captureSourceWrite(body, profileContext, id);
+      } catch {
+        options?.onError?.(new StaleApiRequestContextError());
+        return;
+      }
+      mutation.mutate(intent, sourceWriteCallbacks(intent, options));
+    },
+    mutateAsync: ({ id, body }: { id: string; body: AutoscanSourceInput }) =>
+      mutation.mutateAsync(captureSourceWrite(body, profileContext, id)),
+  };
 }
 
 export type AutoscanSourceDeleteIntent = {

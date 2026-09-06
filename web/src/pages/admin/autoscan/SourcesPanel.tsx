@@ -766,7 +766,7 @@ function parseInterval(intervalStr: string, current: number | null): number | nu
 // SourceRow
 // ---------------------------------------------------------------------------
 
-function SourceRow({
+export function SourceRow({
   source,
   descriptor,
   connectionOptions,
@@ -784,7 +784,8 @@ function SourceRow({
   onDelete: (source: AutoscanSource) => void;
   layout?: "table" | "card";
 }) {
-  const update = useUpdateAutoscanSource();
+  const [draftAuthority] = useState(captureProfileRequestContext);
+  const update = useUpdateAutoscanSource(draftAuthority);
   const libraries = useAdminLibraries();
   const [edit, setEdit] = useState<RowEdit>(() => sourceToRowEdit(source, descriptor));
 
@@ -1350,10 +1351,15 @@ function AddSourceDialog({
   connectionOptions: Array<{ id: string; name: string; kind: string }>;
 }) {
   const available = useAvailableScanSources();
-  const createSource = useCreateAutoscanSource();
+  const [draftAuthority, setDraftAuthority] = useState(captureProfileRequestContext);
+  const createSource = useCreateAutoscanSource(draftAuthority);
   const createWebhook = useCreateAutoscanWebhook();
   const libraries = useAdminLibraries();
   const [form, setForm] = useState<AddSourceForm>(BLANK_ADD_SOURCE);
+  const currentForm = useRef(form);
+  useLayoutEffect(() => {
+    currentForm.current = form;
+  }, [form]);
   // Set once a webhook source exists and its endpoint has been generated. The
   // dialog then shows the paste-this-into-your-arr instructions rather than
   // closing, so setup finishes in one place.
@@ -1407,6 +1413,7 @@ function AddSourceDialog({
       : Math.max(0, stepLabels.length - 1);
 
   function close() {
+    setDraftAuthority(captureProfileRequestContext());
     setForm(BLANK_ADD_SOURCE);
     setCreatedWebhookSource(null);
     onOpenChange(false);
@@ -1444,7 +1451,8 @@ function AddSourceDialog({
   }
 
   function handleSubmit() {
-    if (!selectedPlugin) return;
+    if (!selectedPlugin || !draftAuthority || !isCapturedProfileAuthorityActive(draftAuthority))
+      return;
 
     const connectionId =
       showConnection && form.connectionId && form.connectionId !== "__none__"
@@ -1469,6 +1477,7 @@ function AddSourceDialog({
       },
       {
         onSuccess: (created) => {
+          if (currentForm.current !== form) return;
           if (!isWebhookFlow) {
             close();
             return;
@@ -1483,8 +1492,14 @@ function AddSourceDialog({
           // endpoint and no visible explanation. The instructions panel renders
           // a retry when the URL is missing.
           createWebhook.mutate(created.id, {
-            onSuccess: (withWebhook) => setCreatedWebhookSource(withWebhook),
-            onError: () => setCreatedWebhookSource(created),
+            onSuccess: (withWebhook) => {
+              if (isCapturedProfileAuthorityActive(draftAuthority) && currentForm.current === form)
+                setCreatedWebhookSource(withWebhook);
+            },
+            onError: () => {
+              if (isCapturedProfileAuthorityActive(draftAuthority) && currentForm.current === form)
+                setCreatedWebhookSource(created);
+            },
           });
         },
       },

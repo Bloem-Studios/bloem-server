@@ -433,6 +433,7 @@ export const v2Operations = {
   "POST /api/v2/admin/catalog/export-jobs/{id}/publish": "publishCatalogExportJob",
   "POST /api/v2/admin/catalog/import": "importAdminCatalog",
   "POST /api/v2/admin/catalog/import-jobs": "createCatalogImportJob",
+  "POST /api/v2/admin/autoscan/sources": "createAdminAutoscanSource",
   "POST /api/v2/admin/collections": "createAdminCollection",
   "POST /api/v2/admin/collections/import/mdblist": "importAdminMDBList",
   "POST /api/v2/admin/collections/import/tmdb": "importAdminTMDB",
@@ -602,6 +603,7 @@ export const v2Operations = {
   "PUT /api/v2/admin/api-keys/{id}/tier": "updateAdminAPIKeyTier",
   "PUT /api/v2/admin/autoscan/connections/{id}": "updateAdminAutoscanConnection",
   "PUT /api/v2/admin/autoscan/settings": "updateAdminAutoscanSettings",
+  "PUT /api/v2/admin/autoscan/sources/{id}": "updateAdminAutoscanSource",
   "PUT /api/v2/admin/collection-groups/{group_id}/collections/order":
     "moveAndReorderAdminGroupCollections",
   "PUT /api/v2/admin/collections/order": "reorderAdminCollections",
