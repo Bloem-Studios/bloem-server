@@ -110,7 +110,15 @@ func registerAdminSettingsWrite(reg *Registry) {
 		if err != nil {
 			return nil, adminSettingsWriteProblem(err)
 		}
-		return &AdminSettingsUpdateOutput{Body: out}, nil
+		response := &AdminSettingsUpdateOutput{Body: out}
+		if out.CommittedSnapshot != nil {
+			tag, err := reg.adminSettingsSnapshotTag(ctx, *out.CommittedSnapshot)
+			if err != nil {
+				return nil, adminSettingsWriteProblem(err)
+			}
+			response.ETag = tag.String()
+		}
+		return response, nil
 	})
 	Register(reg, op("/{key}", "updateAdminSetting", "Validate and replace one setting with the established single-key validation rules and transaction guard."), func(ctx context.Context, in *AdminSettingUpdateInput) (*AdminSettingUpdateOutput, error) {
 		if reg.deps.AdminSettingsWrite == nil {

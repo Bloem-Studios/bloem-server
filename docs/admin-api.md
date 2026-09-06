@@ -1624,8 +1624,12 @@ scope. Neither raw secrets nor digest inputs are returned to the client.
 The service checks the precondition before prerequisite checks and again against
 the current settings inside the existing atomic update. A stale request returns
 412 without writing settings or publishing settings notifications. A successful
-response is a redacted update receipt, not a new canonical settings snapshot;
-read settings again before preparing another edit. Batch validation considers the
+response is a redacted update receipt, not a new canonical settings snapshot.
+The batch PUT returns the settings ETag captured from its resulting state under
+the transaction lock. Read settings again before preparing another edit. Retained
+drafts may advance automatically only when that read's validator exactly matches
+the acknowledged batch validator; an intervening writer's snapshot cannot rebase
+them. Batch validation considers the
 prospective combined values. Single-key validation preserves the existing paired
 setting repair behavior. Empty values retain the established clear/default rules.
 

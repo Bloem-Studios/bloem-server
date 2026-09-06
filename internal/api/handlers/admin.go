@@ -2053,6 +2053,9 @@ type updateSettingsRequest struct {
 }
 
 type updateSettingsResponse struct {
+	// CommittedSnapshot is captured under the settings write lock and never serialized.
+	CommittedSnapshot *AdminSettingsSnapshot `json:"-"`
+
 	Values              map[string]string `json:"values"`
 	RestartRequired     bool              `json:"restart_required"`
 	RestartRequiredKeys []string          `json:"restart_required_keys,omitempty"`
@@ -2461,6 +2464,7 @@ func (h *AdminHandler) UpdateAdminSettings(ctx context.Context, values map[strin
 		validationCode   string
 	)
 	var preconditionErr error
+	var committedSnapshot *AdminSettingsSnapshot
 	err := updateServerSettingsAtomically(ctx, h.SettingsRepo,
 		func(stored map[string]string) (map[string]string, error) {
 			if guard != nil {
@@ -2502,6 +2506,11 @@ func (h *AdminHandler) UpdateAdminSettings(ctx context.Context, values map[strin
 					effectiveChanges[key] = true
 				}
 			}
+			if guard != nil {
+				committed := maps.Clone(stored)
+				maps.Copy(committed, writes)
+				committedSnapshot = new(h.adminSettingsSnapshot(committed))
+			}
 			return writes, nil
 		})
 	if preconditionErr != nil {
@@ -2541,6 +2550,7 @@ func (h *AdminHandler) UpdateAdminSettings(ctx context.Context, values map[strin
 		h.markServerRestartRequired("setting:" + restartKey)
 	}
 	return updateSettingsResponse{
+		CommittedSnapshot:   committedSnapshot,
 		Values:              responseValues,
 		RestartRequired:     len(restartKeys) > 0,
 		RestartRequiredKeys: restartKeys,

@@ -166,68 +166,80 @@ it("rejects a decoded completion after the acting profile changes", async () => 
   expect(invalidate).not.toHaveBeenCalled();
 });
 
-it("saves edits retained during an acknowledged save with the refreshed validator", async () => {
-  let stored = "Silo";
-  let tag = '"tagA"';
-  let acknowledgeFirst: (() => void) | undefined;
-  const firstAcknowledgment = new Promise<void>((resolve) => {
-    acknowledgeFirst = resolve;
-  });
-  const writes: Array<{ value: string; tag: string }> = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string, init?: RequestInit) => {
-      if (init?.method === "PUT") {
-        const value = JSON.parse(String(init.body)).values["branding.server_name"] as string;
-        const submittedTag = new Headers(init.headers).get("If-Match") ?? "";
-        writes.push({ value, tag: submittedTag });
-        if (submittedTag !== tag)
-          return response(
-            {
-              type: "https://siloserver.org/docs/api/v2/problems/precondition_failed",
-              title: "Precondition failed",
-              status: 412,
-            },
-            412,
-          );
-        if (writes.length === 1) await firstAcknowledgment;
-        stored = value;
-        tag = writes.length === 1 ? '"tagB"' : '"tagC"';
-        return response({ values: { "branding.server_name": stored }, restart_required: false });
-      }
-      if (url.endsWith("/sensitive-status"))
-        return response({ configured: [], managed_by_env: [] });
-      return response({ "branding.server_name": stored }, 200, tag);
-    }),
-  );
-  const { result } = renderHook(
-    () => useSettingsForm({ keys: ["branding.server_name"] }),
-    fixture(),
-  );
-  await waitFor(() => expect(result.current.getValue("branding.server_name")).toBe("Silo"));
-  act(() => result.current.setValue("branding.server_name", "Casa"));
-  let firstSave: Promise<void> | undefined;
-  act(() => {
-    firstSave = result.current.save();
-  });
-  await waitFor(() => expect(writes).toHaveLength(1));
-  act(() => result.current.setValue("branding.server_name", "Villa"));
-  await act(async () => {
-    acknowledgeFirst?.();
-    await firstSave;
-  });
-  expect(stored).toBe("Casa");
-  expect(result.current.getValue("branding.server_name")).toBe("Villa");
-  expect(result.current.dirtyCount).toBe(1);
-  expect(writes).toEqual([{ value: "Casa", tag: '"tagA"' }]);
-  await act(async () => {
-    await result.current.save();
-  });
-  expect(writes).toEqual([
-    { value: "Casa", tag: '"tagA"' },
-    { value: "Villa", tag: '"tagB"' },
-  ]);
-  expect(stored).toBe("Villa");
-  expect(result.current.getValue("branding.server_name")).toBe("Villa");
-  expect(result.current.dirtyCount).toBe(0);
-});
+it.each([false, true])(
+  "reconciles retained edits only with the acknowledged revision (competitor=%s)",
+  async (competitor) => {
+    let stored = { "branding.server_name": "Silo", "server.log_level": "info" };
+    let tag = '"tagA"';
+    let acknowledgeFirst: (() => void) | undefined;
+    const firstAcknowledgment = new Promise<void>((resolve) => {
+      acknowledgeFirst = resolve;
+    });
+    const writes: Array<{ values: Record<string, string>; tag: string }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === "PUT") {
+          const values = JSON.parse(String(init.body)).values as Record<string, string>;
+          const submittedTag = new Headers(init.headers).get("If-Match") ?? "";
+          writes.push({ values, tag: submittedTag });
+          if (submittedTag !== tag)
+            return response(
+              {
+                type: "https://siloserver.org/docs/api/v2/problems/precondition_failed",
+                title: "Precondition failed",
+                status: 412,
+              },
+              412,
+            );
+          if (writes.length === 1) await firstAcknowledgment;
+          stored = { ...stored, ...values };
+          tag = writes.length === 1 ? '"tagB"' : '"tagD"';
+          const receipt = response({ values, restart_required: false }, 200, tag);
+          // A different writer commits after our PUT and before its canonical GET.
+          if (competitor && writes.length === 1) {
+            stored["server.log_level"] = "error";
+            tag = '"tagC"';
+          }
+          return receipt;
+        }
+        if (url.endsWith("/sensitive-status"))
+          return response({ configured: [], managed_by_env: [] });
+        return response(stored, 200, tag);
+      }),
+    );
+    const { result } = renderHook(
+      () => useSettingsForm({ keys: ["branding.server_name", "server.log_level"] }),
+      fixture(),
+    );
+    await waitFor(() => expect(result.current.getValue("branding.server_name")).toBe("Silo"));
+    act(() => result.current.setValue("branding.server_name", "Casa"));
+    let firstSave: Promise<void> | undefined;
+    act(() => {
+      firstSave = result.current.save();
+    });
+    await waitFor(() => expect(writes).toHaveLength(1));
+    const retainedKey = competitor ? "server.log_level" : "branding.server_name";
+    const retainedValue = competitor ? "debug" : "Villa";
+    act(() => result.current.setValue(retainedKey, retainedValue));
+    await act(async () => {
+      acknowledgeFirst?.();
+      await firstSave;
+    });
+    expect(stored["branding.server_name"]).toBe("Casa");
+    expect(result.current.getValue(retainedKey)).toBe(retainedValue);
+    expect(result.current.dirtyCount).toBe(1);
+    expect(writes).toEqual([{ values: { "branding.server_name": "Casa" }, tag: '"tagA"' }]);
+    await act(async () => {
+      if (competitor) await expect(result.current.save()).rejects.toThrow();
+      else await result.current.save();
+    });
+    expect(writes).toEqual([
+      { values: { "branding.server_name": "Casa" }, tag: '"tagA"' },
+      { values: { [retainedKey]: retainedValue }, tag: competitor ? '"tagA"' : '"tagB"' },
+    ]);
+    expect(stored[retainedKey]).toBe(competitor ? "error" : "Villa");
+    expect(result.current.getValue(retainedKey)).toBe(retainedValue);
+    expect(result.current.dirtyCount).toBe(competitor ? 1 : 0);
+  },
+);

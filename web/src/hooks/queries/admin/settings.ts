@@ -113,13 +113,19 @@ export function useUpdateServerSettings(displayed?: SettingsValues) {
   const queryClient = useQueryClient();
   const mutation = useMutation({
     retry: false,
-    mutationFn: (intent: SettingsBaseline & { values: SettingsValues }) =>
-      v2("PUT /api/v2/admin/settings", {
+    mutationFn: async (intent: SettingsBaseline & { values: SettingsValues }) => {
+      let acknowledgedETag = "";
+      const result = await v2("PUT /api/v2/admin/settings", {
         body: { values: intent.values },
         headers: { "If-Match": intent.etag },
         profileContext: intent.profileContext,
         retryAuthentication: false,
-      }),
+        onResponse: (response) => {
+          acknowledgedETag = response.headers.get("ETag") ?? "";
+        },
+      });
+      return { ...result, acknowledgedETag };
+    },
     onSuccess: async (_data, { values, profileContext }) => {
       if (!isCapturedProfileAuthorityActive(profileContext)) return;
       const keys = Object.keys(values);
@@ -190,14 +196,19 @@ export function useUpdateServerSettings(displayed?: SettingsValues) {
       const result = await mutation.mutateAsync(intent);
       if (!isCapturedProfileAuthorityActive(intent.profileContext))
         throw new StaleApiRequestContextError();
-      // onSuccess awaited the canonical refetch. Return that exact record only
-      // after an acknowledged write and successful refresh, so a form can keep
-      // newer edits without continuing to submit the pre-save validator.
+      // The refetch may already include a competing write. Advance retained
+      // edits only when it matches the state captured by our acknowledged PUT.
       const refreshed = queryClient.getQueryState<SettingsValues>(
         adminSettingsKey(intent.profileContext),
       );
       const settingsSnapshot =
-        refreshed?.status === "success" && !refreshed.isInvalidated ? refreshed.data : undefined;
+        refreshed?.status === "success" &&
+        !refreshed.isInvalidated &&
+        refreshed.data &&
+        result.acknowledgedETag &&
+        captureSettingsBaseline(refreshed.data).etag === result.acknowledgedETag
+          ? refreshed.data
+          : undefined;
       return { ...result, settingsSnapshot };
     },
   };
