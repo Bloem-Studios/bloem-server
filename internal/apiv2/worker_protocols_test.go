@@ -15,6 +15,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/nodeconfig"
+	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/proxy"
 	"github.com/Silo-Server/silo-server/internal/routeinventory"
 	"github.com/Silo-Server/silo-server/internal/transcodenode"
@@ -342,5 +343,51 @@ func TestWorkerArtifactConditionalProtocol(t *testing.T) {
 		if !found {
 			t.Fatal("missing artifact operation", tc.method)
 		}
+	}
+}
+
+func TestWorkerFontBundleUsesOwningWireSchema(t *testing.T) {
+	generated, err := GenerateOpenAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err := json.Unmarshal(generated, &document); err != nil {
+		t.Fatal(err)
+	}
+	compiler := jsonschema.NewCompiler()
+	const url = "https://schema.example.invalid/proxy-fonts.json"
+	if err := compiler.AddResource(url, document); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for index, op := range describeWorkerProtocols().Operations {
+		if op.Path != "/stream/subtitles/{token}/{track}/fonts" {
+			continue
+		}
+		found = true
+		schema, err := compiler.Compile(fmt.Sprintf("%s#/x-silo-worker-protocols/operations/%d/responses/200/content/application~1json/schema", url, index))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, fonts := range [][]playback.SubtitleFontAttachment{nil, {{Name: "synthetic.ttf", Data: []byte{1, 2}}}} {
+			data, err := json.Marshal(playback.EncodeSubtitleFontBundle(fonts))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var body any
+			if err := json.Unmarshal(data, &body); err != nil {
+				t.Fatal(err)
+			}
+			if err := schema.Validate(body); err != nil {
+				t.Fatal(string(data), err)
+			}
+			if fonts != nil && !strings.Contains(string(data), `"data":"AQI="`) {
+				t.Fatal("owning base64 wire changed", string(data))
+			}
+		}
+	}
+	if !found {
+		t.Fatal("missing retained fonts")
 	}
 }

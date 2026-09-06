@@ -77,3 +77,19 @@ A missing valid identifier succeeds with 204; invalid identifiers return 404.
 Removal can partially succeed before a 500. Deletion is naturally idempotent for
 the exact artifact and does not cancel preparation, remove another node's bytes,
 or revoke a native delivery grant. These descriptions change no worker behavior.
+
+Proxy subtitle and attached-font GET routes retain
+`/stream/subtitles/{token}/{track}` and its `/fonts` suffix. The inventory's
+`public` middleware class does not mean anonymous access: the handler verifies
+the signed playback token, selected proxy egress and auxiliary recipe family
+before extraction. Partial routing tuples fail with 409; wrong egress or recipe
+families fail with 503. Legacy tokens retain only their bounded original method
+authority. Download tokens are not interchangeable with playback authority.
+
+The font bundle uses `SubtitleFontBundleItem` (`name`, base64 `data`) and no-store;
+no fonts produce an empty array. Subtitle output is WebVTT by default, ASS for an
+`.ass` suffix and binary PGS for `.sup`. Only a cached full SUP uses standard
+conditional/range handling. Cold and windowed SUP streams commit 200 before
+extraction finishes; failure can truncate those bytes and is not a later JSON
+error response. The descriptions preserve existing window options, worker error
+media and route behavior without introducing a native alias or extraction job.
