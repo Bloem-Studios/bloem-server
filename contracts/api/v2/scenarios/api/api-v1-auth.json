@@ -13611,7 +13611,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves expired, unknown and unauthenticated denial refusals with domain Problem Details and no stored pairing or account changes.",
+            "recorded_in": "internal/scenariocatalog/executor/device_deny_refusals_pairing_test.go",
+            "operation_id": "denyDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/deny",
+              "body": {
+                "token": "${browser_code_expired}"
+              }
+            },
+            "expect": {
+              "status": 410,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 410
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/device_login_expired$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "deny.not_found",
@@ -13661,7 +13712,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves expired, unknown and unauthenticated denial refusals with domain Problem Details and no stored pairing or account changes.",
+            "recorded_in": "internal/scenariocatalog/executor/device_deny_refusals_pairing_test.go",
+            "operation_id": "denyDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/deny",
+              "body": {
+                "token": "nope"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "deny.shape",
@@ -13744,7 +13846,58 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves expired, unknown and unauthenticated denial refusals with domain Problem Details and no stored pairing or account changes.",
+            "recorded_in": "internal/scenariocatalog/executor/device_deny_refusals_pairing_test.go",
+            "operation_id": "denyDeviceLogin",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/auth/device/deny",
+              "body": {
+                "token": "x"
+              }
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },

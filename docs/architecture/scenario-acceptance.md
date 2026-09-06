@@ -883,3 +883,16 @@ remain unchanged. Six HTTP refusals use independent transport reseeds and twelve
 full eight-table snapshots (96 observations), with no field exemptions. No code
 creation, successful mutation or other cohort is executed; the existing required
 DSN, pre-constructor occupancy and fixed-selector guards remain mandatory.
+
+### Frozen device-denial refusal pairs
+
+`make test-scenario-device-deny-refusals` requires `deny.expired`,
+`deny.not_found` and `deny.no_token`. Original requests, principals and
+assertions remain unchanged. V2 preserves expiry 410, unknown 404 and absent
+bearer 401 with domain Problem Details. Six transport requests reseed independently;
+12 combined snapshots cover complete users, profiles, API-key, settings,
+login-session and device-request tables (72 observations), with every row
+unchanged, including stored pairing status. Required DSN, pre-setup scratch/
+API-key occupancy and fixed-selector gates fail closed. No successful denial,
+enrollment or outage substitution is exercised. These three frozen pairs remain
+separate from NEW acceptance.
