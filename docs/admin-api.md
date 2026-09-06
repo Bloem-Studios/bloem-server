@@ -1599,3 +1599,14 @@ serialize as an empty list and last-sync times use UTC milliseconds. The actual
 web query and manual-refresh cache writer share the captured authority key and
 reject results decoded after an authority switch. These are aggregate observations,
 not an atomic cluster snapshot. No native or Jellyfin caller uses this admin read.
+
+`PUT /api/v2/admin/settings/sections` replaces `allow_profile_custom_sections`.
+The administrator GET on the same path now returns an actor/profile-bound ETag
+and supports conditional reads. PUT requires `If-Match` or `If-None-Match` and
+evaluates both against current canonical state inside the existing settings
+transaction; stale state returns 412, and unchanged state performs no write.
+The required boolean rejects omitted and null values. The response contains the
+canonical flag and its ETag. The profile-facing flag reader keeps its existing
+disabled default on read failure; the write fails closed without an atomic store.
+No first-party or internal writer is recorded, so no new UI or native flow is added.
+The bridge writer and profile section enforcement remain unchanged.

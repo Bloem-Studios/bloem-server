@@ -16351,12 +16351,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "PUT",
+        "path": "/api/v2/admin/settings/sections",
+        "operation_id": "updateAdminSectionSettings"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: authMiddleware != nil; adminHandler != nil; sectionSettingsHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
-      "concurrency": "if_match"
+      "notes": "Guarded boolean replacement through existing settings UpdateAtomic. No-change no write; admin GET now supplies actor/profile-bound ETag and conditional reads. Existing profile read/default-on-error semantics and bridge writer unchanged. No recorded web/native/Jellyfin writer; no UI invented. Independent new-write/additive-admin-read review pending.",
+      "concurrency": "if_match",
+      "retry_safety_note": "Same desired boolean has no additional effect; canonical guard runs inside the settings transaction. Reusing a stale explicit validator fails rather than overwriting a changed flag."
     },
     {
       "listener": "api",

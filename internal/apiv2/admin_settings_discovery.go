@@ -46,7 +46,6 @@ func registerAdminSettingsDiscovery(reg *Registry) {
 		out.Body.RestartRequired = value.RestartRequired
 		return out, nil
 	})
-	Register(reg, op("settings/sections", "getAdminSectionSettings", "Read whether profiles may use administrator-only section recipes; errors retain the disabled default."), reg.getProfileSectionFlags)
 	routing := op("playback-routing/capabilities", "getAdminPlaybackRoutingCapabilities", "Read the stable routing configuration vocabulary, independently of available worker capacity.")
 	routing.ServiceBacked = false
 	Register(reg, routing, func(context.Context, *struct{}) (*AdminPlaybackRoutingCapabilitiesOutput, error) {

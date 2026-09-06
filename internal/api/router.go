@@ -2277,6 +2277,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if sectionSettingsHandler != nil {
 		v2deps.SectionFlags = sectionSettingsHandler
+		v2deps.AdminSectionSettingsWrite = sectionSettingsHandler
 	}
 	if webhookSyncHandler != nil {
 		v2deps.WebhookSync = webhookSyncHandler
