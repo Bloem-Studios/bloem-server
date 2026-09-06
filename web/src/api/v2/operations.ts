@@ -619,6 +619,7 @@ export const v2Operations = {
   "PUT /api/v2/notifications/discord-preferences": "updateNotificationDiscordPreferences",
   "PUT /api/v2/notifications/email-preferences": "updateNotificationEmailPreferences",
   "PUT /api/v2/notifications/preferences": "updateNotificationPreferences",
+  "PUT /api/v2/notifications/webhooks/{id}": "updateNotificationWebhook",
   "PUT /api/v2/onboarding/progress": "updateOnboardingProgress",
   "PUT /api/v2/profile/sections": "replaceProfileSectionOverrides",
   "PUT /api/v2/profiles/{id}/avatar": "uploadProfileAvatar",
