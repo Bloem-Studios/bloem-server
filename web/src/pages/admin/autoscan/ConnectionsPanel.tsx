@@ -120,7 +120,14 @@ export default function ConnectionsPanel() {
 
   const [dialog, setDialog] = useState<DialogState>(BLANK_DIALOG);
   const [deleteTarget, setDeleteTarget] = useState<AutoscanConnection | null>(null);
-  const [testResult, setTestResult] = useState<AutoscanConnectionTestResult | null>(null);
+  const [testOutcome, setTestOutcome] = useState<{
+    scope: DialogState;
+    result: AutoscanConnectionTestResult;
+  } | null>(null);
+  const testResult = testOutcome?.scope === dialog ? testOutcome.result : null;
+  function setTestResult(result: AutoscanConnectionTestResult | null) {
+    setTestOutcome(result ? { scope: dialog, result } : null);
+  }
 
   const arrIntegrations = (requestIntegrations.data ?? []).filter(isArrKind);
 

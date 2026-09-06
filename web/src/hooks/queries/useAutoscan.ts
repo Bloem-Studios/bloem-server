@@ -1,3 +1,4 @@
+import { v2 } from "@/api/v2/request";
 import { readAdminAutoscanRewrites } from "@/api/v2/adminAutoscanRewrites";
 import { readAdminAutoscanAvailableSources } from "@/api/v2/adminAutoscanAvailableSources";
 import { readAdminAutoscanConnections } from "@/api/v2/adminAutoscanConnections";
@@ -13,6 +14,7 @@ import {
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
+  type ProfileRequestContextSnapshot,
 } from "@/api/client";
 import type {
   AutoscanConnection,
@@ -299,14 +301,66 @@ export function useDeleteAutoscanWebhook() {
  * unsaved dialog. Returns the result so the caller can render it inline;
  * errors are surfaced via the returned result, not a toast (advisory only).
  */
+type AutoscanConnectionTestIntent = {
+  body: AutoscanConnectionTestInput;
+  profileContext: ProfileRequestContextSnapshot;
+};
+function captureConnectionTest(body: AutoscanConnectionTestInput): AutoscanConnectionTestIntent {
+  const profileContext = captureProfileRequestContext();
+  if (!profileContext) throw new StaleApiRequestContextError();
+  return { body: { ...body }, profileContext };
+}
 export function useTestAutoscanConnection() {
-  return useMutation({
-    mutationFn: (body: AutoscanConnectionTestInput) =>
-      api<AutoscanConnectionTestResult>("/admin/autoscan/connections/test", {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
+  const mutation = useMutation({
+    mutationFn: async ({
+      body,
+      profileContext,
+    }: AutoscanConnectionTestIntent): Promise<AutoscanConnectionTestResult> => {
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const result = await v2("POST /api/v2/admin/autoscan/connections/test", {
+        body: {
+          ...body,
+          connection_id: body.connection_id ?? undefined,
+          request_integration_id: body.request_integration_id ?? undefined,
+        },
+        profileContext,
+        retryAuthentication: false,
+      });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return result;
+    },
+    retry: false,
   });
+  return {
+    ...mutation,
+    mutate: (
+      body: AutoscanConnectionTestInput,
+      options?: {
+        onSuccess?: (result: AutoscanConnectionTestResult) => void;
+        onError?: (error: Error) => void;
+      },
+    ) => {
+      let intent: AutoscanConnectionTestIntent;
+      try {
+        intent = captureConnectionTest(body);
+      } catch {
+        options?.onError?.(new StaleApiRequestContextError());
+        return;
+      }
+      mutation.mutate(intent, {
+        onSuccess: (result) => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onSuccess?.(result);
+        },
+        onError: (error) => {
+          if (isCapturedProfileAuthorityActive(intent.profileContext)) options?.onError?.(error);
+        },
+      });
+    },
+    mutateAsync: (body: AutoscanConnectionTestInput) =>
+      mutation.mutateAsync(captureConnectionTest(body)),
+  };
 }
 
 /** Explicit provider-read gesture; captured before offline queuing and never replayed automatically. */

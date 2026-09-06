@@ -1903,11 +1903,13 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/admin/autoscan/connections/test",
+        "operation_id": "testAdminAutoscanConnection"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; autoscanHandler != nil. v2 registers the operation unconditionally and reports capability state instead.",
+      "retry_safety": "non_retryable",
+      "retry_safety_note": "Explicit synchronous provider status check; no automatic request retry or authentication replay. It does not save a connection or create a durable job."
     },
     {
       "listener": "api",

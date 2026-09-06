@@ -1866,3 +1866,21 @@ before queueing, disables mutation retries and authentication replay, and reject
 stale completion. Successful active-authority creation retains existing plugin
 query invalidations. Failure requires explicit reconciliation before another
 submission; no automatic retry, replacement or legacy fallback occurs.
+
+### Autoscan connection checks in v2
+
+`POST /api/v2/admin/autoscan/connections/test` performs one advisory status check
+without saving a connection. A nonblank connection_id takes precedence over draft
+fields. Otherwise supply base_url or request_integration_id; api_key_ref is input
+only and is never returned. The existing resolver and status checker are reused.
+An unreachable/unauthorized/unresolvable connection remains200 with ok:false and a
+generic error; success returns ok:true and the reported version. Missing stored
+connection404, absent adapter503 and other service failures500 remain distinct.
+An installed adapter with an internally missing probe is a service failure, not
+a claim of hardware/provider support. Private upstream error text is never echoed.
+
+The acting-admin/demo-gated operation is nonretryable: no automatic mutation retry
+or authentication replay, fallback, connection write or durable job. Both web
+connection dialogs capture draft/authority at the gesture and reject results from
+replaced authority, older drafts or a closed/reopened dialog. The check remains
+advisory and never blocks the separate save operation.

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CheckCircle2, Plus, XCircle } from "lucide-react";
 
 import type { AutoscanConnectionTestInput, AutoscanConnectionTestResult } from "@/api/types";
@@ -79,7 +79,19 @@ export function InlineConnectionPicker({
   // would label a Radarr server "sonarr", and the connection test cannot catch
   // it because it probes only the URL and key.
   const [manualKind, setManualKind] = useState("");
-  const [testResult, setTestResult] = useState<AutoscanConnectionTestResult | null>(null);
+  const kindsScope = connectionKinds.join("/");
+  const testScope = useMemo(
+    () => ({ adding, name, baseUrl, apiKey, reuseId, manualKind, value, idPrefix, kindsScope }),
+    [adding, name, baseUrl, apiKey, reuseId, manualKind, value, idPrefix, kindsScope],
+  );
+  const [testOutcome, setTestOutcome] = useState<{
+    scope: object;
+    result: AutoscanConnectionTestResult;
+  } | null>(null);
+  const testResult = testOutcome?.scope === testScope ? testOutcome.result : null;
+  function setTestResult(result: AutoscanConnectionTestResult | null) {
+    setTestOutcome(result ? { scope: testScope, result } : null);
+  }
 
   // Requests integrations this source could bind, minus any already linked by a
   // saved connection — re-offering those would create a second connection to

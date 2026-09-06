@@ -1278,3 +1278,18 @@ func (h *AutoscanHandler) ReadAdminAutoscanAvailableSources(ctx context.Context)
 func (h *AutoscanHandler) ReadAdminAutoscanRewriteSuggestions(ctx context.Context, id string) (autoscan.RewriteSuggestions, error) {
 	return h.svc.SuggestRewrites(ctx, id)
 }
+
+// AdminAutoscanConnectionTestInput carries the existing advisory test intent.
+type AdminAutoscanConnectionTestInput = autoscanTestConnectionInput
+
+var ErrAdminAutoscanConnectionTestUnavailable = errors.New("autoscan connection test unavailable")
+
+func (h *AutoscanHandler) TestAdminAutoscanConnection(ctx context.Context, in AdminAutoscanConnectionTestInput) (autoscan.ConnectionTestResult, error) {
+	if h == nil || h.svc == nil {
+		return autoscan.ConnectionTestResult{}, ErrAdminAutoscanConnectionTestUnavailable
+	}
+	if in.ConnectionID != nil && strings.TrimSpace(*in.ConnectionID) != "" {
+		return h.svc.TestConnectionByID(ctx, strings.TrimSpace(*in.ConnectionID))
+	}
+	return h.svc.TestConnection(ctx, autoscan.Connection{BaseURL: strings.TrimSpace(in.BaseURL), APIKeyRef: strings.TrimSpace(in.APIKeyRef), RequestIntegrationID: in.RequestIntegrationID})
+}
