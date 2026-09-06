@@ -201,3 +201,21 @@ without returning a partial list. The current web display limit is 100 pages of
 deletes, tests, and secret rotation remain separate bridge operations until their
 own guarded mutation migration. No native destination-management caller exists;
 Jellyfin compatibility has no equivalent list surface.
+
+### API v2 administrator Discord credential test
+
+`POST /api/v2/admin/notifications/discord/test`
+(`testAdminDiscordNotification`) verifies the stored bot token by fetching the
+bot's own identity once. It sends no message and does not change Discord links.
+Acting-administrator authorization, demo restrictions, and no-store responses
+apply. There is no request body. HTTP 200 reports `ok`, nonnegative `duration_ms`,
+and `message`; a failed verification still returns this result. A missing token
+reports “Bot token is not configured”; provider failures use a generic message
+instead of exposing upstream diagnostics. An unavailable service returns 503.
+
+The operation is `non_retryable`. The existing administrator test button captures
+authority, prevents overlapping tests, disables authentication replay, and refuses
+stale results after an account/profile switch. Apple and Android have no caller;
+Jellyfin compatibility has no corresponding operation. Discord link initiation,
+OAuth callbacks, and unlinking retain their bridge routes pending their separate
+migration.

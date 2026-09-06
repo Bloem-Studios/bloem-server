@@ -2057,6 +2057,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.NotificationInbox = inbox
 		v2deps.NotificationDestinations = inbox
 		v2deps.AdminNotificationPush = deps.Notifications
+		v2deps.AdminNotificationDiscord = deps.Notifications
 		v2deps.NotificationChannels = deps.Notifications
 		v2deps.NotificationRelay = handlers.NewAdminApplePushHandler(deps.Notifications, settingsRepo)
 	}

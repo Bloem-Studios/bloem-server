@@ -30,6 +30,7 @@ import {
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
 } from "@/api/client";
+import { testNotificationDiscord } from "@/api/v2/notificationDiscord";
 import { notificationScope } from "@/api/v2/notifications";
 import {
   registerNotificationRelay,
@@ -548,12 +549,6 @@ function RegisterRelayRow({
 // Discord application credentials
 // ---------------------------------------------------------------------------
 
-interface DiscordTestResult {
-  ok: boolean;
-  duration_ms: number;
-  message?: string;
-}
-
 /**
  * Invite link for adding the bot to a Discord server. Membership alone is
  * enough to DM, so no permissions are requested.
@@ -690,6 +685,8 @@ function DiscordAppCredentials({
   sensitiveConfigured: string[];
   restartKeys: ReturnType<typeof useRestartKeys>;
 }) {
+  const authority = captureProfileRequestContext();
+  const testInFlight = useRef(false);
   const updateSettings = useUpdateServerSettings();
   // `null` follows the saved value; a draft is only pinned while the admin is
   // editing, so a refetch cannot overwrite typing in progress.
@@ -746,12 +743,13 @@ function DiscordAppCredentials({
   }
 
   async function runTest() {
+    if (testInFlight.current) return;
+    testInFlight.current = true;
     setTesting(true);
     setTestResult(null);
     try {
-      const response = await api<DiscordTestResult>("/admin/notifications/discord/test", {
-        method: "POST",
-      });
+      if (!authority) throw new StaleApiRequestContextError();
+      const response = await testNotificationDiscord(authority);
       setTestResult({
         success: response.ok,
         message: `${response.ok ? "Success" : "Failed"} (${response.duration_ms}ms)${
@@ -759,11 +757,13 @@ function DiscordAppCredentials({
         }`,
       });
     } catch (error) {
+      if (!authority || !isCapturedProfileAuthorityActive(authority)) return;
       setTestResult({
         success: false,
         message: error instanceof Error ? error.message : "Test request failed.",
       });
     } finally {
+      testInFlight.current = false;
       setTesting(false);
     }
   }
@@ -1287,6 +1287,7 @@ export default function NotificationsAdminSettings() {
             }
           >
             <DiscordAppCredentials
+              key={notificationScope(captureProfileRequestContext())}
               savedClientId={form.getValue("discord.client_id")}
               sensitiveConfigured={form.sensitiveConfigured}
               restartKeys={restartKeys}
