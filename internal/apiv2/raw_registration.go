@@ -181,7 +181,7 @@ func RegisterRaw(reg *Registry, raw RawOperation, handler http.Handler) {
 	}
 	reg.api.OpenAPI().AddOperation(&op.Operation)
 	reg.mu.Lock()
-	reg.ops = append(reg.ops, Declared{Method: op.Method, Path: op.Path, OperationID: op.OperationID, Class: op.Class})
+	reg.ops = append(reg.ops, Declared{Method: op.Method, Path: op.Path, OperationID: op.OperationID, Class: op.Class, RetrySafety: op.RetrySafety})
 	reg.mu.Unlock()
 	serve := func(ctx huma.Context) {
 		r, w := humachi.Unwrap(ctx)

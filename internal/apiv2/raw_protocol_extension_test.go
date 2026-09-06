@@ -54,6 +54,18 @@ func TestRawProtocolPostHTMLAndRetryDeclaration(t *testing.T) {
 		if op.Extensions[extRetrySafety] != string(RetrySafetyNonRetryable) || op.Metadata[metaRetrySafety] != string(RetrySafetyNonRetryable) || op.Responses["200"].Content["text/html"] == nil {
 			t.Fatal("missing raw POST contract")
 		}
+		found := false
+		for _, declared := range reg.Declared() {
+			if declared.OperationID == "rawProtocolFixture" {
+				found = true
+				if declared.RetrySafety != RetrySafetyNonRetryable {
+					t.Fatal("raw POST lost ledger retry classification", declared)
+				}
+			}
+		}
+		if !found {
+			t.Fatal("raw POST missing from declared operation registry")
+		}
 	}})
 	response := do(t, handler, http.MethodPost, Prefix+"/raw-protocol?token=synthetic", "List-Unsubscribe=One-Click", map[string]string{"Content-Type": "application/x-www-form-urlencoded", "Accept": "text/html"})
 	if response.Code != 200 || response.Body.String() != "<html>Unsubscribed</html>" || calls != 1 {
