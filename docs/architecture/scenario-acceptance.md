@@ -1612,3 +1612,36 @@ V2 explicitly projects string account IDs, no-store credentials and problem erro
 v1 requests, status, response oracles and requirements remain unchanged.
 Each transport reseeds before and after execution. The evidence proves these selected
 sequential flows, not concurrent redemption, uncertain retry recovery or real enrollment.
+
+### Invitation token rate-limited registration
+
+`make test-scenario-invitation-r1` executes all sixteen original lookup and
+acceptance scenarios at registration index 1. Each transport uses the real
+limited router, reseeds before and after execution, and resets counters through
+the existing limiter reload mechanism. Closed non-r1 scenarios supply no execution
+credit. Only explicit `v2_expectation` declarations translate the v2 contract;
+the original requests and assertions remain unchanged.
+
+Each rate-limit case observes ten unknown-token refusals followed by the original
+429 within the first three-second refill interval, with the unchanged burst of
+10 and rate of 20 per minute. Retry-After and the original v1 delay/reset fields
+are checked against the actual clock. V2 retains Retry-After and omits the legacy
+rate-limit headers and body field. Lookup preserves expired, accepted, unknown,
+and trailing-slash behavior through its explicit v2 canonical path mapping.
+
+Successful acceptance verifies exactly one committed account, default profile,
+and login session, the password hash and signed token authority/lifetimes, and
+only the intended invitation's acceptance fields. Single-use observes the first
+201 and its effects separately from the second 404. Every request checks the
+account sequence and complete before/after snapshots of sixteen tables, including
+invitations and invite codes. Untouched rows remain byte-identical; refusals and
+reads preserve every table. The 32 paired results cover 74 HTTP requests,
+148 snapshots and 2,368 table observations. SMTP configuration must be absent;
+no invitation delivery or external enrollment occurs.
+
+Required DSN and pre-constructor scratch/API-key guards remain mandatory. The
+packet uses a unique disposable database and verifies cleanup. It does not prove
+concurrent acceptance, atomicity across acceptance and subsequent session creation,
+postcommit session-failure recovery, durable replay, distributed rate limiting,
+concurrent reload, refill-after-wait, or outage behavior. Acceptance remains
+non-retryable. These sixteen original pairs remain separate from NEW acceptance.

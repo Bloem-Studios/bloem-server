@@ -1460,7 +1460,45 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "email",
+                    "inviter_name",
+                    "server_name",
+                    "expires_at",
+                    "show_tour",
+                    "acceptance_available"
+                  ]
+                },
+                {
+                  "pointer": "/acceptance_available",
+                  "op": "equals",
+                  "value": true
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_lookup.meaning.r1",
@@ -1504,7 +1542,51 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/email",
+                  "op": "equals",
+                  "value": "fixture-invitee@silo.example.test"
+                },
+                {
+                  "pointer": "/inviter_name",
+                  "op": "equals",
+                  "value": "${admin_username}"
+                },
+                {
+                  "pointer": "/server_name",
+                  "op": "equals",
+                  "value": "${server_name}"
+                },
+                {
+                  "pointer": "/show_tour",
+                  "op": "equals",
+                  "value": true
+                },
+                {
+                  "pointer": "/expires_at",
+                  "op": "rfc3339"
+                },
+                {
+                  "pointer": "/acceptance_available",
+                  "op": "equals",
+                  "value": true
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "inv_lookup.shape.r1",
@@ -1535,7 +1617,37 @@
             "database"
           ],
           "notes": "inviter_name is omitempty; other fields are always present.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}"
+            },
+            "expect": {
+              "status": 200,
+              "body": [
+                {
+                  "pointer": "/expires_at",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/show_tour",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/acceptance_available",
+                  "op": "equals",
+                  "value": true
+                }
+              ],
+              "headers": []
+            }
+          }
         },
         {
           "id": "inv_lookup.accepted.r1",
@@ -1590,7 +1702,71 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token_accepted}"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invitation not found or no longer available."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_lookup.expired.r1",
@@ -1645,7 +1821,71 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/fixture-invitation-token-expired"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invitation not found or no longer available."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_lookup.unknown.r1",
@@ -1695,7 +1935,71 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/no-such-token"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invitation not found or no longer available."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_lookup.trailing_slash.r1",
@@ -1721,7 +2025,33 @@
             "database"
           ],
           "notes": "The inventory path carries a trailing slash while clients may call either spelling. Flagged so the section PR picks one canonical form.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/acceptance_available",
+                  "op": "equals",
+                  "value": true
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_lookup.rate_limited.r1",
@@ -1789,7 +2119,70 @@
           ],
           "fresh_state": true,
           "notes": "The 429 body has a third key (retry_after) unlike every other error envelope; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "lookupInvitation",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/invitations/x",
+              "repeat": 11
+            },
+            "expect": {
+              "status": 429,
+              "headers": [
+                {
+                  "name": "Retry-After",
+                  "op": "matches",
+                  "value": "^[0-9]+$"
+                },
+                {
+                  "name": "X-RateLimit-Remaining",
+                  "op": "absent"
+                },
+                {
+                  "name": "X-RateLimit-Limit",
+                  "op": "absent"
+                },
+                {
+                  "name": "X-RateLimit-Reset",
+                  "op": "absent"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/rate_limited$"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 429
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/retry_after",
+                  "op": "absent"
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew."
+          }
         }
       ]
     },
@@ -1862,7 +2255,61 @@
           ],
           "fresh_state": true,
           "notes": "This response carries tokens or a profile token yet sets no Cache-Control (writeJSON only sets Content-Type), so a shared cache may store it. Pinned as the current behavior and flagged for the section PR as an accidental omission.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}/accept",
+              "body": {
+                "password": "fixture-invitee-password"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "login_status",
+                    "username",
+                    "tokens"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "accepted"
+                },
+                {
+                  "pointer": "/login_status",
+                  "op": "equals",
+                  "value": "signed_in"
+                },
+                {
+                  "pointer": "/username",
+                  "op": "equals",
+                  "value": "fixture-invitee@silo.example.test"
+                },
+                {
+                  "pointer": "/tokens/expires_in",
+                  "op": "type",
+                  "value": "integer"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.meaning.r1",
@@ -1901,7 +2348,61 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}/accept",
+              "body": {
+                "password": "fixture-invitee-password"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "login_status",
+                    "username",
+                    "tokens"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "accepted"
+                },
+                {
+                  "pointer": "/login_status",
+                  "op": "equals",
+                  "value": "signed_in"
+                },
+                {
+                  "pointer": "/username",
+                  "op": "equals",
+                  "value": "fixture-invitee@silo.example.test"
+                },
+                {
+                  "pointer": "/tokens/expires_in",
+                  "op": "type",
+                  "value": "integer"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.single_use.r1",
@@ -1956,7 +2457,75 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}/accept",
+              "body": {
+                "password": "fixture-invitee-password"
+              },
+              "repeat": 2
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invitation not found or no longer available."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.weak_password.r1",
@@ -2014,7 +2583,58 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/no-such-token/accept",
+              "body": {
+                "password": "short"
+              }
+            },
+            "expect": {
+              "status": 422,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 422
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/validation_failed$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.malformed.r1",
@@ -2070,7 +2690,56 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}/accept",
+              "raw_body": "nope"
+            },
+            "expect": {
+              "status": 400,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 400
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/malformed_request$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.unknown.r1",
@@ -2123,7 +2792,74 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/no-such-token/accept",
+              "body": {
+                "password": "fixture-invitee-password"
+              }
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "equals",
+                  "value": "Invitation not found or no longer available."
+                },
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.shape.r1",
@@ -2156,7 +2892,61 @@
             "database"
           ],
           "fresh_state": true,
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew.",
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/${invitation_token}/accept",
+              "body": {
+                "password": "fixture-invitee-password"
+              }
+            },
+            "expect": {
+              "status": 201,
+              "headers": [
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "status",
+                    "login_status",
+                    "username",
+                    "tokens"
+                  ]
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": "accepted"
+                },
+                {
+                  "pointer": "/login_status",
+                  "op": "equals",
+                  "value": "signed_in"
+                },
+                {
+                  "pointer": "/username",
+                  "op": "equals",
+                  "value": "fixture-invitee@silo.example.test"
+                },
+                {
+                  "pointer": "/tokens/expires_in",
+                  "op": "type",
+                  "value": "integer"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "inv_accept.rate_limited.r1",
@@ -2227,7 +3017,73 @@
           ],
           "fresh_state": true,
           "notes": "The 429 body has a third key (retry_after) unlike every other error envelope; flagged for the section PR.",
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "operation_id": "acceptInvitation",
+            "method": "POST",
+            "request": {
+              "path": "/api/v2/invitations/x/accept",
+              "repeat": 11,
+              "body": {
+                "password": "fixture-invitee-password"
+              }
+            },
+            "expect": {
+              "status": 429,
+              "headers": [
+                {
+                  "name": "Retry-After",
+                  "op": "matches",
+                  "value": "^[0-9]+$"
+                },
+                {
+                  "name": "X-RateLimit-Remaining",
+                  "op": "absent"
+                },
+                {
+                  "name": "X-RateLimit-Limit",
+                  "op": "absent"
+                },
+                {
+                  "name": "X-RateLimit-Reset",
+                  "op": "absent"
+                },
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/docs/api/v2/problems/rate_limited$"
+                },
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 429
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "type",
+                  "value": "string"
+                },
+                {
+                  "pointer": "/retry_after",
+                  "op": "absent"
+                }
+              ]
+            },
+            "recorded_in": "internal/scenariocatalog/executor/invitation_r1_pairing_test.go",
+            "summary": "Distinct original invitation registration1 executed on the actual limited router. V2 canonical token paths, preview capability and committed acceptance/token envelope preserve the original lifecycle; Problems retain Retry-After and omit legacy rate headers. Full perrequest effects and single-use/burst sequences are observed anew."
+          }
         }
       ]
     }
