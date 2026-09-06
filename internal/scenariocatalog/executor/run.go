@@ -120,6 +120,12 @@ func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenari
 			t.Fatal(err)
 			return
 		}
+		if method != s.V2Expectation.Method || operationID != s.V2Expectation.OperationID {
+			const failure = "v2 dispatch arguments do not match validated pairing"
+			record(Result{Scenario: s.ID, Transport: transport, Failures: []string{failure}})
+			t.Fatal(failure)
+			return
+		}
 		s = v2Scenario(s)
 	}
 	res := Result{ID: s.ID + "/" + transport, Transport: transport, OperationID: operationID, Catalog: c.File, Row: row.Key().String(), Scenario: s.ID}
