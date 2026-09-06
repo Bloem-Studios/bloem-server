@@ -183,6 +183,9 @@ func TestGeneratedDocumentStatuses(t *testing.T) {
 	profileToken := map[string]bool{
 		"getAdminInviteCodeCapabilities": true, "listAdminInviteCodes": true, "createAdminInviteCode": true, "updateAdminInviteCode": true, "topUpAdminInviteCode": true, "deleteAdminInviteCode": true,
 		"listProgress": true, "listAdminUsers": true, "updateProfile": true, "listProfiles": true, "createProfile": true,
+		"getEbookCapability":          true,
+		"getEbookProgress":            true,
+		"saveEbookProgress":           true,
 		"listProfileSectionOverrides": true, "replaceProfileSectionOverrides": true, "resetProfileSectionOverrides": true,
 		"getProfileSectionSettings": true, "getProfileSectionFlags": true,
 		"deleteProfile": true, "deleteProfileAvatar": true, "uploadProfileAvatar": true, "verifyProfilePIN": true, "listHouseholdSessions": true,
