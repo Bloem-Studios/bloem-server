@@ -2027,7 +2027,45 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "V2 preserves the public needs_setup boolean from the shared account count.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_status_pairing_test.go",
+            "operation_id": "getSetupStatus",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/system/setup"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "needs_setup"
+                  ]
+                },
+                {
+                  "pointer": "/needs_setup",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/needs_setup",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "setup_status.meaning",
@@ -2052,7 +2090,45 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "V2 preserves the public needs_setup boolean from the shared account count.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_status_pairing_test.go",
+            "operation_id": "getSetupStatus",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/system/setup"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "needs_setup"
+                  ]
+                },
+                {
+                  "pointer": "/needs_setup",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/needs_setup",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "setup_status.shape",
@@ -2077,7 +2153,45 @@
           "requires": [
             "database"
           ],
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "same",
+            "summary": "V2 preserves the public needs_setup boolean from the shared account count.",
+            "recorded_in": "internal/scenariocatalog/executor/setup_status_pairing_test.go",
+            "operation_id": "getSetupStatus",
+            "method": "GET",
+            "request": {
+              "path": "/api/v2/system/setup"
+            },
+            "expect": {
+              "status": 200,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/json"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "",
+                  "op": "keys_equal",
+                  "value": [
+                    "needs_setup"
+                  ]
+                },
+                {
+                  "pointer": "/needs_setup",
+                  "op": "type",
+                  "value": "boolean"
+                },
+                {
+                  "pointer": "/needs_setup",
+                  "op": "equals",
+                  "value": false
+                }
+              ]
+            }
+          }
         },
         {
           "id": "setup_status.db_down",

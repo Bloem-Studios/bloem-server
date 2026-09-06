@@ -638,3 +638,16 @@ Required DSN, pre-setup scratch/API-key occupancy and fixed-selector gates fail
 closed. No signup, account creation, unavailable-database case or external
 provider call is exercised. These four frozen pairs remain separate from NEW
 acceptance.
+
+### Frozen public setup-status pairs
+
+`make test-scenario-setup-status` requires `setup_status.ok`,
+`setup_status.meaning` and `setup_status.shape`. Original public requests,
+database requirements and expectations remain unchanged. V2 moves the probe
+to `/api/v2/system/setup` and preserves the boolean from the shared account
+count. Six transport requests reseed independently; 12 combined snapshots cover
+complete users, profiles, API-key and settings tables (48 table observations),
+with every row unchanged. Required DSN, pre-setup scratch/API-key occupancy
+and fixed-selector gates fail closed. No setup POST, account creation,
+unavailable-database case or enrollment is exercised. These three frozen pairs
+remain separate from NEW acceptance.
