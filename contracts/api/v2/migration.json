@@ -42575,11 +42575,12 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "POST",
+        "path": "/api/v2/subtitles/ai/jobs/{job_id}/cancel",
+        "operation_id": "cancelSubtitleAIJob"
       },
-      "notes": "Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; subtitleSearchHandler != nil; subtitleAIHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Media-file authorization precedes the guarded job-state cancellation shared with the bridge. No requester-only restriction introduced. Bodyless204 does not promise immediate provider stop or erase previously committed subtitle output. Atomic publication foundation and cooperative terminal heartbeats retain their documented rollout limits. Proposed pending independent wire review and native cancellation consumer adoption.",
+      "retry_safety_note": "Cancellation targets the same immutable job ID and only changes active state; repeated cancellation cannot create work or replace a terminal result. Completion may win the race; read job state to confirm the outcome."
     },
     {
       "listener": "api",

@@ -11015,6 +11015,26 @@
       "body_file": "start_device_login_purpose_rejected.json"
     },
     {
+      "name": "subtitle_ai_cancel",
+      "operation_id": "cancelSubtitleAIJob",
+      "scenario": "Cancellation preserves an opaque job identifier and acknowledges the state request with an empty response; read job state to resolve completion races.",
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/subtitles/ai/jobs/9007199254740993/cancel",
+        "headers": {
+          "Authorization": "Bearer tok-member",
+          "X-Profile-Id": "p-owner"
+        }
+      },
+      "expected_status": 204,
+      "response_headers": {
+        "Cache-Control": "no-store"
+      },
+      "response_media_type": null,
+      "schema": null,
+      "body_file": null
+    },
+    {
       "name": "subtitle_ai_disabled",
       "operation_id": "getSubtitleAIStatus",
       "scenario": "Missing AI configuration reports both engine capabilities disabled.",

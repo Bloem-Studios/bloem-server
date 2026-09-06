@@ -530,6 +530,7 @@ export const v2Operations = {
   "POST /api/v2/scan": "startLibraryScan",
   "POST /api/v2/scan/cancel": "cancelLibraryScans",
   "POST /api/v2/settings/values/effective": "resolveEffectiveSettings",
+  "POST /api/v2/subtitles/ai/jobs/{job_id}/cancel": "cancelSubtitleAIJob",
   "POST /api/v2/subtitles/detect-language": "detectSubtitleLanguage",
   "POST /api/v2/subtitles/download": "downloadSubtitle",
   "POST /api/v2/subtitles/search": "searchSubtitles",

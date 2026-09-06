@@ -182,3 +182,28 @@ its existing controls. Metadata edits, deletion and byte downloads retain their
 separate bridge transports. This list does not add a native client screen or a
 Jellyfin counterpart. Its ordinary migration row remains proposed until the
 independent review and actual consumer inventory requirements are satisfied.
+
+### AI job cancellation
+
+`POST /api/v2/subtitles/ai/jobs/{job_id}/cancel` takes a positive string job
+identifier in the path and no body. It returns an empty `204` after the
+guarded cancellation request succeeds. Authentication and the selected
+profile's media-file access are required; the existing shared-file rule is
+preserved, so cancellation is not restricted to the account that requested
+the job. Hidden or missing jobs return `404`, unavailable service returns
+`503`, and an uncertain database outcome returns a problem response rather
+than success. Demo-mode writes remain blocked.
+
+Cancellation is naturally idempotent for the same immutable job ID. A terminal
+job remains unchanged, and completion can win a concurrent cancellation. Read
+`GET /api/v2/subtitles/ai/jobs/{job_id}` to determine the actual outcome. A `204`
+does not promise immediate provider shutdown, removal of previously committed
+transcripts, or revocation of cues already delivered. The publication and
+all-worker rollout limits in `docs/architecture/subtitle-storage.md` apply.
+No new enqueue or durable request-replay receipt is implied.
+
+The web player has no existing job-cancellation caller; closing its creation
+modal is a local UI action. Native callers adopt this operation separately,
+retaining the exact job ID and captured account/profile/PIN authority for
+requests and any completion-driven UI updates. Creation and live streaming
+ownership remain separate migration work.

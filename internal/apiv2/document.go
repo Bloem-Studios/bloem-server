@@ -584,6 +584,7 @@ func registerAll(reg *Registry) {
 	registerCatalogItems(reg)
 	registerMarkers(reg)
 	registerSubtitleCapabilities(reg)
+	registerSubtitleAICancel(reg)
 	registerSubtitleReads(reg)
 	registerSubtitleDownloads(reg)
 	registerSubtitleUploads(reg)

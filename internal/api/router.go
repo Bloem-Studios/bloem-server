@@ -2317,6 +2317,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if subtitleAIHandler != nil {
 		v2deps.SubtitleAIReads = subtitleAIHandler
 		v2deps.SubtitleAI = subtitleAIHandler
+
+		v2deps.SubtitleAICancel = subtitleAIHandler
 	}
 	if deps.PluginHTTPProxy != nil {
 		v2deps.AuthProviderIconPublic = deps.PluginHTTPProxy.PublicGETRoute
