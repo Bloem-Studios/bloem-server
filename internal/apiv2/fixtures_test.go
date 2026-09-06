@@ -1659,6 +1659,7 @@ func fixtureCases() []fixtureCase {
 	cases = append(cases, downloadManifestFixtureCases()...)
 	cases = append(cases, downloadSubscriptionFixtureCases()...)
 	cases = append(cases, adminCatalogIntroFixtureCases()...)
+	cases = append(cases, adminCatalogMarkerHistoryFixtureCases()...)
 	return append(cases, notificationInboxFixtureCases()...)
 }
 
@@ -1723,6 +1724,7 @@ func fixtureDeps() Dependencies {
 	deps.AdminMetadataTranslation = &fakeAdminTranslation{}
 	deps.AdminItemMetadata = &fakeAdminItemMetadata{}
 	deps.AdminEpisodeMarkers = &fakeAdminIntro{}
+	deps.AdminMarkerHistory = &fakeAdminMarkerHistory{}
 	deps.PermissionGates[policy.PermissionMetadataCuration] = adminTranslationGate
 	deps.LibraryJobs = &fixtureAdminCollectionJobs{fakeLibraryJobs: *deps.LibraryJobs.(*fakeLibraryJobs)}
 	deps.LibrarySections = &fakeLibraryViews{}

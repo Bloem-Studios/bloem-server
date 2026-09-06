@@ -9573,11 +9573,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/markers/files/{fileId}/history",
+        "operation_id": "listAdminFileMarkerHistory"
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: authMiddleware != nil; adminHandler != nil; markersHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-admin recent marker audit history; bounded limit 1\u2013100, default 25. File selection preserves catalog access authorization; item/global selections retain existing admin scope. Audit identifiers are opaque strings and snapshots use canonical marker fields. Existing web callers adopted; independent review pending."
     },
     {
       "listener": "api",
@@ -9635,11 +9635,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/markers/history",
+        "operation_id": "listAdminMarkerHistory"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; markersHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-admin recent marker audit history; bounded limit 1\u2013100, default 25. File selection preserves catalog access authorization; item/global selections retain existing admin scope. Audit identifiers are opaque strings and snapshots use canonical marker fields. Existing web callers adopted; independent review pending."
     },
     {
       "listener": "api",
@@ -9697,11 +9697,11 @@
       "owner": null,
       "review_state": "proposed",
       "v2": {
-        "method": null,
-        "path": null,
-        "operation_id": null
+        "method": "GET",
+        "path": "/api/v2/admin/markers/items/{id}/history",
+        "operation_id": "listAdminItemMarkerHistory"
       },
-      "notes": "Conditionally registered: authMiddleware != nil; adminHandler != nil; markersHandler != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Typed acting-admin recent marker audit history; bounded limit 1\u2013100, default 25. File selection preserves catalog access authorization; item/global selections retain existing admin scope. Audit identifiers are opaque strings and snapshots use canonical marker fields. Existing web callers adopted; independent review pending."
     },
     {
       "listener": "api",

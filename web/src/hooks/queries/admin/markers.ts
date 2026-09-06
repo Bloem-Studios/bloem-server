@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { getAllMarkerHistory } from "@/api/v2/markers";
 import { api } from "@/api/client";
 import type {
-  MarkerEditAuditResponse,
   MarkerProviderConfig,
   MarkerProviderListResponse,
   MarkerProviderUpdateRequest,
@@ -26,10 +26,7 @@ export function useMarkerProviders() {
 export function useAllMarkerEditHistory(limit = 50) {
   return useQuery({
     queryKey: adminKeys.markerHistory(limit),
-    queryFn: () =>
-      api<MarkerEditAuditResponse>(`/admin/markers/history?limit=${limit}`).then(
-        (data) => data.history ?? [],
-      ),
+    queryFn: ({ signal }) => getAllMarkerHistory(limit, signal),
     staleTime: ADMIN_STALE_TIME,
   });
 }

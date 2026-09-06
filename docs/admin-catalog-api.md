@@ -215,3 +215,20 @@ the existing marker-update notifications.
 Both operations are non-retryable. The web re-detection action disables mutation
 retries and authentication replay. No native administrator caller or matching
 Jellyfin action exists; playback marker reads remain separate.
+
+## Marker edit history
+
+Acting administrators can read recent edits through `GET /api/v2/admin/markers/history`,
+`GET /api/v2/admin/markers/files/{fileId}/history`, and
+`GET /api/v2/admin/markers/items/{id}/history`. Each returns a `history` array,
+newest first, with `limit` from 1 to 100 (default 25). These are bounded recent
+results, without a continuation cursor. An unconfigured audit reader returns
+an empty array. File selection retains catalog access authorization; item
+selection includes every file version under the existing administrator scope.
+
+Audit, file, account and API-key IDs are opaque strings. Timestamps are canonical
+UTC instants. Before/after snapshots use `start_seconds` and `end_seconds`; an
+absent snapshot means no marker existed on that side of the edit. Existing admin
+attribution and request audit fields remain available. The web history views
+preserve string IDs and adapt absent snapshots for display. Native clients and
+Jellyfin have no corresponding administration callers.

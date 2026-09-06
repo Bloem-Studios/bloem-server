@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/api/client";
-import type { MarkerEditAuditResponse, SetMarkersRequest } from "@/api/types";
-import { getItemMarkers, setItemMarkers } from "@/api/v2/markers";
+import type { SetMarkersRequest } from "@/api/types";
+import { getItemMarkers, setItemMarkers, getItemMarkerHistory } from "@/api/v2/markers";
 import { adminKeys, itemKeys } from "@/hooks/queries/keys";
 
 /** Loads the markers + provenance for a catalog item's primary file. */
@@ -47,10 +46,7 @@ export function useItemMarkerHistory(
   const historyKey = itemId ? adminKeys.markerItemHistory(itemId) : adminKeys.markerItemHistory("");
   return useQuery({
     queryKey: [...historyKey, limit],
-    queryFn: () =>
-      api<MarkerEditAuditResponse>(
-        `/admin/markers/items/${encodeURIComponent(itemId ?? "")}/history?limit=${limit}`,
-      ).then((data) => data.history ?? []),
+    queryFn: ({ signal }) => getItemMarkerHistory(itemId ?? "", limit, signal),
     enabled: Boolean(itemId) && (options?.enabled ?? true),
     staleTime: 30_000,
   });

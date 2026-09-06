@@ -1034,8 +1034,8 @@ export interface FileMarkersResponse {
 }
 
 export interface MarkerEditAuditEntry {
-  id: number;
-  media_file_id: number;
+  id: string;
+  media_file_id: string;
   item_id?: string;
   item_type?: string;
   media_title?: string;
@@ -1044,11 +1044,11 @@ export interface MarkerEditAuditEntry {
   action: "set" | "clear";
   before: MarkerSegment | null;
   after: MarkerSegment | null;
-  user_id?: number;
+  user_id?: string;
   username?: string;
-  impersonator_user_id?: number;
+  impersonator_user_id?: string;
   impersonator_username?: string;
-  api_key_id?: number;
+  api_key_id?: string;
   request_id?: string;
   client_ip?: string;
   user_agent?: string;

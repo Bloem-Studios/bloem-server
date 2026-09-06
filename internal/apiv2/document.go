@@ -551,6 +551,7 @@ func registerAll(reg *Registry) {
 	registerAdminCatalogTranslation(reg)
 	registerAdminCatalogItemMetadata(reg)
 	registerAdminCatalogIntro(reg)
+	registerAdminCatalogMarkerHistory(reg)
 	registerProfileSections(reg)
 	registerCatalogItems(reg)
 	registerMarkers(reg)
