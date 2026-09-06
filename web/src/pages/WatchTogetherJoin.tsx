@@ -55,7 +55,15 @@ export default function WatchTogetherJoin() {
   const [code, setCode] = useState("");
   const [selectionMode, setSelectionMode] = useState<WatchTogetherSelectionMode>("host_pick");
   const [creating, setCreating] = useState(false);
-  const [joining, setJoining] = useState(false);
+  const [pendingJoin, setPendingJoin] = useState<{
+    run: number;
+    token: string;
+    authority: NonNullable<ReturnType<typeof captureProfileRequestContext>>;
+  } | null>(null);
+  const joining =
+    pendingJoin !== null &&
+    pendingJoin.token === token &&
+    isCapturedProfileAuthorityActive(pendingJoin.authority);
   const [error, setError] = useState<string | null>(null);
   const modeButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const hasInviteToken = token !== "";
@@ -102,8 +110,8 @@ export default function WatchTogetherJoin() {
         run === joinRun.current &&
         !!joinAuthority &&
         isCapturedProfileAuthorityActive(joinAuthority);
-      if (!active()) return;
-      setJoining(true);
+      if (!joinAuthority || !active()) return;
+      setPendingJoin({ run, token, authority: joinAuthority });
       setError(null);
       try {
         const response = await joinWatchTogetherRoom({ ...input }, joinAuthority);
@@ -118,10 +126,10 @@ export default function WatchTogetherJoin() {
         if (!active() || joinError instanceof StaleApiRequestContextError) return;
         setError(describeJoinError(joinError));
       } finally {
-        if (active()) setJoining(false);
+        setPendingJoin((current) => (current?.run === run ? null : current));
       }
     },
-    [navigate],
+    [navigate, token],
   );
 
   const createRoom = useCallback(async () => {
@@ -157,7 +165,7 @@ export default function WatchTogetherJoin() {
 
   // While an invite token is being auto-joined (and hasn't failed yet), show a
   // pending state instead of the full create/join form.
-  const autoJoinPending = hasInviteToken && !error;
+  const autoJoinPending = hasInviteToken && joining && !error;
 
   if (autoJoinPending) {
     return (

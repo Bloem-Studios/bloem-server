@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { setAccessToken, setProfileId, setProfileToken } from "@/api/client";
 import { joinWatchTogetherRoom } from "@/lib/watchTogether";
 import WatchTogetherJoin from "@/pages/WatchTogetherJoin";
@@ -97,6 +97,7 @@ it.each(["invite", "authority", "unmount"])(
     });
     expect(state.navigate).not.toHaveBeenCalled();
     if (kind === "invite") {
+      expect(view.queryByLabelText("Room code")).toBeNull();
       await act(async () => {
         pending[1]!(response());
       });
@@ -105,5 +106,37 @@ it.each(["invite", "authority", "unmount"])(
         replace: true,
       });
     }
+  },
+);
+
+it.each([
+  ["invite removal", 200],
+  ["invite removal", 500],
+  ["authority replacement", 200],
+  ["authority replacement", 500],
+] as const)(
+  "releases owned busy state after %s and stale %s without navigation",
+  async (kind, status) => {
+    state.token = "invite-A";
+    state.navigate.mockClear();
+    const pending: Array<(r: Response) => void> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => new Promise<Response>((resolve) => pending.push(resolve))),
+    );
+    const view = render(<WatchTogetherJoin />);
+    await waitFor(() => expect(pending.length).toBe(1));
+    if (kind === "invite removal") state.token = "";
+    else setProfileToken("replacement");
+    view.rerender(<WatchTogetherJoin />);
+    const code = view.getByLabelText("Room code");
+    expect(code).toBeEnabled();
+    fireEvent.change(code, { target: { value: "ROOM" } });
+    expect(view.getByRole("button", { name: "Join Watch Party" })).toBeEnabled();
+    await act(async () => {
+      pending[0]!(status === 200 ? response() : new Response(null, { status }));
+    });
+    expect(state.navigate).not.toHaveBeenCalled();
+    expect(view.getByRole("button", { name: "Join Watch Party" })).toBeEnabled();
   },
 );
