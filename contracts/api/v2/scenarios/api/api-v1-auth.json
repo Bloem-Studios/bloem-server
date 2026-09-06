@@ -8179,7 +8179,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves foreign and unknown session 404 refusals and missing-bearer 401, using Problem Details without changing any stored session or account state.",
+            "recorded_in": "internal/scenariocatalog/executor/session_delete_refusals_pairing_test.go",
+            "operation_id": "deleteSession",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/auth/sessions/${admin_session_id}"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "session_delete.unknown",
@@ -8231,7 +8279,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves foreign and unknown session 404 refusals and missing-bearer 401, using Problem Details without changing any stored session or account state.",
+            "recorded_in": "internal/scenariocatalog/executor/session_delete_refusals_pairing_test.go",
+            "operation_id": "deleteSession",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/auth/sessions/00000000-0000-4000-8000-00000000beef"
+            },
+            "expect": {
+              "status": 404,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 404
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/not_found$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         },
         {
           "id": "session_delete.meaning",
@@ -8354,7 +8450,55 @@
               }
             ]
           },
-          "v2_expectation": null
+          "v2_expectation": {
+            "kind": "intentional_difference",
+            "summary": "V2 preserves foreign and unknown session 404 refusals and missing-bearer 401, using Problem Details without changing any stored session or account state.",
+            "recorded_in": "internal/scenariocatalog/executor/session_delete_refusals_pairing_test.go",
+            "operation_id": "deleteSession",
+            "method": "DELETE",
+            "request": {
+              "path": "/api/v2/auth/sessions/x"
+            },
+            "expect": {
+              "status": 401,
+              "headers": [
+                {
+                  "name": "Content-Type",
+                  "op": "equals",
+                  "value": "application/problem+json"
+                },
+                {
+                  "name": "Cache-Control",
+                  "op": "equals",
+                  "value": "no-store"
+                }
+              ],
+              "body": [
+                {
+                  "pointer": "/status",
+                  "op": "equals",
+                  "value": 401
+                },
+                {
+                  "pointer": "/type",
+                  "op": "matches",
+                  "value": "/authentication_required$"
+                },
+                {
+                  "pointer": "/title",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/detail",
+                  "op": "non_empty"
+                },
+                {
+                  "pointer": "/instance",
+                  "op": "non_empty"
+                }
+              ]
+            }
+          }
         }
       ]
     },

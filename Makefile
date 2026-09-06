@@ -601,3 +601,7 @@ test-scenario-device-lookup-errors:
 .PHONY: test-scenario-setup-refusals
 test-scenario-setup-refusals:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSetupRefusalsAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: test-scenario-session-delete-refusals
+test-scenario-session-delete-refusals:
+	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredSessionDeleteRefusalsAcceptance$$' ./internal/scenariocatalog/executor

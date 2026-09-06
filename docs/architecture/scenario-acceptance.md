@@ -741,3 +741,16 @@ tables (72 observations), with every row unchanged. Required DSN, pre-setup
 scratch/API-key occupancy and fixed-selector gates fail closed. No successful
 setup, enrollment or outage substitution is exercised. These three frozen pairs
 remain separate from NEW acceptance.
+
+### Frozen login-session revocation refusal pairs
+
+`make test-scenario-session-delete-refusals` requires `session_delete.other_user`,
+`session_delete.unknown` and `session_delete.no_token`. Original requests,
+principals and assertions remain unchanged. V2 preserves foreign/unknown-session
+404 and missing-bearer 401 while using Problem Details. Six transport requests
+reseed independently; 12 combined snapshots cover complete users, profiles,
+API-key, settings, login-session and device-request tables (72 observations),
+with every row unchanged, including foreign sessions. Required DSN, pre-setup
+scratch/API-key occupancy and fixed-selector gates fail closed. No successful
+revocation, enrollment or outage substitution is exercised. These three frozen
+pairs remain separate from NEW acceptance.
